@@ -1,16 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import {
-  ChevronRight, ShieldCheck, Trash2, Building2, TrendingUp,
-
-  AlertTriangle, FileText, ArrowRight, Scale, Banknote,
-  Target, Lock, Clock, CheckCircle2, Star, UserCheck,
-  BadgeCheck, X, Check,
+  ArrowRight, CheckCircle2, AlertTriangle, Banknote, Scale,
+  TrendingUp, FileText, Target, ShieldCheck, Trash2,
+  Building2, UserCheck, BadgeCheck, Clock, Star,
+  ChevronDown, X, Check, Zap,
 } from 'lucide-react';
 
-/* ── helpers ─── */
-function useInView(t = 0.15) {
+/* ── helpers ── */
+function useInView(t = 0.12) {
   const ref = useRef<HTMLDivElement>(null);
   const [v, setV] = useState(false);
   useEffect(() => {
@@ -21,27 +20,15 @@ function useInView(t = 0.15) {
   return { ref, inView: v };
 }
 
-function useCounter(target: number, go = false) {
-  const [v, setV] = useState(0);
-  useEffect(() => {
-    if (!go) return;
-    let t0: number;
-    const r = (ts: number) => {
-      if (!t0) t0 = ts;
-      const p = Math.min((ts - t0) / 1800, 1);
-      setV(Math.floor((1 - Math.pow(1 - p, 3)) * target));
-      if (p < 1) requestAnimationFrame(r);
-    };
-    requestAnimationFrame(r);
-  }, [target, go]);
-  return v;
-}
 
+/* ════════════════════════════════════════════════════════
+   EXPORT
+════════════════════════════════════════════════════════ */
 export default function HomePage() {
   return (
-    <main style={{ background: '#f8fafc', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+    <main style={{ fontFamily: "'DM Sans', system-ui, sans-serif", overflow: 'hidden' }}>
       <Hero />
-      <Stats />
+      <Marquee />
       <Why />
       <ForWho />
       <HowItWorks />
@@ -49,382 +36,288 @@ export default function HomePage() {
       <Testimonials />
       <CtaFinal />
       <style>{`
-        @keyframes pls{0%,100%{opacity:1}50%{opacity:.4}}
-        @keyframes scan2{0%{top:0%;opacity:0}4%{opacity:1}46%{opacity:1}50%{top:100%;opacity:0}51%{top:0%;opacity:0}}
-        @keyframes spin2{to{transform:rotate(360deg)}}
-        @keyframes popIn{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
-        .pls{animation:pls 2s ease-in-out infinite}
-        .scan2{animation:scan2 3s linear infinite}
-        .spin2{animation:spin2 1s linear infinite}
-        @media(max-width:900px){
-          .hg{grid-template-columns:1fr!important;gap:40px!important}
-          .sg{grid-template-columns:repeat(2,1fr)!important}
-          .wg{grid-template-columns:repeat(2,1fr)!important}
-          .fg{grid-template-columns:1fr!important}
-          .tg{grid-template-columns:1fr!important}
-          .ag{grid-template-columns:1fr!important;gap:12px!important}
+        @keyframes marquee { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes pulse3 { 0%,100%{opacity:1} 50%{opacity:.45} }
+        @keyframes grow { from{width:0} to{width:var(--w)} }
+        .pulse3{animation:pulse3 2s ease-in-out infinite}
+        @media(max-width:860px){
+          .hero-cols{flex-direction:column!important;gap:0!important;min-height:auto!important}
+          .hero-left{min-height:50vh!important;padding:80px 24px 40px!important}
+          .hero-right{min-height:50vh!important;padding:40px 24px 60px!important}
+          .why-g{grid-template-columns:repeat(2,1fr)!important}
+          .fw-g{grid-template-columns:1fr!important}
+          .steps-g{grid-template-columns:1fr!important}
+          .av-g{grid-template-columns:1fr!important;gap:16px!important}
+          .testi-g{grid-template-columns:1fr!important}
         }
-        @media(max-width:560px){.sg{grid-template-columns:1fr!important}.wg{grid-template-columns:1fr!important}}
+        @media(max-width:560px){
+          .why-g{grid-template-columns:1fr!important}
+        }
       `}</style>
     </main>
   );
 }
 
-/* ═══ HERO ═══════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════
+   HERO — split screen, texte choc à droite
+════════════════════════════════════════════════════════ */
 function Hero() {
+  const sRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: sRef, offset: ['start start', 'end start'] });
+  const leftY = useTransform(scrollYProgress, [0, 1], [0, -60]);
+  const rightY = useTransform(scrollYProgress, [0, 1], [0, -120]);
+
   return (
-    <section style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', position: 'relative', overflow: 'hidden', paddingTop: 70, background: 'linear-gradient(150deg,#eef7fb 0%,#e4f2f8 45%,#f8fafc 100%)' }}>
-      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-        <div style={{ position: 'absolute', top: '5%', right: '8%', width: 520, height: 520, borderRadius: '50%', background: 'radial-gradient(circle,rgba(42,125,156,0.1) 0%,transparent 70%)', filter: 'blur(60px)' }} />
-        <div style={{ position: 'absolute', bottom: '8%', left: '5%', width: 360, height: 360, borderRadius: '50%', background: 'radial-gradient(circle,rgba(240,165,0,0.07) 0%,transparent 70%)', filter: 'blur(50px)' }} />
-        <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.025 }}>
-          <defs><pattern id="gr" width="52" height="52" patternUnits="userSpaceOnUse"><path d="M 52 0 L 0 0 0 52" fill="none" stroke="#2a7d9c" strokeWidth="1" /></pattern></defs>
-          <rect width="100%" height="100%" fill="url(#gr)" />
-        </svg>
-      </div>
+    <section ref={sRef} style={{ position: 'relative' }}>
+      <div style={{ display: 'flex', minHeight: '100vh' }} className="hero-cols">
 
-      <div style={{ maxWidth: 1240, margin: '0 auto', padding: '48px 28px', width: '100%', position: 'relative', zIndex: 1 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 56, alignItems: 'center' }} className="hg">
+        {/* LEFT — fond teal foncé, subtitles */}
+        <motion.div style={{ y: leftY, flex: 1, background: 'linear-gradient(160deg,#0f2d3d 0%,#1a4a60 100%)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '120px 56px 80px', position: 'relative', overflow: 'hidden' }} className="hero-left">
+          {/* deco */}
+          <div style={{ position: 'absolute', top: -80, left: -80, width: 320, height: 320, borderRadius: '50%', background: 'rgba(42,125,156,0.15)', filter: 'blur(60px)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', bottom: -40, right: -40, width: 200, height: 200, borderRadius: '50%', background: 'rgba(240,165,0,0.08)', filter: 'blur(40px)', pointerEvents: 'none' }} />
 
-          {/* LEFT */}
-          <motion.div initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
-            <motion.div initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 }}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 18px', borderRadius: 100, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.2)', fontSize: 13, fontWeight: 700, color: '#1a5e78', marginBottom: 28, letterSpacing: '0.03em' }}>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#2a7d9c', display: 'inline-block' }} className="pls" />
-              Outil d'analyse documentaire immobilier
-            </motion.div>
+          {/* Badge */}
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 16px', borderRadius: 100, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.7)', marginBottom: 48, width: 'fit-content', letterSpacing: '0.04em' }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ade80', display: 'inline-block' }} className="pulse3" />
+            ANALYMO · ANALYSE DOCUMENTAIRE
+          </motion.div>
 
-            <h1 style={{ fontSize: 'clamp(36px,4.8vw,62px)', fontWeight: 900, lineHeight: 1.06, color: '#0f2d3d', marginBottom: 22, letterSpacing: '-0.03em' }}>
-              L'analyse<br />immobilière,{' '}
-              <span style={{ background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>réinventée.</span>
-            </h1>
-
-            <p style={{ fontSize: 17, color: '#4a6b7c', lineHeight: 1.78, marginBottom: 34, maxWidth: 460 }}>
-              Arrêtez de signer les yeux fermés. Analymo décrypte vos PV d'AG, règlements et diagnostics — et vous donne{' '}
-              <strong style={{ color: '#0f2d3d', fontWeight: 700 }}>exactement ce qui compte</strong> en moins de 2 minutes.
-            </p>
-
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 36 }}>
-              <Link to="/tarifs"
-                style={{ padding: '15px 34px', borderRadius: 14, fontSize: 16, fontWeight: 700, color: '#fff', background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 8px 28px rgba(42,125,156,0.3)', transition: 'transform .2s' }}
-                onMouseEnter={e => (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'}
-                onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'}>
-                <ShieldCheck size={17} /> Lancer l'analyse
-              </Link>
-              <Link to="/exemple" style={{ padding: '15px 26px', borderRadius: 14, fontSize: 16, fontWeight: 600, color: '#2a7d9c', border: '1.5px solid rgba(42,125,156,0.26)', textDecoration: 'none', background: '#fff', display: 'flex', alignItems: 'center', gap: 7 }}>
-                Voir un exemple <ArrowRight size={15} />
-              </Link>
+          {/* Left big label */}
+          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.8 }}>
+            <div style={{ fontSize: 'clamp(14px,1.4vw,18px)', fontWeight: 500, color: 'rgba(255,255,255,0.45)', marginBottom: 20, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              Ce qu'Analymo vous évite
             </div>
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
-              {[{ I: ShieldCheck, l: 'Données chiffrées' }, { I: Trash2, l: 'Suppression auto' }, { I: Building2, l: 'Sans engagement' }].map(({ I, l }, i) => (
-                <motion.div key={l} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 + i * 0.1 }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: '#7a9aaa', fontWeight: 500 }}>
-                  <I size={13} style={{ color: '#2a7d9c' }} />{l}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {[
+                "40 pages de PV que personne ne lit",
+                "Des travaux à 15 000€ découverts après la signature",
+                "Un jargon juridique impossible à déchiffrer",
+                "Une décision prise dans l'incertitude totale",
+              ].map((item, i) => (
+                <motion.div key={i} initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 + i * 0.1 }}
+                  style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
+                    <X size={11} style={{ color: '#f87171' }} />
+                  </div>
+                  <span style={{ fontSize: 'clamp(14px,1.3vw,17px)', color: 'rgba(255,255,255,0.65)', lineHeight: 1.5 }}>{item}</span>
                 </motion.div>
               ))}
             </div>
+          </motion.div>
+
+          {/* Trust */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }}
+            style={{ marginTop: 56, display: 'flex', flexWrap: 'wrap', gap: 20 }}>
+            {[{ I: ShieldCheck, l: 'Données chiffrées' }, { I: Trash2, l: 'Suppression auto' }, { I: Zap, l: 'Résultats en 2 min' }].map(({ I, l }) => (
+              <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>
+                <I size={13} style={{ color: 'rgba(255,255,255,0.3)' }} />{l}
+              </div>
+            ))}
+          </motion.div>
+        </motion.div>
+
+        {/* RIGHT — fond blanc cassé, titre choc */}
+        <motion.div style={{ y: rightY, flex: 1, background: '#f8fafc', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '120px 56px 80px', position: 'relative', overflow: 'hidden' }} className="hero-right">
+          <div style={{ position: 'absolute', top: -60, right: -60, width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle,rgba(42,125,156,0.07) 0%,transparent 70%)', filter: 'blur(40px)', pointerEvents: 'none' }} />
+
+          <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.9 }}>
+            <h1 style={{ fontSize: 'clamp(38px,5.5vw,78px)', fontWeight: 900, lineHeight: 1.0, color: '#0f2d3d', marginBottom: 28, letterSpacing: '-0.04em' }}>
+              Vos docs<br />
+              immo,{' '}
+              <span style={{ position: 'relative', display: 'inline-block' }}>
+                <span style={{ color: '#2a7d9c' }}>décryptés</span>
+                <motion.div initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.8, duration: 0.6 }}
+                  style={{ position: 'absolute', bottom: 2, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg,#2a7d9c,#f0a500)', borderRadius: 2, transformOrigin: 'left' }} />
+              </span>
+              <br />en 2 min.
+            </h1>
+
+            <p style={{ fontSize: 'clamp(15px,1.4vw,19px)', color: '#4a6b7c', lineHeight: 1.75, marginBottom: 40, maxWidth: 440 }}>
+              PV d'AG, règlement de copropriété, diagnostics, appels de charges — Analymo lit tout,
+              extrait l'essentiel et vous donne une recommandation claire{' '}
+              <strong style={{ color: '#0f2d3d', fontWeight: 700 }}>avant que vous signiez.</strong>
+            </p>
+
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 48 }}>
+              <Link to="/tarifs"
+                style={{ padding: '16px 36px', borderRadius: 14, fontSize: 16, fontWeight: 700, color: '#fff', background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 9, boxShadow: '0 8px 32px rgba(42,125,156,0.3)', transition: 'transform .2s,box-shadow .2s' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 12px 40px rgba(42,125,156,0.4)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 32px rgba(42,125,156,0.3)'; }}>
+                Lancer mon analyse <ArrowRight size={17} />
+              </Link>
+              <Link to="/exemple"
+                style={{ padding: '16px 26px', borderRadius: 14, fontSize: 16, fontWeight: 600, color: '#0f2d3d', border: '1.5px solid rgba(15,45,61,0.15)', textDecoration: 'none', background: '#fff', display: 'flex', alignItems: 'center', gap: 7, transition: 'border-color .2s' }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = '#2a7d9c'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = 'rgba(15,45,61,0.15)'}>
+                Voir un exemple
+              </Link>
+            </div>
 
             {/* Social proof */}
-            <div style={{ marginTop: 32, display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
               <div style={{ display: 'flex' }}>
                 {['ML', 'TR', 'SD', 'CB', 'PG'].map((ini, i) => (
-                  <div key={i} style={{ width: 32, height: 32, borderRadius: '50%', background: `hsl(${195 + i * 18},55%,${38 + i * 4}%)`, border: '2px solid #f0f8fc', marginLeft: i === 0 ? 0 : -9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, color: '#fff' }}>{ini}</div>
+                  <div key={i} style={{ width: 34, height: 34, borderRadius: '50%', background: `hsl(${195 + i * 20},52%,${36 + i * 4}%)`, border: '2px solid #f8fafc', marginLeft: i === 0 ? 0 : -10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#fff' }}>{ini}</div>
                 ))}
               </div>
-              <p style={{ fontSize: 13, color: '#7a9aaa' }}>
-                <strong style={{ color: '#0f2d3d', fontWeight: 700 }}>+200 acheteurs</strong> font confiance à Analymo
-              </p>
+              <div>
+                <div style={{ fontSize: 13, color: '#0f2d3d', fontWeight: 700 }}>+200 acheteurs satisfaits</div>
+                <div style={{ display: 'flex', gap: 2, marginTop: 2 }}>
+                  {[0, 1, 2, 3, 4].map(j => <Star key={j} size={11} fill="#f59e0b" color="#f59e0b" />)}
+                  <span style={{ fontSize: 11, color: '#7a9aaa', marginLeft: 4 }}>4,8/5</span>
+                </div>
+              </div>
             </div>
           </motion.div>
 
-          {/* RIGHT */}
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <PhoneShowcase />
-          </div>
-        </div>
+          {/* Scroll indicator */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5 }}
+            style={{ position: 'absolute', bottom: 32, right: 56, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#7a9aaa' }}>Découvrir</span>
+            <motion.div animate={{ y: [0, 5, 0] }} transition={{ duration: 1.5, repeat: Infinity }}>
+              <ChevronDown size={18} style={{ color: '#7a9aaa' }} />
+            </motion.div>
+          </motion.div>
+        </motion.div>
       </div>
     </section>
   );
 }
 
-/* ─── Phone showcase ──────────────────────────── */
-function PhoneShowcase() {
-  const [phase, setPhase] = useState<0 | 1 | 2>(0);
-
-  useEffect(() => {
-    const t1 = setTimeout(() => setPhase(1), 2200);
-    const t2 = setTimeout(() => setPhase(2), 4600);
-    const t3 = setTimeout(() => { setPhase(0); }, 9000);
-    return () => [t1, t2, t3].forEach(clearTimeout);
-  }, [phase]);
-
+/* ════════════════════════════════════════════════════════
+   MARQUEE — stats défilantes
+════════════════════════════════════════════════════════ */
+function Marquee() {
+  const items = ['200+ analyses réalisées', '2 minutes chrono', '98% de satisfaction', '~8 000€ économisés en moyenne', 'Zéro donnée conservée', 'Rapport PDF inclus', 'Paiement sécurisé Stripe', '200+ analyses réalisées', '2 minutes chrono', '98% de satisfaction', '~8 000€ économisés en moyenne', 'Zéro donnée conservée', 'Rapport PDF inclus', 'Paiement sécurisé Stripe'];
   return (
-    <div style={{ position: 'relative' }}>
-      {/* Glow */}
-      <div style={{ position: 'absolute', inset: -32, borderRadius: '50%', background: 'radial-gradient(ellipse,rgba(42,125,156,0.13) 0%,transparent 70%)', filter: 'blur(24px)' }} />
-
-      {/* Floating badge left */}
-      <motion.div animate={{ y: [0, -8, 0], x: [0, 3, 0] }} transition={{ duration: 4.5, repeat: Infinity }}
-        style={{ position: 'absolute', left: -72, top: '18%', background: '#fff', borderRadius: 14, padding: '11px 16px', boxShadow: '0 8px 28px rgba(15,45,61,0.1)', border: '1px solid #e8f0f4', zIndex: 20, display: 'flex', alignItems: 'center', gap: 10, minWidth: 148 }}>
-        <div style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <TrendingUp size={16} style={{ color: '#22c55e' }} />
-        </div>
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#0f2d3d', lineHeight: 1 }}>Score global</div>
-          <div style={{ fontSize: 20, fontWeight: 900, color: '#22c55e', lineHeight: 1.2 }}>78<span style={{ fontSize: 10, color: '#7a9aaa', fontWeight: 500 }}>/100</span></div>
-        </div>
-      </motion.div>
-
-      {/* Floating badge right */}
-      <motion.div animate={{ y: [0, 9, 0], x: [0, -3, 0] }} transition={{ duration: 5, repeat: Infinity, delay: 1.2 }}
-        style={{ position: 'absolute', right: -66, bottom: '26%', background: '#fff', borderRadius: 14, padding: '11px 16px', boxShadow: '0 8px 28px rgba(15,45,61,0.1)', border: '1px solid #e8f0f4', zIndex: 20, display: 'flex', alignItems: 'center', gap: 10, minWidth: 140 }}>
-        <div style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(245,158,11,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <AlertTriangle size={15} style={{ color: '#f59e0b' }} />
-        </div>
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#0f2d3d' }}>Vigilance</div>
-          <div style={{ fontSize: 11, color: '#7a9aaa', lineHeight: 1.3 }}>Ravalement 2026</div>
-        </div>
-      </motion.div>
-
-      {/* Floating top-right */}
-      <motion.div animate={{ y: [0, -5, 0] }} transition={{ duration: 3.5, repeat: Infinity, delay: 2 }}
-        style={{ position: 'absolute', right: -52, top: '10%', background: '#fff', borderRadius: 12, padding: '9px 14px', boxShadow: '0 6px 20px rgba(15,45,61,0.1)', border: '1px solid #e8f0f4', zIndex: 20, display: 'flex', alignItems: 'center', gap: 7 }}>
-        <span style={{ fontSize: 14 }}>⚡</span>
-        <span style={{ fontSize: 12, fontWeight: 700, color: '#f0a500' }}>1 min 47s</span>
-      </motion.div>
-
-      {/* Phone */}
-      <motion.div animate={{ rotateY: [3, -3, 3], rotateX: [-1.5, 1.5, -1.5], y: [0, -10, 0] }} transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }} style={{ transformStyle: 'preserve-3d' }}>
-        <div style={{ width: 252, height: 530, background: '#0f2d3d', borderRadius: 46, padding: 5, boxShadow: '0 36px 80px rgba(15,45,61,0.28), 0 0 0 1px rgba(255,255,255,0.07) inset' }}>
-          <div style={{ width: '100%', height: '100%', background: '#f8fafc', borderRadius: 42, overflow: 'hidden', position: 'relative' }}>
-            <div style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', width: 84, height: 24, background: '#0f2d3d', borderRadius: 100, zIndex: 10 }} />
-            <div style={{ padding: '3px 20px 0', display: 'flex', justifyContent: 'space-between', fontSize: 8.5, fontWeight: 700, color: 'rgba(15,45,61,0.35)' }}>
-              <span>9:41</span><span>5G ▪▪▪</span>
-            </div>
-            <div style={{ padding: '26px 14px 14px', height: 'calc(100% - 20px)' }}>
-              <AnimatePresence mode="wait">
-                {phase === 0 && <UploadPhase key="u" />}
-                {phase === 1 && <ScanPhase key="s" />}
-                {phase === 2 && <ResultPhase key="r" />}
-              </AnimatePresence>
-            </div>
-            <div style={{ position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)', width: 80, height: 4, borderRadius: 2, background: 'rgba(15,45,61,0.15)' }} />
+    <div style={{ background: '#0f2d3d', padding: '14px 0', overflow: 'hidden', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+      <div style={{ display: 'flex', animation: 'marquee 28s linear infinite', width: 'max-content' }}>
+        {items.map((item, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 0, flexShrink: 0 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.55)', whiteSpace: 'nowrap', padding: '0 32px' }}>{item}</span>
+            <span style={{ color: 'rgba(42,125,156,0.6)', fontSize: 16 }}>·</span>
           </div>
-        </div>
-      </motion.div>
+        ))}
+      </div>
     </div>
   );
 }
 
-function UploadPhase() {
-  const [p, setP] = useState(0);
-  useEffect(() => { const t = setInterval(() => setP(v => Math.min(v + 3, 95)), 70); return () => clearInterval(t); }, []);
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <div style={{ fontSize: 11, fontWeight: 800, color: '#0f2d3d', marginBottom: 14 }}>Analymo</div>
-      <div style={{ fontSize: 10, color: '#7a9aaa', fontWeight: 600, marginBottom: 10, letterSpacing: '0.05em' }}>CHARGEMENT DES DOCUMENTS</div>
-      {['PV AG 2024.pdf', 'Règlement copro.pdf', 'Diagnostic DPE.pdf'].map((f, i) => (
-        <motion.div key={f} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.35 }}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 10, background: '#fff', border: '1px solid #edf2f4', marginBottom: 7, boxShadow: '0 1px 4px rgba(15,45,61,0.05)' }}>
-          <FileText size={11} style={{ color: '#2a7d9c', flexShrink: 0 }} />
-          <span style={{ fontSize: 10, color: '#0f2d3d', fontWeight: 600, flex: 1 }}>{f}</span>
-          <CheckCircle2 size={10} style={{ color: '#22c55e' }} />
-        </motion.div>
-      ))}
-      <div style={{ marginTop: 18 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-          <span style={{ fontSize: 9, color: '#7a9aaa' }}>Préparation...</span>
-          <span style={{ fontSize: 9, fontWeight: 700, color: '#2a7d9c' }}>{p}%</span>
-        </div>
-        <div style={{ height: 5, borderRadius: 3, background: '#edf2f4' }}>
-          <motion.div style={{ height: '100%', borderRadius: 3, background: 'linear-gradient(90deg,#2a7d9c,#0f2d3d)', width: `${p}%` }} />
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-function ScanPhase() {
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'relative' }}>
-      <div style={{ position: 'absolute', left: 0, right: 0, height: 2, background: 'linear-gradient(90deg,transparent,rgba(42,125,156,0.65),transparent)', boxShadow: '0 0 10px rgba(42,125,156,0.35)', zIndex: 5, top: 0 }} className="scan2" />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <span style={{ fontSize: 11, fontWeight: 800, color: '#0f2d3d' }}>Analyse en cours</span>
-        <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid #2a7d9c', borderTopColor: 'transparent' }} className="spin2" />
-      </div>
-      <div style={{ fontSize: 9, color: '#7a9aaa', marginBottom: 10 }}>104 pages en cours de lecture</div>
-      {['Détection travaux votés...', 'Analyse financière...', 'Vérification juridique...', 'Calcul du score...'].map((t, i) => (
-        <motion.div key={t} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.45 }}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: i < 3 ? '1px solid #f0f4f6' : 'none' }}>
-          <motion.div animate={{ opacity: [1, 0.25, 1] }} transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.2 }} style={{ width: 6, height: 6, borderRadius: '50%', background: '#2a7d9c', flexShrink: 0 }} />
-          <span style={{ fontSize: 10, color: '#4a6b7c' }}>{t}</span>
-        </motion.div>
-      ))}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.8 }}
-        style={{ marginTop: 14, padding: '9px 12px', borderRadius: 10, background: 'rgba(42,125,156,0.06)', border: '1px solid rgba(42,125,156,0.14)', textAlign: 'center' }}>
-        <div style={{ fontSize: 10, color: '#2a7d9c', fontWeight: 700 }}>Finalisation du rapport...</div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
-function ResultPhase() {
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <span style={{ fontSize: 11, fontWeight: 800, color: '#0f2d3d' }}>Rapport Analymo</span>
-        <span style={{ padding: '3px 9px', borderRadius: 6, background: '#ecfdf5', fontSize: 9, fontWeight: 700, color: '#16a34a' }}>✓ Terminé</span>
-      </div>
-      <div style={{ background: 'linear-gradient(135deg,#eaf4f8,#f0f8fc)', borderRadius: 14, padding: '12px', textAlign: 'center', marginBottom: 10, border: '1px solid rgba(42,125,156,0.09)' }}>
-        <div style={{ fontSize: 8.5, color: '#7a9aaa', fontWeight: 700, letterSpacing: '0.06em', marginBottom: 4 }}>SCORE GLOBAL</div>
-        <motion.div initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 220, delay: 0.1 }} style={{ fontSize: 50, fontWeight: 900, color: '#f0a500', lineHeight: 1 }}>78</motion.div>
-        <div style={{ fontSize: 8.5, color: '#7a9aaa' }}>sur 100 · Négocier le prix</div>
-      </div>
-      {[{ l: 'Financier', v: 68, c: '#f0a500' }, { l: 'Travaux', v: 62, c: '#fb923c' }, { l: 'Juridique', v: 88, c: '#22c55e' }].map((s, i) => (
-        <div key={s.l} style={{ marginBottom: 8 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-            <span style={{ fontSize: 10, color: '#4a6b7c' }}>{s.l}</span>
-            <span style={{ fontSize: 10, fontWeight: 700, color: s.c }}>{s.v}</span>
-          </div>
-          <div style={{ height: 4, borderRadius: 2, background: '#f0f4f6' }}>
-            <motion.div initial={{ width: 0 }} animate={{ width: `${s.v}%` }} transition={{ delay: i * 0.12, duration: 0.8 }} style={{ height: '100%', borderRadius: 2, background: s.c }} />
-          </div>
-        </div>
-      ))}
-      <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-        style={{ marginTop: 9, padding: '8px 10px', borderRadius: 9, background: '#fffbeb', border: '1px solid #fde68a', display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-        <AlertTriangle size={10} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 1 }} />
-        <span style={{ fontSize: 9, color: '#92400e', lineHeight: 1.4 }}>Ravalement voté — prévoir ~2 400€ en 2026</span>
-      </motion.div>
-    </motion.div>
-  );
-}
-
-/* ═══ STATS ══════════════════════════════════════════════ */
-function Stats() {
-  const { ref, inView } = useInView();
-  const data = [
-    { v: 200, s: '+', l: 'analyses réalisées', I: FileText, c: '#2a7d9c', bg: 'rgba(42,125,156,0.07)' },
-    { v: 2, s: ' min', l: "temps moyen d'analyse", I: Clock, c: '#f59e0b', bg: 'rgba(245,158,11,0.07)' },
-    { v: 98, s: '%', l: 'clients satisfaits', I: Star, c: '#22c55e', bg: 'rgba(34,197,94,0.07)' },
-    { v: 8000, s: '€', l: 'économisés en moyenne', I: TrendingUp, c: '#8b5cf6', bg: 'rgba(139,92,246,0.07)' },
-  ];
-  return (
-    <section ref={ref} style={{ padding: '52px 28px', background: '#fff', borderTop: '1px solid #edf2f4', borderBottom: '1px solid #edf2f4' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 18 }} className="sg">
-        {data.map((d, i) => {
-          const count = useCounter(d.v, inView);
-          return (
-            <motion.div key={i} initial={{ opacity: 0, y: 18 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ delay: i * 0.09 }}
-              style={{ padding: '24px 18px', borderRadius: 18, background: d.bg, textAlign: 'center' }}>
-              <div style={{ width: 44, height: 44, borderRadius: 13, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: d.c, margin: '0 auto 12px', boxShadow: `0 3px 10px ${d.c}22` }}>
-                <d.I size={20} />
-              </div>
-              <div style={{ fontSize: 36, fontWeight: 900, color: '#0f2d3d', lineHeight: 1, marginBottom: 5 }}>
-                {d.s === '€' ? '~' : ''}{count.toLocaleString('fr-FR')}{d.s}
-              </div>
-              <div style={{ fontSize: 12, color: '#7a9aaa', fontWeight: 500 }}>{d.l}</div>
-            </motion.div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-/* ═══ WHY ════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════
+   WHY — storytelling avec grande carte score
+════════════════════════════════════════════════════════ */
 function Why() {
   const sRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: sRef, offset: ['start end', 'end start'] });
-  const bgY = useTransform(scrollYProgress, [0, 1], [0, -36]);
+  const titleX = useTransform(scrollYProgress, [0, 0.5], [-40, 0]);
+  const titleOp = useTransform(scrollYProgress, [0, 0.3], [0, 1]);
 
   const cards = [
-    { I: AlertTriangle, title: 'Risques détectés', items: ['Travaux votés non réalisés', 'Impayés de copropriétaires', 'Procédures judiciaires'], c: '#ef4444', bg: 'rgba(239,68,68,0.06)', border: 'rgba(239,68,68,0.13)' },
-    { I: Banknote, title: 'Santé financière', items: ['Budget prévisionnel analysé', 'Fonds de travaux évalué', 'Charges futures estimées'], c: '#f59e0b', bg: 'rgba(245,158,11,0.06)', border: 'rgba(245,158,11,0.13)' },
-    { I: Scale, title: 'Conformité juridique', items: ['Diagnostics vérifiés', 'Clauses abusives identifiées', 'Règlement de copropriété'], c: '#3b82f6', bg: 'rgba(59,130,246,0.06)', border: 'rgba(59,130,246,0.13)' },
-    { I: TrendingUp, title: 'Potentiel du bien', items: ["Historique des travaux", "État général de l'immeuble", "Valorisation estimée"], c: '#22c55e', bg: 'rgba(34,197,94,0.06)', border: 'rgba(34,197,94,0.13)' },
+    { I: AlertTriangle, title: 'Risques détectés', items: ['Travaux votés non réalisés', 'Impayés copropriétaires', 'Procédures judiciaires'], c: '#ef4444', bg: 'rgba(239,68,68,0.07)', border: 'rgba(239,68,68,0.15)' },
+    { I: Banknote, title: 'Santé financière', items: ['Budget prévisionnel', 'Fonds de travaux évalué', 'Charges futures'], c: '#f59e0b', bg: 'rgba(245,158,11,0.07)', border: 'rgba(245,158,11,0.15)' },
+    { I: Scale, title: 'Conformité juridique', items: ['Diagnostics vérifiés', 'Clauses abusives', 'Règlement copro'], c: '#3b82f6', bg: 'rgba(59,130,246,0.07)', border: 'rgba(59,130,246,0.15)' },
+    { I: TrendingUp, title: 'Potentiel du bien', items: ["Historique travaux", "État général immeuble", "Valorisation estimée"], c: '#22c55e', bg: 'rgba(34,197,94,0.07)', border: 'rgba(34,197,94,0.15)' },
   ];
 
   return (
-    <section ref={sRef} style={{ padding: '80px 28px', position: 'relative', overflow: 'hidden' }}>
-      <motion.div style={{ position: 'absolute', inset: 0, y: bgY, pointerEvents: 'none' }}>
-        <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle,rgba(42,125,156,0.04) 0%,transparent 70%)', filter: 'blur(50px)' }} />
-      </motion.div>
-      <div style={{ maxWidth: 1200, margin: '0 auto', position: 'relative' }}>
-        <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 16px', borderRadius: 100, background: 'rgba(42,125,156,0.07)', border: '1px solid rgba(42,125,156,0.18)', fontSize: 13, fontWeight: 700, color: '#1a5e78', marginBottom: 18 }}>
-            Pourquoi Analymo ?
-          </motion.div>
-          <motion.h2 initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} style={{ fontSize: 'clamp(26px,3.8vw,44px)', fontWeight: 900, color: '#0f2d3d', marginBottom: 14, letterSpacing: '-0.025em', lineHeight: 1.1 }}>
-            Un score unique pour <span style={{ color: '#2a7d9c' }}>tout comprendre.</span>
-          </motion.h2>
-          <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.1 }} style={{ fontSize: 16, color: '#6b8a96', maxWidth: 520, margin: '0 auto', lineHeight: 1.7 }}>
-            L'achat immobilier est l'investissement d'une vie. Notre outil décrypte chaque document pour que vous achetiez en toute sérénité.
-          </motion.p>
-        </div>
+    <section ref={sRef} style={{ padding: '96px 0', background: '#fff', overflow: 'hidden' }}>
+      {/* Section label */}
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 40px', marginBottom: 64 }}>
+        <motion.div style={{ x: titleX, opacity: titleOp }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 }}>
+            <div style={{ height: 2, width: 48, background: '#2a7d9c', borderRadius: 1 }} />
+            <span style={{ fontSize: 12, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Pourquoi Analymo</span>
+          </div>
+          <h2 style={{ fontSize: 'clamp(28px,4vw,52px)', fontWeight: 900, color: '#0f2d3d', lineHeight: 1.1, letterSpacing: '-0.03em', maxWidth: 640 }}>
+            Un score unique.<br />
+            <span style={{ color: '#2a7d9c' }}>Tout comprendre</span> d'un coup d'œil.
+          </h2>
+        </motion.div>
+      </div>
 
-        {/* Score hero */}
-        <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-          style={{ borderRadius: 26, background: '#0f2d3d', padding: '40px 48px', marginBottom: 18, position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: -50, right: -50, width: 260, height: 260, borderRadius: '50%', background: 'rgba(42,125,156,0.1)', filter: 'blur(36px)' }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 44, flexWrap: 'wrap', position: 'relative' }}>
-            <div style={{ position: 'relative', width: 124, height: 124, flexShrink: 0 }}>
-              <svg width="124" height="124" viewBox="0 0 124 124" style={{ transform: 'rotate(-90deg)' }}>
-                <circle cx="62" cy="62" r="50" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="7" />
-                <motion.circle cx="62" cy="62" r="50" fill="none" stroke="#2a7d9c" strokeWidth="7" strokeLinecap="round"
-                  strokeDasharray={314} initial={{ strokeDashoffset: 314 }}
-                  whileInView={{ strokeDashoffset: 314 - 314 * 0.7 }} viewport={{ once: true }} transition={{ duration: 2, delay: 0.3 }} />
-              </svg>
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: 34, fontWeight: 900, color: '#fff', lineHeight: 1 }}>7</span>
-                <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', fontWeight: 700, letterSpacing: '0.1em' }}>/10</span>
-              </div>
-            </div>
-            <div style={{ flex: 1, minWidth: 240 }}>
-              <h3 style={{ fontSize: 'clamp(18px,2.5vw,26px)', fontWeight: 900, color: '#fff', marginBottom: 10 }}>Score global, risques cachés, impact financier</h3>
-              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, maxWidth: 440, marginBottom: 20 }}>
-                Chaque document est analysé et synthétisé en un score de fiabilité clair — en moins de 2 minutes.
-              </p>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {[{ l: '98% des risques détectés', I: Target }, { l: '< 2 min', I: Clock }, { l: '0 donnée conservée', I: Lock }].map((b, j) => (
-                  <motion.div key={j} initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.4 + j * 0.09 }}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 13px', borderRadius: 100, background: 'rgba(255,255,255,0.07)', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.6)' }}>
-                    <b.I size={12} />{b.l}
-                  </motion.div>
-                ))}
-              </div>
+      {/* Full-width score band */}
+      <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+        style={{ background: '#0f2d3d', padding: '52px 40px', marginBottom: 48, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: -80, right: -80, width: 360, height: 360, borderRadius: '50%', background: 'rgba(42,125,156,0.1)', filter: 'blur(50px)', pointerEvents: 'none' }} />
+        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 48, flexWrap: 'wrap', position: 'relative' }}>
+          {/* Score ring */}
+          <div style={{ position: 'relative', width: 140, height: 140, flexShrink: 0 }}>
+            <svg width="140" height="140" viewBox="0 0 140 140" style={{ transform: 'rotate(-90deg)' }}>
+              <circle cx="70" cy="70" r="58" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+              <motion.circle cx="70" cy="70" r="58" fill="none" stroke="#2a7d9c" strokeWidth="8" strokeLinecap="round"
+                strokeDasharray={364} initial={{ strokeDashoffset: 364 }}
+                whileInView={{ strokeDashoffset: 364 - 364 * 0.74 }} viewport={{ once: true }} transition={{ duration: 1.8, delay: 0.3 }} />
+            </svg>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: 38, fontWeight: 900, color: '#fff', lineHeight: 1 }}>74</span>
+              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontWeight: 700, letterSpacing: '0.1em' }}>/100</span>
             </div>
           </div>
-        </motion.div>
 
-        {/* 4 cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }} className="wg">
-          {cards.map((c, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.07 }}
-              whileHover={{ y: -4, boxShadow: '0 12px 36px rgba(15,45,61,0.08)' }}
-              style={{ padding: '22px', borderRadius: 18, border: `1px solid ${c.border}`, background: '#fff', position: 'relative', overflow: 'hidden', cursor: 'default' }}>
-              <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to bottom,${c.bg},transparent)`, opacity: 0.7 }} />
-              <div style={{ position: 'relative' }}>
-                <div style={{ width: 40, height: 40, borderRadius: 11, background: c.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-                  <c.I size={18} style={{ color: c.c }} />
+          {/* Description */}
+          <div style={{ flex: 1, minWidth: 260 }}>
+            <h3 style={{ fontSize: 'clamp(18px,2.4vw,28px)', fontWeight: 900, color: '#fff', marginBottom: 10 }}>
+              Score global · Risques · Finances · Juridique
+            </h3>
+            <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, maxWidth: 500, marginBottom: 20 }}>
+              Chaque document est lu, analysé et condensé en un score de fiabilité avec recommandation claire. Tout ce qu'il faut pour décider — en moins de 2 minutes.
+            </p>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {[{ l: '98% risques détectés', I: Target }, { l: '< 2 min', I: Clock }, { l: '0 donnée conservée', I: ShieldCheck }].map((b, j) => (
+                <motion.div key={j} initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.4 + j * 0.09 }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 100, background: 'rgba(255,255,255,0.07)', fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.6)' }}>
+                  <b.I size={12} />{b.l}
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
+          {/* Score breakdown bars */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 32px', flexShrink: 0, minWidth: 220 }}>
+            {[{ l: 'Financier', v: 68, c: '#f0a500' }, { l: 'Travaux', v: 62, c: '#fb923c' }, { l: 'Juridique', v: 88, c: '#4ade80' }, { l: 'Charges', v: 80, c: '#60a5fa' }].map((s, i) => (
+              <div key={s.l}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>{s.l}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: s.c }}>{s.v}</span>
                 </div>
-                <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0f2d3d', marginBottom: 10 }}>{c.title}</h4>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                  {c.items.map((it, j) => (
-                    <li key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, fontSize: 12, color: '#6b8a96', marginBottom: 6 }}>
-                      <CheckCircle2 size={12} style={{ color: c.c, flexShrink: 0, marginTop: 1 }} />{it}
-                    </li>
-                  ))}
-                </ul>
+                <div style={{ height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.07)' }}>
+                  <motion.div initial={{ width: 0 }} whileInView={{ width: `${s.v}%` }} viewport={{ once: true }} transition={{ delay: i * 0.1 + 0.4, duration: 0.8 }}
+                    style={{ height: '100%', borderRadius: 2, background: s.c }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* 4 cards */}
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 40px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }} className="why-g">
+          {cards.map((c, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}
+              whileHover={{ y: -6, boxShadow: '0 16px 48px rgba(15,45,61,0.09)' }}
+              style={{ padding: '24px', borderRadius: 20, border: `1px solid ${c.border}`, background: '#fff', position: 'relative', overflow: 'hidden', cursor: 'default', transition: 'box-shadow .25s' }}>
+              <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(160deg,${c.bg},transparent)` }} />
+              <div style={{ position: 'relative' }}>
+                <div style={{ width: 42, height: 42, borderRadius: 12, background: c.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                  <c.I size={19} style={{ color: c.c }} />
+                </div>
+                <h4 style={{ fontSize: 14, fontWeight: 800, color: '#0f2d3d', marginBottom: 12 }}>{c.title}</h4>
+                {c.items.map((it, j) => (
+                  <div key={j} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, fontSize: 12, color: '#6b8a96', marginBottom: 6 }}>
+                    <CheckCircle2 size={12} style={{ color: c.c, flexShrink: 0, marginTop: 2 }} />{it}
+                  </div>
+                ))}
               </div>
             </motion.div>
           ))}
         </div>
 
-        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} style={{ textAlign: 'center', marginTop: 40 }}>
-          <Link to="/tarifs" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '14px 34px', borderRadius: 13, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 700, textDecoration: 'none', boxShadow: '0 7px 24px rgba(42,125,156,0.27)' }}>
+        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} style={{ textAlign: 'center', marginTop: 44 }}>
+          <Link to="/tarifs" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '14px 36px', borderRadius: 13, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 700, textDecoration: 'none', boxShadow: '0 7px 24px rgba(42,125,156,0.27)' }}>
             Lancer l'analyse <ArrowRight size={16} />
           </Link>
         </motion.div>
@@ -433,62 +326,75 @@ function Why() {
   );
 }
 
-/* ═══ FOR WHO ════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════
+   FOR WHO — acheteurs en vedette + pros compacts
+════════════════════════════════════════════════════════ */
 function ForWho() {
   const pros = [
-    { title: 'Notaires', desc: 'Synthèse claire pour préparer vos dossiers plus vite.', I: ShieldCheck, c: '#2a7d9c', bg: 'rgba(42,125,156,0.07)' },
-    { title: 'Agents Immobiliers', desc: 'Un rapport de transparence qui valorise votre conseil.', I: UserCheck, c: '#8b5cf6', bg: 'rgba(139,92,246,0.07)' },
-    { title: 'Syndics', desc: "Facilitez les transmissions d'informations lors des ventes.", I: Building2, c: '#f59e0b', bg: 'rgba(245,158,11,0.07)' },
-    { title: 'Marchands de biens', desc: "Évaluez instantanément le potentiel ou les risques.", I: BadgeCheck, c: '#22c55e', bg: 'rgba(34,197,94,0.07)' },
+    { title: 'Notaires', desc: 'Synthèse claire, dossiers préparés plus vite.', I: ShieldCheck, c: '#2a7d9c', bg: 'rgba(42,125,156,0.07)' },
+    { title: 'Agents immo', desc: 'Rapport de transparence pour vos acquéreurs.', I: UserCheck, c: '#8b5cf6', bg: 'rgba(139,92,246,0.07)' },
+    { title: 'Syndics', desc: "Transmissions d'info fluides lors des ventes.", I: Building2, c: '#f59e0b', bg: 'rgba(245,158,11,0.07)' },
+    { title: 'Marchands de biens', desc: "Risques et potentiel identifiés instantanément.", I: BadgeCheck, c: '#22c55e', bg: 'rgba(34,197,94,0.07)' },
   ];
 
   return (
-    <section style={{ padding: '72px 28px', background: '#f8fafc' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 44 }}>
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 16px', borderRadius: 100, background: 'rgba(42,125,156,0.07)', border: '1px solid rgba(42,125,156,0.18)', fontSize: 13, fontWeight: 700, color: '#1a5e78', marginBottom: 18 }}>
-            Pour qui ?
-          </motion.div>
-          <motion.h2 initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} style={{ fontSize: 'clamp(24px,3.5vw,42px)', fontWeight: 900, color: '#0f2d3d', marginBottom: 12, letterSpacing: '-0.025em' }}>
-            Une solution pour <span style={{ color: '#2a7d9c' }}>chaque acteur.</span>
-          </motion.h2>
-          <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.1 }} style={{ fontSize: 16, color: '#7a9aaa', maxWidth: 500, margin: '0 auto' }}>
-            Particulier ou professionnel, Analymo s'adapte à votre besoin.
-          </motion.p>
+    <section style={{ padding: '88px 0', background: '#f8fafc', overflow: 'hidden' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 40px' }}>
+        {/* Label */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 }}>
+          <div style={{ height: 2, width: 48, background: '#2a7d9c', borderRadius: 1 }} />
+          <span style={{ fontSize: 12, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Pour qui</span>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1fr 1fr', gap: 14, alignItems: 'stretch' }} className="fg">
+        {/* Main buyers — horizontal split */}
+        <motion.div initial={{ opacity: 0, y: 28 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, borderRadius: 24, overflow: 'hidden', marginBottom: 20, boxShadow: '0 8px 48px rgba(15,45,61,0.1)' }}>
+          {/* Left dark */}
+          <div style={{ background: 'linear-gradient(145deg,#2a7d9c,#0f2d3d)', padding: '44px 40px', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', right: -50, bottom: -50, width: 200, height: 200, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
+            <span style={{ display: 'inline-block', padding: '4px 13px', borderRadius: 100, background: 'rgba(255,255,255,0.12)', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)', marginBottom: 20 }}>⭐ Audience principale</span>
+            <h3 style={{ fontSize: 'clamp(20px,2.8vw,32px)', fontWeight: 900, color: '#fff', marginBottom: 14, lineHeight: 1.2, letterSpacing: '-0.02em' }}>
+              Acheteurs<br />Particuliers
+            </h3>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', lineHeight: 1.7, marginBottom: 24 }}>
+              Primo-accédants ou investisseurs — ne laissez aucun document vous surprendre après la signature.
+            </p>
+            <Link to="/tarifs" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 22px', borderRadius: 11, background: '#fff', color: '#0f2d3d', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
+              Commencer <ArrowRight size={14} />
+            </Link>
+          </div>
 
-          {/* Main buyers card */}
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-            style={{ borderRadius: 22, background: 'linear-gradient(145deg,#2a7d9c,#0f2d3d)', padding: '32px 28px', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', right: -40, top: -40, width: 180, height: 180, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
-            <div style={{ position: 'relative' }}>
-              <span style={{ display: 'inline-block', padding: '3px 12px', borderRadius: 100, background: 'rgba(255,255,255,0.13)', fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.9)', marginBottom: 18 }}>⭐ Principal</span>
-              <h3 style={{ fontSize: 20, fontWeight: 900, color: '#fff', marginBottom: 12, lineHeight: 1.2 }}>Acheteurs Particuliers</h3>
-              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 1.65, marginBottom: 22 }}>
-                Ne faites pas d'erreur coûteuse. Analymo décrypte la santé financière de la copropriété et les travaux à venir.
-              </p>
-              {["Comprendre les PV d'AG", "Anticiper les travaux", "Vérifier les finances", "Acheter sereinement"].map((item, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'rgba(255,255,255,0.82)', marginBottom: 9 }}>
-                  <CheckCircle2 size={14} style={{ color: '#4ade80', flexShrink: 0 }} />{item}
+          {/* Right checkmarks */}
+          <div style={{ background: '#fff', padding: '44px 40px', borderLeft: '1px solid #edf2f4' }}>
+            <h4 style={{ fontSize: 15, fontWeight: 800, color: '#0f2d3d', marginBottom: 24 }}>Ce qu'Analymo détecte pour vous</h4>
+            {[
+              "Travaux votés et leur coût estimé par lot",
+              "Santé financière réelle de la copropriété",
+              "Procédures judiciaires ou impayés en cours",
+              "Conformité des diagnostics obligatoires",
+              "Points de vigilance avant de faire une offre",
+            ].map((item, i) => (
+              <motion.div key={i} initial={{ opacity: 0, x: 14 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.07 }}
+                style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 0', borderBottom: i < 4 ? '1px solid #f4f6f8' : 'none' }}>
+                <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Check size={12} style={{ color: '#22c55e' }} />
                 </div>
-              ))}
-              <Link to="/tarifs" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginTop: 22, padding: '10px 22px', borderRadius: 11, background: '#fff', color: '#0f2d3d', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
-                Commencer <ChevronRight size={14} />
-              </Link>
-            </div>
-          </motion.div>
+                <span style={{ fontSize: 13, color: '#0f2d3d', fontWeight: 500 }}>{item}</span>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
 
-          {/* Pro cards */}
+        {/* Pro cards — horizontal strip */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }} className="fw-g">
           {pros.map((p, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.07 + 0.1 }}
-              whileHover={{ y: -4, boxShadow: '0 12px 32px rgba(15,45,61,0.08)' }}
-              style={{ padding: '24px 20px', borderRadius: 18, background: '#fff', border: '1px solid #edf2f4', cursor: 'default' }}>
-              <div style={{ width: 42, height: 42, borderRadius: 12, background: p.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-                <p.I size={19} style={{ color: p.c }} />
+            <motion.div key={i} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.07 }}
+              whileHover={{ y: -4, boxShadow: '0 10px 32px rgba(15,45,61,0.08)' }}
+              style={{ padding: '22px 20px', borderRadius: 18, background: '#fff', border: '1px solid #edf2f4', cursor: 'default', transition: 'box-shadow .2s' }}>
+              <div style={{ width: 40, height: 40, borderRadius: 11, background: p.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+                <p.I size={18} style={{ color: p.c }} />
               </div>
-              <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0f2d3d', marginBottom: 7 }}>{p.title}</h4>
+              <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0f2d3d', marginBottom: 6 }}>{p.title}</h4>
               <p style={{ fontSize: 12, color: '#7a9aaa', lineHeight: 1.55 }}>{p.desc}</p>
             </motion.div>
           ))}
@@ -498,183 +404,176 @@ function ForWho() {
   );
 }
 
-/* ═══ HOW IT WORKS ═══════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════
+   HOW IT WORKS — timeline verticale élégante
+════════════════════════════════════════════════════════ */
 function HowItWorks() {
   const steps = [
-    { n: 1, I: FileText, title: 'Importez', text: "PV d'AG, règlement, diagnostics. PDF, Word ou image.", c: '#2a7d9c', bg: 'rgba(42,125,156,0.1)' },
-    { n: 2, I: Target, title: 'Notre moteur analyse', text: 'Chaque ligne scannée pour détecter risques et travaux.', c: '#0f2d3d', bg: 'rgba(15,45,61,0.08)' },
-    { n: 3, I: CheckCircle2, title: 'Rapport clair', text: 'Score, vigilances, recommandation. Prêt à négocier.', c: '#22c55e', bg: 'rgba(34,197,94,0.08)' },
+    { n: '01', I: FileText, title: 'Importez vos documents', text: "Déposez vos PV d'AG, règlements de copropriété, diagnostics et appels de charges. PDF, Word ou image — on s'occupe du reste.", c: '#2a7d9c', bg: 'rgba(42,125,156,0.1)' },
+    { n: '02', I: Target, title: 'Notre moteur analyse tout', text: 'Chaque ligne est passée au crible. Risques, finances, travaux votés, conformité juridique — rien ne passe à travers les mailles.', c: '#0f2d3d', bg: 'rgba(15,45,61,0.08)' },
+    { n: '03', I: CheckCircle2, title: 'Vous recevez votre rapport', text: 'Score global, points de vigilance classés par priorité, recommandation finale. Prêt à négocier, ou à passer votre chemin.', c: '#22c55e', bg: 'rgba(34,197,94,0.08)' },
   ];
 
   return (
-    <section id="comment" style={{ padding: '72px 28px', background: '#fff' }}>
-      <div style={{ maxWidth: 980, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 16px', borderRadius: 100, background: 'rgba(42,125,156,0.07)', border: '1px solid rgba(42,125,156,0.18)', fontSize: 13, fontWeight: 700, color: '#1a5e78', marginBottom: 18 }}>
-            Comment ça marche ?
+    <section style={{ padding: '88px 0', background: '#fff' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 40px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 56 }}>
+          <div style={{ height: 2, width: 48, background: '#2a7d9c', borderRadius: 1 }} />
+          <span style={{ fontSize: 12, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Comment ça marche</span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
+          {/* Left: big headline */}
+          <motion.div initial={{ opacity: 0, x: -32 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
+            <h2 style={{ fontSize: 'clamp(30px,4vw,54px)', fontWeight: 900, color: '#0f2d3d', lineHeight: 1.1, letterSpacing: '-0.03em', marginBottom: 28 }}>
+              Trois étapes.<br />
+              <span style={{ color: '#2a7d9c' }}>Une décision</span><br />
+              éclairée.
+            </h2>
+            <p style={{ fontSize: 16, color: '#6b8a96', lineHeight: 1.75, marginBottom: 36, maxWidth: 380 }}>
+              Pas de formation, pas de jargon. Vous déposez vos fichiers — Analymo fait tout le reste en moins de 2 minutes.
+            </p>
+            <Link to="/tarifs" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '14px 32px', borderRadius: 13, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 700, textDecoration: 'none', boxShadow: '0 7px 24px rgba(42,125,156,0.27)' }}>
+              Essayer maintenant — dès 4,99€ <ArrowRight size={16} />
+            </Link>
           </motion.div>
-          <motion.h2 initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} style={{ fontSize: 'clamp(24px,3.5vw,42px)', fontWeight: 900, color: '#0f2d3d', marginBottom: 12, letterSpacing: '-0.025em' }}>
-            Trois étapes. <span style={{ color: '#2a7d9c' }}>Deux minutes.</span>
-          </motion.h2>
-          <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.1 }} style={{ fontSize: 16, color: '#7a9aaa' }}>
-            Une décision éclairée, sans jargon, sans effort.
-          </motion.p>
-        </div>
 
-        {/* Steps with arrows */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 0 }} className="steps-row">
-          {steps.map((s, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.15 }}
-                whileHover={{ y: -4, boxShadow: '0 16px 44px rgba(15,45,61,0.09)' }}
-                style={{ flex: 1, padding: '28px 24px', borderRadius: 20, background: '#fff', border: '1px solid #edf2f4', boxShadow: '0 2px 10px rgba(15,45,61,0.04)', cursor: 'default', textAlign: 'center' }}>
-                {/* Number + icon */}
-                <div style={{ position: 'relative', display: 'inline-block', marginBottom: 18 }}>
-                  <div style={{ width: 60, height: 60, borderRadius: 18, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <s.I size={24} style={{ color: s.c }} />
-                  </div>
-                  <div style={{ position: 'absolute', top: -8, right: -8, width: 22, height: 22, borderRadius: '50%', background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 900, color: '#fff' }}>{s.n}</div>
+          {/* Right: steps */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0, position: 'relative' }}>
+            {/* Vertical line */}
+            <div style={{ position: 'absolute', left: 20, top: 44, bottom: 44, width: 2, background: 'linear-gradient(to bottom,#2a7d9c,rgba(42,125,156,0.1))' }} />
+
+            {steps.map((s, i) => (
+              <motion.div key={i} initial={{ opacity: 0, x: 24 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.15 }}
+                style={{ display: 'flex', gap: 24, paddingBottom: i < steps.length - 1 ? 32 : 0, position: 'relative' }}>
+                {/* Circle */}
+                <div style={{ width: 42, height: 42, borderRadius: '50%', border: `2px solid ${s.c}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1, background: '#fff', boxShadow: `0 0 0 6px #fff` }}>
+                  <s.I size={18} style={{ color: s.c }} />
                 </div>
-                <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f2d3d', marginBottom: 8 }}>{s.title}</h3>
-                <p style={{ fontSize: 13, color: '#7a9aaa', lineHeight: 1.6 }}>{s.text}</p>
+                <div style={{ paddingTop: 8 }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: s.c, letterSpacing: '0.1em', marginBottom: 6 }}>{s.n}</div>
+                  <h4 style={{ fontSize: 17, fontWeight: 800, color: '#0f2d3d', marginBottom: 8 }}>{s.title}</h4>
+                  <p style={{ fontSize: 13, color: '#7a9aaa', lineHeight: 1.65 }}>{s.text}</p>
+                </div>
               </motion.div>
-
-              {/* Arrow between steps */}
-              {i < steps.length - 1 && (
-                <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: i * 0.15 + 0.3 }}
-                  style={{ flexShrink: 0, width: 36, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <ChevronRight size={16} style={{ color: '#2a7d9c' }} />
-                  </div>
-                </motion.div>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-
-        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} style={{ textAlign: 'center', marginTop: 40 }}>
-          <Link to="/tarifs" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '14px 34px', borderRadius: 13, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 700, textDecoration: 'none', boxShadow: '0 7px 24px rgba(42,125,156,0.27)' }}>
-            Essayer maintenant — dès 4,99€ <ChevronRight size={16} />
-          </Link>
-        </motion.div>
       </div>
-      <style>{`@media(max-width:700px){.steps-row{flex-direction:column!important;gap:12px!important}}`}</style>
     </section>
   );
 }
 
-/* ═══ AVANT / APRÈS ══════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════
+   AVANT / APRÈS — horizontal cinematic
+════════════════════════════════════════════════════════ */
 function AvantApres() {
   const { ref, inView } = useInView(0.1);
+
   const before = [
     "Des dizaines de pages illisibles à parcourir seul",
     "Du jargon juridique sans traduction claire",
     "Des travaux découverts après la signature",
-    "Une décision prise dans l'incertitude",
+    "Une décision prise dans l'incertitude totale",
     "Des milliers d'euros de mauvaises surprises",
   ];
   const after = [
-    "Un rapport structuré, clair, en 2 minutes",
+    "Un rapport structuré en 2 minutes chrono",
     "Les risques mis en avant, sans jargon",
-    "Travaux, charges et risques détectés en amont",
+    "Travaux et charges détectés en amont",
     "Une offre négociée sur des bases solides",
-    "Des économies significatives dès le départ",
+    "Des économies significatives avant la signature",
   ];
 
   return (
-    <section ref={ref} style={{ padding: '72px 28px', background: 'linear-gradient(180deg,#f8fafc 0%,#eef7fb 100%)' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 16px', borderRadius: 100, background: 'rgba(42,125,156,0.07)', border: '1px solid rgba(42,125,156,0.18)', fontSize: 13, fontWeight: 700, color: '#1a5e78', marginBottom: 18 }}>
-            Avant / Après
-          </motion.div>
-          <motion.h2 initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} style={{ fontSize: 'clamp(24px,3.5vw,42px)', fontWeight: 900, color: '#0f2d3d', marginBottom: 12, letterSpacing: '-0.025em' }}>
-            Deux façons d'acheter. <span style={{ color: '#2a7d9c' }}>Une seule bonne.</span>
-          </motion.h2>
+    <section ref={ref} style={{ padding: '0', background: '#f8fafc', overflow: 'hidden' }}>
+      {/* Full-width header */}
+      <div style={{ background: '#0f2d3d', padding: '56px 40px 48px', textAlign: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 20 }}>
+          <div style={{ height: 1, width: 40, background: 'rgba(255,255,255,0.15)' }} />
+          <span style={{ fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Avant / Après</span>
+          <div style={{ height: 1, width: 40, background: 'rgba(255,255,255,0.15)' }} />
         </div>
+        <h2 style={{ fontSize: 'clamp(26px,4vw,50px)', fontWeight: 900, color: '#fff', letterSpacing: '-0.025em', lineHeight: 1.1 }}>
+          Deux façons d'acheter.<br />
+          <span style={{ color: '#2a7d9c' }}>Une seule bonne.</span>
+        </h2>
+      </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 64px 1fr', gap: 0, alignItems: 'center' }} className="ag">
-
-          {/* SANS */}
-          <motion.div initial={{ opacity: 0, x: -28 }} animate={inView ? { opacity: 1, x: 0 } : {}} transition={{ duration: 0.6 }}
-            style={{ padding: '32px', borderRadius: 22, background: '#fff', border: '1px solid rgba(239,68,68,0.16)', boxShadow: '0 4px 20px rgba(239,68,68,0.06)' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 16px', borderRadius: 100, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)', fontSize: 12, fontWeight: 700, color: '#dc2626', marginBottom: 24 }}>
-              <X size={13} /> Sans Analymo
-            </div>
-            {before.map((item, i) => (
-              <motion.div key={i} initial={{ opacity: 0, x: -12 }} animate={inView ? { opacity: 1, x: 0 } : {}} transition={{ delay: i * 0.08 + 0.2 }}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderBottom: i < before.length - 1 ? '1px solid #fff5f5' : 'none' }}>
-                <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <X size={11} style={{ color: '#dc2626' }} />
-                </div>
-                <span style={{ fontSize: 14, color: '#6b7280' }}>{item}</span>
-              </motion.div>
-            ))}
-          </motion.div>
-
-          {/* VS bubble */}
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <motion.div animate={{ scale: [1, 1.06, 1] }} transition={{ duration: 2.5, repeat: Infinity }}
-              style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg,#2a7d9c,#f0a500)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, color: '#fff', boxShadow: '0 4px 16px rgba(42,125,156,0.3)', flexShrink: 0 }}>
-              VS
-            </motion.div>
+      {/* Split columns */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }} className="av-g">
+        {/* SANS */}
+        <motion.div initial={{ opacity: 0, x: -24 }} animate={inView ? { opacity: 1, x: 0 } : {}} transition={{ duration: 0.7 }}
+          style={{ padding: '48px 48px', background: '#fff', borderRight: '1px solid #edf2f4' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 9, padding: '7px 18px', borderRadius: 100, background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.18)', fontSize: 13, fontWeight: 700, color: '#dc2626', marginBottom: 32 }}>
+            <X size={14} /> Sans Analymo
           </div>
+          {before.map((item, i) => (
+            <motion.div key={i} initial={{ opacity: 0, x: -14 }} animate={inView ? { opacity: 1, x: 0 } : {}} transition={{ delay: i * 0.08 + 0.2 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 0', borderBottom: i < before.length - 1 ? '1px solid #fef2f2' : 'none' }}>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(239,68,68,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <X size={12} style={{ color: '#dc2626' }} />
+              </div>
+              <span style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.4 }}>{item}</span>
+            </motion.div>
+          ))}
+        </motion.div>
 
-          {/* AVEC */}
-          <motion.div initial={{ opacity: 0, x: 28 }} animate={inView ? { opacity: 1, x: 0 } : {}} transition={{ duration: 0.6, delay: 0.12 }}
-            style={{ padding: '32px', borderRadius: 22, background: '#fff', border: '1px solid rgba(42,125,156,0.2)', boxShadow: '0 4px 20px rgba(42,125,156,0.08)' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 16px', borderRadius: 100, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.2)', fontSize: 12, fontWeight: 700, color: '#1a5e78', marginBottom: 24 }}>
-              <Check size={13} /> Avec Analymo
-            </div>
-            {after.map((item, i) => (
-              <motion.div key={i} initial={{ opacity: 0, x: 12 }} animate={inView ? { opacity: 1, x: 0 } : {}} transition={{ delay: i * 0.08 + 0.3 }}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderBottom: i < after.length - 1 ? '1px solid #f0f9ff' : 'none' }}>
-                <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Check size={11} style={{ color: '#22c55e' }} />
-                </div>
-                <span style={{ fontSize: 14, color: '#0f2d3d', fontWeight: 500 }}>{item}</span>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
+        {/* AVEC */}
+        <motion.div initial={{ opacity: 0, x: 24 }} animate={inView ? { opacity: 1, x: 0 } : {}} transition={{ duration: 0.7, delay: 0.1 }}
+          style={{ padding: '48px 48px', background: '#f0f9f4' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 9, padding: '7px 18px', borderRadius: 100, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.22)', fontSize: 13, fontWeight: 700, color: '#16a34a', marginBottom: 32 }}>
+            <Check size={14} /> Avec Analymo
+          </div>
+          {after.map((item, i) => (
+            <motion.div key={i} initial={{ opacity: 0, x: 14 }} animate={inView ? { opacity: 1, x: 0 } : {}} transition={{ delay: i * 0.08 + 0.3 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 0', borderBottom: i < after.length - 1 ? '1px solid rgba(34,197,94,0.08)' : 'none' }}>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(34,197,94,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Check size={12} style={{ color: '#22c55e' }} />
+              </div>
+              <span style={{ fontSize: 14, color: '#0f2d3d', fontWeight: 500, lineHeight: 1.4 }}>{item}</span>
+            </motion.div>
+          ))}
+        </motion.div>
       </div>
     </section>
   );
 }
 
-/* ═══ TESTIMONIALS ═══════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════
+   TESTIMONIALS — cards épurées
+════════════════════════════════════════════════════════ */
 function Testimonials() {
   const testimonials = [
-    { name: 'Marie L.', role: 'Primo-accédante, Lyon', initials: 'ML', color: '#2a7d9c', text: "Analymo m'a signalé un ravalement à 12 000€. J'ai renégocié. Inestimable." },
-    { name: 'Thomas R.', role: 'Investisseur, Paris', initials: 'TR', color: '#0f2d3d', text: "De 3h par dossier à 15 minutes. Indispensable quand on analyse 10 biens par mois." },
-    { name: 'Sophie D.', role: 'Acheteuse, Bordeaux', initials: 'SD', color: '#0f6e56', text: "Rapport clair, scores par catégorie. Mon notaire a été impressionné." },
+    { name: 'Marie L.', role: 'Primo-accédante, Lyon', initials: 'ML', color: '#2a7d9c', text: "Analymo m'a signalé un ravalement à 12 000€. J'ai renégocié. Inestimable avant une signature." },
+    { name: 'Thomas R.', role: 'Investisseur, Paris', initials: 'TR', color: '#0f2d3d', text: "De 3h par dossier à 15 minutes. Quand on analyse 10 biens par mois, le gain est immédiat." },
+    { name: 'Sophie D.', role: 'Acheteuse, Bordeaux', initials: 'SD', color: '#0f6e56', text: "Rapport clair, scores par catégorie. Mon notaire a été impressionné. À recommander." },
   ];
 
   return (
-    <section style={{ padding: '72px 28px', background: '#fff' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 44 }}>
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 16px', borderRadius: 100, background: 'rgba(42,125,156,0.07)', border: '1px solid rgba(42,125,156,0.18)', fontSize: 13, fontWeight: 700, color: '#1a5e78', marginBottom: 18 }}>
-            Avis clients
-          </motion.div>
-          <motion.h2 initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} style={{ fontSize: 'clamp(24px,3.5vw,40px)', fontWeight: 900, color: '#0f2d3d', marginBottom: 12, letterSpacing: '-0.025em' }}>
-            Ils nous <span style={{ color: '#2a7d9c' }}>font confiance.</span>
-          </motion.h2>
+    <section style={{ padding: '88px 0', background: '#fff' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 40px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 52 }}>
+          <div style={{ height: 2, width: 48, background: '#2a7d9c', borderRadius: 1 }} />
+          <span style={{ fontSize: 12, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Ils nous font confiance</span>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 18 }} className="tg">
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 20 }} className="testi-g">
           {testimonials.map((t, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.09 }}
-              whileHover={{ y: -4, boxShadow: '0 12px 36px rgba(15,45,61,0.07)' }}
-              style={{ padding: '26px', borderRadius: 18, background: '#f8fafc', border: '1px solid #edf2f4', cursor: 'default' }}>
-              <div style={{ display: 'flex', gap: 3, marginBottom: 12 }}>
-                {[0, 1, 2, 3, 4].map(j => <Star key={j} size={13} fill="#f59e0b" color="#f59e0b" />)}
-              </div>
-              <p style={{ fontSize: 14, color: '#4a6b7c', lineHeight: 1.7, marginBottom: 18, fontStyle: 'italic' }}>"{t.text}"</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: t.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff', flexShrink: 0 }}>{t.initials}</div>
+            <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+              whileHover={{ y: -5, boxShadow: '0 14px 40px rgba(15,45,61,0.08)' }}
+              style={{ padding: '32px', borderRadius: 20, background: '#f8fafc', border: '1px solid #edf2f4', cursor: 'default', transition: 'box-shadow .25s' }}>
+              {/* Quote mark */}
+              <div style={{ fontSize: 48, lineHeight: 1, color: '#2a7d9c', opacity: 0.2, fontFamily: 'Georgia,serif', marginBottom: 8 }}>"</div>
+              <p style={{ fontSize: 15, color: '#374151', lineHeight: 1.75, marginBottom: 24, fontStyle: 'italic' }}>{t.text}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', background: t.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', flexShrink: 0 }}>{t.initials}</div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#0f2d3d' }}>{t.name}</div>
-                  <div style={{ fontSize: 11, color: '#7a9aaa' }}>{t.role}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0f2d3d' }}>{t.name}</div>
+                  <div style={{ fontSize: 12, color: '#7a9aaa' }}>{t.role}</div>
+                </div>
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: 2 }}>
+                  {[0, 1, 2, 3, 4].map(j => <Star key={j} size={12} fill="#f59e0b" color="#f59e0b" />)}
                 </div>
               </div>
             </motion.div>
@@ -685,28 +584,43 @@ function Testimonials() {
   );
 }
 
-/* ═══ CTA FINAL ══════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════
+   CTA FINAL — full width dramatic
+════════════════════════════════════════════════════════ */
 function CtaFinal() {
   return (
-    <section style={{ padding: '88px 28px', background: 'linear-gradient(135deg,#0f2d3d 0%,#2a7d9c 100%)', position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', top: -70, right: -70, width: 340, height: 340, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', bottom: -50, left: -50, width: 260, height: 260, borderRadius: '50%', background: 'rgba(240,165,0,0.06)', pointerEvents: 'none' }} />
-      <div style={{ maxWidth: 640, margin: '0 auto', textAlign: 'center', position: 'relative', zIndex: 1 }}>
-        <motion.h2 initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-          style={{ fontSize: 'clamp(26px,4.5vw,50px)', fontWeight: 900, color: '#fff', marginBottom: 14, letterSpacing: '-0.025em', lineHeight: 1.1 }}>
-          Votre prochain bien mérite une analyse complète.
-        </motion.h2>
-        <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.1 }}
-          style={{ fontSize: 17, color: 'rgba(255,255,255,0.58)', lineHeight: 1.7, marginBottom: 40 }}>
-          Dès 4,99€ · Résultats en moins de 2 minutes.
-        </motion.p>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link to="/tarifs" style={{ padding: '15px 40px', borderRadius: 13, fontSize: 16, fontWeight: 700, color: '#0f2d3d', background: '#fff', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 7px 24px rgba(0,0,0,0.17)' }}>
-            Commencer maintenant <ArrowRight size={17} />
-          </Link>
-          <Link to="/exemple" style={{ padding: '15px 28px', borderRadius: 13, fontSize: 16, fontWeight: 600, color: 'rgba(255,255,255,0.78)', border: '1.5px solid rgba(255,255,255,0.24)', textDecoration: 'none' }}>
-            Voir un exemple
-          </Link>
+    <section style={{ position: 'relative', overflow: 'hidden', background: '#f8fafc' }}>
+      {/* Split background */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 320 }}>
+        <div style={{ background: '#0f2d3d', padding: '72px 56px', display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: -60, left: -60, width: 260, height: 260, borderRadius: '50%', background: 'rgba(42,125,156,0.12)', filter: 'blur(40px)', pointerEvents: 'none' }} />
+          <motion.h2 initial={{ opacity: 0, x: -24 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
+            style={{ fontSize: 'clamp(26px,3.5vw,46px)', fontWeight: 900, color: '#fff', lineHeight: 1.1, letterSpacing: '-0.025em', marginBottom: 16 }}>
+            Votre prochain bien<br />
+            mérite une analyse<br />
+            <span style={{ color: '#2a7d9c' }}>complète.</span>
+          </motion.h2>
+          <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ delay: 0.1 }}
+            style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', lineHeight: 1.7 }}>
+            Dès 4,99€ · Sans abonnement · Résultats en 2 min
+          </motion.p>
+        </div>
+        <div style={{ background: '#f0f8fc', padding: '72px 56px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 16 }}>
+          <motion.div initial={{ opacity: 0, x: 24 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
+            <Link to="/tarifs"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 28px', borderRadius: 16, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', fontSize: 16, fontWeight: 700, textDecoration: 'none', boxShadow: '0 8px 32px rgba(42,125,156,0.28)', marginBottom: 14 }}>
+              <span>Lancer mon analyse</span>
+              <ArrowRight size={20} />
+            </Link>
+            <Link to="/exemple"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 28px', borderRadius: 16, background: '#fff', color: '#0f2d3d', fontSize: 15, fontWeight: 600, textDecoration: 'none', border: '1.5px solid #edf2f4', boxShadow: '0 2px 8px rgba(15,45,61,0.05)' }}>
+              <span>Voir un exemple de rapport</span>
+              <ArrowRight size={18} style={{ color: '#7a9aaa' }} />
+            </Link>
+            <p style={{ fontSize: 12, color: '#7a9aaa', textAlign: 'center', marginTop: 16 }}>
+              Paiement sécurisé · Données supprimées automatiquement · Sans engagement
+            </p>
+          </motion.div>
         </div>
       </div>
     </section>
