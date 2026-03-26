@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-teal: #2a7d9c;
+  --brand-teal-light: #3a9cbf;
+  --brand-teal-dark: #1a5e78;
+  --brand-navy: #0f2d3d;
+  --brand-gold: #f0a500;
+  --bg-primary: #f5f9fb;
+  --bg-secondary: #eaf4f8;
+  --text-primary: #0f2d3d;
+  --text-secondary: #4a6b7c;
+  --text-muted: #7a9aaa;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+body { background-color: var(--bg-primary); color: var(--text-primary); font-family: 'DM Sans', system-ui, sans-serif; }
+
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+@keyframes scan { 0%{top:0%;opacity:1} 45%{opacity:1} 50%{top:100%;opacity:0} 51%{top:0%;opacity:0} 55%{opacity:1} 100%{top:100%;opacity:1} }
+@keyframes fadeInUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+@keyframes spin { to{transform:rotate(360deg)} }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+.animate-float { animation: float 4s ease-in-out infinite; }
+.animate-scan { animation: scan 3s linear infinite; }
+.animate-fade-up { animation: fadeInUp 0.6s ease forwards; }
+.animate-spin { animation: spin 1s linear infinite; }
+.animate-pulse { animation: pulse 2s ease-in-out infinite; }
+
+.card-hover { transition: transform 0.25s ease, box-shadow 0.25s ease; }
+.card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 60px rgba(42,125,156,0.15); }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-secondary); }
+::-webkit-scrollbar-thumb { background: var(--brand-teal); border-radius: 3px; }
