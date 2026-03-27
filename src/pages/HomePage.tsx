@@ -47,6 +47,31 @@ export default function HomePage() {
   );
 }
 
+/* ── animated underline section title ── */
+function SectionTitle({ label, title, accent, sub }: { label: string; title: string; accent: string; sub?: string }) {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-40px" });
+  return (
+    <div ref={ref} className="text-center mb-14">
+      <motion.p initial={{ opacity: 0, y: 12 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.45 }}
+        className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.2em] mb-5">{label}</motion.p>
+      <motion.h2 initial={{ opacity: 0, y: 18 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.5, delay: 0.06 }}
+        className="text-[clamp(32px,5vw,60px)] font-black tracking-[-0.03em] leading-[1.1] text-[#0f172a] mb-4">
+        {title}{' '}
+        <span className="relative inline-block">
+          <span className="text-[#2a7d9c]">{accent}</span>
+          <motion.span initial={{ scaleX: 0 }} animate={inView ? { scaleX: 1 } : {}} transition={{ duration: 0.7, delay: 0.5, ease: [0.22,1,0.36,1] }}
+            className="absolute -bottom-1 left-0 right-0 h-[3px] bg-[#2a7d9c]/35 rounded-full origin-left block" />
+        </span>
+      </motion.h2>
+      {sub && (
+        <motion.p initial={{ opacity: 0 }} animate={inView ? { opacity: 1 } : {}} transition={{ delay: 0.18 }}
+          className="text-[17px] text-slate-500 max-w-xl mx-auto leading-relaxed">{sub}</motion.p>
+      )}
+    </div>
+  );
+}
+
 /* ══════════════════════════════════════════════════
    HERO — texte à gauche, téléphone à droite
 ══════════════════════════════════════════════════ */
@@ -75,13 +100,12 @@ function HeroSection() {
           </motion.div>
 
           <motion.h1 variants={up} initial="hidden" animate="show" custom={1}
-            className="text-[clamp(38px,5.5vw,72px)] font-black leading-[1.05] tracking-[-0.03em] text-[#0f172a] mb-6">
-            Comprenez vos<br />
-            documents immo<br />
-            <span className="relative inline-block">
+            className="text-[clamp(42px,5.5vw,76px)] font-black leading-[1.08] tracking-[-0.035em] text-[#0f172a] mb-6">
+            Comprenez vos documents<br className="hidden lg:block" /> immo{' '}
+            <span className="relative inline-block whitespace-nowrap">
               <span className="text-[#2a7d9c]">en 2 minutes.</span>
-              <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 1, duration: 0.5 }}
-                className="absolute -bottom-1 left-0 right-0 h-[4px] bg-[#2a7d9c]/25 rounded-full origin-left block" />
+              <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 1, duration: 0.6, ease:[0.22,1,0.36,1] }}
+                className="absolute -bottom-1 left-0 right-0 h-[3px] bg-[#2a7d9c]/30 rounded-full origin-left block" />
             </span>
           </motion.h1>
 
@@ -340,14 +364,7 @@ function ProblemSection() {
     <section className="py-24 px-6 bg-white">
       <div className="max-w-6xl mx-auto">
         <Reveal className="text-center mb-16">
-          <p className="text-[#2a7d9c] text-sm font-bold uppercase tracking-[0.15em] mb-4">Le problème</p>
-          <h2 className="text-[clamp(30px,4.5vw,56px)] font-black tracking-tight leading-tight mb-5">
-            Acheter un bien, c'est risqué<br className="hidden sm:block" />
-            <span className="text-slate-400"> sans les bons outils.</span>
-          </h2>
-          <p className="text-xl text-slate-500 max-w-lg mx-auto leading-relaxed">
-            La plupart des acheteurs signent sans avoir lu ni compris les documents essentiels. Analymo change ça.
-          </p>
+          <SectionTitle label="Le problème" title="Acheter un bien, c'est risqué" accent="sans les bons outils." sub="La plupart des acheteurs signent sans avoir lu ni compris les documents essentiels. Analymo change ça." />
         </Reveal>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -379,13 +396,7 @@ function SolutionSection() {
     <section className="py-24 px-6 bg-slate-50">
       <div className="max-w-6xl mx-auto">
         <Reveal className="text-center mb-16">
-          <p className="text-[#2a7d9c] text-sm font-bold uppercase tracking-[0.15em] mb-4">La solution</p>
-          <h2 className="text-[clamp(30px,4.5vw,56px)] font-black tracking-tight leading-tight mb-5">
-            Analymo vous simplifie tout.
-          </h2>
-          <p className="text-xl text-slate-500 max-w-md mx-auto leading-relaxed">
-            En moins de 2 minutes, vous savez exactement dans quoi vous mettez les pieds.
-          </p>
+          <SectionTitle label="La solution" title="Analymo vous" accent="simplifie tout." sub="En moins de 2 minutes, vous savez exactement dans quoi vous mettez les pieds." />
         </Reveal>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -434,14 +445,7 @@ function HowItWorksSection() {
     <section className="py-24 px-6 bg-white">
       <div className="max-w-6xl mx-auto">
         <Reveal className="text-center mb-16">
-          <p className="text-[#2a7d9c] text-sm font-bold uppercase tracking-[0.15em] mb-4">Comment ça marche</p>
-          <h2 className="text-[clamp(30px,4.5vw,56px)] font-black tracking-tight leading-tight mb-5">
-            Trois étapes.<br className="hidden sm:block" />
-            <span className="text-slate-400">Une décision éclairée.</span>
-          </h2>
-          <p className="text-xl text-slate-500 max-w-md mx-auto">
-            Pas de formation, pas de jargon. Vous déposez vos fichiers — on fait le reste.
-          </p>
+          <SectionTitle label="Comment ça marche" title="Trois étapes." accent="Une décision éclairée." sub="Pas de formation, pas de jargon. Vous déposez vos fichiers — on fait le reste." />
         </Reveal>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
@@ -499,11 +503,7 @@ function ForWhoSection() {
     <section className="py-24 px-6 bg-slate-50">
       <div className="max-w-6xl mx-auto">
         <Reveal className="text-center mb-16">
-          <p className="text-[#2a7d9c] text-sm font-bold uppercase tracking-[0.15em] mb-4">Pour qui</p>
-          <h2 className="text-[clamp(30px,4.5vw,56px)] font-black tracking-tight leading-tight mb-4">
-            Une solution pour chaque acteur.
-          </h2>
-          <p className="text-xl text-slate-500 max-w-md mx-auto">Particulier ou professionnel, Analymo s'adapte à votre besoin.</p>
+          <SectionTitle label="Pour qui" title="Une solution pour" accent="chaque acteur." sub="Particulier ou professionnel, Analymo s'adapte à votre besoin." />
         </Reveal>
 
         {/* Main buyers card */}
@@ -571,11 +571,7 @@ function AvantApresSection() {
     <section className="py-24 px-6 bg-white">
       <div className="max-w-5xl mx-auto">
         <Reveal className="text-center mb-14">
-          <p className="text-[#2a7d9c] text-sm font-bold uppercase tracking-[0.15em] mb-4">Avant / Après</p>
-          <h2 className="text-[clamp(30px,4.5vw,56px)] font-black tracking-tight leading-tight">
-            Deux façons d'acheter.<br />
-            <span className="text-slate-400">Une seule bonne.</span>
-          </h2>
+          <SectionTitle label="Avant / Après" title="Deux façons d'acheter." accent="Une seule bonne." />
         </Reveal>
 
         <div ref={ref} className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -635,10 +631,7 @@ function TestimonialsSection() {
     <section className="py-24 px-6 bg-slate-50">
       <div className="max-w-6xl mx-auto">
         <Reveal className="text-center mb-14">
-          <p className="text-[#2a7d9c] text-sm font-bold uppercase tracking-[0.15em] mb-4">Témoignages</p>
-          <h2 className="text-[clamp(30px,4.5vw,54px)] font-black tracking-tight leading-tight">
-            Ils ont acheté avec Analymo.
-          </h2>
+          <SectionTitle label="Témoignages" title="Ils ont acheté" accent="avec Analymo." />
         </Reveal>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {testimonials.map((t,i)=>(
@@ -669,35 +662,66 @@ function TestimonialsSection() {
 ══════════════════════════════════════════════════ */
 function CtaSection() {
   return (
-    <section className="py-24 px-6 bg-white">
-      <div className="max-w-2xl mx-auto">
-        <Reveal>
-          <div className="relative p-12 sm:p-16 rounded-3xl bg-[#0f172a] text-center overflow-hidden shadow-2xl shadow-slate-900/20">
-            <div className="absolute inset-0 pointer-events-none">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-48 bg-[#2a7d9c]/15 blur-3xl rounded-full" />
-              <div className="absolute bottom-0 right-0 w-64 h-64 bg-[#f0a500]/5 blur-3xl rounded-full" />
-            </div>
-            <div className="relative">
-              <h2 className="text-[clamp(26px,4vw,48px)] font-black text-white mb-5 leading-tight tracking-tight">
-                Votre prochain bien mérite<br />une analyse complète.
-              </h2>
-              <p className="text-slate-400 mb-10 text-lg leading-relaxed">
-                Dès 4,99€ · Sans abonnement · Résultats en moins de 2 minutes.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Link to="/tarifs"
-                  className="flex items-center justify-center gap-2 px-10 py-4 rounded-2xl bg-white text-[#0f172a] text-base font-bold hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200">
-                  Lancer mon analyse <ArrowRight size={18} />
-                </Link>
-                <Link to="/exemple"
-                  className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-white/8 text-white/75 text-base font-semibold border border-white/12 hover:bg-white/14 transition-all duration-200">
-                  Voir un exemple
+    <section className="py-28 px-6 bg-gradient-to-b from-slate-50 to-white overflow-hidden relative">
+      {/* background decoration */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#2a7d9c]/5 blur-[80px] rounded-full" />
+      </div>
+      <div className="max-w-5xl mx-auto relative">
+        <Reveal className="text-center mb-14">
+          <p className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.2em] mb-5">Commencer</p>
+          <h2 className="text-[clamp(34px,5.5vw,68px)] font-black tracking-[-0.03em] leading-[1.08] text-[#0f172a] mb-5">
+            Votre prochain bien mérite<br />
+            <span className="relative inline-block">
+              <span className="text-[#2a7d9c]">une analyse complète.</span>
+            </span>
+          </h2>
+          <p className="text-lg text-slate-500 max-w-md mx-auto">
+            Dès 4,99€ · Sans abonnement · Résultats en 2 minutes.
+          </p>
+        </Reveal>
+
+        {/* 3 option cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
+          {[
+            { icon: "📄", label: "Analyse document", price: "4,99€", desc: "1 document analysé en détail.", cta: "Choisir", href: "/inscription?plan=document" },
+            { icon: "📦", label: "Analyse complète", price: "19,90€", desc: "Tous vos documents, rapport complet.", cta: "Choisir", href: "/inscription?plan=complete", highlight: true },
+            { icon: "🏘️", label: "Pack 2 biens", price: "29,90€", desc: "Comparez 2 biens avant de décider.", cta: "Choisir", href: "/inscription?plan=pack2" },
+          ].map((opt, i) => (
+            <Reveal key={i} delay={i}>
+              <div className={`relative p-7 rounded-3xl border transition-all duration-200 hover:-translate-y-1 ${
+                opt.highlight
+                  ? "bg-[#0f2d3d] border-[#0f2d3d] shadow-xl shadow-[#0f2d3d]/20"
+                  : "bg-white border-slate-200 shadow-sm hover:shadow-md"
+              }`}>
+                {opt.highlight && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[#2a7d9c] text-white text-xs font-bold whitespace-nowrap shadow">
+                    Le plus populaire
+                  </div>
+                )}
+                <div className="text-3xl mb-4">{opt.icon}</div>
+                <div className={`text-sm font-semibold mb-1 ${opt.highlight ? "text-[#7dd3ed]" : "text-slate-500"}`}>{opt.label}</div>
+                <div className={`text-4xl font-black mb-2 ${opt.highlight ? "text-white" : "text-[#0f172a]"}`}>{opt.price}</div>
+                <p className={`text-sm mb-6 leading-relaxed ${opt.highlight ? "text-slate-400" : "text-slate-500"}`}>{opt.desc}</p>
+                <Link to={opt.href}
+                  className={`flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-sm font-bold transition-all duration-200 ${
+                    opt.highlight
+                      ? "bg-white text-[#0f2d3d] hover:bg-slate-100"
+                      : "bg-[#0f2d3d] text-white hover:bg-[#0f2d3d]/90"
+                  }`}>
+                  {opt.cta} <ArrowRight size={15} />
                 </Link>
               </div>
-              <p className="text-slate-600 text-sm mt-6">
-                Paiement sécurisé · Données supprimées automatiquement · Sans engagement
-              </p>
-            </div>
+            </Reveal>
+          ))}
+        </div>
+
+        {/* Bottom trust line */}
+        <Reveal className="text-center">
+          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-slate-400">
+            {["🔒 Paiement sécurisé Stripe", "🗑️ Documents supprimés après analyse", "✅ Sans abonnement"].map(t => (
+              <span key={t} className="flex items-center gap-1.5">{t}</span>
+            ))}
           </div>
         </Reveal>
       </div>
