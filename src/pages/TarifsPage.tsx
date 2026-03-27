@@ -1,108 +1,167 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Crown, Mail, Zap, Shield, FileText } from 'lucide-react';
+import { CheckCircle2, Crown, Mail, Shield, Zap, FileText, ArrowRight } from 'lucide-react';
 import { PRICING_PLANS } from '../types';
-
+ 
 export default function TarifsPage() {
   return (
-    <main style={{ background: '#f8fafc', fontFamily: "'DM Sans', system-ui, sans-serif", paddingTop: 70 }}>
-      {/* Hero */}
-      <section style={{ padding: '64px 28px 56px', background: 'linear-gradient(150deg,#eef7fb 0%,#e4f2f8 50%,#f8fafc 100%)', textAlign: 'center' }}>
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 16px', borderRadius: 100, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.2)', fontSize: 13, fontWeight: 700, color: '#1a5e78', marginBottom: 20 }}>
-          🏷️ Tarification transparente
+    <main className="min-h-screen bg-[#f4f7f9]" style={{ fontFamily: "'DM Sans', system-ui, sans-serif", paddingTop: 80 }}>
+ 
+      {/* ── HERO ── */}
+      <section className="px-6 pt-14 pb-12 text-center">
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#2a7d9c]/20 bg-white text-[#1a5e78] text-xs font-semibold mb-6 shadow-sm">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" style={{ animation: 'pulse2 2s ease-in-out infinite' }} />
+          Tarification transparente
         </motion.div>
-        <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} style={{ fontSize: 'clamp(30px,5vw,56px)', fontWeight: 900, color: '#0f2d3d', marginBottom: 16, letterSpacing: '-0.03em', lineHeight: 1.1 }}>
-          Investissez en toute <span style={{ color: '#2a7d9c' }}>sérénité.</span>
+ 
+        <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
+          className="text-[clamp(28px,5vw,52px)] font-black tracking-tight text-[#0f172a] mb-4 leading-tight">
+          Des tarifs simples,<br className="hidden sm:block" />
+          <span className="text-[#2a7d9c]"> sans surprise.</span>
         </motion.h1>
-        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} style={{ fontSize: 18, color: '#6b8a96', maxWidth: 520, margin: '0 auto 16px', lineHeight: 1.7 }}>
-          Des tarifs simples, sans abonnement, sans surprise. Payez uniquement pour ce dont vous avez besoin.
+ 
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}
+          className="text-base text-slate-500 max-w-md mx-auto mb-8 leading-relaxed">
+          Payez uniquement pour ce dont vous avez besoin. Sans abonnement, sans engagement.
         </motion.p>
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} style={{ display: 'flex', justifyContent: 'center', gap: 20, flexWrap: 'wrap' }}>
-          {[{ I: Shield, l: 'Paiement sécurisé Stripe' }, { I: Zap, l: 'Résultats en 2 min' }, { I: FileText, l: 'Rapport PDF inclus' }].map(({ I, l }) => (
-            <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: '#7a9aaa', fontWeight: 500 }}>
-              <I size={14} style={{ color: '#2a7d9c' }} />{l}
+ 
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
+          className="flex justify-center gap-6 flex-wrap">
+          {[{ I: Shield, l: 'Paiement sécurisé' }, { I: Zap, l: 'Résultats en 2 min' }, { I: FileText, l: 'Rapport PDF inclus' }].map(({ I, l }) => (
+            <div key={l} className="flex items-center gap-2 text-xs text-slate-400 font-medium">
+              <I size={13} className="text-[#2a7d9c] shrink-0" /> {l}
             </div>
           ))}
         </motion.div>
       </section>
-
-      {/* Cards */}
-      <section style={{ padding: '56px 28px 80px' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(250px,1fr))', gap: 22 }}>
+ 
+      {/* ── PRICING CARDS ── */}
+      <section className="px-6 pb-20">
+        <div className="max-w-5xl mx-auto">
+ 
+          {/* Cards grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
             {PRICING_PLANS.map((plan, i) => (
-              <motion.div key={plan.id} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.09 }}
-                whileHover={{ y: -6, boxShadow: plan.highlighted ? '0 20px 56px rgba(42,125,156,0.2)' : '0 14px 40px rgba(15,45,61,0.1)' }}
-                style={{ padding: '34px 28px', borderRadius: 24, background: '#fff', border: plan.highlighted ? '2px solid #2a7d9c' : '1px solid #edf2f4', position: 'relative', boxShadow: plan.highlighted ? '0 12px 40px rgba(42,125,156,0.14)' : '0 2px 10px rgba(15,45,61,0.05)', cursor: 'default' }}>
-                {plan.badge && <div style={{ position: 'absolute', top: -13, left: '50%', transform: 'translateX(-50%)', padding: '5px 18px', borderRadius: 100, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', background: plan.badgeColor === 'teal' ? 'linear-gradient(135deg,#2a7d9c,#0f2d3d)' : '#f59e0b', color: plan.badgeColor === 'teal' ? '#fff' : '#0f2d3d' }}>{plan.badge}</div>}
-
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-                  <div style={{ width: 58, height: 58, borderRadius: 16, background: plan.highlighted ? 'rgba(42,125,156,0.1)' : '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, border: `1px solid ${plan.highlighted ? 'rgba(42,125,156,0.2)' : '#edf2f4'}` }}>{plan.icon}</div>
-                </div>
-
-                <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0f2d3d', textAlign: 'center', marginBottom: 6 }}>{plan.name}</h3>
-
-                <div style={{ textAlign: 'center', marginBottom: 20 }}>
-                  <span style={{ fontSize: 46, fontWeight: 900, color: '#0f2d3d' }}>{plan.price.toFixed(2).replace('.', ',')}</span>
-                  <span style={{ fontSize: 18, color: '#7a9aaa' }}>€</span>
-                  <div style={{ fontSize: 12, color: '#7a9aaa', marginTop: 2 }}>paiement unique · sans abonnement</div>
-                </div>
-
-                <div style={{ padding: '11px 14px', borderRadius: 11, background: plan.highlighted ? 'rgba(42,125,156,0.06)' : '#f8fafc', border: `1px solid ${plan.highlighted ? 'rgba(42,125,156,0.14)' : '#edf2f4'}`, marginBottom: 20 }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.08em', marginBottom: 4 }}>+ IDÉAL POUR</div>
-                  <div style={{ fontSize: 12, color: '#4a6b7c', lineHeight: 1.5 }}>{plan.idealFor}</div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 26 }}>
-                  {plan.features.map(f => (
-                    <div key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
-                      <CheckCircle2 size={15} style={{ color: '#22c55e', flexShrink: 0, marginTop: 1 }} />
-                      <span style={{ fontSize: 13, color: '#4a6b7c', lineHeight: 1.4 }}>{f}</span>
+              <motion.div
+                key={plan.id}
+                initial={{ opacity: 0, y: 28 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.08 }}
+                whileHover={{ y: plan.highlighted ? -6 : -4 }}
+                className={`relative flex flex-col rounded-3xl overflow-visible transition-shadow duration-200 ${
+                  plan.highlighted
+                    ? 'bg-[#0f2d3d] shadow-2xl shadow-[#0f2d3d]/30 ring-2 ring-[#2a7d9c]'
+                    : 'bg-white shadow-sm hover:shadow-lg border border-slate-100'
+                }`}
+              >
+                {/* Badge */}
+                {plan.badge && (
+                  <div className={`absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-[11px] font-bold whitespace-nowrap shadow-md ${
+                    plan.badgeColor === 'teal'
+                      ? 'bg-[#2a7d9c] text-white'
+                      : 'bg-[#f59e0b] text-[#0f172a]'
+                  }`}>
+                    {plan.badge}
+                  </div>
+                )}
+ 
+                <div className="p-7 flex flex-col flex-1">
+                  {/* Plan name */}
+                  <div className="mb-6">
+                    <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${plan.highlighted ? 'text-[#2a7d9c]' : 'text-slate-400'}`}>
+                      {plan.name}
+                    </p>
+ 
+                    {/* Price */}
+                    <div className="flex items-end gap-1 mb-1">
+                      <span className={`text-[48px] font-black leading-none tracking-tight ${plan.highlighted ? 'text-white' : 'text-[#0f172a]'}`}>
+                        {plan.price.toFixed(2).replace('.', ',')}
+                      </span>
+                      <span className={`text-lg mb-1.5 font-semibold ${plan.highlighted ? 'text-white/50' : 'text-slate-400'}`}>€</span>
                     </div>
-                  ))}
+                    <p className={`text-xs ${plan.highlighted ? 'text-white/35' : 'text-slate-400'}`}>
+                      paiement unique · sans abonnement
+                    </p>
+                  </div>
+ 
+                  {/* Ideal for */}
+                  <div className={`px-3.5 py-3 rounded-xl mb-5 ${plan.highlighted ? 'bg-white/8' : 'bg-slate-50 border border-slate-100'}`}>
+                    <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${plan.highlighted ? 'text-[#2a7d9c]' : 'text-[#2a7d9c]'}`}>
+                      Idéal pour
+                    </p>
+                    <p className={`text-xs leading-relaxed ${plan.highlighted ? 'text-white/60' : 'text-slate-500'}`}>
+                      {plan.idealFor}
+                    </p>
+                  </div>
+ 
+                  {/* Features */}
+                  <ul className="flex flex-col gap-2.5 mb-8 flex-1">
+                    {plan.features.map(f => (
+                      <li key={f} className="flex items-start gap-2.5">
+                        <CheckCircle2 size={14} className={`shrink-0 mt-0.5 ${plan.highlighted ? 'text-[#22c55e]' : 'text-[#22c55e]'}`} />
+                        <span className={`text-xs leading-relaxed ${plan.highlighted ? 'text-white/70' : 'text-slate-500'}`}>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+ 
+                  {/* CTA */}
+                  <Link to={`/inscription?plan=${plan.id}`}
+                    className={`flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl text-sm font-bold transition-all duration-200 ${
+                      plan.highlighted
+                        ? 'bg-white text-[#0f2d3d] hover:bg-slate-100'
+                        : 'bg-[#0f2d3d] text-white hover:bg-[#0f2d3d]/90'
+                    }`}>
+                    {plan.cta} <ArrowRight size={14} />
+                  </Link>
                 </div>
-
-                <Link to={`/inscription?plan=${plan.id}`} style={{ display: 'block', padding: '14px 0', borderRadius: 13, fontSize: 15, fontWeight: 700, color: plan.highlighted ? '#fff' : '#0f2d3d', background: plan.highlighted ? 'linear-gradient(135deg,#2a7d9c,#0f2d3d)' : 'transparent', border: plan.highlighted ? 'none' : '2px solid #0f2d3d', textDecoration: 'none', textAlign: 'center', boxShadow: plan.highlighted ? '0 7px 22px rgba(42,125,156,0.28)' : 'none' }}>
-                  {plan.cta}
-                </Link>
               </motion.div>
             ))}
           </div>
-
-          {/* Pro banner */}
+ 
+          {/* Offre Pro */}
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-            style={{ marginTop: 28, padding: '28px 36px', borderRadius: 22, background: 'linear-gradient(135deg,#0f2d3d,#1a4a60)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(240,165,0,0.15)', border: '1px solid rgba(240,165,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Crown size={22} style={{ color: '#f59e0b' }} />
+            className="rounded-3xl bg-white border border-slate-100 shadow-sm p-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-[#f59e0b]/10 border border-[#f59e0b]/20 flex items-center justify-center shrink-0">
+                <Crown size={20} className="text-[#f59e0b]" />
               </div>
               <div>
-                <h3 style={{ color: '#fff', fontSize: 17, fontWeight: 700, marginBottom: 3 }}>Offre Professionnelle</h3>
-                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>Notaires, agents, syndics — volumes illimités, API, support dédié, rapports sur-mesure.</p>
+                <h3 className="text-base font-bold text-[#0f172a] mb-1">Offre Professionnelle</h3>
+                <p className="text-sm text-slate-400 max-w-md">Notaires, agents, syndics — volumes illimités, API dédiée, support prioritaire, rapports sur-mesure.</p>
               </div>
             </div>
-            <Link to="/contact" style={{ padding: '12px 24px', borderRadius: 12, fontSize: 14, fontWeight: 700, color: '#0f2d3d', background: '#f59e0b', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap', boxShadow: '0 4px 14px rgba(240,165,0,0.35)' }}>
-              <Mail size={15} /> Nous contacter
+            <Link to="/contact"
+              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#0f2d3d] text-white text-sm font-bold whitespace-nowrap hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
+              <Mail size={14} /> Nous contacter
             </Link>
           </motion.div>
-
-          {/* FAQ rapide */}
-          <div style={{ marginTop: 64, textAlign: 'center', maxWidth: 720, margin: '64px auto 0' }}>
-            <h2 style={{ fontSize: 26, fontWeight: 800, color: '#0f2d3d', marginBottom: 32 }}>Questions fréquentes</h2>
-            {[
-              { q: 'Comment fonctionne le paiement ?', a: 'Paiement sécurisé via Stripe. Rapport disponible immédiatement.' },
-              { q: 'Mes documents sont-ils sécurisés ?', a: 'Vos fichiers sont chiffrés et supprimés automatiquement. Aucune donnée conservée.' },
-              { q: 'Puis-je me faire rembourser ?', a: 'En cas de problème technique, contactez-nous sous 48h. Nous étudions chaque demande.' },
-            ].map((faq, i) => (
-              <motion.div key={i} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.09 }}
-                style={{ padding: '22px 26px', borderRadius: 16, background: '#fff', border: '1px solid #edf2f4', marginBottom: 12, textAlign: 'left', boxShadow: '0 2px 8px rgba(15,45,61,0.04)' }}>
-                <h4 style={{ fontSize: 15, fontWeight: 700, color: '#0f2d3d', marginBottom: 8 }}>{faq.q}</h4>
-                <p style={{ fontSize: 14, color: '#7a9aaa', lineHeight: 1.6, margin: 0 }}>{faq.a}</p>
-              </motion.div>
-            ))}
+ 
+          {/* FAQ */}
+          <div className="mt-16 max-w-2xl mx-auto">
+            <motion.h2 initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
+              className="text-2xl font-black text-[#0f172a] text-center mb-8 tracking-tight">
+              Questions fréquentes
+            </motion.h2>
+            <div className="flex flex-col gap-3">
+              {[
+                { q: 'Comment fonctionne le paiement ?', a: 'Paiement sécurisé via Stripe. Votre rapport est disponible immédiatement après confirmation.' },
+                { q: 'Mes documents sont-ils sécurisés ?', a: 'Vos fichiers sont chiffrés et supprimés automatiquement après analyse. Aucune donnée n\'est conservée.' },
+                { q: 'Puis-je me faire rembourser ?', a: 'En cas de problème technique, contactez-nous sous 48h. Nous étudions chaque demande.' },
+              ].map((faq, i) => (
+                <motion.div key={i} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}
+                  className="p-5 rounded-2xl bg-white border border-slate-100 shadow-sm">
+                  <h4 className="text-sm font-bold text-[#0f172a] mb-2">{faq.q}</h4>
+                  <p className="text-sm text-slate-400 leading-relaxed">{faq.a}</p>
+                </motion.div>
+              ))}
+            </div>
           </div>
+ 
         </div>
       </section>
+ 
+      <style>{`@keyframes pulse2 { 0%,100%{opacity:1} 50%{opacity:.4} }`}</style>
     </main>
   );
 }
