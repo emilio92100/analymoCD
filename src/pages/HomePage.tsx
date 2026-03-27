@@ -124,7 +124,7 @@ function HeroSection() {
         </div>
 
         {/* RIGHT */}
-        <motion.div variants={up} initial="hidden" animate="show" custom={2} className="flex justify-center lg:justify-center">
+        <motion.div variants={up} initial="hidden" animate="show" custom={2} className="flex justify-center lg:justify-center mt-8 lg:mt-0">
           <PhoneMockup />
         </motion.div>
       </div>
