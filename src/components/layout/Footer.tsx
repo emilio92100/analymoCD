@@ -11,7 +11,7 @@ export default function Footer() {
           src="/logo.png"
           alt="Analymo"
           style={{
-            height: 80,
+            height: 150,
             width: 'auto',
             objectFit: 'contain',
             objectPosition: 'left',
