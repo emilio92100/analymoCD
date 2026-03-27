@@ -186,7 +186,7 @@ function PhoneMockup() {
       </motion.div>
 
       <motion.div animate={{ y: [0, -10, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}>
-        <div className="w-[240px] sm:w-[270px] h-[500px] sm:h-[550px] bg-[#0f172a] rounded-[46px] p-[5px] shadow-[0_32px_72px_rgba(15,23,42,0.25)]">
+        <div className="w-[200px] sm:w-[270px] h-[420px] sm:h-[550px] bg-[#0f172a] rounded-[46px] p-[5px] shadow-[0_32px_72px_rgba(15,23,42,0.25)]">
           <div className="w-full h-full bg-white rounded-[42px] overflow-hidden relative">
             <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-[76px] h-[22px] bg-[#0f172a] rounded-full z-10" />
             <div className="pt-2 px-4 flex justify-between text-[8px] font-bold text-slate-400">
