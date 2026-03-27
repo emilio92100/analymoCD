@@ -39,7 +39,7 @@ function SectionTitle({ label, title, accent, sub }: { label: string; title: str
         {title}{' '}
         <span className="relative inline-block">
           <span className="text-[#2a7d9c]">{accent}</span>
-          <motion.span initial={{ scaleX: 0 }} animate={inView ? { scaleX: 1 } : {}} transition={{ duration: 1.4, delay: 0.3, ease: [0.22,1,0.36,1] }}
+          <motion.span initial={{ scaleX: 0 }} animate={inView ? { scaleX: 1 } : {}} transition={{ duration: 2.5, delay: 0.2, ease: [0.22,1,0.36,1] }}
             className="absolute -bottom-1 left-0 right-0 h-[4px] bg-[#2a7d9c]/25 rounded-full origin-left block" />
         </span>
       </motion.h2>
