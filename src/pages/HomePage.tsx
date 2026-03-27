@@ -87,9 +87,8 @@ function HeroSection() {
           </motion.div>
 
           <motion.h1 variants={up} initial="hidden" animate="show" custom={1}
-            className="text-[clamp(52px,7vw,96px)] font-black leading-[1.0] tracking-[-0.04em] text-[#0f172a] mb-6">
-            Analysez vos<br />
-            documents<br />
+            className="text-[clamp(40px,5vw,72px)] font-black leading-[1.0] tracking-[-0.04em] text-[#0f172a] mb-6">
+            Analysez vos documents<br />
             <span className="relative inline-block">
               <span className="text-[#2a7d9c]">immobiliers</span>
               <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.9, duration: 0.6 }}
@@ -125,7 +124,7 @@ function HeroSection() {
         </div>
 
         {/* RIGHT */}
-        <motion.div variants={up} initial="hidden" animate="show" custom={2} className="flex justify-center lg:justify-end">
+        <motion.div variants={up} initial="hidden" animate="show" custom={2} className="flex justify-center lg:justify-center">
           <PhoneMockup />
         </motion.div>
       </div>
