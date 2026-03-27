@@ -87,7 +87,7 @@ function HeroSection() {
       <div className="relative z-10 max-w-5xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 items-center">
 
         {/* ── GAUCHE : texte sobre ── */}
-        <div className="flex flex-col items-start">
+        <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
 
           {/* Badge */}
           <motion.div variants={up} initial="hidden" animate="show" custom={0}
@@ -109,7 +109,7 @@ function HeroSection() {
 
           {/* Sous-titre */}
           <motion.p variants={up} initial="hidden" animate="show" custom={2}
-            className="text-[15px] text-slate-500 leading-relaxed max-w-[400px] mb-8">
+            className="text-[15px] text-slate-500 leading-relaxed max-w-[400px] mb-8 mx-auto lg:mx-0">
             Score global, risques cachés, impact financier — tout ce qu'il faut savoir avant de signer, expliqué simplement en moins de 2 minutes.
           </motion.p>
 
