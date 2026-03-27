@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom'; import { useEffect } from 'react'; import { supabase } from './lib/supabase';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import HomePage from './pages/HomePage';
@@ -20,10 +20,41 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+function SessionManager() {
+  useEffect(() => {
+    const checkSession = async () => {
+      const loginTime = localStorage.getItem('analymo_login_time');
+      if (loginTime) {
+        const elapsed = Date.now() - parseInt(loginTime);
+        if (elapsed > 3600000) {
+          localStorage.removeItem('analymo_login_time');
+          await supabase.auth.signOut();
+        }
+      }
+    };
+
+    supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        localStorage.setItem('analymo_login_time', Date.now().toString());
+      }
+      if (event === 'SIGNED_OUT') {
+        localStorage.removeItem('analymo_login_time');
+      }
+    });
+
+    checkSession();
+    const interval = setInterval(checkSession, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return null;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
+      <SessionManager />
+            <SessionManager />       <Routes>
         <Route path="/" element={<PublicLayout><HomePage /></PublicLayout>} />
         <Route path="/tarifs" element={<PublicLayout><TarifsPage /></PublicLayout>} />
         <Route path="/contact" element={<PublicLayout><ContactPage /></PublicLayout>} />
