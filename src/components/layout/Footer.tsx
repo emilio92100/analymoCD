@@ -5,14 +5,14 @@ export default function Footer() {
   return (
     <footer style={{ background: 'var(--brand-navy)', color: 'rgba(255,255,255,0.7)', padding: '56px 24px 28px' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 40, marginBottom: 40, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 40, marginBottom: 40, alignItems: 'start' }}>
 
           {/* Logo + description */}
           <div>
             <img
               src="/logo.png"
               alt="Analymo"
-              style={{ height: 52, width: 'auto', maxWidth: '100%', objectFit: 'contain', objectPosition: 'left center', filter: 'brightness(0) invert(1)', display: 'block', marginBottom: 14 }}
+              style={{ height: 72, width: 'auto', maxWidth: '100%', objectFit: 'contain', objectPosition: 'left center', filter: 'brightness(0) invert(1)', display: 'block', marginBottom: 14 }}
             />
             <p style={{ fontSize: 13, lineHeight: 1.75, color: 'rgba(255,255,255,0.45)', margin: 0 }}>
               Analymo analyse vos documents immobiliers pour vous aider à acheter en toute sérénité.
