@@ -84,7 +84,7 @@ function HeroSection() {
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full bg-[#2a7d9c]/5 blur-[80px]" />
       </div>
 
-      <div className="relative z-10 max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+      <div className="relative z-10 max-w-5xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 items-center">
 
         {/* ── GAUCHE : texte sobre ── */}
         <div className="flex flex-col items-start">
@@ -229,11 +229,11 @@ function PhoneMockup() {
             {/* Dynamic island */}
             <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-[76px] h-[22px] bg-[#0f172a] rounded-full z-10" />
             {/* Status bar */}
-            <div className="pt-2 px-5 flex justify-between text-[8px] font-bold text-slate-400">
+            <div className="pt-2 px-4 flex justify-between text-[8px] font-bold text-slate-400">
               <span>9:41</span><span>5G ▪▪▪</span>
             </div>
             {/* Screen content */}
-            <div className="px-3.5 pt-6 pb-4">
+            <div className="px-4 pt-6 pb-4 text-left">
               <AnimatePresence mode="wait">
                 {step === 0 && <PhaseUpload key="u" />}
                 {step === 1 && <PhaseScan key="s" />}
