@@ -39,10 +39,9 @@ export default function HomePage() {
       <ProblemSection />
       <SolutionSection />
       <HowItWorksSection />
-      <ForWhoSection />
       <AvantApresSection />
+      <ForWhoSection />
       <TestimonialsSection />
-      <CtaSection />
     </div>
   );
 }
@@ -575,56 +574,80 @@ function ForWhoSection() {
    AVANT / APRÈS
 ══════════════════════════════════════════════════ */
 function AvantApresSection() {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-60px" });
-  const before = ["40 pages de PV à lire seul", "Jargon juridique incompréhensible", "Travaux découverts après signature", "Décision dans l'incertitude totale", "Mauvaises surprises financières"];
-  const after  = ["Rapport structuré en 2 minutes", "Informations clés sans jargon", "Risques détectés en amont", "Décision éclairée et sereine", "Économies avant la signature"];
+  const rows = [
+    { before: "40 pages de PV illisibles à parcourir seul", after: "Rapport structuré clair en 2 minutes" },
+    { before: "Jargon juridique sans traduction", after: "Informations clés expliquées simplement" },
+    { before: "Travaux découverts après la signature", after: "Risques et travaux détectés en amont" },
+    { before: "Décision prise dans l'incertitude totale", after: "Décision éclairée, offre négociée" },
+    { before: "Mauvaises surprises financières", after: "Économies réalisées avant la signature" },
+  ];
   return (
-    <section className="py-24 px-6 bg-white">
-      <div className="max-w-5xl mx-auto">
-        <Reveal className="text-center mb-14">
+    <section className="py-20 px-6 bg-[#f4f7f9]">
+      <div className="max-w-4xl mx-auto">
+        <Reveal className="text-center mb-12">
           <SectionTitle label="Avant / Après" title="Deux façons d'acheter." accent="Une seule bonne." />
         </Reveal>
 
-        <div ref={ref} className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          {/* Sans */}
-          <motion.div initial={{opacity:0,x:-20}} animate={inView?{opacity:1,x:0}:{}} transition={{duration:0.6}}
-            className="p-8 rounded-3xl bg-white border border-red-100 shadow-sm">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-50 border border-red-200 text-red-600 text-xs font-bold mb-7">
-              <X size={12} /> Sans Analymo
+        {/* Header colonnes */}
+        <div className="grid grid-cols-2 gap-4 mb-4 px-2">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-red-100 border border-red-200 flex items-center justify-center shrink-0">
+              <X size={11} className="text-red-500" />
             </div>
-            <div>
-              {before.map((item,i)=>(
-                <motion.div key={i} initial={{opacity:0,x:-12}} animate={inView?{opacity:1,x:0}:{}} transition={{delay:i*0.07+0.15}}
-                  className="flex items-center gap-3 py-3 border-b border-red-50 last:border-0">
-                  <div className="w-6 h-6 rounded-full bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
-                    <X size={11} className="text-red-400" />
-                  </div>
-                  <span className="text-sm text-slate-500">{item}</span>
-                </motion.div>
-              ))}
+            <span className="text-sm font-bold text-red-500">Sans Analymo</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-green-100 border border-green-200 flex items-center justify-center shrink-0">
+              <Check size={11} className="text-green-500" />
             </div>
-          </motion.div>
-
-          {/* Avec */}
-          <motion.div initial={{opacity:0,x:20}} animate={inView?{opacity:1,x:0}:{}} transition={{duration:0.6,delay:0.1}}
-            className="p-8 rounded-3xl bg-white border border-green-100 shadow-sm">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-green-50 border border-green-200 text-green-700 text-xs font-bold mb-7">
-              <Check size={12} /> Avec Analymo
-            </div>
-            <div>
-              {after.map((item,i)=>(
-                <motion.div key={i} initial={{opacity:0,x:12}} animate={inView?{opacity:1,x:0}:{}} transition={{delay:i*0.07+0.25}}
-                  className="flex items-center gap-3 py-3 border-b border-green-50 last:border-0">
-                  <div className="w-6 h-6 rounded-full bg-green-50 border border-green-100 flex items-center justify-center shrink-0">
-                    <Check size={11} className="text-green-500" />
-                  </div>
-                  <span className="text-sm text-[#0f172a] font-medium">{item}</span>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
+            <span className="text-sm font-bold text-green-600">Avec Analymo</span>
+          </div>
         </div>
+
+        {/* Rows */}
+        <div className="flex flex-col gap-3">
+          {rows.map((row, i) => (
+            <Reveal key={i} delay={i * 0.5}>
+              <div className="grid grid-cols-2 gap-4 group">
+                {/* Sans */}
+                <motion.div
+                  initial={{ opacity: 0, x: -16 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.06 }}
+                  className="flex items-center gap-3 p-4 rounded-2xl bg-white border border-red-100 shadow-sm"
+                >
+                  <div className="w-7 h-7 rounded-full bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
+                    <X size={12} className="text-red-400" />
+                  </div>
+                  <span className="text-sm text-slate-500 leading-snug">{row.before}</span>
+                </motion.div>
+
+                {/* Avec */}
+                <motion.div
+                  initial={{ opacity: 0, x: 16 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.06 + 0.08 }}
+                  className="flex items-center gap-3 p-4 rounded-2xl bg-white border border-green-100 shadow-sm"
+                >
+                  <div className="w-7 h-7 rounded-full bg-green-50 border border-green-100 flex items-center justify-center shrink-0">
+                    <Check size={12} className="text-green-500" />
+                  </div>
+                  <span className="text-sm text-[#0f172a] font-medium leading-snug">{row.after}</span>
+                </motion.div>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+
+        {/* CTA bas */}
+        <Reveal className="text-center mt-10">
+          <Link to="/tarifs"
+            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-[#0f2d3d] text-white text-sm font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
+            Lancer mon analyse <ArrowRight size={16} />
+          </Link>
+        </Reveal>
       </div>
     </section>
   );
@@ -664,78 +687,6 @@ function TestimonialsSection() {
             </Reveal>
           ))}
         </div>
-      </div>
-    </section>
-  );
-}
-
-/* ══════════════════════════════════════════════════
-   CTA FINAL
-══════════════════════════════════════════════════ */
-function CtaSection() {
-  return (
-    <section className="py-28 px-6 bg-gradient-to-b from-slate-50 to-white overflow-hidden relative">
-      {/* background decoration */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#2a7d9c]/5 blur-[80px] rounded-full" />
-      </div>
-      <div className="max-w-5xl mx-auto relative">
-        <Reveal className="text-center mb-14">
-          <p className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.2em] mb-5">Commencer</p>
-          <h2 className="text-[clamp(34px,5.5vw,68px)] font-black tracking-[-0.03em] leading-[1.08] text-[#0f172a] mb-5">
-            Votre prochain bien mérite<br />
-            <span className="relative inline-block">
-              <span className="text-[#2a7d9c]">une analyse complète.</span>
-            </span>
-          </h2>
-          <p className="text-lg text-slate-500 max-w-md mx-auto">
-            Dès 4,99€ · Sans abonnement · Résultats en 2 minutes.
-          </p>
-        </Reveal>
-
-        {/* 3 option cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
-          {[
-            { icon: "📄", label: "Analyse document", price: "4,99€", desc: "1 document analysé en détail.", cta: "Choisir", href: "/inscription?plan=document" },
-            { icon: "📦", label: "Analyse complète", price: "19,90€", desc: "Tous vos documents, rapport complet.", cta: "Choisir", href: "/inscription?plan=complete", highlight: true },
-            { icon: "🏘️", label: "Pack 2 biens", price: "29,90€", desc: "Comparez 2 biens avant de décider.", cta: "Choisir", href: "/inscription?plan=pack2" },
-          ].map((opt, i) => (
-            <Reveal key={i} delay={i}>
-              <div className={`relative p-7 rounded-3xl border transition-all duration-200 hover:-translate-y-1 ${
-                opt.highlight
-                  ? "bg-[#0f2d3d] border-[#0f2d3d] shadow-xl shadow-[#0f2d3d]/20"
-                  : "bg-white border-slate-200 shadow-sm hover:shadow-md"
-              }`}>
-                {opt.highlight && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[#2a7d9c] text-white text-xs font-bold whitespace-nowrap shadow">
-                    Le plus populaire
-                  </div>
-                )}
-                <div className="text-3xl mb-4">{opt.icon}</div>
-                <div className={`text-sm font-semibold mb-1 ${opt.highlight ? "text-[#7dd3ed]" : "text-slate-500"}`}>{opt.label}</div>
-                <div className={`text-4xl font-black mb-2 ${opt.highlight ? "text-white" : "text-[#0f172a]"}`}>{opt.price}</div>
-                <p className={`text-sm mb-6 leading-relaxed ${opt.highlight ? "text-slate-400" : "text-slate-500"}`}>{opt.desc}</p>
-                <Link to={opt.href}
-                  className={`flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-sm font-bold transition-all duration-200 ${
-                    opt.highlight
-                      ? "bg-white text-[#0f2d3d] hover:bg-slate-100"
-                      : "bg-[#0f2d3d] text-white hover:bg-[#0f2d3d]/90"
-                  }`}>
-                  {opt.cta} <ArrowRight size={15} />
-                </Link>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-
-        {/* Bottom trust line */}
-        <Reveal className="text-center">
-          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-slate-400">
-            {["🔒 Paiement sécurisé Stripe", "🗑️ Documents supprimés après analyse", "✅ Sans abonnement"].map(t => (
-              <span key={t} className="flex items-center gap-1.5">{t}</span>
-            ))}
-          </div>
-        </Reveal>
       </div>
     </section>
   );
