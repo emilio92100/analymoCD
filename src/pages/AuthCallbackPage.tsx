@@ -12,15 +12,14 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     // Animation barre de progression
     const interval = setInterval(() => {
-      setProgress(p => p < 90 ? p + 10 : p);
-    }, 200);
+setProgress(p => p < 90 ? p + 5 : p);
+}, 300);
 
     supabase.auth.getSession().then(({ data }) => {
       clearInterval(interval);
       if (data.session) {
         setProgress(100);
-        setTimeout(() => setStatus('success'), 400);
-        setTimeout(() => navigate('/dashboard'), 2500);
+setTimeout(() => setStatus('success'), 400);
       } else {
         setStatus('error');
       }
@@ -58,7 +57,7 @@ export default function AuthCallbackPage() {
               </svg>
             </div>
             <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--brand-navy)', marginBottom: 12 }}>Email confirmé ! ✅</h1>
-            <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 32 }}>Votre compte est activé. Redirection vers votre dashboard…</p>
+            <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 32 }}>Votre compte est activé avec succès !</p> <a href="/connexion" style={{ display: 'inline-block', padding: '14px 32px', borderRadius: 12, fontSize: 15, fontWeight: 700, color: '#fff', background: 'linear-gradient(135deg, var(--brand-teal) 0%, var(--brand-navy) 100%)', textDecoration: 'none', boxShadow: '0 6px 24px rgba(42,125,156,0.3)' }}>   Se connecter → </a>
           </>
         )}
 
