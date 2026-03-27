@@ -24,7 +24,7 @@ const { data, error } = await supabase.auth.signUp({ email, password, options: {
   if (step === 'verify') return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(160deg, #f5f9fb 0%, #eaf4f8 100%)', padding: 24 }}>
       <div style={{ maxWidth: 480, width: '100%', textAlign: 'center' }}>
-        <div <img src="/logo.png" alt="Analymo" style={{ height: 56, display: 'block', margin: '0 auto 40px' }} />
+        <img src="/logo.png" alt="Analymo" style={{ height: 56, display: 'block', margin: '0 auto 40px' }} />
         <div style={{ width: 96, height: 96, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand-teal), var(--brand-navy))', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 32px', boxShadow: '0 16px 48px rgba(42,125,156,0.35)' }}><Mail size={40} color="#fff" /></div>
         <h1 style={{ fontSize: 32, fontWeight: 800, color: 'var(--brand-navy)', marginBottom: 12 }}>Vérifiez votre email</h1>
         <p style={{ fontSize: 16, color: 'var(--text-secondary)', marginBottom: 8 }}>Un lien de confirmation a été envoyé à</p>
