@@ -32,7 +32,7 @@ setTimeout(() => setStatus('success'), 400);
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(160deg, #f5f9fb 0%, #eaf4f8 100%)', padding: 24 }}>
       <div style={{ maxWidth: 480, width: '100%', textAlign: 'center' }}>
 
-        <img src="/logo.png" alt="Analymo" style={{ height: 44, marginBottom: 48 }} />
+        <img src="/logo.png" alt="Analymo" style={{ height: 64, marginBottom: 48, display: 'block', margin: '0 auto 48px' }} />
 
         {status === 'loading' && (
           <>
