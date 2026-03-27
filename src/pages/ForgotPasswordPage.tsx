@@ -31,7 +31,7 @@ export default function ForgotPasswordPage() {
 <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--brand-navy)', marginBottom: 12 }}>Vérifiez votre boîte mail</h1>
         <p style={{ fontSize: 16, color: 'var(--text-secondary)', marginBottom: 8 }}>Si un compte existe avec l'adresse</p>
         <p style={{ fontSize: 18, fontWeight: 700, color: 'var(--brand-teal)', marginBottom: 8 }}>{email}</p>
-        <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 36 }}>vous recevrez un lien de réinitialisation dans quelques minutes. Vérifiez aussi vos spams. Si vous ne recevez rien, aucun compte n'est associé à cet email.</p>
+        <p style={{ fontSize: 16, color: 'var(--brand-navy)', fontWeight: 600, marginBottom: 36, lineHeight: 1.7 }}>vous recevrez un lien de réinitialisation dans quelques minutes. Vérifiez aussi vos spams. Si vous ne recevez rien, aucun compte n'est associé à cet email.</p>
         <Link to="/connexion" style={{ display: 'inline-block', padding: '14px 32px', borderRadius: 12, fontSize: 15, fontWeight: 700, color: '#fff', background: 'linear-gradient(135deg, var(--brand-teal) 0%, var(--brand-navy) 100%)', textDecoration: 'none', boxShadow: '0 6px 24px rgba(42,125,156,0.3)' }}>
           Retour à la connexion
         </Link>
