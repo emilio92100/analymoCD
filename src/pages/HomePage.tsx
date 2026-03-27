@@ -52,7 +52,7 @@ export default function HomePage() {
 ══════════════════════════════════════════════════ */
 function HeroSection() {
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden px-6 lg:px-16 pt-20 pb-12">
+    <section className="relative min-h-screen flex items-center overflow-hidden px-6 lg:px-12 pt-20 pb-12">
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#f0f8fc] via-white to-white pointer-events-none" />
       <div className="absolute top-0 right-0 w-[700px] h-[700px] rounded-full bg-[#2a7d9c]/6 blur-[120px] pointer-events-none" />
@@ -64,7 +64,7 @@ function HeroSection() {
         }}
       />
 
-      <div className="relative z-10 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+      <div className="relative z-10 max-w-5xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-14 items-center">
 
         {/* ── LEFT: texte ── */}
         <div className="flex flex-col items-start">
@@ -75,7 +75,7 @@ function HeroSection() {
           </motion.div>
 
           <motion.h1 variants={up} initial="hidden" animate="show" custom={1}
-            className="text-[clamp(36px,5vw,68px)] font-black leading-[1.05] tracking-[-0.03em] text-[#0f172a] mb-6">
+            className="text-[clamp(38px,5.5vw,72px)] font-black leading-[1.05] tracking-[-0.03em] text-[#0f172a] mb-6">
             Comprenez vos<br />
             documents immo<br />
             <span className="relative inline-block">
@@ -86,7 +86,7 @@ function HeroSection() {
           </motion.h1>
 
           <motion.p variants={up} initial="hidden" animate="show" custom={2}
-            className="text-[clamp(16px,1.5vw,19px)] text-slate-500 leading-[1.75] max-w-[480px] mb-10">
+            className="text-[clamp(17px,1.6vw,21px)] text-slate-500 leading-[1.75] max-w-[480px] mb-10">
             Analymo analyse vos PV d'AG, règlements de copropriété et diagnostics —
             et vous révèle les risques, les coûts et les décisions à prendre{" "}
             <strong className="text-[#0f172a] font-semibold">avant que vous signiez.</strong>
@@ -341,11 +341,11 @@ function ProblemSection() {
       <div className="max-w-6xl mx-auto">
         <Reveal className="text-center mb-16">
           <p className="text-[#2a7d9c] text-sm font-bold uppercase tracking-[0.15em] mb-4">Le problème</p>
-          <h2 className="text-[clamp(28px,4vw,50px)] font-black tracking-tight leading-tight mb-5">
+          <h2 className="text-[clamp(30px,4.5vw,56px)] font-black tracking-tight leading-tight mb-5">
             Acheter un bien, c'est risqué<br className="hidden sm:block" />
             <span className="text-slate-400"> sans les bons outils.</span>
           </h2>
-          <p className="text-lg text-slate-500 max-w-lg mx-auto leading-relaxed">
+          <p className="text-xl text-slate-500 max-w-lg mx-auto leading-relaxed">
             La plupart des acheteurs signent sans avoir lu ni compris les documents essentiels. Analymo change ça.
           </p>
         </Reveal>
@@ -357,7 +357,7 @@ function ProblemSection() {
                 <p.icon size={20} className={p.c} />
               </div>
               <h3 className="text-[15px] font-bold text-[#0f172a] mb-2">{p.title}</h3>
-              <p className="text-sm text-slate-500 leading-relaxed">{p.desc}</p>
+              <p className="text-[15px] text-slate-500 leading-relaxed">{p.desc}</p>
             </Reveal>
           ))}
         </div>
@@ -380,10 +380,10 @@ function SolutionSection() {
       <div className="max-w-6xl mx-auto">
         <Reveal className="text-center mb-16">
           <p className="text-[#2a7d9c] text-sm font-bold uppercase tracking-[0.15em] mb-4">La solution</p>
-          <h2 className="text-[clamp(28px,4vw,50px)] font-black tracking-tight leading-tight mb-5">
+          <h2 className="text-[clamp(30px,4.5vw,56px)] font-black tracking-tight leading-tight mb-5">
             Analymo vous simplifie tout.
           </h2>
-          <p className="text-lg text-slate-500 max-w-md mx-auto leading-relaxed">
+          <p className="text-xl text-slate-500 max-w-md mx-auto leading-relaxed">
             En moins de 2 minutes, vous savez exactement dans quoi vous mettez les pieds.
           </p>
         </Reveal>
@@ -435,11 +435,11 @@ function HowItWorksSection() {
       <div className="max-w-6xl mx-auto">
         <Reveal className="text-center mb-16">
           <p className="text-[#2a7d9c] text-sm font-bold uppercase tracking-[0.15em] mb-4">Comment ça marche</p>
-          <h2 className="text-[clamp(28px,4vw,50px)] font-black tracking-tight leading-tight mb-5">
+          <h2 className="text-[clamp(30px,4.5vw,56px)] font-black tracking-tight leading-tight mb-5">
             Trois étapes.<br className="hidden sm:block" />
             <span className="text-slate-400">Une décision éclairée.</span>
           </h2>
-          <p className="text-lg text-slate-500 max-w-md mx-auto">
+          <p className="text-xl text-slate-500 max-w-md mx-auto">
             Pas de formation, pas de jargon. Vous déposez vos fichiers — on fait le reste.
           </p>
         </Reveal>
@@ -500,10 +500,10 @@ function ForWhoSection() {
       <div className="max-w-6xl mx-auto">
         <Reveal className="text-center mb-16">
           <p className="text-[#2a7d9c] text-sm font-bold uppercase tracking-[0.15em] mb-4">Pour qui</p>
-          <h2 className="text-[clamp(28px,4vw,50px)] font-black tracking-tight leading-tight mb-4">
+          <h2 className="text-[clamp(30px,4.5vw,56px)] font-black tracking-tight leading-tight mb-4">
             Une solution pour chaque acteur.
           </h2>
-          <p className="text-lg text-slate-500 max-w-md mx-auto">Particulier ou professionnel, Analymo s'adapte à votre besoin.</p>
+          <p className="text-xl text-slate-500 max-w-md mx-auto">Particulier ou professionnel, Analymo s'adapte à votre besoin.</p>
         </Reveal>
 
         {/* Main buyers card */}
@@ -572,7 +572,7 @@ function AvantApresSection() {
       <div className="max-w-5xl mx-auto">
         <Reveal className="text-center mb-14">
           <p className="text-[#2a7d9c] text-sm font-bold uppercase tracking-[0.15em] mb-4">Avant / Après</p>
-          <h2 className="text-[clamp(28px,4vw,50px)] font-black tracking-tight leading-tight">
+          <h2 className="text-[clamp(30px,4.5vw,56px)] font-black tracking-tight leading-tight">
             Deux façons d'acheter.<br />
             <span className="text-slate-400">Une seule bonne.</span>
           </h2>
@@ -636,7 +636,7 @@ function TestimonialsSection() {
       <div className="max-w-6xl mx-auto">
         <Reveal className="text-center mb-14">
           <p className="text-[#2a7d9c] text-sm font-bold uppercase tracking-[0.15em] mb-4">Témoignages</p>
-          <h2 className="text-[clamp(28px,4vw,46px)] font-black tracking-tight leading-tight">
+          <h2 className="text-[clamp(30px,4.5vw,54px)] font-black tracking-tight leading-tight">
             Ils ont acheté avec Analymo.
           </h2>
         </Reveal>
@@ -668,8 +668,6 @@ function TestimonialsSection() {
    CTA FINAL
 ══════════════════════════════════════════════════ */
 function CtaSection() {
-  const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
   return (
     <section className="py-24 px-6 bg-white">
       <div className="max-w-2xl mx-auto">
@@ -680,52 +678,24 @@ function CtaSection() {
               <div className="absolute bottom-0 right-0 w-64 h-64 bg-[#f0a500]/5 blur-3xl rounded-full" />
             </div>
             <div className="relative">
-              <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#2a7d9c]/30 bg-[#2a7d9c]/10 text-[#7dd3ed] text-xs font-bold mb-6">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" style={{animation:"pulse 2s ease-in-out infinite"}} />
-                Votre prochaine acquisition
-              </span>
-              <h2 className="text-[clamp(24px,4vw,44px)] font-black text-white mb-4 leading-tight tracking-tight">
+              <h2 className="text-[clamp(26px,4vw,48px)] font-black text-white mb-5 leading-tight tracking-tight">
                 Votre prochain bien mérite<br />une analyse complète.
               </h2>
-              <p className="text-slate-400 mb-8 text-base leading-relaxed">
+              <p className="text-slate-400 mb-10 text-lg leading-relaxed">
                 Dès 4,99€ · Sans abonnement · Résultats en moins de 2 minutes.
               </p>
-
-              {/* Progress bar */}
-              <div className="mb-8">
-                <div className="flex justify-between text-xs text-slate-400 mb-2">
-                  <span>Places réservées</span>
-                  <span className="font-bold text-[#7dd3ed]">65%</span>
-                </div>
-                <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-                  <motion.div initial={{width:0}} whileInView={{width:"65%"}} viewport={{once:true}} transition={{duration:1.2,ease:"easeOut"}}
-                    className="h-full rounded-full bg-gradient-to-r from-[#2a7d9c] to-[#22c55e]" />
-                </div>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Link to="/tarifs"
+                  className="flex items-center justify-center gap-2 px-10 py-4 rounded-2xl bg-white text-[#0f172a] text-base font-bold hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200">
+                  Lancer mon analyse <ArrowRight size={18} />
+                </Link>
+                <Link to="/exemple"
+                  className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-white/8 text-white/75 text-base font-semibold border border-white/12 hover:bg-white/14 transition-all duration-200">
+                  Voir un exemple
+                </Link>
               </div>
-
-              <AnimatePresence mode="wait">
-                {!sent ? (
-                  <motion.div key="form" exit={{opacity:0}} className="flex gap-3 flex-col sm:flex-row">
-                    <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="votre@email.com"
-                      className="flex-1 px-4 py-3.5 rounded-xl bg-white/10 border border-white/15 text-white placeholder-white/30 text-sm focus:outline-none focus:border-[#2a7d9c]/60 transition-colors" />
-                    <button onClick={()=>{if(email)setSent(true);}}
-                      className="px-6 py-3.5 rounded-xl bg-white text-[#0f172a] text-sm font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 whitespace-nowrap flex items-center gap-2 justify-center">
-                      Accès anticipé <ArrowRight size={16}/>
-                    </button>
-                  </motion.div>
-                ) : (
-                  <motion.div key="ok" initial={{opacity:0,scale:0.95}} animate={{opacity:1,scale:1}}
-                    className="flex items-center justify-center gap-2 p-4 rounded-xl bg-green-500/15 border border-green-500/25">
-                    <CheckCircle size={18} className="text-green-400"/>
-                    <p className="text-green-300 font-semibold text-sm">Parfait ! Nous vous contacterons en priorité.</p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <p className="text-slate-600 text-xs mt-5">
-                Ou → <Link to="/tarifs" className="text-[#7dd3ed] hover:underline font-medium">Voir les tarifs</Link>
-                {" · "}
-                <Link to="/exemple" className="text-[#7dd3ed] hover:underline font-medium">Voir un exemple</Link>
+              <p className="text-slate-600 text-sm mt-6">
+                Paiement sécurisé · Données supprimées automatiquement · Sans engagement
               </p>
             </div>
           </div>
