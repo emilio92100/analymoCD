@@ -50,14 +50,11 @@ export default function Navbar() {
                     to={l.to}
                     className={`relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
                       active
-                        ? 'text-[#2a7d9c] bg-[#2a7d9c]/10 font-semibold'
+                        ? 'text-white bg-[#0f2d3d] font-semibold shadow-sm'
                         : 'text-slate-500 hover:text-[#0f172a] hover:bg-slate-100/80'
                     }`}
                   >
                     {l.label}
-                    {active && (
-                      <span className="absolute -bottom-0.5 left-3 right-3 h-[2px] rounded-full bg-[#2a7d9c]" />
-                    )}
                   </Link>
                 );
               })}
