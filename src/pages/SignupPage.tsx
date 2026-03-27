@@ -27,7 +27,7 @@ export default function SignupPage() {
         <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--brand-navy)', marginBottom: 16 }}>Vérifiez votre email</h1>
         <p style={{ fontSize: 16, color: 'var(--text-secondary)', marginBottom: 8 }}>Un lien de confirmation a été envoyé à</p>
         <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--brand-teal)', marginBottom: 32 }}>{email}</p>
-        <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Pas reçu ? <button onClick={() => setStep('form')} style={{ background: 'none', border: 'none', color: 'var(--brand-teal)', cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>Modifier l'email</button></p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>   <a href="/connexion" style={{ display: 'block', padding: '14px', borderRadius: 12, fontSize: 15, fontWeight: 700, color: '#fff', background: 'linear-gradient(135deg, var(--brand-teal) 0%, var(--brand-navy) 100%)', textDecoration: 'none', boxShadow: '0 6px 24px rgba(42,125,156,0.3)' }}>     ✅ J'ai validé, me connecter   </a>   <button onClick={async () => { await supabase.auth.resend({ type: 'signup', email }); alert('Email renvoyé !'); }} style={{ padding: '14px', borderRadius: 12, fontSize: 15, fontWeight: 600, color: 'var(--brand-teal)', background: '#fff', border: '1.5px solid rgba(42,125,156,0.3)', cursor: 'pointer' }}>     📧 Je n'ai rien reçu, renvoyer le mail   </button> </div> <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Mauvais email ? <button onClick={() => setStep('form')} style={{ background: 'none', border: 'none', color: 'var(--brand-teal)', cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>Modifier l'email</button></p>
       </div>
     </div>
   );
