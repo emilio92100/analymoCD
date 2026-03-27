@@ -8,6 +8,7 @@ import TarifsPage from './pages/TarifsPage';
 import ContactPage from './pages/ContactPage';
 import ExemplePage from './pages/ExemplePage';
 import DashboardPage from './pages/DashboardPage';
+import AuthCallbackPage from './pages/AuthCallbackPage';
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="/exemple" element={<PublicLayout><ExemplePage /></PublicLayout>} />
         <Route path="/connexion" element={<LoginPage />} />
         <Route path="/inscription" element={<SignupPage />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/dashboard/nouvelle-analyse" element={<DashboardPage />} />
         <Route path="/dashboard/analyses" element={<DashboardPage />} />
