@@ -11,7 +11,7 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true); setError('');
-    const { error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name }, emailRedirectTo: `${window.location.origin}/dashboard` } });
+    const { error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name }, emailRedirectTo: `${window.location.origin}/auth/callback` } });
     if (error) { setError(error.message.includes('already') ? 'Un compte existe déjà avec cet email.' : 'Une erreur est survenue.'); setLoading(false); return; }
     setStep('verify');
   };
