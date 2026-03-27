@@ -6,7 +6,7 @@ import {
   ArrowRight, CheckCircle, AlertTriangle, FileText,
   Zap, Shield, BarChart3, Upload, Sparkles,
   TrendingUp, Clock, Star, Check, X, ChevronRight,
-  Building2, UserCheck, BadgeCheck,
+  Building2, UserCheck, BadgeCheck, ShieldCheck, Trash2,
 } from "lucide-react";
 
 /* ── animation variant ── */
@@ -77,80 +77,71 @@ function SectionTitle({ label, title, accent, sub }: { label: string; title: str
 ══════════════════════════════════════════════════ */
 function HeroSection() {
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden px-6 lg:px-12 pt-20 pb-12">
-      {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#f0f8fc] via-white to-white pointer-events-none" />
-      <div className="absolute top-0 right-0 w-[700px] h-[700px] rounded-full bg-[#2a7d9c]/6 blur-[120px] pointer-events-none" />
-      <div
-        className="absolute inset-0 pointer-events-none opacity-40"
-        style={{
-          backgroundImage: "radial-gradient(rgba(42,125,156,0.08) 1px, transparent 1px)",
-          backgroundSize: "32px 32px",
-        }}
-      />
+    <section className="relative min-h-screen flex items-center overflow-hidden bg-[#f4f7f9] px-6 sm:px-10 lg:px-16 pt-24 pb-16">
+      {/* Fond doux */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full bg-[#2a7d9c]/8 blur-[100px]" />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full bg-[#2a7d9c]/5 blur-[80px]" />
+      </div>
 
-      <div className="relative z-10 max-w-5xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-14 items-center">
+      <div className="relative z-10 max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
 
-        {/* ── LEFT: texte ── */}
+        {/* ── GAUCHE : texte sobre ── */}
         <div className="flex flex-col items-start">
+
+          {/* Badge */}
           <motion.div variants={up} initial="hidden" animate="show" custom={0}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#2a7d9c]/20 bg-white text-[#1a5e78] text-sm font-semibold mb-8 shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-[#22c55e] shrink-0" style={{ animation: "pulse 2s ease-in-out infinite" }} />
-            Analyse documentaire immobilière · Dès 4,99€
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[#2a7d9c]/25 bg-white text-[#1a5e78] text-xs font-semibold mb-7 shadow-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] shrink-0" style={{ animation: "pulse 2s ease-in-out infinite" }} />
+            Analyse immobilière intelligente
           </motion.div>
 
+          {/* Titre — sobre, pas trop gros */}
           <motion.h1 variants={up} initial="hidden" animate="show" custom={1}
-            className="text-[clamp(42px,5.5vw,76px)] font-black leading-[1.08] tracking-[-0.035em] text-[#0f172a] mb-6">
-            Comprenez vos documents<br className="hidden lg:block" /> immo{' '}
-            <span className="relative inline-block whitespace-nowrap">
-              <span className="text-[#2a7d9c]">en 2 minutes.</span>
-              <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 1, duration: 0.6, ease:[0.22,1,0.36,1] }}
-                className="absolute -bottom-1 left-0 right-0 h-[3px] bg-[#2a7d9c]/30 rounded-full origin-left block" />
+            className="text-[clamp(32px,4vw,52px)] font-black leading-[1.1] tracking-[-0.025em] text-[#0f172a] mb-5">
+            Analysez vos documents<br />
+            <span className="relative inline-block">
+              <span className="text-[#2a7d9c]">immobiliers</span>
+              <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.9, duration: 0.6, ease:[0.22,1,0.36,1] }}
+                className="absolute -bottom-1 left-0 right-0 h-[3px] bg-[#2a7d9c]/25 rounded-full origin-left block" />
             </span>
           </motion.h1>
 
+          {/* Sous-titre */}
           <motion.p variants={up} initial="hidden" animate="show" custom={2}
-            className="text-[clamp(17px,1.6vw,21px)] text-slate-500 leading-[1.75] max-w-[480px] mb-10">
-            Analymo analyse vos PV d'AG, règlements de copropriété et diagnostics —
-            et vous révèle les risques, les coûts et les décisions à prendre{" "}
-            <strong className="text-[#0f172a] font-semibold">avant que vous signiez.</strong>
+            className="text-[15px] text-slate-500 leading-relaxed max-w-[400px] mb-8">
+            Score global, risques cachés, impact financier — tout ce qu'il faut savoir avant de signer, expliqué simplement en moins de 2 minutes.
           </motion.p>
 
+          {/* CTAs */}
           <motion.div variants={up} initial="hidden" animate="show" custom={3}
-            className="flex flex-col sm:flex-row gap-3 mb-12 w-full sm:w-auto">
+            className="flex flex-col sm:flex-row gap-3 mb-10 w-full sm:w-auto">
             <Link to="/tarifs"
-              className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-[#0f2d3d] text-white text-base font-bold shadow-lg shadow-[#0f2d3d]/20 hover:bg-[#0f2d3d]/90 hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200">
-              Lancer mon analyse <ArrowRight size={18} />
+              className="flex items-center justify-center gap-2 px-7 py-3.5 rounded-2xl bg-[#0f2d3d] text-white text-sm font-bold shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200">
+              <ShieldCheck size={16} /> Lancer l'analyse
             </Link>
             <Link to="/exemple"
-              className="flex items-center justify-center gap-2 px-7 py-4 rounded-2xl border border-slate-200 bg-white text-[#0f172a] text-base font-semibold hover:border-[#2a7d9c]/40 hover:bg-[#f0f8fc] transition-all duration-200">
-              Voir un exemple <ChevronRight size={16} className="text-slate-400" />
+              className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl border border-slate-200 bg-white text-[#0f172a] text-sm font-semibold hover:border-[#2a7d9c]/40 hover:bg-white transition-all duration-200">
+              Voir un exemple <ChevronRight size={15} className="text-slate-400" />
             </Link>
           </motion.div>
 
-          {/* Social proof */}
+          {/* Trust badges */}
           <motion.div variants={up} initial="hidden" animate="show" custom={4}
-            className="flex items-center gap-4">
-            <div className="flex -space-x-2">
-              {["#2a7d9c", "#0f2d3d", "#0f6e56", "#7c3aed", "#c2410c"].map((bg, i) => (
-                <div key={i} style={{ background: bg }}
-                  className="w-9 h-9 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-black text-white shadow-sm">
-                  {["ML", "TR", "SD", "CB", "PG"][i]}
-                </div>
-              ))}
-            </div>
-            <div>
-              <div className="flex gap-0.5 mb-0.5">
-                {[0,1,2,3,4].map(j => <Star key={j} size={13} fill="#f59e0b" color="#f59e0b" />)}
+            className="flex flex-wrap gap-5">
+            {[
+              { I: ShieldCheck, l: "Documents chiffrés" },
+              { I: Trash2, l: "Suppression auto" },
+              { I: Clock, l: "Sans engagement" },
+            ].map(({ I, l }) => (
+              <div key={l} className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
+                <I size={13} className="text-slate-400 shrink-0" /> {l}
               </div>
-              <p className="text-sm text-slate-500">
-                <strong className="text-[#0f172a] font-bold">+200 acheteurs</strong> satisfaits
-              </p>
-            </div>
+            ))}
           </motion.div>
         </div>
 
-        {/* ── RIGHT: phone ── */}
+        {/* ── DROITE : téléphone ── */}
         <motion.div variants={up} initial="hidden" animate="show" custom={2}
           className="flex justify-center lg:justify-end">
           <PhoneMockup />
@@ -182,63 +173,84 @@ function PhoneMockup() {
 
   return (
     <div className="relative">
-      {/* Glow */}
-      <div className="absolute inset-0 bg-[#2a7d9c]/10 blur-3xl rounded-full scale-90 pointer-events-none" />
 
-      {/* Floating badge — score */}
-      <motion.div animate={{ y: [0,-9,0], x:[0,4,0] }} transition={{ duration: 4.5, repeat: Infinity }}
-        className="absolute -left-8 sm:-left-20 top-[22%] z-20 bg-white rounded-2xl px-3.5 py-2.5 shadow-xl border border-slate-100 flex items-center gap-2.5 min-w-[140px]">
-        <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
-          <TrendingUp size={16} className="text-green-500" />
-        </div>
-        <div>
-          <p className="text-[10px] font-bold text-slate-600 leading-none mb-0.5">Score global</p>
-          <p className="text-xl font-black text-green-500 leading-none">78<span className="text-xs text-slate-300 font-normal">/100</span></p>
-        </div>
-      </motion.div>
+      {/* ── Badges flottants — apparaissent progressivement ── */}
 
-      {/* Floating badge — alert */}
-      <motion.div animate={{ y:[0,10,0], x:[0,-3,0] }} transition={{ duration: 5, repeat: Infinity, delay: 1.2 }}
-        className="absolute -right-6 sm:-right-20 bottom-[30%] z-20 bg-white rounded-2xl px-3.5 py-2.5 shadow-xl border border-slate-100 flex items-center gap-2.5 min-w-[136px]">
-        <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
-          <AlertTriangle size={16} className="text-amber-500" />
-        </div>
-        <div>
-          <p className="text-[10px] font-bold text-slate-600 leading-none mb-0.5">Vigilance</p>
-          <p className="text-xs text-slate-500">Ravalement 2026</p>
-        </div>
-      </motion.div>
-
-      {/* Floating badge — speed */}
-      <motion.div animate={{ y:[0,-5,0] }} transition={{ duration: 3.5, repeat: Infinity, delay: 2 }}
-        className="absolute -right-4 sm:-right-14 top-[10%] z-20 bg-white rounded-xl px-3 py-2 shadow-lg border border-slate-100 flex items-center gap-2">
-        <span className="text-base">⚡</span>
-        <span className="text-xs font-bold text-amber-500">1 min 47s</span>
-      </motion.div>
-
-      {/* Phone shell */}
+      {/* 100% sécurisé — gauche */}
       <motion.div
-        animate={{ rotateY:[3,-3,3], rotateX:[-1,1,-1], y:[0,-12,0] }}
-        transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-        style={{ transformStyle: "preserve-3d" }}
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 1.2, duration: 0.5 }}
+        style={{ animation: "floatA 4s ease-in-out 1.2s infinite" }}
+        className="hidden sm:flex absolute -left-28 top-[20%] z-20 bg-white rounded-2xl px-4 py-3 shadow-xl border border-slate-100 items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-[#2a7d9c]/8 flex items-center justify-center shrink-0">
+          <ShieldCheck size={17} className="text-[#2a7d9c]" />
+        </div>
+        <div>
+          <p className="text-[11px] font-bold text-[#0f172a] leading-none mb-0.5">100% sécurisé</p>
+          <p className="text-[10px] text-slate-400">Chiffré & supprimé</p>
+        </div>
+      </motion.div>
+
+      {/* Score 7/10 — droite */}
+      <motion.div
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 2.0, duration: 0.5 }}
+        style={{ animation: "floatB 5s ease-in-out 2s infinite" }}
+        className="hidden sm:flex absolute -right-28 bottom-[32%] z-20 bg-white rounded-2xl px-4 py-3 shadow-xl border border-slate-100 items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
+          <TrendingUp size={17} className="text-green-500" />
+        </div>
+        <div>
+          <p className="text-[11px] font-bold text-[#0f172a] leading-none mb-0.5">Score : 7/10</p>
+          <p className="text-[10px] text-slate-400">Bien recommandé</p>
+        </div>
+      </motion.div>
+
+      {/* PV scanné — droite bas */}
+      <motion.div
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 2.8, duration: 0.5 }}
+        style={{ animation: "floatC 3.5s ease-in-out 2.8s infinite" }}
+        className="hidden sm:flex absolute -right-24 top-[14%] z-20 bg-white rounded-xl px-3.5 py-2.5 shadow-lg border border-slate-100 items-center gap-2">
+        <FileText size={14} className="text-[#2a7d9c] shrink-0" />
+        <span className="text-[11px] font-semibold text-[#0f172a]">PV scanné ✓</span>
+      </motion.div>
+
+      {/* Téléphone shell */}
+      <motion.div
+        animate={{ y: [0, -10, 0] }}
+        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
       >
-        <div className="w-[240px] sm:w-[270px] h-[500px] sm:h-[560px] bg-[#0f172a] rounded-[48px] p-[5px] shadow-[0_36px_80px_rgba(15,23,42,0.32)] ring-1 ring-white/8">
-          <div className="w-full h-full bg-slate-50 rounded-[44px] overflow-hidden relative">
-            <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-[82px] h-[24px] bg-[#0f172a] rounded-full z-10" />
-            <div className="pt-2 px-5 flex justify-between text-[8.5px] font-bold text-slate-400">
+        <div className="w-[230px] sm:w-[260px] h-[480px] sm:h-[530px] bg-[#0f172a] rounded-[44px] p-[5px] shadow-[0_32px_72px_rgba(15,23,42,0.25),0_0_0_1px_rgba(255,255,255,0.06)_inset]">
+          <div className="w-full h-full bg-white rounded-[40px] overflow-hidden relative">
+            {/* Dynamic island */}
+            <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-[76px] h-[22px] bg-[#0f172a] rounded-full z-10" />
+            {/* Status bar */}
+            <div className="pt-2 px-5 flex justify-between text-[8px] font-bold text-slate-400">
               <span>9:41</span><span>5G ▪▪▪</span>
             </div>
-            <div className="px-3.5 pt-7 pb-4">
+            {/* Screen content */}
+            <div className="px-3.5 pt-6 pb-4">
               <AnimatePresence mode="wait">
                 {step === 0 && <PhaseUpload key="u" />}
                 {step === 1 && <PhaseScan key="s" />}
                 {step === 2 && <PhaseResult key="r" />}
               </AnimatePresence>
             </div>
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-20 h-1 rounded-full bg-slate-300" />
+            {/* Home bar */}
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-16 h-1 rounded-full bg-slate-200" />
           </div>
         </div>
       </motion.div>
+
+      <style>{`
+        @keyframes floatA { 0%,100%{transform:translateY(0) translateX(0)} 50%{transform:translateY(-8px) translateX(3px)} }
+        @keyframes floatB { 0%,100%{transform:translateY(0) translateX(0)} 50%{transform:translateY(9px) translateX(-3px)} }
+        @keyframes floatC { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+      `}</style>
     </div>
   );
 }
