@@ -37,7 +37,7 @@ function SectionTitle({ label, title, accent, sub }: { label: string; title: str
       <motion.h2 initial={{ opacity: 0, y: 20 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ delay: 0.07 }}
         className="text-[clamp(40px,5.5vw,72px)] font-black tracking-[-0.035em] leading-[1.06] text-[#0f172a] mb-5">
         {title}{' '}
-        <span className="relative inline">
+        <span className="relative inline-block max-w-fit">
           <span className="text-[#2a7d9c]">{accent}</span>
           <motion.span initial={{ scaleX: 0 }} animate={inView ? { scaleX: 1 } : {}} transition={{ duration: 2.5, delay: 0.2, ease: [0.22,1,0.36,1] }}
             className="absolute -bottom-1 left-0 right-0 h-[4px] bg-[#2a7d9c]/25 rounded-full origin-left block" />
