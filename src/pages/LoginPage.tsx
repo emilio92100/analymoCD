@@ -65,7 +65,7 @@ export default function LoginPage() {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <label style={{ fontSize: 14, fontWeight: 600, color: 'var(--brand-navy)' }}>Mot de passe</label>
-                <a href="#" style={{ fontSize: 13, color: 'var(--brand-teal)', textDecoration: 'none' }}>Mot de passe oublié ?</a>
+                <a href="/mot-de-passe-oublie" style={{ fontSize: 13, color: 'var(--brand-teal)', textDecoration: 'none' }}>Mot de passe oublié ?</a>
               </div>
               <div style={{ position: 'relative' }}>
                 <Lock size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
