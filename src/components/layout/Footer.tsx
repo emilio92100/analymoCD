@@ -7,7 +7,7 @@ export default function Footer() {
       <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-10 px-6 pt-12 pb-8">
 
         {/* Col 1 — texte EN HAUT, logo EN BAS */}
-        <div className="md:col-span-1 flex flex-col justify-between gap-6">
+        <div className="md:col-span-1 flex flex-col gap-4">
           <p className="text-sm text-slate-400 leading-relaxed max-w-xs">
             Analymo analyse vos documents immobiliers pour vous aider à acheter en toute sérénité.
           </p>
