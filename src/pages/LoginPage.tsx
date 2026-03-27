@@ -15,7 +15,7 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true); setError('');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) { setError('Email ou mot de passe incorrect.'); setLoading(false); return; }
+    if (error) {    if (error.message.includes('Email not confirmed')) {      setError('Votre email n\'a pas été validé. Veuillez vous réinscrire pour recevoir un nouveau lien d\'activation.');    } else {      setError('Email ou mot de passe incorrect.');    }    setLoading(false); return;  }
     navigate('/dashboard');
   };
 
