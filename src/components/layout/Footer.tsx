@@ -7,7 +7,7 @@ export default function Footer() {
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 48, marginBottom: 48 }}>
           <div>
-            <img src="/logo.png" alt="Analymo" style={{ height: 80, objectFit: 'contain', filter: 'brightness(0) invert(1)', marginBottom: 16 }} />
+            <img src="/logo.png" alt="Analymo" style={{ height: 200, objectFit: 'contain', filter: 'brightness(0) invert(1)', marginBottom: 16 }} />
             <p style={{ fontSize: 14, lineHeight: 1.7, color: 'rgba(255,255,255,0.55)', maxWidth: 280 }}>
               Analymo analyse vos documents immobiliers grâce à l'IA pour vous aider à acheter en toute sérénité.
             </p>
