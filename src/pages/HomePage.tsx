@@ -396,7 +396,7 @@ function HowItWorksSection() {
   return (
     <section className="py-28 px-6 bg-[#f4f7f9]">
       <div className="max-w-6xl mx-auto">
-        <SectionTitle label="Comment ça marche" title="Trois étapes." accent="Une décision éclairée."
+        <SectionTitle label="Comment ça marche" title="Trois étapes. Une décision" accent="éclairée."
           sub="Pas de formation, pas de jargon. Vous déposez vos fichiers — on fait le reste." />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-7 relative">
           <div className="hidden md:block absolute top-14 left-[22%] right-[22%] h-px bg-gradient-to-r from-[#2a7d9c]/30 via-[#2a7d9c]/60 to-[#22c55e]/30 z-0" />
