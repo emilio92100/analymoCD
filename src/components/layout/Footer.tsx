@@ -11,13 +11,15 @@ export default function Footer() {
 
           {/* Col 1 — Logo + description */}
           <div className="flex flex-col gap-3 sm:col-span-2 lg:col-span-1">
-            <img
-              src="/logo.png"
-              alt="Analymo"
-              className="object-contain object-left"
-              style={{ height: 64, width: 'auto', maxWidth: 200, filter: 'brightness(0) invert(1)' }}
-            />
-            <p className="text-sm text-white/45 leading-relaxed">
+            <div className="w-44">
+              <img
+                src="/logo.png"
+                alt="Analymo"
+                className="w-full h-auto object-contain object-left"
+                style={{ filter: 'brightness(0) invert(1)' }}
+              />
+            </div>
+            <p className="text-sm text-white/45 leading-relaxed max-w-xs">
               Analymo analyse vos documents immobiliers pour vous aider à acheter en toute sérénité.
             </p>
           </div>
