@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Menu, X, User, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '../../lib/supabase';
 
 const navLinks = [
   { to: '/', label: 'Accueil' },
@@ -13,8 +14,25 @@ const navLinks = [
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const isDashboard = location.pathname.startsWith('/dashboard');
+
+  useEffect(() => {
+    // Récupérer la session au chargement
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null);
+    });
+
+    // Écouter les changements de session
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 16);
@@ -22,7 +40,13 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', fn);
   }, []);
 
-  useEffect(() => { setOpen(false); }, [location]);
+  useEffect(() => { setOpen(false); setUserMenuOpen(false); }, [location]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    navigate('/');
+  };
 
   if (isDashboard) return null;
 
@@ -41,25 +65,18 @@ export default function Navbar() {
               <img src="/logo.png" alt="Analymo" className="h-14 object-contain" />
             </Link>
 
-            {/* Desktop nav — pill glissant */}
+            {/* Desktop nav */}
             <div className="hidden md:flex items-center gap-1 relative">
-              {/* Pill animé qui se déplace */}
               {navLinks.map(l => {
                 const active = location.pathname === l.to;
                 return (
-                  <Link
-                    key={l.to}
-                    to={l.to}
+                  <Link key={l.to} to={l.to}
                     className="relative px-4 py-2 rounded-xl text-sm font-medium transition-colors duration-200 z-10"
-                    style={{ color: active ? '#fff' : '#64748b' }}
-                  >
-                    {/* Background animé */}
+                    style={{ color: active ? '#fff' : '#64748b' }}>
                     {active && (
-                      <motion.span
-                        layoutId="nav-pill"
+                      <motion.span layoutId="nav-pill"
                         className="absolute inset-0 rounded-xl bg-[#0f2d3d]"
-                        transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-                      />
+                        transition={{ type: 'spring', stiffness: 380, damping: 32 }} />
                     )}
                     <span className="relative z-10">{l.label}</span>
                   </Link>
@@ -70,18 +87,52 @@ export default function Navbar() {
             {/* Auth buttons */}
             <div className="hidden md:flex items-center gap-2">
               <div className="w-px h-5 bg-slate-200 mx-1" />
-              <Link to="/connexion"
-                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                  location.pathname === '/connexion'
-                    ? 'text-[#2a7d9c] bg-[#2a7d9c]/8'
-                    : 'text-slate-500 hover:text-[#0f172a] hover:bg-slate-100/80'
-                }`}>
-                Connexion
-              </Link>
-              <Link to="/inscription"
-                className="px-5 py-2 rounded-xl text-sm font-bold text-white bg-[#0f2d3d] hover:bg-[#0f2d3d]/90 hover:-translate-y-px shadow-sm hover:shadow-md transition-all duration-200">
-                S'inscrire
-              </Link>
+              {user ? (
+                <div style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => setUserMenuOpen(!userMenuOpen)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-[#0f2d3d] hover:bg-[#0f2d3d]/90 transition-all duration-200 shadow-sm">
+                    <User size={15} />
+                    Mon espace
+                  </button>
+                  <AnimatePresence>
+                    {userMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        style={{ position: 'absolute', top: '110%', right: 0, background: '#fff', borderRadius: 12, boxShadow: '0 8px 32px rgba(15,45,61,0.12)', border: '1px solid rgba(42,125,156,0.1)', minWidth: 180, overflow: 'hidden', zIndex: 200 }}>
+                        <Link to="/dashboard"
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', fontSize: 14, fontWeight: 600, color: '#0f2d3d', textDecoration: 'none' }}
+                          className="hover:bg-slate-50 transition-colors">
+                          <User size={15} /> Mon dashboard
+                        </Link>
+                        <div style={{ height: 1, background: '#e2e8f0', margin: '0 12px' }} />
+                        <button onClick={handleLogout}
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', fontSize: 14, fontWeight: 600, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', width: '100%' }}
+                          className="hover:bg-red-50 transition-colors">
+                          <LogOut size={15} /> Se déconnecter
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ) : (
+                <>
+                  <Link to="/connexion"
+                    className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                      location.pathname === '/connexion'
+                        ? 'text-[#2a7d9c] bg-[#2a7d9c]/8'
+                        : 'text-slate-500 hover:text-[#0f172a] hover:bg-slate-100/80'
+                    }`}>
+                    Connexion
+                  </Link>
+                  <Link to="/inscription"
+                    className="px-5 py-2 rounded-xl text-sm font-bold text-white bg-[#0f2d3d] hover:bg-[#0f2d3d]/90 hover:-translate-y-px shadow-sm hover:shadow-md transition-all duration-200">
+                    S'inscrire
+                  </Link>
+                </>
+              )}
             </div>
 
             {/* Burger mobile */}
@@ -100,16 +151,14 @@ export default function Navbar() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[99] md:hidden"
-            onClick={() => setOpen(false)}
-          >
+            onClick={() => setOpen(false)}>
             <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
             <motion.div
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               className="absolute top-[76px] left-4 right-4 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden"
-              onClick={e => e.stopPropagation()}
-            >
+              onClick={e => e.stopPropagation()}>
               <div className="p-3">
                 {navLinks.map(l => {
                   const active = location.pathname === l.to;
@@ -124,8 +173,21 @@ export default function Navbar() {
                 })}
               </div>
               <div className="border-t border-slate-100 p-3 flex flex-col gap-2">
-                <Link to="/connexion" className="text-center py-3 rounded-xl text-sm font-semibold text-slate-700 border border-slate-200 hover:bg-slate-50 transition-colors">Connexion</Link>
-                <Link to="/inscription" className="text-center py-3 rounded-xl text-sm font-bold text-white bg-[#0f2d3d] hover:bg-[#0f2d3d]/90 transition-colors">S'inscrire</Link>
+                {user ? (
+                  <>
+                    <Link to="/dashboard" className="text-center py-3 rounded-xl text-sm font-bold text-white bg-[#0f2d3d] transition-colors">
+                      Mon espace
+                    </Link>
+                    <button onClick={handleLogout} className="text-center py-3 rounded-xl text-sm font-semibold text-red-500 border border-red-200 hover:bg-red-50 transition-colors">
+                      Se déconnecter
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/connexion" className="text-center py-3 rounded-xl text-sm font-semibold text-slate-700 border border-slate-200 hover:bg-slate-50 transition-colors">Connexion</Link>
+                    <Link to="/inscription" className="text-center py-3 rounded-xl text-sm font-bold text-white bg-[#0f2d3d] hover:bg-[#0f2d3d]/90 transition-colors">S'inscrire</Link>
+                  </>
+                )}
               </div>
             </motion.div>
           </motion.div>
