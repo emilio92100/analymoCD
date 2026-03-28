@@ -82,7 +82,7 @@ export default function TarifsPage() {
                       <p className="text-xs text-slate-400 mt-1">{plan.sub} · paiement unique</p>
                     </div>
                     {plan.badge && (
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${plan.highlighted ? 'bg-[#2a7d9c] text-white' : 'bg-[#f59e0b] text-white'}`}>
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold shrink-0 ml-2 whitespace-nowrap ${plan.highlighted ? 'bg-[#2a7d9c] text-white' : 'bg-[#f59e0b] text-white'}`}>
                         {plan.badge}
                       </span>
                     )}
@@ -113,7 +113,7 @@ export default function TarifsPage() {
           </div>
 
           {/* ── DESKTOP : grille 4 colonnes ── */}
-          <div className="hidden md:grid grid-cols-4 gap-5 mb-8 items-start">
+          <div className="hidden md:grid grid-cols-4 gap-5 mb-8 items-stretch">
             {plans.map((plan, i) => (
               <motion.div key={plan.id}
                 initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.09 }}
@@ -126,7 +126,7 @@ export default function TarifsPage() {
                 <div className="h-1 w-full shrink-0" style={{ background: plan.highlighted ? '#2a7d9c' : '#e2e8f0' }} />
 
                 {plan.badge && (
-                  <div className={`absolute top-5 right-5 px-3 py-1 rounded-full text-xs font-bold z-10 flex items-center gap-1 ${
+                  <div className={`absolute top-5 right-4 px-2.5 py-1 rounded-full text-xs font-bold z-10 flex items-center gap-1 whitespace-nowrap ${
                     plan.highlighted ? 'bg-[#2a7d9c] text-white' : 'bg-[#f59e0b] text-white'
                   }`}>
                     {plan.highlighted && <Star size={9} fill="white" />}
@@ -135,10 +135,8 @@ export default function TarifsPage() {
                 )}
 
                 <div className="p-7 flex flex-col flex-1">
-                  {/* Nom */}
-                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">{plan.name}</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4 pr-24">{plan.name}</p>
 
-                  {/* Prix */}
                   <div className="flex items-end gap-1 mb-1">
                     <span className="text-[52px] font-black leading-none text-[#0f172a]">{plan.price}</span>
                     <span className="text-2xl mb-2 font-bold text-slate-300">€</span>
@@ -151,7 +149,6 @@ export default function TarifsPage() {
                     <p className="text-sm text-slate-600 leading-relaxed">{plan.idealFor}</p>
                   </div>
 
-                  {/* Features */}
                   <ul className="flex flex-col gap-3 mb-7 flex-1">
                     {plan.features.map(f => (
                       <li key={f} className="flex items-start gap-2.5">
@@ -161,9 +158,8 @@ export default function TarifsPage() {
                     ))}
                   </ul>
 
-                  {/* CTA */}
                   <Link to={`/inscription?plan=${plan.id}`}
-                    className="flex items-center justify-center gap-2 w-full py-4 rounded-xl text-base font-bold transition-all duration-200 hover:-translate-y-0.5"
+                    className="flex items-center justify-center gap-2 w-full py-4 rounded-xl text-base font-bold transition-all duration-200 hover:-translate-y-0.5 mt-auto"
                     style={{ background: plan.highlighted ? '#2a7d9c' : '#0f2d3d', color: 'white' }}>
                     {plan.cta} <ArrowRight size={15} />
                   </Link>
