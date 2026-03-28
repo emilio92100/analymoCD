@@ -57,11 +57,11 @@ export default function HomePage() {
     <div className="bg-white text-[#0f172a] antialiased overflow-x-hidden" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <HeroSection />
       <StatsBar />
+      <AvantApresSection />
       <ProblemSection />
       <SolutionSection />
-      <HowItWorksSection />
-      <AvantApresSection />
       <ForWhoSection />
+      <HowItWorksSection />
       <TestimonialsSection />
       <CtaFinal />
     </div>
@@ -496,8 +496,10 @@ function SolutionSection() {
 
 /* ═══ HOW IT WORKS ══════════════════════════════════════════ */
 function HowItWorksSection() {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-60px" });
+  const refMobile = useRef(null);
+  const refDesktop = useRef(null);
+  const inViewMobile = useInView(refMobile, { once: true, margin: "-40px" });
+  const inViewDesktop = useInView(refDesktop, { once: true, margin: "-60px" });
 
   const steps = [
     {
@@ -562,25 +564,23 @@ function HowItWorksSection() {
           sub="Pas de formation, pas de jargon. Vous déposez vos fichiers — on fait le reste." />
 
         {/* ── MOBILE : stepper vertical ── */}
-        <div className="flex flex-col md:hidden" ref={ref}>
+        <div className="flex flex-col md:hidden" ref={refMobile}>
           {steps.map((s, i) => (
             <motion.div key={i}
               initial={{ opacity: 0, x: -16 }}
-              animate={inView ? { opacity: 1, x: 0 } : {}}
+              animate={inViewMobile ? { opacity: 1, x: 0 } : {}}
               transition={{ delay: i * 0.12, duration: 0.45 }}
               className="flex gap-4">
               <div className="flex flex-col items-center shrink-0">
-                {/* Cercle avec numéro */}
-                <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border relative"
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border"
                   style={{ background: s.bg, borderColor: s.border }}>
                   <span className="text-sm font-black" style={{ color: s.color }}>{s.n}</span>
                 </div>
-                {/* Trait de connexion */}
                 {i < steps.length - 1 && (
                   <motion.div className="w-px min-h-[36px] flex-1 mt-1.5 mb-1.5 rounded-full"
                     style={{ background: "linear-gradient(to bottom, rgba(42,125,156,0.3), rgba(42,125,156,0.05))" }}
                     initial={{ scaleY: 0, transformOrigin: "top" }}
-                    animate={inView ? { scaleY: 1 } : {}}
+                    animate={inViewMobile ? { scaleY: 1 } : {}}
                     transition={{ delay: i * 0.12 + 0.2, duration: 0.35 }} />
                 )}
               </div>
@@ -596,41 +596,34 @@ function HowItWorksSection() {
         </div>
 
         {/* ── DESKTOP : 4 blocs reliés par un trait ── */}
-        <div className="hidden md:block" ref={ref}>
+        <div className="hidden md:block" ref={refDesktop}>
           {/* Trait + icônes en haut */}
           <div className="relative flex items-center justify-between mb-8 px-[56px]">
-            {/* Trait de fond gris */}
             <div className="absolute inset-x-[56px] top-1/2 -translate-y-1/2 h-px bg-slate-200" />
-            {/* Trait animé teal */}
             <motion.div
               className="absolute left-[56px] top-1/2 -translate-y-1/2 h-[2px] rounded-full bg-[#2a7d9c]/40"
               initial={{ width: 0 }}
-              animate={inView ? { width: "calc(100% - 112px)" } : {}}
+              animate={inViewDesktop ? { width: "calc(100% - 112px)" } : {}}
               transition={{ duration: 1.2, delay: 0.2, ease: [0.22, 1, 0.36, 1] }} />
-
             {steps.map((s, i) => (
               <motion.div key={i}
                 initial={{ opacity: 0, scale: 0.6 }}
-                animate={inView ? { opacity: 1, scale: 1 } : {}}
+                animate={inViewDesktop ? { opacity: 1, scale: 1 } : {}}
                 transition={{ delay: i * 0.15 + 0.15, duration: 0.35, ease: "backOut" }}
                 className="relative z-10 flex flex-col items-center gap-2.5">
-                {/* Cercle */}
                 <div className="w-14 h-14 rounded-2xl border-2 flex items-center justify-center bg-white shadow-md"
                   style={{ borderColor: s.border, color: s.color }}>
                   {s.icon}
                 </div>
-                {/* Numéro + label */}
                 <span className="text-xs font-black text-[#2a7d9c] bg-[#2a7d9c]/8 px-2.5 py-0.5 rounded-full">{s.n}</span>
               </motion.div>
             ))}
           </div>
-
-          {/* Cartes de texte alignées sous chaque icône */}
           <div className="grid grid-cols-4 gap-5">
             {steps.map((s, i) => (
               <motion.div key={i}
                 initial={{ opacity: 0, y: 16 }}
-                animate={inView ? { opacity: 1, y: 0 } : {}}
+                animate={inViewDesktop ? { opacity: 1, y: 0 } : {}}
                 transition={{ delay: i * 0.12 + 0.4, duration: 0.45 }}
                 className="rounded-2xl p-6 bg-[#f4f7f9] border border-slate-100 hover:border-[#2a7d9c]/20 hover:bg-[#eef6fb] hover:-translate-y-1 transition-all duration-200 cursor-default">
                 <div className="flex items-center gap-2 mb-3" style={{ color: s.color }}>
