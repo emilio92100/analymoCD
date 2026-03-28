@@ -77,63 +77,99 @@ function HeroSection() {
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full bg-[#2a7d9c]/4 blur-[100px]" />
       </div>
 
-      <div className="relative z-10 max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12 items-center">
+      <div className="relative z-10 max-w-6xl mx-auto w-full">
 
-        {/* LEFT */}
-        <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+        {/* MOBILE : téléphone en haut + boutons dessous */}
+        <div className="flex flex-col items-center lg:hidden pt-2 pb-4">
           <motion.div variants={up} initial="hidden" animate="show" custom={0}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#2a7d9c]/25 bg-white text-[#1a5e78] text-sm font-semibold mb-7 shadow-sm">
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#2a7d9c]/25 bg-white text-[#1a5e78] text-sm font-semibold mb-6 shadow-sm">
             <span className="w-2 h-2 rounded-full bg-[#22c55e] shrink-0" style={{ animation: "pulse 2s ease-in-out infinite" }} />
-            Analyse immobilière par IA
+            Analyse immobilière intelligente
           </motion.div>
-
-          <motion.h1 variants={up} initial="hidden" animate="show" custom={1}
-            className="text-[clamp(30px,5vw,68px)] font-black leading-[1.04] tracking-[-0.03em] text-[#0f172a] mb-5">
-            Signez en connaissance<br />
-            <span className="relative inline-block">
-              <span className="text-[#2a7d9c]">de cause.</span>
-              <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.9, duration: 1.4 }}
-                className="absolute -bottom-1 left-0 right-0 h-[4px] bg-[#2a7d9c]/25 rounded-full origin-left block" />
-            </span>
-          </motion.h1>
-
-          <motion.p variants={up} initial="hidden" animate="show" custom={2}
-            className="text-base md:text-lg text-slate-500 leading-relaxed max-w-[500px] mb-6 mx-auto lg:mx-0">
-            Déposez vos documents immobiliers — PV d'AG, diagnostics, appels de charges. Analymo les lit, les comprend et vous donne un rapport clair avec score, risques et recommandations en{' '}
-            <span className="font-bold text-[#0f172a]">30 secondes*</span>.
-          </motion.p>
-
-          <motion.div variants={up} initial="hidden" animate="show" custom={3}
-            className="flex flex-col sm:flex-row gap-3 mb-5 w-full sm:w-auto">
+          <motion.div variants={up} initial="hidden" animate="show" custom={1} className="mb-6">
+            <PhoneMockup />
+          </motion.div>
+          <motion.div variants={up} initial="hidden" animate="show" custom={2}
+            className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
             <Link to="/tarifs"
-              className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-[#0f2d3d] text-white text-base font-bold shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200">
+              className="flex items-center justify-center gap-2 px-7 py-4 rounded-2xl bg-[#0f2d3d] text-white text-base font-bold shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200 flex-1">
               <ShieldCheck size={18} /> Lancer mon analyse
             </Link>
             <Link to="/exemple"
-              className="flex items-center justify-center gap-2 px-7 py-4 rounded-2xl border border-slate-200 bg-white text-[#0f172a] text-base font-semibold hover:border-[#2a7d9c]/40 hover:bg-[#f0f8fc] transition-all duration-200">
+              className="flex items-center justify-center gap-2 px-6 py-4 rounded-2xl border border-slate-200 bg-white text-[#0f172a] text-base font-semibold hover:border-[#2a7d9c]/40 hover:bg-[#f0f8fc] transition-all duration-200 flex-1">
               Voir un exemple <ChevronRight size={16} className="text-slate-400" />
             </Link>
           </motion.div>
-
-          <motion.p variants={up} initial="hidden" animate="show" custom={3}
-            className="text-xs text-slate-400 mb-7 mx-auto lg:mx-0 max-w-[420px] italic leading-relaxed">
-            * Pour les documents nativement numériques (PDF texte). Les documents scannés peuvent nécessiter un délai supplémentaire.
+          <motion.p variants={up} initial="hidden" animate="show" custom={2.5}
+            className="text-xs text-slate-400 mt-4 text-center max-w-[340px] italic leading-relaxed">
+            * Pour les documents nativement numériques (PDF texte).
           </motion.p>
-
-          <motion.div variants={up} initial="hidden" animate="show" custom={4}
-            className="flex flex-wrap gap-5 justify-center lg:justify-start">
-            {[{ I: ShieldCheck, l: "Documents chiffrés" }, { I: Trash2, l: "Suppression auto" }, { I: Clock, l: "Sans engagement" }].map(({ I, l }) => (
-              <div key={l} className="flex items-center gap-2 text-sm text-slate-400 font-medium">
-                <I size={14} className="text-slate-400 shrink-0" /> {l}
-              </div>
-            ))}
-          </motion.div>
         </div>
 
-        {/* RIGHT */}
-        <motion.div variants={up} initial="hidden" animate="show" custom={2} className="flex justify-center lg:justify-center mt-4 lg:mt-0">
-          <PhoneMockup />
-        </motion.div>
+        {/* DESKTOP : grille 2 colonnes */}
+        <div className="hidden lg:grid grid-cols-2 gap-12 items-center">
+
+          {/* LEFT */}
+          <div className="flex flex-col items-start text-left">
+            <motion.div variants={up} initial="hidden" animate="show" custom={0}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#2a7d9c]/25 bg-white text-[#1a5e78] text-sm font-semibold mb-7 shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-[#22c55e] shrink-0" style={{ animation: "pulse 2s ease-in-out infinite" }} />
+              Analyse immobilière intelligente
+            </motion.div>
+
+            <motion.h1 variants={up} initial="hidden" animate="show" custom={1}
+              className="text-[clamp(28px,4.5vw,62px)] font-black leading-[1.06] tracking-[-0.03em] text-[#0f172a] mb-5">
+              Vérifiez les éléments essentiels<br />
+              <span className="relative inline-block">
+                <span className="text-[#2a7d9c]">avant de signer.</span>
+                <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.9, duration: 1.4 }}
+                  className="absolute -bottom-1 left-0 right-0 h-[4px] bg-[#2a7d9c]/25 rounded-full origin-left block" />
+              </span>
+            </motion.h1>
+
+            <motion.p variants={up} initial="hidden" animate="show" custom={1.5}
+              className="text-lg font-semibold text-[#0f172a] max-w-[500px] mb-2">
+              Votre futur logement analysé en{' '}
+              <span className="text-[#2a7d9c]">30 secondes*</span>
+            </motion.p>
+
+            <motion.p variants={up} initial="hidden" animate="show" custom={2}
+              className="text-base text-slate-500 leading-relaxed max-w-[500px] mb-8">
+              Diagnostics, PV d'AG, Règlement de copropriété, Appels de fonds, Compromis de vente… Notre outil vous aide à comprendre rapidement les informations essentielles avant de signer.
+            </motion.p>
+
+            <motion.div variants={up} initial="hidden" animate="show" custom={3}
+              className="flex flex-row gap-3 mb-5">
+              <Link to="/tarifs"
+                className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-[#0f2d3d] text-white text-base font-bold shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200">
+                <ShieldCheck size={18} /> Lancer mon analyse
+              </Link>
+              <Link to="/exemple"
+                className="flex items-center justify-center gap-2 px-7 py-4 rounded-2xl border border-slate-200 bg-white text-[#0f172a] text-base font-semibold hover:border-[#2a7d9c]/40 hover:bg-[#f0f8fc] transition-all duration-200">
+                Voir un exemple <ChevronRight size={16} className="text-slate-400" />
+              </Link>
+            </motion.div>
+
+            <motion.p variants={up} initial="hidden" animate="show" custom={3}
+              className="text-xs text-slate-400 mb-7 max-w-[420px] italic leading-relaxed">
+              * Pour les documents nativement numériques (PDF texte). Les documents scannés peuvent nécessiter un délai supplémentaire.
+            </motion.p>
+
+            <motion.div variants={up} initial="hidden" animate="show" custom={4}
+              className="flex flex-wrap gap-5">
+              {[{ I: ShieldCheck, l: "Documents chiffrés" }, { I: Trash2, l: "Suppression auto" }, { I: Clock, l: "Sans engagement" }].map(({ I, l }) => (
+                <div key={l} className="flex items-center gap-2 text-sm text-slate-400 font-medium">
+                  <I size={14} className="text-slate-400 shrink-0" /> {l}
+                </div>
+              ))}
+            </motion.div>
+          </div>
+
+          {/* RIGHT */}
+          <motion.div variants={up} initial="hidden" animate="show" custom={2} className="flex justify-center">
+            <PhoneMockup />
+          </motion.div>
+        </div>
       </div>
 
       <style>{`
@@ -195,19 +231,35 @@ function PhoneMockup() {
 
       <motion.div animate={{ y: [0, -10, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}>
         <div className="w-[210px] sm:w-[275px] h-[440px] sm:h-[580px] bg-[#0f172a] rounded-[46px] p-[5px] shadow-[0_32px_72px_rgba(15,23,42,0.25)]">
-          <div className="w-full h-full bg-white rounded-[42px] overflow-hidden relative flex flex-col">
-            <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-[76px] h-[22px] bg-[#0f172a] rounded-full z-10" />
-            <div className="pt-3 px-4 flex justify-between text-[8px] font-bold text-slate-400 shrink-0">
-              <span>9:41</span><span>5G ▪▪▪</span>
+          <div className="w-full h-full bg-[#f8fafc] rounded-[42px] overflow-hidden flex flex-col">
+
+            {/* Status bar */}
+            <div className="bg-white shrink-0 px-4 pt-3 pb-1 flex items-center justify-between relative">
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-[60px] h-[18px] bg-[#0f172a] rounded-full z-10" />
+              <span className="text-[8px] font-bold text-slate-300">9:41</span>
+              <span className="text-[8px] font-bold text-slate-300">5G ▪▪▪</span>
             </div>
-            <div className="flex-1 px-4 pt-3 pb-7 overflow-hidden">
+
+            {/* App header */}
+            <div className="bg-white border-b border-slate-100 px-4 py-2 shrink-0 flex items-center justify-between">
+              <span className="text-[10px] font-black text-[#0f2d3d] tracking-wide">ANALYMO</span>
+              <span className="text-[8px] font-bold bg-[#2a7d9c]/10 text-[#2a7d9c] px-2 py-0.5 rounded-full">Mon espace</span>
+            </div>
+
+            {/* Content — flex-1 remplit tout l'espace restant */}
+            <div className="flex-1 flex flex-col min-h-0">
               <AnimatePresence mode="wait">
                 {step === 0 && <PhaseUpload key="u" />}
                 {step === 1 && <PhaseScan key="s" />}
                 {step === 2 && <PhaseResult key="r" />}
               </AnimatePresence>
             </div>
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-16 h-1 rounded-full bg-slate-200" />
+
+            {/* Home indicator */}
+            <div className="bg-white shrink-0 py-2 flex justify-center border-t border-slate-50">
+              <div className="w-14 h-1 rounded-full bg-slate-200" />
+            </div>
+
           </div>
         </div>
       </motion.div>
@@ -222,32 +274,29 @@ function PhaseUpload() {
     return () => clearInterval(t);
   }, []);
   return (
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="h-full flex flex-col">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[11px] font-black text-[#0f172a] tracking-wide">ANALYMO</p>
-        <span className="text-[8px] font-bold bg-[#2a7d9c]/10 text-[#2a7d9c] px-2 py-0.5 rounded-full">Nouveau dossier</span>
-      </div>
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3">Documents importés</p>
-      <div className="flex flex-col gap-2 mb-4">
+    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+      className="flex-1 flex flex-col px-4 py-4">
+      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3">Documents chargés</p>
+      <div className="flex flex-col gap-2 mb-auto">
         {["PV AG 2024.pdf","Règlement copro.pdf","Diagnostics.pdf"].map((f,i)=>(
           <motion.div key={f} initial={{opacity:0,x:-10}} animate={{opacity:1,x:0}} transition={{delay:i*0.25}}
-            className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+            className="flex items-center gap-2 p-2.5 rounded-xl bg-white border border-slate-100 shadow-sm">
             <FileText size={11} className="text-[#2a7d9c] shrink-0" />
             <span className="text-[10px] text-slate-700 font-semibold flex-1 truncate">{f}</span>
             <CheckCircle size={11} className="text-green-500 shrink-0" />
           </motion.div>
         ))}
       </div>
-      <div className="mt-auto">
+      <div className="mt-4">
         <div className="flex justify-between mb-1.5">
           <span className="text-[9px] text-slate-400 font-medium">Préparation...</span>
           <span className="text-[9px] font-bold text-[#2a7d9c]">{prog}%</span>
         </div>
-        <div className="h-1.5 rounded-full bg-slate-100">
+        <div className="h-1.5 rounded-full bg-slate-200">
           <motion.div className="h-full rounded-full bg-gradient-to-r from-[#2a7d9c] to-[#0f2d3d]"
             animate={{ width: `${prog}%` }} transition={{ duration: 0.3 }} />
         </div>
-        <p className="text-[8px] text-slate-300 mt-2 text-center italic">Lancement de l'analyse...</p>
+        <p className="text-[8px] text-slate-400 mt-2 text-center italic">Lancement du traitement...</p>
       </div>
     </motion.div>
   );
@@ -261,15 +310,16 @@ function PhaseScan() {
     return () => clearInterval(t);
   }, []);
   return (
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="h-full flex flex-col">
+    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+      className="flex-1 flex flex-col px-4 py-4">
       <div className="flex items-center justify-between mb-4">
-        <p className="text-[10px] font-black text-[#0f172a]">Analyse en cours</p>
+        <p className="text-[10px] font-black text-[#0f172a]">Traitement en cours</p>
         <div className="w-3.5 h-3.5 border-2 border-[#2a7d9c] border-t-transparent rounded-full animate-spin-slow" />
       </div>
       <div className="flex flex-col gap-2 flex-1">
         {tasks.map((t,i)=>(
           <motion.div key={t} initial={{opacity:0}} animate={{opacity:1}} transition={{delay:i*0.15}}
-            className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-all duration-500 ${i < done ? 'bg-green-50 border-green-100' : 'bg-slate-50 border-slate-100'}`}>
+            className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-all duration-500 ${i < done ? 'bg-green-50 border-green-100' : 'bg-white border-slate-100'}`}>
             {i < done
               ? <CheckCircle size={11} className="text-green-500 shrink-0" />
               : <motion.div animate={i === done ? {opacity:[1,0.2,1]} : {opacity:0.25}} transition={{duration:0.8,repeat:Infinity}}
@@ -285,12 +335,14 @@ function PhaseScan() {
 
 function PhaseResult() {
   return (
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="h-full flex flex-col">
+    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+      className="flex-1 flex flex-col px-4 py-4">
       <div className="flex items-center justify-between mb-3">
         <p className="text-[10px] font-black text-[#0f172a]">Rapport Analymo</p>
         <span className="text-[8px] font-bold bg-green-50 text-green-700 px-2 py-0.5 rounded-full">✓ Terminé</span>
       </div>
-      <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 border border-slate-100 mb-3">
+      {/* Score + adresse */}
+      <div className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-slate-100 shadow-sm mb-3">
         <div className="relative w-14 h-14 shrink-0">
           <svg className="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
             <circle cx="28" cy="28" r="22" fill="none" stroke="#f1f5f9" strokeWidth="4" />
@@ -304,20 +356,21 @@ function PhaseResult() {
           </div>
         </div>
         <div>
-          <p className="text-[9px] font-black text-[#0f172a]">Globalement sain</p>
+          <p className="text-[9px] font-black text-[#0f172a] mb-0.5">Globalement sain</p>
           <span className="text-[8px] font-bold bg-[#2a7d9c]/10 text-[#2a7d9c] px-1.5 py-0.5 rounded-full">Recommandé ✓</span>
-          <p className="text-[8px] text-slate-400 mt-0.5">12 rue des Lilas, Lyon</p>
+          <p className="text-[8px] text-slate-400 mt-1">12 rue des Lilas, Lyon</p>
         </div>
       </div>
+      {/* Points clés */}
       <div className="flex flex-col gap-1.5 flex-1">
         {[
           {icon:CheckCircle,c:"text-green-500",bg:"bg-green-50",border:"border-green-100",t:"Finances saines",s:"Fonds travaux bien dotés"},
           {icon:AlertTriangle,c:"text-amber-500",bg:"bg-amber-50",border:"border-amber-100",t:"Toiture prévue 2026",s:"Estimé ~4 200€/lot"},
           {icon:CheckCircle,c:"text-green-500",bg:"bg-green-50",border:"border-green-100",t:"Aucun impayé",s:"Copro bien gérée"},
-          {icon:TrendingUp,c:"text-[#2a7d9c]",bg:"bg-blue-50",border:"border-blue-100",t:"Charges : 180€/mois",s:"Dans la moyenne"},
+          {icon:TrendingUp,c:"text-[#2a7d9c]",bg:"bg-white",border:"border-slate-100",t:"Charges : 180€/mois",s:"Dans la moyenne"},
         ].map((it,i)=>(
           <motion.div key={i} initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} transition={{delay:0.7+i*0.12}}
-            className={`flex items-center gap-2 p-1.5 rounded-lg ${it.bg} border ${it.border}`}>
+            className={`flex items-center gap-2 p-2 rounded-lg ${it.bg} border ${it.border}`}>
             <it.icon size={10} className={`${it.c} shrink-0`} />
             <div className="min-w-0">
               <p className="text-[9px] font-bold text-[#0f172a] truncate">{it.t}</p>
@@ -327,7 +380,7 @@ function PhaseResult() {
         ))}
       </div>
       <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:1.5}}
-        className="mt-2 w-full py-2 rounded-xl bg-[#0f2d3d] text-white text-[9px] font-bold text-center flex items-center justify-center gap-1.5">
+        className="mt-3 w-full py-2.5 rounded-xl bg-[#0f2d3d] text-white text-[9px] font-bold text-center flex items-center justify-center gap-1.5">
         <Download size={9} /> Télécharger le rapport PDF
       </motion.div>
     </motion.div>
@@ -435,7 +488,7 @@ function HowItWorksSection() {
     },
     {
       n: "02", I: Sparkles, color: "#0f2d3d", bg: "rgba(15,45,61,0.08)",
-      title: "Notre IA lit tout",
+      title: "Notre outil lit tout",
       desc: "Chaque page analysée, chaque risque détecté, chaque charge estimée. Pas de jargon, pas de configuration.",
       tag: "< 30 secondes*",
     },
@@ -722,74 +775,79 @@ function TestimonialsSection() {
 
 /* ═══ CTA FINAL ═════════════════════════════════════════════ */
 function CtaFinal() {
+  const included = [
+    "Score global /10 avec recommandation",
+    "Travaux votés + estimation financière",
+    "Santé financière de la copropriété",
+    "Procédures judiciaires & impayés",
+    "Rapport PDF téléchargeable",
+    "Crédits sans date d'expiration",
+  ];
   return (
-    <section className="py-16 md:py-28 px-4 md:px-6 bg-[#f4f7f9]">
+    <section className="py-16 md:py-24 px-4 md:px-6 bg-white">
       <div className="max-w-4xl mx-auto">
         <Reveal>
-          <div className="relative rounded-2xl md:rounded-3xl bg-[#0f2d3d] overflow-hidden shadow-2xl">
-            <div className="absolute inset-0 pointer-events-none">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[#2a7d9c]/15 blur-[80px] rounded-full" />
-              <div className="absolute bottom-0 right-0 w-[300px] h-[200px] bg-[#2a7d9c]/8 blur-[60px] rounded-full" />
-            </div>
+          <div className="rounded-2xl md:rounded-3xl overflow-hidden" style={{ background: "linear-gradient(135deg, #0f2d3d 0%, #1a4a5e 100%)" }}>
 
-            <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-0">
-              {/* Gauche */}
-              <div className="p-8 md:p-12 lg:p-14">
-                <p className="text-[#2a7d9c] text-xs font-bold uppercase tracking-widest mb-4">Analyse complète</p>
-                <h2 className="text-[clamp(20px,3.5vw,38px)] font-black text-white mb-4 leading-tight tracking-tight">
-                  Votre prochain bien mérite une analyse sérieuse.
-                </h2>
-                <p className="text-slate-400 text-sm md:text-base mb-8 leading-relaxed">
-                  Score détaillé, travaux, finances, procédures — tout ce qu'il faut savoir avant de signer. À partir de <span className="text-white font-bold">19,90€</span> · Sans abonnement.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Link to="/tarifs" className="flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-white text-[#0f2d3d] text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200">
-                    Lancer mon analyse <ArrowRight size={16} />
-                  </Link>
-                  <Link to="/exemple" className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border border-white/15 text-white/75 text-sm font-semibold hover:bg-white/8 transition-all duration-200">
-                    Voir un exemple
-                  </Link>
+            {/* Bande verte discrète en haut */}
+            <div className="h-1 w-full" style={{ background: "linear-gradient(90deg, #4ade80 0%, #2a7d9c 100%)" }} />
+
+            <div className="p-8 md:p-12 lg:p-14">
+              {/* Haut : titre centré */}
+              <div className="text-center mb-10">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/8 mb-5">
+                  <div className="w-2 h-2 rounded-full bg-[#4ade80]" />
+                  <span className="text-white/70 text-xs font-semibold tracking-wide">Analyse complète</span>
                 </div>
+                <h2 className="text-[clamp(22px,4vw,42px)] font-black text-white mb-3 leading-tight">
+                  Prenez votre décision<br />en toute clarté.
+                </h2>
+                <p className="text-white/50 text-sm md:text-base max-w-xl mx-auto leading-relaxed">
+                  Notre outil lit vos documents immobiliers et vous donne un rapport complet avant de signer. À partir de <span className="text-white font-bold">19,90€</span>, sans abonnement.
+                </p>
               </div>
 
-              {/* Droite */}
-              <div className="border-t lg:border-t-0 lg:border-l border-white/8 p-8 md:p-12 lg:p-14 flex flex-col justify-center">
-                <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-4">Inclus dans l'analyse complète</p>
-                {[
-                  "Score global /10 avec recommandation",
-                  "Travaux votés + estimation financière",
-                  "Santé financière de la copropriété",
-                  "Procédures judiciaires & impayés",
-                  "Rapport PDF téléchargeable",
-                  "Crédits sans date d'expiration",
-                ].map((item, i) => (
-                  <motion.div key={i} initial={{opacity:0,x:10}} whileInView={{opacity:1,x:0}} viewport={{once:true}} transition={{delay:i*0.07}}
-                    className="flex items-center gap-3 py-2.5 border-b border-white/6 last:border-0">
-                    <div className="w-5 h-5 rounded-full bg-[#2a7d9c]/30 flex items-center justify-center shrink-0">
-                      <Check size={11} className="text-[#2a7d9c]" />
+              {/* Milieu : grille de features */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-10">
+                {included.map((item, i) => (
+                  <motion.div key={i} initial={{opacity:0,y:8}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*0.07}}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/6 hover:bg-white/10 transition-colors">
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: "rgba(74,222,128,0.15)" }}>
+                      <Check size={11} className="text-[#4ade80]" />
                     </div>
                     <span className="text-sm text-white/80 font-medium">{item}</span>
                   </motion.div>
                 ))}
               </div>
-            </div>
 
-            {/* Barre prix */}
-            <div className="relative border-t border-white/8 px-8 md:px-14 py-5 flex flex-wrap items-center justify-between gap-4 bg-white/4">
-              <div className="flex flex-wrap gap-6 md:gap-10">
-                {[
-                  { label: "Analyse simple", price: "4,90€", sub: "1 document" },
-                  { label: "Analyse complète", price: "19,90€", sub: "Docs illimités" },
-                  { label: "Pack 2 biens", price: "29,90€", sub: "2 crédits" },
-                ].map((p, i) => (
-                  <div key={i}>
-                    <p className="text-white/40 text-[10px] font-bold uppercase tracking-wider">{p.label}</p>
-                    <p className="text-white font-black text-base md:text-lg leading-tight">{p.price}</p>
-                    <p className="text-white/30 text-[10px]">{p.sub}</p>
-                  </div>
-                ))}
+              {/* Bas : boutons + tarifs */}
+              <div className="flex flex-col items-center gap-6">
+                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                  <Link to="/tarifs"
+                    className="flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-sm md:text-base font-bold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl"
+                    style={{ background: "linear-gradient(135deg, #4ade80 0%, #22c55e 100%)", color: "#0f2d3d" }}>
+                    Lancer mon analyse <ArrowRight size={16} />
+                  </Link>
+                  <Link to="/exemple"
+                    className="flex items-center justify-center gap-2 px-7 py-4 rounded-xl border border-white/15 text-white/70 text-sm md:text-base font-semibold hover:bg-white/8 hover:text-white transition-all duration-200">
+                    Voir un exemple
+                  </Link>
+                </div>
+                <div className="flex flex-wrap justify-center gap-6 md:gap-10">
+                  {[
+                    { label: "Simple", price: "4,90€", sub: "1 document" },
+                    { label: "Complète", price: "19,90€", sub: "Docs illimités" },
+                    { label: "Pack 2 biens", price: "29,90€", sub: "2 crédits" },
+                  ].map((p, i) => (
+                    <div key={i} className="text-center">
+                      <p className="text-white/35 text-[10px] font-bold uppercase tracking-wider mb-0.5">{p.label}</p>
+                      <p className="text-white font-black text-lg leading-tight">{p.price}</p>
+                      <p className="text-white/30 text-[10px]">{p.sub}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-white/25 text-xs italic text-center">* Pour documents PDF nativement numériques</p>
               </div>
-              <p className="text-white/25 text-xs italic">* Pour documents PDF nativement numériques</p>
             </div>
           </div>
         </Reveal>
