@@ -80,7 +80,7 @@ function HeroSection() {
       <div className="relative z-10 max-w-6xl mx-auto w-full">
 
         {/* MOBILE : titre + téléphone + boutons */}
-        <div className="flex flex-col items-center lg:hidden pt-2 pb-4">
+        <div className="flex flex-col items-center lg:hidden pt-8 pb-4">
           <motion.div variants={up} initial="hidden" animate="show" custom={0}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#2a7d9c]/25 bg-white text-[#1a5e78] text-sm font-semibold mb-5 shadow-sm">
             <span className="w-2 h-2 rounded-full bg-[#22c55e] shrink-0" style={{ animation: "pulse 2s ease-in-out infinite" }} />
@@ -89,8 +89,13 @@ function HeroSection() {
 
           <motion.h1 variants={up} initial="hidden" animate="show" custom={0.5}
             className="text-[clamp(26px,7vw,40px)] font-black leading-[1.06] tracking-[-0.03em] text-[#0f172a] mb-2 text-center px-2">
-            Vérifiez les éléments essentiels<br />
-            <span className="text-[#2a7d9c]">avant de signer.</span>
+            Vérifiez les éléments<br />
+            <span className="relative inline-block">
+              <span className="text-[#2a7d9c]">avant de signer.</span>
+              <motion.span
+                initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 1.0, duration: 1.4 }}
+                className="absolute -bottom-1 left-0 right-0 h-[3px] bg-[#2a7d9c]/30 rounded-full origin-left block" />
+            </span>
           </motion.h1>
 
           <motion.p variants={up} initial="hidden" animate="show" custom={0.8}
@@ -492,61 +497,57 @@ function SolutionSection() {
 /* ═══ HOW IT WORKS ══════════════════════════════════════════ */
 function HowItWorksSection() {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const inView = useInView(ref, { once: true, margin: "-60px" });
 
   const steps = [
     {
-      n: "1",
+      n: "01",
       color: "#2a7d9c",
-      colorLight: "rgba(42,125,156,0.10)",
-      colorBorder: "rgba(42,125,156,0.20)",
-      tag: "Étape 1",
+      bg: "rgba(42,125,156,0.08)",
+      border: "rgba(42,125,156,0.18)",
       title: "Déposez vos fichiers",
-      desc: "PV d'AG, règlement de copropriété, diagnostics, appels de charges. Glissez-déposez vos PDF en quelques secondes.",
+      desc: "PV d'AG, règlement de copropriété, diagnostics, appels de charges — glissez-déposez vos PDF.",
       icon: (
-        <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.8" stroke="currentColor" className="w-7 h-7">
+        <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" stroke="currentColor" className="w-6 h-6">
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-8m0 0-3 3m3-3 3 3M6.5 20h11A2.5 2.5 0 0 0 20 17.5v-11A2.5 2.5 0 0 0 17.5 4h-7L6 8.5V17.5A2.5 2.5 0 0 0 8.5 20Z" />
         </svg>
       ),
     },
     {
-      n: "2",
-      color: "#0f2d3d",
-      colorLight: "rgba(15,45,61,0.08)",
-      colorBorder: "rgba(15,45,61,0.15)",
-      tag: "Étape 2",
-      title: "Notre outil analyse tout",
-      desc: "Chaque page est lue, chaque risque détecté, chaque charge estimée. Automatique, rapide, sans jargon.",
+      n: "02",
+      color: "#2a7d9c",
+      bg: "rgba(42,125,156,0.08)",
+      border: "rgba(42,125,156,0.18)",
+      title: "Notre outil traite tout",
+      desc: "Chaque page lue, chaque risque détecté, chaque charge estimée. Rapide et automatique.",
       icon: (
-        <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.8" stroke="currentColor" className="w-7 h-7">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714a2.25 2.25 0 0 0 .659 1.591L19 14.5m-9.25 0 5.25 1.5M5 14.5l5.25 1.5m0 0v4.5m0-4.5 5.25-1.5" />
+        <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" stroke="currentColor" className="w-6 h-6">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
         </svg>
       ),
     },
     {
-      n: "3",
-      color: "#7c3aed",
-      colorLight: "rgba(124,58,237,0.08)",
-      colorBorder: "rgba(124,58,237,0.18)",
-      tag: "Étape 3",
-      title: "Rapport clair & complet",
-      desc: "Score /10, points forts, vigilances, impact financier, travaux votés. Tout ce qu'il faut savoir avant de signer.",
+      n: "03",
+      color: "#2a7d9c",
+      bg: "rgba(42,125,156,0.08)",
+      border: "rgba(42,125,156,0.18)",
+      title: "Rapport clair & actionnable",
+      desc: "Score /10, points de vigilance, travaux votés, impact financier. Disponible dans votre espace.",
       icon: (
-        <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.8" stroke="currentColor" className="w-7 h-7">
+        <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" stroke="currentColor" className="w-6 h-6">
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z" />
         </svg>
       ),
     },
     {
-      n: "4",
-      color: "#16a34a",
-      colorLight: "rgba(22,163,74,0.08)",
-      colorBorder: "rgba(22,163,74,0.20)",
-      tag: "Étape 4",
-      title: "Téléchargez & partagez",
-      desc: "Exportez votre rapport en PDF. Partagez-le avec votre agent, votre notaire ou votre banque en un clic.",
+      n: "04",
+      color: "#2a7d9c",
+      bg: "rgba(42,125,156,0.08)",
+      border: "rgba(42,125,156,0.18)",
+      title: "Téléchargez en PDF",
+      desc: "Exportez votre rapport complet et partagez-le avec votre agent, notaire ou banque.",
       icon: (
-        <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.8" stroke="currentColor" className="w-7 h-7">
+        <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" stroke="currentColor" className="w-6 h-6">
           <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
         </svg>
       ),
@@ -554,93 +555,90 @@ function HowItWorksSection() {
   ];
 
   return (
-    <section className="py-16 md:py-28 px-4 md:px-6 bg-[#0f2d3d] overflow-hidden">
+    <section className="py-16 md:py-24 px-4 md:px-6 bg-white">
       <div className="max-w-6xl mx-auto">
 
-        {/* Titre */}
-        <div className="text-center mb-12 md:mb-16">
-          <p className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.22em] mb-4">Comment ça marche</p>
-          <h2 className="text-[clamp(26px,5vw,56px)] font-black tracking-[-0.03em] leading-[1.08] text-white mb-4">
-            De vos documents à{' '}
-            <span className="text-[#4ade80]">votre décision.</span>
-          </h2>
-          <p className="text-base md:text-lg text-white/50 max-w-xl mx-auto">
-            Quatre étapes simples. Aucune formation nécessaire.
-          </p>
-        </div>
+        <SectionTitle label="Comment ça marche" title="Quatre étapes," accent="c'est tout." 
+          sub="Pas de formation, pas de jargon. Vous déposez vos fichiers — on fait le reste." />
 
-        {/* ── MOBILE : timeline verticale ── */}
+        {/* ── MOBILE : stepper vertical ── */}
         <div className="flex flex-col md:hidden" ref={ref}>
           {steps.map((s, i) => (
             <motion.div key={i}
-              initial={{ opacity: 0, x: -20 }}
+              initial={{ opacity: 0, x: -16 }}
               animate={inView ? { opacity: 1, x: 0 } : {}}
-              transition={{ delay: i * 0.15, duration: 0.5 }}
+              transition={{ delay: i * 0.12, duration: 0.45 }}
               className="flex gap-4">
-              {/* Trait + cercle */}
               <div className="flex flex-col items-center shrink-0">
-                <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 border"
-                  style={{ background: s.colorLight, borderColor: s.colorBorder, color: s.color }}>
-                  {s.icon}
+                {/* Cercle avec numéro */}
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border relative"
+                  style={{ background: s.bg, borderColor: s.border }}>
+                  <span className="text-sm font-black" style={{ color: s.color }}>{s.n}</span>
                 </div>
+                {/* Trait de connexion */}
                 {i < steps.length - 1 && (
-                  <motion.div className="w-px flex-1 min-h-[40px] my-2"
-                    style={{ background: `linear-gradient(to bottom, ${s.color}60, ${steps[i+1].color}30)` }}
-                    initial={{ scaleY: 0, originY: 0 }}
+                  <motion.div className="w-px min-h-[36px] flex-1 mt-1.5 mb-1.5 rounded-full"
+                    style={{ background: "linear-gradient(to bottom, rgba(42,125,156,0.3), rgba(42,125,156,0.05))" }}
+                    initial={{ scaleY: 0, transformOrigin: "top" }}
                     animate={inView ? { scaleY: 1 } : {}}
-                    transition={{ delay: i * 0.15 + 0.3, duration: 0.4 }} />
+                    transition={{ delay: i * 0.12 + 0.2, duration: 0.35 }} />
                 )}
               </div>
-              {/* Texte */}
-              <div className="pb-8 pt-1 flex-1">
-                <span className="text-[10px] font-bold uppercase tracking-widest mb-1 block" style={{ color: s.color }}>{s.tag}</span>
-                <h3 className="text-base font-bold text-white mb-1">{s.title}</h3>
-                <p className="text-sm text-white/50 leading-relaxed">{s.desc}</p>
+              <div className="pb-6 pt-1 flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <div style={{ color: s.color }}>{s.icon}</div>
+                  <h3 className="text-base font-bold text-[#0f172a]">{s.title}</h3>
+                </div>
+                <p className="text-sm text-slate-500 leading-relaxed">{s.desc}</p>
               </div>
             </motion.div>
           ))}
         </div>
 
-        {/* ── DESKTOP : timeline horizontale ── */}
+        {/* ── DESKTOP : 4 blocs reliés par un trait ── */}
         <div className="hidden md:block" ref={ref}>
-          {/* Numéros + trait de connexion */}
-          <div className="relative flex justify-between items-center mb-8 px-8">
-            {/* Trait animé de fond */}
-            <div className="absolute left-[60px] right-[60px] top-1/2 -translate-y-1/2 h-px bg-white/8" />
+          {/* Trait + icônes en haut */}
+          <div className="relative flex items-center justify-between mb-8 px-[56px]">
+            {/* Trait de fond gris */}
+            <div className="absolute inset-x-[56px] top-1/2 -translate-y-1/2 h-px bg-slate-200" />
+            {/* Trait animé teal */}
             <motion.div
-              className="absolute left-[60px] top-1/2 -translate-y-1/2 h-[2px] rounded-full"
-              style={{ background: "linear-gradient(90deg, #2a7d9c, #7c3aed, #16a34a)" }}
+              className="absolute left-[56px] top-1/2 -translate-y-1/2 h-[2px] rounded-full bg-[#2a7d9c]/40"
               initial={{ width: 0 }}
-              animate={inView ? { width: "calc(100% - 120px)" } : {}}
-              transition={{ duration: 1.4, delay: 0.3, ease: [0.22, 1, 0.36, 1] }} />
+              animate={inView ? { width: "calc(100% - 112px)" } : {}}
+              transition={{ duration: 1.2, delay: 0.2, ease: [0.22, 1, 0.36, 1] }} />
 
             {steps.map((s, i) => (
               <motion.div key={i}
-                initial={{ opacity: 0, scale: 0.5 }}
+                initial={{ opacity: 0, scale: 0.6 }}
                 animate={inView ? { opacity: 1, scale: 1 } : {}}
-                transition={{ delay: i * 0.18 + 0.2, duration: 0.4, ease: "backOut" }}
-                className="relative z-10 flex flex-col items-center gap-2">
-                {/* Cercle numéroté */}
-                <div className="w-14 h-14 rounded-2xl border-2 flex items-center justify-center shadow-lg"
-                  style={{ background: s.colorLight, borderColor: s.colorBorder, color: s.color }}>
+                transition={{ delay: i * 0.15 + 0.15, duration: 0.35, ease: "backOut" }}
+                className="relative z-10 flex flex-col items-center gap-2.5">
+                {/* Cercle */}
+                <div className="w-14 h-14 rounded-2xl border-2 flex items-center justify-center bg-white shadow-md"
+                  style={{ borderColor: s.border, color: s.color }}>
                   {s.icon}
                 </div>
-                {/* Numéro sous le cercle */}
-                <span className="text-xs font-black" style={{ color: s.color }}>{s.tag}</span>
+                {/* Numéro + label */}
+                <span className="text-xs font-black text-[#2a7d9c] bg-[#2a7d9c]/8 px-2.5 py-0.5 rounded-full">{s.n}</span>
               </motion.div>
             ))}
           </div>
 
-          {/* Cartes de texte en dessous */}
+          {/* Cartes de texte alignées sous chaque icône */}
           <div className="grid grid-cols-4 gap-5">
             {steps.map((s, i) => (
               <motion.div key={i}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={inView ? { opacity: 1, y: 0 } : {}}
-                transition={{ delay: i * 0.15 + 0.5, duration: 0.5 }}
-                className="rounded-2xl p-6 border border-white/6 bg-white/4 hover:bg-white/8 transition-colors duration-300">
-                <h3 className="text-base font-bold text-white mb-2">{s.title}</h3>
-                <p className="text-sm text-white/50 leading-relaxed">{s.desc}</p>
+                transition={{ delay: i * 0.12 + 0.4, duration: 0.45 }}
+                className="rounded-2xl p-6 bg-[#f4f7f9] border border-slate-100 hover:border-[#2a7d9c]/20 hover:bg-[#eef6fb] hover:-translate-y-1 transition-all duration-200 cursor-default">
+                <div className="flex items-center gap-2 mb-3" style={{ color: s.color }}>
+                  {s.icon}
+                  <span className="text-xs font-black text-[#2a7d9c]">{s.n}</span>
+                </div>
+                <h3 className="text-base font-bold text-[#0f172a] mb-2">{s.title}</h3>
+                <p className="text-sm text-slate-500 leading-relaxed">{s.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -648,7 +646,7 @@ function HowItWorksSection() {
 
         <Reveal className="text-center mt-10 md:mt-12">
           <Link to="/tarifs"
-            className="inline-flex items-center gap-2 px-7 md:px-10 py-3.5 md:py-4 rounded-2xl bg-white text-[#0f2d3d] text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200">
+            className="inline-flex items-center gap-2 px-7 md:px-10 py-3.5 md:py-4 rounded-2xl bg-[#0f2d3d] text-white text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
             Essayer maintenant — dès 4,90€ <ArrowRight size={16} />
           </Link>
         </Reveal>
