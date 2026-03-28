@@ -10,6 +10,7 @@ import {
   Download, CreditCard, Lock, Info, Star
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { PROMPT_ANALYSE_COMPLETE, PROMPT_ANALYSE_SIMPLE } from '../lib/prompts';
 
 /* ══════════════════════════════════════════
    TYPES
@@ -651,29 +652,7 @@ function NouvelleAnalyse() {
       }
       setProgress(50); setProgressMsg('Analyse IA en cours…');
       const isComplete = type === 'complete';
-      const systemPrompt = isComplete
-        ? `Tu es Analymo, expert en analyse de documents immobiliers français.
-Analyse les documents fournis et réponds UNIQUEMENT en JSON valide sans aucun texte avant ou après :
-{
-  "titre": "adresse complète du bien détectée dans les documents (ex: 12 rue de la Paix, 75002 Paris)",
-  "score": 7.5,
-  "recommandation": "Acheter",
-  "resume": "résumé de 2-3 phrases",
-  "points_forts": ["point 1", "point 2", "point 3"],
-  "points_vigilance": ["point 1", "point 2"],
-  "risques_financiers": "estimation des risques financiers",
-  "conclusion": "avis final Analymo en 2-3 phrases"
-}
-Les valeurs possibles pour recommandation : "Acheter", "Négocier", "Risqué", "Déconseillé".`
-        : `Tu es Analymo, expert en analyse de documents immobiliers français.
-Analyse le document fourni et réponds UNIQUEMENT en JSON valide sans aucun texte avant ou après :
-{
-  "titre": "nom descriptif du document analysé (ex: PV Assemblée Générale 2025 - Résidence Les Pins)",
-  "resume": "résumé de 2-3 phrases",
-  "points_forts": ["information clé 1", "information clé 2"],
-  "points_vigilance": ["point d'attention 1", "point d'attention 2"],
-  "conclusion": "ce qu'il faut retenir de ce document"
-}`;
+      const systemPrompt = isComplete ? PROMPT_ANALYSE_COMPLETE : PROMPT_ANALYSE_SIMPLE;
 
       setProgress(70); setProgressMsg('Génération du rapport…');
       const res = await fetch('https://api.anthropic.com/v1/messages', {
