@@ -54,11 +54,19 @@ export default function Footer() {
 
       {/* Bottom bar */}
       <div className="max-w-5xl mx-auto px-6 pb-5">
-        <div className="border-t border-white/10 pt-4 flex flex-col sm:flex-row justify-between gap-2">
-          <p className="text-xs text-white/30">© {new Date().getFullYear()} Analymo. Tous droits réservés.</p>
-          <p className="text-xs text-white/30">Outil d'aide à la décision, pas un cabinet de conseil.</p>
+        <div className="border-t border-white/10 pt-4 flex flex-col gap-2">
+          <p className="text-xs text-white/25 leading-relaxed">
+            ⚠️ Analymo est un outil d'aide à la lecture et à la compréhension de documents immobiliers. Les rapports générés sont fournis à titre informatif uniquement. Analymo n'est pas un cabinet d'expertise, de conseil juridique ou financier. Les résultats peuvent être incomplets ou contenir des inexactitudes — nous recommandons de consulter un professionnel qualifié avant toute décision d'achat.
+          </p>
+          <div className="flex flex-col sm:flex-row justify-between gap-1">
+            <p className="text-xs text-white/30">© {new Date().getFullYear()} Analymo. Tous droits réservés.</p>
+            <p className="text-xs text-white/20">Outil d'aide à la décision — pas un cabinet de conseil.</p>
+          </div>
         </div>
       </div>
+    </footer>
+  );
+}
     </footer>
   );
 }
