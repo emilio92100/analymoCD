@@ -95,7 +95,7 @@ const navItems = [
   { to: '/dashboard',                  icon: LayoutDashboard, label: 'Tableau de bord' },
   { to: '/dashboard/analyses',         icon: FileText,        label: 'Mes analyses' },
   { to: '/dashboard/compare',          icon: GitCompare,      label: 'Comparer mes biens' },
-  { to: '/tarifs',                     icon: CreditCard,      label: 'Tarifs' },
+  { to: '/dashboard/tarifs',            icon: CreditCard,      label: 'Tarifs' },
   { to: '/dashboard/compte',           icon: User,            label: 'Mon compte' },
   { to: '/dashboard/support',          icon: LifeBuoy,        label: 'Support / Aide' },
 ];
@@ -179,7 +179,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
           </div>
         </div>
         {credits.document === 0 && credits.complete === 0 && (
-          <Link to="/tarifs" onClick={onClose} style={{ display:'block', marginTop:8, fontSize:11, fontWeight:700, color:'#2a7d9c', textDecoration:'none', textAlign:'center' }}>+ Recharger des crédits</Link>
+          <Link to="/dashboard/tarifs" onClick={onClose} style={{ display:'block', marginTop:8, fontSize:11, fontWeight:700, color:'#2a7d9c', textDecoration:'none', textAlign:'center' }}>+ Recharger des crédits</Link>
         )}
       </div>
 
@@ -304,6 +304,7 @@ export default function DashboardPage() {
 
 function DashboardContent({ path }: { path:string }) {
   if (path === '/dashboard/nouvelle-analyse') return <NouvelleAnalyse/>;
+  if (path === '/dashboard/tarifs')           return <Tarifs/>;
   if (path === '/dashboard/analyses')          return <MesAnalyses/>;
   if (path === '/dashboard/compare')           return <Compare/>;
   if (path === '/dashboard/compte')            return <Compte/>;
@@ -405,7 +406,7 @@ function HomeView() {
               <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>19,90€ / crédit</div>
             </div>
           </div>
-          <Link to="/tarifs" style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.7)', textDecoration:'none', transition:'color 0.15s' }}
+          <Link to="/dashboard/tarifs" style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.7)', textDecoration:'none', transition:'color 0.15s' }}
             onMouseOver={e=>(e.currentTarget.style.color='#fff')} onMouseOut={e=>(e.currentTarget.style.color='rgba(255,255,255,0.7)')}>
             Recharger des crédits <ArrowRight size={12}/>
           </Link>
@@ -725,7 +726,7 @@ Analyse le document fourni et réponds UNIQUEMENT en JSON valide sans aucun text
         </button>
 
         {/* Analyse complète */}
-        <button onClick={()=>{ if(credits.complete>0){ setType('complete'); setStep('upload'); } else { window.location.href='/tarifs'; } }}
+        <button onClick={()=>{ if(credits.complete>0){ setType('complete'); setStep('upload'); } else { window.location.href='/dashboard/tarifs'; } }}
           style={{ padding:'28px 24px', borderRadius:20, border:'1.5px solid transparent', background:'linear-gradient(145deg, #0f2d3d, #1a5068)', cursor:'pointer', textAlign:'left', transition:'all 0.18s', position:'relative', overflow:'hidden', boxShadow:'0 4px 20px rgba(15,45,61,0.15)' }}
           onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 12px 40px rgba(15,45,61,0.28)'; el.style.transform='translateY(-2px)'; }}
           onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 4px 20px rgba(15,45,61,0.15)'; el.style.transform='translateY(0)'; }}>
@@ -754,7 +755,7 @@ Analyse le document fourni et réponds UNIQUEMENT en JSON valide sans aucun text
           { l:'Pack 2 biens', p:'29,90€', s:'2 crédits analyse complète', credits:'2 crédits complets' },
           { l:'Pack 3 biens', p:'39,90€', s:'3 crédits analyse complète', credits:'3 crédits complets' },
         ].map(pk=>(
-          <Link key={pk.l} to="/tarifs" style={{ textDecoration:'none' }}>
+          <Link key={pk.l} to="/dashboard/tarifs" style={{ textDecoration:'none' }}>
             <div style={{ background:'#fff', borderRadius:13, border:'1.5px solid #edf2f7', padding:'14px 18px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', transition:'all 0.15s' }}
               onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor='rgba(42,125,156,0.3)'; }}
               onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor='#edf2f7'; }}>
@@ -1156,6 +1157,257 @@ function Support() {
             </button>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   TARIFS — onglet interne dashboard
+══════════════════════════════════════════ */
+function Tarifs() {
+  const credits = MOCK_CREDITS;
+  const [loading, setLoading] = useState<string|null>(null);
+
+  const handleAcheter = (planId: string) => {
+    setLoading(planId);
+    // TODO: connecter Stripe ici
+    setTimeout(() => {
+      setLoading(null);
+      alert('Redirection vers Stripe… (à connecter)');
+    }, 800);
+  };
+
+  const plans = [
+    {
+      id: 'document',
+      label: 'Analyse document',
+      price: '4,99',
+      priceLabel: '4,99€',
+      description: 'Un seul document analysé en détail.',
+      credits: '1 crédit analyse simple',
+      creditsDetail: '1 crédit',
+      type: 'document' as keyof Credits,
+      icon: FileText,
+      color: '#2a7d9c',
+      bg: 'rgba(42,125,156,0.08)',
+      features: [
+        'Analyse d\'un seul document',
+        'PV d\'AG, règlement, diagnostic ou appel de charges',
+        'Résumé + points forts + vigilances',
+        'Rapport disponible en < 2 min',
+      ],
+    },
+    {
+      id: 'complete',
+      label: 'Analyse complète',
+      price: '19,90',
+      priceLabel: '19,90€',
+      description: 'Tous les documents d\'un bien analysés ensemble.',
+      credits: '1 crédit analyse complète',
+      creditsDetail: '1 crédit',
+      type: 'complete' as keyof Credits,
+      icon: ShieldCheck,
+      color: '#0f2d3d',
+      bg: 'rgba(15,45,61,0.08)',
+      popular: true,
+      features: [
+        'Documents illimités pour un bien',
+        'Score global /10',
+        'Recommandation : Acheter / Négocier / Risqué',
+        'Risques financiers estimés',
+        'Avis Analymo complet',
+        'Rapport disponible en < 2 min',
+      ],
+    },
+    {
+      id: 'pack2',
+      label: 'Pack 2 biens',
+      price: '29,90',
+      priceLabel: '29,90€',
+      description: '2 analyses complètes pour comparer 2 biens.',
+      credits: '2 crédits analyse complète',
+      creditsDetail: '2 crédits',
+      type: 'complete' as keyof Credits,
+      icon: GitCompare,
+      color: '#1a5068',
+      bg: 'rgba(26,80,104,0.08)',
+      features: [
+        'Tout ce qui est inclus dans Analyse complète ×2',
+        'Comparaison côte à côte des 2 biens',
+        'Verdict Analymo : quel bien choisir',
+        '14,95€ par analyse (économie de 5€)',
+      ],
+    },
+    {
+      id: 'pack3',
+      label: 'Pack 3 biens',
+      price: '39,90',
+      priceLabel: '39,90€',
+      description: '3 analyses complètes pour comparer 3 biens.',
+      credits: '3 crédits analyse complète',
+      creditsDetail: '3 crédits',
+      type: 'complete' as keyof Credits,
+      icon: BarChart2,
+      color: '#7c3aed',
+      bg: 'rgba(124,58,237,0.08)',
+      features: [
+        'Tout ce qui est inclus dans Analyse complète ×3',
+        'Comparaison des 3 biens côte à côte',
+        'Classement final des biens',
+        'Recommandation Analymo définitive',
+        '13,30€ par analyse (économie de 8€)',
+      ],
+    },
+  ];
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:28 }}>
+
+      {/* Header */}
+      <div>
+        <h1 style={{ fontSize:'clamp(20px,3vw,28px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:6 }}>
+          Tarifs
+        </h1>
+        <p style={{ fontSize:14, color:'#64748b' }}>
+          Achetez des crédits selon votre besoin. Ils ne expirent jamais.
+        </p>
+      </div>
+
+      {/* Crédits actuels */}
+      <div style={{ background:'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderRadius:16, border:'1px solid rgba(42,125,156,0.15)', padding:'18px 22px', display:'flex', alignItems:'center', gap:20, flexWrap:'wrap' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <div style={{ width:38, height:38, borderRadius:10, background:'rgba(42,125,156,0.12)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <CreditCard size={18} style={{ color:'#2a7d9c' }}/>
+          </div>
+          <span style={{ fontSize:14, fontWeight:700, color:'#0f2d3d' }}>Vos crédits actuels :</span>
+        </div>
+        <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+          <span style={{ padding:'6px 14px', borderRadius:9, background:'#fff', border:'1.5px solid rgba(42,125,156,0.2)', fontSize:13, fontWeight:700, color:'#2a7d9c' }}>
+            {credits.document} crédit{credits.document > 1 ? 's' : ''} simple
+          </span>
+          <span style={{ padding:'6px 14px', borderRadius:9, background:'#fff', border:'1.5px solid rgba(15,45,61,0.15)', fontSize:13, fontWeight:700, color:'#0f2d3d' }}>
+            {credits.complete} crédit{credits.complete > 1 ? 's' : ''} complet{credits.complete > 1 ? 's' : ''}
+          </span>
+        </div>
+      </div>
+
+      {/* Grille plans */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:16 }}>
+        {plans.map(plan => {
+          const Icon = plan.icon;
+          const currentCredits = credits[plan.type];
+          return (
+            <div key={plan.id} style={{
+              background:'#fff',
+              borderRadius:20,
+              border: plan.popular ? '2px solid #0f2d3d' : '1.5px solid #edf2f7',
+              padding:'26px 22px',
+              display:'flex', flexDirection:'column',
+              position:'relative',
+              overflow:'hidden',
+              boxShadow: plan.popular ? '0 8px 32px rgba(15,45,61,0.12)' : '0 2px 8px rgba(0,0,0,0.04)',
+              transition:'transform 0.2s, box-shadow 0.2s',
+            }}
+              onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.transform='translateY(-3px)'; el.style.boxShadow=plan.popular?'0 14px 40px rgba(15,45,61,0.18)':'0 8px 24px rgba(0,0,0,0.08)'; }}
+              onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.transform='translateY(0)'; el.style.boxShadow=plan.popular?'0 8px 32px rgba(15,45,61,0.12)':'0 2px 8px rgba(0,0,0,0.04)'; }}
+            >
+              {/* Badge populaire */}
+              {plan.popular && (
+                <div style={{ position:'absolute', top:-1, left:'50%', transform:'translateX(-50%)', background:'#0f2d3d', color:'#fff', fontSize:10, fontWeight:800, padding:'4px 16px', borderRadius:'0 0 10px 10px', letterSpacing:'0.06em', whiteSpace:'nowrap' }}>
+                  ⭐ LE PLUS POPULAIRE
+                </div>
+              )}
+
+              {/* Icone + label */}
+              <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:18, marginTop: plan.popular ? 12 : 0 }}>
+                <div style={{ width:44, height:44, borderRadius:12, background:plan.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  <Icon size={20} style={{ color:plan.color }}/>
+                </div>
+                <div>
+                  <div style={{ fontSize:15, fontWeight:800, color:'#0f172a' }}>{plan.label}</div>
+                  <div style={{ fontSize:11, fontWeight:700, color:plan.color, marginTop:2 }}>{plan.creditsDetail}</div>
+                </div>
+              </div>
+
+              {/* Prix */}
+              <div style={{ marginBottom:16 }}>
+                <div style={{ display:'flex', alignItems:'baseline', gap:4 }}>
+                  <span style={{ fontSize:38, fontWeight:900, color:'#0f172a', letterSpacing:'-0.03em', lineHeight:1 }}>{plan.price}€</span>
+                </div>
+                <div style={{ fontSize:12, color:'#94a3b8', marginTop:4 }}>{plan.description}</div>
+              </div>
+
+              {/* Features */}
+              <div style={{ flex:1, display:'flex', flexDirection:'column', gap:8, marginBottom:22 }}>
+                {plan.features.map((f, i) => (
+                  <div key={i} style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
+                    <CheckCircle size={14} style={{ color:'#16a34a', flexShrink:0, marginTop:2 }}/>
+                    <span style={{ fontSize:13, color:'#374151', lineHeight:1.45 }}>{f}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Crédits dispo + CTA */}
+              {currentCredits > 0 && (
+                <div style={{ marginBottom:10, fontSize:12, fontWeight:600, color:'#16a34a', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:8, padding:'6px 12px', textAlign:'center' }}>
+                  ✓ Vous avez déjà {currentCredits} crédit{currentCredits>1?'s':''} disponible{currentCredits>1?'s':''}
+                </div>
+              )}
+              <button
+                onClick={()=>handleAcheter(plan.id)}
+                disabled={loading === plan.id}
+                style={{
+                  width:'100%', padding:'13px', borderRadius:12, border:'none',
+                  background: plan.popular
+                    ? 'linear-gradient(135deg, #0f2d3d, #1a5068)'
+                    : `linear-gradient(135deg, ${plan.color}, ${plan.color}dd)`,
+                  color:'#fff', fontSize:14, fontWeight:800, cursor:'pointer',
+                  boxShadow:`0 4px 16px ${plan.color}30`,
+                  display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                  opacity: loading === plan.id ? 0.7 : 1,
+                  transition:'all 0.15s',
+                }}
+              >
+                {loading === plan.id
+                  ? <><div style={{ width:16, height:16, borderRadius:'50%', border:'2px solid rgba(255,255,255,0.4)', borderTopColor:'#fff', animation:'spin 0.8s linear infinite' }}/> Traitement…</>
+                  : <>{currentCredits > 0 ? 'Racheter' : 'Acheter'} — {plan.priceLabel}</>
+                }
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Garanties */}
+      <div style={{ background:'#fff', borderRadius:14, border:'1px solid #edf2f7', padding:'16px 22px', display:'flex', gap:24, flexWrap:'wrap', alignItems:'center', justifyContent:'center' }}>
+        {[
+          ['🔒', 'Paiement sécurisé Stripe'],
+          ['♾️', 'Crédits sans expiration'],
+          ['⚡', 'Rapport en < 2 minutes'],
+          ['🗑️', 'Documents supprimés après analyse'],
+        ].map(([icon, txt]) => (
+          <div key={txt as string} style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:'#64748b', fontWeight:500 }}>
+            <span style={{ fontSize:16 }}>{icon}</span>{txt}
+          </div>
+        ))}
+      </div>
+
+      {/* FAQ rapide */}
+      <div style={{ background:'#f8fafc', borderRadius:16, border:'1px solid #edf2f7', padding:'22px 24px' }}>
+        <h3 style={{ fontSize:15, fontWeight:800, color:'#0f172a', marginBottom:16 }}>Questions fréquentes</h3>
+        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+          {[
+            ['Les crédits expirent-ils ?', 'Non, vos crédits sont valables sans limitation de durée.'],
+            ['Puis-je utiliser mes crédits sur plusieurs biens ?', 'Oui, chaque crédit correspond à une analyse indépendante.'],
+            ['Puis-je acheter plusieurs fois ?', 'Oui, vos crédits s\'accumulent. Achetez autant que vous le souhaitez.'],
+          ].map(([q, a]) => (
+            <div key={q as string}>
+              <div style={{ fontSize:13, fontWeight:700, color:'#0f172a', marginBottom:3 }}>— {q}</div>
+              <div style={{ fontSize:13, color:'#64748b', lineHeight:1.6 }}>{a}</div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
