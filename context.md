@@ -207,3 +207,12 @@ src/
 - [ ] Coder l'API `/api/checkout` (Stripe)
 - [ ] Google OAuth branding (publier app Google)
 - [ ] Page admin (voir tous les clients/analyses)
+
+- [ ] ### Templates emails détail :
+- **Confirm sign up** : design premium avec logo 72px centré, header dégradé teal→navy, bouton "Activer mon compte", 3 features en tableau HTML (compatible mobile), expiration 24h
+- **Reset password** : même design, bouton "Réinitialiser mon mot de passe", message si lien expiré
+- Logo dans les mails : `https://appdemo.analymo.fr/logo.png`
+- Lien de confirmation redirige vers `/auth/callback` (page animation Analymo)
+- Lien reset password redirige vers `/auth/reset-password`
+- Minimum interval entre emails : 60 secondes (config Supabase)
+- Si renvoi trop tôt → message "Attendez 60 secondes"
