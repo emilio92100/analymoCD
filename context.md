@@ -1,37 +1,39 @@
 # ANALYMO — Contexte Projet
 > **Colle ce fichier en début de conversation Claude pour reprendre le contexte.**
+> Dernière mise à jour : 28 mars 2026
 
 ---
 
 ## 🧑 Profil développeur
 - Débutant en développement
 - Modifie les fichiers directement sur **GitHub.com** (crayon ✏️ → Ctrl+A → colle → Commit)
+- Pour créer un nouveau fichier : GitHub → dossier cible → "Add file" → "Create new file"
 - Vercel redéploie automatiquement après chaque push GitHub
 - Claude peut cloner le repo directement : `https://github.com/emilio92100/analymoCD.git`
-- **Important** : toujours cibler uniquement la ligne concernée, ne jamais réécrire tout un fichier
-- Toujours re-cloner le repo avant de chercher une ligne (git clone est gratuit en tokens)
+- **Important** : Claude doit toujours re-cloner avant de modifier, puis donner le fichier COMPLET à coller
 
 ---
 
 ## 🏠 Le produit
-**Analymo** — SaaS d'analyse de documents immobiliers (PV d'AG, règlements copro, diagnostics, appels de charges). Rapport clair avec scores, risques, recommandations en moins de 2 minutes.
+**Analymo** — SaaS d'analyse de documents immobiliers (PV d'AG, règlements copro, diagnostics, appels de charges). Rapport clair avec score /10, risques, recommandations en moins de 2 minutes.
 
 **Cible :** Acheteurs particuliers (principal), notaires, agents, syndics, marchands de biens.
 
-**Prix :**
-- 4,99€ — Analyse Document (1 seul document, rapport détaillé)
-- 19,90€ — Analyse Complète ⭐ (multi-documents illimités, score /10, risques, travaux, impact financier, avis Analymo)
-- 29,90€ — Pack 2 Biens (2 analyses complètes + comparaison côte à côte + avis "quel bien choisir")
-- 39,90€ — Pack 3 Biens (3 analyses complètes + comparaison + classement + recommandation finale)
+**Logique crédits / prix :**
+- 4,99€ → 1 crédit analyse simple (1 seul document)
+- 19,90€ → 1 crédit analyse complète
+- 29,90€ → 2 crédits analyse complète
+- 39,90€ → 3 crédits analyse complète
+- Les crédits ne expirent jamais et s'accumulent
 
 **Fonctionnement :**
-1. Client paie d'abord
-2. Upload ses documents (illimités pour analyse complète, 1 seul pour 4,99€)
-3. L'IA détecte automatiquement le nom du doc (4,99€) ou l'adresse du bien (19,90€+)
-4. Rapport généré en moins de 2 minutes
-5. Documents supprimés après analyse, rapport conservé dans le dashboard
-6. Rapport visible en ligne + téléchargeable en PDF
-7. Comparaison uniquement disponible pour analyses complètes (pack 2 et 3)
+1. Client paie (Stripe — pas encore branché)
+2. Upload ses documents (1 pour simple, illimités pour complète)
+3. L'IA détecte le nom du doc (4,99€) ou l'adresse complète du bien (19,90€+)
+4. Rapport généré en moins de 2 minutes via API Claude
+5. Rapport sauvegardé dans Supabase, visible dans le dashboard
+6. Rapport téléchargeable en PDF
+7. Comparaison uniquement disponible pour les analyses complètes
 
 ---
 
@@ -39,194 +41,282 @@
 | Technologie | Usage |
 |---|---|
 | React 18 + Vite + TypeScript | Frontend |
-| Tailwind CSS v3 | Styles responsive (sm: md: lg:) |
-| Framer Motion | Animations (layoutId pill navbar, animations scroll) |
+| Tailwind CSS v3 | Styles |
+| Framer Motion | Animations |
 | React Router DOM | Navigation |
-| Supabase | Auth + Base de données + Storage |
-| Stripe | Paiements — pas encore configuré |
+| Supabase | Auth + Base de données |
+| Claude API (claude-sonnet-4-20250514) | Analyse IA des documents |
+| Stripe | Paiements — **pas encore configuré** |
 | Vercel | Déploiement auto depuis GitHub |
-| Mailjet | SMTP emails (notification@analymo.fr → reply: hello@analymo.fr) |
+| Mailjet | SMTP emails (SPF + DKIM validés ✅) |
 
 **Police :** DM Sans
+**Couleurs :** `--brand-teal: #2a7d9c` / `--brand-navy: #0f2d3d` / `--brand-gold: #f0a500`
+**Fond dashboard :** `#f5f9fb` (bleuté clair)
+**Sidebar dashboard :** blanche `#fff` avec bordure légère `#edf2f7`
+**Style général dashboard :** moderne startup, cartes blanches, fond bleuté, pas de dark mode
 
 ---
 
 ## 📁 Structure du projet
 ```
 src/
-├── App.tsx                          ← routing + SessionManager (gestion session 1h)
-├── index.css                        ← variables CSS globales
+├── App.tsx                        ← routing complet + SessionManager 1h
+├── index.css                      ← variables CSS globales
 ├── components/layout/
-│   ├── Navbar.tsx                   ← navbar dynamique (Mon espace si connecté)
-│   └── Footer.tsx                   ← footer dark navy responsive
+│   ├── Navbar.tsx                 ← navbar dynamique (Mon espace si connecté)
+│   └── Footer.tsx                 ← footer dark navy
+├── lib/
+│   ├── supabase.ts                ← client Supabase
+│   ├── analyses.ts                ← fonctions CRUD analyses Supabase ✅ NOUVEAU
+│   └── prompts.ts                 ← prompts IA Claude ✅ NOUVEAU
 ├── pages/
-│   ├── HomePage.tsx                 ← landing page principale
-│   ├── TarifsPage.tsx               ← page tarifs (carte 19,90€ animée)
-│   ├── ExemplePage.tsx              ← exemple rapport interactif
-│   ├── ContactPage.tsx              ← formulaire contact
-│   ├── LoginPage.tsx                ← connexion email/password + Google
-│   ├── SignupPage.tsx               ← inscription avec vérification email
-│   ├── DashboardPage.tsx            ← dashboard utilisateur (données fictives pour l'instant)
-│   ├── AuthCallbackPage.tsx         ← /auth/callback (confirmation email avec animation)
-│   ├── ForgotPasswordPage.tsx       ← /mot-de-passe-oublie
-│   └── ResetPasswordPage.tsx        ← /auth/reset-password
-├── lib/supabase.ts                  ← client Supabase (vraies clés dans Vercel)
-└── types/index.ts                   ← types + PRICING_PLANS
+│   ├── HomePage.tsx               ← landing page principale
+│   ├── TarifsPage.tsx             ← page tarifs PUBLIQUE (accessible sans login)
+│   ├── ExemplePage.tsx            ← exemple rapport interactif
+│   ├── ContactPage.tsx            ← formulaire contact
+│   ├── LoginPage.tsx              ← connexion email/password + Google
+│   ├── SignupPage.tsx             ← inscription avec vérification email
+│   ├── DashboardPage.tsx          ← dashboard complet ✅ ENTIÈREMENT REFAIT
+│   ├── RapportPage.tsx            ← page rapport avec 4 onglets ✅ NOUVEAU
+│   ├── AuthCallbackPage.tsx       ← /auth/callback
+│   ├── ForgotPasswordPage.tsx     ← /mot-de-passe-oublie
+│   └── ResetPasswordPage.tsx      ← /auth/reset-password
 ```
 
 ---
 
-## 🎨 Design system
-**Style :** Modern SaaS premium — Stripe / Linear / Vercel  
-**Fond :** `#f4f7f9` (gris très clair) + sections blanches alternées  
-**Pas de dark mode**
-
-**Couleurs :**
+## 🗺 Routes (App.tsx) — toutes les routes existantes
 ```
---brand-teal: #2a7d9c
---brand-navy: #0f2d3d
---brand-gold: #f0a500
+/                           → HomePage (public)
+/tarifs                     → TarifsPage (public)
+/contact                    → ContactPage (public)
+/exemple                    → ExemplePage (public)
+/connexion                  → LoginPage
+/inscription                → SignupPage
+/auth/callback              → AuthCallbackPage
+/mot-de-passe-oublie        → ForgotPasswordPage
+/auth/reset-password        → ResetPasswordPage
+/dashboard                  → DashboardPage
+/dashboard/nouvelle-analyse → DashboardPage
+/dashboard/analyses         → DashboardPage
+/dashboard/compare          → DashboardPage
+/dashboard/compte           → DashboardPage
+/dashboard/support          → DashboardPage
+/dashboard/tarifs           → DashboardPage ← INTERNE, ne redirige PAS vers /tarifs
+/dashboard/rapport?id=XXX   → RapportPage ✅ NOUVEAU
 ```
 
 ---
 
-## ✅ État actuel des fichiers
+## 📊 Dashboard (DashboardPage.tsx) — détail complet
 
-### Navbar.tsx
-- Pill glissante avec `layoutId="nav-pill"` Framer Motion
-- Si connecté → bouton **"Mon espace"** avec dropdown (Mon dashboard + Se déconnecter)
-- Si non connecté → Connexion + S'inscrire
-- Mobile : menu overlay animé avec même logique connecté/non connecté
-- Détecte la session via `supabase.auth.getSession()` + `onAuthStateChange`
+### Sidebar blanche
+- Logo Analymo cliquable → /
+- Bouton "Nouvelle analyse" teal gradient en haut
+- Navigation : Tableau de bord / Mes analyses / Comparer mes biens / Tarifs / Mon compte / Support / Aide
+- Mini-widget crédits : 2 cases (SIMPLE / COMPLÈTE) avec quantité
+- Infos utilisateur + bouton déconnexion en bas
 
-### App.tsx
-- **SessionManager** intégré : gère la session 1h via localStorage (`analymo_login_time`)
-- Vérifie toutes les 60 secondes si la session a expiré (> 3600000ms)
-- À la connexion → stocke timestamp. À la déconnexion → supprime timestamp
-- Routes : `/`, `/tarifs`, `/contact`, `/exemple`, `/connexion`, `/inscription`, `/dashboard`, `/auth/callback`, `/mot-de-passe-oublie`, `/auth/reset-password`
+### Accueil (HomeView) — adaptatif selon nb d'analyses
+**Si 0 analyse (nouvel utilisateur) :**
+- Page onboarding avec hero banner navy
+- CTA "Lancer ma première analyse"
+- 3 étapes expliquées (Déposer → IA analyse → Rapport)
+- Garanties (SSL, suppression auto, < 2 min)
 
-### SignupPage.tsx
-- Formulaire nom + email + mot de passe
-- Connexion Google disponible
-- Détecte email déjà existant via `identities.length === 0` → message clair
-- Page verify : logo 56px centré, icône Mail 40px, titre 32px, texte spams ajouté
-- Bouton "J'ai validé, me connecter" → `/connexion`
-- Bouton "Renvoyer le mail" → `supabase.auth.resend({ type: 'signup', email })` + message si trop tôt (60s)
-- Bouton "Modifier l'email" → remet sur formulaire + reset `loading` à false
+**Si analyses existantes :**
+- 3 blocs stats : Analyses totales (+ score moyen si analyses complètes) / Dernière analyse (date + nom/adresse) / Crédits restants (bloc navy avec détail simple 4,99€ + complet 19,90€)
+- Info-bulle crédits : explication du système 4,99€/19,90€/29,90€/39,90€
+- 2 cartes "Analyser un document" :
+  - Carte blanche → Analyse simple 4,99€ (badge crédits dispo vert/rouge)
+  - Carte navy → Analyse complète 19,90€ "RECOMMANDÉ" (badge crédits dispo)
+  - Si 0 crédit → redirige vers /dashboard/tarifs
+- Packs 2 biens (29,90€) et 3 biens (39,90€) en lignes compactes
+- Analyses récentes : données réelles depuis Supabase
 
-### LoginPage.tsx
-- Connexion email/password + Google
-- Détecte email non confirmé → `error.message.includes('Email not confirmed')` → message pour se réinscrire
-- Lien "Mot de passe oublié" → `/mot-de-passe-oublie`
+### Logique crédits (MOCK — à remplacer après Stripe)
+```ts
+const MOCK_CREDITS = { document: 1, complete: 2 }
+```
 
-### AuthCallbackPage.tsx (`/auth/callback`)
-- Animation barre de progression ~6 secondes (`p + 5` toutes les 300ms)
-- 3 états : loading (spinner + barre) → success (check vert + bouton Se connecter) → error (croix rouge + bouton Se réinscrire)
-- Pas de redirection automatique après succès → bouton manuel "Se connecter"
-- Lien expiré après 24h → message + bouton "Se réinscrire"
+### Nouvelle analyse (/dashboard/nouvelle-analyse)
+- Étape 1 : Choix du type (simple / complète / pack2 / pack3) avec badge crédits
+- Étape 2 : Upload fichiers (drag & drop) — 1 fichier max pour simple, 20 pour complète
+- Étape 3 : Barre de progression pendant l'analyse IA
+- Résultat : redirection automatique vers /dashboard/rapport?id=XXX
 
-### ForgotPasswordPage.tsx (`/mot-de-passe-oublie`)
-- Formulaire email
-- Message honnête après envoi : "Si un compte existe avec cet email..." en `fontSize: 16, fontWeight: 600`
-- Supabase ne révèle pas si l'email existe (sécurité) → message volontairement ambigu
-- Même design que autres pages auth (panel gauche + formulaire droite)
+### Mes analyses (/dashboard/analyses)
+- Charge depuis Supabase (vraies données utilisateur)
+- **Analyse simple** → affiche nom du fichier (PAS de score)
+- **Analyse complète** → affiche adresse du bien détectée par l'IA + score /10 coloré
+- Score uniquement sur analyses complètes (jamais sur analyse simple 4,99€)
+- Bouton "Rapport" → /dashboard/rapport?id=XXX
+- Filtre : Tout / Complètes / Documents
+- Recherche par nom/adresse
 
-### ResetPasswordPage.tsx (`/auth/reset-password`)
-- Détecte token via `onAuthStateChange` (event `PASSWORD_RECOVERY`)
-- Si token invalide/expiré → page erreur avec bouton "Nouvelle demande"
-- Formulaire : nouveau mot de passe + confirmation + icône œil show/hide
-- Après succès → page confirmation verte + redirection auto vers `/connexion`
+### Comparer mes biens (/dashboard/compare)
+- 0 analyse complète → page bloquée avec message explicatif + CTA vers nouvelle analyse complète
+- Analyses complètes disponibles → sélection interactive (min 2 requis)
+- 2 sélectionnées → comparaison côte à côte avec scores, barres, points forts/vigilance
+- Verdict Analymo automatique (bien avec le meilleur score recommandé)
 
-### HomePage.tsx
-- Titre Hero : `clamp(40px,5vw,72px)` (réduit depuis 96px)
-- "Analysez vos documents" sur une seule ligne (br supprimé)
-- Téléphone : `lg:justify-center` + `w-[200px] h-[420px]` sur mobile + `mt-8 lg:mt-0`
-- Trait teal SectionTitle : `duration: 2.5, delay: 0.2, ease: [0.22,1,0.36,1]`
-- Trait Hero : `duration: 1.4`
-- SectionTitle accent : `inline-block max-w-fit` pour éviter trait pleine largeur sur mobile
-- HowItWorks : title="Trois étapes. Une décision" accent="éclairée." (séparé pour mobile)
-- Sections dans l'ordre : Hero → StatsBar → Problem → Solution → HowItWorks → AvantApres → ForWho → Testimonials → CtaFinal
+### Tarifs internes (/dashboard/tarifs)
+- NE PAS confondre avec /tarifs (page publique avec Navbar/Footer)
+- 4 cartes HORIZONTALES (pas de colonnes serrées)
+- Tooltip ⓘ au survol → liste des features incluses dans le pack
+- Badge crédits dispo sur chaque carte
+- Barre verte en bas si crédits disponibles
+- Bouton "Acheter" → TODO Stripe
+- Garanties en bas (4 blocs compacts)
 
-### TarifsPage.tsx
-- Max-width `max-w-6xl`
-- Carte 19,90€ : animation flottante + ombre pulsante
-- Badge étoile "Le plus populaire"
-- Zéro emoji dans les cartes
-- FAQ 3 questions
+### Mon compte (/dashboard/compte)
+- Formulaire nom + email (email disabled)
+- Sauvegarde via supabase.auth.updateUser
 
-### Footer.tsx
-- Dark navy `#0f2d3d`
-- Grid `grid-cols-1 sm:grid-cols-2 lg:grid-cols-4`
+### Support (/dashboard/support)
+- FAQ accordéon (4 questions dont une sur les crédits)
+- Formulaire de contact → TODO envoyer email via Mailjet
 
 ---
 
-## 🗄 Supabase — Configuration complète
+## 📄 Page Rapport (RapportPage.tsx)
+
+**Route :** `/dashboard/rapport?id=XXX`
+**Chargement :** `fetchAnalyseById(id)` depuis Supabase → mappe le JSON result
+**Topbar :** lien retour "Mes analyses" + adresse du bien + score mini + bouton PDF
+**PDF :** `window.print()` avec styles @media print
+
+### 4 onglets (analyse complète uniquement)
+1. **Vue d'ensemble**
+   - Jauge SVG circulaire score /10 avec couleur (vert/orange/rouge)
+   - Badge recommandation (Acheter / Négocier / Risqué / Déconseillé)
+   - Résumé du bien
+   - Points forts (fond vert) + Points de vigilance (fond orange)
+   - Avis Analymo (bloc navy)
+
+2. **Financier**
+   - Charges mensuelles / annuelles / fonds travaux (3 stat boxes)
+   - Appels de charges votés (liste avec montant + échéance)
+   - Impact financier + Risques financiers
+
+3. **Travaux**
+   - Travaux réalisés ✅ (fond vert)
+   - Travaux votés ⚠️ (fond orange, avec année + statut "Voté")
+   - Travaux estimés non votés 🔧 (fond gris, avec note "estimé par Analymo")
+
+4. **Procédures**
+   - Onglet masqué si `procedures_en_cours: false`
+   - Si procédures → badge sévérité (faible/moyenne/élevée) + détail + impact sur acquisition
+   - Si aucune → message rassurant avec icône ✓
+
+**Analyse simple (4,99€) :** pas d'onglets, affichage simplifié (résumé + points forts + vigilance + conclusion)
+
+---
+
+## 🤖 Prompts IA (lib/prompts.ts)
+
+### PROMPT_ANALYSE_COMPLETE
+Utilisé pour **19,90€ / 29,90€ / 39,90€ uniquement**
+
+Règles de notation :
+- Note UNIQUEMENT si PV d'AG + diagnostics présents
+- Base : 10/10 → pénalités → bonus
+- Pénalités : léger (-0,5 à -1) / modéré (-1 à -2) / important (-2 à -3) / grave (-3 à -4)
+- Bonus : travaux faits (+0,5/+1) / bonne gestion (+0,5/+1) / diagnostics rassurants (+0,5/+1)
+- Arrondi à 0,5 près UNIQUEMENT (ex: 7.5, 8.0 — jamais 6.83)
+- Échelle : 9-10 Très rassurant / 7-8,5 Sain / 5-6,5 Moyen / 3-4,5 Risqué / 0-2,5 Très risqué
+- Si docs insuffisants → `score: null` + `raison_absence_score` explicite
+- Mention obligatoire dans avis_analymo : "Cette note est établie uniquement à partir des documents analysés..."
+
+Retourne JSON complet :
+```json
+{
+  "titre": "adresse complète du bien",
+  "score": 7.5,
+  "score_niveau": "Globalement sain",
+  "recommandation": "Acheter",
+  "resume": "...",
+  "points_forts": [...],
+  "points_vigilance": [...],
+  "travaux_realises": [...],
+  "travaux_votes": [...],
+  "travaux_a_prevoir": [...],
+  "charges_mensuelles": 180,
+  "fonds_travaux": 42000,
+  "appels_charges_votes": [...],
+  "risques_financiers": "...",
+  "impact_financier": "...",
+  "procedures_en_cours": false,
+  "procedures": [],
+  "avis_analymo": "..."
+}
+```
+
+### PROMPT_ANALYSE_SIMPLE
+Utilisé pour **4,99€ uniquement**
+- **Jamais de note sur 10** (règle absolue)
+- Retourne JSON simple : titre / résumé / points_forts / points_vigilance / conclusion
+
+---
+
+## 🗄 Supabase
 
 **Project ID :** `veszrayromldfgetqaxb`
 **Project URL :** `https://veszrayromldfgetqaxb.supabase.co`
 
-### Tables créées :
-- `profiles` — id, email, nom, prenom, email_verified, created_at + trigger auto à l'inscription
-- `analyses` — type, status, title, address, score, avis_analymo, avis_color, risques (jsonb), travaux_estimes, impact_financier, detail_documents (jsonb), rapport_pdf_url, price
-- `documents` — analyse_id, nom_detecte, type_document, storage_path, supprime
-- `payments` — analyse_id, stripe_session_id, amount, status, facture_url
-- `comparaisons` — analyse_ids (jsonb), avis_final
-- `emails_log` — type (confirmation_inscription/recu_paiement/analyse_prete)
-- RLS activé sur toutes les tables (chaque user voit uniquement ses données)
-- Trigger `handle_new_user` → crée automatiquement un profil à chaque inscription
+### Tables
+- `profiles` — id, full_name, created_at + trigger auto à l'inscription
+- `analyses` — id, user_id, type, status, title, address, result (JSONB), created_at
+  - `type` : document | complete | pack2 | pack3
+  - `status` : pending | processing | completed | failed
+  - `result` : JSON complet du rapport généré par Claude
+  - RLS activé — chaque user voit uniquement ses propres analyses
 
-### Auth configuré :
+### Fonctions Supabase (lib/analyses.ts)
+- `fetchAnalyses()` — toutes les analyses de l'user connecté (ordre: plus récent en premier)
+- `fetchAnalyseById(id)` — une analyse par id
+- `createAnalyse(type, title)` — crée une entrée (status: processing)
+- `updateAnalyseResult(id, result, title, address)` — sauvegarde le rapport IA (status: completed)
+- `markAnalyseFailed(id)` — marque en erreur (status: failed)
+
+### Auth configuré
 - Email/password ✅
-- Google OAuth ✅
+- Google OAuth ✅ (branding pas encore validé côté Google Cloud Console)
 - Confirm email activé ✅
-- SMTP Mailjet : `in-v3.mailjet.com` port 587
-- Sender : `notification@analymo.fr` / Reply-to : `hello@analymo.fr`
-- Minimum interval entre emails : 60 secondes
-- Templates emails personnalisés : Confirm sign up ✅ + Reset password ✅
-- Logo dans les mails : `https://appdemo.analymo.fr/logo.png` hauteur 72px
-- Confirm sign up redirige vers `/auth/callback`
-- Reset password redirige vers `/auth/reset-password`
+- SMTP Mailjet : notification@analymo.fr / reply: hello@analymo.fr
+- SPF ✅ + DKIM ✅ validés sur analymo.fr
+- "Envoyé par mailjet.com" visible dans Gmail → limitation plan gratuit Mailjet (cosmétique, délivrabilité OK)
+- Redirect URLs configurées pour appdemo.analymo.fr + analymo.fr
 
-### URL Configuration Supabase :
-- Site URL : `https://appdemo.analymo.fr` (à changer en `https://analymo.fr` lors de la migration)
-- Redirect URLs : `/auth/callback` et `/auth/reset-password` pour appdemo + analymo.fr + www.analymo.fr
-
-### Vercel Environment Variables :
+### Vercel env vars
 - `VITE_SUPABASE_URL` = `https://veszrayromldfgetqaxb.supabase.co`
-- `VITE_SUPABASE_ANON_KEY` = publishable key Supabase
-
-### Mailjet :
-- Compte : alexandre.rt25@gmail.com
-- Domaine vérifié : analymo.fr
-- Adresses actives : notification@analymo.fr + hello@analymo.fr
-- 6000 emails/mois gratuits
-
-### Google Cloud Console :
-- Projet : "Analymo Auth" (analymo75000@gmail.com)
-- Client OAuth : "Analymo web"
-- Origines JS autorisées : supabase.co + analymo.fr + www.analymo.fr + appdemo.analymo.fr
-- Redirect URIs : toutes les variantes /auth/callback + /auth/reset-password
-- Branding : nom "ANALYMO" + logo uploadé mais pas encore validé → affiche URL Supabase dans popup Google
+- `VITE_SUPABASE_ANON_KEY` = clé publique Supabase
 
 ---
 
-## ⚠️ Points importants
-1. **Pas de FooterSection dans les pages** — le Footer est dans le layout `App.tsx`
-2. **vercel.json** — rewrites SPA (ne pas supprimer)
-3. Le logo dans la Navbar fait `h-14`
-4. Pour supprimer un compte test → toujours **Authentication → Users** (pas Table Editor)
-5. Table Editor = données supplémentaires seulement. Supprimer là sans supprimer dans Auth → Supabase croit que le compte existe encore
-6. Session 1h gérée via localStorage dans SessionManager (plan Supabase gratuit ne permet pas config sessions)
-7. Google OAuth branding pas encore validé → à régler en publiant l'app Google (Centre de validation)
+## ⚠️ Points importants à retenir
+
+1. **Stripe PAS branché** → crédits simulés via `MOCK_CREDITS` dans DashboardPage.tsx
+2. **Table `credits` PAS créée** dans Supabase → à faire après Stripe
+3. **API Claude côté client** → appel direct depuis le navigateur (à sécuriser avec une edge function plus tard)
+4. **Tarifs = 2 pages différentes** :
+   - `/tarifs` → page publique avec Navbar + Footer (TarifsPage.tsx)
+   - `/dashboard/tarifs` → onglet interne dashboard (dans DashboardPage.tsx)
+5. **vercel.json** → rewrites SPA → NE PAS supprimer
+6. **Session 1h** gérée via localStorage (`analymo_login_time`) dans SessionManager (App.tsx)
+7. Pour supprimer un compte test → Supabase → Authentication → Users (PAS Table Editor)
+8. Google OAuth branding → affiche encore URL Supabase dans popup → à régler en publiant l'app Google
+9. **Mailjet SPF/DKIM OK** mais "Envoyé par mailjet.com" reste → limitation plan gratuit, pas bloquant
 
 ---
 
-## 🔜 Prochaines étapes
-- [ ] Centrage mobile homepage (icônes et textes des sections)
-- [ ] Connecter Dashboard à Supabase (données réelles)
-- [ ] Coder l'API `/api/analyse` (appel Claude API)
-- [ ] Créer compte Stripe + 4 produits
-- [ ] Coder l'API `/api/checkout` (Stripe)
-- [ ] Google OAuth branding (publier app Google)
-- [ ] Page admin (voir tous les clients/analyses) — prévu plus tard
-- [ ] Vérifier page Exemple à jour
+## 🔜 Prochaines étapes (dans l'ordre)
+- [ ] **Connecter Stripe** — paiement réel (4 produits : 4,99 / 19,90 / 29,90 / 39,90)
+- [ ] **Créer table `credits`** dans Supabase + webhook Stripe qui crédite
+- [ ] **Remplacer `MOCK_CREDITS`** par vraies données Supabase dans DashboardPage.tsx
+- [ ] Envoyer email Mailjet quand rapport prêt
+- [ ] Améliorer le PDF (html2pdf ou Puppeteer)
+- [ ] Google OAuth branding (publier app Google Cloud)
+- [ ] Page admin (voir tous les clients/analyses)
+- [ ] Sécuriser l'appel API Claude (edge function Vercel)
