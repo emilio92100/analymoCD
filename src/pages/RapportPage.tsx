@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { fetchAnalyseById } from '../lib/analyses';
 import {
   ChevronLeft, Download, Building2, TrendingUp, Wrench,
   AlertTriangle, CheckCircle, Shield, BarChart2, FileText,
@@ -184,13 +185,65 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode; color: string }[]
 ══════════════════════════════════════════ */
 export default function RapportPage() {
   const [searchParams] = useSearchParams();
-  const id = searchParams.get('id') || '1';
+  const id = searchParams.get('id') || '';
   const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const [loading, setLoading] = useState(true);
+  const [rapport, setRapport] = useState<(typeof MOCK_RAPPORT & { type: 'complete' | 'document' }) | null>(null);
 
-  // À remplacer par fetch Supabase avec l'id
-  const rapport = MOCK_RAPPORT;
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      if (!id) { setRapport(MOCK_RAPPORT); setLoading(false); return; }
+      const data = await fetchAnalyseById(id);
+      if (!data || !data.result) { setRapport(MOCK_RAPPORT); setLoading(false); return; }
+      const r = data.result as Record<string, unknown>;
+      // Mapper les données Supabase vers le format rapport
+      const mappedType = (data.type === 'pack2' || data.type === 'pack3' ? 'complete' : data.type) as 'document' | 'complete';
+      setRapport({
+        id: data.id,
+        type: mappedType as 'complete',
+        adresse: (r.titre as string) || data.title,
+        date: new Date(data.created_at).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' }),
+        score: (r.score as number) || 0,
+        recommandation: (r.recommandation as 'Acheter'|'Négocier'|'Risqué'|'Déconseillé') || 'Négocier',
+        resume: (r.resume as string) || '',
+        points_forts: (r.points_forts as string[]) || [],
+        points_vigilance: (r.points_vigilance as string[]) || [],
+        avis_analymo: (r.avis_analymo as string) || '',
+        charges_mensuelles: (r.charges_mensuelles as number) || 0,
+        charges_annuelles: ((r.charges_mensuelles as number) || 0) * 12,
+        fonds_travaux: (r.fonds_travaux as number) || 0,
+        appels_charges_votes: (r.appels_charges_votes as typeof MOCK_RAPPORT.appels_charges_votes) || [],
+        impact_financier: (r.impact_financier as string) || '',
+        risques_financiers: (r.risques_financiers as string) || '',
+        travaux_realises: (r.travaux_realises as typeof MOCK_RAPPORT.travaux_realises) || [],
+        travaux_votes: (r.travaux_votes as typeof MOCK_RAPPORT.travaux_votes) || [],
+        travaux_a_prevoir: (r.travaux_a_prevoir as typeof MOCK_RAPPORT.travaux_a_prevoir) || [],
+        procedures_en_cours: (r.procedures_en_cours as boolean) || false,
+        procedures: (r.procedures as typeof MOCK_RAPPORT.procedures) || [],
+      });
+      setLoading(false);
+    };
+    load();
+  }, [id]);
+
+  if (loading) return (
+    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f5f9fb', fontFamily:"'DM Sans', system-ui, sans-serif" }}>
+      <div style={{ textAlign:'center' }}>
+        <div style={{ width:56, height:56, borderRadius:'50%', border:'3px solid #edf2f7', borderTopColor:'#2a7d9c', animation:'spin 0.9s linear infinite', margin:'0 auto 16px' }}/>
+        <p style={{ fontSize:14, color:'#94a3b8', fontWeight:600 }}>Chargement du rapport…</p>
+      </div>
+      <style>{'@keyframes spin { to { transform: rotate(360deg); } }'}</style>
+    </div>
+  );
+
+  if (!rapport) return (
+    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f5f9fb' }}>
+      <p style={{ fontSize:14, color:'#94a3b8' }}>Rapport introuvable.</p>
+    </div>
+  );
+
   const isComplete = rapport.type === 'complete';
-
   const scoreColor = rapport.score >= 7.5 ? '#16a34a' : rapport.score >= 5 ? '#d97706' : '#dc2626';
 
   const handlePDF = () => {
