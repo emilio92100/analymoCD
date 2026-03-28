@@ -20,16 +20,18 @@
 
 **Prix :**
 - 4,99€ — Analyse Document (1 seul document, rapport détaillé)
-- 19,90€ — Analyse Complète ⭐ (multi-documents, score /10, risques, travaux, impact financier, avis Analymo)
-- 29,90€ — Pack 2 Biens (2 analyses complètes + comparaison)
-- 39,90€ — Pack 3 Biens (3 analyses complètes + comparaison + classement)
+- 19,90€ — Analyse Complète ⭐ (multi-documents illimités, score /10, risques, travaux, impact financier, avis Analymo)
+- 29,90€ — Pack 2 Biens (2 analyses complètes + comparaison côte à côte + avis "quel bien choisir")
+- 39,90€ — Pack 3 Biens (3 analyses complètes + comparaison + classement + recommandation finale)
 
 **Fonctionnement :**
 1. Client paie d'abord
-2. Upload ses documents (l'IA détecte automatiquement le nom/adresse)
-3. Rapport généré en moins de 2 minutes
-4. Documents supprimés après analyse, rapport conservé dans le dashboard
-5. Rapport visible en ligne + téléchargeable en PDF
+2. Upload ses documents (illimités pour analyse complète, 1 seul pour 4,99€)
+3. L'IA détecte automatiquement le nom du doc (4,99€) ou l'adresse du bien (19,90€+)
+4. Rapport généré en moins de 2 minutes
+5. Documents supprimés après analyse, rapport conservé dans le dashboard
+6. Rapport visible en ligne + téléchargeable en PDF
+7. Comparaison uniquement disponible pour analyses complètes (pack 2 et 3)
 
 ---
 
@@ -91,7 +93,7 @@ src/
 ## ✅ État actuel des fichiers
 
 ### Navbar.tsx
-- Pill **glissante** avec `layoutId="nav-pill"` Framer Motion
+- Pill glissante avec `layoutId="nav-pill"` Framer Motion
 - Si connecté → bouton **"Mon espace"** avec dropdown (Mon dashboard + Se déconnecter)
 - Si non connecté → Connexion + S'inscrire
 - Mobile : menu overlay animé avec même logique connecté/non connecté
@@ -99,49 +101,51 @@ src/
 
 ### App.tsx
 - **SessionManager** intégré : gère la session 1h via localStorage (`analymo_login_time`)
-- Vérifie toutes les 60 secondes si la session a expiré
+- Vérifie toutes les 60 secondes si la session a expiré (> 3600000ms)
+- À la connexion → stocke timestamp. À la déconnexion → supprime timestamp
 - Routes : `/`, `/tarifs`, `/contact`, `/exemple`, `/connexion`, `/inscription`, `/dashboard`, `/auth/callback`, `/mot-de-passe-oublie`, `/auth/reset-password`
 
 ### SignupPage.tsx
 - Formulaire nom + email + mot de passe
 - Connexion Google disponible
-- Détecte si email déjà existant (`identities.length === 0`)
-- Page verify : bouton "J'ai validé, me connecter" + bouton "Renvoyer le mail" (avec message si trop tôt)
-- Bouton "Modifier l'email" remet sur le formulaire sans bug de loading
+- Détecte email déjà existant via `identities.length === 0` → message clair
+- Page verify : logo 56px centré, icône Mail 40px, titre 32px, texte spams ajouté
+- Bouton "J'ai validé, me connecter" → `/connexion`
+- Bouton "Renvoyer le mail" → `supabase.auth.resend({ type: 'signup', email })` + message si trop tôt (60s)
+- Bouton "Modifier l'email" → remet sur formulaire + reset `loading` à false
 
 ### LoginPage.tsx
 - Connexion email/password + Google
-- Détecte email non confirmé → message explicite pour se réinscrire
+- Détecte email non confirmé → `error.message.includes('Email not confirmed')` → message pour se réinscrire
 - Lien "Mot de passe oublié" → `/mot-de-passe-oublie`
 
 ### AuthCallbackPage.tsx (`/auth/callback`)
-- Animation barre de progression ~6 secondes
+- Animation barre de progression ~6 secondes (`p + 5` toutes les 300ms)
 - 3 états : loading (spinner + barre) → success (check vert + bouton Se connecter) → error (croix rouge + bouton Se réinscrire)
-- Redirige vers `/connexion` après succès (pas auto, bouton manuel)
+- Pas de redirection automatique après succès → bouton manuel "Se connecter"
+- Lien expiré après 24h → message + bouton "Se réinscrire"
 
 ### ForgotPasswordPage.tsx (`/mot-de-passe-oublie`)
 - Formulaire email
-- Message honnête : "Si un compte existe avec cet email, vous recevrez un lien..."
-- Même design que LoginPage/SignupPage (panel gauche + formulaire droite)
+- Message honnête après envoi : "Si un compte existe avec cet email..." en `fontSize: 16, fontWeight: 600`
+- Supabase ne révèle pas si l'email existe (sécurité) → message volontairement ambigu
+- Même design que autres pages auth (panel gauche + formulaire droite)
 
 ### ResetPasswordPage.tsx (`/auth/reset-password`)
-- Détecte le token via `onAuthStateChange` (event `PASSWORD_RECOVERY`)
+- Détecte token via `onAuthStateChange` (event `PASSWORD_RECOVERY`)
 - Si token invalide/expiré → page erreur avec bouton "Nouvelle demande"
-- Formulaire nouveau mot de passe + confirmation
+- Formulaire : nouveau mot de passe + confirmation + icône œil show/hide
 - Après succès → page confirmation verte + redirection auto vers `/connexion`
 
-### HomePage.tsx — sections dans cet ordre :
-1. **Hero** — titre `clamp(40px,5vw,72px)`, téléphone animé, badges flottants
-2. **StatsBar** — 4 stats
-3. **ProblemSection** — 4 cartes problèmes
-4. **SolutionSection** — 3 features avec hover glow
-5. **HowItWorksSection** — 3 étapes
-6. **AvantApresSection** — lignes côte à côte
-7. **ForWhoSection** — grande carte Acheteurs + 4 cartes pros
-8. **TestimonialsSection** — 3 avis
-9. **CtaFinal** — dark card centré
-- Trait teal animé sous les titres : `duration: 2.5, delay: 0.2`
-- `SectionTitle` accent = `inline-block max-w-fit` pour éviter trait trop large sur mobile
+### HomePage.tsx
+- Titre Hero : `clamp(40px,5vw,72px)` (réduit depuis 96px)
+- "Analysez vos documents" sur une seule ligne (br supprimé)
+- Téléphone : `lg:justify-center` + `w-[200px] h-[420px]` sur mobile + `mt-8 lg:mt-0`
+- Trait teal SectionTitle : `duration: 2.5, delay: 0.2, ease: [0.22,1,0.36,1]`
+- Trait Hero : `duration: 1.4`
+- SectionTitle accent : `inline-block max-w-fit` pour éviter trait pleine largeur sur mobile
+- HowItWorks : title="Trois étapes. Une décision" accent="éclairée." (séparé pour mobile)
+- Sections dans l'ordre : Hero → StatsBar → Problem → Solution → HowItWorks → AvantApres → ForWho → Testimonials → CtaFinal
 
 ### TarifsPage.tsx
 - Max-width `max-w-6xl`
@@ -162,30 +166,47 @@ src/
 **Project URL :** `https://veszrayromldfgetqaxb.supabase.co`
 
 ### Tables créées :
-- `profiles` — id, email, nom, prenom, email_verified, created_at
+- `profiles` — id, email, nom, prenom, email_verified, created_at + trigger auto à l'inscription
 - `analyses` — type, status, title, address, score, avis_analymo, avis_color, risques (jsonb), travaux_estimes, impact_financier, detail_documents (jsonb), rapport_pdf_url, price
 - `documents` — analyse_id, nom_detecte, type_document, storage_path, supprime
 - `payments` — analyse_id, stripe_session_id, amount, status, facture_url
 - `comparaisons` — analyse_ids (jsonb), avis_final
 - `emails_log` — type (confirmation_inscription/recu_paiement/analyse_prete)
-- RLS activé sur toutes les tables
+- RLS activé sur toutes les tables (chaque user voit uniquement ses données)
 - Trigger `handle_new_user` → crée automatiquement un profil à chaque inscription
 
 ### Auth configuré :
 - Email/password ✅
-- Google OAuth ✅ (Google Cloud Console projet "Analymo Auth")
+- Google OAuth ✅
 - Confirm email activé ✅
 - SMTP Mailjet : `in-v3.mailjet.com` port 587
 - Sender : `notification@analymo.fr` / Reply-to : `hello@analymo.fr`
+- Minimum interval entre emails : 60 secondes
 - Templates emails personnalisés : Confirm sign up ✅ + Reset password ✅
+- Logo dans les mails : `https://appdemo.analymo.fr/logo.png` hauteur 72px
+- Confirm sign up redirige vers `/auth/callback`
+- Reset password redirige vers `/auth/reset-password`
 
-### URL Configuration :
-- Site URL : `https://appdemo.analymo.fr`
+### URL Configuration Supabase :
+- Site URL : `https://appdemo.analymo.fr` (à changer en `https://analymo.fr` lors de la migration)
 - Redirect URLs : `/auth/callback` et `/auth/reset-password` pour appdemo + analymo.fr + www.analymo.fr
 
 ### Vercel Environment Variables :
 - `VITE_SUPABASE_URL` = `https://veszrayromldfgetqaxb.supabase.co`
 - `VITE_SUPABASE_ANON_KEY` = publishable key Supabase
+
+### Mailjet :
+- Compte : alexandre.rt25@gmail.com
+- Domaine vérifié : analymo.fr
+- Adresses actives : notification@analymo.fr + hello@analymo.fr
+- 6000 emails/mois gratuits
+
+### Google Cloud Console :
+- Projet : "Analymo Auth" (analymo75000@gmail.com)
+- Client OAuth : "Analymo web"
+- Origines JS autorisées : supabase.co + analymo.fr + www.analymo.fr + appdemo.analymo.fr
+- Redirect URIs : toutes les variantes /auth/callback + /auth/reset-password
+- Branding : nom "ANALYMO" + logo uploadé mais pas encore validé → affiche URL Supabase dans popup Google
 
 ---
 
@@ -193,26 +214,19 @@ src/
 1. **Pas de FooterSection dans les pages** — le Footer est dans le layout `App.tsx`
 2. **vercel.json** — rewrites SPA (ne pas supprimer)
 3. Le logo dans la Navbar fait `h-14`
-4. Pour supprimer un compte test → toujours dans **Authentication → Users** (pas Table Editor)
-5. **Google OAuth branding** pas encore validé par Google → affiche URL Supabase dans la popup (à régler plus tard en publiant l'app)
-6. Session 1h gérée via `localStorage` dans `SessionManager` (plan Supabase gratuit ne permet pas config sessions)
+4. Pour supprimer un compte test → toujours **Authentication → Users** (pas Table Editor)
+5. Table Editor = données supplémentaires seulement. Supprimer là sans supprimer dans Auth → Supabase croit que le compte existe encore
+6. Session 1h gérée via localStorage dans SessionManager (plan Supabase gratuit ne permet pas config sessions)
+7. Google OAuth branding pas encore validé → à régler en publiant l'app Google (Centre de validation)
 
 ---
 
 ## 🔜 Prochaines étapes
-- [ ] Centrage mobile homepage (icônes et textes)
+- [ ] Centrage mobile homepage (icônes et textes des sections)
 - [ ] Connecter Dashboard à Supabase (données réelles)
 - [ ] Coder l'API `/api/analyse` (appel Claude API)
 - [ ] Créer compte Stripe + 4 produits
 - [ ] Coder l'API `/api/checkout` (Stripe)
 - [ ] Google OAuth branding (publier app Google)
-- [ ] Page admin (voir tous les clients/analyses)
-
-- [ ] ### Templates emails détail :
-- **Confirm sign up** : design premium avec logo 72px centré, header dégradé teal→navy, bouton "Activer mon compte", 3 features en tableau HTML (compatible mobile), expiration 24h
-- **Reset password** : même design, bouton "Réinitialiser mon mot de passe", message si lien expiré
-- Logo dans les mails : `https://appdemo.analymo.fr/logo.png`
-- Lien de confirmation redirige vers `/auth/callback` (page animation Analymo)
-- Lien reset password redirige vers `/auth/reset-password`
-- Minimum interval entre emails : 60 secondes (config Supabase)
-- Si renvoi trop tôt → message "Attendez 60 secondes"
+- [ ] Page admin (voir tous les clients/analyses) — prévu plus tard
+- [ ] Vérifier page Exemple à jour
