@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -6,7 +6,7 @@ import {
   LogOut, Menu, X, ChevronDown, Search, Send, Bell,
   ChevronRight, Building2, ExternalLink, ChevronLeft,
   Shield, BarChart2, Zap, Clock, Upload, CheckCircle,
-  ShieldCheck, TrendingUp, ArrowRight, Sparkles
+  ShieldCheck, ArrowRight
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
