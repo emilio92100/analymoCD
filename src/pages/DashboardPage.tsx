@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { PROMPT_ANALYSE_COMPLETE, PROMPT_ANALYSE_SIMPLE } from '../lib/prompts';
+import { createAnalyse, updateAnalyseResult, markAnalyseFailed, fetchAnalyses, type AnalyseDB } from '../lib/analyses';
 
 /* ══════════════════════════════════════════
    TYPES
@@ -117,6 +118,52 @@ function useUser() {
   }, []);
   return { name, email };
 }
+
+/* ─── HOOK ANALYSES ──────────────────────── */
+function useAnalyses() {
+  const [analyses, setAnalyses] = useState<Analyse[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const data = await fetchAnalyses();
+      const mapped: Analyse[] = data.map((a: AnalyseDB) => {
+        const result = a.result as Record<string, unknown> | null;
+        const score = result?.score as number | undefined;
+        const reco = result?.recommandation as string | undefined;
+        const recoColor = reco === 'Acheter' ? '#16a34a'
+          : reco === 'Négocier' ? '#d97706'
+          : reco === 'Risqué' ? '#dc2626'
+          : '#7c3aed';
+        return {
+          id: a.id,
+          type: (a.type === 'pack2' || a.type === 'pack3' ? 'complete' : a.type) as 'document' | 'complete',
+          status: (a.status === 'completed' ? 'completed'
+            : a.status === 'failed' ? 'error'
+            : 'processing') as 'completed' | 'processing' | 'error',
+          nom_document: a.type === 'document' ? a.title : undefined,
+          adresse_bien: a.type !== 'document' ? (a.address || a.title) : undefined,
+          score,
+          recommandation: reco,
+          recommandationColor: reco ? recoColor : undefined,
+          date: new Date(a.created_at).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' }),
+          price: a.type === 'document' ? '4,99€'
+            : a.type === 'complete' ? '19,90€'
+            : a.type === 'pack2' ? '29,90€'
+            : '39,90€',
+        };
+      });
+      setAnalyses(mapped);
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  return { analyses, loading };
+}
+
+
 
 /* ══════════════════════════════════════════
    SCORE BADGE
@@ -318,18 +365,18 @@ function DashboardContent({ path }: { path:string }) {
 ══════════════════════════════════════════ */
 function HomeView() {
   const { name } = useUser();
+  const { analyses } = useAnalyses();
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
-  const analyses = MOCK_ANALYSES;
-  const credits = MOCK_CREDITS;
+  const credits = MOCK_CREDITS; // TODO: remplacer par Supabase après Stripe
   const hasAnalyses = analyses.length > 0;
 
   // Stats calculées
   const totalAnalyses = analyses.length;
-  const lastAnalyse = analyses.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+  const lastAnalyse = [...analyses].sort((a: Analyse, b: Analyse) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
   const completedComplete = analyses.filter(a => a.type === 'complete' && a.status === 'completed' && a.score != null);
   const avgScore = completedComplete.length > 0
-    ? (completedComplete.reduce((s,a) => s + (a.score||0), 0) / completedComplete.length).toFixed(1)
+    ? (completedComplete.reduce((s: number, a: Analyse) => s + (a.score||0), 0) / completedComplete.length).toFixed(1)
     : null;
 
   return (
@@ -643,6 +690,11 @@ function NouvelleAnalyse() {
   const lancer = async () => {
     if (!files.length || !type) return;
     setStep('analyse'); setError(''); setProgress(5); setProgressMsg('Lecture des documents…');
+
+    // 1. Créer l'entrée dans Supabase (status: processing)
+    const analyseDB = await createAnalyse(type, files[0].name);
+    const analyseId = analyseDB?.id || null;
+
     try {
       const textes: string[] = [];
       for (let i=0; i<files.length; i++) {
@@ -658,19 +710,42 @@ function NouvelleAnalyse() {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method:'POST', headers:{ 'Content-Type':'application/json' },
         body: JSON.stringify({
-          model:'claude-sonnet-4-20250514', max_tokens:1000,
+          model:'claude-sonnet-4-20250514', max_tokens:1500,
           system: systemPrompt,
           messages:[{ role:'user', content:`Documents à analyser :\n\n${textes.join('\n\n').slice(0,8000)}` }]
         })
       });
-      setProgress(90); setProgressMsg('Finalisation…');
+      setProgress(88); setProgressMsg('Finalisation…');
       const d = await res.json();
       const raw = d.content?.find((b:any)=>b.type==='text')?.text || '{}';
       const parsed: AnalyseResult = JSON.parse(raw.replace(/```json|```/g,'').trim());
+
+      // 2. Sauvegarder le résultat dans Supabase
+      if (analyseId) {
+        const title = isComplete
+          ? (parsed.titre || 'Bien analysé')
+          : (parsed.titre || files[0].name);
+        const address = isComplete ? (parsed.titre || null) : null;
+        await updateAnalyseResult(
+          analyseId,
+          parsed as unknown as Record<string, unknown>,
+          title,
+          address
+        );
+      }
+
       setProgress(100); setProgressMsg('Rapport prêt !');
-      await new Promise(r=>setTimeout(r,500));
-      setResult(parsed); setStep('result');
+      await new Promise(r => setTimeout(r, 500));
+
+      // 3. Rediriger vers la page rapport avec l'id Supabase
+      if (analyseId) {
+        window.location.href = `/dashboard/rapport?id=${analyseId}`;
+      } else {
+        setResult(parsed);
+        setStep('result');
+      }
     } catch {
+      if (analyseId) await markAnalyseFailed(analyseId);
       setError("Erreur lors de l'analyse. Vérifiez vos fichiers et réessayez.");
       setStep('upload');
     }
@@ -886,9 +961,10 @@ function NouvelleAnalyse() {
    MES ANALYSES
 ══════════════════════════════════════════ */
 function MesAnalyses() {
+  const { analyses, loading: analysesLoading } = useAnalyses();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all'|'complete'|'document'>('all');
-  const filtered = MOCK_ANALYSES.filter(a => {
+  const filtered = analyses.filter(a => {
     const matchSearch = (a.adresse_bien||a.nom_document||'').toLowerCase().includes(search.toLowerCase());
     const matchFilter = filter==='all' || a.type===filter;
     return matchSearch && matchFilter;
@@ -923,9 +999,13 @@ function MesAnalyses() {
         </div>
       </div>
 
-      {filtered.length>0
-        ? <div style={{ display:'flex', flexDirection:'column', gap:8 }}>{filtered.map(a=><AnalyseRow key={a.id} a={a}/>)}</div>
-        : <EmptyAnalyses/>}
+      {analysesLoading ? (
+        <div style={{ textAlign:'center', padding:'48px', color:'#94a3b8', fontSize:14 }}>Chargement de vos analyses…</div>
+      ) : filtered.length>0 ? (
+        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>{filtered.map(a=><AnalyseRow key={a.id} a={a}/>)}</div>
+      ) : (
+        <EmptyAnalyses/>
+      )}
     </div>
   );
 }
@@ -934,7 +1014,8 @@ function MesAnalyses() {
    COMPARE — avec logique analyses complètes
 ══════════════════════════════════════════ */
 function Compare() {
-  const completedAnalyses = MOCK_ANALYSES.filter(a => a.type === 'complete' && a.status === 'completed');
+  const { analyses } = useAnalyses();
+  const completedAnalyses = analyses.filter((a: Analyse) => a.type === 'complete' && a.status === 'completed');
   const [selected, setSelected] = useState<string[]>([]);
 
   // Pas d'analyses complètes du tout
