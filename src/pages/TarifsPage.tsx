@@ -116,55 +116,71 @@ export default function TarifsPage() {
       <section className="px-4 md:px-10 lg:px-20 pb-16">
         <div className="max-w-[1400px] mx-auto">
 
-          {/* Mobile : liste verticale compacte */}
-          <div className="flex flex-col gap-3 md:hidden mb-10">
+          {/* Mobile : cards empilées propres */}
+          <div className="flex flex-col gap-4 md:hidden mb-10">
             {plans.map((plan, i) => (
               <motion.div key={plan.id}
                 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
-                className={`relative rounded-2xl overflow-hidden ${plan.highlighted ? 'ring-2 ring-[#16a34a]/40 shadow-lg' : 'bg-white border border-slate-100 shadow-sm'}`}
-                style={plan.highlighted ? { background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)' } : {}}>
+                className={`relative rounded-2xl overflow-hidden ${
+                  plan.highlighted
+                    ? 'shadow-lg ring-2 ring-[#16a34a]/30'
+                    : 'bg-white border border-slate-100 shadow-sm'
+                }`}
+                style={plan.highlighted ? { background: 'linear-gradient(145deg, #f0fdf4, #ecfdf5)' } : {}}>
 
-                {plan.badge && (
-                  <div className="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-full text-[10px] font-bold"
-                    style={{
-                      background: plan.highlighted ? '#16a34a' : plan.badge === 'Économique' ? '#f59e0b' : '#e2e8f0',
-                      color: plan.highlighted || plan.badge === 'Économique' ? 'white' : '#64748b',
-                    }}>
-                    {plan.badge}
-                  </div>
-                )}
+                {/* Barre couleur en haut */}
+                <div className="h-1 w-full" style={{
+                  background: plan.highlighted
+                    ? 'linear-gradient(90deg, #22c55e, #16a34a)'
+                    : `${plan.accent}50`
+                }} />
 
-                <div className="p-5 flex items-center gap-5">
-                  {/* Prix à gauche */}
-                  <div className="shrink-0 text-center w-20">
-                    <div className="text-[36px] font-black leading-none text-[#0f172a]">{plan.price}</div>
-                    <div className="text-lg font-black leading-none text-[#0f172a]">€</div>
-                    <div className="text-[10px] text-slate-400 mt-1 leading-tight">{plan.sub}</div>
+                <div className="p-5">
+                  {/* Ligne titre + badge + prix */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: plan.accent }}>{plan.name}</p>
+                      <div className="flex items-end gap-0.5">
+                        <span className="text-3xl font-black leading-none text-[#0f172a]">{plan.price}</span>
+                        <span className="text-base font-bold text-slate-400 mb-0.5">€</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{plan.sub} · paiement unique</p>
+                    </div>
+                    {plan.badge && (
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold shrink-0 ml-2"
+                        style={{
+                          background: plan.highlighted ? '#16a34a' : plan.badge === 'Économique' ? '#f59e0b' : '#f1f5f9',
+                          color: plan.highlighted || plan.badge === 'Économique' ? 'white' : '#64748b',
+                        }}>
+                        {plan.badge}
+                      </span>
+                    )}
                   </div>
 
                   {/* Séparateur */}
-                  <div className="w-px h-16 bg-slate-100 shrink-0" />
+                  <div className="h-px mb-3" style={{ background: plan.highlighted ? 'rgba(22,163,74,0.15)' : '#f1f5f9' }} />
 
-                  {/* Contenu à droite */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold uppercase tracking-wider mb-0.5" style={{ color: plan.accent }}>{plan.name}</p>
-                    <p className="text-sm text-slate-600 leading-snug mb-3">{plan.idealFor}</p>
-                    <Link to={`/inscription?plan=${plan.id}`}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all duration-200"
-                      style={{ background: plan.highlighted ? 'linear-gradient(135deg, #22c55e, #16a34a)' : '#0f2d3d' }}>
-                      {plan.cta} <ArrowRight size={11} />
-                    </Link>
-                  </div>
-                </div>
+                  {/* Idéal pour */}
+                  <p className="text-sm text-slate-500 leading-snug mb-3">{plan.idealFor}</p>
 
-                {/* Features dépliées */}
-                <div className="px-5 pb-4 flex flex-wrap gap-x-4 gap-y-1">
-                  {plan.features.map(f => (
-                    <div key={f} className="flex items-center gap-1.5">
-                      <CheckCircle2 size={11} className="shrink-0" style={{ color: plan.accent }} />
-                      <span className="text-[11px] text-slate-500">{f}</span>
-                    </div>
-                  ))}
+                  {/* Features en liste */}
+                  <ul className="flex flex-col gap-1.5 mb-4">
+                    {plan.features.map(f => (
+                      <li key={f} className="flex items-center gap-2">
+                        <CheckCircle2 size={13} className="shrink-0" style={{ color: plan.highlighted ? '#16a34a' : plan.accent }} />
+                        <span className="text-xs text-slate-500 leading-tight">{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* Bouton */}
+                  <Link to={`/inscription?plan=${plan.id}`}
+                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold transition-all duration-200"
+                    style={plan.highlighted
+                      ? { background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: 'white' }
+                      : { background: '#0f2d3d', color: 'white' }}>
+                    {plan.cta} <ArrowRight size={14} />
+                  </Link>
                 </div>
               </motion.div>
             ))}
@@ -261,46 +277,42 @@ export default function TarifsPage() {
             </div>
           </motion.div>
 
-          {/* ── OFFRE PRO + FAQ côte à côte sur desktop ── */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-
-            {/* Offre Pro */}
-            <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-              className="rounded-2xl bg-white border border-slate-100 shadow-sm p-6 md:p-8 flex flex-col justify-between">
-              <div className="flex items-start gap-4 mb-6">
-                <div className="w-12 h-12 rounded-2xl bg-[#f59e0b]/10 border border-[#f59e0b]/20 flex items-center justify-center shrink-0">
-                  <Crown size={22} className="text-[#f59e0b]" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-[#0f172a] mb-1">Offre Professionnelle</h3>
-                  <p className="text-sm text-slate-400 leading-relaxed">Notaires, agents immobiliers, syndics, marchands de biens — volumes illimités, support prioritaire et tarification dédiée.</p>
-                </div>
+          {/* ── OFFRE PRO pleine largeur ── */}
+          <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+            className="rounded-2xl bg-white border border-slate-100 shadow-sm p-5 md:p-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-11 h-11 rounded-2xl bg-[#f59e0b]/10 border border-[#f59e0b]/20 flex items-center justify-center shrink-0">
+                <Crown size={20} className="text-[#f59e0b]" />
               </div>
-              <Link to="/contact"
-                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-[#0f2d3d] text-white text-sm font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
-                <Mail size={14} /> Nous contacter
-              </Link>
-            </motion.div>
+              <div>
+                <h3 className="text-base font-bold text-[#0f172a] mb-0.5">Offre Professionnelle</h3>
+                <p className="text-sm text-slate-400 leading-relaxed">Notaires, agents immobiliers, syndics — volumes illimités, support prioritaire et tarification dédiée.</p>
+              </div>
+            </div>
+            <Link to="/contact"
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#0f2d3d] text-white text-sm font-bold whitespace-nowrap hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 shrink-0">
+              <Mail size={14} /> Nous contacter
+            </Link>
+          </motion.div>
 
-            {/* FAQ */}
-            <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.05 }}
-              className="flex flex-col gap-3">
-              {[
-                { q: 'Comment fonctionne le paiement ?', a: 'Paiement sécurisé via Stripe. Votre rapport est disponible immédiatement après confirmation.' },
-                { q: 'Mes documents sont-ils sécurisés ?', a: "Vos fichiers sont chiffrés et supprimés automatiquement après traitement. Aucune donnée n'est conservée." },
-                { q: 'Puis-je me faire rembourser ?', a: 'En cas de problème technique, contactez-nous sous 48h. Nous étudions chaque demande au cas par cas.' },
-              ].map((faq, i) => (
-                <div key={i} className="p-5 rounded-xl bg-white border border-slate-100 shadow-sm">
-                  <div className="flex items-start gap-2.5 mb-1.5">
-                    <div className="w-4 h-4 rounded-full bg-[#2a7d9c]/10 flex items-center justify-center shrink-0 mt-0.5">
-                      <Check size={9} className="text-[#2a7d9c]" />
-                    </div>
-                    <h4 className="text-sm font-bold text-[#0f172a]">{faq.q}</h4>
+          {/* ── FAQ ── */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
+            {[
+              { q: 'Comment fonctionne le paiement ?', a: 'Paiement sécurisé via Stripe. Votre rapport est disponible immédiatement après confirmation.' },
+              { q: 'Mes documents sont-ils sécurisés ?', a: "Vos fichiers sont chiffrés et supprimés automatiquement après traitement. Aucune donnée n'est conservée." },
+              { q: 'Puis-je me faire rembourser ?', a: 'En cas de problème technique, contactez-nous sous 48h. Nous étudions chaque demande.' },
+            ].map((faq, i) => (
+              <motion.div key={i} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08 }}
+                className="p-5 rounded-xl bg-white border border-slate-100 shadow-sm">
+                <div className="flex items-start gap-2.5 mb-1.5">
+                  <div className="w-4 h-4 rounded-full bg-[#2a7d9c]/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check size={9} className="text-[#2a7d9c]" />
                   </div>
-                  <p className="text-sm text-slate-400 leading-relaxed pl-6">{faq.a}</p>
+                  <h4 className="text-sm font-bold text-[#0f172a]">{faq.q}</h4>
                 </div>
-              ))}
-            </motion.div>
+                <p className="text-sm text-slate-400 leading-relaxed pl-6">{faq.a}</p>
+              </motion.div>
+            ))}
           </div>
 
           <p className="text-xs text-slate-400 text-center italic">
