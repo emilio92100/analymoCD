@@ -4,10 +4,10 @@ import { motion, useInView, AnimatePresence } from "framer-motion";
 import type { Variants } from "framer-motion";
 import {
   ArrowRight, CheckCircle, AlertTriangle, FileText,
-  Zap, Shield, BarChart3, Upload, Sparkles,
+  Zap, Shield, BarChart3,
   TrendingUp, Clock, Star, Check, X, ChevronRight,
   Building2, UserCheck, BadgeCheck, ShieldCheck, Trash2,
-  Download, LayoutDashboard,
+  Download,
 } from "lucide-react";
 
 const up: Variants = {
@@ -71,7 +71,7 @@ export default function HomePage() {
 /* ═══ HERO ═══════════════════════════════════════════════ */
 function HeroSection() {
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden bg-[#f4f7f9] px-5 sm:px-10 lg:px-20 pt-24 pb-16">
+    <section className="relative min-h-screen flex items-center overflow-hidden bg-[#f4f7f9] px-5 sm:px-10 lg:px-20 pt-16 pb-12">
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 right-0 w-[700px] h-[700px] rounded-full bg-[#2a7d9c]/7 blur-[120px]" />
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full bg-[#2a7d9c]/4 blur-[100px]" />
@@ -119,19 +119,19 @@ function HeroSection() {
         </div>
 
         {/* DESKTOP : grille 2 colonnes */}
-        <div className="hidden lg:grid grid-cols-2 gap-12 items-center">
+        <div className="hidden lg:grid grid-cols-2 gap-6 items-center">
 
           {/* LEFT */}
           <div className="flex flex-col items-start text-left">
             <motion.div variants={up} initial="hidden" animate="show" custom={0}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#2a7d9c]/25 bg-white text-[#1a5e78] text-sm font-semibold mb-7 shadow-sm">
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#2a7d9c]/25 bg-white text-[#1a5e78] text-sm font-semibold mb-5 shadow-sm">
               <span className="w-2 h-2 rounded-full bg-[#22c55e] shrink-0" style={{ animation: "pulse 2s ease-in-out infinite" }} />
               Analyse immobilière intelligente
             </motion.div>
 
             <motion.h1 variants={up} initial="hidden" animate="show" custom={1}
-              className="text-[clamp(28px,4.5vw,62px)] font-black leading-[1.06] tracking-[-0.03em] text-[#0f172a] mb-5">
-              Vérifiez les éléments essentiels<br />
+              className="text-[clamp(28px,4vw,56px)] font-black leading-[1.06] tracking-[-0.03em] text-[#0f172a] mb-5">
+              Vérifiez les éléments<br />essentiels{' '}
               <span className="relative inline-block">
                 <span className="text-[#2a7d9c]">avant de signer.</span>
                 <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.9, duration: 1.4 }}
