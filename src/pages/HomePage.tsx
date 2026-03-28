@@ -242,8 +242,8 @@ function PhoneMockup() {
       </motion.div>
 
       <motion.div animate={{ y: [0, -10, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}>
-        <div className="w-[210px] sm:w-[275px] h-[440px] sm:h-[580px] bg-[#0f172a] rounded-[46px] p-[5px] shadow-[0_32px_72px_rgba(15,23,42,0.25)]">
-          <div className="w-full h-full bg-[#f8fafc] rounded-[42px] overflow-hidden flex flex-col">
+        <div className="w-[175px] sm:w-[275px] h-[370px] sm:h-[580px] bg-[#0f172a] rounded-[40px] sm:rounded-[46px] p-[5px] shadow-[0_32px_72px_rgba(15,23,42,0.25)]">
+          <div className="w-full h-full bg-[#f8fafc] rounded-[36px] sm:rounded-[42px] overflow-hidden flex flex-col">
 
             {/* Status bar */}
             <div className="bg-white shrink-0 px-4 pt-3 pb-1 flex items-center justify-between relative">
