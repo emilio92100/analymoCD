@@ -79,13 +79,25 @@ function HeroSection() {
 
       <div className="relative z-10 max-w-6xl mx-auto w-full">
 
-        {/* MOBILE : téléphone en haut + boutons dessous */}
+        {/* MOBILE : titre + téléphone + boutons */}
         <div className="flex flex-col items-center lg:hidden pt-2 pb-4">
           <motion.div variants={up} initial="hidden" animate="show" custom={0}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#2a7d9c]/25 bg-white text-[#1a5e78] text-sm font-semibold mb-6 shadow-sm">
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#2a7d9c]/25 bg-white text-[#1a5e78] text-sm font-semibold mb-5 shadow-sm">
             <span className="w-2 h-2 rounded-full bg-[#22c55e] shrink-0" style={{ animation: "pulse 2s ease-in-out infinite" }} />
             Analyse immobilière intelligente
           </motion.div>
+
+          <motion.h1 variants={up} initial="hidden" animate="show" custom={0.5}
+            className="text-[clamp(26px,7vw,40px)] font-black leading-[1.06] tracking-[-0.03em] text-[#0f172a] mb-2 text-center px-2">
+            Vérifiez les éléments essentiels<br />
+            <span className="text-[#2a7d9c]">avant de signer.</span>
+          </motion.h1>
+
+          <motion.p variants={up} initial="hidden" animate="show" custom={0.8}
+            className="text-sm text-slate-500 leading-relaxed text-center px-4 mb-6 max-w-[340px]">
+            Diagnostics, PV d'AG, Règlement de copropriété… Notre outil vous aide à comprendre les informations essentielles en <span className="font-semibold text-[#0f172a]">30 secondes*</span>.
+          </motion.p>
+
           <motion.div variants={up} initial="hidden" animate="show" custom={1} className="mb-6">
             <PhoneMockup />
           </motion.div>
