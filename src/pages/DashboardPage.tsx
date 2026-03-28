@@ -7,21 +7,38 @@ import {
   ChevronRight, Building2, ExternalLink, ChevronLeft,
   Shield, BarChart2, Clock, Upload, CheckCircle,
   ShieldCheck, ArrowRight, Sparkles, AlertTriangle,
-  Download, CreditCard, TrendingUp
+  Download, CreditCard, Lock, Info
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
-/* ─── TYPES ─────────────────────────────── */
+/* ══════════════════════════════════════════
+   TYPES
+══════════════════════════════════════════ */
+type AnalyseType = 'document' | 'complete';
+type AnalyseStatus = 'completed' | 'processing' | 'error';
+
 type Analyse = {
-  id: string; title: string;
-  type: 'document' | 'complete';
-  status: 'completed' | 'processing' | 'error';
-  score?: number; recommandation?: string; recommandationColor?: string;
-  date: string; price: string;
+  id: string;
+  type: AnalyseType;
+  status: AnalyseStatus;
+  // Pour document simple → nom du fichier analysé
+  nom_document?: string;
+  // Pour analyse complète → adresse du bien détectée par l'IA
+  adresse_bien?: string;
+  score?: number;            // uniquement analyse complète
+  recommandation?: string;
+  recommandationColor?: string;
+  date: string;
+  price: string;
+};
+
+type Credits = {
+  document: number;   // crédits analyse simple (4,99€)
+  complete: number;   // crédits analyse complète (19,90€+)
 };
 
 type AnalyseResult = {
-  titre: string;
+  titre: string;           // nom doc (simple) ou adresse (complète)
   score?: number;
   recommandation?: string;
   resume: string;
@@ -31,24 +48,61 @@ type AnalyseResult = {
   conclusion: string;
 };
 
-/* ─── MOCK DATA ──────────────────────────── */
-const mockAnalyses: Analyse[] = [
-  { id:'1', title:'Appartement rue de la Paix, Paris 2e', type:'complete', status:'completed', score:8.2, recommandation:'Acheter', recommandationColor:'#16a34a', date:'24 mars 2026', price:'19,90€' },
-  { id:'2', title:'Studio Cours Mirabeau, Aix-en-Provence', type:'document', status:'completed', date:'19 mars 2026', price:'4,99€' },
-  { id:'3', title:'T3 Quai de Saône, Lyon 2e', type:'complete', status:'processing', date:'26 mars 2026', price:'29,90€' },
+/* ══════════════════════════════════════════
+   MOCK DATA — à remplacer par Supabase
+══════════════════════════════════════════ */
+// Crédits disponibles de l'utilisateur
+const MOCK_CREDITS: Credits = {
+  document: 1,   // 1 crédit analyse simple disponible
+  complete: 2,   // 2 crédits analyse complète disponibles
+};
+
+// Historique analyses
+const MOCK_ANALYSES: Analyse[] = [
+  {
+    id: '1',
+    type: 'complete',
+    status: 'completed',
+    adresse_bien: '12 rue de la Paix, 75002 Paris',
+    score: 8.2,
+    recommandation: 'Acheter',
+    recommandationColor: '#16a34a',
+    date: '24 mars 2026',
+    price: '19,90€',
+  },
+  {
+    id: '2',
+    type: 'document',
+    status: 'completed',
+    nom_document: 'PV_AG_2025_Mirabeau.pdf',
+    date: '19 mars 2026',
+    price: '4,99€',
+  },
+  {
+    id: '3',
+    type: 'complete',
+    status: 'processing',
+    adresse_bien: '7 quai de Saône, 69002 Lyon',
+    date: '26 mars 2026',
+    price: '29,90€',
+  },
 ];
 
-/* ─── NAV CONFIG ─────────────────────────── */
+/* ══════════════════════════════════════════
+   NAV
+══════════════════════════════════════════ */
 const navItems = [
-  { to:'/dashboard',                  icon:LayoutDashboard, label:'Tableau de bord' },
-  { to:'/dashboard/analyses',         icon:FileText,        label:'Mes analyses' },
-  { to:'/dashboard/compare',          icon:GitCompare,      label:'Comparer mes biens' },
-  { to:'/tarifs',                     icon:CreditCard,      label:'Tarifs', external:true },
-  { to:'/dashboard/compte',           icon:User,            label:'Mon compte' },
-  { to:'/dashboard/support',          icon:LifeBuoy,        label:'Support / Aide' },
+  { to: '/dashboard',                  icon: LayoutDashboard, label: 'Tableau de bord' },
+  { to: '/dashboard/analyses',         icon: FileText,        label: 'Mes analyses' },
+  { to: '/dashboard/compare',          icon: GitCompare,      label: 'Comparer mes biens' },
+  { to: '/tarifs',                     icon: CreditCard,      label: 'Tarifs' },
+  { to: '/dashboard/compte',           icon: User,            label: 'Mon compte' },
+  { to: '/dashboard/support',          icon: LifeBuoy,        label: 'Support / Aide' },
 ];
 
-/* ─── HOOK USER ──────────────────────────── */
+/* ══════════════════════════════════════════
+   HOOK
+══════════════════════════════════════════ */
 function useUser() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -63,17 +117,25 @@ function useUser() {
   return { name, email };
 }
 
-/* ─── SCORE BADGE ────────────────────────── */
-function ScoreBadge({ score }: { score: number }) {
+/* ══════════════════════════════════════════
+   SCORE BADGE
+══════════════════════════════════════════ */
+function ScoreBadge({ score, size = 'md' }: { score: number; size?: 'sm' | 'md' | 'lg' }) {
   const color = score >= 7.5 ? '#16a34a' : score >= 5 ? '#d97706' : '#dc2626';
   const bg    = score >= 7.5 ? '#f0fdf4' : score >= 5 ? '#fffbeb' : '#fef2f2';
   const bord  = score >= 7.5 ? '#bbf7d0' : score >= 5 ? '#fde68a' : '#fecaca';
+  const fs    = size === 'lg' ? 52 : size === 'md' ? 18 : 14;
+  const pad   = size === 'lg' ? '12px 28px' : size === 'md' ? '5px 12px' : '3px 9px';
   return (
-    <span style={{ display:'inline-flex', alignItems:'baseline', gap:2, padding:'4px 11px', borderRadius:9, background:bg, border:`1.5px solid ${bord}`, fontSize:15, fontWeight:900, color, letterSpacing:'-0.01em' }}>
-      {score.toFixed(1)}<span style={{ fontSize:10, fontWeight:600, opacity:0.65 }}>/10</span>
+    <span style={{ display:'inline-flex', alignItems:'baseline', gap:2, padding:pad, borderRadius:10, background:bg, border:`1.5px solid ${bord}`, fontSize:fs, fontWeight:900, color, letterSpacing:'-0.01em', flexShrink:0 }}>
+      {score.toFixed(1)}<span style={{ fontSize: fs * 0.55, fontWeight:600, opacity:0.65 }}>/10</span>
     </span>
   );
 }
+
+/* ══════════════════════════════════════════
+   CREDITS DISPLAY
+══════════════════════════════════════════ */
 
 /* ══════════════════════════════════════════
    SIDEBAR
@@ -83,55 +145,63 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
   const navigate = useNavigate();
   const { name, email } = useUser();
   const handleLogout = async () => { await supabase.auth.signOut(); navigate('/'); };
+  const credits = MOCK_CREDITS;
 
   return (
-    <aside style={{
-      width:256, minHeight:'100vh', height:'100%',
-      background:'#fff',
-      display:'flex', flexDirection:'column',
-      borderRight:'1px solid #edf2f7',
-      boxShadow:'2px 0 12px rgba(15,45,61,0.04)',
-    }}>
+    <aside style={{ width:260, minHeight:'100vh', height:'100%', background:'#fff', display:'flex', flexDirection:'column', borderRight:'1px solid #edf2f7', boxShadow:'2px 0 16px rgba(15,45,61,0.05)' }}>
       {/* Logo */}
       <div style={{ height:68, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 20px', borderBottom:'1px solid #f0f5f9', flexShrink:0 }}>
-        <Link to="/" onClick={onClose}>
-          <img src="/logo.png" alt="Analymo" style={{ height:28, objectFit:'contain' }}/>
-        </Link>
-        {onClose && (
-          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'#94a3b8', padding:4 }}><X size={18}/></button>
-        )}
+        <Link to="/" onClick={onClose}><img src="/logo.png" alt="Analymo" style={{ height:28, objectFit:'contain' }}/></Link>
+        {onClose && <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'#94a3b8', padding:4 }}><X size={18}/></button>}
       </div>
 
-      {/* CTA Nouvelle analyse */}
+      {/* CTA */}
       <div style={{ padding:'16px 14px 10px' }}>
         <Link to="/dashboard/nouvelle-analyse" onClick={onClose}
-          style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'12px 16px', borderRadius:12, background:'linear-gradient(135deg, #2a7d9c 0%, #0f2d3d 100%)', color:'#fff', textDecoration:'none', fontSize:14, fontWeight:700, boxShadow:'0 4px 14px rgba(42,125,156,0.3)', transition:'all 0.2s' }}
-          onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 6px 20px rgba(42,125,156,0.4)'; el.style.transform='translateY(-1px)'; }}
+          style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'12px', borderRadius:12, background:'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color:'#fff', textDecoration:'none', fontSize:14, fontWeight:700, boxShadow:'0 4px 14px rgba(42,125,156,0.3)', transition:'all 0.2s' }}
+          onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 6px 20px rgba(42,125,156,0.42)'; el.style.transform='translateY(-1px)'; }}
           onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 4px 14px rgba(42,125,156,0.3)'; el.style.transform='translateY(0)'; }}>
           <Plus size={15} strokeWidth={2.5}/> Nouvelle analyse
         </Link>
       </div>
 
+      {/* Crédits mini */}
+      <div style={{ margin:'0 14px 8px', padding:'12px', borderRadius:10, background:'#f8fafc', border:'1px solid #edf2f7' }}>
+        <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.12em', marginBottom:8 }}>CRÉDITS DISPONIBLES</div>
+        <div style={{ display:'flex', gap:6 }}>
+          <div style={{ flex:1, textAlign:'center', padding:'6px 4px', borderRadius:8, background:`${credits.document > 0 ? '#2a7d9c' : '#94a3b8'}12`, border:`1px solid ${credits.document > 0 ? '#2a7d9c' : '#e2e8f0'}25` }}>
+            <div style={{ fontSize:18, fontWeight:900, color:credits.document > 0 ? '#2a7d9c' : '#94a3b8' }}>{credits.document}</div>
+            <div style={{ fontSize:9, fontWeight:700, color:'#94a3b8', letterSpacing:'0.05em' }}>SIMPLE</div>
+          </div>
+          <div style={{ flex:1, textAlign:'center', padding:'6px 4px', borderRadius:8, background:`${credits.complete > 0 ? '#0f2d3d' : '#94a3b8'}12`, border:`1px solid ${credits.complete > 0 ? '#0f2d3d' : '#e2e8f0'}25` }}>
+            <div style={{ fontSize:18, fontWeight:900, color:credits.complete > 0 ? '#0f2d3d' : '#94a3b8' }}>{credits.complete}</div>
+            <div style={{ fontSize:9, fontWeight:700, color:'#94a3b8', letterSpacing:'0.05em' }}>COMPLÈTE</div>
+          </div>
+        </div>
+        {credits.document === 0 && credits.complete === 0 && (
+          <Link to="/tarifs" onClick={onClose} style={{ display:'block', marginTop:8, fontSize:11, fontWeight:700, color:'#2a7d9c', textDecoration:'none', textAlign:'center' }}>+ Recharger des crédits</Link>
+        )}
+      </div>
+
       {/* Nav */}
-      <nav style={{ flex:1, padding:'4px 10px', display:'flex', flexDirection:'column', gap:2, overflowY:'auto' }}>
-        <p style={{ fontSize:10, fontWeight:700, color:'#b0bec5', letterSpacing:'0.14em', padding:'10px 10px 6px', textTransform:'uppercase' }}>Menu</p>
+      <nav style={{ flex:1, padding:'4px 10px', display:'flex', flexDirection:'column', gap:1, overflowY:'auto' }}>
+        <p style={{ fontSize:10, fontWeight:700, color:'#b0bec5', letterSpacing:'0.14em', padding:'8px 10px 5px', textTransform:'uppercase' }}>Menu</p>
         {navItems.map(item => {
           const Icon = item.icon;
           const active = location.pathname === item.to;
           return (
             <Link key={item.to} to={item.to} onClick={onClose}
-              style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:10, textDecoration:'none', fontSize:14, fontWeight:active?700:500, color:active?'#0f2d3d':'#64748b', background:active?'#f0f7fb':'transparent', transition:'all 0.15s', position:'relative' }}
+              style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:10, textDecoration:'none', fontSize:13.5, fontWeight:active?700:500, color:active?'#0f2d3d':'#64748b', background:active?'#f0f7fb':'transparent', transition:'all 0.15s', position:'relative' }}
               onMouseOver={e=>{ if(!active)(e.currentTarget as HTMLElement).style.background='#f8fafc'; }}
               onMouseOut={e=>{ if(!active)(e.currentTarget as HTMLElement).style.background='transparent'; }}>
               {active && <div style={{ position:'absolute', left:0, top:'20%', bottom:'20%', width:3, borderRadius:99, background:'#2a7d9c' }}/>}
-              <Icon size={16} style={{ color:active?'#2a7d9c':'#94a3b8', flexShrink:0 }}/>
-              <span style={{ flex:1 }}>{item.label}</span>
+              <Icon size={16} style={{ color:active?'#2a7d9c':'#94a3b8', flexShrink:0 }}/>{item.label}
             </Link>
           );
         })}
       </nav>
 
-      {/* User block */}
+      {/* User */}
       <div style={{ padding:'10px 14px 16px', borderTop:'1px solid #f0f5f9', flexShrink:0 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:10, background:'#f8fafc', border:'1px solid #edf2f7' }}>
           <div style={{ width:34, height:34, borderRadius:'50%', flexShrink:0, background:'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:'#fff' }}>
@@ -141,8 +211,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
             <div style={{ fontSize:13, fontWeight:700, color:'#0f172a', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name||'…'}</div>
             <div style={{ fontSize:11, color:'#94a3b8', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{email}</div>
           </div>
-          <button onClick={handleLogout} title="Déconnexion"
-            style={{ background:'none', border:'none', cursor:'pointer', color:'#cbd5e1', padding:4, transition:'color 0.15s', flexShrink:0 }}
+          <button onClick={handleLogout} title="Déconnexion" style={{ background:'none', border:'none', cursor:'pointer', color:'#cbd5e1', padding:4, transition:'color 0.15s', flexShrink:0 }}
             onMouseOver={e=>(e.currentTarget.style.color='#ef4444')} onMouseOut={e=>(e.currentTarget.style.color='#cbd5e1')}>
             <LogOut size={14}/>
           </button>
@@ -159,12 +228,8 @@ function Topbar({ onMenuClick, title }: { onMenuClick:()=>void; title:string }) 
   return (
     <header style={{ height:68, background:'#fff', borderBottom:'1px solid #edf2f7', display:'flex', alignItems:'center', padding:'0 24px', gap:12, position:'sticky', top:0, zIndex:40, flexShrink:0 }}>
       <button className="mobile-menu-btn" onClick={onMenuClick} style={{ background:'none', border:'none', cursor:'pointer', color:'#0f2d3d', padding:4, display:'none' }}><Menu size={20}/></button>
-      <div style={{ flex:1 }}>
-        <p style={{ fontSize:16, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em', margin:0 }}>{title}</p>
-      </div>
-      <button style={{ width:36, height:36, borderRadius:9, background:'#f8fafc', border:'1px solid #edf2f7', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#94a3b8' }}>
-        <Bell size={15}/>
-      </button>
+      <p style={{ flex:1, fontSize:16, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em', margin:0 }}>{title}</p>
+      <button style={{ width:36, height:36, borderRadius:9, background:'#f8fafc', border:'1px solid #edf2f7', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#94a3b8' }}><Bell size={15}/></button>
       <Link to="/dashboard/nouvelle-analyse" className="topbar-cta"
         style={{ padding:'9px 18px', borderRadius:10, background:'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color:'#fff', fontSize:13, fontWeight:700, textDecoration:'none', display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap', boxShadow:'0 2px 8px rgba(15,45,61,0.18)' }}>
         <Plus size={13}/> Nouvelle analyse
@@ -191,26 +256,22 @@ export default function DashboardPage() {
 
   return (
     <div style={{ display:'flex', minHeight:'100vh', background:'#f5f9fb', fontFamily:"'DM Sans', system-ui, sans-serif" }}>
-      {/* Desktop sidebar */}
-      <div className="desktop-sidebar" style={{ width:256, flexShrink:0 }}>
-        <div style={{ position:'fixed', top:0, left:0, width:256, height:'100vh', zIndex:50, overflowY:'auto' }}>
+      <div className="desktop-sidebar" style={{ width:260, flexShrink:0 }}>
+        <div style={{ position:'fixed', top:0, left:0, width:260, height:'100vh', zIndex:50, overflowY:'auto' }}>
           <Sidebar/>
         </div>
       </div>
-
-      {/* Mobile overlay */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} style={{ position:'fixed', inset:0, zIndex:200 }}>
             <div onClick={()=>setMobileOpen(false)} style={{ position:'absolute', inset:0, background:'rgba(15,45,61,0.35)', backdropFilter:'blur(4px)' }}/>
-            <motion.div initial={{ x:-256 }} animate={{ x:0 }} exit={{ x:-256 }} transition={{ type:'spring', stiffness:320, damping:32 }}
-              style={{ position:'absolute', left:0, top:0, bottom:0, width:256 }}>
+            <motion.div initial={{ x:-260 }} animate={{ x:0 }} exit={{ x:-260 }} transition={{ type:'spring', stiffness:320, damping:32 }}
+              style={{ position:'absolute', left:0, top:0, bottom:0, width:260 }}>
               <Sidebar onClose={()=>setMobileOpen(false)}/>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-
       <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0 }}>
         <Topbar onMenuClick={()=>setMobileOpen(true)} title={title}/>
         <main style={{ flex:1, padding:'28px 20px', overflowX:'hidden' }}>
@@ -219,27 +280,28 @@ export default function DashboardPage() {
           </div>
         </main>
       </div>
-
       <style>{`
         @media (max-width: 767px) {
           .desktop-sidebar { display: none !important; }
           .mobile-menu-btn { display: flex !important; }
           .topbar-cta { display: none !important; }
           .stats-grid { grid-template-columns: 1fr 1fr !important; }
-          .analyse-grid { grid-template-columns: 1fr !important; }
+          .action-grid { grid-template-columns: 1fr !important; }
+          .compare-grid { grid-template-columns: 1fr !important; }
           .result-grid { grid-template-columns: 1fr !important; }
           .type-grid { grid-template-columns: 1fr !important; }
+          .credit-detail { flex-direction: column !important; }
         }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+        @keyframes shimmer { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
       `}</style>
     </div>
   );
 }
 
-/* ─── CONTENT ROUTER ─────────────────────── */
 function DashboardContent({ path }: { path:string }) {
   if (path === '/dashboard/nouvelle-analyse') return <NouvelleAnalyse/>;
   if (path === '/dashboard/analyses')          return <MesAnalyses/>;
@@ -250,224 +312,276 @@ function DashboardContent({ path }: { path:string }) {
 }
 
 /* ══════════════════════════════════════════
-   HOME — adaptatif selon nb d'analyses
+   HOME VIEW
 ══════════════════════════════════════════ */
 function HomeView() {
   const { name } = useUser();
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
-  // Simule 0 ou plusieurs analyses — à connecter à Supabase plus tard
-  const hasAnalyses = mockAnalyses.length > 0;
+  const analyses = MOCK_ANALYSES;
+  const credits = MOCK_CREDITS;
+  const hasAnalyses = analyses.length > 0;
 
-  if (!hasAnalyses) return <OnboardingView name={name} greeting={greeting}/>;
-  return <DashboardFull name={name} greeting={greeting}/>;
-}
+  // Stats calculées
+  const totalAnalyses = analyses.length;
+  const lastAnalyse = analyses.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+  const completedComplete = analyses.filter(a => a.type === 'complete' && a.status === 'completed' && a.score != null);
+  const avgScore = completedComplete.length > 0
+    ? (completedComplete.reduce((s,a) => s + (a.score||0), 0) / completedComplete.length).toFixed(1)
+    : null;
 
-/* ─── ONBOARDING (0 analyse) ─────────────── */
-function OnboardingView({ name, greeting }: { name:string; greeting:string }) {
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:32, animation:'fadeUp 0.4s ease both' }}>
-      {/* Hero welcome */}
-      <div style={{ background:'linear-gradient(135deg, #0f2d3d 0%, #1a5068 100%)', borderRadius:24, padding:'48px 40px', position:'relative', overflow:'hidden' }}>
-        <div style={{ position:'absolute', top:-40, right:-40, width:200, height:200, borderRadius:'50%', background:'rgba(42,125,156,0.2)', pointerEvents:'none' }}/>
-        <div style={{ position:'absolute', bottom:-30, left:20, width:140, height:140, borderRadius:'50%', background:'rgba(255,255,255,0.04)', pointerEvents:'none' }}/>
-        <div style={{ position:'relative' }}>
-          <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'6px 14px', borderRadius:100, background:'rgba(42,125,156,0.3)', border:'1px solid rgba(42,125,156,0.5)', marginBottom:20 }}>
-            <div style={{ width:7, height:7, borderRadius:'50%', background:'#4ade80', animation:'pulse 2s ease-in-out infinite' }}/>
-            <span style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.85)', letterSpacing:'0.06em' }}>BIENVENUE SUR ANALYMO</span>
-          </div>
-          <h1 style={{ fontSize:'clamp(24px,3.5vw,36px)', fontWeight:900, color:'#fff', letterSpacing:'-0.03em', marginBottom:12, lineHeight:1.15 }}>
-            {greeting}{name ? `, ${name}` : ''} 👋<br/>
-            <span style={{ color:'rgba(255,255,255,0.55)', fontSize:'0.75em', fontWeight:700 }}>Prêt à analyser votre premier bien ?</span>
-          </h1>
-          <p style={{ fontSize:15, color:'rgba(255,255,255,0.6)', lineHeight:1.65, maxWidth:500, marginBottom:32 }}>
-            Déposez vos documents immobiliers et obtenez un rapport complet avec score, risques et recommandations en moins de 2 minutes.
-          </p>
-          <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
-            <Link to="/dashboard/nouvelle-analyse"
-              style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'13px 28px', borderRadius:12, background:'#fff', color:'#0f2d3d', fontSize:15, fontWeight:800, textDecoration:'none', boxShadow:'0 4px 20px rgba(0,0,0,0.2)', transition:'all 0.2s' }}
-              onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.transform='translateY(-2px)'; el.style.boxShadow='0 8px 28px rgba(0,0,0,0.25)'; }}
-              onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.transform='translateY(0)'; el.style.boxShadow='0 4px 20px rgba(0,0,0,0.2)'; }}>
-              <Sparkles size={17}/> Lancer ma première analyse
-            </Link>
-            <Link to="/exemple"
-              style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'13px 22px', borderRadius:12, background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', color:'rgba(255,255,255,0.85)', fontSize:14, fontWeight:600, textDecoration:'none', transition:'all 0.2s' }}>
-              Voir un exemple de rapport <ArrowRight size={14}/>
-            </Link>
-          </div>
-        </div>
-      </div>
+    <div style={{ display:'flex', flexDirection:'column', gap:24, animation:'fadeUp 0.35s ease both' }}>
 
-      {/* Steps */}
+      {/* ── Greeting */}
       <div>
-        <h2 style={{ fontSize:16, fontWeight:800, color:'#0f172a', marginBottom:16, letterSpacing:'-0.01em' }}>Comment ça fonctionne ?</h2>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:14 }}>
-          {[
-            { step:'1', icon:Upload,    title:'Déposez vos docs',      desc:'PDF, Word, images — PV d\'AG, règlement, diagnostic, charges', color:'#2a7d9c' },
-            { step:'2', icon:Sparkles,  title:'L\'IA analyse tout',    desc:'Analymo lit et croise tous vos documents en moins de 2 min', color:'#7c3aed' },
-            { step:'3', icon:BarChart2, title:'Rapport détaillé',      desc:'Score /10, risques identifiés, recommandation finale', color:'#16a34a' },
-          ].map(s => {
-            const Icon = s.icon;
-            return (
-              <div key={s.step} style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'22px', boxShadow:'0 1px 4px rgba(0,0,0,0.03)' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
-                  <div style={{ width:36, height:36, borderRadius:10, background:`${s.color}12`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                    <Icon size={17} style={{ color:s.color }}/>
-                  </div>
-                  <span style={{ fontSize:11, fontWeight:800, color:'#94a3b8', letterSpacing:'0.1em' }}>ÉTAPE {s.step}</span>
-                </div>
-                <div style={{ fontSize:14, fontWeight:800, color:'#0f172a', marginBottom:6 }}>{s.title}</div>
-                <div style={{ fontSize:12, color:'#64748b', lineHeight:1.6 }}>{s.desc}</div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Reassurance */}
-      <div style={{ display:'flex', gap:24, flexWrap:'wrap', padding:'16px 20px', background:'#fff', borderRadius:14, border:'1px solid #edf2f7' }}>
-        {[['🔒','Données chiffrées SSL'],['🗑️','Documents supprimés après analyse'],['⚡','Résultat en < 2 minutes'],['🏅','Satisfaction garantie']].map(([icon,txt])=>(
-          <div key={txt} style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:'#64748b', fontWeight:500 }}>
-            <span style={{ fontSize:16 }}>{icon}</span>{txt}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ─── DASHBOARD FULL (avec analyses) ────── */
-function DashboardFull({ name, greeting }: { name:string; greeting:string }) {
-  const stats = [
-    { label:'Analyses réalisées', value:String(mockAnalyses.length), icon:FileText,  color:'#2a7d9c', bg:'rgba(42,125,156,0.09)',  trend:'+1 ce mois' },
-    { label:'Score moyen',        value:'8,2/10',                    icon:TrendingUp, color:'#16a34a', bg:'rgba(22,163,74,0.09)',   trend:'↑ Bon niveau' },
-    { label:'Dernière analyse',   value:'24 mars',                   icon:Clock,     color:'#d97706', bg:'rgba(217,119,6,0.09)',   trend:'il y a 2 jours' },
-    { label:'Crédits restants',   value:'0',                         icon:CreditCard,color:'#7c3aed', bg:'rgba(124,58,237,0.09)', trend:<Link to="/tarifs" style={{ color:'#7c3aed', fontWeight:700, fontSize:11, textDecoration:'none' }}>Recharger →</Link> },
-  ];
-
-  return (
-    <div style={{ display:'flex', flexDirection:'column', gap:28 }}>
-      {/* Greeting */}
-      <div style={{ animation:'fadeUp 0.3s ease both' }}>
         <h1 style={{ fontSize:'clamp(20px,2.5vw,28px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:4 }}>
           {greeting}{name ? `, ${name}` : ''} 👋
         </h1>
-        <p style={{ fontSize:14, color:'#64748b' }}>Voici un aperçu de votre activité.</p>
+        <p style={{ fontSize:14, color:'#64748b' }}>Bienvenue sur votre espace Analymo.</p>
       </div>
 
-      {/* Stats */}
-      <div className="stats-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, animation:'fadeUp 0.38s ease both' }}>
-        {stats.map((s,i) => {
-          const Icon = s.icon;
-          return (
-            <div key={i} style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'20px', boxShadow:'0 1px 4px rgba(0,0,0,0.03)' }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-                <div style={{ width:38, height:38, borderRadius:10, background:s.bg, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <Icon size={17} style={{ color:s.color }}/>
-                </div>
-              </div>
-              <div style={{ fontSize:24, fontWeight:900, color:'#0f172a', letterSpacing:'-0.02em', lineHeight:1, marginBottom:4 }}>{s.value}</div>
-              <div style={{ fontSize:11, color:'#94a3b8', fontWeight:600, marginBottom:4 }}>{s.label}</div>
-              <div style={{ fontSize:11, color:s.color, fontWeight:700 }}>{s.trend}</div>
+      {/* ── Bloc stats + crédits */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:14 }} className="stats-grid">
+
+        {/* Analyses totales */}
+        <div style={{ background:'#fff', borderRadius:18, border:'1px solid #edf2f7', padding:'22px', boxShadow:'0 1px 6px rgba(0,0,0,0.04)', display:'flex', flexDirection:'column', gap:12 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <div style={{ width:40, height:40, borderRadius:11, background:'rgba(42,125,156,0.09)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <BarChart2 size={19} style={{ color:'#2a7d9c' }}/>
             </div>
-          );
-        })}
+            <span style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.1em' }}>ANALYSES TOTALES</span>
+          </div>
+          <div>
+            <div style={{ fontSize:40, fontWeight:900, color:'#0f172a', letterSpacing:'-0.03em', lineHeight:1, marginBottom:4 }}>{totalAnalyses}</div>
+            {avgScore && <div style={{ fontSize:12, color:'#16a34a', fontWeight:700 }}>Score moyen : {avgScore}/10</div>}
+            {!avgScore && <div style={{ fontSize:12, color:'#94a3b8' }}>Aucune analyse complète encore</div>}
+          </div>
+        </div>
+
+        {/* Dernière analyse */}
+        <div style={{ background:'#fff', borderRadius:18, border:'1px solid #edf2f7', padding:'22px', boxShadow:'0 1px 6px rgba(0,0,0,0.04)', display:'flex', flexDirection:'column', gap:12 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <div style={{ width:40, height:40, borderRadius:11, background:'rgba(217,119,6,0.09)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <Clock size={19} style={{ color:'#d97706' }}/>
+            </div>
+            <span style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.1em' }}>DERNIÈRE ANALYSE</span>
+          </div>
+          {hasAnalyses && lastAnalyse ? (
+            <div>
+              <div style={{ fontSize:18, fontWeight:900, color:'#0f172a', letterSpacing:'-0.02em', marginBottom:4 }}>{lastAnalyse.date}</div>
+              <div style={{ fontSize:12, color:'#64748b', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                {lastAnalyse.type === 'complete' ? lastAnalyse.adresse_bien : lastAnalyse.nom_document}
+              </div>
+              <div style={{ marginTop:6 }}>
+                <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:6, background: lastAnalyse.type==='complete'?'rgba(15,45,61,0.08)':'rgba(42,125,156,0.08)', color:lastAnalyse.type==='complete'?'#0f2d3d':'#2a7d9c' }}>
+                  {lastAnalyse.type === 'complete' ? 'Analyse complète' : 'Analyse document'}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontSize:15, fontWeight:700, color:'#94a3b8' }}>Aucune encore</div>
+          )}
+        </div>
+
+        {/* Crédits restants — détaillé */}
+        <div style={{ background:'linear-gradient(145deg, #0f2d3d 0%, #1a5068 100%)', borderRadius:18, padding:'22px', boxShadow:'0 4px 20px rgba(15,45,61,0.18)', display:'flex', flexDirection:'column', gap:12, position:'relative', overflow:'hidden' }}>
+          <div style={{ position:'absolute', top:-20, right:-20, width:100, height:100, borderRadius:'50%', background:'rgba(42,125,156,0.2)', pointerEvents:'none' }}/>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <div style={{ width:40, height:40, borderRadius:11, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <CreditCard size={19} style={{ color:'#fff' }}/>
+            </div>
+            <span style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.45)', letterSpacing:'0.1em' }}>CRÉDITS RESTANTS</span>
+          </div>
+          <div className="credit-detail" style={{ display:'flex', gap:10 }}>
+            <div style={{ flex:1, padding:'10px', borderRadius:10, background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ fontSize:26, fontWeight:900, color:'#fff', lineHeight:1, marginBottom:3 }}>{credits.document}</div>
+              <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.5)', letterSpacing:'0.06em', marginBottom:2 }}>SIMPLE</div>
+              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>4,99€ / crédit</div>
+            </div>
+            <div style={{ flex:1, padding:'10px', borderRadius:10, background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ fontSize:26, fontWeight:900, color:'#fff', lineHeight:1, marginBottom:3 }}>{credits.complete}</div>
+              <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.5)', letterSpacing:'0.06em', marginBottom:2 }}>COMPLÈTE</div>
+              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>19,90€ / crédit</div>
+            </div>
+          </div>
+          <Link to="/tarifs" style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.7)', textDecoration:'none', transition:'color 0.15s' }}
+            onMouseOver={e=>(e.currentTarget.style.color='#fff')} onMouseOut={e=>(e.currentTarget.style.color='rgba(255,255,255,0.7)')}>
+            Recharger des crédits <ArrowRight size={12}/>
+          </Link>
+        </div>
       </div>
 
-      {/* Quick actions */}
-      <div style={{ animation:'fadeUp 0.44s ease both' }}>
-        <h2 style={{ fontSize:15, fontWeight:800, color:'#0f172a', marginBottom:14, letterSpacing:'-0.01em' }}>Lancer une analyse</h2>
-        <div className="analyse-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
-          {/* Document simple */}
+      {/* ── Info crédits pricing */}
+      <div style={{ background:'#fff', borderRadius:14, border:'1px solid #edf2f7', padding:'16px 20px', display:'flex', alignItems:'flex-start', gap:12, boxShadow:'0 1px 4px rgba(0,0,0,0.03)' }}>
+        <Info size={16} style={{ color:'#2a7d9c', flexShrink:0, marginTop:2 }}/>
+        <div style={{ fontSize:13, color:'#64748b', lineHeight:1.6 }}>
+          <strong style={{ color:'#0f172a' }}>Comment fonctionnent les crédits ?</strong><br/>
+          <span style={{ color:'#94a3b8' }}>4,99€ → 1 crédit analyse document · 19,90€ → 1 crédit analyse complète · 29,90€ → 2 crédits complète · 39,90€ → 3 crédits complète</span>
+        </div>
+      </div>
+
+      {/* ── Section : Analyser un document */}
+      <div>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+          <h2 style={{ fontSize:16, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em' }}>Analyser un document</h2>
+          <span style={{ fontSize:12, color:'#94a3b8' }}>Choisissez selon votre besoin</span>
+        </div>
+        <div className="action-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+
+          {/* Analyse simple */}
           <Link to="/dashboard/nouvelle-analyse?type=document" style={{ textDecoration:'none' }}>
-            <div style={{ background:'#fff', borderRadius:18, border:'1.5px solid #edf2f7', padding:'24px', cursor:'pointer', transition:'all 0.2s', display:'flex', alignItems:'center', gap:16 }}
-              onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor='#2a7d9c'; el.style.boxShadow='0 8px 24px rgba(42,125,156,0.1)'; el.style.transform='translateY(-2px)'; }}
-              onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor='#edf2f7'; el.style.boxShadow='none'; el.style.transform='translateY(0)'; }}>
-              <div style={{ width:52, height:52, borderRadius:14, background:'rgba(42,125,156,0.08)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <FileText size={24} style={{ color:'#2a7d9c' }}/>
+            <div style={{ background:'#fff', borderRadius:18, border:`1.5px solid ${credits.document > 0 ? '#edf2f7' : '#fecaca'}`, padding:'24px', cursor:'pointer', transition:'all 0.2s', height:'100%', boxSizing:'border-box' as const, position:'relative', opacity: credits.document > 0 ? 1 : 0.7 }}
+              onMouseOver={e=>{ if(credits.document > 0){ const el=e.currentTarget as HTMLElement; el.style.borderColor='#2a7d9c'; el.style.boxShadow='0 8px 24px rgba(42,125,156,0.1)'; el.style.transform='translateY(-2px)'; }}}
+              onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor=credits.document>0?'#edf2f7':'#fecaca'; el.style.boxShadow='none'; el.style.transform='translateY(0)'; }}>
+              {credits.document === 0 && (
+                <div style={{ position:'absolute', top:14, right:14, display:'flex', alignItems:'center', gap:4, fontSize:10, fontWeight:700, color:'#ef4444', background:'#fef2f2', border:'1px solid #fecaca', padding:'3px 8px', borderRadius:6 }}>
+                  <Lock size={10}/> 0 crédit
+                </div>
+              )}
+              {credits.document > 0 && (
+                <div style={{ position:'absolute', top:14, right:14, fontSize:10, fontWeight:700, color:'#16a34a', background:'#f0fdf4', border:'1px solid #bbf7d0', padding:'3px 8px', borderRadius:6 }}>
+                  {credits.document} crédit{credits.document > 1 ? 's' : ''} dispo
+                </div>
+              )}
+              <div style={{ width:50, height:50, borderRadius:14, background:'rgba(42,125,156,0.08)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:16 }}>
+                <FileText size={22} style={{ color:'#2a7d9c' }}/>
               </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:15, fontWeight:800, color:'#0f172a', marginBottom:4 }}>Analyse d'un document</div>
-                <div style={{ fontSize:12, color:'#94a3b8', marginBottom:8 }}>1 fichier · PV, règlement, diagnostic…</div>
-                <div style={{ fontSize:18, fontWeight:900, color:'#2a7d9c' }}>4,99€</div>
+              <div style={{ fontSize:17, fontWeight:800, color:'#0f172a', marginBottom:6 }}>Analyse d'un document</div>
+              <div style={{ fontSize:12, color:'#64748b', lineHeight:1.6, marginBottom:18 }}>
+                Un seul fichier analysé — PV d'AG, règlement, diagnostic ou appel de charges.
               </div>
-              <ArrowRight size={18} style={{ color:'#cbd5e1', flexShrink:0 }}/>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <span style={{ fontSize:13, fontWeight:700, color: credits.document > 0 ? '#2a7d9c' : '#94a3b8', display:'flex', alignItems:'center', gap:5 }}>
+                  {credits.document > 0 ? 'Commencer' : 'Acheter un crédit'} <ArrowRight size={14}/>
+                </span>
+                <span style={{ fontSize:20, fontWeight:900, color:'#0f172a' }}>4,99€</span>
+              </div>
             </div>
           </Link>
 
           {/* Analyse complète */}
-          <Link to="/dashboard/nouvelle-analyse?type=complete" style={{ textDecoration:'none' }}>
-            <div style={{ background:'linear-gradient(145deg, #0f2d3d 0%, #1a5068 100%)', borderRadius:18, padding:'24px', cursor:'pointer', transition:'all 0.2s', display:'flex', alignItems:'center', gap:16, position:'relative', overflow:'hidden' }}
-              onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 10px 32px rgba(15,45,61,0.3)'; el.style.transform='translateY(-2px)'; }}
+          <Link to={credits.complete > 0 ? '/dashboard/nouvelle-analyse?type=complete' : '/tarifs'} style={{ textDecoration:'none' }}>
+            <div style={{ background:'linear-gradient(145deg, #0f2d3d 0%, #1a5068 100%)', borderRadius:18, padding:'24px', cursor:'pointer', transition:'all 0.2s', position:'relative', overflow:'hidden', height:'100%', boxSizing:'border-box' as const }}
+              onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 12px 36px rgba(15,45,61,0.3)'; el.style.transform='translateY(-2px)'; }}
               onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='none'; el.style.transform='translateY(0)'; }}>
-              <div style={{ position:'absolute', top:-20, right:-20, width:100, height:100, borderRadius:'50%', background:'rgba(42,125,156,0.2)', pointerEvents:'none' }}/>
-              <div style={{ width:52, height:52, borderRadius:14, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <ShieldCheck size={24} style={{ color:'#fff' }}/>
-              </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-                  <span style={{ fontSize:15, fontWeight:800, color:'#fff' }}>Analyse complète</span>
-                  <span style={{ fontSize:9, fontWeight:800, color:'#fff', background:'rgba(255,255,255,0.2)', padding:'2px 8px', borderRadius:100, letterSpacing:'0.05em' }}>⭐ RECOMMANDÉ</span>
+              <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:'rgba(42,125,156,0.2)', pointerEvents:'none' }}/>
+              {/* Badge crédits */}
+              {credits.complete > 0 ? (
+                <div style={{ position:'absolute', top:14, right:14, fontSize:10, fontWeight:700, color:'#fff', background:'rgba(255,255,255,0.2)', border:'1px solid rgba(255,255,255,0.3)', padding:'3px 8px', borderRadius:6 }}>
+                  {credits.complete} crédit{credits.complete > 1 ? 's' : ''} dispo
                 </div>
-                <div style={{ fontSize:12, color:'rgba(255,255,255,0.55)', marginBottom:8 }}>Multi-docs · Score /10 + recommandation</div>
-                <div style={{ fontSize:18, fontWeight:900, color:'#fff' }}>19,90€</div>
+              ) : (
+                <div style={{ position:'absolute', top:14, right:14, display:'flex', alignItems:'center', gap:4, fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.7)', background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', padding:'3px 8px', borderRadius:6 }}>
+                  <Lock size={10}/> Acheter
+                </div>
+              )}
+              <div style={{ position:'absolute', top:14, left:14, fontSize:9, fontWeight:800, color:'#fff', background:'rgba(255,255,255,0.15)', border:'1px solid rgba(255,255,255,0.2)', padding:'3px 10px', borderRadius:100 }}>
+                ⭐ RECOMMANDÉ
               </div>
-              <ArrowRight size={18} style={{ color:'rgba(255,255,255,0.4)', flexShrink:0 }}/>
+              <div style={{ width:50, height:50, borderRadius:14, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:16, marginTop:8 }}>
+                <ShieldCheck size={22} style={{ color:'#fff' }}/>
+              </div>
+              <div style={{ fontSize:17, fontWeight:800, color:'#fff', marginBottom:6 }}>Analyse complète d'un logement</div>
+              <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)', lineHeight:1.6, marginBottom:18 }}>
+                Tous les documents du bien — score /10, risques, recommandation Analymo.
+              </div>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <span style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.85)', display:'flex', alignItems:'center', gap:5 }}>
+                  {credits.complete > 0 ? 'Commencer l\'audit' : 'Acheter un crédit'} <ArrowRight size={14}/>
+                </span>
+                <span style={{ fontSize:20, fontWeight:900, color:'#fff' }}>19,90€</span>
+              </div>
             </div>
           </Link>
         </div>
       </div>
 
-      {/* Analyses récentes */}
-      <div style={{ animation:'fadeUp 0.5s ease both' }}>
+      {/* ── Analyses récentes */}
+      <div>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-          <h2 style={{ fontSize:15, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em' }}>Analyses récentes</h2>
+          <h2 style={{ fontSize:16, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em' }}>Analyses récentes</h2>
           <Link to="/dashboard/analyses" style={{ fontSize:13, color:'#2a7d9c', textDecoration:'none', fontWeight:700, display:'flex', alignItems:'center', gap:3 }}>
             Tout voir <ChevronRight size={14}/>
           </Link>
         </div>
-        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          {mockAnalyses.map(a => <AnalyseRow key={a.id} a={a}/>)}
-        </div>
+        {!hasAnalyses ? (
+          <EmptyAnalyses/>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            {MOCK_ANALYSES.slice(0,3).map(a=><AnalyseRow key={a.id} a={a}/>)}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-/* ─── ANALYSE ROW ────────────────────────── */
+/* ─── EMPTY STATE ────────────────────────── */
+function EmptyAnalyses() {
+  return (
+    <div style={{ background:'#fff', borderRadius:18, border:'2px dashed #e2e8f0', padding:'48px 32px', textAlign:'center' }}>
+      <div style={{ width:64, height:64, borderRadius:18, background:'rgba(42,125,156,0.07)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
+        <Sparkles size={28} style={{ color:'#2a7d9c' }}/>
+      </div>
+      <h3 style={{ fontSize:17, fontWeight:800, color:'#0f172a', marginBottom:8 }}>Aucune analyse pour le moment</h3>
+      <p style={{ fontSize:13, color:'#94a3b8', marginBottom:24, lineHeight:1.6 }}>Déposez vos documents immobiliers et obtenez un rapport complet en moins de 2 minutes.</p>
+      <Link to="/dashboard/nouvelle-analyse"
+        style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'12px 24px', borderRadius:12, background:'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color:'#fff', fontSize:14, fontWeight:700, textDecoration:'none', boxShadow:'0 4px 16px rgba(15,45,61,0.2)' }}>
+        <Plus size={15}/> Lancer ma première analyse
+      </Link>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   ANALYSE ROW — avec logique nom/adresse
+══════════════════════════════════════════ */
 function AnalyseRow({ a }: { a:Analyse }) {
   const isComplete = a.type === 'complete';
-  const sc = a.score ?? 0;
-  const scoreColor = sc >= 7.5 ? '#16a34a' : sc >= 5 ? '#d97706' : '#dc2626';
+  // Affichage du titre selon le type
+  const displayTitle = isComplete
+    ? (a.adresse_bien || 'Adresse en cours de détection…')
+    : (a.nom_document || 'Document sans nom');
+
   const typeLabel = isComplete ? 'Analyse Complète' : 'Analyse Document';
+  const typeBg    = isComplete ? 'rgba(15,45,61,0.07)' : 'rgba(42,125,156,0.07)';
+  const typeColor = isComplete ? '#0f2d3d' : '#2a7d9c';
 
   return (
     <div style={{ background:'#fff', borderRadius:13, border:'1px solid #edf2f7', padding:'14px 18px', display:'flex', alignItems:'center', gap:14, flexWrap:'wrap', boxShadow:'0 1px 3px rgba(0,0,0,0.03)', transition:'all 0.18s' }}
       onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 4px 18px rgba(42,125,156,0.08)'; el.style.transform='translateY(-1px)'; el.style.borderColor='#dbeafe'; }}
       onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 1px 3px rgba(0,0,0,0.03)'; el.style.transform='translateY(0)'; el.style.borderColor='#edf2f7'; }}>
-      <div style={{ width:40, height:40, borderRadius:10, flexShrink:0, background:a.status==='processing'?'rgba(42,125,156,0.07)':`${scoreColor}0d`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+
+      {/* Icone */}
+      <div style={{ width:42, height:42, borderRadius:11, flexShrink:0, background:a.status==='processing'?'rgba(42,125,156,0.07)':`${isComplete?'#0f2d3d':'#2a7d9c'}0d`, display:'flex', alignItems:'center', justifyContent:'center' }}>
         {a.status==='processing'
           ? <div style={{ width:17, height:17, borderRadius:'50%', border:'2.5px solid #2a7d9c', borderTopColor:'transparent', animation:'spin 0.85s linear infinite' }}/>
-          : <Building2 size={17} style={{ color:scoreColor }}/>}
+          : isComplete ? <Building2 size={17} style={{ color:'#0f2d3d' }}/> : <FileText size={17} style={{ color:'#2a7d9c' }}/>}
       </div>
+
+      {/* Info */}
       <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ fontSize:13.5, fontWeight:700, color:'#0f172a', marginBottom:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a.title}</div>
-        <div style={{ fontSize:11, color:'#94a3b8', display:'flex', gap:5, alignItems:'center', flexWrap:'wrap' }}>
-          <span style={{ background:'#f8fafc', border:'1px solid #edf2f7', borderRadius:5, padding:'1px 6px', fontWeight:600, color:'#64748b' }}>{typeLabel}</span>
+        <div style={{ fontSize:13.5, fontWeight:700, color:'#0f172a', marginBottom:4, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{displayTitle}</div>
+        <div style={{ fontSize:11, color:'#94a3b8', display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
+          <span style={{ background:typeBg, borderRadius:5, padding:'2px 7px', fontSize:10, fontWeight:700, color:typeColor }}>{typeLabel}</span>
           <span>·</span><span>{a.date}</span>
           <span>·</span><span style={{ fontWeight:700, color:'#64748b' }}>{a.price}</span>
         </div>
       </div>
+
+      {/* Droite */}
       <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0, flexWrap:'wrap' }}>
-        {a.status==='processing' ? (
+        {a.status === 'processing' ? (
           <span style={{ fontSize:11, fontWeight:700, color:'#2a7d9c', background:'rgba(42,125,156,0.07)', padding:'4px 10px', borderRadius:7 }}>En cours…</span>
         ) : (
           <>
-            {isComplete && a.score != null && <ScoreBadge score={a.score}/>}
+            {/* Score uniquement pour analyse complète */}
+            {isComplete && a.score != null && <ScoreBadge score={a.score} size="sm"/>}
             {a.recommandation && (
-              <span style={{ fontSize:11, fontWeight:700, color:a.recommandationColor, background:`${a.recommandationColor}10`, border:`1px solid ${a.recommandationColor}22`, padding:'4px 10px', borderRadius:7, whiteSpace:'nowrap' }}>{a.recommandation}</span>
+              <span style={{ fontSize:11, fontWeight:700, color:a.recommandationColor, background:`${a.recommandationColor}10`, border:`1px solid ${a.recommandationColor}22`, padding:'4px 9px', borderRadius:7, whiteSpace:'nowrap' }}>{a.recommandation}</span>
             )}
-            <button style={{ display:'flex', alignItems:'center', gap:4, padding:'6px 12px', borderRadius:8, background:'#f8fafc', border:'1px solid #edf2f7', fontSize:12, fontWeight:700, color:'#2a7d9c', cursor:'pointer', transition:'background 0.15s' }}
+            <button style={{ display:'flex', alignItems:'center', gap:4, padding:'6px 12px', borderRadius:8, background:'#f8fafc', border:'1px solid #edf2f7', fontSize:12, fontWeight:700, color:'#2a7d9c', cursor:'pointer', transition:'background 0.15s', whiteSpace:'nowrap' }}
               onMouseOver={e=>(e.currentTarget.style.background='#e8f4f8')} onMouseOut={e=>(e.currentTarget.style.background='#f8fafc')}>
               <ExternalLink size={11}/> Rapport
             </button>
@@ -479,9 +593,10 @@ function AnalyseRow({ a }: { a:Analyse }) {
 }
 
 /* ══════════════════════════════════════════
-   NOUVELLE ANALYSE — avec API Claude
+   NOUVELLE ANALYSE — avec logique crédits + API Claude
 ══════════════════════════════════════════ */
 function NouvelleAnalyse() {
+  const credits = MOCK_CREDITS;
   const [step, setStep] = useState<'choice'|'upload'|'analyse'|'result'>('choice');
   const [type, setType] = useState<'document'|'complete'|null>(null);
   const [files, setFiles] = useState<File[]>([]);
@@ -491,8 +606,8 @@ function NouvelleAnalyse() {
   const [error, setError] = useState('');
 
   const plans = {
-    document: { label:"Analyse d'un document", price:'4,99€', max:1, desc:'Un seul fichier analysé en détail.' },
-    complete: { label:"Analyse complète d'un logement", price:'19,90€', max:20, desc:'Tous les documents du bien analysés ensemble — score /10, risques, recommandation.' },
+    document: { label:"Analyse d'un document",       price:'4,99€',  max:1,  desc:'Un seul fichier — PV d\'AG, règlement, diagnostic, appel de charges.', creditsKey:'document' as keyof Credits },
+    complete: { label:"Analyse complète d'un logement", price:'19,90€', max:20, desc:'Tous les documents du bien — score /10, risques, recommandation Analymo.', creditsKey:'complete' as keyof Credits },
   };
   const plan = type ? plans[type] : null;
 
@@ -514,7 +629,7 @@ function NouvelleAnalyse() {
         model:'claude-sonnet-4-20250514', max_tokens:2000,
         messages:[{ role:'user', content:[
           { type:isPdf?'document':'image', source:{ type:'base64', media_type:mediaType, data:b64 } },
-          { type:'text', text:'Extrais tout le texte de ce document immobilier de façon fidèle et structurée.' }
+          { type:'text', text:'Extrais tout le texte de ce document immobilier de façon fidèle. Conserve les sections, données chiffrées et informations clés.' }
         ]}]
       })
     });
@@ -535,16 +650,35 @@ function NouvelleAnalyse() {
       setProgress(50); setProgressMsg('Analyse IA en cours…');
       const isComplete = type === 'complete';
       const systemPrompt = isComplete
-        ? `Tu es Analymo, expert en analyse de documents immobiliers français. Réponds UNIQUEMENT en JSON valide :
-{"titre":"nom du bien détecté","score":7.5,"recommandation":"Acheter"|"Négocier"|"Risqué"|"Déconseillé","resume":"2-3 phrases","points_forts":["..."],"points_vigilance":["..."],"risques_financiers":"estimation","conclusion":"avis final 2-3 phrases"}`
-        : `Tu es Analymo, expert en analyse de documents immobiliers français. Réponds UNIQUEMENT en JSON valide :
-{"titre":"type et nom du document","resume":"2-3 phrases","points_forts":["..."],"points_vigilance":["..."],"conclusion":"synthèse"}`;
+        ? `Tu es Analymo, expert en analyse de documents immobiliers français.
+Analyse les documents fournis et réponds UNIQUEMENT en JSON valide sans aucun texte avant ou après :
+{
+  "titre": "adresse complète du bien détectée dans les documents (ex: 12 rue de la Paix, 75002 Paris)",
+  "score": 7.5,
+  "recommandation": "Acheter",
+  "resume": "résumé de 2-3 phrases",
+  "points_forts": ["point 1", "point 2", "point 3"],
+  "points_vigilance": ["point 1", "point 2"],
+  "risques_financiers": "estimation des risques financiers",
+  "conclusion": "avis final Analymo en 2-3 phrases"
+}
+Les valeurs possibles pour recommandation : "Acheter", "Négocier", "Risqué", "Déconseillé".`
+        : `Tu es Analymo, expert en analyse de documents immobiliers français.
+Analyse le document fourni et réponds UNIQUEMENT en JSON valide sans aucun texte avant ou après :
+{
+  "titre": "nom descriptif du document analysé (ex: PV Assemblée Générale 2025 - Résidence Les Pins)",
+  "resume": "résumé de 2-3 phrases",
+  "points_forts": ["information clé 1", "information clé 2"],
+  "points_vigilance": ["point d'attention 1", "point d'attention 2"],
+  "conclusion": "ce qu'il faut retenir de ce document"
+}`;
+
       setProgress(70); setProgressMsg('Génération du rapport…');
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method:'POST', headers:{ 'Content-Type':'application/json' },
         body: JSON.stringify({
           model:'claude-sonnet-4-20250514', max_tokens:1000,
-          system:systemPrompt,
+          system: systemPrompt,
           messages:[{ role:'user', content:`Documents à analyser :\n\n${textes.join('\n\n').slice(0,8000)}` }]
         })
       });
@@ -561,54 +695,85 @@ function NouvelleAnalyse() {
     }
   };
 
-  /* CHOICE */
+  /* ── CHOICE */
   if (step==='choice') return (
-    <div style={{ maxWidth:760, margin:'0 auto' }}>
+    <div style={{ maxWidth:780, margin:'0 auto' }}>
       <Link to="/dashboard" style={{ fontSize:13, color:'#94a3b8', textDecoration:'none', display:'inline-flex', alignItems:'center', gap:4, marginBottom:24, fontWeight:600 }}><ChevronLeft size={14}/> Retour</Link>
       <h1 style={{ fontSize:'clamp(22px,3vw,28px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:6 }}>Que souhaitez-vous analyser ?</h1>
       <p style={{ fontSize:14, color:'#64748b', marginBottom:32 }}>Choisissez le mode d'analyse adapté à votre besoin.</p>
+
       <div className="type-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
+        {/* Document simple */}
         <button onClick={()=>{ setType('document'); setStep('upload'); }}
-          style={{ padding:'28px 24px', borderRadius:20, border:'1.5px solid #edf2f7', background:'#fff', cursor:'pointer', textAlign:'left', transition:'all 0.18s', boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}
-          onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor='#2a7d9c'; el.style.boxShadow='0 8px 28px rgba(42,125,156,0.1)'; el.style.transform='translateY(-2px)'; }}
-          onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor='#edf2f7'; el.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'; el.style.transform='translateY(0)'; }}>
-          <div style={{ width:52, height:52, borderRadius:14, background:'rgba(42,125,156,0.08)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:18 }}><FileText size={24} style={{ color:'#2a7d9c' }}/></div>
+          style={{ padding:'28px 24px', borderRadius:20, border:`1.5px solid ${credits.document>0?'#edf2f7':'#fecaca'}`, background:'#fff', cursor:'pointer', textAlign:'left', transition:'all 0.18s', position:'relative', boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}
+          onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor=credits.document>0?'#2a7d9c':'#fca5a5'; el.style.boxShadow='0 8px 28px rgba(42,125,156,0.1)'; el.style.transform='translateY(-2px)'; }}
+          onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor=credits.document>0?'#edf2f7':'#fecaca'; el.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'; el.style.transform='translateY(0)'; }}>
+          <div style={{ position:'absolute', top:14, right:14, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:6, background:credits.document>0?'#f0fdf4':'#fef2f2', color:credits.document>0?'#16a34a':'#ef4444', border:`1px solid ${credits.document>0?'#bbf7d0':'#fecaca'}` }}>
+            {credits.document > 0 ? `${credits.document} crédit${credits.document>1?'s':''}` : '0 crédit — Acheter'}
+          </div>
+          <div style={{ width:52, height:52, borderRadius:14, background:'rgba(42,125,156,0.08)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:18 }}>
+            <FileText size={24} style={{ color:'#2a7d9c' }}/>
+          </div>
           <div style={{ fontSize:18, fontWeight:800, color:'#0f172a', marginBottom:8 }}>Analyse d'un document</div>
           <div style={{ fontSize:13, color:'#64748b', lineHeight:1.6, marginBottom:20 }}>Un seul fichier — PV d'AG, règlement de copropriété, diagnostic ou appel de charges.</div>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-            <span style={{ fontSize:13, fontWeight:700, color:'#2a7d9c', display:'flex', alignItems:'center', gap:5 }}>Commencer <ArrowRight size={14}/></span>
+            <span style={{ fontSize:13, fontWeight:700, color:credits.document>0?'#2a7d9c':'#ef4444', display:'flex', alignItems:'center', gap:5 }}>
+              {credits.document>0?<><ArrowRight size={14}/> Commencer</>:<><Lock size={13}/> Acheter un crédit</>}
+            </span>
             <span style={{ fontSize:22, fontWeight:900, color:'#0f172a' }}>4,99€</span>
           </div>
         </button>
-        <button onClick={()=>{ setType('complete'); setStep('upload'); }}
+
+        {/* Analyse complète */}
+        <button onClick={()=>{ if(credits.complete>0){ setType('complete'); setStep('upload'); } else { window.location.href='/tarifs'; } }}
           style={{ padding:'28px 24px', borderRadius:20, border:'1.5px solid transparent', background:'linear-gradient(145deg, #0f2d3d, #1a5068)', cursor:'pointer', textAlign:'left', transition:'all 0.18s', position:'relative', overflow:'hidden', boxShadow:'0 4px 20px rgba(15,45,61,0.15)' }}
           onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 12px 40px rgba(15,45,61,0.28)'; el.style.transform='translateY(-2px)'; }}
           onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 4px 20px rgba(15,45,61,0.15)'; el.style.transform='translateY(0)'; }}>
           <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:'rgba(42,125,156,0.2)', pointerEvents:'none' }}/>
-          <div style={{ position:'absolute', top:14, right:14, background:'rgba(255,255,255,0.15)', color:'#fff', fontSize:10, fontWeight:800, padding:'4px 10px', borderRadius:100, border:'1px solid rgba(255,255,255,0.2)' }}>RECOMMANDÉ ⭐</div>
-          <div style={{ width:52, height:52, borderRadius:14, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:18 }}><ShieldCheck size={24} style={{ color:'#fff' }}/></div>
+          <div style={{ position:'absolute', top:14, left:14, fontSize:9, fontWeight:800, color:'#fff', background:'rgba(255,255,255,0.15)', border:'1px solid rgba(255,255,255,0.2)', padding:'3px 10px', borderRadius:100 }}>⭐ RECOMMANDÉ</div>
+          <div style={{ position:'absolute', top:14, right:14, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:6, background:credits.complete>0?'rgba(255,255,255,0.15)':'rgba(239,68,68,0.25)', color:'#fff', border:'1px solid rgba(255,255,255,0.2)' }}>
+            {credits.complete>0 ? `${credits.complete} crédit${credits.complete>1?'s':''}` : '0 crédit — Acheter'}
+          </div>
+          <div style={{ width:52, height:52, borderRadius:14, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:18, marginTop:10 }}>
+            <ShieldCheck size={24} style={{ color:'#fff' }}/>
+          </div>
           <div style={{ fontSize:18, fontWeight:800, color:'#fff', marginBottom:8 }}>Analyse complète d'un logement</div>
           <div style={{ fontSize:13, color:'rgba(255,255,255,0.6)', lineHeight:1.6, marginBottom:20 }}>Tous les documents du bien — score /10, risques identifiés, recommandation Analymo.</div>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-            <span style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.85)', display:'flex', alignItems:'center', gap:5 }}>Commencer l'audit <ArrowRight size={14}/></span>
+            <span style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.85)', display:'flex', alignItems:'center', gap:5 }}>
+              {credits.complete>0?'Commencer l\'audit ':'Acheter un crédit '}<ArrowRight size={14}/>
+            </span>
             <span style={{ fontSize:22, fontWeight:900, color:'#fff' }}>19,90€</span>
           </div>
         </button>
       </div>
+
+      {/* Packs */}
       <div className="type-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-        {[{l:'Pack 2 biens',p:'29,90€',s:'Comparaison côte à côte'},{l:'Pack 3 biens',p:'39,90€',s:'Classement + recommandation'}].map(p=>(
-          <div key={p.l} style={{ background:'#fff', borderRadius:13, border:'1.5px solid #edf2f7', padding:'14px 18px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', transition:'all 0.15s' }}
-            onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor='rgba(42,125,156,0.3)'; }}
-            onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor='#edf2f7'; }}>
-            <div><div style={{ fontSize:13.5, fontWeight:800, color:'#0f172a', marginBottom:2 }}>{p.l}</div><div style={{ fontSize:11, color:'#94a3b8' }}>{p.s}</div></div>
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}><span style={{ fontSize:15, fontWeight:900, color:'#0f172a' }}>{p.p}</span><ArrowRight size={13} style={{ color:'#2a7d9c' }}/></div>
-          </div>
+        {[
+          { l:'Pack 2 biens', p:'29,90€', s:'2 crédits analyse complète', credits:'2 crédits complets' },
+          { l:'Pack 3 biens', p:'39,90€', s:'3 crédits analyse complète', credits:'3 crédits complets' },
+        ].map(pk=>(
+          <Link key={pk.l} to="/tarifs" style={{ textDecoration:'none' }}>
+            <div style={{ background:'#fff', borderRadius:13, border:'1.5px solid #edf2f7', padding:'14px 18px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', transition:'all 0.15s' }}
+              onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor='rgba(42,125,156,0.3)'; }}
+              onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor='#edf2f7'; }}>
+              <div>
+                <div style={{ fontSize:13.5, fontWeight:800, color:'#0f172a', marginBottom:2 }}>{pk.l}</div>
+                <div style={{ fontSize:11, color:'#94a3b8' }}>{pk.s}</div>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ fontSize:15, fontWeight:900, color:'#0f172a' }}>{pk.p}</span>
+                <ArrowRight size={13} style={{ color:'#2a7d9c' }}/>
+              </div>
+            </div>
+          </Link>
         ))}
       </div>
     </div>
   );
 
-  /* UPLOAD */
+  /* ── UPLOAD */
   if (step==='upload' && plan) return (
     <div style={{ maxWidth:640, margin:'0 auto' }}>
       <button onClick={()=>{ setStep('choice'); setFiles([]); }} style={{ fontSize:13, color:'#94a3b8', background:'none', border:'none', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, marginBottom:24, fontWeight:600 }}><ChevronLeft size={14}/> Retour</button>
@@ -621,8 +786,7 @@ function NouvelleAnalyse() {
       </div>
       {error && (
         <div style={{ padding:'12px 16px', borderRadius:10, background:'#fef2f2', border:'1px solid #fecaca', display:'flex', gap:10, alignItems:'center', marginBottom:16 }}>
-          <AlertTriangle size={15} color="#dc2626" style={{ flexShrink:0 }}/>
-          <span style={{ fontSize:13, color:'#dc2626' }}>{error}</span>
+          <AlertTriangle size={15} color="#dc2626" style={{ flexShrink:0 }}/><span style={{ fontSize:13, color:'#dc2626' }}>{error}</span>
         </div>
       )}
       <div onClick={()=>document.getElementById('file-input')?.click()}
@@ -655,17 +819,12 @@ function NouvelleAnalyse() {
       )}
       <button onClick={lancer} disabled={files.length===0}
         style={{ width:'100%', padding:'14px', borderRadius:12, border:'none', background:files.length>0?'linear-gradient(135deg, #2a7d9c, #0f2d3d)':'#e2e8f0', color:files.length>0?'#fff':'#94a3b8', fontSize:15, fontWeight:800, cursor:files.length>0?'pointer':'default', boxShadow:files.length>0?'0 4px 18px rgba(15,45,61,0.2)':'none', display:'flex', alignItems:'center', justifyContent:'center', gap:8, transition:'all 0.15s' }}>
-        <Sparkles size={16}/> Analyser {files.length>0?`(${files.length} fichier${files.length>1?'s':''})` :''}
+        <Sparkles size={16}/> Analyser {files.length>0?`(${files.length} fichier${files.length>1?'s':''})` : ''}
       </button>
-      <div style={{ display:'flex', justifyContent:'center', gap:20, marginTop:14, flexWrap:'wrap' }}>
-        {[['🔒','SSL'],['🗑️','Suppression auto'],['⚡','< 2 min']].map(([i,t])=>
-          <span key={t} style={{ fontSize:12, color:'#94a3b8', display:'flex', alignItems:'center', gap:5 }}>{i} {t}</span>
-        )}
-      </div>
     </div>
   );
 
-  /* LOADING */
+  /* ── LOADING */
   if (step==='analyse') return (
     <div style={{ maxWidth:480, margin:'80px auto 0', textAlign:'center' }}>
       <div style={{ width:80, height:80, borderRadius:'50%', background:'linear-gradient(135deg, rgba(42,125,156,0.1), rgba(15,45,61,0.07))', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 24px', animation:'float 3s ease-in-out infinite' }}>
@@ -680,7 +839,7 @@ function NouvelleAnalyse() {
     </div>
   );
 
-  /* RESULT */
+  /* ── RESULT */
   if (step==='result' && result) {
     const isComplete = type === 'complete';
     const sc = result.score ?? 0;
@@ -691,13 +850,10 @@ function NouvelleAnalyse() {
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:28, flexWrap:'wrap', gap:14 }}>
           <div>
             <div style={{ fontSize:10, fontWeight:800, color:'#2a7d9c', letterSpacing:'0.14em', marginBottom:6 }}>RAPPORT ANALYMO</div>
-            <h1 style={{ fontSize:'clamp(18px,2.5vw,24px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.02em' }}>{result.titre}</h1>
+            <h1 style={{ fontSize:'clamp(16px,2.5vw,22px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.02em' }}>{result.titre}</h1>
           </div>
-          <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-            <button onClick={()=>{ setStep('choice'); setType(null); setFiles([]); setResult(null); }}
-              style={{ padding:'9px 18px', borderRadius:10, border:'1.5px solid #edf2f7', background:'#fff', fontSize:13, fontWeight:700, color:'#64748b', cursor:'pointer' }}>
-              Nouvelle analyse
-            </button>
+          <div style={{ display:'flex', gap:10 }}>
+            <button onClick={()=>{ setStep('choice'); setType(null); setFiles([]); setResult(null); }} style={{ padding:'9px 18px', borderRadius:10, border:'1.5px solid #edf2f7', background:'#fff', fontSize:13, fontWeight:700, color:'#64748b', cursor:'pointer' }}>Nouvelle analyse</button>
             <button style={{ padding:'9px 18px', borderRadius:10, border:'none', background:'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
               <Download size={13}/> PDF
             </button>
@@ -705,19 +861,19 @@ function NouvelleAnalyse() {
         </div>
         {isComplete && result.score != null && (
           <div className="result-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:16 }}>
-            <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'24px', textAlign:'center', boxShadow:'0 1px 4px rgba(0,0,0,0.03)' }}>
+            <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'24px', textAlign:'center' }}>
               <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.1em', marginBottom:12 }}>SCORE GLOBAL</div>
               <div style={{ fontSize:56, fontWeight:900, color:scoreColor, letterSpacing:'-0.03em', lineHeight:1, marginBottom:4 }}>{result.score.toFixed(1)}</div>
               <div style={{ fontSize:14, color:'#94a3b8' }}>/ 10</div>
             </div>
-            <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'24px', textAlign:'center', boxShadow:'0 1px 4px rgba(0,0,0,0.03)' }}>
+            <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'24px', textAlign:'center' }}>
               <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.1em', marginBottom:12 }}>RECOMMANDATION</div>
               <div style={{ display:'inline-block', padding:'8px 24px', borderRadius:12, background:`${recColor}10`, border:`2px solid ${recColor}25`, fontSize:22, fontWeight:900, color:recColor, marginBottom:8 }}>{result.recommandation}</div>
               {result.risques_financiers && <div style={{ fontSize:12, color:'#94a3b8', marginTop:8 }}>{result.risques_financiers}</div>}
             </div>
           </div>
         )}
-        <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'20px 22px', marginBottom:14, boxShadow:'0 1px 4px rgba(0,0,0,0.03)' }}>
+        <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'20px 22px', marginBottom:14 }}>
           <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.1em', marginBottom:10 }}>RÉSUMÉ</div>
           <p style={{ fontSize:14, color:'#374151', lineHeight:1.75 }}>{result.resume}</p>
         </div>
@@ -725,19 +881,13 @@ function NouvelleAnalyse() {
           <div style={{ background:'#f0fdf4', borderRadius:16, border:'1px solid #d1fae5', padding:'18px 20px' }}>
             <div style={{ fontSize:10, fontWeight:700, color:'#16a34a', letterSpacing:'0.1em', marginBottom:12 }}>✓ POINTS FORTS</div>
             {result.points_forts.map((p,i)=>(
-              <div key={i} style={{ display:'flex', gap:8, marginBottom:8 }}>
-                <CheckCircle size={13} color="#16a34a" style={{ flexShrink:0, marginTop:2 }}/>
-                <span style={{ fontSize:13, color:'#166534', lineHeight:1.5 }}>{p}</span>
-              </div>
+              <div key={i} style={{ display:'flex', gap:8, marginBottom:8 }}><CheckCircle size={13} color="#16a34a" style={{ flexShrink:0, marginTop:2 }}/><span style={{ fontSize:13, color:'#166534', lineHeight:1.5 }}>{p}</span></div>
             ))}
           </div>
           <div style={{ background:'#fffbeb', borderRadius:16, border:'1px solid #fde68a', padding:'18px 20px' }}>
-            <div style={{ fontSize:10, fontWeight:700, color:'#d97706', letterSpacing:'0.1em', marginBottom:12 }}>⚠ VIGILANCE</div>
+            <div style={{ fontSize:10, fontWeight:700, color:'#d97706', letterSpacing:'0.1em', marginBottom:12 }}>⚠ POINTS DE VIGILANCE</div>
             {result.points_vigilance.map((p,i)=>(
-              <div key={i} style={{ display:'flex', gap:8, marginBottom:8 }}>
-                <AlertTriangle size={13} color="#d97706" style={{ flexShrink:0, marginTop:2 }}/>
-                <span style={{ fontSize:13, color:'#92400e', lineHeight:1.5 }}>{p}</span>
-              </div>
+              <div key={i} style={{ display:'flex', gap:8, marginBottom:8 }}><AlertTriangle size={13} color="#d97706" style={{ flexShrink:0, marginTop:2 }}/><span style={{ fontSize:13, color:'#92400e', lineHeight:1.5 }}>{p}</span></div>
             ))}
           </div>
         </div>
@@ -756,69 +906,173 @@ function NouvelleAnalyse() {
 ══════════════════════════════════════════ */
 function MesAnalyses() {
   const [search, setSearch] = useState('');
-  const filtered = mockAnalyses.filter(a => a.title.toLowerCase().includes(search.toLowerCase()));
+  const [filter, setFilter] = useState<'all'|'complete'|'document'>('all');
+  const filtered = MOCK_ANALYSES.filter(a => {
+    const matchSearch = (a.adresse_bien||a.nom_document||'').toLowerCase().includes(search.toLowerCase());
+    const matchFilter = filter==='all' || a.type===filter;
+    return matchSearch && matchFilter;
+  });
+
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:22 }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:14 }}>
         <div>
           <h1 style={{ fontSize:'clamp(20px,3vw,26px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:4 }}>Mes analyses</h1>
-          <p style={{ fontSize:13, color:'#94a3b8' }}>{mockAnalyses.length} analyse{mockAnalyses.length>1?'s':''}</p>
+          <p style={{ fontSize:13, color:'#94a3b8' }}>{MOCK_ANALYSES.length} analyse{MOCK_ANALYSES.length>1?'s':''}</p>
         </div>
         <Link to="/dashboard/nouvelle-analyse" style={{ padding:'10px 20px', borderRadius:10, background:'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color:'#fff', fontSize:13, fontWeight:700, textDecoration:'none', display:'flex', alignItems:'center', gap:6 }}>
           <Plus size={14}/> Nouvelle
         </Link>
       </div>
-      <div style={{ position:'relative' }}>
-        <Search size={14} style={{ position:'absolute', left:13, top:'50%', transform:'translateY(-50%)', color:'#94a3b8' }}/>
-        <input type="text" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher un bien…"
-          style={{ width:'100%', padding:'11px 14px 11px 38px', borderRadius:11, border:'1.5px solid #edf2f7', fontSize:14, background:'#fff', outline:'none', boxSizing:'border-box' as const, color:'#0f172a' }}/>
+
+      {/* Filters + Search */}
+      <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+        <div style={{ position:'relative', flex:1, minWidth:200 }}>
+          <Search size={14} style={{ position:'absolute', left:13, top:'50%', transform:'translateY(-50%)', color:'#94a3b8' }}/>
+          <input type="text" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher…"
+            style={{ width:'100%', padding:'10px 14px 10px 37px', borderRadius:10, border:'1.5px solid #edf2f7', fontSize:13, background:'#fff', outline:'none', boxSizing:'border-box' as const, color:'#0f172a' }}/>
+        </div>
+        <div style={{ display:'flex', gap:6 }}>
+          {([['all','Tout'],['complete','Complètes'],['document','Documents']] as const).map(([val,label])=>(
+            <button key={val} onClick={()=>setFilter(val)}
+              style={{ padding:'10px 14px', borderRadius:10, border:`1.5px solid ${filter===val?'#2a7d9c':'#edf2f7'}`, background:filter===val?'rgba(42,125,156,0.07)':'#fff', fontSize:12, fontWeight:700, color:filter===val?'#2a7d9c':'#64748b', cursor:'pointer', transition:'all 0.15s', whiteSpace:'nowrap' }}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
+
       {filtered.length>0
         ? <div style={{ display:'flex', flexDirection:'column', gap:8 }}>{filtered.map(a=><AnalyseRow key={a.id} a={a}/>)}</div>
-        : <div style={{ background:'#fff', borderRadius:14, border:'2px dashed #e2e8f0', padding:'48px 24px', textAlign:'center' }}><FileText size={30} style={{ color:'#e2e8f0', margin:'0 auto 12px', display:'block' }}/><div style={{ fontSize:14, fontWeight:700, color:'#94a3b8' }}>Aucune analyse trouvée</div></div>}
+        : <EmptyAnalyses/>}
     </div>
   );
 }
 
 /* ══════════════════════════════════════════
-   COMPARE
+   COMPARE — avec logique analyses complètes
 ══════════════════════════════════════════ */
 function Compare() {
-  const b1 = { title:'Appartement rue de la Paix, Paris 2e', score:8.2, recommandation:'Acheter', color:'#16a34a', scores:{Financier:85,Travaux:70,Juridique:91,Charges:80}, positifs:['Fonds de travaux bien provisionné','Charges raisonnables (180€/mois)'], risques:['Ravalement prévu en 2026 (~8 000€)','Quelques impayés en copropriété'] };
-  const b2 = { title:'Studio Cours Mirabeau, Aix-en-Provence', score:6.7, recommandation:'Négocier', color:'#d97706', scores:{Financier:55,Travaux:60,Juridique:78,Charges:75}, positifs:['Emplacement premium','Bon DPE (classe C)'], risques:['Trésorerie faible du syndicat','Toiture à rénover sous 3 ans'] };
+  const completedAnalyses = MOCK_ANALYSES.filter(a => a.type === 'complete' && a.status === 'completed');
+  const [selected, setSelected] = useState<string[]>([]);
+
+  // Pas d'analyses complètes du tout
+  if (completedAnalyses.length === 0) {
+    return (
+      <div style={{ maxWidth:600, margin:'0 auto' }}>
+        <h1 style={{ fontSize:'clamp(20px,3vw,26px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:24 }}>Comparer mes biens</h1>
+        <div style={{ background:'#fff', borderRadius:20, border:'1.5px solid #edf2f7', padding:'52px 32px', textAlign:'center', boxShadow:'0 2px 12px rgba(0,0,0,0.04)' }}>
+          <div style={{ width:72, height:72, borderRadius:20, background:'rgba(42,125,156,0.07)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
+            <Lock size={30} style={{ color:'#94a3b8' }}/>
+          </div>
+          <h2 style={{ fontSize:20, fontWeight:800, color:'#0f172a', marginBottom:10 }}>Fonctionnalité réservée aux analyses complètes</h2>
+          <p style={{ fontSize:14, color:'#64748b', lineHeight:1.7, marginBottom:28, maxWidth:420, margin:'0 auto 28px' }}>
+            La comparaison de biens fonctionne uniquement avec des <strong>analyses complètes</strong>. Vous n'en avez aucune pour le moment.<br/><br/>
+            Lancez une analyse complète (19,90€) pour accéder à cette fonctionnalité.
+          </p>
+          <Link to="/dashboard/nouvelle-analyse?type=complete"
+            style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'13px 28px', borderRadius:12, background:'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color:'#fff', fontSize:14, fontWeight:700, textDecoration:'none', boxShadow:'0 4px 16px rgba(15,45,61,0.2)' }}>
+            <ShieldCheck size={16}/> Lancer une analyse complète
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Moins de 2 analyses complètes → sélection
+  const toggleSelect = (id: string) => {
+    setSelected(prev => prev.includes(id) ? prev.filter(s=>s!==id) : prev.length < 2 ? [...prev, id] : prev);
+  };
+
+  const selectedAnalyses = completedAnalyses.filter(a => selected.includes(a.id));
+  const canCompare = selected.length === 2;
+
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:22 }}>
-      <div><h1 style={{ fontSize:'clamp(20px,3vw,26px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:4 }}>Comparer mes biens</h1><p style={{ fontSize:13, color:'#94a3b8' }}>Analyse comparative côte à côte.</p></div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(270px,1fr))', gap:16 }}>
-        {[b1,b2].map((b,i)=>(
-          <div key={i} style={{ background:'#fff', borderRadius:16, border:`1.5px solid ${b.color}20`, padding:'24px', boxShadow:'0 1px 4px rgba(0,0,0,0.03)' }}>
-            <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.12em', marginBottom:8 }}>BIEN {i+1}</div>
-            <h3 style={{ fontSize:14, fontWeight:700, color:'#0f172a', marginBottom:16, lineHeight:1.4 }}>{b.title}</h3>
-            <div style={{ display:'flex', alignItems:'flex-end', gap:10, marginBottom:20 }}>
-              <div style={{ fontSize:50, fontWeight:900, color:b.color, lineHeight:1, letterSpacing:'-0.03em' }}>{b.score}</div>
-              <div style={{ paddingBottom:4 }}><div style={{ fontSize:13, color:'#94a3b8' }}>/10</div><span style={{ display:'inline-block', padding:'3px 10px', borderRadius:7, background:`${b.color}10`, color:b.color, fontSize:12, fontWeight:700, marginTop:4 }}>{b.recommandation}</span></div>
+    <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
+      <div>
+        <h1 style={{ fontSize:'clamp(20px,3vw,26px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:4 }}>Comparer mes biens</h1>
+        <p style={{ fontSize:13, color:'#64748b' }}>Sélectionnez 2 analyses complètes pour les comparer côte à côte.</p>
+      </div>
+
+      {/* Sélection */}
+      {!canCompare && (
+        <div>
+          <div style={{ fontSize:13, fontWeight:700, color:'#0f172a', marginBottom:12 }}>
+            Analyses complètes disponibles ({completedAnalyses.length})
+            <span style={{ fontSize:12, fontWeight:500, color:'#94a3b8', marginLeft:8 }}>Sélectionnez 2 biens</span>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            {completedAnalyses.map(a => {
+              const isSel = selected.includes(a.id);
+              return (
+                <div key={a.id} onClick={()=>toggleSelect(a.id)}
+                  style={{ background:'#fff', borderRadius:13, border:`1.5px solid ${isSel?'#2a7d9c':'#edf2f7'}`, padding:'14px 18px', display:'flex', alignItems:'center', gap:14, cursor:'pointer', transition:'all 0.18s', boxShadow:isSel?'0 0 0 3px rgba(42,125,156,0.12)':'none' }}>
+                  <div style={{ width:36, height:36, borderRadius:10, background:isSel?'rgba(42,125,156,0.12)':'rgba(15,45,61,0.06)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    {isSel ? <CheckCircle size={18} color="#2a7d9c"/> : <Building2 size={17} style={{ color:'#64748b' }}/>}
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:14, fontWeight:700, color:'#0f172a', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a.adresse_bien}</div>
+                    <div style={{ fontSize:12, color:'#94a3b8' }}>{a.date}</div>
+                  </div>
+                  {a.score != null && <ScoreBadge score={a.score} size="sm"/>}
+                </div>
+              );
+            })}
+          </div>
+          {selected.length === 1 && (
+            <div style={{ marginTop:12, padding:'10px 14px', borderRadius:10, background:'rgba(42,125,156,0.05)', border:'1px solid rgba(42,125,156,0.15)', fontSize:13, color:'#2a7d9c', fontWeight:600 }}>
+              ✓ 1 bien sélectionné — choisissez un deuxième bien pour comparer
             </div>
-            {Object.entries(b.scores).map(([cat,val])=>(
-              <div key={cat} style={{ marginBottom:9 }}>
-                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}><span style={{ fontSize:12, color:'#94a3b8' }}>{cat}</span><span style={{ fontSize:12, fontWeight:700, color:'#0f172a' }}>{val}</span></div>
-                <div style={{ height:5, borderRadius:3, background:'#f1f5f9' }}><div style={{ width:`${val}%`, height:'100%', borderRadius:3, background:val>=75?'#16a34a':val>=55?'#d97706':'#dc2626' }}/></div>
-              </div>
-            ))}
-            <div style={{ marginTop:18, padding:'12px', borderRadius:10, background:'#f0fdf4', marginBottom:10 }}>
-              <div style={{ fontSize:10, fontWeight:700, color:'#16a34a', marginBottom:7 }}>✓ POINTS FORTS</div>
-              {b.positifs.map(p=><div key={p} style={{ fontSize:12, color:'#166534', marginBottom:4, paddingLeft:8 }}>· {p}</div>)}
-            </div>
-            <div style={{ padding:'12px', borderRadius:10, background:'#fffbeb' }}>
-              <div style={{ fontSize:10, fontWeight:700, color:'#d97706', marginBottom:7 }}>⚠ VIGILANCE</div>
-              {b.risques.map(r=><div key={r} style={{ fontSize:12, color:'#92400e', marginBottom:4, paddingLeft:8 }}>· {r}</div>)}
+          )}
+        </div>
+      )}
+
+      {/* Comparaison côte à côte */}
+      {canCompare && selectedAnalyses.length === 2 && (
+        <>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
+            <span style={{ fontSize:13, fontWeight:700, color:'#0f172a' }}>Comparaison sélectionnée</span>
+            <button onClick={()=>setSelected([])} style={{ fontSize:13, fontWeight:600, color:'#94a3b8', background:'none', border:'none', cursor:'pointer' }}>
+              Changer la sélection
+            </button>
+          </div>
+          <div className="compare-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+            {selectedAnalyses.map((a, i) => {
+              const sc2 = a.score ?? 0;
+              const color = sc2 >= 7.5 ? '#16a34a' : sc2 >= 5 ? '#d97706' : '#dc2626';
+              return (
+                <div key={a.id} style={{ background:'#fff', borderRadius:18, border:`1.5px solid ${color}20`, padding:'26px', boxShadow:'0 2px 12px rgba(0,0,0,0.04)' }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.12em', marginBottom:8 }}>BIEN {i+1}</div>
+                  <h3 style={{ fontSize:14, fontWeight:700, color:'#0f172a', marginBottom:18, lineHeight:1.4 }}>{a.adresse_bien}</h3>
+                  {a.score != null && (
+                    <div style={{ marginBottom:16 }}>
+                      <ScoreBadge score={a.score} size="lg"/>
+                    </div>
+                  )}
+                  {a.recommandation && (
+                    <span style={{ display:'inline-block', padding:'5px 14px', borderRadius:8, background:`${a.recommandationColor}10`, color:a.recommandationColor, fontSize:13, fontWeight:700, border:`1px solid ${a.recommandationColor}22` }}>
+                      {a.recommandation}
+                    </span>
+                  )}
+                  <div style={{ marginTop:16, fontSize:12, color:'#94a3b8' }}>Analysé le {a.date}</div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ padding:'20px 22px', borderRadius:14, background:'#fff', border:'1px solid #edf2f7', display:'flex', gap:12, alignItems:'flex-start' }}>
+            <Shield size={18} color="#2a7d9c" style={{ flexShrink:0, marginTop:2 }}/>
+            <div>
+              <div style={{ fontSize:10, fontWeight:800, color:'#2a7d9c', letterSpacing:'0.12em', marginBottom:6 }}>VERDICT ANALYMO</div>
+              {(() => {
+                const [b1, b2] = selectedAnalyses;
+                const s1 = b1.score ?? 0, s2 = b2.score ?? 0;
+                const best = s1 >= s2 ? b1 : b2;
+                return <p style={{ fontSize:14, color:'#0f172a', fontWeight:600, lineHeight:1.6 }}>Le bien <strong>"{best.adresse_bien}"</strong> (score {(best.score??0).toFixed(1)}/10) est recommandé selon nos analyses. Consultez les rapports détaillés pour affiner votre décision.</p>;
+              })()}
             </div>
           </div>
-        ))}
-      </div>
-      <div style={{ padding:'20px 22px', borderRadius:14, background:'#fff', border:'1px solid #edf2f7', display:'flex', gap:12, alignItems:'flex-start', boxShadow:'0 1px 4px rgba(0,0,0,0.03)' }}>
-        <Shield size={18} color="#2a7d9c" style={{ flexShrink:0, marginTop:2 }}/>
-        <div><div style={{ fontSize:10, fontWeight:800, color:'#2a7d9c', letterSpacing:'0.12em', marginBottom:5 }}>VERDICT ANALYMO</div><p style={{ fontSize:14, color:'#0f172a', fontWeight:600, lineHeight:1.6 }}>Le <strong>Bien 1</strong> (score 8,2/10) est recommandé. Anticipez le ravalement 2026 dans votre négociation.</p></div>
-      </div>
+        </>
+      )}
     </div>
   );
 }
@@ -862,7 +1116,7 @@ function Support() {
     {q:"Quels documents puis-je analyser ?",a:"PV d'AG, règlements de copropriété, appels de charges, diagnostics immobiliers. Formats : PDF, Word, JPG/PNG."},
     {q:"Combien de temps prend une analyse ?",a:"Moins de 2 minutes. Une notification vous est envoyée dès que le rapport est disponible."},
     {q:"Mes documents sont-ils sécurisés ?",a:"Oui. Chiffrement SSL/TLS, aucun partage de données. Les fichiers sont supprimés immédiatement après l'analyse."},
-    {q:"Analymo remplace-t-il un notaire ?",a:"Non. Analymo est un outil d'aide à la décision, pas un conseil juridique professionnel."},
+    {q:"Comment fonctionnent les crédits ?",a:"Chaque achat vous attribue des crédits : 4,99€ = 1 crédit analyse document, 19,90€ = 1 crédit analyse complète, 29,90€ = 2 crédits complets, 39,90€ = 3 crédits complets. Les crédits ne expirent pas."},
   ];
   const [open, setOpen] = useState<number|null>(null);
   const [sent, setSent] = useState(false);
