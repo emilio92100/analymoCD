@@ -31,11 +31,11 @@ function SectionTitle({ label, title, accent, sub }: { label: string; title: str
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-50px" });
   return (
-    <div ref={ref} className="text-center mb-16">
+    <div ref={ref} className="text-center mb-10 md:mb-16 px-2">
       <motion.p initial={{ opacity: 0, y: 10 }} animate={inView ? { opacity: 1, y: 0 } : {}}
-        className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.22em] mb-5">{label}</motion.p>
+        className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.22em] mb-4">{label}</motion.p>
       <motion.h2 initial={{ opacity: 0, y: 20 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ delay: 0.07 }}
-        className="text-[clamp(40px,5.5vw,72px)] font-black tracking-[-0.035em] leading-[1.06] text-[#0f172a] mb-5">
+        className="text-[clamp(28px,5.5vw,72px)] font-black tracking-[-0.03em] leading-[1.08] text-[#0f172a] mb-4">
         {title}{' '}
         <span className="relative inline-block max-w-fit">
           <span className="text-[#2a7d9c]">{accent}</span>
@@ -45,7 +45,7 @@ function SectionTitle({ label, title, accent, sub }: { label: string; title: str
       </motion.h2>
       {sub && (
         <motion.p initial={{ opacity: 0 }} animate={inView ? { opacity: 1 } : {}} transition={{ delay: 0.2 }}
-          className="text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed">{sub}</motion.p>
+          className="text-base md:text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed">{sub}</motion.p>
       )}
     </div>
   );
@@ -87,7 +87,7 @@ function HeroSection() {
           </motion.div>
 
           <motion.h1 variants={up} initial="hidden" animate="show" custom={1}
-            className="text-[clamp(40px,5vw,72px)] font-black leading-[1.0] tracking-[-0.04em] text-[#0f172a] mb-6">
+            className="text-[clamp(32px,5vw,72px)] font-black leading-[1.05] tracking-[-0.03em] text-[#0f172a] mb-6">
             Analysez vos documents<br />
             <span className="relative inline-block">
               <span className="text-[#2a7d9c]">immobiliers</span>
@@ -97,7 +97,7 @@ function HeroSection() {
           </motion.h1>
 
           <motion.p variants={up} initial="hidden" animate="show" custom={2}
-            className="text-xl text-slate-500 leading-relaxed max-w-[500px] mb-10 mx-auto lg:mx-0">
+            className="text-base md:text-xl text-slate-500 leading-relaxed max-w-[500px] mb-8 mx-auto lg:mx-0">
             Score global, risques cachés, impact financier — tout ce qu'il faut savoir avant de signer, expliqué simplement en moins de 2 minutes.
           </motion.p>
 
@@ -310,11 +310,11 @@ function StatsBar() {
   ];
   return (
     <Reveal className="border-y border-slate-100 bg-white">
-      <div className="max-w-5xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 divide-x divide-slate-100">
+      <div className="max-w-5xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 divide-x divide-slate-100">
         {stats.map((s, i) => (
-          <div key={i} className="py-8 px-8 text-center">
-            <div className="text-[clamp(26px,3vw,38px)] font-black text-[#0f172a] tracking-tight">{s.v}</div>
-            <div className="text-sm text-slate-500 mt-1 font-medium">{s.l}</div>
+          <div key={i} className="py-5 md:py-8 px-3 md:px-8 text-center">
+            <div className="text-[clamp(20px,3vw,38px)] font-black text-[#0f172a] tracking-tight">{s.v}</div>
+            <div className="text-xs md:text-sm text-slate-500 mt-1 font-medium leading-tight">{s.l}</div>
           </div>
         ))}
       </div>
@@ -331,19 +331,21 @@ function ProblemSection() {
     { icon: Clock, title: "Décisions précipitées", desc: "Sous la pression du marché, vous signez sans avoir eu le temps d'analyser.", c: "text-blue-500", bg: "bg-blue-50", border: "border-blue-100" },
   ];
   return (
-    <section className="py-28 px-6 bg-[#f4f7f9]">
+    <section className="py-16 md:py-28 px-4 md:px-6 bg-[#f4f7f9]">
       <div className="max-w-6xl mx-auto">
         <SectionTitle label="Le problème" title="Acheter un bien," accent="c'est risqué."
           sub="La plupart des acheteurs signent sans avoir lu ni compris les documents essentiels. Analymo change ça." />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-6">
           {problems.map((p, i) => (
             <Reveal key={i} delay={i}
-              className={`group p-8 rounded-3xl border ${p.border} bg-white hover:-translate-y-1.5 hover:shadow-xl transition-all duration-300 cursor-default`}>
-              <div className={`w-12 h-12 rounded-2xl ${p.bg} flex items-center justify-center mb-6`}>
-                <p.icon size={22} className={p.c} />
+              className={`group flex items-start gap-4 p-5 md:p-8 rounded-2xl md:rounded-3xl border ${p.border} bg-white hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-default`}>
+              <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl ${p.bg} flex items-center justify-center shrink-0 mt-0.5`}>
+                <p.icon size={18} className={p.c} />
               </div>
-              <h3 className="text-xl font-bold text-[#0f172a] mb-3">{p.title}</h3>
-              <p className="text-base text-slate-500 leading-relaxed">{p.desc}</p>
+              <div>
+                <h3 className="text-base md:text-xl font-bold text-[#0f172a] mb-1 md:mb-3">{p.title}</h3>
+                <p className="text-sm md:text-base text-slate-500 leading-relaxed">{p.desc}</p>
+              </div>
             </Reveal>
           ))}
         </div>
@@ -360,23 +362,25 @@ function SolutionSection() {
     { icon: BarChart3, title: "Synthèse ultra-claire", desc: "Score global, alertes par priorité, recommandation finale. Vous savez exactement quoi faire.", c: "#22c55e", light: "rgba(34,197,94,0.06)" },
   ];
   return (
-    <section className="py-28 px-6 bg-white">
+    <section className="py-16 md:py-28 px-4 md:px-6 bg-white">
       <div className="max-w-6xl mx-auto">
         <SectionTitle label="La solution" title="Analymo vous" accent="simplifie tout."
           sub="En moins de 2 minutes, vous savez exactement dans quoi vous mettez les pieds." />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-7">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-7">
           {feats.map((f, i) => (
             <Reveal key={i} delay={i}
-              className="relative p-9 rounded-3xl bg-white border border-slate-100 shadow-sm hover:-translate-y-2 hover:shadow-2xl transition-all duration-300 group overflow-hidden cursor-default">
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-3xl"
+              className="relative flex md:block items-start gap-4 md:gap-0 p-5 md:p-9 rounded-2xl md:rounded-3xl bg-white border border-slate-100 shadow-sm hover:-translate-y-1 md:hover:-translate-y-2 hover:shadow-xl transition-all duration-300 group overflow-hidden cursor-default">
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl md:rounded-3xl"
                 style={{ background: `radial-gradient(ellipse at 20% 20%, ${f.light} 0%, transparent 65%)` }} />
-              <div className="relative">
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-7" style={{ background: f.light }}>
-                  <f.icon size={26} style={{ color: f.c }} />
+              <div className="relative flex md:block items-start gap-4 w-full">
+                <div className="w-11 h-11 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 md:mb-7" style={{ background: f.light }}>
+                  <f.icon size={20} style={{ color: f.c }} />
                 </div>
-                <div className="text-3xl font-black text-slate-100 mb-1">0{i+1}</div>
-                <h3 className="text-xl font-bold text-[#0f172a] mb-3">{f.title}</h3>
-                <p className="text-base text-slate-500 leading-relaxed">{f.desc}</p>
+                <div className="flex-1">
+                  <div className="hidden md:block text-3xl font-black text-slate-100 mb-1">0{i+1}</div>
+                  <h3 className="text-base md:text-xl font-bold text-[#0f172a] mb-1 md:mb-3">{f.title}</h3>
+                  <p className="text-sm md:text-base text-slate-500 leading-relaxed">{f.desc}</p>
+                </div>
               </div>
             </Reveal>
           ))}
@@ -394,17 +398,42 @@ function HowItWorksSection() {
     { n: "03", I: CheckCircle, title: "Rapport clair & actionnable", desc: "Score, alertes classées, recommandation. Vous savez quoi faire — et quoi dire.", c: "#22c55e" },
   ];
   return (
-    <section className="py-28 px-6 bg-[#f4f7f9]">
+    <section className="py-16 md:py-28 px-4 md:px-6 bg-[#f4f7f9]">
       <div className="max-w-6xl mx-auto">
         <SectionTitle label="Comment ça marche" title="Trois étapes. Une décision" accent="éclairée."
           sub="Pas de formation, pas de jargon. Vous déposez vos fichiers — on fait le reste." />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-7 relative">
-          <div className="hidden md:block absolute top-14 left-[22%] right-[22%] h-px bg-gradient-to-r from-[#2a7d9c]/30 via-[#2a7d9c]/60 to-[#22c55e]/30 z-0" />
+
+        {/* Mobile: vertical stepper */}
+        <div className="flex flex-col gap-0 md:hidden mb-8">
+          {steps.map((s, i) => (
+            <Reveal key={i} delay={i}>
+              <div className="flex items-start gap-4 relative">
+                <div className="flex flex-col items-center">
+                  <div className="w-12 h-12 rounded-xl bg-white border border-slate-100 flex items-center justify-center shadow-sm shrink-0 relative">
+                    <s.I size={20} style={{ color: s.c }} />
+                    <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#0f172a] flex items-center justify-center shadow">
+                      <span className="text-white text-[9px] font-black">{s.n}</span>
+                    </div>
+                  </div>
+                  {i < steps.length - 1 && <div className="w-px h-8 bg-slate-200 mt-1 mb-1" />}
+                </div>
+                <div className={`pb-6 ${i < steps.length - 1 ? '' : ''}`}>
+                  <h3 className="text-base font-bold text-[#0f172a] mb-1 leading-snug">{s.title}</h3>
+                  <p className="text-sm text-slate-500 leading-relaxed">{s.desc}</p>
+                </div>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+
+        {/* Desktop: grid */}
+        <div className="hidden md:grid md:grid-cols-3 gap-7 relative">
+          <div className="absolute top-14 left-[22%] right-[22%] h-px bg-gradient-to-r from-[#2a7d9c]/30 via-[#2a7d9c]/60 to-[#22c55e]/30 z-0" />
           {steps.map((s, i) => (
             <Reveal key={i} delay={i} className="relative z-10">
               <div className="bg-white border border-slate-100 rounded-3xl p-9 hover:-translate-y-2 hover:shadow-xl transition-all duration-300 cursor-default">
                 <div className="relative inline-block mb-8">
-                  <div className="w-18 h-18 w-[72px] h-[72px] rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center shadow-sm">
+                  <div className="w-[72px] h-[72px] rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center shadow-sm">
                     <s.I size={30} style={{ color: s.c }} />
                   </div>
                   <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-[#0f172a] flex items-center justify-center shadow">
@@ -414,7 +443,7 @@ function HowItWorksSection() {
                 <h3 className="text-xl font-bold text-[#0f172a] mb-3">{s.title}</h3>
                 <p className="text-base text-slate-500 leading-relaxed">{s.desc}</p>
                 {i < steps.length - 1 && (
-                  <div className="hidden md:flex absolute -right-4 top-14 z-20 w-8 h-8 rounded-full bg-white border border-slate-200 shadow items-center justify-center">
+                  <div className="absolute -right-4 top-14 z-20 w-8 h-8 rounded-full bg-white border border-slate-200 shadow flex items-center justify-center">
                     <ChevronRight size={15} className="text-slate-400" />
                   </div>
                 )}
@@ -422,10 +451,11 @@ function HowItWorksSection() {
             </Reveal>
           ))}
         </div>
-        <Reveal className="text-center mt-14">
+
+        <Reveal className="text-center mt-10 md:mt-14">
           <Link to="/tarifs"
-            className="inline-flex items-center gap-2 px-10 py-4 rounded-2xl bg-[#0f2d3d] text-white text-base font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
-            Essayer maintenant — dès 4,99€ <ArrowRight size={18} />
+            className="inline-flex items-center gap-2 px-7 md:px-10 py-3.5 md:py-4 rounded-2xl bg-[#0f2d3d] text-white text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
+            Essayer maintenant — dès 4,99€ <ArrowRight size={16} />
           </Link>
         </Reveal>
       </div>
@@ -443,47 +473,47 @@ function AvantApresSection() {
     { before: "Mauvaises surprises financières", after: "Économies réalisées avant la signature" },
   ];
   return (
-    <section className="py-28 px-6 bg-white">
+    <section className="py-16 md:py-28 px-4 md:px-6 bg-white">
       <div className="max-w-5xl mx-auto">
         <SectionTitle label="Avant / Après" title="Deux façons d'acheter." accent="Une seule bonne." />
-        <div className="grid grid-cols-2 gap-4 mb-5 px-1">
-          <div className="flex items-center gap-2 px-4">
-            <div className="w-7 h-7 rounded-full bg-red-50 border border-red-200 flex items-center justify-center shrink-0">
-              <X size={12} className="text-red-500" />
+        <div className="grid grid-cols-2 gap-3 mb-4 px-1">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-red-50 border border-red-200 flex items-center justify-center shrink-0">
+              <X size={11} className="text-red-500" />
             </div>
-            <span className="text-base font-bold text-red-500">Sans Analymo</span>
+            <span className="text-sm md:text-base font-bold text-red-500">Sans Analymo</span>
           </div>
-          <div className="flex items-center gap-2 px-4">
-            <div className="w-7 h-7 rounded-full bg-green-50 border border-green-200 flex items-center justify-center shrink-0">
-              <Check size={12} className="text-green-500" />
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-green-50 border border-green-200 flex items-center justify-center shrink-0">
+              <Check size={11} className="text-green-500" />
             </div>
-            <span className="text-base font-bold text-green-600">Avec Analymo</span>
+            <span className="text-sm md:text-base font-bold text-green-600">Avec Analymo</span>
           </div>
         </div>
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
           {rows.map((row, i) => (
-            <div key={i} className="grid grid-cols-2 gap-4">
+            <div key={i} className="grid grid-cols-2 gap-3">
               <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.07 }}
-                className="flex items-center gap-4 p-5 rounded-2xl bg-red-50/50 border border-red-100 hover:bg-red-50 transition-colors">
-                <div className="w-8 h-8 rounded-full bg-white border border-red-100 flex items-center justify-center shrink-0 shadow-sm">
-                  <X size={13} className="text-red-400" />
+                className="flex items-start gap-2 md:gap-4 p-3 md:p-5 rounded-xl md:rounded-2xl bg-red-50/50 border border-red-100 hover:bg-red-50 transition-colors">
+                <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-white border border-red-100 flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                  <X size={11} className="text-red-400" />
                 </div>
-                <span className="text-base text-slate-600 leading-snug">{row.before}</span>
+                <span className="text-xs md:text-base text-slate-600 leading-snug">{row.before}</span>
               </motion.div>
               <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.07 + 0.08 }}
-                className="flex items-center gap-4 p-5 rounded-2xl bg-green-50/50 border border-green-100 hover:bg-green-50 transition-colors">
-                <div className="w-8 h-8 rounded-full bg-white border border-green-100 flex items-center justify-center shrink-0 shadow-sm">
-                  <Check size={13} className="text-green-500" />
+                className="flex items-start gap-2 md:gap-4 p-3 md:p-5 rounded-xl md:rounded-2xl bg-green-50/50 border border-green-100 hover:bg-green-50 transition-colors">
+                <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-white border border-green-100 flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                  <Check size={11} className="text-green-500" />
                 </div>
-                <span className="text-base text-[#0f172a] font-semibold leading-snug">{row.after}</span>
+                <span className="text-xs md:text-base text-[#0f172a] font-semibold leading-snug">{row.after}</span>
               </motion.div>
             </div>
           ))}
         </div>
-        <Reveal className="text-center mt-12">
+        <Reveal className="text-center mt-8 md:mt-12">
           <Link to="/tarifs"
-            className="inline-flex items-center gap-2 px-9 py-4 rounded-2xl bg-[#0f2d3d] text-white text-base font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
-            Lancer mon analyse <ArrowRight size={17} />
+            className="inline-flex items-center gap-2 px-7 md:px-9 py-3.5 md:py-4 rounded-2xl bg-[#0f2d3d] text-white text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
+            Lancer mon analyse <ArrowRight size={16} />
           </Link>
         </Reveal>
       </div>
@@ -500,46 +530,46 @@ function ForWhoSection() {
     { title: "Marchands de biens", desc: "Risques et potentiel identifiés instantanément.", I: BadgeCheck },
   ];
   return (
-    <section className="py-28 px-6 bg-[#f4f7f9]">
+    <section className="py-16 md:py-28 px-4 md:px-6 bg-[#f4f7f9]">
       <div className="max-w-6xl mx-auto">
         <SectionTitle label="Pour qui" title="Une solution pour" accent="chaque acteur."
           sub="Particulier ou professionnel, Analymo s'adapte à votre besoin." />
-        <Reveal className="mb-6">
-          <div className="rounded-3xl overflow-hidden shadow-2xl grid grid-cols-1 lg:grid-cols-2">
-            <div className="bg-[#0f2d3d] p-12 lg:p-16">
-              <span className="inline-block px-3 py-1.5 rounded-full bg-white/10 text-white/70 text-xs font-bold uppercase tracking-widest mb-7">Acheteurs Particuliers</span>
-              <h3 className="text-[clamp(26px,3.5vw,42px)] font-black text-white mb-5 leading-tight">
+        <Reveal className="mb-4 md:mb-6">
+          <div className="rounded-2xl md:rounded-3xl overflow-hidden shadow-xl md:shadow-2xl grid grid-cols-1 lg:grid-cols-2">
+            <div className="bg-[#0f2d3d] p-8 md:p-12 lg:p-16">
+              <span className="inline-block px-3 py-1.5 rounded-full bg-white/10 text-white/70 text-xs font-bold uppercase tracking-widest mb-5">Acheteurs Particuliers</span>
+              <h3 className="text-[clamp(22px,3.5vw,42px)] font-black text-white mb-4 leading-tight">
                 Ne signez plus<br />les yeux fermés.
               </h3>
-              <p className="text-slate-400 text-base leading-relaxed mb-10 max-w-sm">
+              <p className="text-slate-400 text-sm md:text-base leading-relaxed mb-8 max-w-sm">
                 Analymo décrypte la santé financière de la copropriété, les travaux à venir et les risques juridiques — avant votre offre.
               </p>
-              <Link to="/tarifs" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-white text-[#0f2d3d] text-base font-bold hover:bg-slate-100 transition-colors">
-                Commencer <ArrowRight size={16} />
+              <Link to="/tarifs" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-[#0f2d3d] text-sm md:text-base font-bold hover:bg-slate-100 transition-colors">
+                Commencer <ArrowRight size={15} />
               </Link>
             </div>
-            <div className="bg-white p-12 lg:p-16">
-              <h4 className="text-base font-bold text-[#0f172a] mb-7">Ce qu'Analymo détecte pour vous :</h4>
+            <div className="bg-white p-8 md:p-12 lg:p-16">
+              <h4 className="text-sm md:text-base font-bold text-[#0f172a] mb-5">Ce qu'Analymo détecte pour vous :</h4>
               {["Travaux votés et leur coût estimé par lot","Santé financière réelle de la copropriété","Procédures judiciaires ou impayés en cours","Conformité des diagnostics obligatoires","Points de vigilance avant de faire une offre"].map((item, i) => (
-                <div key={i} className="flex items-center gap-3 py-3.5 border-b border-slate-50 last:border-0">
-                  <div className="w-6 h-6 rounded-full bg-[#2a7d9c]/10 flex items-center justify-center shrink-0">
-                    <Check size={12} className="text-[#2a7d9c]" />
+                <div key={i} className="flex items-center gap-3 py-3 border-b border-slate-50 last:border-0">
+                  <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-[#2a7d9c]/10 flex items-center justify-center shrink-0">
+                    <Check size={11} className="text-[#2a7d9c]" />
                   </div>
-                  <span className="text-base text-[#0f172a] font-medium">{item}</span>
+                  <span className="text-sm md:text-base text-[#0f172a] font-medium">{item}</span>
                 </div>
               ))}
             </div>
           </div>
         </Reveal>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5">
           {pros.map((p, i) => (
             <Reveal key={i} delay={i}
-              className="p-7 rounded-2xl bg-white border border-slate-100 hover:-translate-y-1.5 hover:shadow-lg transition-all duration-200 cursor-default">
-              <div className="w-12 h-12 rounded-2xl bg-[#2a7d9c]/8 flex items-center justify-center mb-5">
-                <p.I size={22} className="text-[#2a7d9c]" />
+              className="p-5 md:p-7 rounded-xl md:rounded-2xl bg-white border border-slate-100 hover:-translate-y-1 hover:shadow-lg transition-all duration-200 cursor-default">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-[#2a7d9c]/8 flex items-center justify-center mb-3 md:mb-5">
+                <p.I size={18} className="text-[#2a7d9c]" />
               </div>
-              <h4 className="text-base font-bold text-[#0f172a] mb-2">{p.title}</h4>
-              <p className="text-sm text-slate-500 leading-relaxed">{p.desc}</p>
+              <h4 className="text-sm md:text-base font-bold text-[#0f172a] mb-1 md:mb-2">{p.title}</h4>
+              <p className="text-xs md:text-sm text-slate-500 leading-relaxed">{p.desc}</p>
             </Reveal>
           ))}
         </div>
@@ -556,24 +586,24 @@ function TestimonialsSection() {
     { name:"Sophie D.", role:"Acheteuse · Bordeaux", i:"SD", c:"#0f6e56", text:"Rapport clair, scores par catégorie. Mon notaire a été impressionné. Je recommande à tous." },
   ];
   return (
-    <section className="py-28 px-6 bg-white">
+    <section className="py-16 md:py-28 px-4 md:px-6 bg-white">
       <div className="max-w-6xl mx-auto">
         <SectionTitle label="Témoignages" title="Ils ont acheté" accent="avec Analymo." />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-7">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-7">
           {testimonials.map((t,i)=>(
             <Reveal key={i} delay={i}
-              className="p-9 rounded-3xl bg-[#f4f7f9] border border-slate-100 hover:-translate-y-1.5 hover:shadow-lg transition-all duration-200 cursor-default">
-              <div className="text-5xl text-slate-200 font-serif leading-none mb-3">"</div>
-              <p className="text-base text-slate-600 leading-relaxed mb-8">{t.text}</p>
+              className="p-6 md:p-9 rounded-2xl md:rounded-3xl bg-[#f4f7f9] border border-slate-100 hover:-translate-y-1 hover:shadow-lg transition-all duration-200 cursor-default">
+              <div className="text-4xl md:text-5xl text-slate-200 font-serif leading-none mb-2 md:mb-3">"</div>
+              <p className="text-sm md:text-base text-slate-600 leading-relaxed mb-6 md:mb-8">{t.text}</p>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div style={{background:t.c}} className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-black text-white">{t.i}</div>
+                  <div style={{background:t.c}} className="w-9 h-9 md:w-11 md:h-11 rounded-full flex items-center justify-center text-xs font-black text-white shrink-0">{t.i}</div>
                   <div>
                     <p className="text-sm font-bold text-[#0f172a]">{t.name}</p>
                     <p className="text-xs text-slate-400">{t.role}</p>
                   </div>
                 </div>
-                <div className="flex gap-0.5">{[0,1,2,3,4].map(j=><Star key={j} size={13} fill="#f59e0b" color="#f59e0b"/>)}</div>
+                <div className="flex gap-0.5">{[0,1,2,3,4].map(j=><Star key={j} size={12} fill="#f59e0b" color="#f59e0b"/>)}</div>
               </div>
             </Reveal>
           ))}
@@ -586,23 +616,23 @@ function TestimonialsSection() {
 /* ═══ CTA FINAL ═════════════════════════════════════════════ */
 function CtaFinal() {
   return (
-    <section className="py-28 px-6 bg-[#f4f7f9]">
+    <section className="py-16 md:py-28 px-4 md:px-6 bg-[#f4f7f9]">
       <div className="max-w-4xl mx-auto">
         <Reveal>
-          <div className="relative p-14 sm:p-20 rounded-3xl bg-[#0f2d3d] text-center overflow-hidden shadow-2xl">
+          <div className="relative p-10 sm:p-14 md:p-20 rounded-2xl md:rounded-3xl bg-[#0f2d3d] text-center overflow-hidden shadow-2xl">
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[#2a7d9c]/15 blur-[80px] rounded-full" />
             </div>
             <div className="relative">
-              <h2 className="text-[clamp(28px,4.5vw,52px)] font-black text-white mb-5 leading-tight tracking-tight">
+              <h2 className="text-[clamp(22px,4.5vw,52px)] font-black text-white mb-4 leading-tight tracking-tight">
                 Votre prochain bien mérite<br />une analyse complète.
               </h2>
-              <p className="text-lg text-slate-400 mb-10">Dès 4,99€ · Sans abonnement · Résultats en 2 minutes.</p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link to="/tarifs" className="flex items-center justify-center gap-2 px-10 py-4 rounded-2xl bg-white text-[#0f2d3d] text-base font-bold hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200">
-                  Lancer mon analyse <ArrowRight size={18} />
+              <p className="text-sm md:text-lg text-slate-400 mb-8 md:mb-10">Dès 4,99€ · Sans abonnement · Résultats en 2 minutes.</p>
+              <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center">
+                <Link to="/tarifs" className="flex items-center justify-center gap-2 px-8 md:px-10 py-3.5 md:py-4 rounded-xl md:rounded-2xl bg-white text-[#0f2d3d] text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200">
+                  Lancer mon analyse <ArrowRight size={16} />
                 </Link>
-                <Link to="/exemple" className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl border border-white/15 text-white/75 text-base font-semibold hover:bg-white/8 transition-all duration-200">
+                <Link to="/exemple" className="flex items-center justify-center gap-2 px-7 md:px-8 py-3.5 md:py-4 rounded-xl md:rounded-2xl border border-white/15 text-white/75 text-sm md:text-base font-semibold hover:bg-white/8 transition-all duration-200">
                   Voir un exemple
                 </Link>
               </div>
