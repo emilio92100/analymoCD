@@ -582,10 +582,11 @@ function AnalyseRow({ a }: { a:Analyse }) {
             {a.recommandation && (
               <span style={{ fontSize:11, fontWeight:700, color:a.recommandationColor, background:`${a.recommandationColor}10`, border:`1px solid ${a.recommandationColor}22`, padding:'4px 9px', borderRadius:7, whiteSpace:'nowrap' }}>{a.recommandation}</span>
             )}
-            <button style={{ display:'flex', alignItems:'center', gap:4, padding:'6px 12px', borderRadius:8, background:'#f8fafc', border:'1px solid #edf2f7', fontSize:12, fontWeight:700, color:'#2a7d9c', cursor:'pointer', transition:'background 0.15s', whiteSpace:'nowrap' }}
-              onMouseOver={e=>(e.currentTarget.style.background='#e8f4f8')} onMouseOut={e=>(e.currentTarget.style.background='#f8fafc')}>
+            <Link to={`/dashboard/rapport?id=${a.id}`}
+              style={{ display:'flex', alignItems:'center', gap:4, padding:'6px 12px', borderRadius:8, background:'#f8fafc', border:'1px solid #edf2f7', fontSize:12, fontWeight:700, color:'#2a7d9c', cursor:'pointer', textDecoration:'none', whiteSpace:'nowrap', transition:'background 0.15s' }}
+              onMouseOver={e=>(e.currentTarget as HTMLElement).style.background='#e8f4f8'} onMouseOut={e=>(e.currentTarget as HTMLElement).style.background='#f8fafc'}>
               <ExternalLink size={11}/> Rapport
-            </button>
+            </Link>
           </>
         )}
       </div>
