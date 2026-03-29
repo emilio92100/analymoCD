@@ -89,7 +89,7 @@ function HeroSection() {
           </motion.div>
 
           <motion.h1 variants={up} initial="hidden" animate="show" custom={0.5}
-            className="text-[clamp(26px,7vw,40px)] font-black leading-[1.06] tracking-[-0.03em] text-[#0f172a] mb-2 text-center px-2">
+            className="text-[clamp(32px,9vw,48px)] font-black leading-[1.06] tracking-[-0.03em] text-[#0f172a] mb-3 text-center px-2">
             Vérifiez les éléments<br />
             <span className="relative inline-block">
               <span className="text-[#2a7d9c]">avant de signer.</span>
@@ -100,15 +100,54 @@ function HeroSection() {
           </motion.h1>
 
           <motion.p variants={up} initial="hidden" animate="show" custom={0.8}
-            className="text-sm text-slate-500 leading-relaxed text-center px-4 mb-6 max-w-[340px]">
-            Diagnostics, PV d'AG, Règlement de copropriété… Notre outil vous aide à comprendre les informations essentielles en <span className="font-semibold text-[#0f172a]">30 secondes*</span>.
+            className="text-base text-slate-500 leading-relaxed text-center px-4 mb-7 max-w-[340px]">
+            Diagnostics, PV d'AG, Règlement de copropriété… Notre outil vous aide à comprendre l'essentiel en <span className="font-semibold text-[#0f172a]">30 secondes*</span>.
           </motion.p>
 
-          <motion.div variants={up} initial="hidden" animate="show" custom={1} className="mb-6">
-            <PhoneMockup />
+          {/* Téléphone collé à droite + bulles à gauche */}
+          <motion.div variants={up} initial="hidden" animate="show" custom={1}
+            className="relative w-full mb-7 flex justify-end pr-2" style={{ height: 400 }}>
+
+            {/* Bulles flottantes à gauche */}
+            <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.2 }}
+              style={{ animation: "floatA 4s ease-in-out 1.2s infinite" }}
+              className="absolute left-2 top-[12%] z-20 bg-white rounded-2xl px-3.5 py-2.5 shadow-xl border border-slate-100 flex items-center gap-2.5 max-w-[155px]">
+              <div className="w-8 h-8 rounded-xl bg-[#2a7d9c]/10 flex items-center justify-center shrink-0">
+                <ShieldCheck size={15} className="text-[#2a7d9c]" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-[#0f172a]">100% sécurisé</p>
+                <p className="text-[10px] text-slate-400">Chiffré & supprimé</p>
+              </div>
+            </motion.div>
+
+            <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 2.0 }}
+              style={{ animation: "floatB 5s ease-in-out 2s infinite" }}
+              className="absolute left-0 top-[45%] z-20 bg-white rounded-2xl px-3.5 py-2.5 shadow-xl border border-slate-100 flex items-center gap-2.5 max-w-[145px]">
+              <div className="w-8 h-8 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
+                <TrendingUp size={15} className="text-green-500" />
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-[#0f172a]">Score 7,5/10</p>
+                <p className="text-[10px] text-slate-400">Bien recommandé</p>
+              </div>
+            </motion.div>
+
+            <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 2.8 }}
+              style={{ animation: "floatC 3.5s ease-in-out 2.8s infinite" }}
+              className="absolute left-1 top-[75%] z-20 bg-white rounded-xl px-3 py-2 shadow-lg border border-slate-100 flex items-center gap-1.5">
+              <FileText size={12} className="text-[#2a7d9c] shrink-0" />
+              <span className="text-[11px] font-semibold text-[#0f172a]">3 docs chargés ✓</span>
+            </motion.div>
+
+            {/* Téléphone réduit et collé à droite */}
+            <div className="absolute right-0 top-0 bottom-0 flex items-center">
+              <PhoneMockupMini />
+            </div>
           </motion.div>
+
           <motion.div variants={up} initial="hidden" animate="show" custom={2}
-            className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
+            className="flex flex-col sm:flex-row gap-3 w-full max-w-sm px-4">
             <Link to="/tarifs"
               className="flex items-center justify-center gap-2 px-7 py-4 rounded-2xl bg-[#0f2d3d] text-white text-base font-bold shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200 flex-1">
               <ShieldCheck size={18} /> Lancer mon analyse
@@ -390,6 +429,150 @@ function PhaseResult() {
   );
 }
 
+/* ═══ PHONE MOCKUP MINI (mobile uniquement) ══════════════════ */
+function PhoneMockupMini() {
+  const [step, setStep] = useState<0|1|2>(0);
+  useEffect(() => {
+    const t1 = setTimeout(() => setStep(1), 3500);
+    const t2 = setTimeout(() => setStep(2), 7000);
+    const t3 = setTimeout(() => setStep(0), 14000);
+    return () => [t1, t2, t3].forEach(clearTimeout);
+  }, [step]);
+
+  return (
+    <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}>
+      <div className="w-[150px] h-[300px] bg-[#0f172a] rounded-[32px] p-[4px] shadow-[0_24px_56px_rgba(15,23,42,0.28)]">
+        <div className="w-full h-full bg-[#f8fafc] rounded-[29px] overflow-hidden flex flex-col">
+          <div className="bg-white shrink-0 px-3 pt-2.5 pb-1 flex items-center justify-between relative">
+            <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-[40px] h-[14px] bg-[#0f172a] rounded-full z-10" />
+            <span className="text-[7px] font-bold text-slate-300">9:41</span>
+            <span className="text-[7px] font-bold text-slate-300">5G</span>
+          </div>
+          <div className="bg-white border-b border-slate-100 px-3 py-1.5 shrink-0 flex items-center justify-between">
+            <span className="text-[8px] font-black text-[#0f2d3d] tracking-wide">ANALYMO</span>
+            <span className="text-[7px] font-bold bg-[#2a7d9c]/10 text-[#2a7d9c] px-1.5 py-0.5 rounded-full">Mon espace</span>
+          </div>
+          <div className="flex-1 flex flex-col min-h-0">
+            <AnimatePresence mode="wait">
+              {step === 0 && <PhaseUploadMini key="u" />}
+              {step === 1 && <PhaseScanMini key="s" />}
+              {step === 2 && <PhaseResultMini key="r" />}
+            </AnimatePresence>
+          </div>
+          <div className="bg-white shrink-0 py-1.5 flex justify-center border-t border-slate-50">
+            <div className="w-10 h-[3px] rounded-full bg-slate-200" />
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function PhaseUploadMini() {
+  const [prog, setProg] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setProg(p => Math.min(p + 2, 95)), 60);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="flex-1 flex flex-col px-3 py-3">
+      <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mb-2">Documents chargés</p>
+      <div className="flex flex-col gap-1.5 mb-auto">
+        {["PV AG 2024.pdf","Règlement.pdf","Diagnostics.pdf"].map((f,i)=>(
+          <motion.div key={f} initial={{opacity:0,x:-8}} animate={{opacity:1,x:0}} transition={{delay:i*0.2}}
+            className="flex items-center gap-1.5 p-2 rounded-lg bg-white border border-slate-100 shadow-sm">
+            <FileText size={8} className="text-[#2a7d9c] shrink-0" />
+            <span className="text-[8px] text-slate-700 font-semibold flex-1 truncate">{f}</span>
+            <CheckCircle size={8} className="text-green-500 shrink-0" />
+          </motion.div>
+        ))}
+      </div>
+      <div className="mt-3">
+        <div className="h-1 rounded-full bg-slate-200">
+          <motion.div className="h-full rounded-full bg-gradient-to-r from-[#2a7d9c] to-[#0f2d3d]"
+            animate={{ width: `${prog}%` }} transition={{ duration: 0.3 }} />
+        </div>
+        <p className="text-[7px] text-slate-400 mt-1 text-center italic">Lancement...</p>
+      </div>
+    </motion.div>
+  );
+}
+
+function PhaseScanMini() {
+  const tasks = ["Lecture...","Travaux...","Finances...","Juridique...","Score..."];
+  const [done, setDone] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setDone(d => Math.min(d + 1, tasks.length)), 600);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="flex-1 flex flex-col px-3 py-3">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[8px] font-black text-[#0f172a]">Traitement en cours</p>
+        <div className="w-2.5 h-2.5 border-[1.5px] border-[#2a7d9c] border-t-transparent rounded-full animate-spin-slow" />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {tasks.map((t,i)=>(
+          <motion.div key={t} initial={{opacity:0}} animate={{opacity:1}} transition={{delay:i*0.12}}
+            className={`flex items-center gap-2 p-1.5 rounded-lg border ${i < done ? 'bg-green-50 border-green-100' : 'bg-white border-slate-100'}`}>
+            {i < done
+              ? <CheckCircle size={8} className="text-green-500 shrink-0" />
+              : <div className="w-1.5 h-1.5 rounded-full bg-[#2a7d9c] shrink-0 opacity-40" />
+            }
+            <span className={`text-[8px] font-medium ${i < done ? 'text-green-700' : 'text-slate-500'}`}>{t}</span>
+          </motion.div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+function PhaseResultMini() {
+  return (
+    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="flex-1 flex flex-col px-3 py-3">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[8px] font-black text-[#0f172a]">Rapport Analymo</p>
+        <span className="text-[6px] font-bold bg-green-50 text-green-700 px-1.5 py-0.5 rounded-full">✓ OK</span>
+      </div>
+      <div className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-100 shadow-sm mb-2">
+        <div className="relative w-10 h-10 shrink-0">
+          <svg className="w-10 h-10 -rotate-90" viewBox="0 0 40 40">
+            <circle cx="20" cy="20" r="15" fill="none" stroke="#f1f5f9" strokeWidth="3" />
+            <motion.circle cx="20" cy="20" r="15" fill="none" stroke="#2a7d9c" strokeWidth="3" strokeLinecap="round"
+              strokeDasharray={94} initial={{ strokeDashoffset: 94 }}
+              animate={{ strokeDashoffset: 94 - 94 * 0.75 }} transition={{ duration: 1.2, delay: 0.3 }} />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-[10px] font-black text-[#0f172a] leading-none">7,5</span>
+            <span className="text-[6px] text-slate-400">/10</span>
+          </div>
+        </div>
+        <div>
+          <p className="text-[8px] font-black text-[#0f172a] mb-0.5">Sain</p>
+          <span className="text-[6px] font-bold bg-[#2a7d9c]/10 text-[#2a7d9c] px-1 py-0.5 rounded-full">Recommandé ✓</span>
+        </div>
+      </div>
+      <div className="flex flex-col gap-1">
+        {[
+          {icon:CheckCircle,c:"text-green-500",bg:"bg-green-50",t:"Finances saines"},
+          {icon:AlertTriangle,c:"text-amber-500",bg:"bg-amber-50",t:"Toiture 2026 ~4 200€"},
+          {icon:CheckCircle,c:"text-green-500",bg:"bg-green-50",t:"Aucun impayé"},
+        ].map((it,i)=>(
+          <motion.div key={i} initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.5+i*0.1}}
+            className={`flex items-center gap-1.5 p-1.5 rounded-lg ${it.bg}`}>
+            <it.icon size={8} className={`${it.c} shrink-0`} />
+            <p className="text-[8px] font-semibold text-[#0f172a] truncate">{it.t}</p>
+          </motion.div>
+        ))}
+      </div>
+      <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:1.2}}
+        className="mt-2 w-full py-2 rounded-lg bg-[#0f2d3d] text-white text-[7px] font-bold text-center flex items-center justify-center gap-1">
+        <Download size={7} /> Télécharger PDF
+      </motion.div>
+    </motion.div>
+  );
+}
+
 /* ═══ AVANT / APRÈS ════════════════════════════════════════ */
 function AvantApresSection() {
   const rows = [
@@ -470,7 +653,7 @@ function ProblemSolutionSection() {
     {
       icon: TrendingUp,
       title: "Charges sous-estimées",
-      problem: "Des charges bien plus élevées que prévu qui plombent votre rentabilité.",
+      problem: "Des charges bien plus élevées que prévu qui pèsent lourd sur votre budget d'achat.",
       solution: "Charges mensuelles, fonds travaux, appels votés — tout est chiffré.",
       pc: "text-orange-500", pb: "bg-orange-50", pBorder: "border-orange-100",
     },
@@ -491,8 +674,8 @@ function ProblemSolutionSection() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
           {items.map((item, i) => (
             <Reveal key={i} delay={i}
-              className="group p-5 md:p-8 rounded-2xl md:rounded-3xl bg-white border border-slate-100 shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-default">
-              <div className={`w-11 h-11 rounded-xl ${item.pb} border ${item.pBorder} flex items-center justify-center mb-4`}>
+              className="group p-5 md:p-8 rounded-2xl md:rounded-3xl bg-white border border-slate-100 shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-default text-center md:text-left">
+              <div className={`w-11 h-11 rounded-xl ${item.pb} border ${item.pBorder} flex items-center justify-center mb-4 mx-auto md:mx-0`}>
                 <item.icon size={18} className={item.pc} />
               </div>
               <h3 className="text-base md:text-lg font-bold text-[#0f172a] mb-2">{item.title}</h3>
