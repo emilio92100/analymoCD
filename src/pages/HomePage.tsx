@@ -1,14 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import type { Variants } from "framer-motion";
 import {
   ArrowRight, CheckCircle, AlertTriangle, FileText,
   Zap, Shield, BarChart3,
-  TrendingUp, Clock, Star, Check, X, ChevronRight,
+  TrendingUp, Clock, Check, X, ChevronRight,
   Building2, UserCheck, BadgeCheck, ShieldCheck, Trash2,
-  Download,
+  Download, Lock, Eye, ChevronDown,
 } from "lucide-react";
+import { useEffect } from "react";
 
 const up: Variants = {
   hidden: { opacity: 0, y: 24 },
@@ -56,13 +57,13 @@ export default function HomePage() {
   return (
     <div className="bg-white text-[#0f172a] antialiased overflow-x-hidden" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <HeroSection />
-      <StatsBar />
       <AvantApresSection />
-      <ProblemSection />
-      <SolutionSection />
+      <ProblemSolutionSection />
+      <SecuriteSection />
       <ForWhoSection />
       <HowItWorksSection />
-      <TestimonialsSection />
+      <ApercuRapportSection />
+      <FaqSection />
       <CtaFinal />
     </div>
   );
@@ -79,7 +80,7 @@ function HeroSection() {
 
       <div className="relative z-10 max-w-6xl mx-auto w-full">
 
-        {/* MOBILE : titre + téléphone + boutons */}
+        {/* MOBILE */}
         <div className="flex flex-col items-center lg:hidden pt-8 pb-4">
           <motion.div variants={up} initial="hidden" animate="show" custom={0}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#2a7d9c]/25 bg-white text-[#1a5e78] text-sm font-semibold mb-5 shadow-sm">
@@ -123,10 +124,8 @@ function HeroSection() {
           </motion.p>
         </div>
 
-        {/* DESKTOP : grille 2 colonnes */}
+        {/* DESKTOP */}
         <div className="hidden lg:grid grid-cols-2 gap-6 items-center">
-
-          {/* LEFT */}
           <div className="flex flex-col items-start text-left">
             <motion.div variants={up} initial="hidden" animate="show" custom={0}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#2a7d9c]/25 bg-white text-[#1a5e78] text-sm font-semibold mb-5 shadow-sm">
@@ -182,7 +181,6 @@ function HeroSection() {
             </motion.div>
           </div>
 
-          {/* RIGHT */}
           <motion.div variants={up} initial="hidden" animate="show" custom={2} className="flex justify-center">
             <PhoneMockup />
           </motion.div>
@@ -208,7 +206,6 @@ function PhoneMockup() {
   useEffect(() => {
     const t1 = setTimeout(() => setStep(1), 3500);
     const t2 = setTimeout(() => setStep(2), 7000);
-    // Reste sur le résultat 7 secondes avant de repartir
     const t3 = setTimeout(() => setStep(0), 14000);
     return () => [t1, t2, t3].forEach(clearTimeout);
   }, [step]);
@@ -249,21 +246,15 @@ function PhoneMockup() {
       <motion.div animate={{ y: [0, -10, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}>
         <div className="w-[175px] sm:w-[275px] h-[370px] sm:h-[580px] bg-[#0f172a] rounded-[40px] sm:rounded-[46px] p-[5px] shadow-[0_32px_72px_rgba(15,23,42,0.25)]">
           <div className="w-full h-full bg-[#f8fafc] rounded-[36px] sm:rounded-[42px] overflow-hidden flex flex-col">
-
-            {/* Status bar */}
             <div className="bg-white shrink-0 px-4 pt-3 pb-1 flex items-center justify-between relative">
               <div className="absolute top-2 left-1/2 -translate-x-1/2 w-[60px] h-[18px] bg-[#0f172a] rounded-full z-10" />
               <span className="text-[8px] font-bold text-slate-300">9:41</span>
               <span className="text-[8px] font-bold text-slate-300">5G ▪▪▪</span>
             </div>
-
-            {/* App header */}
             <div className="bg-white border-b border-slate-100 px-4 py-2 shrink-0 flex items-center justify-between">
               <span className="text-[10px] font-black text-[#0f2d3d] tracking-wide">ANALYMO</span>
               <span className="text-[8px] font-bold bg-[#2a7d9c]/10 text-[#2a7d9c] px-2 py-0.5 rounded-full">Mon espace</span>
             </div>
-
-            {/* Content — flex-1 remplit tout l'espace restant */}
             <div className="flex-1 flex flex-col min-h-0">
               <AnimatePresence mode="wait">
                 {step === 0 && <PhaseUpload key="u" />}
@@ -271,12 +262,9 @@ function PhoneMockup() {
                 {step === 2 && <PhaseResult key="r" />}
               </AnimatePresence>
             </div>
-
-            {/* Home indicator */}
             <div className="bg-white shrink-0 py-2 flex justify-center border-t border-slate-50">
               <div className="w-14 h-1 rounded-full bg-slate-200" />
             </div>
-
           </div>
         </div>
       </motion.div>
@@ -358,7 +346,6 @@ function PhaseResult() {
         <p className="text-[10px] font-black text-[#0f172a]">Rapport Analymo</p>
         <span className="text-[8px] font-bold bg-green-50 text-green-700 px-2 py-0.5 rounded-full">✓ Terminé</span>
       </div>
-      {/* Score + adresse */}
       <div className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-slate-100 shadow-sm mb-3">
         <div className="relative w-14 h-14 shrink-0">
           <svg className="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
@@ -378,7 +365,6 @@ function PhaseResult() {
           <p className="text-[8px] text-slate-400 mt-1">12 rue des Lilas, Lyon</p>
         </div>
       </div>
-      {/* Points clés */}
       <div className="flex flex-col gap-1.5 flex-1">
         {[
           {icon:CheckCircle,c:"text-green-500",bg:"bg-green-50",border:"border-green-100",t:"Finances saines",s:"Fonds travaux bien dotés"},
@@ -404,250 +390,6 @@ function PhaseResult() {
   );
 }
 
-/* ═══ STATS BAR ═══════════════════════════════════════════ */
-function StatsBar() {
-  const stats = [
-    { v: "200+", l: "analyses réalisées" },
-    { v: "30s*", l: "temps moyen" },
-    { v: "98%", l: "satisfaction client" },
-    { v: "~8 000€", l: "économisés en moyenne" },
-  ];
-  return (
-    <Reveal className="border-y border-slate-100 bg-white">
-      <div className="max-w-5xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 divide-x divide-slate-100">
-        {stats.map((s, i) => (
-          <div key={i} className="py-5 md:py-8 px-3 md:px-8 text-center">
-            <div className="text-[clamp(20px,3vw,38px)] font-black text-[#0f172a] tracking-tight">{s.v}</div>
-            <div className="text-xs md:text-sm text-slate-500 mt-1 font-medium leading-tight">{s.l}</div>
-          </div>
-        ))}
-      </div>
-    </Reveal>
-  );
-}
-
-/* ═══ PROBLEM ══════════════════════════════════════════════ */
-function ProblemSection() {
-  const problems = [
-    { icon: FileText, title: "Documents illisibles", desc: "Des PV de 40 pages remplis de jargon juridique que personne ne lit vraiment.", c: "text-red-500", bg: "bg-red-50", border: "border-red-100" },
-    { icon: AlertTriangle, title: "Travaux cachés", desc: "Ravalement, toiture, ascenseur : des travaux votés découverts après la signature.", c: "text-amber-500", bg: "bg-amber-50", border: "border-amber-100" },
-    { icon: TrendingUp, title: "Charges sous-estimées", desc: "Des charges bien plus élevées que prévu qui plombent la rentabilité de votre achat.", c: "text-orange-500", bg: "bg-orange-50", border: "border-orange-100" },
-    { icon: Clock, title: "Décisions précipitées", desc: "Sous la pression du marché, vous signez sans avoir eu le temps d'analyser.", c: "text-blue-500", bg: "bg-blue-50", border: "border-blue-100" },
-  ];
-  return (
-    <section className="py-16 md:py-28 px-4 md:px-6 bg-[#f4f7f9]">
-      <div className="max-w-6xl mx-auto">
-        <SectionTitle label="Le problème" title="Acheter un bien," accent="c'est risqué."
-          sub="La plupart des acheteurs signent sans avoir lu ni compris les documents essentiels. Analymo change ça." />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-6">
-          {problems.map((p, i) => (
-            <Reveal key={i} delay={i}
-              className={`group flex items-start gap-4 p-5 md:p-8 rounded-2xl md:rounded-3xl border ${p.border} bg-white hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-default`}>
-              <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl ${p.bg} flex items-center justify-center shrink-0 mt-0.5`}>
-                <p.icon size={18} className={p.c} />
-              </div>
-              <div>
-                <h3 className="text-base md:text-xl font-bold text-[#0f172a] mb-1 md:mb-3">{p.title}</h3>
-                <p className="text-sm md:text-base text-slate-500 leading-relaxed">{p.desc}</p>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ═══ SOLUTION ═════════════════════════════════════════════ */
-function SolutionSection() {
-  const feats = [
-    { icon: Zap, title: "Analyse automatique", desc: "Déposez vos documents — notre moteur extrait et analyse chaque information en quelques secondes.", c: "#2a7d9c", light: "rgba(42,125,156,0.08)" },
-    { icon: Shield, title: "Détection des risques", desc: "Travaux votés, impayés, procédures judiciaires — rien ne passe à travers les mailles.", c: "#ef4444", light: "rgba(239,68,68,0.06)" },
-    { icon: BarChart3, title: "Synthèse ultra-claire", desc: "Score global, alertes par priorité, recommandation finale. Vous savez exactement quoi faire.", c: "#22c55e", light: "rgba(34,197,94,0.06)" },
-  ];
-  return (
-    <section className="py-16 md:py-28 px-4 md:px-6 bg-white">
-      <div className="max-w-6xl mx-auto">
-        <SectionTitle label="La solution" title="Analymo vous" accent="simplifie tout."
-          sub="En moins de 30 secondes*, vous savez exactement dans quoi vous mettez les pieds." />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-7">
-          {feats.map((f, i) => (
-            <Reveal key={i} delay={i}
-              className="relative flex md:block items-start gap-4 md:gap-0 p-5 md:p-9 rounded-2xl md:rounded-3xl bg-white border border-slate-100 shadow-sm hover:-translate-y-1 md:hover:-translate-y-2 hover:shadow-xl transition-all duration-300 group overflow-hidden cursor-default">
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl md:rounded-3xl"
-                style={{ background: `radial-gradient(ellipse at 20% 20%, ${f.light} 0%, transparent 65%)` }} />
-              <div className="relative flex md:block items-start gap-4 w-full">
-                <div className="w-11 h-11 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 md:mb-7" style={{ background: f.light }}>
-                  <f.icon size={20} style={{ color: f.c }} />
-                </div>
-                <div className="flex-1">
-                  <div className="hidden md:block text-3xl font-black text-slate-100 mb-1">0{i+1}</div>
-                  <h3 className="text-base md:text-xl font-bold text-[#0f172a] mb-1 md:mb-3">{f.title}</h3>
-                  <p className="text-sm md:text-base text-slate-500 leading-relaxed">{f.desc}</p>
-                </div>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ═══ HOW IT WORKS ══════════════════════════════════════════ */
-function HowItWorksSection() {
-  const refMobile = useRef(null);
-  const refDesktop = useRef(null);
-  const inViewMobile = useInView(refMobile, { once: true, margin: "-40px" });
-  const inViewDesktop = useInView(refDesktop, { once: true, margin: "-60px" });
-
-  const steps = [
-    {
-      n: "01",
-      color: "#2a7d9c",
-      bg: "rgba(42,125,156,0.08)",
-      border: "rgba(42,125,156,0.18)",
-      title: "Déposez vos fichiers",
-      desc: "PV d'AG, règlement de copropriété, diagnostics, appels de charges — glissez-déposez vos PDF.",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" stroke="currentColor" className="w-6 h-6">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-8m0 0-3 3m3-3 3 3M6.5 20h11A2.5 2.5 0 0 0 20 17.5v-11A2.5 2.5 0 0 0 17.5 4h-7L6 8.5V17.5A2.5 2.5 0 0 0 8.5 20Z" />
-        </svg>
-      ),
-    },
-    {
-      n: "02",
-      color: "#2a7d9c",
-      bg: "rgba(42,125,156,0.08)",
-      border: "rgba(42,125,156,0.18)",
-      title: "Notre outil traite tout",
-      desc: "Chaque page lue, chaque risque détecté, chaque charge estimée. Rapide et automatique.",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" stroke="currentColor" className="w-6 h-6">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-        </svg>
-      ),
-    },
-    {
-      n: "03",
-      color: "#2a7d9c",
-      bg: "rgba(42,125,156,0.08)",
-      border: "rgba(42,125,156,0.18)",
-      title: "Rapport clair & actionnable",
-      desc: "Score /10, points de vigilance, travaux votés, impact financier. Disponible dans votre espace.",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" stroke="currentColor" className="w-6 h-6">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z" />
-        </svg>
-      ),
-    },
-    {
-      n: "04",
-      color: "#2a7d9c",
-      bg: "rgba(42,125,156,0.08)",
-      border: "rgba(42,125,156,0.18)",
-      title: "Téléchargez en PDF",
-      desc: "Exportez votre rapport complet et partagez-le avec votre agent, notaire ou banque.",
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" stroke="currentColor" className="w-6 h-6">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-        </svg>
-      ),
-    },
-  ];
-
-  return (
-    <section className="py-16 md:py-24 px-4 md:px-6 bg-white">
-      <div className="max-w-6xl mx-auto">
-
-        <SectionTitle label="Comment ça marche" title="Quatre étapes," accent="c'est tout." 
-          sub="Pas de formation, pas de jargon. Vous déposez vos fichiers — on fait le reste." />
-
-        {/* ── MOBILE : stepper vertical ── */}
-        <div className="flex flex-col md:hidden" ref={refMobile}>
-          {steps.map((s, i) => (
-            <motion.div key={i}
-              initial={{ opacity: 0, x: -16 }}
-              animate={inViewMobile ? { opacity: 1, x: 0 } : {}}
-              transition={{ delay: i * 0.12, duration: 0.45 }}
-              className="flex gap-4">
-              <div className="flex flex-col items-center shrink-0">
-                <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border"
-                  style={{ background: s.bg, borderColor: s.border }}>
-                  <span className="text-sm font-black" style={{ color: s.color }}>{s.n}</span>
-                </div>
-                {i < steps.length - 1 && (
-                  <motion.div className="w-px min-h-[36px] flex-1 mt-1.5 mb-1.5 rounded-full"
-                    style={{ background: "linear-gradient(to bottom, rgba(42,125,156,0.3), rgba(42,125,156,0.05))" }}
-                    initial={{ scaleY: 0, transformOrigin: "top" }}
-                    animate={inViewMobile ? { scaleY: 1 } : {}}
-                    transition={{ delay: i * 0.12 + 0.2, duration: 0.35 }} />
-                )}
-              </div>
-              <div className="pb-6 pt-1 flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <div style={{ color: s.color }}>{s.icon}</div>
-                  <h3 className="text-base font-bold text-[#0f172a]">{s.title}</h3>
-                </div>
-                <p className="text-sm text-slate-500 leading-relaxed">{s.desc}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* ── DESKTOP : 4 blocs reliés par un trait ── */}
-        <div className="hidden md:block" ref={refDesktop}>
-          {/* Trait + icônes en haut */}
-          <div className="relative flex items-center justify-between mb-8 px-[56px]">
-            <div className="absolute inset-x-[56px] top-1/2 -translate-y-1/2 h-px bg-slate-200" />
-            <motion.div
-              className="absolute left-[56px] top-1/2 -translate-y-1/2 h-[2px] rounded-full bg-[#2a7d9c]/40"
-              initial={{ width: 0 }}
-              animate={inViewDesktop ? { width: "calc(100% - 112px)" } : {}}
-              transition={{ duration: 1.2, delay: 0.2, ease: [0.22, 1, 0.36, 1] }} />
-            {steps.map((s, i) => (
-              <motion.div key={i}
-                initial={{ opacity: 0, scale: 0.6 }}
-                animate={inViewDesktop ? { opacity: 1, scale: 1 } : {}}
-                transition={{ delay: i * 0.15 + 0.15, duration: 0.35, ease: "backOut" }}
-                className="relative z-10 flex flex-col items-center gap-2.5">
-                <div className="w-14 h-14 rounded-2xl border-2 flex items-center justify-center bg-white shadow-md"
-                  style={{ borderColor: s.border, color: s.color }}>
-                  {s.icon}
-                </div>
-                <span className="text-xs font-black text-[#2a7d9c] bg-[#2a7d9c]/8 px-2.5 py-0.5 rounded-full">{s.n}</span>
-              </motion.div>
-            ))}
-          </div>
-          <div className="grid grid-cols-4 gap-5">
-            {steps.map((s, i) => (
-              <motion.div key={i}
-                initial={{ opacity: 0, y: 16 }}
-                animate={inViewDesktop ? { opacity: 1, y: 0 } : {}}
-                transition={{ delay: i * 0.12 + 0.4, duration: 0.45 }}
-                className="rounded-2xl p-6 bg-[#f4f7f9] border border-slate-100 hover:border-[#2a7d9c]/20 hover:bg-[#eef6fb] hover:-translate-y-1 transition-all duration-200 cursor-default">
-                <div className="flex items-center gap-2 mb-3" style={{ color: s.color }}>
-                  {s.icon}
-                  <span className="text-xs font-black text-[#2a7d9c]">{s.n}</span>
-                </div>
-                <h3 className="text-base font-bold text-[#0f172a] mb-2">{s.title}</h3>
-                <p className="text-sm text-slate-500 leading-relaxed">{s.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-
-        <Reveal className="text-center mt-10 md:mt-12">
-          <Link to="/tarifs"
-            className="inline-flex items-center gap-2 px-7 md:px-10 py-3.5 md:py-4 rounded-2xl bg-[#0f2d3d] text-white text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
-            Essayer maintenant — dès 4,90€ <ArrowRight size={16} />
-          </Link>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
-
 /* ═══ AVANT / APRÈS ════════════════════════════════════════ */
 function AvantApresSection() {
   const rows = [
@@ -662,7 +404,6 @@ function AvantApresSection() {
       <div className="max-w-5xl mx-auto">
         <SectionTitle label="Avant / Après" title="Deux façons d'acheter." accent="Une seule bonne." />
 
-        {/* En-têtes colonnes */}
         <div className="grid grid-cols-2 gap-3 md:gap-4 mb-3">
           <div className="flex items-center gap-2 px-3 md:px-5 py-2.5 rounded-xl bg-red-50 border border-red-100">
             <div className="w-6 h-6 rounded-full bg-white border border-red-200 flex items-center justify-center shrink-0">
@@ -678,7 +419,6 @@ function AvantApresSection() {
           </div>
         </div>
 
-        {/* Lignes */}
         <div className="flex flex-col gap-2 md:gap-2.5">
           {rows.map((row, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.07 }}
@@ -710,6 +450,140 @@ function AvantApresSection() {
   );
 }
 
+/* ═══ PROBLÈME + SOLUTION (fusionnées) ══════════════════════ */
+function ProblemSolutionSection() {
+  const items = [
+    {
+      icon: FileText,
+      title: "Documents illisibles",
+      problem: "Des PV de 40 pages remplis de jargon juridique que personne ne lit vraiment.",
+      solution: "Notre outil extrait l'essentiel et vous le présente en langage clair.",
+      pc: "text-red-500", pb: "bg-red-50", pBorder: "border-red-100",
+    },
+    {
+      icon: AlertTriangle,
+      title: "Travaux cachés",
+      problem: "Ravalement, toiture, ascenseur : des travaux votés découverts après la signature.",
+      solution: "Chaque travaux voté est détecté, daté et estimé financièrement pour votre lot.",
+      pc: "text-amber-500", pb: "bg-amber-50", pBorder: "border-amber-100",
+    },
+    {
+      icon: TrendingUp,
+      title: "Charges sous-estimées",
+      problem: "Des charges bien plus élevées que prévu qui plombent votre rentabilité.",
+      solution: "Charges mensuelles, fonds travaux, appels votés — tout est chiffré.",
+      pc: "text-orange-500", pb: "bg-orange-50", pBorder: "border-orange-100",
+    },
+    {
+      icon: Clock,
+      title: "Décisions précipitées",
+      problem: "Sous la pression du marché, vous signez sans avoir eu le temps d'analyser.",
+      solution: "En 30 secondes*, vous avez une recommandation claire : acheter ou négocier.",
+      pc: "text-blue-500", pb: "bg-blue-50", pBorder: "border-blue-100",
+    },
+  ];
+
+  return (
+    <section className="py-16 md:py-28 px-4 md:px-6 bg-[#f4f7f9]">
+      <div className="max-w-6xl mx-auto">
+        <SectionTitle label="Pourquoi Analymo" title="Un problème réel," accent="une réponse claire."
+          sub="Chaque achat immobilier cache des risques que les documents ne rendent pas évidents. Voici comment on les résout." />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+          {items.map((item, i) => (
+            <Reveal key={i} delay={i}
+              className="group p-5 md:p-8 rounded-2xl md:rounded-3xl bg-white border border-slate-100 shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-default">
+              <div className={`w-11 h-11 rounded-xl ${item.pb} border ${item.pBorder} flex items-center justify-center mb-4`}>
+                <item.icon size={18} className={item.pc} />
+              </div>
+              <h3 className="text-base md:text-lg font-bold text-[#0f172a] mb-2">{item.title}</h3>
+              <p className="text-sm text-slate-500 leading-relaxed mb-3">{item.problem}</p>
+              <div className="flex items-start gap-2 pt-3 border-t border-slate-100">
+                <div className="w-5 h-5 rounded-full bg-[#2a7d9c]/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <Check size={10} className="text-[#2a7d9c]" />
+                </div>
+                <p className="text-sm text-[#2a7d9c] font-semibold leading-relaxed">{item.solution}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ═══ SÉCURITÉ ══════════════════════════════════════════════ */
+function SecuriteSection() {
+  const garanties = [
+    {
+      icon: Lock,
+      title: "Chiffrement bout en bout",
+      desc: "Vos documents sont chiffrés dès l'upload. Personne — pas même nous — ne peut accéder à leur contenu brut.",
+      color: "#2a7d9c",
+      bg: "rgba(42,125,156,0.08)",
+    },
+    {
+      icon: Trash2,
+      title: "Suppression automatique",
+      desc: "Vos fichiers sont automatiquement supprimés de nos serveurs après traitement. Aucun stockage permanent.",
+      color: "#ef4444",
+      bg: "rgba(239,68,68,0.07)",
+    },
+    {
+      icon: Eye,
+      title: "Aucun partage de données",
+      desc: "Vos documents ne sont jamais partagés, revendus ou utilisés à des fins commerciales. Vos données vous appartiennent.",
+      color: "#0f6e56",
+      bg: "rgba(15,110,86,0.08)",
+    },
+    {
+      icon: Shield,
+      title: "Hébergement en Europe",
+      desc: "Toutes vos données sont hébergées sur des serveurs européens, conformément au RGPD.",
+      color: "#f0a500",
+      bg: "rgba(240,165,0,0.08)",
+    },
+  ];
+
+  return (
+    <section className="py-16 md:py-28 px-4 md:px-6 bg-white">
+      <div className="max-w-6xl mx-auto">
+        <SectionTitle
+          label="Sécurité & Confidentialité"
+          title="Vos documents,"
+          accent="protégés."
+          sub="Vous allez uploader des documents sensibles. Voici exactement comment nous les protégeons."
+        />
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
+          {garanties.map((g, i) => (
+            <Reveal key={i} delay={i}
+              className="group p-6 md:p-7 rounded-2xl border border-slate-100 bg-white shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-default text-center">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: g.bg }}>
+                <g.icon size={22} style={{ color: g.color }} />
+              </div>
+              <h3 className="text-sm md:text-base font-bold text-[#0f172a] mb-2">{g.title}</h3>
+              <p className="text-xs md:text-sm text-slate-500 leading-relaxed">{g.desc}</p>
+            </Reveal>
+          ))}
+        </div>
+
+        {/* Bandeau rassurant */}
+        <Reveal>
+          <div className="rounded-2xl bg-[#f4f7f9] border border-slate-100 px-6 md:px-10 py-5 md:py-6 flex flex-col md:flex-row items-center gap-4 md:gap-8 text-center md:text-left">
+            <div className="w-12 h-12 rounded-2xl bg-[#2a7d9c]/10 flex items-center justify-center shrink-0 mx-auto md:mx-0">
+              <ShieldCheck size={22} className="text-[#2a7d9c]" />
+            </div>
+            <div>
+              <p className="text-base font-bold text-[#0f172a] mb-1">Conforme RGPD — Hébergement en France</p>
+              <p className="text-sm text-slate-500">Vos documents immobiliers sont traités de façon sécurisée et automatiquement supprimés après génération du rapport. Aucun humain ne les consulte.</p>
+            </div>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
 /* ═══ FOR WHO ══════════════════════════════════════════════ */
 function ForWhoSection() {
   const [activeTab, setActiveTab] = useState(0);
@@ -733,7 +607,6 @@ function ForWhoSection() {
       <div className="max-w-5xl mx-auto">
         <SectionTitle label="Pour qui" title="Fait pour" accent="vous." />
 
-        {/* Tabs */}
         <Reveal className="flex justify-center mb-8">
           <div className="inline-flex bg-white rounded-2xl p-1.5 shadow-sm border border-slate-100 gap-1">
             {tabs.map((t, i) => (
@@ -809,36 +682,322 @@ function ForWhoSection() {
   );
 }
 
-/* ═══ TESTIMONIALS ══════════════════════════════════════════ */
-function TestimonialsSection() {
-  const testimonials = [
-    { name:"Marie L.", role:"Primo-accédante · Lyon", i:"ML", c:"#2a7d9c", text:"Analymo m'a signalé un ravalement à 12 000€. J'ai renégocié le prix à la baisse. Inestimable avant une signature." },
-    { name:"Thomas R.", role:"Investisseur · Paris", i:"TR", c:"#0f2d3d", text:"De 3h par dossier à 15 minutes. Quand j'analyse 10 biens par mois, le gain est immédiat." },
-    { name:"Sophie D.", role:"Acheteuse · Bordeaux", i:"SD", c:"#0f6e56", text:"Rapport clair, scores par catégorie. Mon notaire a été impressionné. Je recommande à tous." },
+/* ═══ HOW IT WORKS ══════════════════════════════════════════ */
+function HowItWorksSection() {
+  const refMobile = useRef(null);
+  const refDesktop = useRef(null);
+  const inViewMobile = useInView(refMobile, { once: true, margin: "-40px" });
+  const inViewDesktop = useInView(refDesktop, { once: true, margin: "-60px" });
+
+  const steps = [
+    {
+      n: "01", color: "#2a7d9c", bg: "rgba(42,125,156,0.08)", border: "rgba(42,125,156,0.18)",
+      title: "Déposez vos fichiers",
+      desc: "PV d'AG, règlement de copropriété, diagnostics, appels de charges — glissez-déposez vos PDF.",
+      icon: (<svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-8m0 0-3 3m3-3 3 3M6.5 20h11A2.5 2.5 0 0 0 20 17.5v-11A2.5 2.5 0 0 0 17.5 4h-7L6 8.5V17.5A2.5 2.5 0 0 0 8.5 20Z" /></svg>),
+    },
+    {
+      n: "02", color: "#2a7d9c", bg: "rgba(42,125,156,0.08)", border: "rgba(42,125,156,0.18)",
+      title: "Notre outil traite tout",
+      desc: "Chaque page lue, chaque risque détecté, chaque charge estimée. Rapide et automatique.",
+      icon: (<svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>),
+    },
+    {
+      n: "03", color: "#2a7d9c", bg: "rgba(42,125,156,0.08)", border: "rgba(42,125,156,0.18)",
+      title: "Rapport clair & actionnable",
+      desc: "Score /10, points de vigilance, travaux votés, impact financier. Disponible dans votre espace.",
+      icon: (<svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z" /></svg>),
+    },
+    {
+      n: "04", color: "#2a7d9c", bg: "rgba(42,125,156,0.08)", border: "rgba(42,125,156,0.18)",
+      title: "Téléchargez en PDF",
+      desc: "Exportez votre rapport complet et partagez-le avec votre agent, notaire ou banque.",
+      icon: (<svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>),
+    },
   ];
+
   return (
-    <section className="py-16 md:py-28 px-4 md:px-6 bg-white">
+    <section className="py-16 md:py-24 px-4 md:px-6 bg-white">
       <div className="max-w-6xl mx-auto">
-        <SectionTitle label="Témoignages" title="Ils ont acheté" accent="avec Analymo." />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-7">
-          {testimonials.map((t,i)=>(
-            <Reveal key={i} delay={i}
-              className="p-6 md:p-9 rounded-2xl md:rounded-3xl bg-[#f4f7f9] border border-slate-100 hover:-translate-y-1 hover:shadow-lg transition-all duration-200 cursor-default">
-              <div className="text-4xl md:text-5xl text-slate-200 font-serif leading-none mb-2 md:mb-3">"</div>
-              <p className="text-sm md:text-base text-slate-600 leading-relaxed mb-6 md:mb-8">{t.text}</p>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div style={{background:t.c}} className="w-9 h-9 md:w-11 md:h-11 rounded-full flex items-center justify-center text-xs font-black text-white shrink-0">{t.i}</div>
-                  <div>
-                    <p className="text-sm font-bold text-[#0f172a]">{t.name}</p>
-                    <p className="text-xs text-slate-400">{t.role}</p>
+        <SectionTitle label="Comment ça marche" title="Quatre étapes," accent="c'est tout."
+          sub="Pas de formation, pas de jargon. Vous déposez vos fichiers — on fait le reste." />
+
+        <div className="flex flex-col md:hidden" ref={refMobile}>
+          {steps.map((s, i) => (
+            <motion.div key={i}
+              initial={{ opacity: 0, x: -16 }}
+              animate={inViewMobile ? { opacity: 1, x: 0 } : {}}
+              transition={{ delay: i * 0.12, duration: 0.45 }}
+              className="flex gap-4">
+              <div className="flex flex-col items-center shrink-0">
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border"
+                  style={{ background: s.bg, borderColor: s.border }}>
+                  <span className="text-sm font-black" style={{ color: s.color }}>{s.n}</span>
+                </div>
+                {i < steps.length - 1 && (
+                  <motion.div className="w-px min-h-[36px] flex-1 mt-1.5 mb-1.5 rounded-full"
+                    style={{ background: "linear-gradient(to bottom, rgba(42,125,156,0.3), rgba(42,125,156,0.05))" }}
+                    initial={{ scaleY: 0, transformOrigin: "top" }}
+                    animate={inViewMobile ? { scaleY: 1 } : {}}
+                    transition={{ delay: i * 0.12 + 0.2, duration: 0.35 }} />
+                )}
+              </div>
+              <div className="pb-6 pt-1 flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <div style={{ color: s.color }}>{s.icon}</div>
+                  <h3 className="text-base font-bold text-[#0f172a]">{s.title}</h3>
+                </div>
+                <p className="text-sm text-slate-500 leading-relaxed">{s.desc}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        <div className="hidden md:block" ref={refDesktop}>
+          <div className="relative flex items-center justify-between mb-8 px-[56px]">
+            <div className="absolute inset-x-[56px] top-1/2 -translate-y-1/2 h-px bg-slate-200" />
+            <motion.div
+              className="absolute left-[56px] top-1/2 -translate-y-1/2 h-[2px] rounded-full bg-[#2a7d9c]/40"
+              initial={{ width: 0 }}
+              animate={inViewDesktop ? { width: "calc(100% - 112px)" } : {}}
+              transition={{ duration: 1.2, delay: 0.2, ease: [0.22, 1, 0.36, 1] }} />
+            {steps.map((s, i) => (
+              <motion.div key={i}
+                initial={{ opacity: 0, scale: 0.6 }}
+                animate={inViewDesktop ? { opacity: 1, scale: 1 } : {}}
+                transition={{ delay: i * 0.15 + 0.15, duration: 0.35, ease: "backOut" }}
+                className="relative z-10 flex flex-col items-center gap-2.5">
+                <div className="w-14 h-14 rounded-2xl border-2 flex items-center justify-center bg-white shadow-md"
+                  style={{ borderColor: s.border, color: s.color }}>
+                  {s.icon}
+                </div>
+                <span className="text-xs font-black text-[#2a7d9c] bg-[#2a7d9c]/8 px-2.5 py-0.5 rounded-full">{s.n}</span>
+              </motion.div>
+            ))}
+          </div>
+          <div className="grid grid-cols-4 gap-5">
+            {steps.map((s, i) => (
+              <motion.div key={i}
+                initial={{ opacity: 0, y: 16 }}
+                animate={inViewDesktop ? { opacity: 1, y: 0 } : {}}
+                transition={{ delay: i * 0.12 + 0.4, duration: 0.45 }}
+                className="rounded-2xl p-6 bg-[#f4f7f9] border border-slate-100 hover:border-[#2a7d9c]/20 hover:bg-[#eef6fb] hover:-translate-y-1 transition-all duration-200 cursor-default">
+                <div className="flex items-center gap-2 mb-3" style={{ color: s.color }}>
+                  {s.icon}
+                  <span className="text-xs font-black text-[#2a7d9c]">{s.n}</span>
+                </div>
+                <h3 className="text-base font-bold text-[#0f172a] mb-2">{s.title}</h3>
+                <p className="text-sm text-slate-500 leading-relaxed">{s.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        <Reveal className="text-center mt-10 md:mt-12">
+          <Link to="/tarifs"
+            className="inline-flex items-center gap-2 px-7 md:px-10 py-3.5 md:py-4 rounded-2xl bg-[#0f2d3d] text-white text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
+            Essayer maintenant — dès 4,90€ <ArrowRight size={16} />
+          </Link>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/* ═══ APERÇU DU RAPPORT ═════════════════════════════════════ */
+function ApercuRapportSection() {
+  const points = [
+    { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50", border: "border-green-100", label: "Finances saines", detail: "Fonds travaux bien dotés — 85 000€" },
+    { icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-50", border: "border-amber-100", label: "Toiture à prévoir (2026)", detail: "Estimé ~4 200€ / lot" },
+    { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50", border: "border-green-100", label: "Aucun impayé en cours", detail: "Copropriété bien gérée" },
+    { icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-50", border: "border-amber-100", label: "Ravalement voté 2025", detail: "Quote-part : 2 800€ / lot" },
+    { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50", border: "border-green-100", label: "Diagnostics conformes", detail: "DPE, amiante, plomb — OK" },
+    { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50", border: "border-green-100", label: "Aucune procédure judiciaire", detail: "Situation juridique nette" },
+  ];
+
+  return (
+    <section className="py-16 md:py-28 px-4 md:px-6 bg-[#f4f7f9]">
+      <div className="max-w-6xl mx-auto">
+        <SectionTitle label="Exemple de rapport" title="Ce que vous" accent="recevez."
+          sub="Voici exactement ce qu'Analymo vous fournit en moins de 30 secondes*." />
+
+        <Reveal>
+          <div className="bg-white rounded-2xl md:rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+
+            {/* Header rapport */}
+            <div className="bg-[#0f2d3d] px-6 md:px-10 py-5 md:py-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-1">Rapport Analymo — Analyse complète</p>
+                <p className="text-white font-black text-lg md:text-xl">12 rue des Lilas, 69003 Lyon</p>
+                <p className="text-white/40 text-sm mt-0.5">Analysé le 28 mars 2026 · 3 documents</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="relative w-16 h-16 md:w-20 md:h-20 shrink-0">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 80 80">
+                    <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="6" />
+                    <motion.circle cx="40" cy="40" r="32" fill="none" stroke="#2a7d9c" strokeWidth="6" strokeLinecap="round"
+                      strokeDasharray={201} initial={{ strokeDashoffset: 201 }}
+                      whileInView={{ strokeDashoffset: 201 - 201 * 0.75 }} viewport={{ once: true }}
+                      transition={{ duration: 1.4, delay: 0.3 }} />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-xl md:text-2xl font-black text-white leading-none">7,5</span>
+                    <span className="text-[10px] text-white/40">/10</span>
                   </div>
                 </div>
-                <div className="flex gap-0.5">{[0,1,2,3,4].map(j=><Star key={j} size={12} fill="#f59e0b" color="#f59e0b"/>)}</div>
+                <div>
+                  <span className="inline-block px-3 py-1 rounded-full bg-green-500/15 text-green-400 text-xs font-bold mb-1">✓ Recommandé</span>
+                  <p className="text-white/60 text-xs">Bien globalement sain</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Corps du rapport */}
+            <div className="p-6 md:p-10 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
+
+              {/* Points clés */}
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Points détectés</h4>
+                <div className="flex flex-col gap-2.5">
+                  {points.map((p, i) => (
+                    <motion.div key={i}
+                      initial={{ opacity: 0, x: -10 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: i * 0.08 }}
+                      className={`flex items-center gap-3 p-3.5 rounded-xl border ${p.bg} ${p.border}`}>
+                      <p.icon size={15} className={`${p.color} shrink-0`} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-[#0f172a] truncate">{p.label}</p>
+                        <p className="text-xs text-slate-500 truncate">{p.detail}</p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Données financières + recommandation */}
+              <div className="flex flex-col gap-5">
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Données financières</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: "Charges mensuelles", val: "180 €/mois" },
+                      { label: "Fonds travaux", val: "85 000 €" },
+                      { label: "Travaux votés", val: "~7 000 €/lot" },
+                      { label: "Impayés copro", val: "Aucun" },
+                    ].map((d, i) => (
+                      <div key={i} className="p-3.5 rounded-xl bg-[#f4f7f9] border border-slate-100">
+                        <p className="text-[11px] text-slate-400 font-medium mb-1">{d.label}</p>
+                        <p className="text-base font-black text-[#0f172a]">{d.val}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-[#0f2d3d]/5 border border-[#0f2d3d]/10 p-5">
+                  <p className="text-xs font-bold uppercase tracking-widest text-[#2a7d9c] mb-2">Avis Analymo</p>
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    Ce bien présente une copropriété globalement saine. Les travaux de toiture votés représentent une charge à anticiper. Le ratio charges/fonds travaux est satisfaisant. <span className="font-semibold text-[#0f172a]">Recommandé à l'achat avec négociation possible.</span>
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 p-4 rounded-xl bg-[#f4f7f9] border border-slate-100">
+                  <Download size={16} className="text-[#2a7d9c] shrink-0" />
+                  <div>
+                    <p className="text-sm font-bold text-[#0f172a]">Rapport PDF complet</p>
+                    <p className="text-xs text-slate-400">Téléchargeable · Partageable avec votre notaire</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Reveal>
+
+        <Reveal className="text-center mt-8">
+          <Link to="/exemple"
+            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl border border-slate-200 bg-white text-[#0f172a] text-sm font-bold hover:border-[#2a7d9c]/40 hover:bg-[#f0f8fc] transition-all duration-200">
+            Voir un exemple complet interactif <ChevronRight size={16} className="text-slate-400" />
+          </Link>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/* ═══ FAQ ════════════════════════════════════════════════════ */
+function FaqSection() {
+  const [open, setOpen] = useState<number | null>(null);
+
+  const faqs = [
+    {
+      q: "Mes documents sont-ils supprimés après traitement ?",
+      a: "Oui, automatiquement. Vos fichiers sont supprimés de nos serveurs dès que votre rapport est généré. Aucun stockage permanent — seul le rapport final est conservé dans votre espace.",
+    },
+    {
+      q: "Ça fonctionne avec tous les types de documents ?",
+      a: "Analymo traite les PDF nativement numériques (PDF texte) en 30 secondes. Les documents scannés ou photographiés peuvent nécessiter un délai supplémentaire. Les formats Word, images JPEG ou PNG ne sont pas pris en charge.",
+    },
+    {
+      q: "Et si je n'ai qu'un seul document ?",
+      a: "L'analyse simple à 4,90€ est faite pour ça — elle analyse un seul document et vous donne les informations clés sans score /10. L'analyse complète à 19,90€ accepte plusieurs documents et génère un score global.",
+    },
+    {
+      q: "Le rapport est-il garanti exact ?",
+      a: "Notre outil traite vos documents avec soin, mais il reste un outil d'aide à la décision. Nous recommandons de confirmer les éléments importants avec un professionnel (notaire, avocat) avant toute signature.",
+    },
+    {
+      q: "Puis-je partager le rapport avec mon notaire ou mon banquier ?",
+      a: "Absolument. Le rapport est téléchargeable en PDF et peut être partagé librement. De nombreux utilisateurs l'envoient à leur notaire ou l'utilisent pour justifier une négociation de prix.",
+    },
+    {
+      q: "Mes crédits ont-ils une date d'expiration ?",
+      a: "Non, jamais. Vos crédits sont valables indéfiniment. Vous pouvez acheter un pack aujourd'hui et l'utiliser dans 6 mois — ils vous attendent.",
+    },
+  ];
+
+  return (
+    <section className="py-16 md:py-28 px-4 md:px-6 bg-white">
+      <div className="max-w-3xl mx-auto">
+        <SectionTitle label="Questions fréquentes" title="Tout ce que vous" accent="voulez savoir." />
+
+        <div className="flex flex-col gap-3">
+          {faqs.map((faq, i) => (
+            <Reveal key={i} delay={i * 0.05}>
+              <div className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+                <button
+                  onClick={() => setOpen(open === i ? null : i)}
+                  className="w-full flex items-center justify-between gap-4 px-5 md:px-7 py-4 md:py-5 text-left hover:bg-[#f4f7f9] transition-colors">
+                  <span className="text-sm md:text-base font-bold text-[#0f172a]">{faq.q}</span>
+                  <motion.div animate={{ rotate: open === i ? 180 : 0 }} transition={{ duration: 0.2 }} className="shrink-0">
+                    <ChevronDown size={18} className="text-slate-400" />
+                  </motion.div>
+                </button>
+                <AnimatePresence>
+                  {open === i && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25 }}>
+                      <div className="px-5 md:px-7 pb-5 text-sm md:text-base text-slate-500 leading-relaxed border-t border-slate-100 pt-4">
+                        {faq.a}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </Reveal>
           ))}
         </div>
+
+        <Reveal className="text-center mt-10">
+          <p className="text-sm text-slate-400 mb-3">Vous avez une autre question ?</p>
+          <Link to="/contact"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-slate-200 text-[#0f172a] text-sm font-semibold hover:border-[#2a7d9c]/40 hover:bg-[#f0f8fc] transition-all duration-200">
+            Contactez-nous <ArrowRight size={15} />
+          </Link>
+        </Reveal>
       </div>
     </section>
   );
@@ -859,12 +1018,8 @@ function CtaFinal() {
       <div className="max-w-4xl mx-auto">
         <Reveal>
           <div className="rounded-2xl md:rounded-3xl overflow-hidden" style={{ background: "linear-gradient(135deg, #0f2d3d 0%, #1a4a5e 100%)" }}>
-
-            {/* Bande verte discrète en haut */}
             <div className="h-1 w-full" style={{ background: "linear-gradient(90deg, #4ade80 0%, #2a7d9c 100%)" }} />
-
             <div className="p-8 md:p-12 lg:p-14">
-              {/* Haut : titre centré */}
               <div className="text-center mb-10">
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/8 mb-5">
                   <div className="w-2 h-2 rounded-full bg-[#4ade80]" />
@@ -878,7 +1033,6 @@ function CtaFinal() {
                 </p>
               </div>
 
-              {/* Milieu : grille de features */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-10">
                 {included.map((item, i) => (
                   <motion.div key={i} initial={{opacity:0,y:8}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*0.07}}
@@ -891,7 +1045,6 @@ function CtaFinal() {
                 ))}
               </div>
 
-              {/* Bas : boutons + tarifs */}
               <div className="flex flex-col items-center gap-6">
                 <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                   <Link to="/tarifs"
