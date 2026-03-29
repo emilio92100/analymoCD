@@ -4,7 +4,7 @@ import { motion, useInView, AnimatePresence } from "framer-motion";
 import type { Variants } from "framer-motion";
 import {
   ArrowRight, CheckCircle, AlertTriangle, FileText,
-  Zap, Shield, BarChart3,
+  Shield,
   TrendingUp, Clock, Check, X, ChevronRight,
   Building2, UserCheck, BadgeCheck, ShieldCheck, Trash2,
   Download, Lock, Eye, ChevronDown,
