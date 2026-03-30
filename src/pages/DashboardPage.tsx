@@ -10,8 +10,8 @@ import {
   Download, CreditCard, Lock, Info, Star
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { PROMPT_ANALYSE_COMPLETE, PROMPT_ANALYSE_SIMPLE } from '../lib/prompts';
-import { createAnalyse, updateAnalyseResult, markAnalyseFailed, fetchAnalyses, type AnalyseDB } from '../lib/analyses';
+import { PROMPT_ANALYSE_COMPLETE, PROMPT_ANALYSE_SIMPLE, PROMPT_APERCU_COMPLET, PROMPT_APERCU_SIMPLE } from '../lib/prompts';
+import { createAnalyse, createApercu, updateAnalyseResult, updateApercuResult, markAnalyseFailed, markFreePreviewUsed, checkFreePreviewUsed, fetchAnalyses, type AnalyseDB } from '../lib/analyses';
 
 /* ══════════════════════════════════════════
    TYPES
@@ -23,15 +23,22 @@ type Analyse = {
   id: string;
   type: AnalyseType;
   status: AnalyseStatus;
-  // Pour document simple → nom du fichier analysé
   nom_document?: string;
-  // Pour analyse complète → adresse du bien détectée par l'IA
   adresse_bien?: string;
-  score?: number;            // uniquement analyse complète
+  score?: number;
   recommandation?: string;
   recommandationColor?: string;
   date: string;
   price: string;
+  is_preview?: boolean;        // true = aperçu gratuit non payé
+  document_names?: string[];   // noms des fichiers analysés
+  regeneration_deadline?: string;
+};
+
+type ApercuResult = {
+  titre: string;
+  recommandation_courte: string;
+  points_vigilance: string[];
 };
 
 type Credits = {
@@ -152,6 +159,9 @@ function useAnalyses() {
             : a.type === 'complete' ? '19,90€'
             : a.type === 'pack2' ? '29,90€'
             : '39,90€',
+          is_preview: a.is_preview ?? false,
+          document_names: a.document_names || [],
+          regeneration_deadline: a.regeneration_deadline || undefined,
         };
       });
       setAnalyses(mapped);
@@ -614,9 +624,10 @@ function AnalyseRow({ a }: { a:Analyse }) {
     ? (a.adresse_bien || 'Adresse en cours de détection…')
     : (a.nom_document || 'Document sans nom');
 
-  const typeLabel = isComplete ? 'Analyse Complète' : 'Analyse Document';
-  const typeBg    = isComplete ? 'rgba(15,45,61,0.07)' : 'rgba(42,125,156,0.07)';
-  const typeColor = isComplete ? '#0f2d3d' : '#2a7d9c';
+  const isPreview = a.is_preview ?? false;
+  const typeLabel = isPreview ? 'Aperçu gratuit' : isComplete ? 'Analyse Complète' : 'Analyse Document';
+  const typeBg    = isPreview ? 'rgba(22,163,74,0.07)' : isComplete ? 'rgba(15,45,61,0.07)' : 'rgba(42,125,156,0.07)';
+  const typeColor = isPreview ? '#16a34a' : isComplete ? '#0f2d3d' : '#2a7d9c';
 
   return (
     <div style={{ background:'#fff', borderRadius:13, border:'1px solid #edf2f7', padding:'14px 18px', display:'flex', alignItems:'center', gap:14, flexWrap:'wrap', boxShadow:'0 1px 3px rgba(0,0,0,0.03)', transition:'all 0.18s' }}
@@ -668,13 +679,20 @@ function AnalyseRow({ a }: { a:Analyse }) {
 ══════════════════════════════════════════ */
 function NouvelleAnalyse() {
   const credits = MOCK_CREDITS;
-  const [step, setStep] = useState<'choice'|'upload'|'analyse'|'result'>('choice');
+  const [step, setStep] = useState<'choice'|'upload'|'analyse'|'apercu'|'result'>('choice');
   const [type, setType] = useState<'document'|'complete'|null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [progress, setProgress] = useState(0);
   const [progressMsg, setProgressMsg] = useState('');
   const [result, setResult] = useState<AnalyseResult|null>(null);
+  const [apercu, setApercu] = useState<ApercuResult|null>(null);
+  const [apercuId, setApercuId] = useState<string|null>(null);
+  const [freePreviewUsed, setFreePreviewUsed] = useState<boolean|null>(null);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    checkFreePreviewUsed().then(used => setFreePreviewUsed(used));
+  }, []);
 
   const plans = {
     document: { label:"Analyse d'un document",       price:'4,90€',  max:1,  desc:'Un seul fichier — PV d\'AG, règlement, diagnostic, appel de charges.', creditsKey:'document' as keyof Credits },
@@ -708,12 +726,68 @@ function NouvelleAnalyse() {
     return d.content?.find((b:any)=>b.type==='text')?.text || '';
   };
 
+  /* ── Lancer l'APERÇU GRATUIT */
+  const lancerApercu = async () => {
+    if (!files.length || !type) return;
+    setStep('analyse'); setError(''); setProgress(5); setProgressMsg('Lecture des documents…');
+
+    const docNames = files.map(f => f.name);
+    const analyseDB = await createApercu(type, files[0].name, docNames);
+    const analyseId = analyseDB?.id || null;
+
+    try {
+      const textes: string[] = [];
+      for (let i=0; i<files.length; i++) {
+        setProgressMsg(`Extraction document ${i+1}/${files.length}…`);
+        setProgress(10 + Math.floor((i/files.length)*30));
+        textes.push(`=== ${files[i].name} ===\n${await extractText(files[i])}`);
+      }
+      setProgress(50); setProgressMsg('Traitement en cours…');
+      const systemPrompt = type === 'complete' ? PROMPT_APERCU_COMPLET : PROMPT_APERCU_SIMPLE;
+
+      setProgress(70); setProgressMsg('Génération de votre aperçu…');
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST', headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({
+          model:'claude-sonnet-4-20250514', max_tokens:800,
+          system: systemPrompt,
+          messages:[{ role:'user', content:`Documents à analyser :\n\n${textes.join('\n\n').slice(0,8000)}` }]
+        })
+      });
+      setProgress(88); setProgressMsg('Finalisation…');
+      const d = await res.json();
+      const raw = d.content?.find((b:any)=>b.type==='text')?.text || '{}';
+      const parsed: ApercuResult = JSON.parse(raw.replace(/```json|```/g,'').trim());
+
+      if (analyseId) {
+        const isComplete = type === 'complete';
+        const title = parsed.titre || files[0].name;
+        const address = isComplete ? (parsed.titre || null) : null;
+        await updateApercuResult(analyseId, parsed as unknown as Record<string, unknown>, title, address);
+        await markFreePreviewUsed();
+      }
+
+      setProgress(100); setProgressMsg('Aperçu prêt !');
+      await new Promise(r => setTimeout(r, 400));
+
+      setApercu(parsed);
+      setApercuId(analyseId);
+      setFreePreviewUsed(true);
+      setStep('apercu');
+    } catch {
+      if (analyseId) await markAnalyseFailed(analyseId);
+      setError("Erreur lors de l'analyse. Vérifiez vos fichiers et réessayez.");
+      setStep('upload');
+    }
+  };
+
+  /* ── Lancer l'ANALYSE COMPLÈTE PAYANTE */
   const lancer = async () => {
     if (!files.length || !type) return;
     setStep('analyse'); setError(''); setProgress(5); setProgressMsg('Lecture des documents…');
 
-    // 1. Créer l'entrée dans Supabase (status: processing)
-    const analyseDB = await createAnalyse(type, files[0].name);
+    const docNames = files.map(f => f.name);
+    const analyseDB = await createAnalyse(type, files[0].name, docNames);
     const analyseId = analyseDB?.id || null;
 
     try {
@@ -741,24 +815,15 @@ function NouvelleAnalyse() {
       const raw = d.content?.find((b:any)=>b.type==='text')?.text || '{}';
       const parsed: AnalyseResult = JSON.parse(raw.replace(/```json|```/g,'').trim());
 
-      // 2. Sauvegarder le résultat dans Supabase
       if (analyseId) {
-        const title = isComplete
-          ? (parsed.titre || 'Bien analysé')
-          : (parsed.titre || files[0].name);
+        const title = isComplete ? (parsed.titre || 'Bien analysé') : (parsed.titre || files[0].name);
         const address = isComplete ? (parsed.titre || null) : null;
-        await updateAnalyseResult(
-          analyseId,
-          parsed as unknown as Record<string, unknown>,
-          title,
-          address
-        );
+        await updateAnalyseResult(analyseId, parsed as unknown as Record<string, unknown>, title, address, docNames);
       }
 
       setProgress(100); setProgressMsg('Rapport prêt !');
       await new Promise(r => setTimeout(r, 500));
 
-      // 3. Rediriger vers la page rapport avec l'id Supabase
       if (analyseId) {
         window.location.href = `/dashboard/rapport?id=${analyseId}`;
       } else {
@@ -777,7 +842,19 @@ function NouvelleAnalyse() {
     <div>
       <Link to="/dashboard" style={{ fontSize:13, color:'#94a3b8', textDecoration:'none', display:'inline-flex', alignItems:'center', gap:4, marginBottom:24, fontWeight:600 }}><ChevronLeft size={14}/> Retour</Link>
       <h1 style={{ fontSize:'clamp(22px,3vw,28px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:6 }}>Que souhaitez-vous analyser ?</h1>
-      <p style={{ fontSize:14, color:'#64748b', marginBottom:32 }}>Choisissez le mode d'analyse adapté à votre besoin.</p>
+      <p style={{ fontSize:14, color:'#64748b', marginBottom:freePreviewUsed===false?16:32 }}>Choisissez le mode d'analyse adapté à votre besoin.</p>
+
+      {/* Badge aperçu gratuit */}
+      {freePreviewUsed === false && (
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 18px', borderRadius:12, background:'linear-gradient(135deg, rgba(240,250,244,1), rgba(240,248,255,1))', border:'1.5px solid #bbf7d0', marginBottom:28 }}>
+          <Sparkles size={16} style={{ color:'#16a34a', flexShrink:0 }}/>
+          <div style={{ flex:1 }}>
+            <span style={{ fontSize:13, fontWeight:800, color:'#166534' }}>1 aperçu gratuit disponible !</span>
+            <span style={{ fontSize:12, color:'#4ade80', fontWeight:500 }}> — Testez avant de payer. Documents supprimés immédiatement.</span>
+          </div>
+          <span style={{ fontSize:10, fontWeight:700, color:'#16a34a', background:'#dcfce7', border:'1px solid #bbf7d0', padding:'3px 10px', borderRadius:100 }}>GRATUIT</span>
+        </div>
+      )}
 
       <div className="type-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
         {/* Document simple */}
@@ -894,9 +971,16 @@ function NouvelleAnalyse() {
           ))}
         </div>
       )}
-      <button onClick={lancer} disabled={files.length===0}
+      {/* Badge aperçu si encore disponible */}
+      {freePreviewUsed === false && (
+        <div style={{ padding:'10px 14px', borderRadius:10, background:'#f0fdf4', border:'1px solid #bbf7d0', display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+          <Sparkles size={13} style={{ color:'#16a34a', flexShrink:0 }}/>
+          <span style={{ fontSize:12, fontWeight:700, color:'#166534' }}>Votre aperçu gratuit sera généré — documents supprimés immédiatement après.</span>
+        </div>
+      )}
+      <button onClick={freePreviewUsed === false ? lancerApercu : lancer} disabled={files.length===0}
         style={{ width:'100%', padding:'14px', borderRadius:12, border:'none', background:files.length>0?'linear-gradient(135deg, #2a7d9c, #0f2d3d)':'#e2e8f0', color:files.length>0?'#fff':'#94a3b8', fontSize:15, fontWeight:800, cursor:files.length>0?'pointer':'default', boxShadow:files.length>0?'0 4px 18px rgba(15,45,61,0.2)':'none', display:'flex', alignItems:'center', justifyContent:'center', gap:8, transition:'all 0.15s' }}>
-        <Sparkles size={16}/> Analyser {files.length>0?`(${files.length} fichier${files.length>1?'s':''})` : ''}
+        <Sparkles size={16}/> {freePreviewUsed === false ? 'Générer mon aperçu gratuit' : 'Analyser'} {files.length>0?`(${files.length} fichier${files.length>1?'s':''})` : ''}
       </button>
     </div>
   );
@@ -975,6 +1059,103 @@ function NouvelleAnalyse() {
       </div>
     );
   }
+  /* ── APERÇU GRATUIT */
+  if (step==='apercu' && apercu) {
+    const isComplete = type === 'complete';
+    return (
+      <div style={{ maxWidth:640, margin:'0 auto', animation:'fadeUp 0.35s ease both' }}>
+        {/* Header */}
+        <div style={{ marginBottom:24 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+            <span style={{ fontSize:10, fontWeight:800, color:'#16a34a', letterSpacing:'0.14em', background:'#f0fdf4', border:'1px solid #bbf7d0', padding:'3px 10px', borderRadius:100 }}>APERÇU GRATUIT</span>
+          </div>
+          <h1 style={{ fontSize:'clamp(18px,2.5vw,24px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.02em', marginBottom:4 }}>{apercu.titre}</h1>
+          <p style={{ fontSize:13, color:'#94a3b8' }}>Voici un aperçu de votre analyse. Débloquez le rapport complet pour accéder à tous les détails.</p>
+        </div>
+
+        {/* Recommandation courte */}
+        <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'20px 22px', marginBottom:14 }}>
+          <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.1em', marginBottom:8 }}>RÉSUMÉ</div>
+          <p style={{ fontSize:14, color:'#374151', lineHeight:1.75 }}>{apercu.recommandation_courte}</p>
+        </div>
+
+        {/* Points de vigilance */}
+        <div style={{ background:'#fffbeb', borderRadius:16, border:'1px solid #fde68a', padding:'20px 22px', marginBottom:14 }}>
+          <div style={{ fontSize:10, fontWeight:700, color:'#d97706', letterSpacing:'0.1em', marginBottom:12 }}>⚠ POINTS DE VIGILANCE</div>
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            {apercu.points_vigilance.map((p, i) => (
+              <div key={i} style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
+                <AlertTriangle size={13} color="#d97706" style={{ flexShrink:0, marginTop:2 }}/>
+                <span style={{ fontSize:13, color:'#92400e', lineHeight:1.5 }}>{p}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Score grisé (analyse complète uniquement) */}
+        {isComplete && (
+          <div style={{ background:'#f8fafc', borderRadius:16, border:'1px solid #e2e8f0', padding:'20px 22px', marginBottom:14, position:'relative', overflow:'hidden' }}>
+            <div style={{ filter:'blur(6px)', pointerEvents:'none', userSelect:'none' }}>
+              <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.1em', marginBottom:8 }}>SCORE GLOBAL</div>
+              <div style={{ fontSize:52, fontWeight:900, color:'#94a3b8', letterSpacing:'-0.03em', lineHeight:1 }}>?.?</div>
+              <div style={{ fontSize:14, color:'#94a3b8' }}>/10</div>
+            </div>
+            <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:8 }}>
+              <Lock size={22} style={{ color:'#64748b' }}/>
+              <span style={{ fontSize:13, fontWeight:700, color:'#64748b' }}>Score disponible après paiement</span>
+            </div>
+          </div>
+        )}
+
+        {/* Sections grisées */}
+        <div style={{ background:'#f8fafc', borderRadius:16, border:'1px solid #e2e8f0', padding:'20px 22px', marginBottom:24, position:'relative', overflow:'hidden' }}>
+          <div style={{ filter:'blur(4px)', pointerEvents:'none', userSelect:'none' }}>
+            <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.1em', marginBottom:12 }}>ANALYSE COMPLÈTE</div>
+            {['Rapport financier détaillé', 'Liste des travaux votés et à prévoir', 'Analyse des charges et fonds travaux', 'Procédures en cours', 'Avis Analymo personnalisé'].map((item, i) => (
+              <div key={i} style={{ display:'flex', gap:8, marginBottom:8, alignItems:'center' }}>
+                <div style={{ width:8, height:8, borderRadius:'50%', background:'#cbd5e1', flexShrink:0 }}/>
+                <span style={{ fontSize:13, color:'#cbd5e1' }}>{item}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:6 }}>
+            <Lock size={20} style={{ color:'#64748b' }}/>
+            <span style={{ fontSize:12, fontWeight:700, color:'#64748b' }}>Contenu réservé aux analyses payantes</span>
+          </div>
+        </div>
+
+        {/* CTA débloquer */}
+        <div style={{ background:'linear-gradient(135deg, #0f2d3d, #1a5068)', borderRadius:18, padding:'24px 26px', position:'relative', overflow:'hidden' }}>
+          <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:'rgba(42,125,156,0.2)', pointerEvents:'none' }}/>
+          <div style={{ position:'relative' }}>
+            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.45)', letterSpacing:'0.12em', marginBottom:8 }}>DÉBLOQUER LE RAPPORT COMPLET</div>
+            <h2 style={{ fontSize:18, fontWeight:900, color:'#fff', marginBottom:8 }}>
+              {isComplete ? 'Accédez au rapport complet' : 'Accédez à l'analyse complète du document'}
+            </h2>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,0.65)', lineHeight:1.6, marginBottom:20 }}>
+              Score {isComplete ? '/10, travaux, charges, procédures et avis Analymo' : 'et analyse approfondie'}. Rapport PDF téléchargeable inclus.
+            </p>
+            <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+              <Link to="/dashboard/tarifs"
+                style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'13px 24px', borderRadius:12, background:'#fff', color:'#0f2d3d', fontSize:14, fontWeight:800, textDecoration:'none', boxShadow:'0 4px 16px rgba(0,0,0,0.15)' }}>
+                <Sparkles size={15}/> Débloquer — {isComplete ? '19,90€' : '4,90€'}
+              </Link>
+              <button onClick={()=>{ setStep('choice'); setType(null); setFiles([]); setApercu(null); }}
+                style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'13px 18px', borderRadius:12, background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', color:'rgba(255,255,255,0.7)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+                Nouvelle analyse
+              </button>
+            </div>
+            {apercuId && (
+              <p style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:12 }}>
+                Votre aperçu est sauvegardé dans "Mes analyses" avec le badge Aperçu gratuit.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return null;
 }
 
