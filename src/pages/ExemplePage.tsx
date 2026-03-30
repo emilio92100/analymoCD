@@ -164,7 +164,7 @@ export default function ExemplePage() {
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
             style={{ marginTop: 36, padding: '36px', borderRadius: 22, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', textAlign: 'center' }}>
             <h3 style={{ fontSize: 22, fontWeight: 900, color: '#fff', marginBottom: 10 }}>Prêt à analyser votre bien ?</h3>
-            <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.6)', marginBottom: 26 }}>Obtenez un rapport comme celui-ci. Dès 4,99€, en moins de 2 minutes.</p>
+            <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.6)', marginBottom: 26 }}>Obtenez un rapport comme celui-ci. Dès 4,90€, en moins de 2 minutes.</p>
             <Link to="/tarifs" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '13px 32px', borderRadius: 13, background: '#fff', color: '#0f2d3d', fontSize: 15, fontWeight: 700, textDecoration: 'none' }}>
               Voir les tarifs <ArrowRight size={16} />
             </Link>
