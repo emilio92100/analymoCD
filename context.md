@@ -1,6 +1,6 @@
 # ANALYMO — Contexte Projet
 > **Colle ce fichier en début de conversation Claude pour reprendre le contexte.**
-> Dernière mise à jour : 28 mars 2026
+> Dernière mise à jour : 30 mars 2026
 
 ---
 
@@ -52,7 +52,7 @@
 | Claude API (claude-sonnet-4-20250514) | Analyse des documents |
 | Stripe | Paiements — **pas encore configuré** |
 | Vercel | Déploiement auto depuis GitHub |
-| Mailjet | SMTP emails (SPF + DKIM validés ✅) |
+| Mailjet | SMTP emails (SPF ✅ + DKIM ✅ + DMARC ✅) |
 
 **Police :** DM Sans
 **Couleurs :** `#2a7d9c` (teal) / `#0f2d3d` (navy) / `#f0a500` (gold)
@@ -66,7 +66,7 @@
 ## 📁 Structure du projet
 ```
 src/
-├── App.tsx                        ← routing complet + SessionManager 1h
+├── App.tsx                        ← routing complet + SessionManager 1h + ScrollToTop ✅
 ├── index.css                      ← variables CSS globales
 ├── components/layout/
 │   ├── Navbar.tsx                 ← navbar dynamique (Mon espace si connecté)
@@ -76,7 +76,7 @@ src/
 │   ├── analyses.ts                ← fonctions CRUD analyses Supabase
 │   └── prompts.ts                 ← prompts Claude
 ├── pages/
-│   ├── HomePage.tsx               ← landing page principale ✅ REFAITE ENTIÈREMENT
+│   ├── HomePage.tsx               ← landing page principale ✅ REFAITE ENTIÈREMENT (session 30/03)
 │   ├── TarifsPage.tsx             ← page tarifs PUBLIQUE ✅ REFAITE ENTIÈREMENT
 │   ├── ExemplePage.tsx            ← exemple rapport interactif
 │   ├── ContactPage.tsx            ← formulaire contact
@@ -84,7 +84,7 @@ src/
 │   ├── SignupPage.tsx             ← inscription avec vérification email
 │   ├── DashboardPage.tsx          ← dashboard complet
 │   ├── RapportPage.tsx            ← page rapport avec 4 onglets
-│   ├── AuthCallbackPage.tsx       ← /auth/callback
+│   ├── AuthCallbackPage.tsx       ← /auth/callback ✅ CORRIGÉ iOS Safari (session 30/03)
 │   ├── ForgotPasswordPage.tsx     ← /mot-de-passe-oublie
 │   └── ResetPasswordPage.tsx      ← /auth/reset-password
 ├── types/
@@ -116,120 +116,57 @@ src/
 
 ---
 
-## 🏠 HomePage.tsx — état actuel détaillé
+## 🏠 HomePage.tsx — état actuel détaillé (refaite le 30/03/2026)
 
-### Ordre des sections (important — ne pas changer sans le noter ici)
-1. `HeroSection` — hero avec animation téléphone
-2. `StatsBar` — 4 chiffres clés
-3. `AvantApresSection` — "Deux façons d'acheter" (rouge/vert)
-4. `ProblemSection` — "Le problème"
-5. `SolutionSection` — "La solution"
-6. `ForWhoSection` — "Pour qui" avec onglets Particuliers/Professionnels
-7. `HowItWorksSection` — "Comment ça marche" 4 étapes
-8. `TestimonialsSection` — témoignages
-9. `CtaFinal` — bloc final avec fond vert sobre
+### Ordre des sections (NOUVEAU — remplace l'ancienne structure)
+1. `HeroSection` — hero avec animation téléphone (desktop + mobile différents)
+2. `AvantApresSection` — "Deux façons d'acheter" (rouge/vert)
+3. `ProblemSolutionSection` — "Pourquoi Analymo" (problème + solution fusionnés, 4 cartes)
+4. `SecuriteSection` — "Vos documents, protégés." (4 garanties + bandeau RGPD) ← NOUVEAU
+5. `ForWhoSection` — "Fait pour vous." avec onglets Particuliers/Professionnels
+6. `HowItWorksSection` — "Comment ça marche" 4 étapes
+7. `ApercuRapportSection` — "Ce que vous recevez." mockup rapport complet ← NOUVEAU
+8. `FaqSection` — FAQ accordéon 6 questions ← NOUVEAU
+9. `CtaFinal` — bloc final fond navy
 
-### Composants réutilisables (en haut du fichier)
-- **`Reveal`** : wrapper `motion.div` avec `useInView` (once: true, margin: -50px), animation slide-up. Props : `children`, `delay`, `className`
-- **`SectionTitle`** : label teal uppercase + h2 `clamp(28px,5.5vw,72px)` avec accent coloré + trait `scaleX` animé + sous-titre optionnel. Props : `label`, `title`, `accent`, `sub`
+### ⚠️ Sections SUPPRIMÉES par rapport à l'ancienne version
+- `StatsBar` — supprimée (chiffres non réels)
+- `TestimonialsSection` — supprimée (pas de vrais témoignages)
+- `ProblemSection` et `SolutionSection` — fusionnées en `ProblemSolutionSection`
 
-### Règles responsive globales
-- Padding : `px-4 md:px-6`, `py-16 md:py-28`
-- Textes : `text-sm md:text-base`, `text-xs md:text-sm`
-- Arrondis : `rounded-2xl md:rounded-3xl`
-- Grilles : toujours `grid-cols-1` en mobile avant md/lg
+### Composants réutilisables
+- **`Reveal`** : wrapper `motion.div` avec `useInView` (once: true, margin: -50px)
+- **`SectionTitle`** : label teal + h2 clamp + accent coloré + trait animé
 
-### StatsBar
-- 4 stats : "200+" / "30s*" / "98%" / "~8 000€"
-- `grid-cols-2 md:grid-cols-4` avec `divide-x divide-slate-100`
-- Fond blanc, bordures top/bottom `border-slate-100`
+### HeroSection — Mobile (lg:hidden)
+- Titre : `clamp(28px, 7.5vw, 36px)` + `whitespace-nowrap` sur "avant de signer." → forcé sur 2 lignes
+- Sous-texte : `text-[15px]` pleine largeur `w-full px-3`
+- Animation : `PhoneMockupMini` (150×300px) collé côté droit + 3 badges en colonne à gauche
+- Badges : largeur fixe `w-[138px]`, `gap-3`, centrés via `flex items-center justify-center`
+- **NE PAS remettre PhoneMockup plein format sur mobile** — utiliser uniquement PhoneMockupMini
 
-### HeroSection
-- Section fond `#f4f7f9`, `pt-16 pb-12`, `min-h-screen`
-- **Mobile** (`lg:hidden`) : `pt-8` pour espacer de la navbar → badge → titre 2 lignes → description courte → téléphone → 2 boutons pleine largeur → astérisque
-- Titre mobile : "Vérifiez les éléments" + saut de ligne + "avant de signer." avec trait `scaleX` animé en teal
-- **Desktop** (`hidden lg:grid`) : `grid-cols-2 gap-6`, texte à gauche, téléphone à droite
-- Titre desktop : "Vérifiez les éléments / essentiels avant de signer."
-- Sous-titre : "Votre futur logement analysé en 30 secondes*" (bold)
-- Description : "Diagnostics, PV d'AG, Règlement de copropriété, Appels de fonds, Compromis de vente…"
-- Boutons : "Lancer mon analyse" (navy `#0f2d3d`) + "Voir un exemple" (blanc, bordure slate)
-- Garanties desktop uniquement : Documents chiffrés / Suppression auto / Sans engagement
-- Keyframes dans `<style>` : pulse, spin, scanAnim, floatA, floatB, floatC
+### HeroSection — Desktop (hidden lg:grid)
+- `grid-cols-2 gap-6`, texte à gauche, `PhoneMockup` (275×580px) à droite
+- Bulles flottantes : left-36 top 20% / right-36 bottom 28% / right-28 top 10%
 
-### PhoneMockup
+### PhoneMockup (desktop uniquement)
 - Timings : 0→3.5s PhaseUpload, 3.5→7s PhaseScan, 7→14s PhaseResult, cycle infini
-- Structure : barre status grise (9:41/5G) + header blanc "ANALYMO / Mon espace" + `flex-1` contenu + home indicator
-- Fond interne `#f8fafc`, `rounded-[36px] sm:rounded-[42px]`
-- **Mobile** : `w-[175px] h-[370px] rounded-[40px]`
-- **Desktop** : `w-[275px] h-[580px] rounded-[46px]`
-- Bulles flottantes (`hidden sm:flex`) : "100% sécurisé" gauche + "Score 7,5/10" droite bas + "3 docs chargés" droite haut
 - `PhaseScan` : titre "Traitement en cours" (jamais "Analyse en cours")
-- `PhaseResult` : jauge SVG, badge "Recommandé ✓", 4 points, bouton "Télécharger le rapport PDF"
 
-### AvantApresSection
-- Titre : "Deux façons d'acheter. Une seule bonne."
-- 2 colonnes `grid-cols-2` : rouge (Sans Analymo) / vert (Avec Analymo)
-- En-têtes avec fond `bg-red-50` / `bg-green-50` et icônes X/Check
-- 5 lignes de comparaison, `grid-cols-2 gap-2 md:gap-3`
-- Mobile : `text-xs p-3 w-5 h-5` / Desktop : `text-sm p-5 w-7 h-7`
-
-### ProblemSection
-- Fond `#f4f7f9`
-- Titre : "Acheter un bien, c'est risqué."
-- 4 cartes `grid-cols-1 sm:grid-cols-2`, layout `flex items-start gap-4`
-- Icônes : FileText rouge / AlertTriangle amber / TrendingUp orange / Clock bleu
-
-### SolutionSection
-- Fond blanc
-- Titre : "Analymo vous simplifie tout."
-- 3 cartes `grid-cols-1 md:grid-cols-3`
-- Mobile : horizontal `flex items-start gap-4` / Desktop : vertical avec numéro géant gris `text-3xl text-slate-100`
-- Hover : radial gradient coloré par feature
-- Features : Zap teal / Shield rouge / BarChart3 vert
-
-### ForWhoSection
-- Fond `#f4f7f9`
-- Titre : "Fait pour vous."
-- Onglets : "Acheteurs particuliers" / "Professionnels" avec `AnimatePresence mode="wait"`
-- Onglet actif : `bg-[#0f2d3d] text-white`
-- **Particuliers** : grille 2 colonnes — gauche navy (titre "Ne signez plus les yeux fermés." + CTA) / droite blanc (5 détections listées)
-- **Professionnels** : `grid-cols-1 sm:grid-cols-2`, 4 cartes (Notaires / Agents immo / Syndics / Marchands de biens)
+### PhoneMockupMini (mobile uniquement)
+- 150×300px, `rounded-[32px]`
+- Mêmes 3 phases que PhoneMockup mais versions Mini : PhaseUploadMini / PhaseScanMini / PhaseResultMini
 
 ### HowItWorksSection
-- Fond **blanc** `bg-white` — NE PAS remettre de fond sombre
-- Titre : "Quatre étapes, c'est tout."
-- Icônes SVG custom teal uniformes, numéros 01/02/03/04
 - **CRITIQUE — deux refs séparés** :
   - `refMobile` + `inViewMobile` pour `div.flex.flex-col.md:hidden`
   - `refDesktop` + `inViewDesktop` pour `div.hidden.md:block`
   - Si on fusionne, le mobile affiche blanc (bug connu et corrigé)
-- **Mobile** : stepper vertical, cercles numérotés, trait `scaleY` animé entre étapes
-- **Desktop** : trait horizontal `bg-[#2a7d9c]/40` animé `width`, icônes au-dessus, cartes `bg-[#f4f7f9]` en dessous avec hover
-- CTA : bouton navy "Essayer maintenant — dès 4,90€"
 
-### TestimonialsSection
-- Fond blanc
-- 3 témoignages `grid-cols-1 md:grid-cols-3`
-- Marie L. (teal `#2a7d9c`) / Thomas R. (navy `#0f2d3d`) / Sophie D. (vert `#0f6e56`)
-- Cartes `bg-[#f4f7f9]`, guillemet serif géant gris, 5 étoiles `#f59e0b`
-
-### CtaFinal
-- Section fond `bg-white`, carte interne `bg-[#0f2d3d]` avec dégradé
-- Bande top : `linear-gradient(90deg, #4ade80, #2a7d9c)` — 1px de hauteur
-- Titre : "Prenez votre décision en toute clarté."
-- Prix : "À partir de 19,90€ · Sans abonnement"
-- Grille 2 colonnes (`grid-cols-1 sm:grid-cols-2`), 6 features avec checkmarks verts `#2a7d9c`
-- Bouton principal : `linear-gradient(135deg, #22c55e, #16a34a)` texte navy
-- Bouton secondaire : "Voir un exemple" bordure `white/15`
-- Barre prix bottom : 4,90€ Simple / 19,90€ Complète / 29,90€ Pack 2
-- Astérisque bas : "Pour documents PDF nativement numériques"
-
-### Footer (src/components/layout/Footer.tsx)
-- Fond navy `#0f2d3d`
-- 4 colonnes : logo + desc / Produit (liens) / Légal / Contact (mail + pays)
-- Bottom bar : copyright + disclaimer complet
-- Disclaimer : "Analymo est un outil d'aide à la lecture et à la compréhension de documents immobiliers. Les rapports générés sont fournis à titre informatif uniquement... nous recommandons de consulter un professionnel qualifié"
-- Couleur disclaimer : `text-white/25` (très discret)
+### ProblemSolutionSection
+- 4 cartes `grid-cols-1 sm:grid-cols-2`
+- Sur mobile : centré (`text-center md:text-left`, icône `mx-auto md:mx-0`)
+- Chaque carte : problème en gris + solution en teal avec checkmark
 
 ---
 
@@ -239,16 +176,12 @@ src/
 - `max-w-[1400px]` + `px-4 md:px-10 lg:px-20` → pleine largeur, pas d'espace vide
 - Grille `grid-cols-4 items-stretch` → cartes égales en hauteur, boutons alignés en bas
 - Prix grand : `text-[52px] font-black`
-- Bloc "Idéal pour" mis en avant avec fond coloré `bg-[#f4f7f9]` (ou teal léger si highlighted)
 - Carte highlighted (19,90€) : barre teal en haut, ring teal, bouton teal `#2a7d9c`
 - Badge : `whitespace-nowrap` + `pr-24` sur le nom → badge ne chevauche pas le texte
 
 ### Structure mobile
 - Cartes empilées `flex-col gap-4`
 - Prix + badge sur la même ligne (`justify-between`)
-- Badge : `whitespace-nowrap` → tient sur une seule ligne
-- Bloc "Idéal pour" sur fond `#f4f7f9`
-- Features en liste verticale propre
 - Bouton pleine largeur en bas
 
 ### Ordre des blocs sous les cartes
@@ -330,12 +263,31 @@ const MOCK_CREDITS = { document: 1, complete: 2 }
 
 ### Auth configuré
 - Email/password ✅ + Google OAuth ✅
-- SMTP Mailjet : notification@analymo.fr / SPF ✅ + DKIM ✅
+- SMTP Mailjet : notification@analymo.fr / SPF ✅ + DKIM ✅ + DMARC ✅
 - Redirect URLs configurées pour appdemo.analymo.fr + analymo.fr
 
 ### Vercel env vars
 - `VITE_SUPABASE_URL` = `https://veszrayromldfgetqaxb.supabase.co`
 - `VITE_SUPABASE_ANON_KEY` = clé publique Supabase
+
+---
+
+## 📧 Configuration email (Mailjet)
+
+**Expéditeur :** notification@analymo.fr
+**Statut authentification :**
+- SPF ✅ (`v=spf1 include:mx.ovh.com include:spf.mailjet.com -all`)
+- DKIM ✅ (2048 bits, mailjet._domainkey.analymo.fr)
+- DMARC ✅ ajouté le 30/03/2026 (`_dmarc.analymo.fr` → `v=DMARC1; p=none; rua=mailto:notification@analymo.fr`)
+
+**Problème connu :** L'email affiche "envoyé par : bnc3.mailjet.com" au lieu de "analymo.fr" dans certains clients (Hotmail/Outlook). Cela peut déclencher des filtres spam.
+
+**Solution à appliquer (Custom Return-Path) :**
+1. Dans OVH DNS : ajouter un enregistrement CNAME → `bnc3` pointant vers `bnc3.mailjet.com`
+2. Faire une capture d'écran du CNAME créé
+3. Ouvrir un ticket support Mailjet avec la capture + clé API pour activation
+4. Résultat : "envoyé par" affichera `bnc3.analymo.fr` au lieu de `bnc3.mailjet.com`
+- **Disponible sur tous les plans Mailjet (y compris gratuit)** — nécessite intervention manuelle du support
 
 ---
 
@@ -353,16 +305,28 @@ const MOCK_CREDITS = { document: 1, complete: 2 }
 8. **Prix correct** : 4,90€ (pas 4,99€) partout dans les textes visibles
 9. **Mot "IA" interdit** dans tous les textes visibles utilisateur
 10. **HowItWorksSection** : utilise `refMobile`/`inViewMobile` et `refDesktop`/`inViewDesktop` séparés — NE PAS fusionner sinon le mobile affiche blanc
+11. **ScrollToTop** ajouté dans App.tsx → scroll automatique en haut à chaque changement de page
+12. **AuthCallbackPage** corrigée pour iOS Safari → gère 4 cas : hash token, query code, session existante, compte activé sans session
 
 ---
 
 ## 🔜 Prochaines étapes (dans l'ordre)
+
+### Email / Délivrabilité
+- [ ] **Custom Return-Path Mailjet** — ajouter CNAME `bnc3` dans OVH + ticket support Mailjet (voir section 📧 ci-dessus)
+
+### Paiements
 - [ ] **Connecter Stripe** — paiement réel (4 produits : 4,90 / 19,90 / 29,90 / 39,90)
 - [ ] **Créer table `credits`** dans Supabase + webhook Stripe qui crédite
 - [ ] **Remplacer `MOCK_CREDITS`** par vraies données Supabase dans DashboardPage.tsx
+
+### Technique
 - [ ] Mettre à jour `PRICING_PLANS` dans types/index.ts (prix 4,90 au lieu de 4,99)
 - [ ] Envoyer email Mailjet quand rapport prêt
 - [ ] Améliorer le PDF (html2pdf ou Puppeteer)
+- [ ] Sécuriser l'appel API Claude (edge function Vercel)
+
+### Growth / Marketing
 - [ ] Google OAuth branding (publier app Google Cloud)
 - [ ] Page admin (voir tous les clients/analyses)
-- [ ] Sécuriser l'appel API Claude (edge function Vercel)
+- [ ] Récupérer de vrais témoignages utilisateurs pour les remettre sur la HomePage
