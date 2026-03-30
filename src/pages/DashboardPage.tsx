@@ -864,7 +864,7 @@ function NouvelleAnalyse() {
     <div>
       <Link to="/dashboard" style={{ fontSize:13, color:'#94a3b8', textDecoration:'none', display:'inline-flex', alignItems:'center', gap:4, marginBottom:24, fontWeight:600 }}><ChevronLeft size={14}/> Retour</Link>
       <h1 style={{ fontSize:'clamp(22px,3vw,28px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:6 }}>Que souhaitez-vous analyser ?</h1>
-      <p style={{ fontSize:14, color:'#64748b', marginBottom:freePreviewUsed===false?16:32 }}>Choisissez le mode d'analyse adapté à votre besoin.</p>
+      <p style={{ fontSize:14, color:'#64748b', marginBottom:!freePreviewUsed?16:32 }}>Choisissez le mode d'analyse adapté à votre besoin.</p>
 
       {/* Badge aperçu — visible uniquement si pas encore utilisé */}
       {!freePreviewUsed && (
@@ -996,15 +996,15 @@ function NouvelleAnalyse() {
         </div>
       )}
       {/* Badge aperçu si encore disponible */}
-      {freePreviewUsed === false && (
+      {!freePreviewUsed && (
         <div style={{ padding:'12px 16px', borderRadius:12, background:'linear-gradient(135deg, #0f2d3d, #1a5068)', display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
           <Sparkles size={13} style={{ color:'#fff', flexShrink:0 }}/>
           <span style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.9)' }}>Votre analyse offerte — aperçu du rapport généré gratuitement.</span>
         </div>
       )}
-      <button onClick={freePreviewUsed === false ? lancerApercu : lancer} disabled={files.length===0}
+      <button onClick={!freePreviewUsed ? lancerApercu : lancer} disabled={files.length===0}
         style={{ width:'100%', padding:'14px', borderRadius:12, border:'none', background:files.length>0?'linear-gradient(135deg, #2a7d9c, #0f2d3d)':'#e2e8f0', color:files.length>0?'#fff':'#94a3b8', fontSize:15, fontWeight:800, cursor:files.length>0?'pointer':'default', boxShadow:files.length>0?'0 4px 18px rgba(15,45,61,0.2)':'none', display:'flex', alignItems:'center', justifyContent:'center', gap:8, transition:'all 0.15s' }}>
-        <Sparkles size={16}/> {freePreviewUsed === false ? 'Générer mon aperçu gratuit' : 'Analyser'} {files.length>0?`(${files.length} fichier${files.length>1?'s':''})` : ''}
+        <Sparkles size={16}/> {!freePreviewUsed ? 'Générer mon aperçu gratuit' : 'Analyser'} {files.length>0?`(${files.length} fichier${files.length>1?'s':''})` : ''}
       </button>
     </div>
   );
