@@ -184,6 +184,9 @@ export async function debloquerapercu(id: string): Promise<boolean> {
 
 /* ─── Marquer l'aperçu gratuit comme utilisé ──── */
 export async function markFreePreviewUsed(): Promise<void> {
+  // Immédiat : localStorage pour éviter le flash UI
+  localStorage.setItem('analymo_free_preview_used', 'true');
+  // Persistant : Supabase
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
   await supabase
@@ -192,7 +195,28 @@ export async function markFreePreviewUsed(): Promise<void> {
     .eq('id', user.id);
 }
 
-/* ─── Vérifier si l'aperçu gratuit a été utilisé */
+/* ─── Vérifier si l'aperçu gratuit a été utilisé (instantané via localStorage) */
+export function checkFreePreviewUsedSync(): boolean {
+  return localStorage.getItem('analymo_free_preview_used') === 'true';
+}
+
+/* ─── Synchroniser localStorage depuis Supabase (au login) */
+export async function syncFreePreviewUsed(): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  const { data } = await supabase
+    .from('profiles')
+    .select('free_preview_used')
+    .eq('id', user.id)
+    .single();
+  if (data?.free_preview_used) {
+    localStorage.setItem('analymo_free_preview_used', 'true');
+  } else {
+    localStorage.removeItem('analymo_free_preview_used');
+  }
+}
+
+/* ─── Vérifier si l'aperçu gratuit a été utilisé (async Supabase) */
 export async function checkFreePreviewUsed(): Promise<boolean> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return true;
