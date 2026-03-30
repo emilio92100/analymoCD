@@ -383,7 +383,7 @@ function HomeView() {
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
   const credits = MOCK_CREDITS; // TODO: remplacer par Supabase après Stripe
   const hasAnalyses = analyses.length > 0;
-  const [freePreviewUsedHome, setFreePreviewUsedHome] = useState<boolean>(() => checkFreePreviewUsedSync());
+  const [freePreviewUsedHome] = useState<boolean>(() => checkFreePreviewUsedSync());
 
 
 
