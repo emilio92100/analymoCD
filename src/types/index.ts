@@ -12,6 +12,10 @@ export type Analysis = {
   recommandationColor?: string;
   price: string;
   date: string;
+  is_preview?: boolean;       // true = aperçu gratuit
+  paid?: boolean;             // true = paiement confirmé
+  document_names?: string[];  // noms des fichiers analysés
+  regeneration_deadline?: string; // date limite pour compléter le dossier
 };
 
 export type PricingPlan = {
