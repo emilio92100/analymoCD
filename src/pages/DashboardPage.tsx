@@ -277,11 +277,14 @@ function Topbar({ onMenuClick, title }: { onMenuClick:()=>void; title:string }) 
     <header style={{ height:68, background:'#fff', borderBottom:'1px solid #edf2f7', display:'flex', alignItems:'center', padding:'0 24px', gap:12, position:'sticky', top:0, zIndex:40, flexShrink:0 }}>
       <button className="mobile-menu-btn" onClick={onMenuClick} style={{ background:'none', border:'none', cursor:'pointer', color:'#0f2d3d', padding:4, display:'none' }}><Menu size={20}/></button>
       <p style={{ flex:1, fontSize:16, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em', margin:0 }}>{title}</p>
+      <div className="topbar-cta" style={{ display:'flex', alignItems:'center', gap:8 }}>
+        <Link to="/dashboard/tarifs" style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:9, background:'#f0f7fb', border:'1px solid #dbeafe', textDecoration:'none' }}>
+          <span style={{ fontSize:12, fontWeight:700, color:'#2a7d9c' }}>{MOCK_CREDITS.document} simple</span>
+          <span style={{ width:1, height:12, background:'#cbd5e1' }}/>
+          <span style={{ fontSize:12, fontWeight:700, color:'#0f2d3d' }}>{MOCK_CREDITS.complete} complet{MOCK_CREDITS.complete > 1 ? 's' : ''}</span>
+        </Link>
+      </div>
       <button style={{ width:36, height:36, borderRadius:9, background:'#f8fafc', border:'1px solid #edf2f7', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#94a3b8' }}><Bell size={15}/></button>
-      <Link to="/dashboard/nouvelle-analyse" className="topbar-cta"
-        style={{ padding:'9px 18px', borderRadius:10, background:'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color:'#fff', fontSize:13, fontWeight:700, textDecoration:'none', display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap', boxShadow:'0 2px 8px rgba(15,45,61,0.18)' }}>
-        <Plus size={13}/> Nouvelle analyse
-      </Link>
     </header>
   );
 }
@@ -771,7 +774,7 @@ function NouvelleAnalyse() {
 
   /* ── CHOICE */
   if (step==='choice') return (
-    <div style={{ maxWidth:780, margin:'0 auto' }}>
+    <div>
       <Link to="/dashboard" style={{ fontSize:13, color:'#94a3b8', textDecoration:'none', display:'inline-flex', alignItems:'center', gap:4, marginBottom:24, fontWeight:600 }}><ChevronLeft size={14}/> Retour</Link>
       <h1 style={{ fontSize:'clamp(22px,3vw,28px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:6 }}>Que souhaitez-vous analyser ?</h1>
       <p style={{ fontSize:14, color:'#64748b', marginBottom:32 }}>Choisissez le mode d'analyse adapté à votre besoin.</p>
@@ -1189,7 +1192,7 @@ function Compte() {
   ];
 
   return (
-    <div style={{ maxWidth:620, display:'flex', flexDirection:'column', gap:20 }}>
+    <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
       <h1 style={{ fontSize:'clamp(20px,3vw,26px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em' }}>Mon compte</h1>
 
       {/* Informations personnelles */}
@@ -1309,7 +1312,7 @@ function Support() {
   const [sent, setSent] = useState(false);
   const [msg, setMsg] = useState('');
   return (
-    <div style={{ maxWidth:660 }}>
+    <div>
       <h1 style={{ fontSize:'clamp(20px,3vw,26px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:24 }}>Support / Aide</h1>
       <div style={{ marginBottom:24 }}>
         <h2 style={{ fontSize:14, fontWeight:800, color:'#0f172a', marginBottom:12 }}>Questions fréquentes</h2>
