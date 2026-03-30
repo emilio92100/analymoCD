@@ -78,7 +78,7 @@ const MOCK_ANALYSES: Analyse[] = [
     status: 'completed',
     nom_document: 'PV_AG_2025_Mirabeau.pdf',
     date: '19 mars 2026',
-    price: '4,99€',
+    price: '4,90€',
   },
   {
     id: '3',
@@ -148,7 +148,7 @@ function useAnalyses() {
           recommandation: reco,
           recommandationColor: reco ? recoColor : undefined,
           date: new Date(a.created_at).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' }),
-          price: a.type === 'document' ? '4,99€'
+          price: a.type === 'document' ? '4,90€'
             : a.type === 'complete' ? '19,90€'
             : a.type === 'pack2' ? '29,90€'
             : '39,90€',
@@ -387,11 +387,38 @@ function HomeView() {
         <h1 style={{ fontSize:'clamp(20px,2.5vw,28px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:4 }}>
           {greeting}{name ? `, ${name}` : ''} 👋
         </h1>
-        <p style={{ fontSize:14, color:'#64748b' }}>Bienvenue sur votre espace Analymo.</p>
+        <p style={{ fontSize:14, color:'#64748b' }}>
+          {!hasAnalyses ? 'Bienvenue sur Analymo. Lancez votre première analyse dès maintenant.' : 'Bienvenue sur votre espace Analymo.'}
+        </p>
       </div>
 
-      {/* ── Bloc stats + crédits */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:14 }} className="stats-grid">
+      {/* ── Bloc bienvenue si aucune analyse */}
+      {!hasAnalyses && (
+        <div style={{ background:'linear-gradient(135deg, #0f2d3d 0%, #1a5068 100%)', borderRadius:20, padding:'28px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:20, flexWrap:'wrap', boxShadow:'0 8px 32px rgba(15,45,61,0.18)', position:'relative', overflow:'hidden' }}>
+          <div style={{ position:'absolute', top:-30, right:-30, width:160, height:160, borderRadius:'50%', background:'rgba(42,125,156,0.18)', pointerEvents:'none' }}/>
+          <div style={{ position:'absolute', bottom:-40, left:60, width:100, height:100, borderRadius:'50%', background:'rgba(255,255,255,0.04)', pointerEvents:'none' }}/>
+          <div style={{ flex:1, minWidth:200 }}>
+            <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.5)', letterSpacing:'0.14em', marginBottom:10 }}>POUR COMMENCER</div>
+            <h2 style={{ fontSize:'clamp(16px,2vw,20px)', fontWeight:900, color:'#fff', marginBottom:8, letterSpacing:'-0.02em' }}>Prêt à analyser votre premier bien ?</h2>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,0.6)', lineHeight:1.6, maxWidth:420 }}>
+              Déposez vos documents immobiliers et obtenez un rapport complet en moins de 2 minutes.
+            </p>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:10, flexShrink:0 }}>
+            <Link to="/dashboard/nouvelle-analyse"
+              style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'13px 24px', borderRadius:12, background:'#fff', color:'#0f2d3d', fontSize:14, fontWeight:800, textDecoration:'none', boxShadow:'0 4px 16px rgba(0,0,0,0.15)', whiteSpace:'nowrap' }}>
+              <Plus size={15}/> Lancer une analyse
+            </Link>
+            <Link to="/dashboard/tarifs"
+              style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.6)', textDecoration:'none' }}>
+              Voir les tarifs <ArrowRight size={12}/>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bloc stats + crédits (uniquement si analyses existantes) */}
+      {hasAnalyses && <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:14 }} className="stats-grid">
 
         {/* Analyses totales */}
         <div style={{ background:'#fff', borderRadius:18, border:'1px solid #edf2f7', padding:'22px', boxShadow:'0 1px 6px rgba(0,0,0,0.04)', display:'flex', flexDirection:'column', gap:12 }}>
@@ -446,7 +473,7 @@ function HomeView() {
             <div style={{ flex:1, padding:'10px', borderRadius:10, background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.1)' }}>
               <div style={{ fontSize:26, fontWeight:900, color:'#fff', lineHeight:1, marginBottom:3 }}>{credits.document}</div>
               <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.5)', letterSpacing:'0.06em', marginBottom:2 }}>SIMPLE</div>
-              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>4,99€ / crédit</div>
+              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>4,90€ / crédit</div>
             </div>
             <div style={{ flex:1, padding:'10px', borderRadius:10, background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.1)' }}>
               <div style={{ fontSize:26, fontWeight:900, color:'#fff', lineHeight:1, marginBottom:3 }}>{credits.complete}</div>
@@ -459,16 +486,7 @@ function HomeView() {
             Recharger des crédits <ArrowRight size={12}/>
           </Link>
         </div>
-      </div>
-
-      {/* ── Info crédits pricing */}
-      <div style={{ background:'#fff', borderRadius:14, border:'1px solid #edf2f7', padding:'16px 20px', display:'flex', alignItems:'flex-start', gap:12, boxShadow:'0 1px 4px rgba(0,0,0,0.03)' }}>
-        <Info size={16} style={{ color:'#2a7d9c', flexShrink:0, marginTop:2 }}/>
-        <div style={{ fontSize:13, color:'#64748b', lineHeight:1.6 }}>
-          <strong style={{ color:'#0f172a' }}>Comment fonctionnent les crédits ?</strong><br/>
-          <span style={{ color:'#94a3b8' }}>4,99€ → 1 crédit analyse document · 19,90€ → 1 crédit analyse complète · 29,90€ → 2 crédits complète · 39,90€ → 3 crédits complète</span>
-        </div>
-      </div>
+      </div>}
 
       {/* ── Section : Analyser un document */}
       <div>
@@ -504,7 +522,7 @@ function HomeView() {
                 <span style={{ fontSize:13, fontWeight:700, color: credits.document > 0 ? '#2a7d9c' : '#94a3b8', display:'flex', alignItems:'center', gap:5 }}>
                   {credits.document > 0 ? 'Commencer' : 'Acheter un crédit'} <ArrowRight size={14}/>
                 </span>
-                <span style={{ fontSize:20, fontWeight:900, color:'#0f172a' }}>4,99€</span>
+                <span style={{ fontSize:20, fontWeight:900, color:'#0f172a' }}>4,90€</span>
               </div>
             </div>
           </Link>
@@ -656,7 +674,7 @@ function NouvelleAnalyse() {
   const [error, setError] = useState('');
 
   const plans = {
-    document: { label:"Analyse d'un document",       price:'4,99€',  max:1,  desc:'Un seul fichier — PV d\'AG, règlement, diagnostic, appel de charges.', creditsKey:'document' as keyof Credits },
+    document: { label:"Analyse d'un document",       price:'4,90€',  max:1,  desc:'Un seul fichier — PV d\'AG, règlement, diagnostic, appel de charges.', creditsKey:'document' as keyof Credits },
     complete: { label:"Analyse complète d'un logement", price:'19,90€', max:20, desc:'Tous les documents du bien — score /10, risques, recommandation Analymo.', creditsKey:'complete' as keyof Credits },
   };
   const plan = type ? plans[type] : null;
@@ -702,7 +720,7 @@ function NouvelleAnalyse() {
         setProgress(10 + Math.floor((i/files.length)*30));
         textes.push(`=== ${files[i].name} ===\n${await extractText(files[i])}`);
       }
-      setProgress(50); setProgressMsg('Analyse IA en cours…');
+      setProgress(50); setProgressMsg('Traitement en cours…');
       const isComplete = type === 'complete';
       const systemPrompt = isComplete ? PROMPT_ANALYSE_COMPLETE : PROMPT_ANALYSE_SIMPLE;
 
@@ -776,7 +794,7 @@ function NouvelleAnalyse() {
             <span style={{ fontSize:13, fontWeight:700, color:credits.document>0?'#2a7d9c':'#ef4444', display:'flex', alignItems:'center', gap:5 }}>
               {credits.document>0?<><ArrowRight size={14}/> Commencer</>:<><Lock size={13}/> Acheter un crédit</>}
             </span>
-            <span style={{ fontSize:22, fontWeight:900, color:'#0f172a' }}>4,99€</span>
+            <span style={{ fontSize:22, fontWeight:900, color:'#0f172a' }}>4,90€</span>
           </div>
         </button>
 
@@ -886,7 +904,7 @@ function NouvelleAnalyse() {
       <div style={{ width:80, height:80, borderRadius:'50%', background:'linear-gradient(135deg, rgba(42,125,156,0.1), rgba(15,45,61,0.07))', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 24px', animation:'float 3s ease-in-out infinite' }}>
         <Sparkles size={32} style={{ color:'#2a7d9c' }}/>
       </div>
-      <h2 style={{ fontSize:22, fontWeight:800, color:'#0f172a', marginBottom:8 }}>Analyse en cours…</h2>
+      <h2 style={{ fontSize:22, fontWeight:800, color:'#0f172a', marginBottom:8 }}>Traitement en cours…</h2>
       <p style={{ fontSize:14, color:'#64748b', marginBottom:32 }}>{progressMsg}</p>
       <div style={{ height:8, borderRadius:99, background:'#edf2f7', overflow:'hidden', marginBottom:8 }}>
         <div style={{ height:'100%', borderRadius:99, background:'linear-gradient(90deg, #2a7d9c, #0f2d3d)', width:`${progress}%`, transition:'width 0.4s ease' }}/>
@@ -975,7 +993,7 @@ function MesAnalyses() {
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:14 }}>
         <div>
           <h1 style={{ fontSize:'clamp(20px,3vw,26px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:4 }}>Mes analyses</h1>
-          <p style={{ fontSize:13, color:'#94a3b8' }}>{MOCK_ANALYSES.length} analyse{MOCK_ANALYSES.length>1?'s':''}</p>
+          <p style={{ fontSize:13, color:'#94a3b8' }}>{analyses.length} analyse{analyses.length>1?'s':''}</p>
         </div>
         <Link to="/dashboard/nouvelle-analyse" style={{ padding:'10px 20px', borderRadius:10, background:'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color:'#fff', fontSize:13, fontWeight:700, textDecoration:'none', display:'flex', alignItems:'center', gap:6 }}>
           <Plus size={14}/> Nouvelle
@@ -1145,19 +1163,45 @@ function Compare() {
 function Compte() {
   const [user, setUser] = useState({name:'',email:''});
   const [saved, setSaved] = useState(false);
+  const [pwdSection, setPwdSection] = useState(false);
+  const [pwd, setPwd] = useState({current:'',next:'',confirm:''});
+  const [pwdMsg, setPwdMsg] = useState('');
+  const [pwdError, setPwdError] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+
   useEffect(()=>{ supabase.auth.getUser().then(({data:{user:u}})=>{ if(u) setUser({name:u.user_metadata?.full_name||'',email:u.email||''}); }); },[]);
+
   const save = async ()=>{ await supabase.auth.updateUser({data:{full_name:user.name}}); setSaved(true); setTimeout(()=>setSaved(false),3000); };
+
+  const changePwd = async () => {
+    setPwdError(''); setPwdMsg('');
+    if (pwd.next !== pwd.confirm) { setPwdError('Les mots de passe ne correspondent pas.'); return; }
+    if (pwd.next.length < 8) { setPwdError('Le mot de passe doit faire au moins 8 caractères.'); return; }
+    const { error } = await supabase.auth.updateUser({ password: pwd.next });
+    if (error) { setPwdError('Erreur : ' + error.message); }
+    else { setPwdMsg('Mot de passe modifié avec succès !'); setPwd({current:'',next:'',confirm:''}); setTimeout(()=>{ setPwdMsg(''); setPwdSection(false); },3000); }
+  };
+
+  // Historique achats mock — à remplacer par Supabase après Stripe
+  const mockAchats = [
+    { date:'24 mars 2026', label:'Analyse Complète', montant:'19,90€', statut:'Payé' },
+    { date:'19 mars 2026', label:'Analyse Document', montant:'4,90€', statut:'Payé' },
+  ];
+
   return (
-    <div style={{ maxWidth:580 }}>
-      <h1 style={{ fontSize:'clamp(20px,3vw,26px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:24 }}>Mon compte</h1>
+    <div style={{ maxWidth:620, display:'flex', flexDirection:'column', gap:20 }}>
+      <h1 style={{ fontSize:'clamp(20px,3vw,26px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em' }}>Mon compte</h1>
+
+      {/* Informations personnelles */}
       <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'24px', boxShadow:'0 1px 4px rgba(0,0,0,0.03)' }}>
         <h2 style={{ fontSize:14, fontWeight:800, color:'#0f172a', marginBottom:18, paddingBottom:13, borderBottom:'1px solid #f0f5f9' }}>Informations personnelles</h2>
         <div style={{ display:'flex', flexDirection:'column', gap:15 }}>
-          {[{l:'Nom complet',v:user.name,set:(v:string)=>setUser({...user,name:v}),ph:'Jean Dupont'},{l:'Email',v:user.email,set:(_:string)=>{},ph:'',disabled:true}].map(f=>(
+          {[{l:'Nom complet',v:user.name,set:(v:string)=>setUser({...user,name:v}),ph:'Jean Dupont',disabled:false},{l:'Email',v:user.email,set:(_:string)=>{},ph:'',disabled:true}].map(f=>(
             <div key={f.l}>
               <label style={{ display:'block', fontSize:13, fontWeight:700, color:'#0f172a', marginBottom:7 }}>{f.l}</label>
               <input value={f.v} onChange={e=>f.set(e.target.value)} placeholder={f.ph} disabled={f.disabled}
                 style={{ width:'100%', padding:'11px 13px', borderRadius:9, border:'1.5px solid #edf2f7', fontSize:14, background:f.disabled?'#f8fafc':'#fff', color:f.disabled?'#94a3b8':'#0f172a', outline:'none', boxSizing:'border-box' as const }}/>
+              {f.disabled && <p style={{ fontSize:11, color:'#94a3b8', marginTop:5 }}>L'adresse email ne peut pas être modifiée.</p>}
             </div>
           ))}
           <div style={{ display:'flex', alignItems:'center', gap:12, marginTop:4 }}>
@@ -1166,6 +1210,87 @@ function Compte() {
           </div>
         </div>
       </div>
+
+      {/* Changer le mot de passe */}
+      <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'24px', boxShadow:'0 1px 4px rgba(0,0,0,0.03)' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: pwdSection ? 18 : 0, paddingBottom: pwdSection ? 13 : 0, borderBottom: pwdSection ? '1px solid #f0f5f9' : 'none' }}>
+          <h2 style={{ fontSize:14, fontWeight:800, color:'#0f172a' }}>Mot de passe</h2>
+          <button onClick={()=>{ setPwdSection(!pwdSection); setPwdError(''); setPwdMsg(''); }}
+            style={{ fontSize:13, fontWeight:700, color:'#2a7d9c', background:'none', border:'none', cursor:'pointer' }}>
+            {pwdSection ? 'Annuler' : 'Modifier'}
+          </button>
+        </div>
+        {!pwdSection && <p style={{ fontSize:13, color:'#94a3b8', marginTop:8 }}>••••••••••••</p>}
+        {pwdSection && (
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            {[
+              { l:'Nouveau mot de passe', k:'next' as const, v:pwd.next },
+              { l:'Confirmer le mot de passe', k:'confirm' as const, v:pwd.confirm },
+            ].map(f=>(
+              <div key={f.k}>
+                <label style={{ display:'block', fontSize:13, fontWeight:700, color:'#0f172a', marginBottom:7 }}>{f.l}</label>
+                <input type="password" value={f.v} onChange={e=>setPwd({...pwd,[f.k]:e.target.value})}
+                  style={{ width:'100%', padding:'11px 13px', borderRadius:9, border:'1.5px solid #edf2f7', fontSize:14, outline:'none', boxSizing:'border-box' as const }}/>
+              </div>
+            ))}
+            {pwdError && <p style={{ fontSize:13, color:'#dc2626', fontWeight:600 }}>⚠ {pwdError}</p>}
+            {pwdMsg && <p style={{ fontSize:13, color:'#16a34a', fontWeight:600 }}>✓ {pwdMsg}</p>}
+            <button onClick={changePwd}
+              style={{ alignSelf:'flex-start', padding:'10px 22px', borderRadius:9, background:'linear-gradient(135deg, #2a7d9c, #0f2d3d)', border:'none', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }}>
+              Mettre à jour
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Historique des achats */}
+      <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'24px', boxShadow:'0 1px 4px rgba(0,0,0,0.03)' }}>
+        <h2 style={{ fontSize:14, fontWeight:800, color:'#0f172a', marginBottom:18, paddingBottom:13, borderBottom:'1px solid #f0f5f9' }}>Historique des achats</h2>
+        {mockAchats.length === 0 ? (
+          <p style={{ fontSize:13, color:'#94a3b8' }}>Aucun achat pour le moment.</p>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            {mockAchats.map((a,i)=>(
+              <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 14px', borderRadius:10, background:'#f8fafc', border:'1px solid #edf2f7', flexWrap:'wrap', gap:8 }}>
+                <div>
+                  <div style={{ fontSize:13, fontWeight:700, color:'#0f172a' }}>{a.label}</div>
+                  <div style={{ fontSize:11, color:'#94a3b8' }}>{a.date}</div>
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <span style={{ fontSize:14, fontWeight:800, color:'#0f172a' }}>{a.montant}</span>
+                  <span style={{ fontSize:10, fontWeight:700, color:'#16a34a', background:'#f0fdf4', border:'1px solid #bbf7d0', padding:'2px 8px', borderRadius:6 }}>{a.statut}</span>
+                </div>
+              </div>
+            ))}
+            <p style={{ fontSize:11, color:'#cbd5e1', marginTop:4 }}>Les factures détaillées seront disponibles après connexion de Stripe.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Zone danger */}
+      <div style={{ background:'#fff', borderRadius:16, border:'1px solid #fecaca', padding:'24px', boxShadow:'0 1px 4px rgba(0,0,0,0.03)' }}>
+        <h2 style={{ fontSize:14, fontWeight:800, color:'#dc2626', marginBottom:8 }}>Zone de danger</h2>
+        <p style={{ fontSize:13, color:'#64748b', marginBottom:16 }}>La suppression de votre compte est irréversible. Toutes vos analyses seront perdues.</p>
+        {!deleteConfirm ? (
+          <button onClick={()=>setDeleteConfirm(true)}
+            style={{ padding:'10px 22px', borderRadius:9, background:'#fef2f2', border:'1.5px solid #fecaca', color:'#dc2626', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+            Supprimer mon compte
+          </button>
+        ) : (
+          <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
+            <span style={{ fontSize:13, color:'#dc2626', fontWeight:600 }}>Êtes-vous sûr ?</span>
+            <button onClick={async ()=>{ await supabase.auth.signOut(); window.location.href='/'; }}
+              style={{ padding:'10px 18px', borderRadius:9, background:'#dc2626', border:'none', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              Confirmer la suppression
+            </button>
+            <button onClick={()=>setDeleteConfirm(false)}
+              style={{ padding:'10px 18px', borderRadius:9, background:'#f8fafc', border:'1.5px solid #edf2f7', color:'#64748b', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              Annuler
+            </button>
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }
@@ -1178,7 +1303,7 @@ function Support() {
     {q:"Quels documents puis-je analyser ?",a:"PV d'AG, règlements de copropriété, appels de charges, diagnostics immobiliers. Formats : PDF, Word, JPG/PNG."},
     {q:"Combien de temps prend une analyse ?",a:"Moins de 2 minutes. Une notification vous est envoyée dès que le rapport est disponible."},
     {q:"Mes documents sont-ils sécurisés ?",a:"Oui. Chiffrement SSL/TLS, aucun partage de données. Les fichiers sont supprimés immédiatement après l'analyse."},
-    {q:"Comment fonctionnent les crédits ?",a:"Chaque achat vous attribue des crédits : 4,99€ = 1 crédit analyse document, 19,90€ = 1 crédit analyse complète, 29,90€ = 2 crédits complets, 39,90€ = 3 crédits complets. Les crédits ne expirent pas."},
+    {q:"Comment fonctionnent les crédits ?",a:"Chaque achat vous attribue des crédits : 4,90€ = 1 crédit analyse document, 19,90€ = 1 crédit analyse complète, 29,90€ = 2 crédits complets, 39,90€ = 3 crédits complets. Les crédits ne expirent pas."},
   ];
   const [open, setOpen] = useState<number|null>(null);
   const [sent, setSent] = useState(false);
@@ -1246,7 +1371,7 @@ function Tarifs() {
     {
       id: 'document',
       label: 'Analyse Document',
-      price: '4,99€',
+      price: '4,90€',
       desc: 'Idéal pour lever un doute sur un document précis.',
       creditLabel: '1 crédit simple',
       creditType: 'document' as keyof Credits,
@@ -1305,7 +1430,7 @@ function Tarifs() {
       desc: 'Le meilleur rapport qualité/prix. 13,30€ / bien.',
       creditLabel: '3 crédits complets',
       creditType: 'complete' as keyof Credits,
-      color: '#7c3aed',
+      color: '#1a5068',
       icon: BarChart2,
       badge: '−33%',
       details: [
