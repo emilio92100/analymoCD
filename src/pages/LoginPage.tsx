@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { syncFreePreviewUsed } from '../lib/analyses';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export default function LoginPage() {
     setLoading(true); setError('');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
    if (error) { if (error.message.includes('Email not confirmed')) { setError("Votre email n'a pas été validé. Veuillez vous réinscrire pour recevoir un nouveau lien d'activation."); } else { setError("Email ou mot de passe incorrect."); } setLoading(false); return; }
+    await syncFreePreviewUsed();
     navigate('/dashboard');
   };
 
