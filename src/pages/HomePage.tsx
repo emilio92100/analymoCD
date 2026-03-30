@@ -1,5 +1,6 @@
-import { useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useRef, useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabase";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import type { Variants } from "framer-motion";
 import {
@@ -9,7 +10,6 @@ import {
   Building2, UserCheck, BadgeCheck, ShieldCheck, Trash2,
   Download, Lock, Eye, ChevronDown,
 } from "lucide-react";
-import { useEffect } from "react";
 
 const up: Variants = {
   hidden: { opacity: 0, y: 24 },
@@ -51,6 +51,27 @@ function SectionTitle({ label, title, accent, sub }: { label: string; title: str
       )}
     </div>
   );
+}
+
+function useAuthRedirect() {
+  const navigate = useNavigate();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsLoggedIn(!!session);
+    });
+  }, []);
+
+  const goToAnalyse = (e: React.MouseEvent) => {
+    if (isLoggedIn) {
+      e.preventDefault();
+      navigate('/dashboard/nouvelle-analyse');
+    }
+    // sinon le Link normal vers /inscription fonctionne
+  };
+
+  return { isLoggedIn, goToAnalyse };
 }
 
 export default function HomePage() {
@@ -162,7 +183,7 @@ function HeroSection() {
 
           <motion.div variants={up} initial="hidden" animate="show" custom={2}
             className="flex flex-col sm:flex-row gap-3 w-full max-w-sm px-4">
-            <Link to="/inscription"
+            <Link to="/inscription" onClick={goToAnalyse}
               className="flex items-center justify-center gap-2 px-7 py-4 rounded-2xl bg-[#0f2d3d] text-white text-base font-bold shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200 flex-1">
               <ShieldCheck size={18} /> Lancer mon analyse
             </Link>
@@ -209,7 +230,7 @@ function HeroSection() {
 
             <motion.div variants={up} initial="hidden" animate="show" custom={3}
               className="flex flex-row gap-3 mb-5">
-              <Link to="/inscription"
+              <Link to="/inscription" onClick={goToAnalyse}
                 className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-[#0f2d3d] text-white text-base font-bold shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200">
                 <ShieldCheck size={18} /> Lancer mon analyse
               </Link>
@@ -637,7 +658,7 @@ function AvantApresSection() {
         </div>
 
         <Reveal className="text-center mt-8 md:mt-12">
-          <Link to="/inscription"
+          <Link to="/inscription" onClick={goToAnalyse}
             className="inline-flex items-center gap-2 px-7 md:px-9 py-3.5 md:py-4 rounded-2xl bg-[#0f2d3d] text-white text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
             Lancer mon analyse <ArrowRight size={16} />
           </Link>
@@ -827,7 +848,7 @@ function ForWhoSection() {
                   <p className="text-slate-400 text-sm md:text-base leading-relaxed mb-8 max-w-sm">
                     Analymo décrypte la santé financière de la copropriété, les travaux à venir et les risques juridiques — avant votre offre.
                   </p>
-                  <Link to="/inscription" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-[#0f2d3d] text-sm md:text-base font-bold hover:bg-slate-50 transition-colors">
+                  <Link to="/inscription" onClick={goToAnalyse} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-[#0f2d3d] text-sm md:text-base font-bold hover:bg-slate-50 transition-colors">
                     Commencer — dès 4,90€ <ArrowRight size={15} />
                   </Link>
                 </div>
@@ -991,7 +1012,7 @@ function HowItWorksSection() {
         </div>
 
         <Reveal className="text-center mt-10 md:mt-12">
-          <Link to="/inscription"
+          <Link to="/inscription" onClick={goToAnalyse}
             className="inline-flex items-center gap-2 px-7 md:px-10 py-3.5 md:py-4 rounded-2xl bg-[#0f2d3d] text-white text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
             Essayer maintenant — dès 4,90€ <ArrowRight size={16} />
           </Link>
@@ -1244,7 +1265,7 @@ function CtaFinal() {
 
               <div className="flex flex-col items-center gap-6">
                 <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                  <Link to="/inscription"
+                  <Link to="/inscription" onClick={goToAnalyse}
                     className="flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-sm md:text-base font-bold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl"
                     style={{ background: "linear-gradient(135deg, #4ade80 0%, #22c55e 100%)", color: "#0f2d3d" }}>
                     Lancer mon analyse <ArrowRight size={16} />
