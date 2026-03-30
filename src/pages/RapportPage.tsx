@@ -4,7 +4,7 @@ import { fetchAnalyseById } from '../lib/analyses';
 import {
   ChevronLeft, Download, Building2, TrendingUp, Wrench,
   AlertTriangle, CheckCircle, Shield, BarChart2, FileText,
-  Clock, Euro, HardHat, Gavel, Info, Star
+  Clock, Euro, HardHat, Gavel, Info, Star, Paperclip, RefreshCw, Lock
 } from 'lucide-react';
 
 /* ══════════════════════════════════════════
@@ -61,6 +61,9 @@ const MOCK_RAPPORT = {
   ],
 
   // Procédures
+  document_names: [] as string[],
+  regeneration_deadline: null as string | null,
+  is_preview: false,
   procedures_en_cours: true,
   procedures: [
     {
@@ -221,6 +224,9 @@ export default function RapportPage() {
         travaux_a_prevoir: (r.travaux_a_prevoir as typeof MOCK_RAPPORT.travaux_a_prevoir) || [],
         procedures_en_cours: (r.procedures_en_cours as boolean) || false,
         procedures: (r.procedures as typeof MOCK_RAPPORT.procedures) || [],
+        document_names: (data.document_names as string[]) || [],
+        regeneration_deadline: data.regeneration_deadline || null,
+        is_preview: data.is_preview ?? false,
       });
       setLoading(false);
     };
@@ -553,8 +559,62 @@ export default function RapportPage() {
           </div>
         )}
 
+        {/* ── Bannière 7 jours (rapport complet non preview) */}
+        {isComplete && !rapport.is_preview && rapport.regeneration_deadline && (() => {
+          const deadline = new Date(rapport.regeneration_deadline);
+          const now = new Date();
+          const diffDays = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          const expired = diffDays <= 0;
+          const urgent = diffDays <= 2 && !expired;
+          return (
+            <div style={{ marginTop: 20, padding: '16px 20px', borderRadius: 14, background: expired ? '#f8fafc' : urgent ? '#fffbeb' : '#f0fdf4', border: `1.5px solid ${expired ? '#e2e8f0' : urgent ? '#fde68a' : '#bbf7d0'}`, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+              <RefreshCw size={16} style={{ color: expired ? '#94a3b8' : urgent ? '#d97706' : '#16a34a', flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: expired ? '#94a3b8' : urgent ? '#92400e' : '#166534', marginBottom: 2 }}>
+                  {expired ? 'Délai de complétion expiré' : `Vous pouvez compléter ce dossier — encore ${diffDays} jour${diffDays > 1 ? 's' : ''}`}
+                </div>
+                <div style={{ fontSize: 12, color: expired ? '#cbd5e1' : '#64748b' }}>
+                  {expired ? 'Le délai de 7 jours pour ajouter des documents est dépassé.' : 'Ajoutez des documents oubliés et obtenez un rapport mis à jour — gratuitement.'}
+                </div>
+              </div>
+              {!expired ? (
+                <button
+                  onClick={() => window.location.href = `/dashboard/rapport?id=${id}&action=complement`}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 10, border: 'none', background: urgent ? '#d97706' : '#16a34a', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <RefreshCw size={13} /> Compléter le dossier
+                </button>
+              ) : (
+                <button disabled style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 10, border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#94a3b8', fontSize: 13, fontWeight: 700, cursor: 'not-allowed', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <Lock size={13} /> Délai expiré
+                </button>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* ── Section documents analysés */}
+        {rapport.document_names && rapport.document_names.length > 0 && (
+          <div style={{ marginTop: 16, padding: '16px 20px', background: '#fff', borderRadius: 14, border: '1px solid #edf2f7' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <Paperclip size={14} style={{ color: '#94a3b8' }} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b', letterSpacing: '0.06em' }}>DOCUMENTS ANALYSÉS</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {rapport.document_names.map((name: string, i: number) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+                  <FileText size={12} style={{ color: '#2a7d9c', flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: '#374151', fontWeight: 500 }}>{name}</span>
+                </div>
+              ))}
+            </div>
+            <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 10, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <Shield size={11} /> Ces documents ne sont plus stockés sur nos serveurs, conformément à notre politique RGPD.
+            </p>
+          </div>
+        )}
+
         {/* Footer rapport */}
-        <div style={{ marginTop: 32, padding: '16px 20px', background: '#fff', borderRadius: 13, border: '1px solid #edf2f7', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ marginTop: 16, padding: '16px 20px', background: '#fff', borderRadius: 13, border: '1px solid #edf2f7', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <Shield size={14} style={{ color: '#94a3b8', flexShrink: 0 }}/>
           <span style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>
             Ce rapport est fourni à titre informatif par Analymo. Il ne constitue pas un conseil juridique ou financier et ne remplace pas l'avis d'un notaire ou d'un expert immobilier.
