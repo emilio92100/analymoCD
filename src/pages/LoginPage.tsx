@@ -18,6 +18,13 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
    if (error) { if (error.message.includes('Email not confirmed')) { setError("Votre email n'a pas été validé. Veuillez vous réinscrire pour recevoir un nouveau lien d'activation."); } else { setError("Email ou mot de passe incorrect."); } setLoading(false); return; }
     await syncFreePreviewUsed();
+    // Mettre en cache le nom/email pour affichage instantané
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const n = user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0] || 'Utilisateur';
+      localStorage.setItem('analymo_user_name', n);
+      localStorage.setItem('analymo_user_email', user.email || '');
+    }
     navigate('/dashboard');
   };
 
