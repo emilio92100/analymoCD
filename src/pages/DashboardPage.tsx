@@ -62,8 +62,8 @@ type AnalyseResult = {
 ══════════════════════════════════════════ */
 // Crédits disponibles de l'utilisateur
 const MOCK_CREDITS: Credits = {
-  document: 1,   // 1 crédit analyse simple disponible
-  complete: 2,   // 2 crédits analyse complète disponibles
+  document: 0,   // 0 crédit — branché après Stripe
+  complete: 0,   // 0 crédit — branché après Stripe
 };
 
 // Historique analyses
@@ -225,20 +225,20 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
 
       {/* Crédits mini */}
       <div style={{ margin:'0 14px 8px', padding:'12px', borderRadius:10, background:'#f8fafc', border:'1px solid #edf2f7' }}>
-        <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.12em', marginBottom:8 }}>CRÉDITS DISPONIBLES</div>
-        <div style={{ display:'flex', gap:6 }}>
-          <div style={{ flex:1, textAlign:'center', padding:'6px 4px', borderRadius:8, background:`${credits.document > 0 ? '#2a7d9c' : '#94a3b8'}12`, border:`1px solid ${credits.document > 0 ? '#2a7d9c' : '#e2e8f0'}25` }}>
-            <div style={{ fontSize:18, fontWeight:900, color:credits.document > 0 ? '#2a7d9c' : '#94a3b8' }}>{credits.document}</div>
-            <div style={{ fontSize:9, fontWeight:700, color:'#94a3b8', letterSpacing:'0.05em' }}>SIMPLE</div>
+        <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.12em', marginBottom:8 }}>MES ANALYSES</div>
+        <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 8px', borderRadius:8, background:'#f8fafc', border:'1px solid #edf2f7' }}>
+            <span style={{ fontSize:11, color:'#64748b', fontWeight:600 }}>Document</span>
+            <span style={{ fontSize:14, fontWeight:900, color:credits.document > 0 ? '#2a7d9c' : '#94a3b8' }}>{credits.document}</span>
           </div>
-          <div style={{ flex:1, textAlign:'center', padding:'6px 4px', borderRadius:8, background:`${credits.complete > 0 ? '#0f2d3d' : '#94a3b8'}12`, border:`1px solid ${credits.complete > 0 ? '#0f2d3d' : '#e2e8f0'}25` }}>
-            <div style={{ fontSize:18, fontWeight:900, color:credits.complete > 0 ? '#0f2d3d' : '#94a3b8' }}>{credits.complete}</div>
-            <div style={{ fontSize:9, fontWeight:700, color:'#94a3b8', letterSpacing:'0.05em' }}>COMPLÈTE</div>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 8px', borderRadius:8, background:'#f8fafc', border:'1px solid #edf2f7' }}>
+            <span style={{ fontSize:11, color:'#64748b', fontWeight:600 }}>Complète</span>
+            <span style={{ fontSize:14, fontWeight:900, color:credits.complete > 0 ? '#0f2d3d' : '#94a3b8' }}>{credits.complete}</span>
           </div>
         </div>
-        {credits.document === 0 && credits.complete === 0 && (
-          <Link to="/dashboard/tarifs" onClick={onClose} style={{ display:'block', marginTop:8, fontSize:11, fontWeight:700, color:'#2a7d9c', textDecoration:'none', textAlign:'center' }}>+ Recharger des crédits</Link>
-        )}
+        <Link to="/dashboard/tarifs" onClick={onClose} style={{ display:'block', marginTop:8, fontSize:11, fontWeight:700, color:'#2a7d9c', textDecoration:'none', textAlign:'center' }}>
+          {credits.document === 0 && credits.complete === 0 ? '+ Acheter une analyse' : '+ Recharger'}
+        </Link>
       </div>
 
       {/* Nav */}
@@ -383,6 +383,11 @@ function HomeView() {
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
   const credits = MOCK_CREDITS; // TODO: remplacer par Supabase après Stripe
   const hasAnalyses = analyses.length > 0;
+  const [freePreviewUsedHome, setFreePreviewUsedHome] = useState<boolean>(true);
+
+  useEffect(() => {
+    checkFreePreviewUsed().then(used => setFreePreviewUsedHome(used));
+  }, []);
 
   // Stats calculées
   const totalAnalyses = analyses.length;
@@ -404,6 +409,23 @@ function HomeView() {
           {!hasAnalyses ? 'Bienvenue sur Analymo. Lancez votre première analyse dès maintenant.' : 'Bienvenue sur votre espace Analymo.'}
         </p>
       </div>
+
+      {/* ── Bandeau analyse offerte (HomeView) */}
+      {!freePreviewUsedHome && (
+        <div style={{ display:'flex', alignItems:'center', gap:14, padding:'18px 22px', borderRadius:16, background:'linear-gradient(135deg, #0f2d3d, #1a5068)', boxShadow:'0 4px 20px rgba(15,45,61,0.18)', position:'relative', overflow:'hidden' }}>
+          <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:'rgba(42,125,156,0.2)', pointerEvents:'none' }}/>
+          <div style={{ width:44, height:44, borderRadius:12, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <Sparkles size={20} style={{ color:'#fff' }}/>
+          </div>
+          <div style={{ flex:1, position:'relative' }}>
+            <div style={{ fontSize:14, fontWeight:800, color:'#fff', marginBottom:3 }}>1 analyse offerte 🎁</div>
+            <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.5 }}>Profitez d'une analyse gratuite afin de visualiser un aperçu du rapport et découvrir notre outil.</div>
+          </div>
+          <Link to="/dashboard/nouvelle-analyse" style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'10px 18px', borderRadius:10, background:'#fff', color:'#0f2d3d', fontSize:13, fontWeight:800, textDecoration:'none', whiteSpace:'nowrap', flexShrink:0, boxShadow:'0 2px 8px rgba(0,0,0,0.12)' }}>
+            <ArrowRight size={13}/> En profiter
+          </Link>
+        </div>
+      )}
 
       {/* ── Bloc bienvenue si aucune analyse */}
       {!hasAnalyses && (
@@ -846,13 +868,15 @@ function NouvelleAnalyse() {
 
       {/* Badge aperçu gratuit */}
       {freePreviewUsed === false && (
-        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 18px', borderRadius:12, background:'linear-gradient(135deg, rgba(240,250,244,1), rgba(240,248,255,1))', border:'1.5px solid #bbf7d0', marginBottom:28 }}>
-          <Sparkles size={16} style={{ color:'#16a34a', flexShrink:0 }}/>
-          <div style={{ flex:1 }}>
-            <span style={{ fontSize:13, fontWeight:800, color:'#166534' }}>1 aperçu gratuit disponible !</span>
-            <span style={{ fontSize:12, color:'#4ade80', fontWeight:500 }}> — Testez avant de payer. Documents supprimés immédiatement.</span>
+        <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 20px', borderRadius:14, background:'linear-gradient(135deg, #0f2d3d, #1a5068)', border:'none', marginBottom:28, boxShadow:'0 4px 16px rgba(15,45,61,0.18)' }}>
+          <div style={{ width:36, height:36, borderRadius:10, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <Sparkles size={16} style={{ color:'#fff'}}/>
           </div>
-          <span style={{ fontSize:10, fontWeight:700, color:'#16a34a', background:'#dcfce7', border:'1px solid #bbf7d0', padding:'3px 10px', borderRadius:100 }}>GRATUIT</span>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:13, fontWeight:800, color:'#fff', marginBottom:2 }}>1 analyse offerte 🎁</div>
+            <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.4 }}>Profitez d'une analyse gratuite afin de visualiser un aperçu du rapport et découvrir notre outil.</div>
+          </div>
+          <span style={{ fontSize:10, fontWeight:800, color:'#0f2d3d', background:'#fff', padding:'4px 12px', borderRadius:100, whiteSpace:'nowrap', flexShrink:0 }}>OFFERT</span>
         </div>
       )}
 
@@ -973,9 +997,9 @@ function NouvelleAnalyse() {
       )}
       {/* Badge aperçu si encore disponible */}
       {freePreviewUsed === false && (
-        <div style={{ padding:'10px 14px', borderRadius:10, background:'#f0fdf4', border:'1px solid #bbf7d0', display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-          <Sparkles size={13} style={{ color:'#16a34a', flexShrink:0 }}/>
-          <span style={{ fontSize:12, fontWeight:700, color:'#166534' }}>Votre aperçu gratuit sera généré — documents supprimés immédiatement après.</span>
+        <div style={{ padding:'12px 16px', borderRadius:12, background:'linear-gradient(135deg, #0f2d3d, #1a5068)', display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
+          <Sparkles size={13} style={{ color:'#fff', flexShrink:0 }}/>
+          <span style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.9)' }}>Votre analyse offerte — aperçu du rapport généré gratuitement.</span>
         </div>
       )}
       <button onClick={freePreviewUsed === false ? lancerApercu : lancer} disabled={files.length===0}
@@ -1355,7 +1379,12 @@ function Compte() {
 
   useEffect(()=>{ supabase.auth.getUser().then(({data:{user:u}})=>{ if(u) setUser({name:u.user_metadata?.full_name||'',email:u.email||''}); }); },[]);
 
-  const save = async ()=>{ await supabase.auth.updateUser({data:{full_name:user.name}}); setSaved(true); setTimeout(()=>setSaved(false),3000); };
+  const save = async ()=>{
+    const { data: { user: u } } = await supabase.auth.getUser();
+    await supabase.auth.updateUser({ data: { full_name: user.name } });
+    if (u) await supabase.from('profiles').update({ full_name: user.name }).eq('id', u.id);
+    setSaved(true); setTimeout(()=>setSaved(false),3000);
+  };
 
   const changePwd = async () => {
     setPwdError(''); setPwdMsg('');
