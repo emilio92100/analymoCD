@@ -330,3 +330,40 @@ const MOCK_CREDITS = { document: 1, complete: 2 }
 - [ ] Google OAuth branding (publier app Google Cloud)
 - [ ] Page admin (voir tous les clients/analyses)
 - [ ] Récupérer de vrais témoignages utilisateurs pour les remettre sur la HomePage
+
+- [ ] ## 🔄 Session du 30 mars 2026 — suite (après-midi)
+
+### 📧 Email / Délivrabilité
+- CNAME `bnc3.analymo.fr → bnc3.mailjet.com` créé dans OVH ✅
+- Ticket support Mailjet ouvert pour activation Custom Return-Path (en attente de réponse)
+- Note : disponible uniquement sur comptes payants Mailjet — à confirmer avec leur support
+
+### 🖥 DashboardPage.tsx — modifications appliquées
+
+#### Bugs corrigés
+- `4,99€` → `4,90€` partout (7 endroits : MOCK_ANALYSES, useAnalyses, cartes HomeView, NouvelleAnalyse, Tarifs, FAQ Support, carte crédits)
+- Bouton Pack 3 Biens couleur `#7c3aed` (violet) → `#1a5068` (navy cohérent)
+- Compteur "Mes analyses" affichait `MOCK_ANALYSES.length` au lieu de `analyses.length` (vrai compte Supabase)
+- "Analyse en cours…" → "Traitement en cours…" (2 endroits — règle absolue)
+
+#### Topbar
+- Suppression du bouton "+ Nouvelle analyse" en haut à droite (trop répétitif)
+- Remplacé par un **indicateur de crédits** cliquable (`X simple | X complets`) → redirige vers `/dashboard/tarifs`
+
+#### HomeView (page d'accueil dashboard)
+- Quand 0 analyses : affiche un **bloc bienvenue navy** "Prêt à analyser votre premier bien ?" avec bouton "Lancer une analyse" + lien "Voir les tarifs"
+- Quand analyses existantes : les stats (totales, dernière, crédits) réapparaissent normalement
+- Suppression de la bande info crédits (redondante)
+
+#### Mon compte
+- Ajout section **changement de mot de passe** (avec validation longueur + correspondance)
+- Ajout section **historique des achats** (mock — prêt pour Stripe)
+- Ajout **zone de danger** avec confirmation avant suppression de compte
+
+#### Largeur des pages
+- `Mon compte`, `Support`, `Nouvelle analyse` n'ont plus de `maxWidth` interne restrictif → prennent toute la largeur disponible sur desktop
+
+### ⚠️ Points importants
+- `MOCK_CREDITS` toujours actif dans la Topbar pour afficher les crédits → à brancher sur Supabase après Stripe
+- Historique achats dans Mon compte = mock — à remplacer par vraies données Stripe/Supabase
+- La suppression de compte dans Mon compte déconnecte et redirige vers `/` mais ne supprime pas réellement le compte Supabase (à implémenter côté backend)
