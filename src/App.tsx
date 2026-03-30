@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import Navbar from './components/layout/Navbar';
@@ -14,6 +14,14 @@ import RapportPage from './pages/RapportPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -52,6 +60,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <SessionManager />
+      <ScrollToTop />
       <Routes>
         {/* Pages publiques */}
         <Route path="/" element={<PublicLayout><HomePage /></PublicLayout>} />
