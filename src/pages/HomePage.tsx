@@ -1,1277 +1,1835 @@
-import { useRef, useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { motion, useInView, AnimatePresence } from "framer-motion";
-import type { Variants } from "framer-motion";
+import { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowRight, CheckCircle, AlertTriangle, FileText,
-  Shield,
-  TrendingUp, Clock, Check, X, ChevronRight,
-  Building2, UserCheck, BadgeCheck, ShieldCheck, Trash2,
-  Download, Lock, Eye, ChevronDown,
-} from "lucide-react";
+  LayoutDashboard, Plus, FileText, GitCompare, User, LifeBuoy,
+  LogOut, Menu, X, ChevronDown, Search, Send, Bell,
+  ChevronRight, Building2, ExternalLink, ChevronLeft,
+  Shield, BarChart2, Clock, Upload, CheckCircle,
+  ShieldCheck, ArrowRight, Sparkles, AlertTriangle,
+  Download, CreditCard, Lock, Info, Star
+} from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { PROMPT_ANALYSE_COMPLETE, PROMPT_ANALYSE_SIMPLE, PROMPT_APERCU_COMPLET, PROMPT_APERCU_SIMPLE } from '../lib/prompts';
+import { createAnalyse, createApercu, updateAnalyseResult, updateApercuResult, markAnalyseFailed, markFreePreviewUsed, checkFreePreviewUsed, fetchAnalyses, type AnalyseDB } from '../lib/analyses';
 
-const up: Variants = {
-  hidden: { opacity: 0, y: 24 },
-  show: (i: number = 0) => ({
-    opacity: 1, y: 0,
-    transition: { duration: 0.55, delay: i * 0.09, ease: [0.22, 1, 0.36, 1] },
-  }),
+/* ══════════════════════════════════════════
+   TYPES
+══════════════════════════════════════════ */
+type AnalyseType = 'document' | 'complete';
+type AnalyseStatus = 'completed' | 'processing' | 'error';
+
+type Analyse = {
+  id: string;
+  type: AnalyseType;
+  status: AnalyseStatus;
+  nom_document?: string;
+  adresse_bien?: string;
+  score?: number;
+  recommandation?: string;
+  recommandationColor?: string;
+  date: string;
+  price: string;
+  is_preview?: boolean;        // true = aperçu gratuit non payé
+  document_names?: string[];   // noms des fichiers analysés
+  regeneration_deadline?: string;
 };
 
-function Reveal({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-50px" });
+type ApercuResult = {
+  titre: string;
+  recommandation_courte: string;
+  points_vigilance: string[];
+};
+
+type Credits = {
+  document: number;   // crédits analyse simple (4,90€)
+  complete: number;   // crédits analyse complète (19,90€+)
+};
+
+type AnalyseResult = {
+  titre: string;           // nom doc (simple) ou adresse (complète)
+  score?: number;
+  recommandation?: string;
+  resume: string;
+  points_forts: string[];
+  points_vigilance: string[];
+  risques_financiers?: string;
+  conclusion: string;
+};
+
+/* ══════════════════════════════════════════
+   MOCK DATA — à remplacer par Supabase
+══════════════════════════════════════════ */
+// Crédits disponibles de l'utilisateur
+const MOCK_CREDITS: Credits = {
+  document: 0,   // 0 crédit — branché après Stripe
+  complete: 0,   // 0 crédit — branché après Stripe
+};
+
+// Historique analyses
+const MOCK_ANALYSES: Analyse[] = [
+  {
+    id: '1',
+    type: 'complete',
+    status: 'completed',
+    adresse_bien: '12 rue de la Paix, 75002 Paris',
+    score: 8.2,
+    recommandation: 'Acheter',
+    recommandationColor: '#16a34a',
+    date: '24 mars 2026',
+    price: '19,90€',
+  },
+  {
+    id: '2',
+    type: 'document',
+    status: 'completed',
+    nom_document: 'PV_AG_2025_Mirabeau.pdf',
+    date: '19 mars 2026',
+    price: '4,90€',
+  },
+  {
+    id: '3',
+    type: 'complete',
+    status: 'processing',
+    adresse_bien: '7 quai de Saône, 69002 Lyon',
+    date: '26 mars 2026',
+    price: '29,90€',
+  },
+];
+
+/* ══════════════════════════════════════════
+   NAV
+══════════════════════════════════════════ */
+const navItems = [
+  { to: '/dashboard',                  icon: LayoutDashboard, label: 'Tableau de bord' },
+  { to: '/dashboard/analyses',         icon: FileText,        label: 'Mes analyses' },
+  { to: '/dashboard/compare',          icon: GitCompare,      label: 'Comparer mes biens' },
+  { to: '/dashboard/tarifs',            icon: CreditCard,      label: 'Tarifs' },
+  { to: '/dashboard/compte',           icon: User,            label: 'Mon compte' },
+  { to: '/dashboard/support',          icon: LifeBuoy,        label: 'Support / Aide' },
+];
+
+/* ══════════════════════════════════════════
+   HOOK
+══════════════════════════════════════════ */
+function useUser() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setName(user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0] || 'Utilisateur');
+        setEmail(user.email || '');
+      }
+    });
+  }, []);
+  return { name, email };
+}
+
+/* ─── HOOK ANALYSES ──────────────────────── */
+function useAnalyses() {
+  const [analyses, setAnalyses] = useState<Analyse[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const data = await fetchAnalyses();
+      const mapped: Analyse[] = data.map((a: AnalyseDB) => {
+        const result = a.result as Record<string, unknown> | null;
+        const score = result?.score as number | undefined;
+        const reco = result?.recommandation as string | undefined;
+        const recoColor = reco === 'Acheter' ? '#16a34a'
+          : reco === 'Négocier' ? '#d97706'
+          : reco === 'Risqué' ? '#dc2626'
+          : '#7c3aed';
+        return {
+          id: a.id,
+          type: (a.type === 'pack2' || a.type === 'pack3' ? 'complete' : a.type) as 'document' | 'complete',
+          status: (a.status === 'completed' ? 'completed'
+            : a.status === 'failed' ? 'error'
+            : 'processing') as 'completed' | 'processing' | 'error',
+          nom_document: a.type === 'document' ? a.title : undefined,
+          adresse_bien: a.type !== 'document' ? (a.address || a.title) : undefined,
+          score,
+          recommandation: reco,
+          recommandationColor: reco ? recoColor : undefined,
+          date: new Date(a.created_at).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' }),
+          price: a.type === 'document' ? '4,90€'
+            : a.type === 'complete' ? '19,90€'
+            : a.type === 'pack2' ? '29,90€'
+            : '39,90€',
+          is_preview: a.is_preview ?? false,
+          document_names: a.document_names || [],
+          regeneration_deadline: a.regeneration_deadline || undefined,
+        };
+      });
+      setAnalyses(mapped);
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  return { analyses, loading };
+}
+
+
+
+/* ══════════════════════════════════════════
+   SCORE BADGE
+══════════════════════════════════════════ */
+function ScoreBadge({ score, size = 'md' }: { score: number; size?: 'sm' | 'md' | 'lg' }) {
+  const color = score >= 7.5 ? '#16a34a' : score >= 5 ? '#d97706' : '#dc2626';
+  const bg    = score >= 7.5 ? '#f0fdf4' : score >= 5 ? '#fffbeb' : '#fef2f2';
+  const bord  = score >= 7.5 ? '#bbf7d0' : score >= 5 ? '#fde68a' : '#fecaca';
+  const fs    = size === 'lg' ? 52 : size === 'md' ? 18 : 14;
+  const pad   = size === 'lg' ? '12px 28px' : size === 'md' ? '5px 12px' : '3px 9px';
   return (
-    <motion.div ref={ref} variants={up} initial="hidden" animate={inView ? "show" : "hidden"} custom={delay} className={className}>
-      {children}
-    </motion.div>
+    <span style={{ display:'inline-flex', alignItems:'baseline', gap:2, padding:pad, borderRadius:10, background:bg, border:`1.5px solid ${bord}`, fontSize:fs, fontWeight:900, color, letterSpacing:'-0.01em', flexShrink:0 }}>
+      {score.toFixed(1)}<span style={{ fontSize: fs * 0.55, fontWeight:600, opacity:0.65 }}>/10</span>
+    </span>
   );
 }
 
-function SectionTitle({ label, title, accent, sub }: { label: string; title: string; accent: string; sub?: string }) {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-50px" });
+/* ══════════════════════════════════════════
+   CREDITS DISPLAY
+══════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════
+   SIDEBAR
+══════════════════════════════════════════ */
+function Sidebar({ onClose }: { onClose?: () => void }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { name, email } = useUser();
+  const handleLogout = async () => { await supabase.auth.signOut(); navigate('/'); };
+  const credits = MOCK_CREDITS;
+
   return (
-    <div ref={ref} className="text-center mb-10 md:mb-16 px-2">
-      <motion.p initial={{ opacity: 0, y: 10 }} animate={inView ? { opacity: 1, y: 0 } : {}}
-        className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.22em] mb-4">{label}</motion.p>
-      <motion.h2 initial={{ opacity: 0, y: 20 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ delay: 0.07 }}
-        className="text-[clamp(28px,5.5vw,72px)] font-black tracking-[-0.03em] leading-[1.08] text-[#0f172a] mb-4">
-        {title}{' '}
-        <span className="relative inline-block max-w-fit">
-          <span className="text-[#2a7d9c]">{accent}</span>
-          <motion.span initial={{ scaleX: 0 }} animate={inView ? { scaleX: 1 } : {}} transition={{ duration: 2.5, delay: 0.2, ease: [0.22,1,0.36,1] }}
-            className="absolute -bottom-1 left-0 right-0 h-[4px] bg-[#2a7d9c]/25 rounded-full origin-left block" />
-        </span>
-      </motion.h2>
-      {sub && (
-        <motion.p initial={{ opacity: 0 }} animate={inView ? { opacity: 1 } : {}} transition={{ delay: 0.2 }}
-          className="text-base md:text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed">{sub}</motion.p>
+    <aside style={{ width:260, minHeight:'100vh', height:'100%', background:'#fff', display:'flex', flexDirection:'column', borderRight:'1px solid #edf2f7', boxShadow:'2px 0 16px rgba(15,45,61,0.05)' }}>
+      {/* Logo */}
+      <div style={{ height:68, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 20px', borderBottom:'1px solid #f0f5f9', flexShrink:0 }}>
+        <Link to="/" onClick={onClose}><img src="/logo.png" alt="Analymo" style={{ height:28, objectFit:'contain' }}/></Link>
+        {onClose && <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'#94a3b8', padding:4 }}><X size={18}/></button>}
+      </div>
+
+      {/* CTA */}
+      <div style={{ padding:'16px 14px 10px' }}>
+        <Link to="/dashboard/nouvelle-analyse" onClick={onClose}
+          style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'12px', borderRadius:12, background:'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color:'#fff', textDecoration:'none', fontSize:14, fontWeight:700, boxShadow:'0 4px 14px rgba(42,125,156,0.3)', transition:'all 0.2s' }}
+          onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 6px 20px rgba(42,125,156,0.42)'; el.style.transform='translateY(-1px)'; }}
+          onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 4px 14px rgba(42,125,156,0.3)'; el.style.transform='translateY(0)'; }}>
+          <Plus size={15} strokeWidth={2.5}/> Nouvelle analyse
+        </Link>
+      </div>
+
+      {/* Crédits mini */}
+      <div style={{ margin:'0 14px 8px', padding:'12px', borderRadius:10, background:'#f8fafc', border:'1px solid #edf2f7' }}>
+        <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.12em', marginBottom:8 }}>MES ANALYSES</div>
+        <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 8px', borderRadius:8, background:'#f8fafc', border:'1px solid #edf2f7' }}>
+            <span style={{ fontSize:11, color:'#64748b', fontWeight:600 }}>Document</span>
+            <span style={{ fontSize:14, fontWeight:900, color:credits.document > 0 ? '#2a7d9c' : '#94a3b8' }}>{credits.document}</span>
+          </div>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 8px', borderRadius:8, background:'#f8fafc', border:'1px solid #edf2f7' }}>
+            <span style={{ fontSize:11, color:'#64748b', fontWeight:600 }}>Complète</span>
+            <span style={{ fontSize:14, fontWeight:900, color:credits.complete > 0 ? '#0f2d3d' : '#94a3b8' }}>{credits.complete}</span>
+          </div>
+        </div>
+        <Link to="/dashboard/tarifs" onClick={onClose} style={{ display:'block', marginTop:8, fontSize:11, fontWeight:700, color:'#2a7d9c', textDecoration:'none', textAlign:'center' }}>
+          {credits.document === 0 && credits.complete === 0 ? '+ Acheter une analyse' : '+ Recharger'}
+        </Link>
+      </div>
+
+      {/* Nav */}
+      <nav style={{ flex:1, padding:'4px 10px', display:'flex', flexDirection:'column', gap:1, overflowY:'auto' }}>
+        <p style={{ fontSize:10, fontWeight:700, color:'#b0bec5', letterSpacing:'0.14em', padding:'8px 10px 5px', textTransform:'uppercase' }}>Menu</p>
+        {navItems.map(item => {
+          const Icon = item.icon;
+          const active = location.pathname === item.to;
+          return (
+            <Link key={item.to} to={item.to} onClick={onClose}
+              style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:10, textDecoration:'none', fontSize:13.5, fontWeight:active?700:500, color:active?'#0f2d3d':'#64748b', background:active?'#f0f7fb':'transparent', transition:'all 0.15s', position:'relative' }}
+              onMouseOver={e=>{ if(!active)(e.currentTarget as HTMLElement).style.background='#f8fafc'; }}
+              onMouseOut={e=>{ if(!active)(e.currentTarget as HTMLElement).style.background='transparent'; }}>
+              {active && <div style={{ position:'absolute', left:0, top:'20%', bottom:'20%', width:3, borderRadius:99, background:'#2a7d9c' }}/>}
+              <Icon size={16} style={{ color:active?'#2a7d9c':'#94a3b8', flexShrink:0 }}/>{item.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* User */}
+      <div style={{ padding:'10px 14px 16px', borderTop:'1px solid #f0f5f9', flexShrink:0 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:10, background:'#f8fafc', border:'1px solid #edf2f7' }}>
+          <div style={{ width:34, height:34, borderRadius:'50%', flexShrink:0, background:'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:'#fff' }}>
+            {(name.charAt(0)||'U').toUpperCase()}
+          </div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:'#0f172a', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name||'…'}</div>
+            <div style={{ fontSize:11, color:'#94a3b8', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{email}</div>
+          </div>
+          <button onClick={handleLogout} title="Déconnexion" style={{ background:'none', border:'none', cursor:'pointer', color:'#cbd5e1', padding:4, transition:'color 0.15s', flexShrink:0 }}
+            onMouseOver={e=>(e.currentTarget.style.color='#ef4444')} onMouseOut={e=>(e.currentTarget.style.color='#cbd5e1')}>
+            <LogOut size={14}/>
+          </button>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+/* ══════════════════════════════════════════
+   TOPBAR
+══════════════════════════════════════════ */
+function Topbar({ onMenuClick, title }: { onMenuClick:()=>void; title:string }) {
+  return (
+    <header style={{ height:68, background:'#fff', borderBottom:'1px solid #edf2f7', display:'flex', alignItems:'center', padding:'0 24px', gap:12, position:'sticky', top:0, zIndex:40, flexShrink:0 }}>
+      <button className="mobile-menu-btn" onClick={onMenuClick} style={{ background:'none', border:'none', cursor:'pointer', color:'#0f2d3d', padding:4, display:'none' }}><Menu size={20}/></button>
+      <p style={{ flex:1, fontSize:16, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em', margin:0 }}>{title}</p>
+      <div className="topbar-cta" style={{ display:'flex', alignItems:'center', gap:8 }}>
+        <Link to="/dashboard/tarifs" style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:9, background:'#f0f7fb', border:'1px solid #dbeafe', textDecoration:'none' }}>
+          <span style={{ fontSize:12, fontWeight:700, color:'#2a7d9c' }}>{MOCK_CREDITS.document} simple</span>
+          <span style={{ width:1, height:12, background:'#cbd5e1' }}/>
+          <span style={{ fontSize:12, fontWeight:700, color:'#0f2d3d' }}>{MOCK_CREDITS.complete} complet{MOCK_CREDITS.complete > 1 ? 's' : ''}</span>
+        </Link>
+      </div>
+      <button style={{ width:36, height:36, borderRadius:9, background:'#f8fafc', border:'1px solid #edf2f7', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#94a3b8' }}><Bell size={15}/></button>
+    </header>
+  );
+}
+
+/* ══════════════════════════════════════════
+   ROOT LAYOUT
+══════════════════════════════════════════ */
+export default function DashboardPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) navigate('/connexion');
+    });
+  }, [navigate]);
+
+  const title = navItems.find(i => i.to === location.pathname)?.label || 'Mon espace';
+
+  return (
+    <div style={{ display:'flex', minHeight:'100vh', background:'#f5f9fb', fontFamily:"'DM Sans', system-ui, sans-serif" }}>
+      <div className="desktop-sidebar" style={{ width:260, flexShrink:0 }}>
+        <div style={{ position:'fixed', top:0, left:0, width:260, height:'100vh', zIndex:50, overflowY:'auto' }}>
+          <Sidebar/>
+        </div>
+      </div>
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} style={{ position:'fixed', inset:0, zIndex:200 }}>
+            <div onClick={()=>setMobileOpen(false)} style={{ position:'absolute', inset:0, background:'rgba(15,45,61,0.35)', backdropFilter:'blur(4px)' }}/>
+            <motion.div initial={{ x:-260 }} animate={{ x:0 }} exit={{ x:-260 }} transition={{ type:'spring', stiffness:320, damping:32 }}
+              style={{ position:'absolute', left:0, top:0, bottom:0, width:260 }}>
+              <Sidebar onClose={()=>setMobileOpen(false)}/>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0 }}>
+        <Topbar onMenuClick={()=>setMobileOpen(true)} title={title}/>
+        <main style={{ flex:1, padding:'28px 20px', overflowX:'hidden' }}>
+          <div style={{ maxWidth:1040, margin:'0 auto' }}>
+            <DashboardContent path={location.pathname}/>
+          </div>
+        </main>
+      </div>
+      <style>{`
+        @media (max-width: 767px) {
+          .desktop-sidebar { display: none !important; }
+          .mobile-menu-btn { display: flex !important; }
+          .topbar-cta { display: none !important; }
+          .stats-grid { grid-template-columns: 1fr 1fr !important; }
+          .action-grid { grid-template-columns: 1fr !important; }
+          .compare-grid { grid-template-columns: 1fr !important; }
+          .result-grid { grid-template-columns: 1fr !important; }
+          .type-grid { grid-template-columns: 1fr !important; }
+          .credit-detail { flex-direction: column !important; }
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+        @keyframes shimmer { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
+      `}</style>
+    </div>
+  );
+}
+
+function DashboardContent({ path }: { path:string }) {
+  if (path === '/dashboard/nouvelle-analyse') return <NouvelleAnalyse/>;
+  if (path === '/dashboard/tarifs')           return <Tarifs/>;
+  if (path === '/dashboard/analyses')          return <MesAnalyses/>;
+  if (path === '/dashboard/compare')           return <Compare/>;
+  if (path === '/dashboard/compte')            return <Compte/>;
+  if (path === '/dashboard/support')           return <Support/>;
+  return <HomeView/>;
+}
+
+/* ══════════════════════════════════════════
+   HOME VIEW
+══════════════════════════════════════════ */
+function HomeView() {
+  const { name } = useUser();
+  const { analyses } = useAnalyses();
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
+  const credits = MOCK_CREDITS; // TODO: remplacer par Supabase après Stripe
+  const hasAnalyses = analyses.length > 0;
+  const [freePreviewUsedHome, setFreePreviewUsedHome] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    checkFreePreviewUsed().then(used => setFreePreviewUsedHome(used));
+  }, []);
+
+  // Stats calculées
+  const totalAnalyses = analyses.length;
+  const lastAnalyse = [...analyses].sort((a: Analyse, b: Analyse) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+  const completedComplete = analyses.filter(a => a.type === 'complete' && a.status === 'completed' && a.score != null);
+  const avgScore = completedComplete.length > 0
+    ? (completedComplete.reduce((s: number, a: Analyse) => s + (a.score||0), 0) / completedComplete.length).toFixed(1)
+    : null;
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:24, animation:'fadeUp 0.35s ease both' }}>
+
+      {/* ── Greeting */}
+      <div>
+        <h1 style={{ fontSize:'clamp(20px,2.5vw,28px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:4 }}>
+          {greeting}{name ? `, ${name}` : ''} 👋
+        </h1>
+        <p style={{ fontSize:14, color:'#64748b' }}>
+          {!hasAnalyses ? 'Bienvenue sur Analymo. Lancez votre première analyse dès maintenant.' : 'Bienvenue sur votre espace Analymo.'}
+        </p>
+      </div>
+
+      {/* ── Bandeau analyse offerte (HomeView) */}
+      {freePreviewUsedHome === false && (
+        <div style={{ display:'flex', alignItems:'center', gap:14, padding:'18px 22px', borderRadius:16, background:'linear-gradient(135deg, #0f2d3d, #1a5068)', boxShadow:'0 4px 20px rgba(15,45,61,0.18)', position:'relative', overflow:'hidden' }}>
+          <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:'rgba(42,125,156,0.2)', pointerEvents:'none' }}/>
+          <div style={{ width:44, height:44, borderRadius:12, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <Sparkles size={20} style={{ color:'#fff' }}/>
+          </div>
+          <div style={{ flex:1, position:'relative' }}>
+            <div style={{ fontSize:14, fontWeight:800, color:'#fff', marginBottom:3 }}>1 analyse offerte 🎁</div>
+            <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.5 }}>Profitez d'une analyse gratuite afin de visualiser un aperçu du rapport et découvrir notre outil.</div>
+          </div>
+          <Link to="/dashboard/nouvelle-analyse" style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'10px 18px', borderRadius:10, background:'#fff', color:'#0f2d3d', fontSize:13, fontWeight:800, textDecoration:'none', whiteSpace:'nowrap', flexShrink:0, boxShadow:'0 2px 8px rgba(0,0,0,0.12)' }}>
+            <ArrowRight size={13}/> En profiter
+          </Link>
+        </div>
+      )}
+
+      {/* ── Bloc bienvenue si aucune analyse */}
+      {!hasAnalyses && (
+        <div style={{ background:'linear-gradient(135deg, #0f2d3d 0%, #1a5068 100%)', borderRadius:20, padding:'28px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:20, flexWrap:'wrap', boxShadow:'0 8px 32px rgba(15,45,61,0.18)', position:'relative', overflow:'hidden' }}>
+          <div style={{ position:'absolute', top:-30, right:-30, width:160, height:160, borderRadius:'50%', background:'rgba(42,125,156,0.18)', pointerEvents:'none' }}/>
+          <div style={{ position:'absolute', bottom:-40, left:60, width:100, height:100, borderRadius:'50%', background:'rgba(255,255,255,0.04)', pointerEvents:'none' }}/>
+          <div style={{ flex:1, minWidth:200 }}>
+            <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.5)', letterSpacing:'0.14em', marginBottom:10 }}>POUR COMMENCER</div>
+            <h2 style={{ fontSize:'clamp(16px,2vw,20px)', fontWeight:900, color:'#fff', marginBottom:8, letterSpacing:'-0.02em' }}>Prêt à analyser votre premier bien ?</h2>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,0.6)', lineHeight:1.6, maxWidth:420 }}>
+              Déposez vos documents immobiliers et obtenez un rapport complet en moins de 2 minutes.
+            </p>
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:10, flexShrink:0 }}>
+            <Link to="/dashboard/nouvelle-analyse"
+              style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'13px 24px', borderRadius:12, background:'#fff', color:'#0f2d3d', fontSize:14, fontWeight:800, textDecoration:'none', boxShadow:'0 4px 16px rgba(0,0,0,0.15)', whiteSpace:'nowrap' }}>
+              <Plus size={15}/> Lancer une analyse
+            </Link>
+            <Link to="/dashboard/tarifs"
+              style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.6)', textDecoration:'none' }}>
+              Voir les tarifs <ArrowRight size={12}/>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bloc stats + crédits (uniquement si analyses existantes) */}
+      {hasAnalyses && <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:14 }} className="stats-grid">
+
+        {/* Analyses totales */}
+        <div style={{ background:'#fff', borderRadius:18, border:'1px solid #edf2f7', padding:'22px', boxShadow:'0 1px 6px rgba(0,0,0,0.04)', display:'flex', flexDirection:'column', gap:12 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <div style={{ width:40, height:40, borderRadius:11, background:'rgba(42,125,156,0.09)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <BarChart2 size={19} style={{ color:'#2a7d9c' }}/>
+            </div>
+            <span style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.1em' }}>ANALYSES TOTALES</span>
+          </div>
+          <div>
+            <div style={{ fontSize:40, fontWeight:900, color:'#0f172a', letterSpacing:'-0.03em', lineHeight:1, marginBottom:4 }}>{totalAnalyses}</div>
+            {avgScore && <div style={{ fontSize:12, color:'#16a34a', fontWeight:700 }}>Score moyen : {avgScore}/10</div>}
+            {!avgScore && <div style={{ fontSize:12, color:'#94a3b8' }}>Aucune analyse complète encore</div>}
+          </div>
+        </div>
+
+        {/* Dernière analyse */}
+        <div style={{ background:'#fff', borderRadius:18, border:'1px solid #edf2f7', padding:'22px', boxShadow:'0 1px 6px rgba(0,0,0,0.04)', display:'flex', flexDirection:'column', gap:12 }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <div style={{ width:40, height:40, borderRadius:11, background:'rgba(217,119,6,0.09)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <Clock size={19} style={{ color:'#d97706' }}/>
+            </div>
+            <span style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.1em' }}>DERNIÈRE ANALYSE</span>
+          </div>
+          {hasAnalyses && lastAnalyse ? (
+            <div>
+              <div style={{ fontSize:18, fontWeight:900, color:'#0f172a', letterSpacing:'-0.02em', marginBottom:4 }}>{lastAnalyse.date}</div>
+              <div style={{ fontSize:12, color:'#64748b', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                {lastAnalyse.type === 'complete' ? lastAnalyse.adresse_bien : lastAnalyse.nom_document}
+              </div>
+              <div style={{ marginTop:6 }}>
+                <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:6, background: lastAnalyse.type==='complete'?'rgba(15,45,61,0.08)':'rgba(42,125,156,0.08)', color:lastAnalyse.type==='complete'?'#0f2d3d':'#2a7d9c' }}>
+                  {lastAnalyse.type === 'complete' ? 'Analyse complète' : 'Analyse document'}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontSize:15, fontWeight:700, color:'#94a3b8' }}>Aucune encore</div>
+          )}
+        </div>
+
+        {/* Crédits restants — détaillé */}
+        <div style={{ background:'linear-gradient(145deg, #0f2d3d 0%, #1a5068 100%)', borderRadius:18, padding:'22px', boxShadow:'0 4px 20px rgba(15,45,61,0.18)', display:'flex', flexDirection:'column', gap:12, position:'relative', overflow:'hidden' }}>
+          <div style={{ position:'absolute', top:-20, right:-20, width:100, height:100, borderRadius:'50%', background:'rgba(42,125,156,0.2)', pointerEvents:'none' }}/>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <div style={{ width:40, height:40, borderRadius:11, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <CreditCard size={19} style={{ color:'#fff' }}/>
+            </div>
+            <span style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.45)', letterSpacing:'0.1em' }}>CRÉDITS RESTANTS</span>
+          </div>
+          <div className="credit-detail" style={{ display:'flex', gap:10 }}>
+            <div style={{ flex:1, padding:'10px', borderRadius:10, background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ fontSize:26, fontWeight:900, color:'#fff', lineHeight:1, marginBottom:3 }}>{credits.document}</div>
+              <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.5)', letterSpacing:'0.06em', marginBottom:2 }}>SIMPLE</div>
+              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>4,90€ / crédit</div>
+            </div>
+            <div style={{ flex:1, padding:'10px', borderRadius:10, background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ fontSize:26, fontWeight:900, color:'#fff', lineHeight:1, marginBottom:3 }}>{credits.complete}</div>
+              <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.5)', letterSpacing:'0.06em', marginBottom:2 }}>COMPLÈTE</div>
+              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>19,90€ / crédit</div>
+            </div>
+          </div>
+          <Link to="/dashboard/tarifs" style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.7)', textDecoration:'none', transition:'color 0.15s' }}
+            onMouseOver={e=>(e.currentTarget.style.color='#fff')} onMouseOut={e=>(e.currentTarget.style.color='rgba(255,255,255,0.7)')}>
+            Recharger des crédits <ArrowRight size={12}/>
+          </Link>
+        </div>
+      </div>}
+
+      {/* ── Section : Analyser un document */}
+      <div>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+          <h2 style={{ fontSize:16, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em' }}>Analyser un document</h2>
+          <span style={{ fontSize:12, color:'#94a3b8' }}>Choisissez selon votre besoin</span>
+        </div>
+        <div className="action-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+
+          {/* Analyse simple */}
+          <Link to="/dashboard/nouvelle-analyse?type=document" style={{ textDecoration:'none' }}>
+            <div style={{ background:'#fff', borderRadius:18, border:`1.5px solid ${credits.document > 0 ? '#edf2f7' : '#fecaca'}`, padding:'24px', cursor:'pointer', transition:'all 0.2s', height:'100%', boxSizing:'border-box' as const, position:'relative', opacity: credits.document > 0 ? 1 : 0.7 }}
+              onMouseOver={e=>{ if(credits.document > 0){ const el=e.currentTarget as HTMLElement; el.style.borderColor='#2a7d9c'; el.style.boxShadow='0 8px 24px rgba(42,125,156,0.1)'; el.style.transform='translateY(-2px)'; }}}
+              onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor=credits.document>0?'#edf2f7':'#fecaca'; el.style.boxShadow='none'; el.style.transform='translateY(0)'; }}>
+              {credits.document === 0 && (
+                <div style={{ position:'absolute', top:14, right:14, display:'flex', alignItems:'center', gap:4, fontSize:10, fontWeight:700, color:'#ef4444', background:'#fef2f2', border:'1px solid #fecaca', padding:'3px 8px', borderRadius:6 }}>
+                  <Lock size={10}/> 0 crédit
+                </div>
+              )}
+              {credits.document > 0 && (
+                <div style={{ position:'absolute', top:14, right:14, fontSize:10, fontWeight:700, color:'#16a34a', background:'#f0fdf4', border:'1px solid #bbf7d0', padding:'3px 8px', borderRadius:6 }}>
+                  {credits.document} crédit{credits.document > 1 ? 's' : ''} dispo
+                </div>
+              )}
+              <div style={{ width:50, height:50, borderRadius:14, background:'rgba(42,125,156,0.08)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:16 }}>
+                <FileText size={22} style={{ color:'#2a7d9c' }}/>
+              </div>
+              <div style={{ fontSize:17, fontWeight:800, color:'#0f172a', marginBottom:6 }}>Analyse d'un document</div>
+              <div style={{ fontSize:12, color:'#64748b', lineHeight:1.6, marginBottom:18 }}>
+                Un seul fichier analysé — PV d'AG, règlement, diagnostic ou appel de charges.
+              </div>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <span style={{ fontSize:13, fontWeight:700, color: credits.document > 0 ? '#2a7d9c' : '#94a3b8', display:'flex', alignItems:'center', gap:5 }}>
+                  {credits.document > 0 ? 'Commencer' : 'Acheter un crédit'} <ArrowRight size={14}/>
+                </span>
+                <span style={{ fontSize:20, fontWeight:900, color:'#0f172a' }}>4,90€</span>
+              </div>
+            </div>
+          </Link>
+
+          {/* Analyse complète */}
+          <Link to={credits.complete > 0 ? '/dashboard/nouvelle-analyse?type=complete' : '/tarifs'} style={{ textDecoration:'none' }}>
+            <div style={{ background:'linear-gradient(145deg, #0f2d3d 0%, #1a5068 100%)', borderRadius:18, padding:'24px', cursor:'pointer', transition:'all 0.2s', position:'relative', overflow:'hidden', height:'100%', boxSizing:'border-box' as const }}
+              onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 12px 36px rgba(15,45,61,0.3)'; el.style.transform='translateY(-2px)'; }}
+              onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='none'; el.style.transform='translateY(0)'; }}>
+              <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:'rgba(42,125,156,0.2)', pointerEvents:'none' }}/>
+              {/* Badge crédits */}
+              {credits.complete > 0 ? (
+                <div style={{ position:'absolute', top:14, right:14, fontSize:10, fontWeight:700, color:'#fff', background:'rgba(255,255,255,0.2)', border:'1px solid rgba(255,255,255,0.3)', padding:'3px 8px', borderRadius:6 }}>
+                  {credits.complete} crédit{credits.complete > 1 ? 's' : ''} dispo
+                </div>
+              ) : (
+                <div style={{ position:'absolute', top:14, right:14, display:'flex', alignItems:'center', gap:4, fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.7)', background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', padding:'3px 8px', borderRadius:6 }}>
+                  <Lock size={10}/> Acheter
+                </div>
+              )}
+              <div style={{ position:'absolute', top:14, left:14, fontSize:9, fontWeight:800, color:'#fff', background:'rgba(255,255,255,0.15)', border:'1px solid rgba(255,255,255,0.2)', padding:'3px 10px', borderRadius:100 }}>
+                ⭐ RECOMMANDÉ
+              </div>
+              <div style={{ width:50, height:50, borderRadius:14, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:16, marginTop:8 }}>
+                <ShieldCheck size={22} style={{ color:'#fff' }}/>
+              </div>
+              <div style={{ fontSize:17, fontWeight:800, color:'#fff', marginBottom:6 }}>Analyse complète d'un logement</div>
+              <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)', lineHeight:1.6, marginBottom:18 }}>
+                Tous les documents du bien — score /10, risques, recommandation Analymo.
+              </div>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <span style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.85)', display:'flex', alignItems:'center', gap:5 }}>
+                  {credits.complete > 0 ? 'Commencer l\'audit' : 'Acheter un crédit'} <ArrowRight size={14}/>
+                </span>
+                <span style={{ fontSize:20, fontWeight:900, color:'#fff' }}>19,90€</span>
+              </div>
+            </div>
+          </Link>
+        </div>
+      </div>
+
+      {/* ── Analyses récentes */}
+      <div>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+          <h2 style={{ fontSize:16, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em' }}>Analyses récentes</h2>
+          <Link to="/dashboard/analyses" style={{ fontSize:13, color:'#2a7d9c', textDecoration:'none', fontWeight:700, display:'flex', alignItems:'center', gap:3 }}>
+            Tout voir <ChevronRight size={14}/>
+          </Link>
+        </div>
+        {!hasAnalyses ? (
+          <EmptyAnalyses/>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            {MOCK_ANALYSES.slice(0,3).map(a=><AnalyseRow key={a.id} a={a}/>)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── EMPTY STATE ────────────────────────── */
+function EmptyAnalyses() {
+  return (
+    <div style={{ background:'#fff', borderRadius:18, border:'2px dashed #e2e8f0', padding:'48px 32px', textAlign:'center' }}>
+      <div style={{ width:64, height:64, borderRadius:18, background:'rgba(42,125,156,0.07)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
+        <Sparkles size={28} style={{ color:'#2a7d9c' }}/>
+      </div>
+      <h3 style={{ fontSize:17, fontWeight:800, color:'#0f172a', marginBottom:8 }}>Aucune analyse pour le moment</h3>
+      <p style={{ fontSize:13, color:'#94a3b8', marginBottom:24, lineHeight:1.6 }}>Déposez vos documents immobiliers et obtenez un rapport complet en moins de 2 minutes.</p>
+      <Link to="/dashboard/nouvelle-analyse"
+        style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'12px 24px', borderRadius:12, background:'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color:'#fff', fontSize:14, fontWeight:700, textDecoration:'none', boxShadow:'0 4px 16px rgba(15,45,61,0.2)' }}>
+        <Plus size={15}/> Lancer ma première analyse
+      </Link>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   ANALYSE ROW — avec logique nom/adresse
+══════════════════════════════════════════ */
+function AnalyseRow({ a }: { a:Analyse }) {
+  const isComplete = a.type === 'complete';
+  // Affichage du titre selon le type
+  const displayTitle = isComplete
+    ? (a.adresse_bien || 'Adresse en cours de détection…')
+    : (a.nom_document || 'Document sans nom');
+
+  const isPreview = a.is_preview ?? false;
+  const typeLabel = isPreview ? 'Aperçu gratuit' : isComplete ? 'Analyse Complète' : 'Analyse Document';
+  const typeBg    = isPreview ? 'rgba(22,163,74,0.07)' : isComplete ? 'rgba(15,45,61,0.07)' : 'rgba(42,125,156,0.07)';
+  const typeColor = isPreview ? '#16a34a' : isComplete ? '#0f2d3d' : '#2a7d9c';
+
+  return (
+    <div style={{ background:'#fff', borderRadius:13, border:'1px solid #edf2f7', padding:'14px 18px', display:'flex', alignItems:'center', gap:14, flexWrap:'wrap', boxShadow:'0 1px 3px rgba(0,0,0,0.03)', transition:'all 0.18s' }}
+      onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 4px 18px rgba(42,125,156,0.08)'; el.style.transform='translateY(-1px)'; el.style.borderColor='#dbeafe'; }}
+      onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 1px 3px rgba(0,0,0,0.03)'; el.style.transform='translateY(0)'; el.style.borderColor='#edf2f7'; }}>
+
+      {/* Icone */}
+      <div style={{ width:42, height:42, borderRadius:11, flexShrink:0, background:a.status==='processing'?'rgba(42,125,156,0.07)':`${isComplete?'#0f2d3d':'#2a7d9c'}0d`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+        {a.status==='processing'
+          ? <div style={{ width:17, height:17, borderRadius:'50%', border:'2.5px solid #2a7d9c', borderTopColor:'transparent', animation:'spin 0.85s linear infinite' }}/>
+          : isComplete ? <Building2 size={17} style={{ color:'#0f2d3d' }}/> : <FileText size={17} style={{ color:'#2a7d9c' }}/>}
+      </div>
+
+      {/* Info */}
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ fontSize:13.5, fontWeight:700, color:'#0f172a', marginBottom:4, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{displayTitle}</div>
+        <div style={{ fontSize:11, color:'#94a3b8', display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
+          <span style={{ background:typeBg, borderRadius:5, padding:'2px 7px', fontSize:10, fontWeight:700, color:typeColor }}>{typeLabel}</span>
+          <span>·</span><span>{a.date}</span>
+          <span>·</span><span style={{ fontWeight:700, color:'#64748b' }}>{a.price}</span>
+        </div>
+      </div>
+
+      {/* Droite */}
+      <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0, flexWrap:'wrap' }}>
+        {a.status === 'processing' ? (
+          <span style={{ fontSize:11, fontWeight:700, color:'#2a7d9c', background:'rgba(42,125,156,0.07)', padding:'4px 10px', borderRadius:7 }}>En cours…</span>
+        ) : (
+          <>
+            {/* Score uniquement pour analyse complète */}
+            {isComplete && a.score != null && <ScoreBadge score={a.score} size="sm"/>}
+            {a.recommandation && (
+              <span style={{ fontSize:11, fontWeight:700, color:a.recommandationColor, background:`${a.recommandationColor}10`, border:`1px solid ${a.recommandationColor}22`, padding:'4px 9px', borderRadius:7, whiteSpace:'nowrap' }}>{a.recommandation}</span>
+            )}
+            <Link to={`/dashboard/rapport?id=${a.id}`}
+              style={{ display:'flex', alignItems:'center', gap:4, padding:'6px 12px', borderRadius:8, background:'#f8fafc', border:'1px solid #edf2f7', fontSize:12, fontWeight:700, color:'#2a7d9c', cursor:'pointer', textDecoration:'none', whiteSpace:'nowrap', transition:'background 0.15s' }}
+              onMouseOver={e=>(e.currentTarget as HTMLElement).style.background='#e8f4f8'} onMouseOut={e=>(e.currentTarget as HTMLElement).style.background='#f8fafc'}>
+              <ExternalLink size={11}/> Rapport
+            </Link>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   NOUVELLE ANALYSE — avec logique crédits + API Claude
+══════════════════════════════════════════ */
+function NouvelleAnalyse() {
+  const credits = MOCK_CREDITS;
+  const [step, setStep] = useState<'choice'|'upload'|'analyse'|'apercu'|'result'>('choice');
+  const [type, setType] = useState<'document'|'complete'|null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [progress, setProgress] = useState(0);
+  const [progressMsg, setProgressMsg] = useState('');
+  const [result, setResult] = useState<AnalyseResult|null>(null);
+  const [apercu, setApercu] = useState<ApercuResult|null>(null);
+  const [apercuId, setApercuId] = useState<string|null>(null);
+  const [freePreviewUsed, setFreePreviewUsed] = useState<boolean|null>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    checkFreePreviewUsed().then(used => setFreePreviewUsed(used));
+  }, []);
+
+  const plans = {
+    document: { label:"Analyse d'un document",       price:'4,90€',  max:1,  desc:'Un seul fichier — PV d\'AG, règlement, diagnostic, appel de charges.', creditsKey:'document' as keyof Credits },
+    complete: { label:"Analyse complète d'un logement", price:'19,90€', max:20, desc:'Tous les documents du bien — score /10, risques, recommandation Analymo.', creditsKey:'complete' as keyof Credits },
+  };
+  const plan = type ? plans[type] : null;
+
+  const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res((r.result as string).split(',')[1]);
+      r.onerror = () => rej(new Error('Lecture impossible'));
+      r.readAsDataURL(file);
+    });
+
+  const extractText = async (file: File): Promise<string> => {
+    const b64 = await fileToBase64(file);
+    const isPdf = file.type === 'application/pdf';
+    const mediaType = isPdf ? 'application/pdf' : file.type as 'image/jpeg'|'image/png';
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514', max_tokens:2000,
+        messages:[{ role:'user', content:[
+          { type:isPdf?'document':'image', source:{ type:'base64', media_type:mediaType, data:b64 } },
+          { type:'text', text:'Extrais tout le texte de ce document immobilier de façon fidèle. Conserve les sections, données chiffrées et informations clés.' }
+        ]}]
+      })
+    });
+    const d = await res.json();
+    return d.content?.find((b:any)=>b.type==='text')?.text || '';
+  };
+
+  /* ── Lancer l'APERÇU GRATUIT */
+  const lancerApercu = async () => {
+    if (!files.length || !type) return;
+    setStep('analyse'); setError(''); setProgress(5); setProgressMsg('Lecture des documents…');
+
+    const docNames = files.map(f => f.name);
+    const analyseDB = await createApercu(type, files[0].name, docNames);
+    const analyseId = analyseDB?.id || null;
+
+    try {
+      const textes: string[] = [];
+      for (let i=0; i<files.length; i++) {
+        setProgressMsg(`Extraction document ${i+1}/${files.length}…`);
+        setProgress(10 + Math.floor((i/files.length)*30));
+        textes.push(`=== ${files[i].name} ===\n${await extractText(files[i])}`);
+      }
+      setProgress(50); setProgressMsg('Traitement en cours…');
+      const systemPrompt = type === 'complete' ? PROMPT_APERCU_COMPLET : PROMPT_APERCU_SIMPLE;
+
+      setProgress(70); setProgressMsg('Génération de votre aperçu…');
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST', headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({
+          model:'claude-sonnet-4-20250514', max_tokens:800,
+          system: systemPrompt,
+          messages:[{ role:'user', content:`Documents à analyser :\n\n${textes.join('\n\n').slice(0,8000)}` }]
+        })
+      });
+      setProgress(88); setProgressMsg('Finalisation…');
+      const d = await res.json();
+      const raw = d.content?.find((b:any)=>b.type==='text')?.text || '{}';
+      const parsed: ApercuResult = JSON.parse(raw.replace(/```json|```/g,'').trim());
+
+      if (analyseId) {
+        const isComplete = type === 'complete';
+        const title = parsed.titre || files[0].name;
+        const address = isComplete ? (parsed.titre || null) : null;
+        await updateApercuResult(analyseId, parsed as unknown as Record<string, unknown>, title, address);
+        await markFreePreviewUsed();
+      }
+
+      setProgress(100); setProgressMsg('Aperçu prêt !');
+      await new Promise(r => setTimeout(r, 400));
+
+      setApercu(parsed);
+      setApercuId(analyseId);
+      setFreePreviewUsed(true);
+      setStep('apercu');
+    } catch {
+      if (analyseId) await markAnalyseFailed(analyseId);
+      setError("Erreur lors de l'analyse. Vérifiez vos fichiers et réessayez.");
+      setStep('upload');
+    }
+  };
+
+  /* ── Lancer l'ANALYSE COMPLÈTE PAYANTE */
+  const lancer = async () => {
+    if (!files.length || !type) return;
+    setStep('analyse'); setError(''); setProgress(5); setProgressMsg('Lecture des documents…');
+
+    const docNames = files.map(f => f.name);
+    const analyseDB = await createAnalyse(type, files[0].name, docNames);
+    const analyseId = analyseDB?.id || null;
+
+    try {
+      const textes: string[] = [];
+      for (let i=0; i<files.length; i++) {
+        setProgressMsg(`Extraction document ${i+1}/${files.length}…`);
+        setProgress(10 + Math.floor((i/files.length)*30));
+        textes.push(`=== ${files[i].name} ===\n${await extractText(files[i])}`);
+      }
+      setProgress(50); setProgressMsg('Traitement en cours…');
+      const isComplete = type === 'complete';
+      const systemPrompt = isComplete ? PROMPT_ANALYSE_COMPLETE : PROMPT_ANALYSE_SIMPLE;
+
+      setProgress(70); setProgressMsg('Génération du rapport…');
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST', headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({
+          model:'claude-sonnet-4-20250514', max_tokens:1500,
+          system: systemPrompt,
+          messages:[{ role:'user', content:`Documents à analyser :\n\n${textes.join('\n\n').slice(0,8000)}` }]
+        })
+      });
+      setProgress(88); setProgressMsg('Finalisation…');
+      const d = await res.json();
+      const raw = d.content?.find((b:any)=>b.type==='text')?.text || '{}';
+      const parsed: AnalyseResult = JSON.parse(raw.replace(/```json|```/g,'').trim());
+
+      if (analyseId) {
+        const title = isComplete ? (parsed.titre || 'Bien analysé') : (parsed.titre || files[0].name);
+        const address = isComplete ? (parsed.titre || null) : null;
+        await updateAnalyseResult(analyseId, parsed as unknown as Record<string, unknown>, title, address, docNames);
+      }
+
+      setProgress(100); setProgressMsg('Rapport prêt !');
+      await new Promise(r => setTimeout(r, 500));
+
+      if (analyseId) {
+        window.location.href = `/dashboard/rapport?id=${analyseId}`;
+      } else {
+        setResult(parsed);
+        setStep('result');
+      }
+    } catch {
+      if (analyseId) await markAnalyseFailed(analyseId);
+      setError("Erreur lors de l'analyse. Vérifiez vos fichiers et réessayez.");
+      setStep('upload');
+    }
+  };
+
+  /* ── CHOICE */
+  if (step==='choice') return (
+    <div>
+      <Link to="/dashboard" style={{ fontSize:13, color:'#94a3b8', textDecoration:'none', display:'inline-flex', alignItems:'center', gap:4, marginBottom:24, fontWeight:600 }}><ChevronLeft size={14}/> Retour</Link>
+      <h1 style={{ fontSize:'clamp(22px,3vw,28px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:6 }}>Que souhaitez-vous analyser ?</h1>
+      <p style={{ fontSize:14, color:'#64748b', marginBottom:freePreviewUsed===false?16:32 }}>Choisissez le mode d'analyse adapté à votre besoin.</p>
+
+      {/* Badge aperçu gratuit */}
+      {freePreviewUsed === false && (
+        <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 20px', borderRadius:14, background:'linear-gradient(135deg, #0f2d3d, #1a5068)', border:'none', marginBottom:28, boxShadow:'0 4px 16px rgba(15,45,61,0.18)' }}>
+          <div style={{ width:36, height:36, borderRadius:10, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <Sparkles size={16} style={{ color:'#fff'}}/>
+          </div>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:13, fontWeight:800, color:'#fff', marginBottom:2 }}>1 analyse offerte 🎁</div>
+            <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.4 }}>Profitez d'une analyse gratuite afin de visualiser un aperçu du rapport et découvrir notre outil.</div>
+          </div>
+          <span style={{ fontSize:10, fontWeight:800, color:'#0f2d3d', background:'#fff', padding:'4px 12px', borderRadius:100, whiteSpace:'nowrap', flexShrink:0 }}>OFFERT</span>
+        </div>
+      )}
+
+      <div className="type-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
+        {/* Document simple */}
+        <button onClick={()=>{ setType('document'); setStep('upload'); }}
+          style={{ padding:'28px 24px', borderRadius:20, border:`1.5px solid ${credits.document>0?'#edf2f7':'#fecaca'}`, background:'#fff', cursor:'pointer', textAlign:'left', transition:'all 0.18s', position:'relative', boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}
+          onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor=credits.document>0?'#2a7d9c':'#fca5a5'; el.style.boxShadow='0 8px 28px rgba(42,125,156,0.1)'; el.style.transform='translateY(-2px)'; }}
+          onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor=credits.document>0?'#edf2f7':'#fecaca'; el.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'; el.style.transform='translateY(0)'; }}>
+          <div style={{ position:'absolute', top:14, right:14, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:6, background:credits.document>0?'#f0fdf4':'#fef2f2', color:credits.document>0?'#16a34a':'#ef4444', border:`1px solid ${credits.document>0?'#bbf7d0':'#fecaca'}` }}>
+            {credits.document > 0 ? `${credits.document} crédit${credits.document>1?'s':''}` : '0 crédit — Acheter'}
+          </div>
+          <div style={{ width:52, height:52, borderRadius:14, background:'rgba(42,125,156,0.08)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:18 }}>
+            <FileText size={24} style={{ color:'#2a7d9c' }}/>
+          </div>
+          <div style={{ fontSize:18, fontWeight:800, color:'#0f172a', marginBottom:8 }}>Analyse d'un document</div>
+          <div style={{ fontSize:13, color:'#64748b', lineHeight:1.6, marginBottom:20 }}>Un seul fichier — PV d'AG, règlement de copropriété, diagnostic ou appel de charges.</div>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <span style={{ fontSize:13, fontWeight:700, color:credits.document>0?'#2a7d9c':'#ef4444', display:'flex', alignItems:'center', gap:5 }}>
+              {credits.document>0?<><ArrowRight size={14}/> Commencer</>:<><Lock size={13}/> Acheter un crédit</>}
+            </span>
+            <span style={{ fontSize:22, fontWeight:900, color:'#0f172a' }}>4,90€</span>
+          </div>
+        </button>
+
+        {/* Analyse complète */}
+        <button onClick={()=>{ if(credits.complete>0){ setType('complete'); setStep('upload'); } else { window.location.href='/dashboard/tarifs'; } }}
+          style={{ padding:'28px 24px', borderRadius:20, border:'1.5px solid transparent', background:'linear-gradient(145deg, #0f2d3d, #1a5068)', cursor:'pointer', textAlign:'left', transition:'all 0.18s', position:'relative', overflow:'hidden', boxShadow:'0 4px 20px rgba(15,45,61,0.15)' }}
+          onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 12px 40px rgba(15,45,61,0.28)'; el.style.transform='translateY(-2px)'; }}
+          onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 4px 20px rgba(15,45,61,0.15)'; el.style.transform='translateY(0)'; }}>
+          <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:'rgba(42,125,156,0.2)', pointerEvents:'none' }}/>
+          <div style={{ position:'absolute', top:14, left:14, fontSize:9, fontWeight:800, color:'#fff', background:'rgba(255,255,255,0.15)', border:'1px solid rgba(255,255,255,0.2)', padding:'3px 10px', borderRadius:100 }}>⭐ RECOMMANDÉ</div>
+          <div style={{ position:'absolute', top:14, right:14, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:6, background:credits.complete>0?'rgba(255,255,255,0.15)':'rgba(239,68,68,0.25)', color:'#fff', border:'1px solid rgba(255,255,255,0.2)' }}>
+            {credits.complete>0 ? `${credits.complete} crédit${credits.complete>1?'s':''}` : '0 crédit — Acheter'}
+          </div>
+          <div style={{ width:52, height:52, borderRadius:14, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:18, marginTop:10 }}>
+            <ShieldCheck size={24} style={{ color:'#fff' }}/>
+          </div>
+          <div style={{ fontSize:18, fontWeight:800, color:'#fff', marginBottom:8 }}>Analyse complète d'un logement</div>
+          <div style={{ fontSize:13, color:'rgba(255,255,255,0.6)', lineHeight:1.6, marginBottom:20 }}>Tous les documents du bien — score /10, risques identifiés, recommandation Analymo.</div>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <span style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.85)', display:'flex', alignItems:'center', gap:5 }}>
+              {credits.complete>0?'Commencer l\'audit ':'Acheter un crédit '}<ArrowRight size={14}/>
+            </span>
+            <span style={{ fontSize:22, fontWeight:900, color:'#fff' }}>19,90€</span>
+          </div>
+        </button>
+      </div>
+
+      {/* Packs */}
+      <div className="type-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+        {[
+          { l:'Pack 2 biens', p:'29,90€', s:'2 crédits analyse complète', credits:'2 crédits complets' },
+          { l:'Pack 3 biens', p:'39,90€', s:'3 crédits analyse complète', credits:'3 crédits complets' },
+        ].map(pk=>(
+          <Link key={pk.l} to="/dashboard/tarifs" style={{ textDecoration:'none' }}>
+            <div style={{ background:'#fff', borderRadius:13, border:'1.5px solid #edf2f7', padding:'14px 18px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', transition:'all 0.15s' }}
+              onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor='rgba(42,125,156,0.3)'; }}
+              onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor='#edf2f7'; }}>
+              <div>
+                <div style={{ fontSize:13.5, fontWeight:800, color:'#0f172a', marginBottom:2 }}>{pk.l}</div>
+                <div style={{ fontSize:11, color:'#94a3b8' }}>{pk.s}</div>
+              </div>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ fontSize:15, fontWeight:900, color:'#0f172a' }}>{pk.p}</span>
+                <ArrowRight size={13} style={{ color:'#2a7d9c' }}/>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+
+  /* ── UPLOAD */
+  if (step==='upload' && plan) return (
+    <div style={{ maxWidth:640, margin:'0 auto' }}>
+      <button onClick={()=>{ setStep('choice'); setFiles([]); }} style={{ fontSize:13, color:'#94a3b8', background:'none', border:'none', cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4, marginBottom:24, fontWeight:600 }}><ChevronLeft size={14}/> Retour</button>
+      <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:24, padding:'16px 18px', background:'#fff', borderRadius:14, border:'1px solid #edf2f7' }}>
+        <div style={{ width:40, height:40, borderRadius:10, background:'rgba(42,125,156,0.08)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+          {type==='complete'?<ShieldCheck size={19} style={{ color:'#2a7d9c' }}/>:<FileText size={19} style={{ color:'#2a7d9c' }}/>}
+        </div>
+        <div style={{ flex:1 }}><div style={{ fontSize:14, fontWeight:800, color:'#0f172a' }}>{plan.label}</div><div style={{ fontSize:12, color:'#94a3b8' }}>{plan.desc}</div></div>
+        <span style={{ fontSize:16, fontWeight:900, color:'#2a7d9c', flexShrink:0 }}>{plan.price}</span>
+      </div>
+      {error && (
+        <div style={{ padding:'12px 16px', borderRadius:10, background:'#fef2f2', border:'1px solid #fecaca', display:'flex', gap:10, alignItems:'center', marginBottom:16 }}>
+          <AlertTriangle size={15} color="#dc2626" style={{ flexShrink:0 }}/><span style={{ fontSize:13, color:'#dc2626' }}>{error}</span>
+        </div>
+      )}
+      <div onClick={()=>document.getElementById('file-input')?.click()}
+        style={{ padding:'52px 32px', borderRadius:18, border:'2px dashed #dde6ec', background:'#fafcfe', textAlign:'center', cursor:'pointer', marginBottom:14, transition:'all 0.18s' }}
+        onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor='#2a7d9c'; el.style.background='rgba(42,125,156,0.02)'; }}
+        onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor='#dde6ec'; el.style.background='#fafcfe'; }}
+        onDragOver={e=>{ e.preventDefault(); (e.currentTarget as HTMLElement).style.borderColor='#2a7d9c'; }}
+        onDrop={e=>{ e.preventDefault(); setFiles(prev=>[...prev,...Array.from(e.dataTransfer.files)].slice(0,plan.max)); }}>
+        <input id="file-input" type="file" multiple={plan.max>1} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style={{ display:'none' }}
+          onChange={e=>{ if(e.target.files) setFiles(prev=>[...prev,...Array.from(e.target.files!)].slice(0,plan.max)); }}/>
+        <div style={{ width:54, height:54, borderRadius:15, background:'rgba(42,125,156,0.08)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 14px' }}>
+          <Upload size={24} style={{ color:'#2a7d9c' }}/>
+        </div>
+        <div style={{ fontSize:15, fontWeight:700, color:'#0f172a', marginBottom:5 }}>Déposez vos documents ici</div>
+        <div style={{ fontSize:13, color:'#94a3b8' }}>ou <span style={{ color:'#2a7d9c', fontWeight:700 }}>cliquez pour sélectionner</span></div>
+        <div style={{ fontSize:12, color:'#cbd5e1', marginTop:7 }}>PDF, Word, JPG/PNG · Max {plan.max} fichier{plan.max>1?'s':''}</div>
+      </div>
+      {files.length>0 && (
+        <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:20 }}>
+          {files.map((f,i)=>(
+            <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:10, background:'#fff', border:'1px solid #edf2f7' }}>
+              <FileText size={14} color="#2a7d9c" style={{ flexShrink:0 }}/>
+              <span style={{ flex:1, fontSize:13, fontWeight:600, color:'#0f172a', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{f.name}</span>
+              <span style={{ fontSize:11, color:'#94a3b8', flexShrink:0 }}>{(f.size/1024).toFixed(0)} Ko</span>
+              <CheckCircle size={13} color="#16a34a" style={{ flexShrink:0 }}/>
+              <button onClick={()=>setFiles(prev=>prev.filter((_,idx)=>idx!==i))} style={{ background:'none', border:'none', cursor:'pointer', color:'#94a3b8', fontSize:18, lineHeight:1, flexShrink:0 }}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+      {/* Badge aperçu si encore disponible */}
+      {freePreviewUsed === false && (
+        <div style={{ padding:'12px 16px', borderRadius:12, background:'linear-gradient(135deg, #0f2d3d, #1a5068)', display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
+          <Sparkles size={13} style={{ color:'#fff', flexShrink:0 }}/>
+          <span style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.9)' }}>Votre analyse offerte — aperçu du rapport généré gratuitement.</span>
+        </div>
+      )}
+      <button onClick={freePreviewUsed === false ? lancerApercu : lancer} disabled={files.length===0}
+        style={{ width:'100%', padding:'14px', borderRadius:12, border:'none', background:files.length>0?'linear-gradient(135deg, #2a7d9c, #0f2d3d)':'#e2e8f0', color:files.length>0?'#fff':'#94a3b8', fontSize:15, fontWeight:800, cursor:files.length>0?'pointer':'default', boxShadow:files.length>0?'0 4px 18px rgba(15,45,61,0.2)':'none', display:'flex', alignItems:'center', justifyContent:'center', gap:8, transition:'all 0.15s' }}>
+        <Sparkles size={16}/> {freePreviewUsed === false ? 'Générer mon aperçu gratuit' : 'Analyser'} {files.length>0?`(${files.length} fichier${files.length>1?'s':''})` : ''}
+      </button>
+    </div>
+  );
+
+  /* ── LOADING */
+  if (step==='analyse') return (
+    <div style={{ maxWidth:480, margin:'80px auto 0', textAlign:'center' }}>
+      <div style={{ width:80, height:80, borderRadius:'50%', background:'linear-gradient(135deg, rgba(42,125,156,0.1), rgba(15,45,61,0.07))', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 24px', animation:'float 3s ease-in-out infinite' }}>
+        <Sparkles size={32} style={{ color:'#2a7d9c' }}/>
+      </div>
+      <h2 style={{ fontSize:22, fontWeight:800, color:'#0f172a', marginBottom:8 }}>Traitement en cours…</h2>
+      <p style={{ fontSize:14, color:'#64748b', marginBottom:32 }}>{progressMsg}</p>
+      <div style={{ height:8, borderRadius:99, background:'#edf2f7', overflow:'hidden', marginBottom:8 }}>
+        <div style={{ height:'100%', borderRadius:99, background:'linear-gradient(90deg, #2a7d9c, #0f2d3d)', width:`${progress}%`, transition:'width 0.4s ease' }}/>
+      </div>
+      <div style={{ fontSize:13, color:'#94a3b8', fontWeight:600 }}>{progress}%</div>
+    </div>
+  );
+
+  /* ── RESULT */
+  if (step==='result' && result) {
+    const isComplete = type === 'complete';
+    const sc = result.score ?? 0;
+    const scoreColor = sc >= 7.5 ? '#16a34a' : sc >= 5 ? '#d97706' : '#dc2626';
+    const recColor = result.recommandation==='Acheter'?'#16a34a':result.recommandation==='Négocier'?'#d97706':'#dc2626';
+    return (
+      <div style={{ maxWidth:760, margin:'0 auto' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:28, flexWrap:'wrap', gap:14 }}>
+          <div>
+            <div style={{ fontSize:10, fontWeight:800, color:'#2a7d9c', letterSpacing:'0.14em', marginBottom:6 }}>RAPPORT ANALYMO</div>
+            <h1 style={{ fontSize:'clamp(16px,2.5vw,22px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.02em' }}>{result.titre}</h1>
+          </div>
+          <div style={{ display:'flex', gap:10 }}>
+            <button onClick={()=>{ setStep('choice'); setType(null); setFiles([]); setResult(null); }} style={{ padding:'9px 18px', borderRadius:10, border:'1.5px solid #edf2f7', background:'#fff', fontSize:13, fontWeight:700, color:'#64748b', cursor:'pointer' }}>Nouvelle analyse</button>
+            <button style={{ padding:'9px 18px', borderRadius:10, border:'none', background:'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
+              <Download size={13}/> PDF
+            </button>
+          </div>
+        </div>
+        {isComplete && result.score != null && (
+          <div className="result-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:16 }}>
+            <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'24px', textAlign:'center' }}>
+              <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.1em', marginBottom:12 }}>SCORE GLOBAL</div>
+              <div style={{ fontSize:56, fontWeight:900, color:scoreColor, letterSpacing:'-0.03em', lineHeight:1, marginBottom:4 }}>{result.score.toFixed(1)}</div>
+              <div style={{ fontSize:14, color:'#94a3b8' }}>/ 10</div>
+            </div>
+            <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'24px', textAlign:'center' }}>
+              <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.1em', marginBottom:12 }}>RECOMMANDATION</div>
+              <div style={{ display:'inline-block', padding:'8px 24px', borderRadius:12, background:`${recColor}10`, border:`2px solid ${recColor}25`, fontSize:22, fontWeight:900, color:recColor, marginBottom:8 }}>{result.recommandation}</div>
+              {result.risques_financiers && <div style={{ fontSize:12, color:'#94a3b8', marginTop:8 }}>{result.risques_financiers}</div>}
+            </div>
+          </div>
+        )}
+        <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'20px 22px', marginBottom:14 }}>
+          <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.1em', marginBottom:10 }}>RÉSUMÉ</div>
+          <p style={{ fontSize:14, color:'#374151', lineHeight:1.75 }}>{result.resume}</p>
+        </div>
+        <div className="result-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
+          <div style={{ background:'#f0fdf4', borderRadius:16, border:'1px solid #d1fae5', padding:'18px 20px' }}>
+            <div style={{ fontSize:10, fontWeight:700, color:'#16a34a', letterSpacing:'0.1em', marginBottom:12 }}>✓ POINTS FORTS</div>
+            {result.points_forts.map((p,i)=>(
+              <div key={i} style={{ display:'flex', gap:8, marginBottom:8 }}><CheckCircle size={13} color="#16a34a" style={{ flexShrink:0, marginTop:2 }}/><span style={{ fontSize:13, color:'#166534', lineHeight:1.5 }}>{p}</span></div>
+            ))}
+          </div>
+          <div style={{ background:'#fffbeb', borderRadius:16, border:'1px solid #fde68a', padding:'18px 20px' }}>
+            <div style={{ fontSize:10, fontWeight:700, color:'#d97706', letterSpacing:'0.1em', marginBottom:12 }}>⚠ POINTS DE VIGILANCE</div>
+            {result.points_vigilance.map((p,i)=>(
+              <div key={i} style={{ display:'flex', gap:8, marginBottom:8 }}><AlertTriangle size={13} color="#d97706" style={{ flexShrink:0, marginTop:2 }}/><span style={{ fontSize:13, color:'#92400e', lineHeight:1.5 }}>{p}</span></div>
+            ))}
+          </div>
+        </div>
+        <div style={{ background:'linear-gradient(135deg, #0f2d3d, #1a5068)', borderRadius:16, padding:'20px 22px' }}>
+          <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.45)', letterSpacing:'0.1em', marginBottom:10 }}>AVIS ANALYMO</div>
+          <p style={{ fontSize:14, color:'rgba(255,255,255,0.9)', lineHeight:1.75, fontWeight:500 }}>{result.conclusion}</p>
+        </div>
+      </div>
+    );
+  }
+  /* ── APERÇU GRATUIT */
+  if (step==='apercu' && apercu) {
+    const isComplete = type === 'complete';
+    return (
+      <div style={{ maxWidth:640, margin:'0 auto', animation:'fadeUp 0.35s ease both' }}>
+        {/* Header */}
+        <div style={{ marginBottom:24 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+            <span style={{ fontSize:10, fontWeight:800, color:'#16a34a', letterSpacing:'0.14em', background:'#f0fdf4', border:'1px solid #bbf7d0', padding:'3px 10px', borderRadius:100 }}>APERÇU GRATUIT</span>
+          </div>
+          <h1 style={{ fontSize:'clamp(18px,2.5vw,24px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.02em', marginBottom:4 }}>{apercu.titre}</h1>
+          <p style={{ fontSize:13, color:'#94a3b8' }}>Voici un aperçu de votre analyse. Débloquez le rapport complet pour accéder à tous les détails.</p>
+        </div>
+
+        {/* Recommandation courte */}
+        <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'20px 22px', marginBottom:14 }}>
+          <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.1em', marginBottom:8 }}>RÉSUMÉ</div>
+          <p style={{ fontSize:14, color:'#374151', lineHeight:1.75 }}>{apercu.recommandation_courte}</p>
+        </div>
+
+        {/* Points de vigilance */}
+        <div style={{ background:'#fffbeb', borderRadius:16, border:'1px solid #fde68a', padding:'20px 22px', marginBottom:14 }}>
+          <div style={{ fontSize:10, fontWeight:700, color:'#d97706', letterSpacing:'0.1em', marginBottom:12 }}>⚠ POINTS DE VIGILANCE</div>
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            {apercu.points_vigilance.map((p, i) => (
+              <div key={i} style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
+                <AlertTriangle size={13} color="#d97706" style={{ flexShrink:0, marginTop:2 }}/>
+                <span style={{ fontSize:13, color:'#92400e', lineHeight:1.5 }}>{p}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Score grisé (analyse complète uniquement) */}
+        {isComplete && (
+          <div style={{ background:'#f8fafc', borderRadius:16, border:'1px solid #e2e8f0', padding:'20px 22px', marginBottom:14, position:'relative', overflow:'hidden' }}>
+            <div style={{ filter:'blur(6px)', pointerEvents:'none', userSelect:'none' }}>
+              <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.1em', marginBottom:8 }}>SCORE GLOBAL</div>
+              <div style={{ fontSize:52, fontWeight:900, color:'#94a3b8', letterSpacing:'-0.03em', lineHeight:1 }}>?.?</div>
+              <div style={{ fontSize:14, color:'#94a3b8' }}>/10</div>
+            </div>
+            <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:8 }}>
+              <Lock size={22} style={{ color:'#64748b' }}/>
+              <span style={{ fontSize:13, fontWeight:700, color:'#64748b' }}>Score disponible après paiement</span>
+            </div>
+          </div>
+        )}
+
+        {/* Sections grisées */}
+        <div style={{ background:'#f8fafc', borderRadius:16, border:'1px solid #e2e8f0', padding:'20px 22px', marginBottom:24, position:'relative', overflow:'hidden' }}>
+          <div style={{ filter:'blur(4px)', pointerEvents:'none', userSelect:'none' }}>
+            <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.1em', marginBottom:12 }}>ANALYSE COMPLÈTE</div>
+            {['Rapport financier détaillé', 'Liste des travaux votés et à prévoir', 'Analyse des charges et fonds travaux', 'Procédures en cours', 'Avis Analymo personnalisé'].map((item, i) => (
+              <div key={i} style={{ display:'flex', gap:8, marginBottom:8, alignItems:'center' }}>
+                <div style={{ width:8, height:8, borderRadius:'50%', background:'#cbd5e1', flexShrink:0 }}/>
+                <span style={{ fontSize:13, color:'#cbd5e1' }}>{item}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:6 }}>
+            <Lock size={20} style={{ color:'#64748b' }}/>
+            <span style={{ fontSize:12, fontWeight:700, color:'#64748b' }}>Contenu réservé aux analyses payantes</span>
+          </div>
+        </div>
+
+        {/* CTA débloquer */}
+        <div style={{ background:'linear-gradient(135deg, #0f2d3d, #1a5068)', borderRadius:18, padding:'24px 26px', position:'relative', overflow:'hidden' }}>
+          <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:'rgba(42,125,156,0.2)', pointerEvents:'none' }}/>
+          <div style={{ position:'relative' }}>
+            <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.45)', letterSpacing:'0.12em', marginBottom:8 }}>DÉBLOQUER LE RAPPORT COMPLET</div>
+            <h2 style={{ fontSize:18, fontWeight:900, color:'#fff', marginBottom:8 }}>
+              {isComplete ? 'Accédez au rapport complet' : 'Accédez à l&apos;analyse complète du document'}
+            </h2>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,0.65)', lineHeight:1.6, marginBottom:20 }}>
+              Score {isComplete ? '/10, travaux, charges, procédures et avis Analymo' : 'et analyse approfondie'}. Rapport PDF téléchargeable inclus.
+            </p>
+            <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+              <Link to="/dashboard/tarifs"
+                style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'13px 24px', borderRadius:12, background:'#fff', color:'#0f2d3d', fontSize:14, fontWeight:800, textDecoration:'none', boxShadow:'0 4px 16px rgba(0,0,0,0.15)' }}>
+                <Sparkles size={15}/> Débloquer — {isComplete ? '19,90€' : '4,90€'}
+              </Link>
+              <button onClick={()=>{ setStep('choice'); setType(null); setFiles([]); setApercu(null); }}
+                style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'13px 18px', borderRadius:12, background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', color:'rgba(255,255,255,0.7)', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+                Nouvelle analyse
+              </button>
+            </div>
+            {apercuId && (
+              <p style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:12 }}>
+                Votre aperçu est sauvegardé dans "Mes analyses" avec le badge Aperçu gratuit.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+/* ══════════════════════════════════════════
+   MES ANALYSES
+══════════════════════════════════════════ */
+function MesAnalyses() {
+  const { analyses, loading: analysesLoading } = useAnalyses();
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<'all'|'complete'|'document'>('all');
+  const filtered = analyses.filter(a => {
+    const matchSearch = (a.adresse_bien||a.nom_document||'').toLowerCase().includes(search.toLowerCase());
+    const matchFilter = filter==='all' || a.type===filter;
+    return matchSearch && matchFilter;
+  });
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:22 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:14 }}>
+        <div>
+          <h1 style={{ fontSize:'clamp(20px,3vw,26px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:4 }}>Mes analyses</h1>
+          <p style={{ fontSize:13, color:'#94a3b8' }}>{analyses.length} analyse{analyses.length>1?'s':''}</p>
+        </div>
+        <Link to="/dashboard/nouvelle-analyse" style={{ padding:'10px 20px', borderRadius:10, background:'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color:'#fff', fontSize:13, fontWeight:700, textDecoration:'none', display:'flex', alignItems:'center', gap:6 }}>
+          <Plus size={14}/> Nouvelle
+        </Link>
+      </div>
+
+      {/* Filters + Search */}
+      <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+        <div style={{ position:'relative', flex:1, minWidth:200 }}>
+          <Search size={14} style={{ position:'absolute', left:13, top:'50%', transform:'translateY(-50%)', color:'#94a3b8' }}/>
+          <input type="text" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher…"
+            style={{ width:'100%', padding:'10px 14px 10px 37px', borderRadius:10, border:'1.5px solid #edf2f7', fontSize:13, background:'#fff', outline:'none', boxSizing:'border-box' as const, color:'#0f172a' }}/>
+        </div>
+        <div style={{ display:'flex', gap:6 }}>
+          {([['all','Tout'],['complete','Complètes'],['document','Documents']] as const).map(([val,label])=>(
+            <button key={val} onClick={()=>setFilter(val)}
+              style={{ padding:'10px 14px', borderRadius:10, border:`1.5px solid ${filter===val?'#2a7d9c':'#edf2f7'}`, background:filter===val?'rgba(42,125,156,0.07)':'#fff', fontSize:12, fontWeight:700, color:filter===val?'#2a7d9c':'#64748b', cursor:'pointer', transition:'all 0.15s', whiteSpace:'nowrap' }}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {analysesLoading ? (
+        <div style={{ textAlign:'center', padding:'48px', color:'#94a3b8', fontSize:14 }}>Chargement de vos analyses…</div>
+      ) : filtered.length>0 ? (
+        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>{filtered.map(a=><AnalyseRow key={a.id} a={a}/>)}</div>
+      ) : (
+        <EmptyAnalyses/>
       )}
     </div>
   );
 }
 
-export default function HomePage() {
-  return (
-    <div className="bg-white text-[#0f172a] antialiased overflow-x-hidden" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      <HeroSection />
-      <AvantApresSection />
-      <ProblemSolutionSection />
-      <SecuriteSection />
-      <ForWhoSection />
-      <HowItWorksSection />
-      <ApercuRapportSection />
-      <FaqSection />
-      <CtaFinal />
-    </div>
-  );
-}
+/* ══════════════════════════════════════════
+   COMPARE — avec logique analyses complètes
+══════════════════════════════════════════ */
+function Compare() {
+  const { analyses } = useAnalyses();
+  const completedAnalyses = analyses.filter((a: Analyse) => a.type === 'complete' && a.status === 'completed');
+  const [selected, setSelected] = useState<string[]>([]);
 
-/* ═══ HERO ═══════════════════════════════════════════════ */
-function HeroSection() {
-  return (
-    <section className="relative min-h-screen flex items-center overflow-hidden bg-[#f4f7f9] px-5 sm:px-10 lg:px-20 pt-16 pb-12">
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 right-0 w-[700px] h-[700px] rounded-full bg-[#2a7d9c]/7 blur-[120px]" />
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full bg-[#2a7d9c]/4 blur-[100px]" />
-      </div>
-
-      <div className="relative z-10 max-w-6xl mx-auto w-full">
-
-        {/* MOBILE */}
-        <div className="flex flex-col items-center lg:hidden pt-8 pb-4">
-          <motion.div variants={up} initial="hidden" animate="show" custom={0}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#2a7d9c]/25 bg-white text-[#1a5e78] text-sm font-semibold mb-5 shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-[#22c55e] shrink-0" style={{ animation: "pulse 2s ease-in-out infinite" }} />
-            Analyse immobilière intelligente
-          </motion.div>
-
-          <motion.h1 variants={up} initial="hidden" animate="show" custom={0.5}
-            className="font-black leading-[1.08] tracking-[-0.03em] text-[#0f172a] mb-3 text-center w-full px-2"
-            style={{ fontSize: "clamp(28px, 7.5vw, 36px)" }}>
-            Vérifiez les éléments<br />
-            <span className="relative inline-block whitespace-nowrap">
-              <span className="text-[#2a7d9c]">avant de signer.</span>
-              <motion.span
-                initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 1.0, duration: 1.4 }}
-                className="absolute -bottom-1 left-0 right-0 h-[3px] bg-[#2a7d9c]/30 rounded-full origin-left block" />
-            </span>
-          </motion.h1>
-
-          <motion.p variants={up} initial="hidden" animate="show" custom={0.8}
-            className="text-[15px] text-slate-500 leading-relaxed text-center w-full px-3 mb-7">
-            Diagnostics, PV d'AG, règlement de copropriété… <span className="font-semibold text-[#0f172a]">Comprenez l'essentiel en 30 secondes*</span> avant de faire une offre.
-          </motion.p>
-
-          {/* Téléphone à droite + badges empilés serrés à gauche — centré sur 390px */}
-          <motion.div variants={up} initial="hidden" animate="show" custom={1}
-            className="relative w-full mb-7" style={{ height: 310 }}>
-
-            {/* Conteneur centré : badges (≈140px) + gap (8px) + téléphone (150px) = ~298px → centré sur 390px → ~46px de marge chaque côté */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="flex items-center gap-2">
-
-                {/* Colonne de badges */}
-                <div className="flex flex-col gap-3">
-                  <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.8 }}
-                    style={{ animation: "floatA 4.5s ease-in-out 0.8s infinite" }}
-                    className="bg-white rounded-xl px-3 py-2.5 shadow-md border border-slate-100 flex items-center gap-2 w-[138px]">
-                    <div className="w-6 h-6 rounded-lg bg-[#2a7d9c]/10 flex items-center justify-center shrink-0">
-                      <ShieldCheck size={12} className="text-[#2a7d9c]" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-[#0f172a]">100% sécurisé</p>
-                      <p className="text-[9px] text-slate-400">Chiffré & supprimé</p>
-                    </div>
-                  </motion.div>
-
-                  <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.3 }}
-                    style={{ animation: "floatB 5s ease-in-out 1.3s infinite" }}
-                    className="bg-white rounded-xl px-3 py-2.5 shadow-md border border-slate-100 flex items-center gap-2 w-[138px]">
-                    <div className="w-6 h-6 rounded-lg bg-green-50 flex items-center justify-center shrink-0">
-                      <TrendingUp size={12} className="text-green-500" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-[#0f172a]">Score 7,5/10</p>
-                      <p className="text-[9px] text-slate-400">Bien recommandé</p>
-                    </div>
-                  </motion.div>
-
-                  <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.8 }}
-                    style={{ animation: "floatC 4s ease-in-out 1.8s infinite" }}
-                    className="bg-white rounded-xl px-3 py-2.5 shadow-md border border-slate-100 flex items-center gap-2 w-[138px]">
-                    <div className="w-6 h-6 rounded-lg bg-[#f0a500]/10 flex items-center justify-center shrink-0">
-                      <FileText size={12} className="text-[#f0a500]" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-[#0f172a]">3 docs analysés</p>
-                      <p className="text-[9px] text-slate-400">PV, règlement, diag.</p>
-                    </div>
-                  </motion.div>
-                </div>
-
-                {/* Téléphone */}
-                <PhoneMockupMini />
-
-              </div>
-            </div>
-
-          </motion.div>
-
-          <motion.div variants={up} initial="hidden" animate="show" custom={2}
-            className="flex flex-col sm:flex-row gap-3 w-full max-w-sm px-4">
-            <Link to="/start"
-              className="flex items-center justify-center gap-2 px-7 py-4 rounded-2xl bg-[#0f2d3d] text-white text-base font-bold shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200 flex-1">
-              <ShieldCheck size={18} /> Lancer mon analyse
-            </Link>
-            <Link to="/exemple"
-              className="flex items-center justify-center gap-2 px-6 py-4 rounded-2xl border border-slate-200 bg-white text-[#0f172a] text-base font-semibold hover:border-[#2a7d9c]/40 hover:bg-[#f0f8fc] transition-all duration-200 flex-1">
-              Voir un exemple <ChevronRight size={16} className="text-slate-400" />
-            </Link>
-          </motion.div>
-          <motion.p variants={up} initial="hidden" animate="show" custom={2.5}
-            className="text-xs text-slate-400 mt-4 text-center max-w-[340px] italic leading-relaxed">
-            * Pour les documents nativement numériques (PDF texte).
-          </motion.p>
-        </div>
-
-        {/* DESKTOP */}
-        <div className="hidden lg:grid grid-cols-2 gap-6 items-center">
-          <div className="flex flex-col items-start text-left">
-            <motion.div variants={up} initial="hidden" animate="show" custom={0}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#2a7d9c]/25 bg-white text-[#1a5e78] text-sm font-semibold mb-5 shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-[#22c55e] shrink-0" style={{ animation: "pulse 2s ease-in-out infinite" }} />
-              Analyse immobilière intelligente
-            </motion.div>
-
-            <motion.h1 variants={up} initial="hidden" animate="show" custom={1}
-              className="text-[clamp(28px,4vw,56px)] font-black leading-[1.06] tracking-[-0.03em] text-[#0f172a] mb-5">
-              Vérifiez les éléments<br />essentiels{' '}
-              <span className="relative inline-block">
-                <span className="text-[#2a7d9c]">avant de signer.</span>
-                <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.9, duration: 1.4 }}
-                  className="absolute -bottom-1 left-0 right-0 h-[4px] bg-[#2a7d9c]/25 rounded-full origin-left block" />
-              </span>
-            </motion.h1>
-
-            <motion.p variants={up} initial="hidden" animate="show" custom={1.5}
-              className="text-lg font-semibold text-[#0f172a] max-w-[500px] mb-2">
-              Votre futur logement analysé en{' '}
-              <span className="text-[#2a7d9c]">30 secondes*</span>
-            </motion.p>
-
-            <motion.p variants={up} initial="hidden" animate="show" custom={2}
-              className="text-base text-slate-500 leading-relaxed max-w-[500px] mb-8">
-              Diagnostics, PV d'AG, Règlement de copropriété, Appels de fonds, Compromis de vente… Notre outil vous aide à comprendre rapidement les informations essentielles avant de signer.
-            </motion.p>
-
-            <motion.div variants={up} initial="hidden" animate="show" custom={3}
-              className="flex flex-row gap-3 mb-5">
-              <Link to="/start"
-                className="flex items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-[#0f2d3d] text-white text-base font-bold shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200">
-                <ShieldCheck size={18} /> Lancer mon analyse
-              </Link>
-              <Link to="/exemple"
-                className="flex items-center justify-center gap-2 px-7 py-4 rounded-2xl border border-slate-200 bg-white text-[#0f172a] text-base font-semibold hover:border-[#2a7d9c]/40 hover:bg-[#f0f8fc] transition-all duration-200">
-                Voir un exemple <ChevronRight size={16} className="text-slate-400" />
-              </Link>
-            </motion.div>
-
-            <motion.p variants={up} initial="hidden" animate="show" custom={3}
-              className="text-xs text-slate-400 mb-7 max-w-[420px] italic leading-relaxed">
-              * Pour les documents nativement numériques (PDF texte). Les documents scannés peuvent nécessiter un délai supplémentaire.
-            </motion.p>
-
-            <motion.div variants={up} initial="hidden" animate="show" custom={4}
-              className="flex flex-wrap gap-5">
-              {[{ I: ShieldCheck, l: "Documents chiffrés" }, { I: Trash2, l: "Suppression auto" }, { I: Clock, l: "Sans engagement" }].map(({ I, l }) => (
-                <div key={l} className="flex items-center gap-2 text-sm text-slate-400 font-medium">
-                  <I size={14} className="text-slate-400 shrink-0" /> {l}
-                </div>
-              ))}
-            </motion.div>
+  // Pas d'analyses complètes du tout
+  if (completedAnalyses.length === 0) {
+    return (
+      <div style={{ maxWidth:600, margin:'0 auto' }}>
+        <h1 style={{ fontSize:'clamp(20px,3vw,26px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:24 }}>Comparer mes biens</h1>
+        <div style={{ background:'#fff', borderRadius:20, border:'1.5px solid #edf2f7', padding:'52px 32px', textAlign:'center', boxShadow:'0 2px 12px rgba(0,0,0,0.04)' }}>
+          <div style={{ width:72, height:72, borderRadius:20, background:'rgba(42,125,156,0.07)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
+            <Lock size={30} style={{ color:'#94a3b8' }}/>
           </div>
-
-          <motion.div variants={up} initial="hidden" animate="show" custom={2} className="flex justify-center">
-            <PhoneMockup />
-          </motion.div>
-        </div>
-      </div>
-
-      <style>{`
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-        @keyframes spin { to{transform:rotate(360deg)} }
-        @keyframes scanAnim { 0%{top:0%;opacity:0} 3%{opacity:1} 47%{opacity:1} 50%{top:100%;opacity:0} 51%{top:0%;opacity:0} }
-        .animate-scan-phone { animation: scanAnim 3s linear infinite; }
-        .animate-spin-slow { animation: spin 1s linear infinite; }
-        @keyframes floatA { 0%,100%{transform:translateY(0) translateX(0)} 50%{transform:translateY(-8px) translateX(3px)} }
-        @keyframes floatB { 0%,100%{transform:translateY(0) translateX(0)} 50%{transform:translateY(9px) translateX(-3px)} }
-        @keyframes floatC { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
-      `}</style>
-    </section>
-  );
-}
-
-function PhoneMockup() {
-  const [step, setStep] = useState<0|1|2>(0);
-  useEffect(() => {
-    const t1 = setTimeout(() => setStep(1), 3500);
-    const t2 = setTimeout(() => setStep(2), 7000);
-    const t3 = setTimeout(() => setStep(0), 14000);
-    return () => [t1, t2, t3].forEach(clearTimeout);
-  }, [step]);
-
-  return (
-    <div className="relative">
-      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.2 }}
-        style={{ animation: "floatA 4s ease-in-out 1.2s infinite" }}
-        className="hidden sm:flex absolute -left-36 top-[20%] z-20 bg-white rounded-2xl px-4 py-3 shadow-xl border border-slate-100 items-center gap-3 min-w-[155px]">
-        <div className="w-9 h-9 rounded-xl bg-[#2a7d9c]/8 flex items-center justify-center shrink-0">
-          <ShieldCheck size={17} className="text-[#2a7d9c]" />
-        </div>
-        <div>
-          <p className="text-xs font-bold text-[#0f172a]">100% sécurisé</p>
-          <p className="text-[11px] text-slate-400">Chiffré & supprimé</p>
-        </div>
-      </motion.div>
-
-      <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 2.0 }}
-        style={{ animation: "floatB 5s ease-in-out 2s infinite" }}
-        className="hidden sm:flex absolute -right-36 bottom-[28%] z-20 bg-white rounded-2xl px-4 py-3 shadow-xl border border-slate-100 items-center gap-3 min-w-[150px]">
-        <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
-          <TrendingUp size={17} className="text-green-500" />
-        </div>
-        <div>
-          <p className="text-xs font-bold text-[#0f172a]">Score : 7,5/10</p>
-          <p className="text-[11px] text-slate-400">Bien recommandé</p>
-        </div>
-      </motion.div>
-
-      <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 2.8 }}
-        style={{ animation: "floatC 3.5s ease-in-out 2.8s infinite" }}
-        className="hidden sm:flex absolute -right-28 top-[10%] z-20 bg-white rounded-xl px-3.5 py-2.5 shadow-lg border border-slate-100 items-center gap-2">
-        <FileText size={14} className="text-[#2a7d9c] shrink-0" />
-        <span className="text-xs font-semibold text-[#0f172a]">3 docs chargés ✓</span>
-      </motion.div>
-
-      <motion.div animate={{ y: [0, -10, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}>
-        <div className="w-[175px] sm:w-[275px] h-[370px] sm:h-[580px] bg-[#0f172a] rounded-[40px] sm:rounded-[46px] p-[5px] shadow-[0_32px_72px_rgba(15,23,42,0.25)]">
-          <div className="w-full h-full bg-[#f8fafc] rounded-[36px] sm:rounded-[42px] overflow-hidden flex flex-col">
-            <div className="bg-white shrink-0 px-4 pt-3 pb-1 flex items-center justify-between relative">
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-[60px] h-[18px] bg-[#0f172a] rounded-full z-10" />
-              <span className="text-[8px] font-bold text-slate-300">9:41</span>
-              <span className="text-[8px] font-bold text-slate-300">5G ▪▪▪</span>
-            </div>
-            <div className="bg-white border-b border-slate-100 px-4 py-2 shrink-0 flex items-center justify-between">
-              <span className="text-[10px] font-black text-[#0f2d3d] tracking-wide">ANALYMO</span>
-              <span className="text-[8px] font-bold bg-[#2a7d9c]/10 text-[#2a7d9c] px-2 py-0.5 rounded-full">Mon espace</span>
-            </div>
-            <div className="flex-1 flex flex-col min-h-0">
-              <AnimatePresence mode="wait">
-                {step === 0 && <PhaseUpload key="u" />}
-                {step === 1 && <PhaseScan key="s" />}
-                {step === 2 && <PhaseResult key="r" />}
-              </AnimatePresence>
-            </div>
-            <div className="bg-white shrink-0 py-2 flex justify-center border-t border-slate-50">
-              <div className="w-14 h-1 rounded-full bg-slate-200" />
-            </div>
-          </div>
-        </div>
-      </motion.div>
-    </div>
-  );
-}
-
-function PhaseUpload() {
-  const [prog, setProg] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setProg(p => Math.min(p + 2, 95)), 60);
-    return () => clearInterval(t);
-  }, []);
-  return (
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
-      className="flex-1 flex flex-col px-4 py-4">
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3">Documents chargés</p>
-      <div className="flex flex-col gap-2 mb-auto">
-        {["PV AG 2024.pdf","Règlement copro.pdf","Diagnostics.pdf"].map((f,i)=>(
-          <motion.div key={f} initial={{opacity:0,x:-10}} animate={{opacity:1,x:0}} transition={{delay:i*0.25}}
-            className="flex items-center gap-2 p-2.5 rounded-xl bg-white border border-slate-100 shadow-sm">
-            <FileText size={11} className="text-[#2a7d9c] shrink-0" />
-            <span className="text-[10px] text-slate-700 font-semibold flex-1 truncate">{f}</span>
-            <CheckCircle size={11} className="text-green-500 shrink-0" />
-          </motion.div>
-        ))}
-      </div>
-      <div className="mt-4">
-        <div className="flex justify-between mb-1.5">
-          <span className="text-[9px] text-slate-400 font-medium">Préparation...</span>
-          <span className="text-[9px] font-bold text-[#2a7d9c]">{prog}%</span>
-        </div>
-        <div className="h-1.5 rounded-full bg-slate-200">
-          <motion.div className="h-full rounded-full bg-gradient-to-r from-[#2a7d9c] to-[#0f2d3d]"
-            animate={{ width: `${prog}%` }} transition={{ duration: 0.3 }} />
-        </div>
-        <p className="text-[8px] text-slate-400 mt-2 text-center italic">Lancement du traitement...</p>
-      </div>
-    </motion.div>
-  );
-}
-
-function PhaseScan() {
-  const tasks = ["Lecture des pages...","Détection des travaux votés...","Analyse financière...","Vérification juridique...","Calcul du score..."];
-  const [done, setDone] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setDone(d => Math.min(d + 1, tasks.length)), 600);
-    return () => clearInterval(t);
-  }, []);
-  return (
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
-      className="flex-1 flex flex-col px-4 py-4">
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-[10px] font-black text-[#0f172a]">Traitement en cours</p>
-        <div className="w-3.5 h-3.5 border-2 border-[#2a7d9c] border-t-transparent rounded-full animate-spin-slow" />
-      </div>
-      <div className="flex flex-col gap-2 flex-1">
-        {tasks.map((t,i)=>(
-          <motion.div key={t} initial={{opacity:0}} animate={{opacity:1}} transition={{delay:i*0.15}}
-            className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-all duration-500 ${i < done ? 'bg-green-50 border-green-100' : 'bg-white border-slate-100'}`}>
-            {i < done
-              ? <CheckCircle size={11} className="text-green-500 shrink-0" />
-              : <motion.div animate={i === done ? {opacity:[1,0.2,1]} : {opacity:0.25}} transition={{duration:0.8,repeat:Infinity}}
-                  className="w-2 h-2 rounded-full bg-[#2a7d9c] shrink-0" />
-            }
-            <span className={`text-[10px] font-medium ${i < done ? 'text-green-700' : 'text-slate-500'}`}>{t}</span>
-          </motion.div>
-        ))}
-      </div>
-    </motion.div>
-  );
-}
-
-function PhaseResult() {
-  return (
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
-      className="flex-1 flex flex-col px-4 py-4">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[10px] font-black text-[#0f172a]">Rapport Analymo</p>
-        <span className="text-[8px] font-bold bg-green-50 text-green-700 px-2 py-0.5 rounded-full">✓ Terminé</span>
-      </div>
-      <div className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-slate-100 shadow-sm mb-3">
-        <div className="relative w-14 h-14 shrink-0">
-          <svg className="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
-            <circle cx="28" cy="28" r="22" fill="none" stroke="#f1f5f9" strokeWidth="4" />
-            <motion.circle cx="28" cy="28" r="22" fill="none" stroke="#2a7d9c" strokeWidth="4" strokeLinecap="round"
-              strokeDasharray={138} initial={{ strokeDashoffset: 138 }}
-              animate={{ strokeDashoffset: 138 - 138 * 0.75 }} transition={{ duration: 1.2, delay: 0.3 }} />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-sm font-black text-[#0f172a] leading-none">7,5</span>
-            <span className="text-[7px] text-slate-400">/10</span>
-          </div>
-        </div>
-        <div>
-          <p className="text-[9px] font-black text-[#0f172a] mb-0.5">Globalement sain</p>
-          <span className="text-[8px] font-bold bg-[#2a7d9c]/10 text-[#2a7d9c] px-1.5 py-0.5 rounded-full">Recommandé ✓</span>
-          <p className="text-[8px] text-slate-400 mt-1">12 rue des Lilas, Lyon</p>
-        </div>
-      </div>
-      <div className="flex flex-col gap-1.5 flex-1">
-        {[
-          {icon:CheckCircle,c:"text-green-500",bg:"bg-green-50",border:"border-green-100",t:"Finances saines",s:"Fonds travaux bien dotés"},
-          {icon:AlertTriangle,c:"text-amber-500",bg:"bg-amber-50",border:"border-amber-100",t:"Toiture prévue 2026",s:"Estimé ~4 200€/lot"},
-          {icon:CheckCircle,c:"text-green-500",bg:"bg-green-50",border:"border-green-100",t:"Aucun impayé",s:"Copro bien gérée"},
-          {icon:TrendingUp,c:"text-[#2a7d9c]",bg:"bg-white",border:"border-slate-100",t:"Charges : 180€/mois",s:"Dans la moyenne"},
-        ].map((it,i)=>(
-          <motion.div key={i} initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} transition={{delay:0.7+i*0.12}}
-            className={`flex items-center gap-2 p-2 rounded-lg ${it.bg} border ${it.border}`}>
-            <it.icon size={10} className={`${it.c} shrink-0`} />
-            <div className="min-w-0">
-              <p className="text-[9px] font-bold text-[#0f172a] truncate">{it.t}</p>
-              <p className="text-[8px] text-slate-400 truncate">{it.s}</p>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-      <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:1.5}}
-        className="mt-3 w-full py-2.5 rounded-xl bg-[#0f2d3d] text-white text-[9px] font-bold text-center flex items-center justify-center gap-1.5">
-        <Download size={9} /> Télécharger le rapport PDF
-      </motion.div>
-    </motion.div>
-  );
-}
-
-/* ═══ PHONE MOCKUP MINI (mobile uniquement) ══════════════════ */
-function PhoneMockupMini() {
-  const [step, setStep] = useState<0|1|2>(0);
-  useEffect(() => {
-    const t1 = setTimeout(() => setStep(1), 3500);
-    const t2 = setTimeout(() => setStep(2), 7000);
-    const t3 = setTimeout(() => setStep(0), 14000);
-    return () => [t1, t2, t3].forEach(clearTimeout);
-  }, [step]);
-
-  return (
-    <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}>
-      <div className="w-[150px] h-[300px] bg-[#0f172a] rounded-[32px] p-[4px] shadow-[0_24px_56px_rgba(15,23,42,0.28)]">
-        <div className="w-full h-full bg-[#f8fafc] rounded-[29px] overflow-hidden flex flex-col">
-          <div className="bg-white shrink-0 px-3 pt-2.5 pb-1 flex items-center justify-between relative">
-            <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-[40px] h-[14px] bg-[#0f172a] rounded-full z-10" />
-            <span className="text-[7px] font-bold text-slate-300">9:41</span>
-            <span className="text-[7px] font-bold text-slate-300">5G</span>
-          </div>
-          <div className="bg-white border-b border-slate-100 px-3 py-1.5 shrink-0 flex items-center justify-between">
-            <span className="text-[8px] font-black text-[#0f2d3d] tracking-wide">ANALYMO</span>
-            <span className="text-[7px] font-bold bg-[#2a7d9c]/10 text-[#2a7d9c] px-1.5 py-0.5 rounded-full">Mon espace</span>
-          </div>
-          <div className="flex-1 flex flex-col min-h-0">
-            <AnimatePresence mode="wait">
-              {step === 0 && <PhaseUploadMini key="u" />}
-              {step === 1 && <PhaseScanMini key="s" />}
-              {step === 2 && <PhaseResultMini key="r" />}
-            </AnimatePresence>
-          </div>
-          <div className="bg-white shrink-0 py-1.5 flex justify-center border-t border-slate-50">
-            <div className="w-10 h-[3px] rounded-full bg-slate-200" />
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-function PhaseUploadMini() {
-  const [prog, setProg] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setProg(p => Math.min(p + 2, 95)), 60);
-    return () => clearInterval(t);
-  }, []);
-  return (
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="flex-1 flex flex-col px-3 py-3">
-      <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mb-2">Documents chargés</p>
-      <div className="flex flex-col gap-1.5 mb-auto">
-        {["PV AG 2024.pdf","Règlement.pdf","Diagnostics.pdf"].map((f,i)=>(
-          <motion.div key={f} initial={{opacity:0,x:-8}} animate={{opacity:1,x:0}} transition={{delay:i*0.2}}
-            className="flex items-center gap-1.5 p-2 rounded-lg bg-white border border-slate-100 shadow-sm">
-            <FileText size={8} className="text-[#2a7d9c] shrink-0" />
-            <span className="text-[8px] text-slate-700 font-semibold flex-1 truncate">{f}</span>
-            <CheckCircle size={8} className="text-green-500 shrink-0" />
-          </motion.div>
-        ))}
-      </div>
-      <div className="mt-3">
-        <div className="h-1 rounded-full bg-slate-200">
-          <motion.div className="h-full rounded-full bg-gradient-to-r from-[#2a7d9c] to-[#0f2d3d]"
-            animate={{ width: `${prog}%` }} transition={{ duration: 0.3 }} />
-        </div>
-        <p className="text-[7px] text-slate-400 mt-1 text-center italic">Lancement...</p>
-      </div>
-    </motion.div>
-  );
-}
-
-function PhaseScanMini() {
-  const tasks = ["Lecture...","Travaux...","Finances...","Juridique...","Score..."];
-  const [done, setDone] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setDone(d => Math.min(d + 1, tasks.length)), 600);
-    return () => clearInterval(t);
-  }, []);
-  return (
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="flex-1 flex flex-col px-3 py-3">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[8px] font-black text-[#0f172a]">Traitement en cours</p>
-        <div className="w-2.5 h-2.5 border-[1.5px] border-[#2a7d9c] border-t-transparent rounded-full animate-spin-slow" />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        {tasks.map((t,i)=>(
-          <motion.div key={t} initial={{opacity:0}} animate={{opacity:1}} transition={{delay:i*0.12}}
-            className={`flex items-center gap-2 p-1.5 rounded-lg border ${i < done ? 'bg-green-50 border-green-100' : 'bg-white border-slate-100'}`}>
-            {i < done
-              ? <CheckCircle size={8} className="text-green-500 shrink-0" />
-              : <div className="w-1.5 h-1.5 rounded-full bg-[#2a7d9c] shrink-0 opacity-40" />
-            }
-            <span className={`text-[8px] font-medium ${i < done ? 'text-green-700' : 'text-slate-500'}`}>{t}</span>
-          </motion.div>
-        ))}
-      </div>
-    </motion.div>
-  );
-}
-
-function PhaseResultMini() {
-  return (
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="flex-1 flex flex-col px-3 py-3">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-[8px] font-black text-[#0f172a]">Rapport Analymo</p>
-        <span className="text-[6px] font-bold bg-green-50 text-green-700 px-1.5 py-0.5 rounded-full">✓ OK</span>
-      </div>
-      <div className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-100 shadow-sm mb-2">
-        <div className="relative w-10 h-10 shrink-0">
-          <svg className="w-10 h-10 -rotate-90" viewBox="0 0 40 40">
-            <circle cx="20" cy="20" r="15" fill="none" stroke="#f1f5f9" strokeWidth="3" />
-            <motion.circle cx="20" cy="20" r="15" fill="none" stroke="#2a7d9c" strokeWidth="3" strokeLinecap="round"
-              strokeDasharray={94} initial={{ strokeDashoffset: 94 }}
-              animate={{ strokeDashoffset: 94 - 94 * 0.75 }} transition={{ duration: 1.2, delay: 0.3 }} />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-[10px] font-black text-[#0f172a] leading-none">7,5</span>
-            <span className="text-[6px] text-slate-400">/10</span>
-          </div>
-        </div>
-        <div>
-          <p className="text-[8px] font-black text-[#0f172a] mb-0.5">Sain</p>
-          <span className="text-[6px] font-bold bg-[#2a7d9c]/10 text-[#2a7d9c] px-1 py-0.5 rounded-full">Recommandé ✓</span>
-        </div>
-      </div>
-      <div className="flex flex-col gap-1">
-        {[
-          {icon:CheckCircle,c:"text-green-500",bg:"bg-green-50",t:"Finances saines"},
-          {icon:AlertTriangle,c:"text-amber-500",bg:"bg-amber-50",t:"Toiture 2026 ~4 200€"},
-          {icon:CheckCircle,c:"text-green-500",bg:"bg-green-50",t:"Aucun impayé"},
-        ].map((it,i)=>(
-          <motion.div key={i} initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.5+i*0.1}}
-            className={`flex items-center gap-1.5 p-1.5 rounded-lg ${it.bg}`}>
-            <it.icon size={8} className={`${it.c} shrink-0`} />
-            <p className="text-[8px] font-semibold text-[#0f172a] truncate">{it.t}</p>
-          </motion.div>
-        ))}
-      </div>
-      <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:1.2}}
-        className="mt-2 w-full py-2 rounded-lg bg-[#0f2d3d] text-white text-[7px] font-bold text-center flex items-center justify-center gap-1">
-        <Download size={7} /> Télécharger PDF
-      </motion.div>
-    </motion.div>
-  );
-}
-
-/* ═══ AVANT / APRÈS ════════════════════════════════════════ */
-function AvantApresSection() {
-  const rows = [
-    { before: "40 pages de PV illisibles à parcourir seul", after: "Rapport structuré clair en 30 secondes*" },
-    { before: "Jargon juridique incompréhensible", after: "Informations clés expliquées simplement" },
-    { before: "Travaux découverts après la signature", after: "Risques et travaux détectés en amont" },
-    { before: "Décision prise dans l'incertitude totale", after: "Décision éclairée, offre négociée" },
-    { before: "Mauvaises surprises financières", after: "Économies réalisées avant la signature" },
-  ];
-  return (
-    <section className="py-16 md:py-28 px-4 md:px-6 bg-white">
-      <div className="max-w-5xl mx-auto">
-        <SectionTitle label="Avant / Après" title="Deux façons d'acheter." accent="Une seule bonne." />
-
-        <div className="grid grid-cols-2 gap-3 md:gap-4 mb-3">
-          <div className="flex items-center gap-2 px-3 md:px-5 py-2.5 rounded-xl bg-red-50 border border-red-100">
-            <div className="w-6 h-6 rounded-full bg-white border border-red-200 flex items-center justify-center shrink-0">
-              <X size={11} className="text-red-500" />
-            </div>
-            <span className="text-sm md:text-base font-bold text-red-500">Sans Analymo</span>
-          </div>
-          <div className="flex items-center gap-2 px-3 md:px-5 py-2.5 rounded-xl bg-green-50 border border-green-100">
-            <div className="w-6 h-6 rounded-full bg-white border border-green-200 flex items-center justify-center shrink-0">
-              <Check size={11} className="text-green-500" />
-            </div>
-            <span className="text-sm md:text-base font-bold text-green-600">Avec Analymo</span>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2 md:gap-2.5">
-          {rows.map((row, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.07 }}
-              className="grid grid-cols-2 gap-2 md:gap-3">
-              <div className="flex items-start gap-2 md:gap-3 p-3 md:p-5 rounded-xl md:rounded-2xl bg-red-50/50 border border-red-100 hover:bg-red-50 transition-colors">
-                <div className="w-5 h-5 md:w-7 md:h-7 rounded-full bg-white border border-red-100 flex items-center justify-center shrink-0 shadow-sm mt-0.5">
-                  <X size={10} className="text-red-400" />
-                </div>
-                <span className="text-xs md:text-sm text-slate-500 leading-snug">{row.before}</span>
-              </div>
-              <div className="flex items-start gap-2 md:gap-3 p-3 md:p-5 rounded-xl md:rounded-2xl bg-green-50/50 border border-green-100 hover:bg-green-50 transition-colors">
-                <div className="w-5 h-5 md:w-7 md:h-7 rounded-full bg-white border border-green-100 flex items-center justify-center shrink-0 shadow-sm mt-0.5">
-                  <Check size={10} className="text-green-500" />
-                </div>
-                <span className="text-xs md:text-sm text-[#0f172a] font-semibold leading-snug">{row.after}</span>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
-        <Reveal className="text-center mt-8 md:mt-12">
-          <Link to="/start"
-            className="inline-flex items-center gap-2 px-7 md:px-9 py-3.5 md:py-4 rounded-2xl bg-[#0f2d3d] text-white text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
-            Lancer mon analyse <ArrowRight size={16} />
+          <h2 style={{ fontSize:20, fontWeight:800, color:'#0f172a', marginBottom:10 }}>Fonctionnalité réservée aux analyses complètes</h2>
+          <p style={{ fontSize:14, color:'#64748b', lineHeight:1.7, marginBottom:28, maxWidth:420, margin:'0 auto 28px' }}>
+            La comparaison de biens fonctionne uniquement avec des <strong>analyses complètes</strong>. Vous n'en avez aucune pour le moment.<br/><br/>
+            Lancez une analyse complète (19,90€) pour accéder à cette fonctionnalité.
+          </p>
+          <Link to="/dashboard/nouvelle-analyse?type=complete"
+            style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'13px 28px', borderRadius:12, background:'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color:'#fff', fontSize:14, fontWeight:700, textDecoration:'none', boxShadow:'0 4px 16px rgba(15,45,61,0.2)' }}>
+            <ShieldCheck size={16}/> Lancer une analyse complète
           </Link>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
-
-/* ═══ PROBLÈME + SOLUTION (fusionnées) ══════════════════════ */
-function ProblemSolutionSection() {
-  const items = [
-    {
-      icon: FileText,
-      title: "Documents illisibles",
-      problem: "Des PV de 40 pages remplis de jargon juridique que personne ne lit vraiment.",
-      solution: "Notre outil extrait l'essentiel et vous le présente en langage clair.",
-      pc: "text-red-500", pb: "bg-red-50", pBorder: "border-red-100",
-    },
-    {
-      icon: AlertTriangle,
-      title: "Travaux cachés",
-      problem: "Ravalement, toiture, ascenseur : des travaux votés découverts après la signature.",
-      solution: "Chaque travail voté est détecté, daté et estimé financièrement pour votre lot.",
-      pc: "text-amber-500", pb: "bg-amber-50", pBorder: "border-amber-100",
-    },
-    {
-      icon: TrendingUp,
-      title: "Charges sous-estimées",
-      problem: "Des charges bien plus élevées que prévu qui pèsent lourd sur votre budget d'achat.",
-      solution: "Charges mensuelles, fonds travaux, appels votés — tout est chiffré.",
-      pc: "text-orange-500", pb: "bg-orange-50", pBorder: "border-orange-100",
-    },
-    {
-      icon: Clock,
-      title: "Décisions précipitées",
-      problem: "Sous la pression du marché, vous signez sans avoir eu le temps d'analyser.",
-      solution: "En 30 secondes*, vous avez une recommandation claire : acheter ou négocier.",
-      pc: "text-blue-500", pb: "bg-blue-50", pBorder: "border-blue-100",
-    },
-  ];
-
-  return (
-    <section className="py-16 md:py-28 px-4 md:px-6 bg-[#f4f7f9]">
-      <div className="max-w-6xl mx-auto">
-        <SectionTitle label="Pourquoi Analymo" title="Un problème réel," accent="une réponse claire."
-          sub="Chaque achat immobilier cache des risques que les documents ne rendent pas évidents. Voici comment on les résout." />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-          {items.map((item, i) => (
-            <Reveal key={i} delay={i}
-              className="group p-5 md:p-8 rounded-2xl md:rounded-3xl bg-white border border-slate-100 shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-default text-center md:text-left">
-              <div className={`w-11 h-11 rounded-xl ${item.pb} border ${item.pBorder} flex items-center justify-center mb-4 mx-auto md:mx-0`}>
-                <item.icon size={18} className={item.pc} />
-              </div>
-              <h3 className="text-base md:text-lg font-bold text-[#0f172a] mb-2">{item.title}</h3>
-              <p className="text-sm text-slate-500 leading-relaxed mb-3">{item.problem}</p>
-              <div className="flex items-start gap-2 pt-3 border-t border-slate-100">
-                <div className="w-5 h-5 rounded-full bg-[#2a7d9c]/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <Check size={10} className="text-[#2a7d9c]" />
-                </div>
-                <p className="text-sm text-[#2a7d9c] font-semibold leading-relaxed">{item.solution}</p>
-              </div>
-            </Reveal>
-          ))}
         </div>
       </div>
-    </section>
-  );
-}
+    );
+  }
 
-/* ═══ SÉCURITÉ ══════════════════════════════════════════════ */
-function SecuriteSection() {
-  const garanties = [
-    {
-      icon: Lock,
-      title: "Chiffrement bout en bout",
-      desc: "Vos documents sont chiffrés dès l'upload. Personne — pas même nous — ne peut accéder à leur contenu brut.",
-      color: "#2a7d9c",
-      bg: "rgba(42,125,156,0.08)",
-    },
-    {
-      icon: Trash2,
-      title: "Suppression automatique",
-      desc: "Vos fichiers sont automatiquement supprimés de nos serveurs après traitement. Aucun stockage permanent.",
-      color: "#ef4444",
-      bg: "rgba(239,68,68,0.07)",
-    },
-    {
-      icon: Eye,
-      title: "Aucun partage de données",
-      desc: "Vos documents ne sont jamais partagés, revendus ou utilisés à des fins commerciales. Vos données vous appartiennent.",
-      color: "#0f6e56",
-      bg: "rgba(15,110,86,0.08)",
-    },
-    {
-      icon: Shield,
-      title: "Hébergement en Europe",
-      desc: "Toutes vos données sont hébergées sur des serveurs européens, conformément au RGPD.",
-      color: "#f0a500",
-      bg: "rgba(240,165,0,0.08)",
-    },
-  ];
+  // Moins de 2 analyses complètes → sélection
+  const toggleSelect = (id: string) => {
+    setSelected(prev => prev.includes(id) ? prev.filter(s=>s!==id) : prev.length < 2 ? [...prev, id] : prev);
+  };
+
+  const selectedAnalyses = completedAnalyses.filter(a => selected.includes(a.id));
+  const canCompare = selected.length === 2;
 
   return (
-    <section className="py-16 md:py-28 px-4 md:px-6 bg-white">
-      <div className="max-w-6xl mx-auto">
-        <SectionTitle
-          label="Sécurité & Confidentialité"
-          title="Vos documents,"
-          accent="protégés."
-          sub="Vous allez uploader des documents sensibles. Voici exactement comment nous les protégeons."
-        />
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
-          {garanties.map((g, i) => (
-            <Reveal key={i} delay={i}
-              className="group p-6 md:p-7 rounded-2xl border border-slate-100 bg-white shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-default text-center">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: g.bg }}>
-                <g.icon size={22} style={{ color: g.color }} />
-              </div>
-              <h3 className="text-sm md:text-base font-bold text-[#0f172a] mb-2">{g.title}</h3>
-              <p className="text-xs md:text-sm text-slate-500 leading-relaxed">{g.desc}</p>
-            </Reveal>
-          ))}
-        </div>
-
-        {/* Bandeau rassurant */}
-        <Reveal>
-          <div className="rounded-2xl bg-[#f4f7f9] border border-slate-100 px-6 md:px-10 py-5 md:py-6 flex flex-col md:flex-row items-center gap-4 md:gap-8 text-center md:text-left">
-            <div className="w-12 h-12 rounded-2xl bg-[#2a7d9c]/10 flex items-center justify-center shrink-0 mx-auto md:mx-0">
-              <ShieldCheck size={22} className="text-[#2a7d9c]" />
-            </div>
-            <div>
-              <p className="text-base font-bold text-[#0f172a] mb-1">Conforme RGPD — Hébergement en France</p>
-              <p className="text-sm text-slate-500">Vos documents immobiliers sont traités de façon sécurisée et automatiquement supprimés après génération du rapport. Aucun humain ne les consulte.</p>
-            </div>
-          </div>
-        </Reveal>
+    <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
+      <div>
+        <h1 style={{ fontSize:'clamp(20px,3vw,26px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:4 }}>Comparer mes biens</h1>
+        <p style={{ fontSize:13, color:'#64748b' }}>Sélectionnez 2 analyses complètes pour les comparer côte à côte.</p>
       </div>
-    </section>
-  );
-}
 
-/* ═══ FOR WHO ══════════════════════════════════════════════ */
-function ForWhoSection() {
-  const [activeTab, setActiveTab] = useState(0);
-  const detected = [
-    "Travaux votés et leur coût estimé par lot",
-    "Santé financière réelle de la copropriété",
-    "Procédures judiciaires ou impayés en cours",
-    "Conformité des diagnostics obligatoires",
-    "Points de vigilance avant de faire une offre",
-  ];
-  const pros = [
-    { title: "Notaires", desc: "Dossiers préparés plus vite. Clients mieux informés avant la signature.", I: Shield },
-    { title: "Agents immobiliers", desc: "Un rapport de transparence qui valorise votre conseil et rassure l'acheteur.", I: UserCheck },
-    { title: "Syndics", desc: "Transmissions d'info fluides et complètes lors des ventes en copropriété.", I: Building2 },
-    { title: "Marchands de biens", desc: "Risques et potentiel identifiés instantanément sur chaque bien du portefeuille.", I: BadgeCheck },
-  ];
-  const tabs = ["Acheteurs particuliers", "Professionnels"];
-
-  return (
-    <section className="py-16 md:py-28 px-4 md:px-6 bg-[#f4f7f9]">
-      <div className="max-w-5xl mx-auto">
-        <SectionTitle label="Pour qui" title="Fait pour" accent="vous." />
-
-        <Reveal className="flex justify-center mb-8">
-          <div className="inline-flex bg-white rounded-2xl p-1.5 shadow-sm border border-slate-100 gap-1">
-            {tabs.map((t, i) => (
-              <button key={i} onClick={() => setActiveTab(i)}
-                className={`px-4 md:px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all duration-200 ${activeTab === i ? 'bg-[#0f2d3d] text-white shadow-sm' : 'text-slate-500 hover:text-[#0f172a]'}`}>
-                {t}
-              </button>
-            ))}
+      {/* Sélection */}
+      {!canCompare && (
+        <div>
+          <div style={{ fontSize:13, fontWeight:700, color:'#0f172a', marginBottom:12 }}>
+            Analyses complètes disponibles ({completedAnalyses.length})
+            <span style={{ fontSize:12, fontWeight:500, color:'#94a3b8', marginLeft:8 }}>Sélectionnez 2 biens</span>
           </div>
-        </Reveal>
-
-        <AnimatePresence mode="wait">
-          {activeTab === 0 && (
-            <motion.div key="buyers" initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-12}} transition={{duration:0.28}}>
-              <div className="rounded-2xl md:rounded-3xl overflow-hidden shadow-xl grid grid-cols-1 lg:grid-cols-2">
-                <div className="bg-[#0f2d3d] p-8 md:p-12">
-                  <span className="inline-block px-3 py-1.5 rounded-full bg-white/10 text-white/70 text-xs font-bold uppercase tracking-widest mb-5">Pour les particuliers</span>
-                  <h3 className="text-[clamp(22px,3vw,38px)] font-black text-white mb-4 leading-tight">
-                    Ne signez plus<br />les yeux fermés.
-                  </h3>
-                  <p className="text-slate-400 text-sm md:text-base leading-relaxed mb-8 max-w-sm">
-                    Analymo décrypte la santé financière de la copropriété, les travaux à venir et les risques juridiques — avant votre offre.
-                  </p>
-                  <Link to="/start" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-[#0f2d3d] text-sm md:text-base font-bold hover:bg-slate-50 transition-colors">
-                    Commencer — dès 4,90€ <ArrowRight size={15} />
-                  </Link>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            {completedAnalyses.map(a => {
+              const isSel = selected.includes(a.id);
+              return (
+                <div key={a.id} onClick={()=>toggleSelect(a.id)}
+                  style={{ background:'#fff', borderRadius:13, border:`1.5px solid ${isSel?'#2a7d9c':'#edf2f7'}`, padding:'14px 18px', display:'flex', alignItems:'center', gap:14, cursor:'pointer', transition:'all 0.18s', boxShadow:isSel?'0 0 0 3px rgba(42,125,156,0.12)':'none' }}>
+                  <div style={{ width:36, height:36, borderRadius:10, background:isSel?'rgba(42,125,156,0.12)':'rgba(15,45,61,0.06)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                    {isSel ? <CheckCircle size={18} color="#2a7d9c"/> : <Building2 size={17} style={{ color:'#64748b' }}/>}
+                  </div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:14, fontWeight:700, color:'#0f172a', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{a.adresse_bien}</div>
+                    <div style={{ fontSize:12, color:'#94a3b8' }}>{a.date}</div>
+                  </div>
+                  {a.score != null && <ScoreBadge score={a.score} size="sm"/>}
                 </div>
-                <div className="bg-white p-8 md:p-12">
-                  <h4 className="text-sm md:text-base font-bold text-[#0f172a] mb-5 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[#2a7d9c] shrink-0" />
-                    Ce qu'Analymo détecte pour vous
-                  </h4>
-                  {detected.map((item, i) => (
-                    <motion.div key={i} initial={{opacity:0,x:-8}} animate={{opacity:1,x:0}} transition={{delay:i*0.08}}
-                      className="flex items-center gap-3 py-2.5 md:py-3 border-b border-slate-50 last:border-0">
-                      <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-[#2a7d9c]/10 flex items-center justify-center shrink-0">
-                        <Check size={11} className="text-[#2a7d9c]" />
-                      </div>
-                      <span className="text-sm md:text-base text-[#0f172a] font-medium">{item}</span>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
+              );
+            })}
+          </div>
+          {selected.length === 1 && (
+            <div style={{ marginTop:12, padding:'10px 14px', borderRadius:10, background:'rgba(42,125,156,0.05)', border:'1px solid rgba(42,125,156,0.15)', fontSize:13, color:'#2a7d9c', fontWeight:600 }}>
+              ✓ 1 bien sélectionné — choisissez un deuxième bien pour comparer
+            </div>
           )}
-
-          {activeTab === 1 && (
-            <motion.div key="pros" initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-12}} transition={{duration:0.28}}>
-              <div className="mb-6 text-center">
-                <p className="text-slate-500 text-sm md:text-lg max-w-2xl mx-auto">
-                  Analymo s'intègre naturellement dans votre quotidien professionnel pour vous faire gagner du temps et de la crédibilité.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-5">
-                {pros.map((p, i) => (
-                  <motion.div key={i} initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} transition={{delay:i*0.1}}
-                    className="flex items-start gap-4 p-5 md:p-7 rounded-2xl bg-white border border-slate-100 hover:-translate-y-1 hover:shadow-lg transition-all duration-200 cursor-default">
-                    <div className="w-12 h-12 rounded-2xl bg-[#2a7d9c]/8 flex items-center justify-center shrink-0">
-                      <p.I size={22} className="text-[#2a7d9c]" />
-                    </div>
-                    <div>
-                      <h4 className="text-base md:text-lg font-bold text-[#0f172a] mb-1">{p.title}</h4>
-                      <p className="text-sm md:text-base text-slate-500 leading-relaxed">{p.desc}</p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </section>
-  );
-}
-
-/* ═══ HOW IT WORKS ══════════════════════════════════════════ */
-function HowItWorksSection() {
-  const refMobile = useRef(null);
-  const refDesktop = useRef(null);
-  const inViewMobile = useInView(refMobile, { once: true, margin: "-40px" });
-  const inViewDesktop = useInView(refDesktop, { once: true, margin: "-60px" });
-
-  const steps = [
-    {
-      n: "01", color: "#2a7d9c", bg: "rgba(42,125,156,0.08)", border: "rgba(42,125,156,0.18)",
-      title: "Déposez vos fichiers",
-      desc: "PV d'AG, règlement de copropriété, diagnostics, appels de charges — glissez-déposez vos PDF.",
-      icon: (<svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-8m0 0-3 3m3-3 3 3M6.5 20h11A2.5 2.5 0 0 0 20 17.5v-11A2.5 2.5 0 0 0 17.5 4h-7L6 8.5V17.5A2.5 2.5 0 0 0 8.5 20Z" /></svg>),
-    },
-    {
-      n: "02", color: "#2a7d9c", bg: "rgba(42,125,156,0.08)", border: "rgba(42,125,156,0.18)",
-      title: "Notre outil traite tout",
-      desc: "Chaque page lue, chaque risque détecté, chaque charge estimée. Rapide et automatique.",
-      icon: (<svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>),
-    },
-    {
-      n: "03", color: "#2a7d9c", bg: "rgba(42,125,156,0.08)", border: "rgba(42,125,156,0.18)",
-      title: "Rapport clair & actionnable",
-      desc: "Score /10, points de vigilance, travaux votés, impact financier. Disponible dans votre espace.",
-      icon: (<svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z" /></svg>),
-    },
-    {
-      n: "04", color: "#2a7d9c", bg: "rgba(42,125,156,0.08)", border: "rgba(42,125,156,0.18)",
-      title: "Téléchargez en PDF",
-      desc: "Exportez votre rapport complet et partagez-le avec votre agent, notaire ou banque.",
-      icon: (<svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>),
-    },
-  ];
-
-  return (
-    <section className="py-16 md:py-24 px-4 md:px-6 bg-white">
-      <div className="max-w-6xl mx-auto">
-        <SectionTitle label="Comment ça marche" title="Quatre étapes," accent="c'est tout."
-          sub="Pas de formation, pas de jargon. Vous déposez vos fichiers — on fait le reste." />
-
-        <div className="flex flex-col md:hidden" ref={refMobile}>
-          {steps.map((s, i) => (
-            <motion.div key={i}
-              initial={{ opacity: 0, x: -16 }}
-              animate={inViewMobile ? { opacity: 1, x: 0 } : {}}
-              transition={{ delay: i * 0.12, duration: 0.45 }}
-              className="flex gap-4">
-              <div className="flex flex-col items-center shrink-0">
-                <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border"
-                  style={{ background: s.bg, borderColor: s.border }}>
-                  <span className="text-sm font-black" style={{ color: s.color }}>{s.n}</span>
-                </div>
-                {i < steps.length - 1 && (
-                  <motion.div className="w-px min-h-[36px] flex-1 mt-1.5 mb-1.5 rounded-full"
-                    style={{ background: "linear-gradient(to bottom, rgba(42,125,156,0.3), rgba(42,125,156,0.05))" }}
-                    initial={{ scaleY: 0, transformOrigin: "top" }}
-                    animate={inViewMobile ? { scaleY: 1 } : {}}
-                    transition={{ delay: i * 0.12 + 0.2, duration: 0.35 }} />
-                )}
-              </div>
-              <div className="pb-6 pt-1 flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <div style={{ color: s.color }}>{s.icon}</div>
-                  <h3 className="text-base font-bold text-[#0f172a]">{s.title}</h3>
-                </div>
-                <p className="text-sm text-slate-500 leading-relaxed">{s.desc}</p>
-              </div>
-            </motion.div>
-          ))}
         </div>
+      )}
 
-        <div className="hidden md:block" ref={refDesktop}>
-          <div className="relative flex items-center justify-between mb-8 px-[56px]">
-            <div className="absolute inset-x-[56px] top-1/2 -translate-y-1/2 h-px bg-slate-200" />
-            <motion.div
-              className="absolute left-[56px] top-1/2 -translate-y-1/2 h-[2px] rounded-full bg-[#2a7d9c]/40"
-              initial={{ width: 0 }}
-              animate={inViewDesktop ? { width: "calc(100% - 112px)" } : {}}
-              transition={{ duration: 1.2, delay: 0.2, ease: [0.22, 1, 0.36, 1] }} />
-            {steps.map((s, i) => (
-              <motion.div key={i}
-                initial={{ opacity: 0, scale: 0.6 }}
-                animate={inViewDesktop ? { opacity: 1, scale: 1 } : {}}
-                transition={{ delay: i * 0.15 + 0.15, duration: 0.35, ease: "backOut" }}
-                className="relative z-10 flex flex-col items-center gap-2.5">
-                <div className="w-14 h-14 rounded-2xl border-2 flex items-center justify-center bg-white shadow-md"
-                  style={{ borderColor: s.border, color: s.color }}>
-                  {s.icon}
-                </div>
-                <span className="text-xs font-black text-[#2a7d9c] bg-[#2a7d9c]/8 px-2.5 py-0.5 rounded-full">{s.n}</span>
-              </motion.div>
-            ))}
+      {/* Comparaison côte à côte */}
+      {canCompare && selectedAnalyses.length === 2 && (
+        <>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
+            <span style={{ fontSize:13, fontWeight:700, color:'#0f172a' }}>Comparaison sélectionnée</span>
+            <button onClick={()=>setSelected([])} style={{ fontSize:13, fontWeight:600, color:'#94a3b8', background:'none', border:'none', cursor:'pointer' }}>
+              Changer la sélection
+            </button>
           </div>
-          <div className="grid grid-cols-4 gap-5">
-            {steps.map((s, i) => (
-              <motion.div key={i}
-                initial={{ opacity: 0, y: 16 }}
-                animate={inViewDesktop ? { opacity: 1, y: 0 } : {}}
-                transition={{ delay: i * 0.12 + 0.4, duration: 0.45 }}
-                className="rounded-2xl p-6 bg-[#f4f7f9] border border-slate-100 hover:border-[#2a7d9c]/20 hover:bg-[#eef6fb] hover:-translate-y-1 transition-all duration-200 cursor-default">
-                <div className="flex items-center gap-2 mb-3" style={{ color: s.color }}>
-                  {s.icon}
-                  <span className="text-xs font-black text-[#2a7d9c]">{s.n}</span>
-                </div>
-                <h3 className="text-base font-bold text-[#0f172a] mb-2">{s.title}</h3>
-                <p className="text-sm text-slate-500 leading-relaxed">{s.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-
-        <Reveal className="text-center mt-10 md:mt-12">
-          <Link to="/start"
-            className="inline-flex items-center gap-2 px-7 md:px-10 py-3.5 md:py-4 rounded-2xl bg-[#0f2d3d] text-white text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
-            Essayer maintenant — dès 4,90€ <ArrowRight size={16} />
-          </Link>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
-
-/* ═══ APERÇU DU RAPPORT ═════════════════════════════════════ */
-function ApercuRapportSection() {
-  const points = [
-    { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50", border: "border-green-100", label: "Finances saines", detail: "Fonds travaux bien dotés — 85 000€" },
-    { icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-50", border: "border-amber-100", label: "Toiture à prévoir (2026)", detail: "Estimé ~4 200€ / lot" },
-    { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50", border: "border-green-100", label: "Aucun impayé en cours", detail: "Copropriété bien gérée" },
-    { icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-50", border: "border-amber-100", label: "Ravalement voté 2025", detail: "Quote-part : 2 800€ / lot" },
-    { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50", border: "border-green-100", label: "Diagnostics conformes", detail: "DPE, amiante, plomb — OK" },
-    { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50", border: "border-green-100", label: "Aucune procédure judiciaire", detail: "Situation juridique nette" },
-  ];
-
-  return (
-    <section className="py-16 md:py-28 px-4 md:px-6 bg-[#f4f7f9]">
-      <div className="max-w-6xl mx-auto">
-        <SectionTitle label="Exemple de rapport" title="Ce que vous" accent="recevez."
-          sub="Voici exactement ce qu'Analymo vous fournit en moins de 30 secondes*." />
-
-        <Reveal>
-          <div className="bg-white rounded-2xl md:rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-
-            {/* Header rapport */}
-            <div className="bg-[#0f2d3d] px-6 md:px-10 py-5 md:py-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-1">Rapport Analymo — Analyse complète</p>
-                <p className="text-white font-black text-lg md:text-xl">12 rue des Lilas, 69003 Lyon</p>
-                <p className="text-white/40 text-sm mt-0.5">Analysé le 28 mars 2026 · 3 documents</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="relative w-16 h-16 md:w-20 md:h-20 shrink-0">
-                  <svg className="w-full h-full -rotate-90" viewBox="0 0 80 80">
-                    <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="6" />
-                    <motion.circle cx="40" cy="40" r="32" fill="none" stroke="#2a7d9c" strokeWidth="6" strokeLinecap="round"
-                      strokeDasharray={201} initial={{ strokeDashoffset: 201 }}
-                      whileInView={{ strokeDashoffset: 201 - 201 * 0.75 }} viewport={{ once: true }}
-                      transition={{ duration: 1.4, delay: 0.3 }} />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-xl md:text-2xl font-black text-white leading-none">7,5</span>
-                    <span className="text-[10px] text-white/40">/10</span>
-                  </div>
-                </div>
-                <div>
-                  <span className="inline-block px-3 py-1 rounded-full bg-green-500/15 text-green-400 text-xs font-bold mb-1">✓ Recommandé</span>
-                  <p className="text-white/60 text-xs">Bien globalement sain</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Corps du rapport */}
-            <div className="p-6 md:p-10 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
-
-              {/* Points clés */}
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Points détectés</h4>
-                <div className="flex flex-col gap-2.5">
-                  {points.map((p, i) => (
-                    <motion.div key={i}
-                      initial={{ opacity: 0, x: -10 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: i * 0.08 }}
-                      className={`flex items-center gap-3 p-3.5 rounded-xl border ${p.bg} ${p.border}`}>
-                      <p.icon size={15} className={`${p.color} shrink-0`} />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-[#0f172a] truncate">{p.label}</p>
-                        <p className="text-xs text-slate-500 truncate">{p.detail}</p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Données financières + recommandation */}
-              <div className="flex flex-col gap-5">
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Données financières</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      { label: "Charges mensuelles", val: "180 €/mois" },
-                      { label: "Fonds travaux", val: "85 000 €" },
-                      { label: "Travaux votés", val: "~7 000 €/lot" },
-                      { label: "Impayés copro", val: "Aucun" },
-                    ].map((d, i) => (
-                      <div key={i} className="p-3.5 rounded-xl bg-[#f4f7f9] border border-slate-100">
-                        <p className="text-[11px] text-slate-400 font-medium mb-1">{d.label}</p>
-                        <p className="text-base font-black text-[#0f172a]">{d.val}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-xl bg-[#0f2d3d]/5 border border-[#0f2d3d]/10 p-5">
-                  <p className="text-xs font-bold uppercase tracking-widest text-[#2a7d9c] mb-2">Avis Analymo</p>
-                  <p className="text-sm text-slate-600 leading-relaxed">
-                    Ce bien présente une copropriété globalement saine. Les travaux de toiture votés représentent une charge à anticiper. Le ratio charges/fonds travaux est satisfaisant. <span className="font-semibold text-[#0f172a]">Recommandé à l'achat avec négociation possible.</span>
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-3 p-4 rounded-xl bg-[#f4f7f9] border border-slate-100">
-                  <Download size={16} className="text-[#2a7d9c] shrink-0" />
-                  <div>
-                    <p className="text-sm font-bold text-[#0f172a]">Rapport PDF complet</p>
-                    <p className="text-xs text-slate-400">Téléchargeable · Partageable avec votre notaire</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Reveal>
-
-        <Reveal className="text-center mt-8">
-          <Link to="/exemple"
-            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl border border-slate-200 bg-white text-[#0f172a] text-sm font-bold hover:border-[#2a7d9c]/40 hover:bg-[#f0f8fc] transition-all duration-200">
-            Voir un exemple complet interactif <ChevronRight size={16} className="text-slate-400" />
-          </Link>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
-
-/* ═══ FAQ ════════════════════════════════════════════════════ */
-function FaqSection() {
-  const [open, setOpen] = useState<number | null>(null);
-
-  const faqs = [
-    {
-      q: "Mes documents sont-ils supprimés après traitement ?",
-      a: "Oui, automatiquement. Vos fichiers sont supprimés de nos serveurs dès que votre rapport est généré. Aucun stockage permanent — seul le rapport final est conservé dans votre espace.",
-    },
-    {
-      q: "Ça fonctionne avec tous les types de documents ?",
-      a: "Analymo traite les PDF nativement numériques (PDF texte) en 30 secondes. Les documents scannés ou photographiés peuvent nécessiter un délai supplémentaire. Les formats Word, images JPEG ou PNG ne sont pas pris en charge.",
-    },
-    {
-      q: "Et si je n'ai qu'un seul document ?",
-      a: "L'analyse simple à 4,90€ est faite pour ça — elle analyse un seul document et vous donne les informations clés sans score /10. L'analyse complète à 19,90€ accepte plusieurs documents et génère un score global.",
-    },
-    {
-      q: "Le rapport est-il garanti exact ?",
-      a: "Notre outil traite vos documents avec soin, mais il reste un outil d'aide à la décision. Nous recommandons de confirmer les éléments importants avec un professionnel (notaire, avocat) avant toute signature.",
-    },
-    {
-      q: "Puis-je partager le rapport avec mon notaire ou mon banquier ?",
-      a: "Absolument. Le rapport est téléchargeable en PDF et peut être partagé librement. De nombreux utilisateurs l'envoient à leur notaire ou l'utilisent pour justifier une négociation de prix.",
-    },
-    {
-      q: "Mes crédits ont-ils une date d'expiration ?",
-      a: "Non, jamais. Vos crédits sont valables indéfiniment. Vous pouvez acheter un pack aujourd'hui et l'utiliser dans 6 mois — ils vous attendent.",
-    },
-  ];
-
-  return (
-    <section className="py-16 md:py-28 px-4 md:px-6 bg-white">
-      <div className="max-w-3xl mx-auto">
-        <SectionTitle label="Questions fréquentes" title="Tout ce que vous" accent="voulez savoir." />
-
-        <div className="flex flex-col gap-3">
-          {faqs.map((faq, i) => (
-            <Reveal key={i} delay={i * 0.05}>
-              <div className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden">
-                <button
-                  onClick={() => setOpen(open === i ? null : i)}
-                  className="w-full flex items-center justify-between gap-4 px-5 md:px-7 py-4 md:py-5 text-left hover:bg-[#f4f7f9] transition-colors">
-                  <span className="text-sm md:text-base font-bold text-[#0f172a]">{faq.q}</span>
-                  <motion.div animate={{ rotate: open === i ? 180 : 0 }} transition={{ duration: 0.2 }} className="shrink-0">
-                    <ChevronDown size={18} className="text-slate-400" />
-                  </motion.div>
-                </button>
-                <AnimatePresence>
-                  {open === i && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.25 }}>
-                      <div className="px-5 md:px-7 pb-5 text-sm md:text-base text-slate-500 leading-relaxed border-t border-slate-100 pt-4">
-                        {faq.a}
-                      </div>
-                    </motion.div>
+          <div className="compare-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+            {selectedAnalyses.map((a, i) => {
+              const sc2 = a.score ?? 0;
+              const color = sc2 >= 7.5 ? '#16a34a' : sc2 >= 5 ? '#d97706' : '#dc2626';
+              return (
+                <div key={a.id} style={{ background:'#fff', borderRadius:18, border:`1.5px solid ${color}20`, padding:'26px', boxShadow:'0 2px 12px rgba(0,0,0,0.04)' }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.12em', marginBottom:8 }}>BIEN {i+1}</div>
+                  <h3 style={{ fontSize:14, fontWeight:700, color:'#0f172a', marginBottom:18, lineHeight:1.4 }}>{a.adresse_bien}</h3>
+                  {a.score != null && (
+                    <div style={{ marginBottom:16 }}>
+                      <ScoreBadge score={a.score} size="lg"/>
+                    </div>
                   )}
-                </AnimatePresence>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-
-        <Reveal className="text-center mt-10">
-          <p className="text-sm text-slate-400 mb-3">Vous avez une autre question ?</p>
-          <Link to="/contact"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-slate-200 text-[#0f172a] text-sm font-semibold hover:border-[#2a7d9c]/40 hover:bg-[#f0f8fc] transition-all duration-200">
-            Contactez-nous <ArrowRight size={15} />
-          </Link>
-        </Reveal>
-      </div>
-    </section>
+                  {a.recommandation && (
+                    <span style={{ display:'inline-block', padding:'5px 14px', borderRadius:8, background:`${a.recommandationColor}10`, color:a.recommandationColor, fontSize:13, fontWeight:700, border:`1px solid ${a.recommandationColor}22` }}>
+                      {a.recommandation}
+                    </span>
+                  )}
+                  <div style={{ marginTop:16, fontSize:12, color:'#94a3b8' }}>Analysé le {a.date}</div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ padding:'20px 22px', borderRadius:14, background:'#fff', border:'1px solid #edf2f7', display:'flex', gap:12, alignItems:'flex-start' }}>
+            <Shield size={18} color="#2a7d9c" style={{ flexShrink:0, marginTop:2 }}/>
+            <div>
+              <div style={{ fontSize:10, fontWeight:800, color:'#2a7d9c', letterSpacing:'0.12em', marginBottom:6 }}>VERDICT ANALYMO</div>
+              {(() => {
+                const [b1, b2] = selectedAnalyses;
+                const s1 = b1.score ?? 0, s2 = b2.score ?? 0;
+                const best = s1 >= s2 ? b1 : b2;
+                return <p style={{ fontSize:14, color:'#0f172a', fontWeight:600, lineHeight:1.6 }}>Le bien <strong>"{best.adresse_bien}"</strong> (score {(best.score??0).toFixed(1)}/10) est recommandé selon nos analyses. Consultez les rapports détaillés pour affiner votre décision.</p>;
+              })()}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
-/* ═══ CTA FINAL ═════════════════════════════════════════════ */
-function CtaFinal() {
-  const included = [
-    "Score global /10 avec recommandation",
-    "Travaux votés + estimation financière",
-    "Santé financière de la copropriété",
-    "Procédures judiciaires & impayés",
-    "Rapport PDF téléchargeable",
-    "Crédits sans date d'expiration",
+/* ══════════════════════════════════════════
+   COMPTE
+══════════════════════════════════════════ */
+function Compte() {
+  const [user, setUser] = useState({name:'',email:''});
+  const [saved, setSaved] = useState(false);
+  const [pwdSection, setPwdSection] = useState(false);
+  const [pwd, setPwd] = useState({current:'',next:'',confirm:''});
+  const [pwdMsg, setPwdMsg] = useState('');
+  const [pwdError, setPwdError] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+
+  useEffect(()=>{ supabase.auth.getUser().then(({data:{user:u}})=>{ if(u) setUser({name:u.user_metadata?.full_name||'',email:u.email||''}); }); },[]);
+
+  const save = async ()=>{
+    const { data: { user: u } } = await supabase.auth.getUser();
+    await supabase.auth.updateUser({ data: { full_name: user.name } });
+    if (u) await supabase.from('profiles').update({ full_name: user.name }).eq('id', u.id);
+    setSaved(true); setTimeout(()=>setSaved(false),3000);
+  };
+
+  const changePwd = async () => {
+    setPwdError(''); setPwdMsg('');
+    if (pwd.next !== pwd.confirm) { setPwdError('Les mots de passe ne correspondent pas.'); return; }
+    if (pwd.next.length < 8) { setPwdError('Le mot de passe doit faire au moins 8 caractères.'); return; }
+    const { error } = await supabase.auth.updateUser({ password: pwd.next });
+    if (error) { setPwdError('Erreur : ' + error.message); }
+    else { setPwdMsg('Mot de passe modifié avec succès !'); setPwd({current:'',next:'',confirm:''}); setTimeout(()=>{ setPwdMsg(''); setPwdSection(false); },3000); }
+  };
+
+  // Historique achats mock — à remplacer par Supabase après Stripe
+  const mockAchats = [
+    { date:'24 mars 2026', label:'Analyse Complète', montant:'19,90€', statut:'Payé' },
+    { date:'19 mars 2026', label:'Analyse Document', montant:'4,90€', statut:'Payé' },
   ];
+
   return (
-    <section className="py-16 md:py-24 px-4 md:px-6 bg-white">
-      <div className="max-w-4xl mx-auto">
-        <Reveal>
-          <div className="rounded-2xl md:rounded-3xl overflow-hidden" style={{ background: "linear-gradient(135deg, #0f2d3d 0%, #1a4a5e 100%)" }}>
-            <div className="h-1 w-full" style={{ background: "linear-gradient(90deg, #4ade80 0%, #2a7d9c 100%)" }} />
-            <div className="p-8 md:p-12 lg:p-14">
-              <div className="text-center mb-10">
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/8 mb-5">
-                  <div className="w-2 h-2 rounded-full bg-[#4ade80]" />
-                  <span className="text-white/70 text-xs font-semibold tracking-wide">Analyse complète</span>
+    <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+      <h1 style={{ fontSize:'clamp(20px,3vw,26px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em' }}>Mon compte</h1>
+
+      {/* Informations personnelles */}
+      <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'24px', boxShadow:'0 1px 4px rgba(0,0,0,0.03)' }}>
+        <h2 style={{ fontSize:14, fontWeight:800, color:'#0f172a', marginBottom:18, paddingBottom:13, borderBottom:'1px solid #f0f5f9' }}>Informations personnelles</h2>
+        <div style={{ display:'flex', flexDirection:'column', gap:15 }}>
+          {[{l:'Nom complet',v:user.name,set:(v:string)=>setUser({...user,name:v}),ph:'Jean Dupont',disabled:false},{l:'Email',v:user.email,set:(_:string)=>{},ph:'',disabled:true}].map(f=>(
+            <div key={f.l}>
+              <label style={{ display:'block', fontSize:13, fontWeight:700, color:'#0f172a', marginBottom:7 }}>{f.l}</label>
+              <input value={f.v} onChange={e=>f.set(e.target.value)} placeholder={f.ph} disabled={f.disabled}
+                style={{ width:'100%', padding:'11px 13px', borderRadius:9, border:'1.5px solid #edf2f7', fontSize:14, background:f.disabled?'#f8fafc':'#fff', color:f.disabled?'#94a3b8':'#0f172a', outline:'none', boxSizing:'border-box' as const }}/>
+              {f.disabled && <p style={{ fontSize:11, color:'#94a3b8', marginTop:5 }}>L'adresse email ne peut pas être modifiée.</p>}
+            </div>
+          ))}
+          <div style={{ display:'flex', alignItems:'center', gap:12, marginTop:4 }}>
+            <button onClick={save} style={{ padding:'10px 22px', borderRadius:9, background:'linear-gradient(135deg, #2a7d9c, #0f2d3d)', border:'none', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }}>Enregistrer</button>
+            {saved && <span style={{ fontSize:13, color:'#16a34a', fontWeight:700 }}>✓ Enregistré</span>}
+          </div>
+        </div>
+      </div>
+
+      {/* Changer le mot de passe */}
+      <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'24px', boxShadow:'0 1px 4px rgba(0,0,0,0.03)' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: pwdSection ? 18 : 0, paddingBottom: pwdSection ? 13 : 0, borderBottom: pwdSection ? '1px solid #f0f5f9' : 'none' }}>
+          <h2 style={{ fontSize:14, fontWeight:800, color:'#0f172a' }}>Mot de passe</h2>
+          <button onClick={()=>{ setPwdSection(!pwdSection); setPwdError(''); setPwdMsg(''); }}
+            style={{ fontSize:13, fontWeight:700, color:'#2a7d9c', background:'none', border:'none', cursor:'pointer' }}>
+            {pwdSection ? 'Annuler' : 'Modifier'}
+          </button>
+        </div>
+        {!pwdSection && <p style={{ fontSize:13, color:'#94a3b8', marginTop:8 }}>••••••••••••</p>}
+        {pwdSection && (
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            {[
+              { l:'Nouveau mot de passe', k:'next' as const, v:pwd.next },
+              { l:'Confirmer le mot de passe', k:'confirm' as const, v:pwd.confirm },
+            ].map(f=>(
+              <div key={f.k}>
+                <label style={{ display:'block', fontSize:13, fontWeight:700, color:'#0f172a', marginBottom:7 }}>{f.l}</label>
+                <input type="password" value={f.v} onChange={e=>setPwd({...pwd,[f.k]:e.target.value})}
+                  style={{ width:'100%', padding:'11px 13px', borderRadius:9, border:'1.5px solid #edf2f7', fontSize:14, outline:'none', boxSizing:'border-box' as const }}/>
+              </div>
+            ))}
+            {pwdError && <p style={{ fontSize:13, color:'#dc2626', fontWeight:600 }}>⚠ {pwdError}</p>}
+            {pwdMsg && <p style={{ fontSize:13, color:'#16a34a', fontWeight:600 }}>✓ {pwdMsg}</p>}
+            <button onClick={changePwd}
+              style={{ alignSelf:'flex-start', padding:'10px 22px', borderRadius:9, background:'linear-gradient(135deg, #2a7d9c, #0f2d3d)', border:'none', color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer' }}>
+              Mettre à jour
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Historique des achats */}
+      <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'24px', boxShadow:'0 1px 4px rgba(0,0,0,0.03)' }}>
+        <h2 style={{ fontSize:14, fontWeight:800, color:'#0f172a', marginBottom:18, paddingBottom:13, borderBottom:'1px solid #f0f5f9' }}>Historique des achats</h2>
+        {mockAchats.length === 0 ? (
+          <p style={{ fontSize:13, color:'#94a3b8' }}>Aucun achat pour le moment.</p>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            {mockAchats.map((a,i)=>(
+              <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 14px', borderRadius:10, background:'#f8fafc', border:'1px solid #edf2f7', flexWrap:'wrap', gap:8 }}>
+                <div>
+                  <div style={{ fontSize:13, fontWeight:700, color:'#0f172a' }}>{a.label}</div>
+                  <div style={{ fontSize:11, color:'#94a3b8' }}>{a.date}</div>
                 </div>
-                <h2 className="text-[clamp(22px,4vw,42px)] font-black text-white mb-3 leading-tight">
-                  Prenez votre décision<br />en toute clarté.
-                </h2>
-                <p className="text-white/50 text-sm md:text-base max-w-xl mx-auto leading-relaxed">
-                  Notre outil lit vos documents immobiliers et vous donne un rapport complet avant de signer. À partir de <span className="text-white font-bold">19,90€</span>, sans abonnement.
-                </p>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <span style={{ fontSize:14, fontWeight:800, color:'#0f172a' }}>{a.montant}</span>
+                  <span style={{ fontSize:10, fontWeight:700, color:'#16a34a', background:'#f0fdf4', border:'1px solid #bbf7d0', padding:'2px 8px', borderRadius:6 }}>{a.statut}</span>
+                </div>
+              </div>
+            ))}
+            <p style={{ fontSize:11, color:'#cbd5e1', marginTop:4 }}>Les factures détaillées seront disponibles après connexion de Stripe.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Zone danger */}
+      <div style={{ background:'#fff', borderRadius:16, border:'1px solid #fecaca', padding:'24px', boxShadow:'0 1px 4px rgba(0,0,0,0.03)' }}>
+        <h2 style={{ fontSize:14, fontWeight:800, color:'#dc2626', marginBottom:8 }}>Zone de danger</h2>
+        <p style={{ fontSize:13, color:'#64748b', marginBottom:16 }}>La suppression de votre compte est irréversible. Toutes vos analyses seront perdues.</p>
+        {!deleteConfirm ? (
+          <button onClick={()=>setDeleteConfirm(true)}
+            style={{ padding:'10px 22px', borderRadius:9, background:'#fef2f2', border:'1.5px solid #fecaca', color:'#dc2626', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+            Supprimer mon compte
+          </button>
+        ) : (
+          <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
+            <span style={{ fontSize:13, color:'#dc2626', fontWeight:600 }}>Êtes-vous sûr ?</span>
+            <button onClick={async ()=>{ await supabase.auth.signOut(); window.location.href='/'; }}
+              style={{ padding:'10px 18px', borderRadius:9, background:'#dc2626', border:'none', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              Confirmer la suppression
+            </button>
+            <button onClick={()=>setDeleteConfirm(false)}
+              style={{ padding:'10px 18px', borderRadius:9, background:'#f8fafc', border:'1.5px solid #edf2f7', color:'#64748b', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+              Annuler
+            </button>
+          </div>
+        )}
+      </div>
+
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   SUPPORT
+══════════════════════════════════════════ */
+function Support() {
+  const faqs = [
+    {q:"Quels documents puis-je analyser ?",a:"PV d'AG, règlements de copropriété, appels de charges, diagnostics immobiliers. Formats : PDF, Word, JPG/PNG."},
+    {q:"Combien de temps prend une analyse ?",a:"Moins de 2 minutes. Une notification vous est envoyée dès que le rapport est disponible."},
+    {q:"Mes documents sont-ils sécurisés ?",a:"Oui. Chiffrement SSL/TLS, aucun partage de données. Les fichiers sont supprimés immédiatement après l'analyse."},
+    {q:"Comment fonctionnent les crédits ?",a:"Chaque achat vous attribue des crédits : 4,90€ = 1 crédit analyse document, 19,90€ = 1 crédit analyse complète, 29,90€ = 2 crédits complets, 39,90€ = 3 crédits complets. Les crédits ne expirent pas."},
+  ];
+  const [open, setOpen] = useState<number|null>(null);
+  const [sent, setSent] = useState(false);
+  const [msg, setMsg] = useState('');
+  return (
+    <div>
+      <h1 style={{ fontSize:'clamp(20px,3vw,26px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:24 }}>Support / Aide</h1>
+      <div style={{ marginBottom:24 }}>
+        <h2 style={{ fontSize:14, fontWeight:800, color:'#0f172a', marginBottom:12 }}>Questions fréquentes</h2>
+        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+          {faqs.map((f,i)=>(
+            <div key={i} style={{ borderRadius:12, border:'1px solid #edf2f7', overflow:'hidden', background:'#fff' }}>
+              <button onClick={()=>setOpen(open===i?null:i)} style={{ width:'100%', padding:'14px 18px', display:'flex', justifyContent:'space-between', alignItems:'center', background:'none', border:'none', cursor:'pointer', textAlign:'left' }}>
+                <span style={{ fontSize:14, fontWeight:700, color:'#0f172a' }}>{f.q}</span>
+                <ChevronDown size={15} color="#2a7d9c" style={{ flexShrink:0, transform:open===i?'rotate(180deg)':'none', transition:'transform 0.2s' }}/>
+              </button>
+              {open===i && <div style={{ padding:'0 18px 14px' }}><p style={{ fontSize:13, color:'#64748b', lineHeight:1.7 }}>{f.a}</p></div>}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'24px', boxShadow:'0 1px 4px rgba(0,0,0,0.03)' }}>
+        <h2 style={{ fontSize:14, fontWeight:800, color:'#0f172a', marginBottom:18 }}>Nous contacter</h2>
+        {sent ? (
+          <div style={{ textAlign:'center', padding:'28px 0' }}>
+            <div style={{ fontSize:40, marginBottom:12 }}>✅</div>
+            <h3 style={{ fontSize:16, fontWeight:800, color:'#0f172a', marginBottom:5 }}>Message envoyé !</h3>
+            <p style={{ fontSize:13, color:'#94a3b8' }}>Réponse sous 24h à hello@analymo.fr</p>
+          </div>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+            <textarea value={msg} onChange={e=>setMsg(e.target.value)} rows={4} placeholder="Décrivez votre problème…"
+              style={{ width:'100%', padding:'11px 13px', borderRadius:10, border:'1.5px solid #edf2f7', fontSize:14, outline:'none', resize:'vertical', boxSizing:'border-box' as const, fontFamily:'inherit', color:'#0f172a' }}/>
+            <button onClick={()=>{ if(msg)setSent(true); }} disabled={!msg}
+              style={{ alignSelf:'flex-start', padding:'10px 22px', borderRadius:9, background:msg?'linear-gradient(135deg, #2a7d9c, #0f2d3d)':'#edf2f7', border:'none', color:msg?'#fff':'#94a3b8', fontSize:14, fontWeight:700, cursor:msg?'pointer':'not-allowed', display:'flex', alignItems:'center', gap:7 }}>
+              <Send size={14}/> Envoyer
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   TARIFS — onglet interne dashboard
+══════════════════════════════════════════ */
+/* ══════════════════════════════════════════
+   TARIFS — SaaS moderne avec tooltips
+══════════════════════════════════════════ */
+function Tarifs() {
+  const credits = MOCK_CREDITS;
+  const [loading, setLoading] = useState<string | null>(null);
+  const [tooltip, setTooltip] = useState<string | null>(null);
+
+  const handleAcheter = (planId: string) => {
+    setLoading(planId);
+    setTimeout(() => {
+      setLoading(null);
+      alert('Redirection vers Stripe… (à connecter)');
+    }, 800);
+  };
+
+  const plans = [
+    {
+      id: 'document',
+      label: 'Analyse Document',
+      price: '4,90€',
+      desc: 'Idéal pour lever un doute sur un document précis.',
+      creditLabel: '1 crédit simple',
+      creditType: 'document' as keyof Credits,
+      color: '#2a7d9c',
+      icon: FileText,
+      details: [
+        '1 fichier analysé en profondeur',
+        "PV d'AG, règlement, diagnostic ou appel de charges",
+        'Résumé clair + points forts + vigilances',
+        'Rapport PDF téléchargeable',
+        'Résultat en moins de 2 minutes',
+      ],
+    },
+    {
+      id: 'complete',
+      label: 'Analyse Complète',
+      price: '19,90€',
+      desc: "Audit global d'un bien avec score et recommandation.",
+      creditLabel: '1 crédit complet',
+      creditType: 'complete' as keyof Credits,
+      color: '#0f2d3d',
+      icon: ShieldCheck,
+      popular: true,
+      details: [
+        'Documents illimités pour un seul bien',
+        'Score global noté /10',
+        'Recommandation : Acheter / Négocier / Risqué',
+        'Estimation des risques financiers',
+        'Avis Analymo complet',
+        'Rapport PDF téléchargeable',
+        'Résultat en moins de 2 minutes',
+      ],
+    },
+    {
+      id: 'pack2',
+      label: 'Pack 2 Biens',
+      price: '29,90€',
+      desc: 'Comparez 2 biens côte à côte. 14,95€ / bien.',
+      creditLabel: '2 crédits complets',
+      creditType: 'complete' as keyof Credits,
+      color: '#1a5068',
+      icon: GitCompare,
+      badge: '−25%',
+      details: [
+        '2 analyses complètes incluses',
+        'Comparaison côte à côte des 2 biens',
+        'Verdict Analymo : quel bien choisir',
+        '14,95€ / analyse au lieu de 19,90€',
+        'Rapport PDF pour chaque bien',
+      ],
+    },
+    {
+      id: 'pack3',
+      label: 'Pack 3 Biens',
+      price: '39,90€',
+      desc: 'Le meilleur rapport qualité/prix. 13,30€ / bien.',
+      creditLabel: '3 crédits complets',
+      creditType: 'complete' as keyof Credits,
+      color: '#1a5068',
+      icon: BarChart2,
+      badge: '−33%',
+      details: [
+        '3 analyses complètes incluses',
+        'Comparaison des 3 biens',
+        'Classement final Analymo',
+        'Recommandation définitive',
+        '13,30€ / analyse au lieu de 19,90€',
+        'Rapport PDF pour chaque bien',
+      ],
+    },
+  ];
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:28, maxWidth:740, margin:'0 auto' }}>
+
+      {/* Header */}
+      <div>
+        <h1 style={{ fontSize:'clamp(22px,3vw,30px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.03em', marginBottom:6 }}>
+          Choisissez votre analyse
+        </h1>
+        <p style={{ fontSize:14, color:'#64748b' }}>
+          Achetez des crédits selon votre besoin — ils n'expirent jamais.
+        </p>
+      </div>
+
+      {/* Crédits actuels */}
+      <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 18px', background:'#fff', borderRadius:12, border:'1px solid #edf2f7', flexWrap:'wrap' }}>
+        <CreditCard size={15} style={{ color:'#2a7d9c', flexShrink:0 }}/>
+        <span style={{ fontSize:13, fontWeight:600, color:'#64748b' }}>Vos crédits :</span>
+        <span style={{ padding:'3px 11px', borderRadius:7, background:credits.document>0?'#f0fdf4':'#f8fafc', border:`1px solid ${credits.document>0?'#bbf7d0':'#e2e8f0'}`, fontSize:13, fontWeight:700, color:credits.document>0?'#16a34a':'#94a3b8' }}>
+          {credits.document} simple
+        </span>
+        <span style={{ padding:'3px 11px', borderRadius:7, background:credits.complete>0?'#eff6ff':'#f8fafc', border:`1px solid ${credits.complete>0?'#bfdbfe':'#e2e8f0'}`, fontSize:13, fontWeight:700, color:credits.complete>0?'#1d4ed8':'#94a3b8' }}>
+          {credits.complete} complet{credits.complete>1?'s':''}
+        </span>
+        <span style={{ fontSize:11, color:'#94a3b8', marginLeft:'auto' }}>♾️ Sans expiration</span>
+      </div>
+
+      {/* Cartes horizontales */}
+      <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+        {plans.map(plan => {
+          const Icon = plan.icon;
+          const hasCredits = credits[plan.creditType] > 0;
+          const showTip = tooltip === plan.id;
+
+          return (
+            <div key={plan.id} style={{
+              background:'#fff',
+              borderRadius:16,
+              border: plan.popular ? '2px solid #0f2d3d' : '1.5px solid #edf2f7',
+              overflow:'hidden',
+              boxShadow: plan.popular ? '0 8px 28px rgba(15,45,61,0.12)' : '0 1px 6px rgba(0,0,0,0.04)',
+              transition:'box-shadow 0.2s, transform 0.2s',
+            }}
+              onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow=plan.popular?'0 14px 44px rgba(15,45,61,0.18)':'0 6px 20px rgba(0,0,0,0.08)'; el.style.transform='translateY(-2px)'; }}
+              onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow=plan.popular?'0 8px 28px rgba(15,45,61,0.12)':'0 1px 6px rgba(0,0,0,0.04)'; el.style.transform='translateY(0)'; }}
+            >
+              {/* Bande populaire */}
+              {plan.popular && (
+                <div style={{ background:'linear-gradient(90deg, #0f2d3d, #1a5068)', padding:'7px 20px', display:'flex', alignItems:'center', gap:7 }}>
+                  <Star size={11} style={{ color:'#fbbf24' }}/>
+                  <span style={{ fontSize:10, fontWeight:800, color:'#fff', letterSpacing:'0.1em' }}>LE PLUS POPULAIRE</span>
+                  <span style={{ marginLeft:'auto', fontSize:10, color:'rgba(255,255,255,0.45)' }}>Recommandé par Analymo</span>
+                </div>
+              )}
+
+              <div style={{ display:'flex', alignItems:'center', padding:'20px 22px', gap:18, flexWrap:'wrap' }}>
+
+                {/* Icone */}
+                <div style={{ width:48, height:48, borderRadius:13, background:`${plan.color}0e`, border:`1.5px solid ${plan.color}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  <Icon size={21} style={{ color:plan.color }}/>
+                </div>
+
+                {/* Nom + desc */}
+                <div style={{ flex:'1 1 160px', minWidth:0 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
+                    <span style={{ fontSize:15, fontWeight:800, color:'#0f172a' }}>{plan.label}</span>
+                    {plan.badge && (
+                      <span style={{ fontSize:10, fontWeight:800, color:'#d97706', background:'#fef3c7', border:'1px solid #fde68a', padding:'2px 7px', borderRadius:100 }}>
+                        {plan.badge}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize:12.5, color:'#64748b', lineHeight:1.5, marginBottom:5 }}>{plan.desc}</div>
+                  <span style={{ fontSize:10, fontWeight:700, color:plan.color, background:`${plan.color}09`, border:`1px solid ${plan.color}18`, padding:'2px 8px', borderRadius:6, display:'inline-block' }}>
+                    {plan.creditLabel}
+                  </span>
+                </div>
+
+                {/* Prix */}
+                <div style={{ textAlign:'right', flexShrink:0 }}>
+                  <div style={{ fontSize:30, fontWeight:900, color:'#0f172a', letterSpacing:'-0.03em', lineHeight:1 }}>{plan.price}</div>
+                  <div style={{ fontSize:10, color:'#94a3b8', marginTop:3 }}>paiement unique</div>
+                </div>
+
+                {/* Bouton info avec tooltip */}
+                <div style={{ position:'relative', flexShrink:0 }}>
+                  <button
+                    onMouseEnter={()=>setTooltip(plan.id)}
+                    onMouseLeave={()=>setTooltip(null)}
+                    style={{ width:30, height:30, borderRadius:'50%', background:'#f8fafc', border:'1.5px solid #edf2f7', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#94a3b8', transition:'all 0.15s' }}
+                    onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.background=`${plan.color}10`; el.style.borderColor=`${plan.color}30`; el.style.color=plan.color; }}
+                    onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.background='#f8fafc'; el.style.borderColor='#edf2f7'; el.style.color='#94a3b8'; }}
+                  >
+                    <Info size={13}/>
+                  </button>
+
+                  {showTip && (
+                    <div style={{
+                      position:'absolute', right:0, top:38, zIndex:200,
+                      background:'#0f172a', borderRadius:13, padding:'14px 16px',
+                      width:240, boxShadow:'0 16px 48px rgba(0,0,0,0.28)',
+                      animation:'fadeUp 0.15s ease both',
+                      pointerEvents:'none',
+                    }}>
+                      <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.4)', letterSpacing:'0.1em', marginBottom:10 }}>INCLUS DANS CE PACK</div>
+                      <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
+                        {plan.details.map((d,i)=>(
+                          <div key={i} style={{ display:'flex', gap:7, alignItems:'flex-start' }}>
+                            <CheckCircle size={11} style={{ color:'#4ade80', flexShrink:0, marginTop:2 }}/>
+                            <span style={{ fontSize:11.5, color:'rgba(255,255,255,0.72)', lineHeight:1.4 }}>{d}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ position:'absolute', top:-5, right:10, width:10, height:10, background:'#0f172a', transform:'rotate(45deg)', borderRadius:2 }}/>
+                    </div>
+                  )}
+                </div>
+
+                {/* CTA */}
+                <button
+                  onClick={()=>handleAcheter(plan.id)}
+                  disabled={loading===plan.id}
+                  style={{
+                    flexShrink:0, padding:'11px 22px', borderRadius:11, border:'none',
+                    background:`linear-gradient(135deg, ${plan.color}, ${plan.color}cc)`,
+                    color:'#fff', fontSize:13.5, fontWeight:800,
+                    cursor:loading===plan.id?'not-allowed':'pointer',
+                    boxShadow:`0 4px 14px ${plan.color}30`,
+                    display:'flex', alignItems:'center', gap:7,
+                    opacity:loading===plan.id?0.75:1,
+                    transition:'all 0.15s', whiteSpace:'nowrap',
+                  }}
+                  onMouseOver={e=>{ if(loading!==plan.id)(e.currentTarget as HTMLElement).style.filter='brightness(1.1)'; }}
+                  onMouseOut={e=>{ (e.currentTarget as HTMLElement).style.filter='brightness(1)'; }}
+                >
+                  {loading===plan.id
+                    ? <><div style={{ width:14,height:14,borderRadius:'50%',border:'2px solid rgba(255,255,255,0.35)',borderTopColor:'#fff',animation:'spin 0.8s linear infinite' }}/> Traitement…</>
+                    : hasCredits ? 'Racheter' : 'Acheter'
+                  }
+                </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-10">
-                {included.map((item, i) => (
-                  <motion.div key={i} initial={{opacity:0,y:8}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*0.07}}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/6 hover:bg-white/10 transition-colors">
-                    <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: "rgba(74,222,128,0.15)" }}>
-                      <Check size={11} className="text-[#4ade80]" />
-                    </div>
-                    <span className="text-sm text-white/80 font-medium">{item}</span>
-                  </motion.div>
-                ))}
-              </div>
+              {/* Barre verte si crédits dispos */}
+              {hasCredits && (
+                <div style={{ padding:'9px 22px', background:'#f0fdf4', borderTop:'1px solid #dcfce7', display:'flex', alignItems:'center', gap:7 }}>
+                  <CheckCircle size={12} style={{ color:'#16a34a' }}/>
+                  <span style={{ fontSize:12, fontWeight:600, color:'#16a34a' }}>
+                    {credits[plan.creditType]} crédit{credits[plan.creditType]>1?'s':''} disponible{credits[plan.creditType]>1?'s':''} — utilisez-les depuis "Nouvelle analyse"
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
 
-              <div className="flex flex-col items-center gap-6">
-                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                  <Link to="/start"
-                    className="flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-sm md:text-base font-bold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl"
-                    style={{ background: "linear-gradient(135deg, #4ade80 0%, #22c55e 100%)", color: "#0f2d3d" }}>
-                    Lancer mon analyse <ArrowRight size={16} />
-                  </Link>
-                  <Link to="/exemple"
-                    className="flex items-center justify-center gap-2 px-7 py-4 rounded-xl border border-white/15 text-white/70 text-sm md:text-base font-semibold hover:bg-white/8 hover:text-white transition-all duration-200">
-                    Voir un exemple
-                  </Link>
-                </div>
-                <div className="flex flex-wrap justify-center gap-6 md:gap-10">
-                  {[
-                    { label: "Simple", price: "4,90€", sub: "1 document" },
-                    { label: "Complète", price: "19,90€", sub: "Docs illimités" },
-                    { label: "Pack 2 biens", price: "29,90€", sub: "2 crédits" },
-                  ].map((p, i) => (
-                    <div key={i} className="text-center">
-                      <p className="text-white/35 text-[10px] font-bold uppercase tracking-wider mb-0.5">{p.label}</p>
-                      <p className="text-white font-black text-lg leading-tight">{p.price}</p>
-                      <p className="text-white/30 text-[10px]">{p.sub}</p>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-white/25 text-xs italic text-center">* Pour documents PDF nativement numériques</p>
-              </div>
+      {/* Garanties */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:10 }}>
+        {[
+          { icon:'🔒', title:'Stripe sécurisé', sub:'Paiement chiffré' },
+          { icon:'♾️', title:'Sans expiration', sub:'Utilisez quand vous voulez' },
+          { icon:'⚡', title:'< 2 minutes', sub:'Rapport immédiat' },
+          { icon:'🗑️', title:'Données supprimées', sub:'Après chaque analyse' },
+        ].map(g=>(
+          <div key={g.title} style={{ background:'#fff', borderRadius:11, border:'1px solid #edf2f7', padding:'13px 15px', display:'flex', alignItems:'center', gap:10 }}>
+            <span style={{ fontSize:20, flexShrink:0 }}>{g.icon}</span>
+            <div>
+              <div style={{ fontSize:12, fontWeight:700, color:'#0f172a' }}>{g.title}</div>
+              <div style={{ fontSize:11, color:'#94a3b8' }}>{g.sub}</div>
             </div>
           </div>
-        </Reveal>
+        ))}
       </div>
-    </section>
+
+    </div>
   );
 }
