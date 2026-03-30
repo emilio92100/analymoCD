@@ -708,12 +708,8 @@ function NouvelleAnalyse() {
   const [result, setResult] = useState<AnalyseResult|null>(null);
   const [apercu, setApercu] = useState<ApercuResult|null>(null);
   const [apercuId, setApercuId] = useState<string|null>(null);
-  const [freePreviewUsed, setFreePreviewUsed] = useState<boolean|null>(null);
+  const [freePreviewUsed, setFreePreviewUsed] = useState<boolean>(() => checkFreePreviewUsedSync());
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    checkFreePreviewUsed().then(used => setFreePreviewUsed(used));
-  }, []);
 
   const plans = {
     document: { label:"Analyse d'un document",       price:'4,90€',  max:1,  desc:'Un seul fichier — PV d\'AG, règlement, diagnostic, appel de charges.', creditsKey:'document' as keyof Credits },
