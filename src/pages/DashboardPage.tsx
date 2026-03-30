@@ -1130,7 +1130,7 @@ function NouvelleAnalyse() {
           <div style={{ position:'relative' }}>
             <div style={{ fontSize:11, fontWeight:800, color:'rgba(255,255,255,0.45)', letterSpacing:'0.12em', marginBottom:8 }}>DÉBLOQUER LE RAPPORT COMPLET</div>
             <h2 style={{ fontSize:18, fontWeight:900, color:'#fff', marginBottom:8 }}>
-              {isComplete ? 'Accédez au rapport complet' : 'Accédez à l'analyse complète du document'}
+              {isComplete ? 'Accédez au rapport complet' : 'Accédez à l&apos;analyse complète du document'}
             </h2>
             <p style={{ fontSize:13, color:'rgba(255,255,255,0.65)', lineHeight:1.6, marginBottom:20 }}>
               Score {isComplete ? '/10, travaux, charges, procédures et avis Analymo' : 'et analyse approfondie'}. Rapport PDF téléchargeable inclus.
