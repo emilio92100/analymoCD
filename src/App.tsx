@@ -12,6 +12,7 @@ import ExemplePage from './pages/ExemplePage';
 import DashboardPage from './pages/DashboardPage';
 import RapportPage from './pages/RapportPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
+import StartPage from './pages/StartPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 
@@ -70,6 +71,7 @@ export default function App() {
 
         {/* Auth */}
         <Route path="/connexion" element={<LoginPage />} />
+        <Route path="/start" element={<StartPage />} />
         <Route path="/inscription" element={<SignupPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/mot-de-passe-oublie" element={<ForgotPasswordPage />} />
