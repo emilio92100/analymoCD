@@ -73,7 +73,7 @@ export default function TarifsPage() {
                 <div className="p-5">
                   {/* En-tête */}
                   <div className="flex items-start justify-between mb-4">
-                    <div>
+                    <div className="flex-1 text-center">
                       <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">{plan.name}</p>
                       <div className="flex items-end gap-1">
                         <span className="text-4xl font-black leading-none text-[#0f172a]">{plan.price}</span>
