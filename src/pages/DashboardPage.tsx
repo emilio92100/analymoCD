@@ -411,7 +411,7 @@ function HomeView() {
       </div>
 
       {/* ── Bandeau analyse offerte (HomeView) */}
-      {freePreviewUsedHome === false && (
+      <div style={{ opacity: freePreviewUsedHome === false ? 1 : 0, maxHeight: freePreviewUsedHome === false ? 120 : 0, overflow:'hidden', transition:'opacity 0.4s ease, max-height 0.4s ease', marginBottom: freePreviewUsedHome === false ? undefined : -24 }}>
         <div style={{ display:'flex', alignItems:'center', gap:14, padding:'18px 22px', borderRadius:16, background:'linear-gradient(135deg, #0f2d3d, #1a5068)', boxShadow:'0 4px 20px rgba(15,45,61,0.18)', position:'relative', overflow:'hidden' }}>
           <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:'rgba(42,125,156,0.2)', pointerEvents:'none' }}/>
           <div style={{ width:44, height:44, borderRadius:12, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
@@ -425,7 +425,7 @@ function HomeView() {
             <ArrowRight size={13}/> En profiter
           </Link>
         </div>
-      )}
+        </div>
 
       {/* ── Bloc bienvenue si aucune analyse */}
       {!hasAnalyses && (
