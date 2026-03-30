@@ -29,7 +29,7 @@ export type PricingPlan = {
 
 export const PRICING_PLANS: PricingPlan[] = [
   {
-    id: 'document', name: 'Analyse Document', price: 4.99,
+    id: 'document', name: 'Analyse Document', price: 4.90,
     idealFor: 'Comprendre rapidement un document précis et lever un doute',
     features: ["Analyse détaillée d'un seul document", "PV d'AG, règlement, appel de charges ou diagnostic", 'Rapport PDF téléchargeable', 'Résultats en moins de 2 minutes'],
     highlighted: false, cta: 'Analyser un document', icon: '📄',
