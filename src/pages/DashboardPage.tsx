@@ -35,7 +35,7 @@ type Analyse = {
 };
 
 type Credits = {
-  document: number;   // crédits analyse simple (4,99€)
+  document: number;   // crédits analyse simple (4,90€)
   complete: number;   // crédits analyse complète (19,90€+)
 };
 
