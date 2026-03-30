@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { syncFreePreviewUsed } from '../lib/analyses';
 
 type Status = 'loading' | 'success' | 'error' | 'already_confirmed';
 
@@ -29,6 +30,7 @@ export default function AuthCallbackPage() {
           });
           clearInterval(interval);
           if (!error) {
+            await syncFreePreviewUsed();
             setProgress(100);
             setTimeout(() => setStatus('success'), 400);
             return;
@@ -43,6 +45,7 @@ export default function AuthCallbackPage() {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         clearInterval(interval);
         if (!error) {
+          await syncFreePreviewUsed();
           setProgress(100);
           setTimeout(() => setStatus('success'), 400);
           return;
@@ -54,6 +57,7 @@ export default function AuthCallbackPage() {
       const { data } = await supabase.auth.getSession();
       clearInterval(interval);
       if (data.session) {
+        await syncFreePreviewUsed();
         setProgress(100);
         setTimeout(() => setStatus('success'), 400);
       } else {
