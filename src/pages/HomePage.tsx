@@ -38,12 +38,25 @@ function SectionTitle({ label, title, accent, sub }: { label: string; title: str
         className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.22em] mb-4">{label}</motion.p>
       <motion.h2 initial={{ opacity: 0, y: 20 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ delay: 0.07 }}
         className="text-[clamp(28px,5.5vw,72px)] font-black tracking-[-0.03em] leading-[1.08] text-[#0f172a] mb-4">
-        {title}{' '}
-        <span className="relative inline-block max-w-fit">
-          <span className="text-[#2a7d9c]">{accent}</span>
-          <motion.span initial={{ scaleX: 0 }} animate={inView ? { scaleX: 1 } : {}} transition={{ duration: 2.5, delay: 0.2, ease: [0.22,1,0.36,1] }}
-            className="absolute -bottom-1 left-0 right-0 h-[4px] bg-[#2a7d9c]/25 rounded-full origin-left block" />
-        </span>
+        {title.endsWith(',') ? (
+          <>
+            {title}<br />
+            <span className="relative inline-block max-w-fit">
+              <span className="text-[#2a7d9c]">{accent}</span>
+              <motion.span initial={{ scaleX: 0 }} animate={inView ? { scaleX: 1 } : {}} transition={{ duration: 2.5, delay: 0.2, ease: [0.22,1,0.36,1] }}
+                className="absolute -bottom-1 left-0 right-0 h-[4px] bg-[#2a7d9c]/25 rounded-full origin-left block" />
+            </span>
+          </>
+        ) : (
+          <>
+            {title}{' '}
+            <span className="relative inline-block max-w-fit">
+              <span className="text-[#2a7d9c]">{accent}</span>
+              <motion.span initial={{ scaleX: 0 }} animate={inView ? { scaleX: 1 } : {}} transition={{ duration: 2.5, delay: 0.2, ease: [0.22,1,0.36,1] }}
+                className="absolute -bottom-1 left-0 right-0 h-[4px] bg-[#2a7d9c]/25 rounded-full origin-left block" />
+            </span>
+          </>
+        )}
       </motion.h2>
       {sub && (
         <motion.p initial={{ opacity: 0 }} animate={inView ? { opacity: 1 } : {}} transition={{ delay: 0.2 }}
@@ -105,54 +118,57 @@ function HeroSection() {
             Diagnostics, PV d'AG, règlement de copropriété… <span className="font-semibold text-[#0f172a]">Comprenez l'essentiel en 30 secondes*</span> avant de faire une offre.
           </motion.p>
 
-          {/* Téléphone à droite + badges empilés serrés à gauche */}
+          {/* Téléphone à droite + badges empilés serrés à gauche — centré sur 390px */}
           <motion.div variants={up} initial="hidden" animate="show" custom={1}
-            className="relative w-full mb-7 flex items-center justify-end" style={{ height: 310 }}>
+            className="relative w-full mb-7" style={{ height: 310 }}>
 
-            {/* Badges serrés, colonne verticale, collée juste à gauche du téléphone */}
-            <div className="absolute right-[158px] top-0 bottom-0 flex flex-col justify-center gap-[6px]">
+            {/* Conteneur centré : badges (≈140px) + gap (8px) + téléphone (150px) = ~298px → centré sur 390px → ~46px de marge chaque côté */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="flex items-center gap-2">
 
-              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.8 }}
-                style={{ animation: "floatA 4.5s ease-in-out 0.8s infinite" }}
-                className="bg-white rounded-xl px-2.5 py-2 shadow-md border border-slate-100 flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-[#2a7d9c]/10 flex items-center justify-center shrink-0">
-                  <ShieldCheck size={12} className="text-[#2a7d9c]" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-[#0f172a] whitespace-nowrap">100% sécurisé</p>
-                  <p className="text-[9px] text-slate-400 whitespace-nowrap">Chiffré & supprimé</p>
-                </div>
-              </motion.div>
+                {/* Colonne de badges */}
+                <div className="flex flex-col gap-3">
+                  <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.8 }}
+                    style={{ animation: "floatA 4.5s ease-in-out 0.8s infinite" }}
+                    className="bg-white rounded-xl px-3 py-2.5 shadow-md border border-slate-100 flex items-center gap-2 w-[138px]">
+                    <div className="w-6 h-6 rounded-lg bg-[#2a7d9c]/10 flex items-center justify-center shrink-0">
+                      <ShieldCheck size={12} className="text-[#2a7d9c]" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-[#0f172a]">100% sécurisé</p>
+                      <p className="text-[9px] text-slate-400">Chiffré & supprimé</p>
+                    </div>
+                  </motion.div>
 
-              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.3 }}
-                style={{ animation: "floatB 5s ease-in-out 1.3s infinite" }}
-                className="bg-white rounded-xl px-2.5 py-2 shadow-md border border-slate-100 flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-green-50 flex items-center justify-center shrink-0">
-                  <TrendingUp size={12} className="text-green-500" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-[#0f172a] whitespace-nowrap">Score 7,5/10</p>
-                  <p className="text-[9px] text-slate-400 whitespace-nowrap">Bien recommandé</p>
-                </div>
-              </motion.div>
+                  <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.3 }}
+                    style={{ animation: "floatB 5s ease-in-out 1.3s infinite" }}
+                    className="bg-white rounded-xl px-3 py-2.5 shadow-md border border-slate-100 flex items-center gap-2 w-[138px]">
+                    <div className="w-6 h-6 rounded-lg bg-green-50 flex items-center justify-center shrink-0">
+                      <TrendingUp size={12} className="text-green-500" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-[#0f172a]">Score 7,5/10</p>
+                      <p className="text-[9px] text-slate-400">Bien recommandé</p>
+                    </div>
+                  </motion.div>
 
-              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.8 }}
-                style={{ animation: "floatC 4s ease-in-out 1.8s infinite" }}
-                className="bg-white rounded-xl px-2.5 py-2 shadow-md border border-slate-100 flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-[#f0a500]/10 flex items-center justify-center shrink-0">
-                  <FileText size={12} className="text-[#f0a500]" />
+                  <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.8 }}
+                    style={{ animation: "floatC 4s ease-in-out 1.8s infinite" }}
+                    className="bg-white rounded-xl px-3 py-2.5 shadow-md border border-slate-100 flex items-center gap-2 w-[138px]">
+                    <div className="w-6 h-6 rounded-lg bg-[#f0a500]/10 flex items-center justify-center shrink-0">
+                      <FileText size={12} className="text-[#f0a500]" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-[#0f172a]">3 docs analysés</p>
+                      <p className="text-[9px] text-slate-400">PV, règlement, diag.</p>
+                    </div>
+                  </motion.div>
                 </div>
-                <div>
-                  <p className="text-[10px] font-bold text-[#0f172a] whitespace-nowrap">3 docs analysés</p>
-                  <p className="text-[9px] text-slate-400 whitespace-nowrap">PV, règlement, diag.</p>
-                </div>
-              </motion.div>
 
-            </div>
+                {/* Téléphone */}
+                <PhoneMockupMini />
 
-            {/* Téléphone collé à droite */}
-            <div className="absolute right-0 top-0 bottom-0 flex items-center">
-              <PhoneMockupMini />
+              </div>
             </div>
 
           </motion.div>
@@ -651,28 +667,28 @@ function ProblemSolutionSection() {
       icon: FileText,
       title: "Documents illisibles",
       problem: "PV d'AG, règlements de copropriété, diagnostics, appels de charges… Des dizaines de pages de jargon que personne ne lit vraiment.",
-      solution: "Notre outil lit tout à votre place et vous présente ce qui compte vraiment, en clair.",
+      solution: "Notre outil lit tout à votre place et vous présente ce qui compte, en langage clair.",
       pc: "text-red-500", pb: "bg-red-50", pBorder: "border-red-100",
     },
     {
       icon: AlertTriangle,
-      title: "Travaux cachés",
-      problem: "Ravalement, toiture, ascenseur, mise aux normes… Des travaux déjà votés en AG que vous découvrez seulement après avoir signé.",
-      solution: "Chaque travail voté est détecté et son coût estimé pour votre lot, avant votre offre.",
+      title: "Travaux votés non détectés",
+      problem: "Ravalement, toiture, ascenseur, mise aux normes… Ces travaux sont souvent déjà votés en AG et vous ne le savez qu'après avoir signé.",
+      solution: "Chaque travail voté est détecté et son coût estimé pour votre lot — avant votre offre.",
       pc: "text-amber-500", pb: "bg-amber-50", pBorder: "border-amber-100",
     },
     {
       icon: TrendingUp,
       title: "Charges sous-estimées",
-      problem: "Les charges réelles sont souvent bien plus élevées que ce qu'on vous annonce — une mauvaise surprise qui pèse chaque mois.",
+      problem: "Les charges réelles sont souvent bien plus élevées que ce qu'on vous annonce. Une mauvaise surprise qui pèse chaque mois sur votre budget.",
       solution: "Charges mensuelles, fonds travaux, appels de fonds votés — tout est chiffré clairement.",
       pc: "text-orange-500", pb: "bg-orange-50", pBorder: "border-orange-100",
     },
     {
       icon: Clock,
-      title: "Décisions précipitées",
-      problem: "Sous la pression du marché, vous signez sans avoir eu le temps d'analyser.",
-      solution: "En 30 secondes*, vous avez une recommandation claire : acheter ou négocier.",
+      title: "Décisions sous pression",
+      problem: "Le marché ne vous laisse pas le temps d'analyser. Vous signez dans l'urgence, sans avoir vraiment compris les documents.",
+      solution: "En 30 secondes*, vous avez une recommandation claire. Achetez sereinement ou négociez au bon prix.",
       pc: "text-blue-500", pb: "bg-blue-50", pBorder: "border-blue-100",
     },
   ];
@@ -681,7 +697,7 @@ function ProblemSolutionSection() {
     <section className="py-16 md:py-28 px-4 md:px-6 bg-[#f4f7f9]">
       <div className="max-w-6xl mx-auto">
         <SectionTitle label="Pourquoi Analymo" title="Un problème réel," accent="une réponse claire."
-          sub="Chaque achat immobilier cache des risques que les documents ne rendent pas évidents. Voici comment on les résout." />
+          sub="Chaque achat immobilier cache des risques que les documents ne rendent pas évidents. Voici comment Analymo les résout pour vous." />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
           {items.map((item, i) => (
             <Reveal key={i} delay={i}
@@ -914,7 +930,7 @@ function HowItWorksSection() {
     <section className="py-16 md:py-24 px-4 md:px-6 bg-white">
       <div className="max-w-6xl mx-auto">
         <SectionTitle label="Comment ça marche" title="Quatre étapes," accent="c'est tout."
-          sub="Pas de formation, pas de jargon. Vous déposez vos fichiers — on fait le reste." />
+          sub="Pas de formation, pas de jargon. Déposez vos fichiers — on fait le reste." />
 
         <div className="flex flex-col md:hidden" ref={refMobile}>
           {steps.map((s, i) => (
@@ -1092,7 +1108,7 @@ function ApercuRapportSection() {
                 <div className="rounded-xl bg-[#0f2d3d]/5 border border-[#0f2d3d]/10 p-5">
                   <p className="text-xs font-bold uppercase tracking-widest text-[#2a7d9c] mb-2">Avis Analymo</p>
                   <p className="text-sm text-slate-600 leading-relaxed">
-                    Ce bien présente une copropriété globalement saine. Les travaux de toiture votés représentent une charge à anticiper. Le ratio charges/fonds travaux est satisfaisant. <span className="font-semibold text-[#0f172a]">Recommandé à l'achat avec négociation possible.</span>
+                    Ce bien présente une copropriété globalement saine. Les travaux de toiture votés représentent une charge à anticiper. Le ratio charges/fonds travaux est satisfaisant. <span className="font-semibold text-[#0f172a]">Recommandé à l'achat — négociation possible sur le prix.</span>
                   </p>
                 </div>
 
@@ -1223,7 +1239,7 @@ function CtaFinal() {
                   Prenez votre décision<br />en toute clarté.
                 </h2>
                 <p className="text-white/50 text-sm md:text-base max-w-xl mx-auto leading-relaxed">
-                  Notre outil lit vos documents immobiliers et vous donne un rapport complet avant de signer. À partir de <span className="text-white font-bold">19,90€</span>, sans abonnement.
+                  Notre outil lit vos documents immobiliers et vous donne un rapport complet avant de signer. À partir de <span className="text-white font-bold">19,90€</span> — sans abonnement.
                 </p>
               </div>
 
