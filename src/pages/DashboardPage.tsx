@@ -883,73 +883,62 @@ function NouvelleAnalyse() {
         </div>
       )}
 
-      <div className="type-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
-        {/* Document simple */}
+      <div className="type-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:0 }}>
+
+        {/* ── Analyse simple */}
         <button onClick={()=>{ setType('document'); setStep('upload'); }}
-          style={{ padding:'28px 24px', borderRadius:20, border:`1.5px solid ${credits.document>0?'#edf2f7':'#fecaca'}`, background:'#fff', cursor:'pointer', textAlign:'left', transition:'all 0.18s', position:'relative', boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}
-          onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor=credits.document>0?'#2a7d9c':'#fca5a5'; el.style.boxShadow='0 8px 28px rgba(42,125,156,0.1)'; el.style.transform='translateY(-2px)'; }}
-          onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor=credits.document>0?'#edf2f7':'#fecaca'; el.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'; el.style.transform='translateY(0)'; }}>
-          <div style={{ position:'absolute', top:14, right:14, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:6, background:credits.document>0?'#f0fdf4':'#fef2f2', color:credits.document>0?'#16a34a':'#ef4444', border:`1px solid ${credits.document>0?'#bbf7d0':'#fecaca'}` }}>
-            {credits.document > 0 ? `${credits.document} crédit${credits.document>1?'s':''}` : '0 crédit — Acheter'}
-          </div>
-          <div style={{ width:52, height:52, borderRadius:14, background:'rgba(42,125,156,0.08)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:18 }}>
+          style={{ padding:'28px 24px', borderRadius:20, border:'1.5px solid #edf2f7', background:'#fff', cursor:'pointer', textAlign:'left', transition:'all 0.18s', position:'relative', boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}
+          onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor='#2a7d9c'; el.style.boxShadow='0 8px 28px rgba(42,125,156,0.1)'; el.style.transform='translateY(-2px)'; }}
+          onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor='#edf2f7'; el.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'; el.style.transform='translateY(0)'; }}>
+          {freePreviewUsed && (
+            <div style={{ position:'absolute', top:14, right:14, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:6, background:credits.document>0?'#f0fdf4':'#f8fafc', color:credits.document>0?'#16a34a':'#94a3b8', border:`1px solid ${credits.document>0?'#bbf7d0':'#e2e8f0'}` }}>
+              {credits.document > 0 ? `${credits.document} crédit${credits.document>1?'s':''}` : '0 crédit'}
+            </div>
+          )}
+          <div style={{ width:52, height:52, borderRadius:14, background:'rgba(42,125,156,0.08)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:16, marginTop: freePreviewUsed ? 8 : 0 }}>
             <FileText size={24} style={{ color:'#2a7d9c' }}/>
           </div>
-          <div style={{ fontSize:18, fontWeight:800, color:'#0f172a', marginBottom:8 }}>Analyse d'un document</div>
-          <div style={{ fontSize:13, color:'#64748b', lineHeight:1.6, marginBottom:20 }}>Un seul fichier — PV d'AG, règlement de copropriété, diagnostic ou appel de charges.</div>
+          <div style={{ fontSize:18, fontWeight:800, color:'#0f172a', marginBottom:8 }}>Analyse d&apos;un seul document</div>
+          <div style={{ fontSize:12, color:'#64748b', lineHeight:1.7, marginBottom:20 }}>
+            Retenez l&apos;essentiel d&apos;un document précis :<br/>
+            <span style={{ color:'#94a3b8' }}>Règlement de copro, PV d&apos;AG, PV d&apos;AGE, diagnostic immeuble, diagnostic parties privatives, DPE, appel de charges…</span>
+          </div>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-            <span style={{ fontSize:13, fontWeight:700, color:credits.document>0?'#2a7d9c':'#ef4444', display:'flex', alignItems:'center', gap:5 }}>
-              {credits.document>0?<><ArrowRight size={14}/> Commencer</>:<><Lock size={13}/> Acheter un crédit</>}
+            <span style={{ fontSize:13, fontWeight:700, color:'#2a7d9c', display:'flex', alignItems:'center', gap:5 }}>
+              {freePreviewUsed && credits.document===0 ? <><Lock size={13}/> Acheter un crédit</> : <><ArrowRight size={14}/> Commencer</>}
             </span>
             <span style={{ fontSize:22, fontWeight:900, color:'#0f172a' }}>4,90€</span>
           </div>
         </button>
 
-        {/* Analyse complète */}
-        <button onClick={()=>{ if(credits.complete>0){ setType('complete'); setStep('upload'); } else { window.location.href='/dashboard/tarifs'; } }}
+        {/* ── Analyse complète */}
+        <button onClick={()=>{ setType('complete'); setStep('upload'); }}
           style={{ padding:'28px 24px', borderRadius:20, border:'1.5px solid transparent', background:'linear-gradient(145deg, #0f2d3d, #1a5068)', cursor:'pointer', textAlign:'left', transition:'all 0.18s', position:'relative', overflow:'hidden', boxShadow:'0 4px 20px rgba(15,45,61,0.15)' }}
           onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 12px 40px rgba(15,45,61,0.28)'; el.style.transform='translateY(-2px)'; }}
           onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 4px 20px rgba(15,45,61,0.15)'; el.style.transform='translateY(0)'; }}>
           <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:'rgba(42,125,156,0.2)', pointerEvents:'none' }}/>
-          <div style={{ position:'absolute', top:14, left:14, fontSize:9, fontWeight:800, color:'#fff', background:'rgba(255,255,255,0.15)', border:'1px solid rgba(255,255,255,0.2)', padding:'3px 10px', borderRadius:100 }}>⭐ RECOMMANDÉ</div>
-          <div style={{ position:'absolute', top:14, right:14, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:6, background:credits.complete>0?'rgba(255,255,255,0.15)':'rgba(239,68,68,0.25)', color:'#fff', border:'1px solid rgba(255,255,255,0.2)' }}>
-            {credits.complete>0 ? `${credits.complete} crédit${credits.complete>1?'s':''}` : '0 crédit — Acheter'}
-          </div>
-          <div style={{ width:52, height:52, borderRadius:14, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:18, marginTop:10 }}>
+          <div style={{ position:'absolute', top:14, left:14, fontSize:9, fontWeight:800, color:'#fff', background:'rgba(255,255,255,0.15)', border:'1px solid rgba(255,255,255,0.2)', padding:'3px 10px', borderRadius:100 }}>&#9733; RECOMMANDÉ</div>
+          {freePreviewUsed && (
+            <div style={{ position:'absolute', top:14, right:14, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:6, background:credits.complete>0?'rgba(255,255,255,0.2)':'rgba(255,255,255,0.08)', color:'#fff', border:'1px solid rgba(255,255,255,0.2)' }}>
+              {credits.complete > 0 ? `${credits.complete} crédit${credits.complete>1?'s':''}` : '0 crédit'}
+            </div>
+          )}
+          <div style={{ width:52, height:52, borderRadius:14, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:16, marginTop: freePreviewUsed ? 18 : 10 }}>
             <ShieldCheck size={24} style={{ color:'#fff' }}/>
           </div>
-          <div style={{ fontSize:18, fontWeight:800, color:'#fff', marginBottom:8 }}>Analyse complète d'un logement</div>
-          <div style={{ fontSize:13, color:'rgba(255,255,255,0.6)', lineHeight:1.6, marginBottom:20 }}>Tous les documents du bien — score /10, risques identifiés, recommandation Analymo.</div>
+          <div style={{ fontSize:18, fontWeight:800, color:'#fff', marginBottom:8 }}>Analyse complète d&apos;un logement</div>
+          <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.7, marginBottom:20 }}>
+            Déposez tous vos documents d&apos;un seul coup :<br/>
+            <span style={{ color:'rgba(255,255,255,0.45)' }}>PV AG 2022/2023/2024, règlement copro, DPE, diagnostic électricité, amiante, appels de charges…</span><br/>
+            <span style={{ color:'rgba(255,255,255,0.8)', fontWeight:600 }}>Rapport détaillé avec score /10 et recommandation.</span>
+          </div>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
             <span style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.85)', display:'flex', alignItems:'center', gap:5 }}>
-              {credits.complete>0?'Commencer l\'audit ':'Acheter un crédit '}<ArrowRight size={14}/>
+              {freePreviewUsed && credits.complete===0 ? <>Acheter un crédit <ArrowRight size={14}/></> : <>Commencer l&apos;audit <ArrowRight size={14}/></>}
             </span>
             <span style={{ fontSize:22, fontWeight:900, color:'#fff' }}>19,90€</span>
           </div>
         </button>
-      </div>
-
-      {/* Packs */}
-      <div className="type-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-        {[
-          { l:'Pack 2 biens', p:'29,90€', s:'2 crédits analyse complète', credits:'2 crédits complets' },
-          { l:'Pack 3 biens', p:'39,90€', s:'3 crédits analyse complète', credits:'3 crédits complets' },
-        ].map(pk=>(
-          <Link key={pk.l} to="/dashboard/tarifs" style={{ textDecoration:'none' }}>
-            <div style={{ background:'#fff', borderRadius:13, border:'1.5px solid #edf2f7', padding:'14px 18px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', transition:'all 0.15s' }}
-              onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor='rgba(42,125,156,0.3)'; }}
-              onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor='#edf2f7'; }}>
-              <div>
-                <div style={{ fontSize:13.5, fontWeight:800, color:'#0f172a', marginBottom:2 }}>{pk.l}</div>
-                <div style={{ fontSize:11, color:'#94a3b8' }}>{pk.s}</div>
-              </div>
-              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <span style={{ fontSize:15, fontWeight:900, color:'#0f172a' }}>{pk.p}</span>
-                <ArrowRight size={13} style={{ color:'#2a7d9c' }}/>
-              </div>
-            </div>
-          </Link>
-        ))}
       </div>
     </div>
   );
