@@ -3,6 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { syncFreePreviewUsed } from '../lib/analyses';
 
+async function cacheUserInfo(): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    const n = user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0] || 'Utilisateur';
+    localStorage.setItem('analymo_user_name', n);
+    localStorage.setItem('analymo_user_email', user.email || '');
+  }
+}
+
 type Status = 'loading' | 'success' | 'error' | 'already_confirmed';
 
 export default function AuthCallbackPage() {
@@ -31,6 +40,7 @@ export default function AuthCallbackPage() {
           clearInterval(interval);
           if (!error) {
             await syncFreePreviewUsed();
+            await cacheUserInfo();
             setProgress(100);
             setTimeout(() => setStatus('success'), 400);
             return;
@@ -46,6 +56,7 @@ export default function AuthCallbackPage() {
         clearInterval(interval);
         if (!error) {
           await syncFreePreviewUsed();
+          await cacheUserInfo();
           setProgress(100);
           setTimeout(() => setStatus('success'), 400);
           return;
@@ -58,6 +69,7 @@ export default function AuthCallbackPage() {
       clearInterval(interval);
       if (data.session) {
         await syncFreePreviewUsed();
+        await cacheUserInfo();
         setProgress(100);
         setTimeout(() => setStatus('success'), 400);
       } else {
