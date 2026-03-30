@@ -142,7 +142,7 @@ Si pas de score possible : score = null, score_niveau = null, recommandation = "
 
 
 /* ─── ANALYSE SIMPLE ─────────────────────
-   Utilisé pour les analyses 4,99€
+   Utilisé pour les analyses 4,90€
    Déclenché uniquement quand type === 'document'
    PAS de note, PAS de score
 ──────────────────────────────────────────*/
