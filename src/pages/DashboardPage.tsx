@@ -385,10 +385,7 @@ function HomeView() {
   const hasAnalyses = analyses.length > 0;
   const [freePreviewUsedHome, setFreePreviewUsedHome] = useState<boolean>(() => checkFreePreviewUsedSync());
 
-  useEffect(() => {
-    // Sync depuis Supabase en arrière-plan (au cas où différent appareil)
-    syncFreePreviewUsed().then(() => setFreePreviewUsedHome(checkFreePreviewUsedSync()));
-  }, []);
+
 
   // Stats calculées
   const totalAnalyses = analyses.length;
@@ -412,35 +409,22 @@ function HomeView() {
       </div>
 
       {/* ── Bandeau analyse offerte (HomeView) */}
-      {/* ── Bandeau offre — toujours visible, état différent */}
-      <div style={{ display:'flex', alignItems:'center', gap:14, padding:'18px 22px', borderRadius:16, background: freePreviewUsedHome ? '#f8fafc' : 'linear-gradient(135deg, #0f2d3d, #1a5068)', border: freePreviewUsedHome ? '1.5px solid #e2e8f0' : 'none', boxShadow: freePreviewUsedHome ? 'none' : '0 4px 20px rgba(15,45,61,0.18)', position:'relative', overflow:'hidden', transition:'background 0.3s ease' }}>
-        {!freePreviewUsedHome && <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:'rgba(42,125,156,0.2)', pointerEvents:'none' }}/>}
-        <div style={{ width:44, height:44, borderRadius:12, background: freePreviewUsedHome ? '#f1f5f9' : 'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-          {freePreviewUsedHome
-            ? <CheckCircle size={20} style={{ color:'#94a3b8' }}/>
-            : <Sparkles size={20} style={{ color:'#fff' }}/>
-          }
-        </div>
-        <div style={{ flex:1, position:'relative' }}>
-          <div style={{ fontSize:14, fontWeight:800, color: freePreviewUsedHome ? '#64748b' : '#fff', marginBottom:3 }}>
-            {freePreviewUsedHome ? 'Offre d'essai utilisée ✓' : '1 analyse offerte 🎁'}
+      {/* ── Bandeau offre — visible uniquement si pas encore utilisé */}
+      {!freePreviewUsedHome && (
+        <div style={{ display:'flex', alignItems:'center', gap:14, padding:'18px 22px', borderRadius:16, background:'linear-gradient(135deg, #0f2d3d, #1a5068)', boxShadow:'0 4px 20px rgba(15,45,61,0.18)', position:'relative', overflow:'hidden' }}>
+          <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:'rgba(42,125,156,0.2)', pointerEvents:'none' }}/>
+          <div style={{ width:44, height:44, borderRadius:12, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <Sparkles size={20} style={{ color:'#fff' }}/>
           </div>
-          <div style={{ fontSize:12, color: freePreviewUsedHome ? '#94a3b8' : 'rgba(255,255,255,0.65)', lineHeight:1.5 }}>
-            {freePreviewUsedHome
-              ? 'Passez à l'analyse en découvrant nos offres.'
-              : 'Profitez d'une analyse gratuite afin de visualiser un aperçu du rapport et découvrir notre outil.'
-            }
+          <div style={{ flex:1, position:'relative' }}>
+            <div style={{ fontSize:14, fontWeight:800, color:'#fff', marginBottom:3 }}>1 analyse offerte 🎁</div>
+            <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.5 }}>Profitez d'une analyse gratuite afin de visualiser un aperçu du rapport et découvrir notre outil.</div>
           </div>
+          <Link to="/dashboard/nouvelle-analyse" style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'10px 18px', borderRadius:10, background:'#fff', color:'#0f2d3d', fontSize:13, fontWeight:800, textDecoration:'none', whiteSpace:'nowrap', flexShrink:0, boxShadow:'0 2px 8px rgba(0,0,0,0.12)' }}>
+            <ArrowRight size={13}/> En profiter
+          </Link>
         </div>
-        {freePreviewUsedHome
-          ? <Link to="/dashboard/tarifs" style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'10px 18px', borderRadius:10, background:'#f1f5f9', border:'1.5px solid #e2e8f0', color:'#64748b', fontSize:13, fontWeight:700, textDecoration:'none', whiteSpace:'nowrap', flexShrink:0 }}>
-              Voir les offres <ArrowRight size={13}/>
-            </Link>
-          : <Link to="/dashboard/nouvelle-analyse" style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'10px 18px', borderRadius:10, background:'#fff', color:'#0f2d3d', fontSize:13, fontWeight:800, textDecoration:'none', whiteSpace:'nowrap', flexShrink:0, boxShadow:'0 2px 8px rgba(0,0,0,0.12)' }}>
-              <ArrowRight size={13}/> En profiter
-            </Link>
-        }
-      </div>
+      )}
 
       {/* ── Bloc bienvenue si aucune analyse */}
       {!hasAnalyses && (
@@ -882,24 +866,19 @@ function NouvelleAnalyse() {
       <h1 style={{ fontSize:'clamp(22px,3vw,28px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:6 }}>Que souhaitez-vous analyser ?</h1>
       <p style={{ fontSize:14, color:'#64748b', marginBottom:freePreviewUsed===false?16:32 }}>Choisissez le mode d'analyse adapté à votre besoin.</p>
 
-      {/* Badge aperçu — toujours visible */}
-      <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 20px', borderRadius:14, background: freePreviewUsed ? '#f8fafc' : 'linear-gradient(135deg, #0f2d3d, #1a5068)', border: freePreviewUsed ? '1.5px solid #e2e8f0' : 'none', marginBottom:28, boxShadow: freePreviewUsed ? 'none' : '0 4px 16px rgba(15,45,61,0.18)' }}>
-        <div style={{ width:36, height:36, borderRadius:10, background: freePreviewUsed ? '#f1f5f9' : 'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-          {freePreviewUsed ? <CheckCircle size={16} style={{ color:'#94a3b8' }}/> : <Sparkles size={16} style={{ color:'#fff'}}/>}
-        </div>
-        <div style={{ flex:1 }}>
-          <div style={{ fontSize:13, fontWeight:800, color: freePreviewUsed ? '#64748b' : '#fff', marginBottom:2 }}>
-            {freePreviewUsed ? 'Offre d'essai utilisée ✓' : '1 analyse offerte 🎁'}
+      {/* Badge aperçu — visible uniquement si pas encore utilisé */}
+      {!freePreviewUsed && (
+        <div style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 20px', borderRadius:14, background:'linear-gradient(135deg, #0f2d3d, #1a5068)', marginBottom:28, boxShadow:'0 4px 16px rgba(15,45,61,0.18)' }}>
+          <div style={{ width:36, height:36, borderRadius:10, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <Sparkles size={16} style={{ color:'#fff'}}/>
           </div>
-          <div style={{ fontSize:12, color: freePreviewUsed ? '#94a3b8' : 'rgba(255,255,255,0.65)', lineHeight:1.4 }}>
-            {freePreviewUsed ? 'Passez à l'analyse en découvrant nos offres.' : 'Profitez d'une analyse gratuite afin de visualiser un aperçu du rapport et découvrir notre outil.'}
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:13, fontWeight:800, color:'#fff', marginBottom:2 }}>1 analyse offerte 🎁</div>
+            <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.4 }}>Profitez d'une analyse gratuite afin de visualiser un aperçu du rapport et découvrir notre outil.</div>
           </div>
+          <span style={{ fontSize:10, fontWeight:800, color:'#0f2d3d', background:'#fff', padding:'4px 12px', borderRadius:100, whiteSpace:'nowrap', flexShrink:0 }}>OFFERT</span>
         </div>
-        {freePreviewUsed
-          ? <Link to="/dashboard/tarifs" style={{ fontSize:12, fontWeight:700, color:'#2a7d9c', textDecoration:'none', whiteSpace:'nowrap', flexShrink:0 }}>Voir les offres →</Link>
-          : <span style={{ fontSize:10, fontWeight:800, color:'#0f2d3d', background:'#fff', padding:'4px 12px', borderRadius:100, whiteSpace:'nowrap', flexShrink:0 }}>OFFERT</span>
-        }
-      </div>
+      )}
 
       <div className="type-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
         {/* Document simple */}
