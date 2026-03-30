@@ -53,27 +53,6 @@ function SectionTitle({ label, title, accent, sub }: { label: string; title: str
   );
 }
 
-function useAuthRedirect() {
-  const navigate = useNavigate();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsLoggedIn(!!session);
-    });
-  }, []);
-
-  const goToAnalyse = (e: React.MouseEvent) => {
-    if (isLoggedIn) {
-      e.preventDefault();
-      navigate('/dashboard/nouvelle-analyse');
-    }
-    // sinon le Link normal vers /inscription fonctionne
-  };
-
-  return { isLoggedIn, goToAnalyse };
-}
-
 export default function HomePage() {
   return (
     <div className="bg-white text-[#0f172a] antialiased overflow-x-hidden" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
