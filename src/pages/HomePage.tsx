@@ -89,9 +89,10 @@ function HeroSection() {
           </motion.div>
 
           <motion.h1 variants={up} initial="hidden" animate="show" custom={0.5}
-            className="text-[clamp(36px,10vw,52px)] font-black leading-[1.06] tracking-[-0.03em] text-[#0f172a] mb-3 text-center w-full px-0">
+            className="font-black leading-[1.08] tracking-[-0.03em] text-[#0f172a] mb-3 text-center w-full px-2"
+            style={{ fontSize: "clamp(28px, 7.5vw, 36px)" }}>
             Vérifiez les éléments<br />
-            <span className="relative inline-block">
+            <span className="relative inline-block whitespace-nowrap">
               <span className="text-[#2a7d9c]">avant de signer.</span>
               <motion.span
                 initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 1.0, duration: 1.4 }}
@@ -101,54 +102,58 @@ function HeroSection() {
 
           <motion.p variants={up} initial="hidden" animate="show" custom={0.8}
             className="text-[15px] text-slate-500 leading-relaxed text-center w-full px-3 mb-7">
-            Diagnostics, PV d'AG, règlement de copropriété, diagnostics… <span className="font-semibold text-[#0f172a]">Comprenez l'essentiel en 30 secondes*</span> avant de faire une offre.
+            Diagnostics, PV d'AG, règlement de copropriété… <span className="font-semibold text-[#0f172a]">Comprenez l'essentiel en 30 secondes*</span> avant de faire une offre.
           </motion.p>
 
-          {/* Téléphone à droite + infos à gauche collées */}
+          {/* Téléphone à droite + badges empilés serrés à gauche */}
           <motion.div variants={up} initial="hidden" animate="show" custom={1}
-            className="relative w-full mb-7" style={{ height: 360 }}>
+            className="relative w-full mb-7 flex items-center justify-end" style={{ height: 310 }}>
 
-            {/* Téléphone collé à droite, centré verticalement */}
+            {/* Badges serrés, colonne verticale, collée juste à gauche du téléphone */}
+            <div className="absolute right-[158px] top-0 bottom-0 flex flex-col justify-center gap-[6px]">
+
+              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.8 }}
+                style={{ animation: "floatA 4.5s ease-in-out 0.8s infinite" }}
+                className="bg-white rounded-xl px-2.5 py-2 shadow-md border border-slate-100 flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-[#2a7d9c]/10 flex items-center justify-center shrink-0">
+                  <ShieldCheck size={12} className="text-[#2a7d9c]" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-[#0f172a] whitespace-nowrap">100% sécurisé</p>
+                  <p className="text-[9px] text-slate-400 whitespace-nowrap">Chiffré & supprimé</p>
+                </div>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.3 }}
+                style={{ animation: "floatB 5s ease-in-out 1.3s infinite" }}
+                className="bg-white rounded-xl px-2.5 py-2 shadow-md border border-slate-100 flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-green-50 flex items-center justify-center shrink-0">
+                  <TrendingUp size={12} className="text-green-500" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-[#0f172a] whitespace-nowrap">Score 7,5/10</p>
+                  <p className="text-[9px] text-slate-400 whitespace-nowrap">Bien recommandé</p>
+                </div>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.8 }}
+                style={{ animation: "floatC 4s ease-in-out 1.8s infinite" }}
+                className="bg-white rounded-xl px-2.5 py-2 shadow-md border border-slate-100 flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-[#f0a500]/10 flex items-center justify-center shrink-0">
+                  <FileText size={12} className="text-[#f0a500]" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-[#0f172a] whitespace-nowrap">3 docs analysés</p>
+                  <p className="text-[9px] text-slate-400 whitespace-nowrap">PV, règlement, diag.</p>
+                </div>
+              </motion.div>
+
+            </div>
+
+            {/* Téléphone collé à droite */}
             <div className="absolute right-0 top-0 bottom-0 flex items-center">
               <PhoneMockupMini />
             </div>
-
-            {/* Bloc infos à gauche, collé au téléphone, espacé verticalement */}
-            <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.0 }}
-              style={{ animation: "floatA 4.5s ease-in-out 1s infinite", maxWidth: 168 }}
-              className="absolute left-0 top-[8%] z-20 bg-white rounded-2xl px-3.5 py-3 shadow-lg border border-slate-100 flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-[#2a7d9c]/10 flex items-center justify-center shrink-0">
-                <ShieldCheck size={14} className="text-[#2a7d9c]" />
-              </div>
-              <div>
-                <p className="text-[12px] font-bold text-[#0f172a]">100% sécurisé</p>
-                <p className="text-[10px] text-slate-400">Chiffré & supprimé</p>
-              </div>
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.6 }}
-              style={{ animation: "floatB 5s ease-in-out 1.6s infinite", maxWidth: 160 }}
-              className="absolute left-0 top-[38%] z-20 bg-white rounded-2xl px-3.5 py-3 shadow-lg border border-slate-100 flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
-                <TrendingUp size={14} className="text-green-500" />
-              </div>
-              <div>
-                <p className="text-[12px] font-bold text-[#0f172a]">Score 7,5/10</p>
-                <p className="text-[10px] text-slate-400">Bien recommandé</p>
-              </div>
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 2.2 }}
-              style={{ animation: "floatC 4s ease-in-out 2.2s infinite", maxWidth: 162 }}
-              className="absolute left-0 top-[68%] z-20 bg-white rounded-2xl px-3.5 py-3 shadow-lg border border-slate-100 flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-[#f0a500]/10 flex items-center justify-center shrink-0">
-                <FileText size={14} className="text-[#f0a500]" />
-              </div>
-              <div>
-                <p className="text-[12px] font-bold text-[#0f172a]">3 docs analysés</p>
-                <p className="text-[10px] text-slate-400">PV, règlement, diag.</p>
-              </div>
-            </motion.div>
 
           </motion.div>
 
