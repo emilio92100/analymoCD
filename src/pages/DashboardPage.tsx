@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { PROMPT_ANALYSE_COMPLETE, PROMPT_ANALYSE_SIMPLE, PROMPT_APERCU_COMPLET, PROMPT_APERCU_SIMPLE } from '../lib/prompts';
-import { createAnalyse, createApercu, updateAnalyseResult, updateApercuResult, markAnalyseFailed, markFreePreviewUsed, checkFreePreviewUsed, fetchAnalyses, type AnalyseDB } from '../lib/analyses';
+import { createAnalyse, createApercu, updateAnalyseResult, updateApercuResult, markAnalyseFailed, markFreePreviewUsed, checkFreePreviewUsedSync, fetchAnalyses, type AnalyseDB } from '../lib/analyses';
 
 /* ══════════════════════════════════════════
    TYPES
