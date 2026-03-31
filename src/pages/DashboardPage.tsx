@@ -363,8 +363,38 @@ function HomeView() {
     ? (completedComplete.reduce((s: number, a: Analyse) => s + (a.score||0), 0) / completedComplete.length).toFixed(1)
     : null;
 
+  const penalties = [
+    { cat: 'Copropriété', items: [{ l: 'Travaux votés', v: '-1 à -2' }, { l: 'Gros travaux lourds', v: '-2 à -3' }, { l: 'Problèmes récurrents', v: '-1 à -2' }] },
+    { cat: 'Procédures', items: [{ l: 'Procédure en cours', v: '-2 à -4' }] },
+    { cat: 'Finances', items: [{ l: 'Charges élevées', v: '-1 à -2' }, { l: 'Impayés', v: '-1 à -2' }] },
+    { cat: 'Diagnostics', items: [{ l: 'DPE E', v: '-0,5' }, { l: 'DPE F', v: '-1,5' }, { l: 'DPE G', v: '-2 à -3' }, { l: 'Anomalies gaz/élec', v: '-0,5 à -1,5' }, { l: 'Amiante / plomb', v: '-1 à -2' }] },
+    { cat: 'Juridique', items: [{ l: 'Contraintes légales', v: '-0,5 à -1,5' }] },
+  ];
+
+  const bonuses = [
+    { l: 'Travaux déjà réalisés', v: '+0,5 à +1' },
+    { l: 'Bonne gestion copropriété', v: '+0,5 à +1' },
+    { l: 'Diagnostics rassurants', v: '+0,5 à +1' },
+    { l: 'Charges maîtrisées', v: '+0,5 à +1' },
+  ];
+
+  const scale = [
+    { r: '9 – 10', l: 'Très rassurant', c: '#16a34a', bg: '#f0fdf4' },
+    { r: '7 – 8,5', l: 'Globalement sain', c: '#16a34a', bg: '#f0fdf4' },
+    { r: '5 – 6,5', l: 'Moyen / à surveiller', c: '#d97706', bg: '#fffbeb' },
+    { r: '3 – 4,5', l: 'Risqué', c: '#dc2626', bg: '#fef2f2' },
+    { r: '0 – 2,5', l: 'Très risqué', c: '#dc2626', bg: '#fef2f2' },
+  ];
+
+  const tips = [
+    { color: '#d97706', title: 'Points de vigilance', desc: 'Un DPE classé F ou G peut impacter la valeur du bien. Les travaux votés en AG mais non réalisés sont à surveiller de près.' },
+    { color: '#16a34a', title: 'Documents à prioriser', desc: 'PV d\'AG, règlement de copropriété, DPE, diagnostic électricité et gaz, appels de charges — ce sont les docs les plus riches en informations.' },
+    { color: '#7c3aed', title: 'Vos rapports sont permanents', desc: 'Chaque rapport est sauvegardé définitivement dans votre espace. Consultez-le et téléchargez-le en PDF à tout moment.' },
+    { color: '#dc2626', title: 'Besoin d\'aide ?', desc: 'Notre équipe est disponible depuis la page Support pour toute question sur votre rapport ou l\'utilisation d\'Analymo.' },
+  ];
+
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:28, animation:'fadeUp 0.35s ease both' }}>
+    <div style={{ display:'flex', flexDirection:'column', gap:24, animation:'fadeUp 0.35s ease both' }}>
 
       {/* ── Greeting */}
       <div>
@@ -376,157 +406,218 @@ function HomeView() {
         </p>
       </div>
 
-      {/* ── Bandeau offre gratuite — Option C, visible si pas encore utilisé */}
+      {/* ── Bandeau offre gratuite */}
       {!freePreviewUsedHome && (
-        <div style={{ background:'#0f2d3d', borderRadius:18, padding:'28px 32px', position:'relative', overflow:'hidden' }}>
-          <div style={{ position:'absolute', top:-30, right:-30, width:180, height:180, borderRadius:'50%', background:'rgba(42,125,156,0.18)', pointerEvents:'none' }}/>
-          <div style={{ position:'absolute', bottom:-40, left:20, width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.03)', pointerEvents:'none' }}/>
-          <div style={{ position:'relative', display:'flex', alignItems:'center', gap:24, flexWrap:'wrap' }}>
-            <div style={{ width:60, height:60, borderRadius:16, background:'rgba(255,255,255,0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, animation:'pulseGlow 2.5s ease-in-out infinite' }}>
-              <Sparkles size={28} style={{ color:'#fff' }}/>
+        <div style={{ background:'#0f2d3d', borderRadius:16, padding:'22px 28px', position:'relative', overflow:'hidden' }}>
+          <div style={{ position:'absolute', top:-30, right:-30, width:160, height:160, borderRadius:'50%', background:'rgba(42,125,156,0.18)', pointerEvents:'none' }}/>
+          <div style={{ position:'relative', display:'flex', alignItems:'center', gap:20, flexWrap:'wrap' }}>
+            <div style={{ width:52, height:52, borderRadius:14, background:'rgba(255,255,255,0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, animation:'pulseGlow 2.5s ease-in-out infinite' }}>
+              <Sparkles size={24} style={{ color:'#fff' }}/>
             </div>
-            <div style={{ flex:1, minWidth:200 }}>
-              <div style={{ fontSize:18, fontWeight:900, color:'#fff', marginBottom:6, letterSpacing:'-0.01em' }}>1 analyse offerte 🎁</div>
-              <div style={{ fontSize:14, color:'rgba(255,255,255,0.65)', lineHeight:1.6 }}>
-                Profitez d&apos;une analyse gratuite pour visualiser un aperçu du rapport et découvrir notre outil.
-              </div>
+            <div style={{ flex:1, minWidth:180 }}>
+              <div style={{ fontSize:18, fontWeight:900, color:'#fff', marginBottom:4 }}>1 analyse offerte 🎁</div>
+              <div style={{ fontSize:14, color:'rgba(255,255,255,0.65)', lineHeight:1.5 }}>Profitez d&apos;une analyse gratuite pour visualiser un aperçu du rapport et découvrir notre outil.</div>
             </div>
-            <Link to="/dashboard/nouvelle-analyse"
-              style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'14px 26px', borderRadius:12, background:'#fff', color:'#0f2d3d', fontSize:14, fontWeight:800, textDecoration:'none', whiteSpace:'nowrap', flexShrink:0, boxShadow:'0 4px 16px rgba(0,0,0,0.18)' }}>
-              <ArrowRight size={15}/> En profiter
+            <Link to="/dashboard/nouvelle-analyse" style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'12px 22px', borderRadius:10, background:'#fff', color:'#0f2d3d', fontSize:14, fontWeight:800, textDecoration:'none', whiteSpace:'nowrap', flexShrink:0 }}>
+              <ArrowRight size={14}/> En profiter
             </Link>
           </div>
         </div>
       )}
 
-      {/* ── Stats (seulement si analyses existantes) */}
+      {/* ── Stats si analyses existantes */}
       {hasAnalyses && (
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:14 }} className="stats-grid">
-          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'20px', display:'flex', flexDirection:'column', gap:10 }}>
-            <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', letterSpacing:'0.08em' }}>ANALYSES TOTALES</div>
-            <div style={{ fontSize:36, fontWeight:900, color:'#0f172a', letterSpacing:'-0.03em', lineHeight:1 }}>{totalAnalyses}</div>
-            {avgScore
-              ? <div style={{ fontSize:12, color:'#16a34a', fontWeight:700 }}>Score moyen : {avgScore}/10</div>
-              : <div style={{ fontSize:12, color:'#94a3b8' }}>Aucune analyse complète</div>}
+          <div style={{ background:'#fff', borderRadius:14, border:'1px solid #edf2f7', padding:'18px' }}>
+            <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', letterSpacing:'0.08em', marginBottom:8 }}>ANALYSES TOTALES</div>
+            <div style={{ fontSize:34, fontWeight:900, color:'#0f172a', letterSpacing:'-0.03em', lineHeight:1, marginBottom:4 }}>{totalAnalyses}</div>
+            {avgScore ? <div style={{ fontSize:12, color:'#16a34a', fontWeight:700 }}>Score moyen : {avgScore}/10</div> : <div style={{ fontSize:12, color:'#94a3b8' }}>Aucune analyse complète</div>}
           </div>
-          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'20px', display:'flex', flexDirection:'column', gap:10 }}>
-            <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', letterSpacing:'0.08em' }}>DERNIÈRE ANALYSE</div>
+          <div style={{ background:'#fff', borderRadius:14, border:'1px solid #edf2f7', padding:'18px' }}>
+            <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', letterSpacing:'0.08em', marginBottom:8 }}>DERNIÈRE ANALYSE</div>
             {lastAnalyse ? (
               <>
-                <div style={{ fontSize:15, fontWeight:800, color:'#0f172a', lineHeight:1.3 }}>{lastAnalyse.date}</div>
+                <div style={{ fontSize:15, fontWeight:800, color:'#0f172a', marginBottom:4 }}>{lastAnalyse.date}</div>
                 <div style={{ fontSize:12, color:'#64748b', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                   {lastAnalyse.type === 'complete' ? lastAnalyse.adresse_bien : lastAnalyse.nom_document}
                 </div>
               </>
-            ) : <div style={{ fontSize:15, fontWeight:700, color:'#94a3b8' }}>Aucune encore</div>}
+            ) : <div style={{ fontSize:14, color:'#94a3b8' }}>Aucune encore</div>}
           </div>
-          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'20px', display:'flex', flexDirection:'column', gap:10 }}>
-            <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', letterSpacing:'0.08em' }}>CRÉDITS</div>
+          <div style={{ background:'#fff', borderRadius:14, border:'1px solid #edf2f7', padding:'18px' }}>
+            <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', letterSpacing:'0.08em', marginBottom:8 }}>CRÉDITS</div>
             <div style={{ display:'flex', gap:8 }}>
-              <div style={{ flex:1, textAlign:'center', padding:'8px', borderRadius:10, background:'#f8fafc', border:'1px solid #edf2f7' }}>
-                <div style={{ fontSize:22, fontWeight:900, color: credits.document>0?'#2a7d9c':'#94a3b8' }}>{credits.document}</div>
+              <div style={{ flex:1, textAlign:'center', padding:'8px', borderRadius:8, background:'#f8fafc', border:'1px solid #edf2f7' }}>
+                <div style={{ fontSize:20, fontWeight:900, color:credits.document>0?'#2a7d9c':'#94a3b8' }}>{credits.document}</div>
                 <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8' }}>SIMPLE</div>
               </div>
-              <div style={{ flex:1, textAlign:'center', padding:'8px', borderRadius:10, background:'#f8fafc', border:'1px solid #edf2f7' }}>
-                <div style={{ fontSize:22, fontWeight:900, color: credits.complete>0?'#0f2d3d':'#94a3b8' }}>{credits.complete}</div>
+              <div style={{ flex:1, textAlign:'center', padding:'8px', borderRadius:8, background:'#f8fafc', border:'1px solid #edf2f7' }}>
+                <div style={{ fontSize:20, fontWeight:900, color:credits.complete>0?'#0f2d3d':'#94a3b8' }}>{credits.complete}</div>
                 <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8' }}>COMPLÈTE</div>
               </div>
             </div>
-            <Link to="/dashboard/tarifs" style={{ fontSize:12, fontWeight:700, color:'#2a7d9c', textDecoration:'none' }}>
-              + Acheter des crédits
-            </Link>
+            <Link to="/dashboard/tarifs" style={{ fontSize:12, fontWeight:700, color:'#2a7d9c', textDecoration:'none', display:'block', marginTop:8 }}>+ Acheter des crédits</Link>
           </div>
         </div>
       )}
 
-      {/* ── CTA central Option C (toujours visible) */}
-      <div style={{ background:'#0f2d3d', borderRadius:18, padding:'26px 32px', position:'relative', overflow:'hidden' }}>
-        <div style={{ position:'absolute', top:-20, right:-20, width:140, height:140, borderRadius:'50%', background:'rgba(42,125,156,0.18)', pointerEvents:'none' }}/>
-        <div style={{ position:'relative', display:'flex', alignItems:'center', gap:22, flexWrap:'wrap' }}>
-          <div style={{ width:52, height:52, borderRadius:14, background:'rgba(255,255,255,0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-            <ShieldCheck size={24} style={{ color:'#fff' }}/>
-          </div>
-          <div style={{ flex:1, minWidth:180 }}>
-            <div style={{ fontSize:16, fontWeight:800, color:'#fff', marginBottom:4 }}>
-              {hasAnalyses ? 'Lancer une nouvelle analyse' : 'Analysez votre premier bien'}
-            </div>
-            <div style={{ fontSize:13, color:'rgba(255,255,255,0.55)' }}>
-              Déposez vos documents, recevez votre rapport en moins de 2 minutes.
-            </div>
-          </div>
-          <Link to="/dashboard/nouvelle-analyse"
-            style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'12px 22px', borderRadius:12, background:'#fff', color:'#0f2d3d', fontSize:14, fontWeight:800, textDecoration:'none', whiteSpace:'nowrap', flexShrink:0 }}>
-            Lancer l&apos;analyse <ArrowRight size={14}/>
-          </Link>
-        </div>
-      </div>
-
       {/* ── Analyses récentes */}
       <div>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-          <h2 style={{ fontSize:15, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em' }}>Analyses récentes</h2>
-          {hasAnalyses && (
-            <Link to="/dashboard/analyses" style={{ fontSize:13, color:'#2a7d9c', textDecoration:'none', fontWeight:700, display:'flex', alignItems:'center', gap:3 }}>
-              Tout voir <ChevronRight size={14}/>
-            </Link>
-          )}
+          <h2 style={{ fontSize:16, fontWeight:800, color:'#0f172a' }}>Analyses récentes</h2>
+          {hasAnalyses && <Link to="/dashboard/analyses" style={{ fontSize:13, color:'#2a7d9c', textDecoration:'none', fontWeight:700, display:'flex', alignItems:'center', gap:3 }}>Tout voir <ChevronRight size={14}/></Link>}
         </div>
         {!hasAnalyses ? <EmptyAnalyses/> : (
-          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-            {analyses.slice(0,3).map(a=><AnalyseRow key={a.id} a={a}/>)}
-          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>{analyses.slice(0,3).map(a=><AnalyseRow key={a.id} a={a}/>)}</div>
         )}
       </div>
 
-      {/* ── Guide + Tips enrichis */}
-      <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+      {/* ── Layout 2 colonnes : Guide + Droite */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 320px', gap:20 }} className="compare-grid">
 
-        {/* Titre section */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <h2 style={{ fontSize:17, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em' }}>Guide & conseils Analymo</h2>
-        </div>
+        {/* ── Colonne gauche */}
+        <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
-        {/* Guide étapes */}
-        <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'24px', display:'flex', flexDirection:'column', gap:18 }}>
-          <div style={{ fontSize:13, fontWeight:700, color:'#2a7d9c', letterSpacing:'0.06em', marginBottom:4 }}>COMMENT ÇA MARCHE</div>
-          {[
-            { num:'1', title:'Rassemblez vos documents', desc:'PV d\'AG des 3 dernières années, règlement de copropriété, diagnostics (DPE, électricité, amiante, plomb), appels de charges, carnet d\'entretien.' },
-            { num:'2', title:'Choisissez votre analyse', desc:'Analyse simple (4,90€) pour un seul document. Analyse complète (19,90€) pour un rapport global avec score /10 et recommandation d\'achat.' },
-            { num:'3', title:'Uploadez et patientez 30s', desc:'Notre outil analyse vos documents et génère un rapport détaillé en moins de 30 secondes.' },
-            { num:'4', title:'Lisez et téléchargez', desc:'Consultez votre rapport depuis "Mes analyses". Téléchargez-le en PDF pour le partager à votre notaire ou agent.' },
-          ].map((step, i) => (
-            <div key={i} style={{ display:'flex', gap:16, alignItems:'flex-start' }}>
-              <div style={{ width:36, height:36, borderRadius:'50%', background:'#0f2d3d', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:900, flexShrink:0 }}>{step.num}</div>
+          {/* Guide étapes */}
+          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', overflow:'hidden' }}>
+            <div style={{ background:'#0f2d3d', padding:'16px 20px', display:'flex', alignItems:'center', gap:10 }}>
+              <div style={{ width:30, height:30, borderRadius:8, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <FileText size={14} style={{ color:'#fff' }}/>
+              </div>
               <div>
-                <div style={{ fontSize:15, fontWeight:800, color:'#0f172a', marginBottom:4 }}>{step.title}</div>
-                <div style={{ fontSize:13, color:'#64748b', lineHeight:1.7 }}>{step.desc}</div>
+                <div style={{ fontSize:15, fontWeight:700, color:'#fff' }}>Comment ça marche</div>
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>4 étapes pour analyser votre bien</div>
               </div>
             </div>
-          ))}
+            <div style={{ padding:'20px', display:'flex', flexDirection:'column', gap:0 }}>
+              {[
+                { num:'1', title:'Rassemblez vos documents', desc:'PV d\'AG, règlement de copropriété, diagnostics, appels de charges — tout au même endroit.' },
+                { num:'2', title:'Choisissez votre analyse', desc:'Simple (4,90€) pour un document. Complète (19,90€) pour un rapport global avec score /10.' },
+                { num:'3', title:'Uploadez en quelques secondes', desc:'Glissez-déposez vos fichiers PDF, Word ou images directement.' },
+                { num:'4', title:'Rapport prêt en 30 secondes', desc:'Score /10, risques, travaux et recommandation. Téléchargeable en PDF.' },
+              ].map((step, i, arr) => (
+                <div key={i} style={{ display:'flex', gap:14, alignItems:'flex-start' }}>
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', flexShrink:0 }}>
+                    <div style={{ width:34, height:34, borderRadius:'50%', background:'#0f2d3d', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800 }}>{step.num}</div>
+                    {i < arr.length - 1 && <div style={{ width:2, height:20, background:'#e2e8f0', margin:'3px 0' }}/>}
+                  </div>
+                  <div style={{ paddingBottom: i < arr.length - 1 ? 8 : 0 }}>
+                    <div style={{ fontSize:14, fontWeight:700, color:'#0f172a', marginBottom:3 }}>{step.title}</div>
+                    <div style={{ fontSize:13, color:'#64748b', lineHeight:1.6 }}>{step.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Tips bordure colorée */}
+          <div>
+            <div style={{ fontSize:15, fontWeight:800, color:'#0f172a', marginBottom:12 }}>Conseils & astuces</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {tips.map((tip, i) => (
+                <div key={i} style={{ background:'#fff', borderLeft:`4px solid ${tip.color}`, borderTop:'0.5px solid #edf2f7', borderRight:'0.5px solid #edf2f7', borderBottom:'0.5px solid #edf2f7', borderRadius:'0 10px 10px 0', padding:'14px 18px' }}>
+                  <div style={{ fontSize:14, fontWeight:700, color:'#0f172a', marginBottom:4 }}>{tip.title}</div>
+                  <div style={{ fontSize:13, color:'#64748b', lineHeight:1.6 }}>{tip.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {/* Tips pratiques */}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }} className="action-grid">
-          {[
-            { icon:'💡', color:'#fef9c3', border:'#fde047', title:'Conseil pro', desc:'Pour une analyse complète fiable, incluez au minimum les 3 derniers PV d\'AG et le DPE. Plus vous fournissez de documents, plus le score sera précis.' },
-            { icon:'⚠️', color:'#fef2f2', border:'#fecaca', title:'Points de vigilance', desc:'Un DPE classé F ou G peut impacter la valeur du bien. Les travaux votés en AG mais non réalisés sont à surveiller de près.' },
-            { icon:'📋', color:'#f0fdf4', border:'#bbf7d0', title:'Documents prioritaires', desc:'PV d\'AG 2022/2023/2024, règlement copro, DPE, diagnostic électricité et gaz, appel de charges du dernier trimestre.' },
-            { icon:'🔑', color:'#eff6ff', border:'#bfdbfe', title:'Bon à savoir', desc:'Votre rapport est sauvegardé définitivement dans votre espace. Vous pouvez le consulter et le télécharger à tout moment, sans limite de durée.' },
-            { icon:'🏠', color:'#f5f3ff', border:'#ddd6fe', title:'Score /10 : comment le lire ?', desc:'8-10 : achetez sereinement. 6-7 : quelques points à négocier. 4-5 : risques modérés, soyez vigilant. En dessous de 4 : achat déconseillé.' },
-            { icon:'📞', color:'#fff7ed', border:'#fed7aa', title:'Besoin d\'aide ?', desc:'Notre équipe est disponible depuis la page Support pour toute question sur votre rapport ou l\'utilisation d\'Analymo.' },
-          ].map((tip, i) => (
-            <div key={i} style={{ background:tip.color, borderRadius:14, border:`1px solid ${tip.border}`, padding:'18px 20px' }}>
-              <div style={{ fontSize:24, marginBottom:10 }}>{tip.icon}</div>
-              <div style={{ fontSize:14, fontWeight:800, color:'#0f172a', marginBottom:6 }}>{tip.title}</div>
-              <div style={{ fontSize:13, color:'#64748b', lineHeight:1.7 }}>{tip.desc}</div>
+        {/* ── Colonne droite */}
+        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+
+          {/* Conseil important */}
+          <div style={{ background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:14, padding:'18px 20px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+              <span style={{ fontSize:18 }}>💡</span>
+              <span style={{ fontSize:13, fontWeight:800, color:'#92400e' }}>Conseil important Analymo</span>
             </div>
-          ))}
+            <div style={{ fontSize:13, color:'#78350f', lineHeight:1.7 }}>
+              Plus vous fournissez de documents pour une analyse complète, plus le score /10 sera précis et le rapport détaillé.<br/><br/>
+              Idéalement : 3 derniers PV d&apos;AG + DPE + règlement de copropriété + appels de charges.
+            </div>
+          </div>
+
+          {/* Comprendre la note */}
+          <div style={{ background:'#fff', border:'1px solid #edf2f7', borderRadius:14, overflow:'hidden' }}>
+            <div style={{ padding:'14px 18px', borderBottom:'1px solid #edf2f7', display:'flex', alignItems:'center', gap:10 }}>
+              <div style={{ width:30, height:30, borderRadius:8, background:'#0f2d3d', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <Star size={14} style={{ color:'#fff' }}/>
+              </div>
+              <div>
+                <div style={{ fontSize:14, fontWeight:700, color:'#0f172a' }}>Comment est calculée la note ?</div>
+                <div style={{ fontSize:11, color:'#94a3b8' }}>Transparence totale sur notre méthode</div>
+              </div>
+            </div>
+            <div style={{ padding:'16px 18px', display:'flex', flexDirection:'column', gap:14 }}>
+
+              {/* Départ */}
+              <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:'#f0f7fb', borderRadius:10 }}>
+                <div style={{ width:8, height:8, borderRadius:'50%', background:'#2a7d9c', flexShrink:0 }}/>
+                <div>
+                  <div style={{ fontSize:12, fontWeight:700, color:'#0f172a', marginBottom:1 }}>Point de départ : 10/10</div>
+                  <div style={{ fontSize:11, color:'#64748b', lineHeight:1.5 }}>On démarre toujours de 10. Notre outil retire des points selon les risques détectés.</div>
+                </div>
+              </div>
+
+              {/* Pénalités */}
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:'#dc2626', letterSpacing:'0.06em', marginBottom:8 }}>PÉNALITÉS</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+                  {penalties.map((p, i) => (
+                    <div key={i} style={{ background:'#fff', border:'0.5px solid #edf2f7', borderRadius:8, overflow:'hidden' }}>
+                      <div style={{ padding:'5px 10px', background:'#fef2f2', fontSize:10, fontWeight:700, color:'#dc2626', letterSpacing:'0.04em' }}>{p.cat.toUpperCase()}</div>
+                      {p.items.map((item, j) => (
+                        <div key={j} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'5px 10px', borderTop:'0.5px solid #edf2f7' }}>
+                          <span style={{ fontSize:12, color:'#374151' }}>{item.l}</span>
+                          <span style={{ fontSize:11, fontWeight:700, color:'#dc2626', background:'#fef2f2', padding:'1px 7px', borderRadius:4 }}>{item.v}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bonus */}
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:'#16a34a', letterSpacing:'0.06em', marginBottom:8 }}>BONUS</div>
+                <div style={{ background:'#fff', border:'0.5px solid #edf2f7', borderRadius:8, overflow:'hidden' }}>
+                  {bonuses.map((b, i) => (
+                    <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 10px', borderTop: i>0 ? '0.5px solid #edf2f7' : 'none' }}>
+                      <span style={{ fontSize:12, color:'#374151' }}>{b.l}</span>
+                      <span style={{ fontSize:11, fontWeight:700, color:'#16a34a', background:'#f0fdf4', padding:'1px 7px', borderRadius:4 }}>{b.v}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Échelle */}
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', letterSpacing:'0.06em', marginBottom:8 }}>ÉCHELLE DE LECTURE</div>
+                <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                  {scale.map((s, i) => (
+                    <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 10px', borderRadius:8, background:s.bg }}>
+                      <span style={{ fontSize:12, fontWeight:700, color:s.c }}>{s.r}</span>
+                      <span style={{ fontSize:11, color:s.c }}>{s.l}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ padding:'10px 12px', background:'#f8fafc', borderRadius:8, fontSize:11, color:'#94a3b8', lineHeight:1.6 }}>
+                La note est arrondie au 0,5 près et établie uniquement à partir des documents fournis.
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
     </div>
   );
 }
+
 
 
 /* ─── EMPTY STATE ────────────────────────── */
