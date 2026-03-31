@@ -520,9 +520,9 @@ function HomeView() {
         <div style={{ fontSize:13, fontWeight:700, color:'#94a3b8', letterSpacing:'0.06em', marginBottom:14 }}>CONSEILS POUR BIEN DÉMARRER</div>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12 }} className="stats-grid">
           {[
-            { icon:'📎', title:'Préparez vos documents', desc:'Rassemblez PV d'AG, règlement copro, diagnostics et appels de charges au même endroit avant d'uploader.' },
+            { icon:'📎', title:'Préparez vos documents', desc:'Rassemblez PV d&apos;AG, r&egrave;glement copro, diagnostics et appels de charges avant d&apos;uploader.' },
             { icon:'⚡', title:'Rapport en 30 secondes', desc:'Notre outil traite vos documents et génère un rapport complet avec score et recommandation instantanément.' },
-            { icon:'📄', title:'Téléchargez votre rapport', desc:'Votre rapport est téléchargeable en PDF à tout moment depuis "Mes analyses".' },
+            { icon:'📄', title:'Téléchargez votre rapport', desc:'Votre rapport est téléchargeable en PDF depuis "Mes analyses" à tout moment.' },
           ].map((tip, i) => (
             <div key={i} style={{ background:'#fff', borderRadius:14, border:'1px solid #edf2f7', padding:'18px 20px' }}>
               <div style={{ fontSize:22, marginBottom:10 }}>{tip.icon}</div>
