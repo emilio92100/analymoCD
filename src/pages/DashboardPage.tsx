@@ -694,7 +694,6 @@ function NoteExplicativeBlock({ penalties, bonuses, scale }: {
   );
 }
 
-}
 
 
 
