@@ -556,12 +556,12 @@ function HomeView() {
 function GlossaireBlock() {
   const [open, setOpen] = useState<number|null>(null);
   const termes = [
-    { t: 'PV d'AG', d: 'Procès-verbal d'Assemblée Générale — compte-rendu officiel des décisions votées par les copropriétaires lors de leur réunion annuelle. Contient les travaux votés, les charges, les litiges.' },
-    { t: 'DPE', d: 'Diagnostic de Performance Énergétique — note de A (très économe) à G (très énergivore) évaluant la consommation d'énergie du logement. Un DPE F ou G peut impacter la valeur et la revente.' },
-    { t: 'Fonds de travaux', d: 'Somme mise de côté chaque année par la copropriété pour financer les futurs travaux importants. Un fonds bien provisionné est rassurant pour l'acheteur.' },
-    { t: 'Charges de copropriété', d: 'Frais mensuels ou trimestriels payés par chaque copropriétaire pour l'entretien des parties communes (ascenseur, jardins, gardien, etc.).' },
-    { t: 'Règlement de copropriété', d: 'Document juridique définissant les règles de vie dans la copropriété, la répartition des charges et l'usage des parties communes et privatives.' },
-    { t: 'Appel de charges', d: 'Document envoyé par le syndic demandant le paiement des charges de copropriété. Permet de vérifier le montant réel des charges courantes.' },
+    { t: "PV d'AG", d: "Procès-verbal d'Assemblée Générale — compte-rendu officiel des décisions votées par les copropriétaires lors de leur réunion annuelle. Contient les travaux votés, les charges, les litiges." },
+    { t: "DPE", d: "Diagnostic de Performance Énergétique — note de A (très économe) à G (très énergivore) évaluant la consommation d'énergie du logement. Un DPE F ou G peut impacter la valeur et la revente." },
+    { t: "Fonds de travaux", d: "Somme mise de côté chaque année par la copropriété pour financer les futurs travaux importants. Un fonds bien provisionné est rassurant pour l'acheteur." },
+    { t: "Charges de copropriété", d: "Frais mensuels ou trimestriels payés par chaque copropriétaire pour l'entretien des parties communes (ascenseur, jardins, gardien, etc.)." },
+    { t: "Règlement de copropriété", d: "Document juridique définissant les règles de vie dans la copropriété, la répartition des charges et l'usage des parties communes et privatives." },
+    { t: "Appel de charges", d: "Document envoyé par le syndic demandant le paiement des charges de copropriété. Permet de vérifier le montant réel des charges courantes." },
   ];
   return (
     <div style={{ background:'#fff', border:'1px solid #edf2f7', borderRadius:14, overflow:'hidden' }}>
