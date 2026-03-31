@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Plus, FileText, GitCompare, User, LifeBuoy,
   LogOut, Menu, X, ChevronDown, Search, Send, Bell,
   ChevronRight, Building2, ExternalLink, ChevronLeft,
-  Shield, BarChart2, Clock, Upload, CheckCircle,
+  Shield, BarChart2, Upload, CheckCircle,
   ShieldCheck, ArrowRight, Sparkles, AlertTriangle,
   Download, CreditCard, Lock, Info, Star
 } from 'lucide-react';
@@ -66,36 +66,6 @@ const MOCK_CREDITS: Credits = {
   complete: 0,   // 0 crédit — branché après Stripe
 };
 
-// Historique analyses
-const MOCK_ANALYSES: Analyse[] = [
-  {
-    id: '1',
-    type: 'complete',
-    status: 'completed',
-    adresse_bien: '12 rue de la Paix, 75002 Paris',
-    score: 8.2,
-    recommandation: 'Acheter',
-    recommandationColor: '#16a34a',
-    date: '24 mars 2026',
-    price: '19,90€',
-  },
-  {
-    id: '2',
-    type: 'document',
-    status: 'completed',
-    nom_document: 'PV_AG_2025_Mirabeau.pdf',
-    date: '19 mars 2026',
-    price: '4,90€',
-  },
-  {
-    id: '3',
-    type: 'complete',
-    status: 'processing',
-    adresse_bien: '7 quai de Saône, 69002 Lyon',
-    date: '26 mars 2026',
-    price: '29,90€',
-  },
-];
 
 /* ══════════════════════════════════════════
    NAV
