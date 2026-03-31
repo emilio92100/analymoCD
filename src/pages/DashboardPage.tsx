@@ -365,6 +365,7 @@ export default function DashboardPage() {
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
         @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
         @keyframes shimmer { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
+        @keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,0.15)} 50%{box-shadow:0 0 0 10px rgba(255,255,255,0)} }
       `}</style>
     </div>
   );
@@ -388,13 +389,10 @@ function HomeView() {
   const { analyses } = useAnalyses();
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
-  const credits = MOCK_CREDITS; // TODO: remplacer par Supabase après Stripe
+  const credits = MOCK_CREDITS;
   const hasAnalyses = analyses.length > 0;
   const [freePreviewUsedHome] = useState<boolean>(() => checkFreePreviewUsedSync());
 
-
-
-  // Stats calculées
   const totalAnalyses = analyses.length;
   const lastAnalyse = [...analyses].sort((a: Analyse, b: Analyse) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
   const completedComplete = analyses.filter(a => a.type === 'complete' && a.status === 'completed' && a.score != null);
@@ -403,204 +401,99 @@ function HomeView() {
     : null;
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', gap:24, animation:'fadeUp 0.35s ease both' }}>
+    <div style={{ display:'flex', flexDirection:'column', gap:28, animation:'fadeUp 0.35s ease both' }}>
 
       {/* ── Greeting */}
       <div>
-        <h1 style={{ fontSize:'clamp(20px,2.5vw,28px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:4 }}>
+        <h1 style={{ fontSize:'clamp(22px,2.5vw,30px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:4 }}>
           {greeting}{name ? `, ${name}` : ''} 👋
         </h1>
-        <p style={{ fontSize:14, color:'#64748b' }}>
-          {!hasAnalyses ? 'Bienvenue sur Analymo. Lancez votre première analyse dès maintenant.' : 'Bienvenue sur votre espace Analymo.'}
+        <p style={{ fontSize:14, color:'#94a3b8' }}>
+          {hasAnalyses ? 'Bienvenue sur votre espace Analymo.' : 'Bienvenue sur Analymo — lancez votre première analyse.'}
         </p>
       </div>
 
-      {/* ── Bandeau analyse offerte (HomeView) */}
-      {/* ── Bandeau offre — visible uniquement si pas encore utilisé */}
+      {/* ── Bandeau offre gratuite — Option C, visible si pas encore utilisé */}
       {!freePreviewUsedHome && (
-        <div style={{ display:'flex', alignItems:'center', gap:14, padding:'18px 22px', borderRadius:16, background:'linear-gradient(135deg, #0f2d3d, #1a5068)', boxShadow:'0 4px 20px rgba(15,45,61,0.18)', position:'relative', overflow:'hidden' }}>
-          <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:'rgba(42,125,156,0.2)', pointerEvents:'none' }}/>
-          <div style={{ width:44, height:44, borderRadius:12, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-            <Sparkles size={20} style={{ color:'#fff' }}/>
-          </div>
-          <div style={{ flex:1, position:'relative' }}>
-            <div style={{ fontSize:14, fontWeight:800, color:'#fff', marginBottom:3 }}>1 analyse offerte 🎁</div>
-            <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.5 }}>Profitez d'une analyse gratuite afin de visualiser un aperçu du rapport et découvrir notre outil.</div>
-          </div>
-          <Link to="/dashboard/nouvelle-analyse" style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'10px 18px', borderRadius:10, background:'#fff', color:'#0f2d3d', fontSize:13, fontWeight:800, textDecoration:'none', whiteSpace:'nowrap', flexShrink:0, boxShadow:'0 2px 8px rgba(0,0,0,0.12)' }}>
-            <ArrowRight size={13}/> En profiter
-          </Link>
-        </div>
-      )}
-
-      {/* ── Bloc bienvenue si aucune analyse */}
-      {!hasAnalyses && (
-        <div style={{ background:'linear-gradient(135deg, #0f2d3d 0%, #1a5068 100%)', borderRadius:20, padding:'28px', display:'flex', alignItems:'center', justifyContent:'space-between', gap:20, flexWrap:'wrap', boxShadow:'0 8px 32px rgba(15,45,61,0.18)', position:'relative', overflow:'hidden' }}>
-          <div style={{ position:'absolute', top:-30, right:-30, width:160, height:160, borderRadius:'50%', background:'rgba(42,125,156,0.18)', pointerEvents:'none' }}/>
-          <div style={{ position:'absolute', bottom:-40, left:60, width:100, height:100, borderRadius:'50%', background:'rgba(255,255,255,0.04)', pointerEvents:'none' }}/>
-          <div style={{ flex:1, minWidth:200 }}>
-            <div style={{ fontSize:10, fontWeight:800, color:'rgba(255,255,255,0.5)', letterSpacing:'0.14em', marginBottom:10 }}>POUR COMMENCER</div>
-            <h2 style={{ fontSize:'clamp(16px,2vw,20px)', fontWeight:900, color:'#fff', marginBottom:8, letterSpacing:'-0.02em' }}>Prêt à analyser votre premier bien ?</h2>
-            <p style={{ fontSize:13, color:'rgba(255,255,255,0.6)', lineHeight:1.6, maxWidth:420 }}>
-              Déposez vos documents immobiliers et obtenez un rapport complet en moins de 2 minutes.
-            </p>
-          </div>
-          <div style={{ display:'flex', flexDirection:'column', gap:10, flexShrink:0 }}>
+        <div style={{ background:'#0f2d3d', borderRadius:18, padding:'28px 32px', position:'relative', overflow:'hidden' }}>
+          <div style={{ position:'absolute', top:-30, right:-30, width:180, height:180, borderRadius:'50%', background:'rgba(42,125,156,0.18)', pointerEvents:'none' }}/>
+          <div style={{ position:'absolute', bottom:-40, left:20, width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.03)', pointerEvents:'none' }}/>
+          <div style={{ position:'relative', display:'flex', alignItems:'center', gap:24, flexWrap:'wrap' }}>
+            <div style={{ width:60, height:60, borderRadius:16, background:'rgba(255,255,255,0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, animation:'pulseGlow 2.5s ease-in-out infinite' }}>
+              <Sparkles size={28} style={{ color:'#fff' }}/>
+            </div>
+            <div style={{ flex:1, minWidth:200 }}>
+              <div style={{ fontSize:18, fontWeight:900, color:'#fff', marginBottom:6, letterSpacing:'-0.01em' }}>1 analyse offerte 🎁</div>
+              <div style={{ fontSize:14, color:'rgba(255,255,255,0.65)', lineHeight:1.6 }}>
+                Profitez d&apos;une analyse gratuite pour visualiser un aperçu du rapport et découvrir notre outil.
+              </div>
+            </div>
             <Link to="/dashboard/nouvelle-analyse"
-              style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'13px 24px', borderRadius:12, background:'#fff', color:'#0f2d3d', fontSize:14, fontWeight:800, textDecoration:'none', boxShadow:'0 4px 16px rgba(0,0,0,0.15)', whiteSpace:'nowrap' }}>
-              <Plus size={15}/> Lancer une analyse
-            </Link>
-            <Link to="/dashboard/tarifs"
-              style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:6, fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.6)', textDecoration:'none' }}>
-              Voir les tarifs <ArrowRight size={12}/>
+              style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'14px 26px', borderRadius:12, background:'#fff', color:'#0f2d3d', fontSize:14, fontWeight:800, textDecoration:'none', whiteSpace:'nowrap', flexShrink:0, boxShadow:'0 4px 16px rgba(0,0,0,0.18)' }}>
+              <ArrowRight size={15}/> En profiter
             </Link>
           </div>
         </div>
       )}
 
-      {/* ── Bloc stats + crédits (uniquement si analyses existantes) */}
-      {hasAnalyses && <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:14 }} className="stats-grid">
-
-        {/* Analyses totales */}
-        <div style={{ background:'#fff', borderRadius:18, border:'1px solid #edf2f7', padding:'22px', boxShadow:'0 1px 6px rgba(0,0,0,0.04)', display:'flex', flexDirection:'column', gap:12 }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-            <div style={{ width:40, height:40, borderRadius:11, background:'rgba(42,125,156,0.09)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-              <BarChart2 size={19} style={{ color:'#2a7d9c' }}/>
-            </div>
-            <span style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.1em' }}>ANALYSES TOTALES</span>
+      {/* ── Stats (seulement si analyses existantes) */}
+      {hasAnalyses && (
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:14 }} className="stats-grid">
+          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'20px', display:'flex', flexDirection:'column', gap:10 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', letterSpacing:'0.08em' }}>ANALYSES TOTALES</div>
+            <div style={{ fontSize:36, fontWeight:900, color:'#0f172a', letterSpacing:'-0.03em', lineHeight:1 }}>{totalAnalyses}</div>
+            {avgScore
+              ? <div style={{ fontSize:12, color:'#16a34a', fontWeight:700 }}>Score moyen : {avgScore}/10</div>
+              : <div style={{ fontSize:12, color:'#94a3b8' }}>Aucune analyse complète</div>}
           </div>
-          <div>
-            <div style={{ fontSize:40, fontWeight:900, color:'#0f172a', letterSpacing:'-0.03em', lineHeight:1, marginBottom:4 }}>{totalAnalyses}</div>
-            {avgScore && <div style={{ fontSize:12, color:'#16a34a', fontWeight:700 }}>Score moyen : {avgScore}/10</div>}
-            {!avgScore && <div style={{ fontSize:12, color:'#94a3b8' }}>Aucune analyse complète encore</div>}
+          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'20px', display:'flex', flexDirection:'column', gap:10 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', letterSpacing:'0.08em' }}>DERNIÈRE ANALYSE</div>
+            {lastAnalyse ? (
+              <>
+                <div style={{ fontSize:15, fontWeight:800, color:'#0f172a', lineHeight:1.3 }}>{lastAnalyse.date}</div>
+                <div style={{ fontSize:12, color:'#64748b', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                  {lastAnalyse.type === 'complete' ? lastAnalyse.adresse_bien : lastAnalyse.nom_document}
+                </div>
+              </>
+            ) : <div style={{ fontSize:15, fontWeight:700, color:'#94a3b8' }}>Aucune encore</div>}
+          </div>
+          <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'20px', display:'flex', flexDirection:'column', gap:10 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', letterSpacing:'0.08em' }}>CRÉDITS</div>
+            <div style={{ display:'flex', gap:8 }}>
+              <div style={{ flex:1, textAlign:'center', padding:'8px', borderRadius:10, background:'#f8fafc', border:'1px solid #edf2f7' }}>
+                <div style={{ fontSize:22, fontWeight:900, color: credits.document>0?'#2a7d9c':'#94a3b8' }}>{credits.document}</div>
+                <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8' }}>SIMPLE</div>
+              </div>
+              <div style={{ flex:1, textAlign:'center', padding:'8px', borderRadius:10, background:'#f8fafc', border:'1px solid #edf2f7' }}>
+                <div style={{ fontSize:22, fontWeight:900, color: credits.complete>0?'#0f2d3d':'#94a3b8' }}>{credits.complete}</div>
+                <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8' }}>COMPLÈTE</div>
+              </div>
+            </div>
+            <Link to="/dashboard/tarifs" style={{ fontSize:12, fontWeight:700, color:'#2a7d9c', textDecoration:'none' }}>
+              + Acheter des crédits
+            </Link>
           </div>
         </div>
+      )}
 
-        {/* Dernière analyse */}
-        <div style={{ background:'#fff', borderRadius:18, border:'1px solid #edf2f7', padding:'22px', boxShadow:'0 1px 6px rgba(0,0,0,0.04)', display:'flex', flexDirection:'column', gap:12 }}>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-            <div style={{ width:40, height:40, borderRadius:11, background:'rgba(217,119,6,0.09)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-              <Clock size={19} style={{ color:'#d97706' }}/>
-            </div>
-            <span style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.1em' }}>DERNIÈRE ANALYSE</span>
+      {/* ── CTA central Option C (toujours visible) */}
+      <div style={{ background:'#0f2d3d', borderRadius:18, padding:'26px 32px', position:'relative', overflow:'hidden' }}>
+        <div style={{ position:'absolute', top:-20, right:-20, width:140, height:140, borderRadius:'50%', background:'rgba(42,125,156,0.18)', pointerEvents:'none' }}/>
+        <div style={{ position:'relative', display:'flex', alignItems:'center', gap:22, flexWrap:'wrap' }}>
+          <div style={{ width:52, height:52, borderRadius:14, background:'rgba(255,255,255,0.1)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <ShieldCheck size={24} style={{ color:'#fff' }}/>
           </div>
-          {hasAnalyses && lastAnalyse ? (
-            <div>
-              <div style={{ fontSize:18, fontWeight:900, color:'#0f172a', letterSpacing:'-0.02em', marginBottom:4 }}>{lastAnalyse.date}</div>
-              <div style={{ fontSize:12, color:'#64748b', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                {lastAnalyse.type === 'complete' ? lastAnalyse.adresse_bien : lastAnalyse.nom_document}
-              </div>
-              <div style={{ marginTop:6 }}>
-                <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:6, background: lastAnalyse.type==='complete'?'rgba(15,45,61,0.08)':'rgba(42,125,156,0.08)', color:lastAnalyse.type==='complete'?'#0f2d3d':'#2a7d9c' }}>
-                  {lastAnalyse.type === 'complete' ? 'Analyse complète' : 'Analyse document'}
-                </span>
-              </div>
+          <div style={{ flex:1, minWidth:180 }}>
+            <div style={{ fontSize:16, fontWeight:800, color:'#fff', marginBottom:4 }}>
+              {hasAnalyses ? 'Lancer une nouvelle analyse' : 'Analysez votre premier bien'}
             </div>
-          ) : (
-            <div style={{ fontSize:15, fontWeight:700, color:'#94a3b8' }}>Aucune encore</div>
-          )}
-        </div>
-
-        {/* Crédits restants — détaillé */}
-        <div style={{ background:'linear-gradient(145deg, #0f2d3d 0%, #1a5068 100%)', borderRadius:18, padding:'22px', boxShadow:'0 4px 20px rgba(15,45,61,0.18)', display:'flex', flexDirection:'column', gap:12, position:'relative', overflow:'hidden' }}>
-          <div style={{ position:'absolute', top:-20, right:-20, width:100, height:100, borderRadius:'50%', background:'rgba(42,125,156,0.2)', pointerEvents:'none' }}/>
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-            <div style={{ width:40, height:40, borderRadius:11, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-              <CreditCard size={19} style={{ color:'#fff' }}/>
-            </div>
-            <span style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.45)', letterSpacing:'0.1em' }}>CRÉDITS RESTANTS</span>
-          </div>
-          <div className="credit-detail" style={{ display:'flex', gap:10 }}>
-            <div style={{ flex:1, padding:'10px', borderRadius:10, background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.1)' }}>
-              <div style={{ fontSize:26, fontWeight:900, color:'#fff', lineHeight:1, marginBottom:3 }}>{credits.document}</div>
-              <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.5)', letterSpacing:'0.06em', marginBottom:2 }}>SIMPLE</div>
-              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>4,90€ / crédit</div>
-            </div>
-            <div style={{ flex:1, padding:'10px', borderRadius:10, background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.1)' }}>
-              <div style={{ fontSize:26, fontWeight:900, color:'#fff', lineHeight:1, marginBottom:3 }}>{credits.complete}</div>
-              <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.5)', letterSpacing:'0.06em', marginBottom:2 }}>COMPLÈTE</div>
-              <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>19,90€ / crédit</div>
+            <div style={{ fontSize:13, color:'rgba(255,255,255,0.55)' }}>
+              Déposez vos documents, recevez votre rapport en moins de 2 minutes.
             </div>
           </div>
-          <Link to="/dashboard/tarifs" style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.7)', textDecoration:'none', transition:'color 0.15s' }}
-            onMouseOver={e=>(e.currentTarget.style.color='#fff')} onMouseOut={e=>(e.currentTarget.style.color='rgba(255,255,255,0.7)')}>
-            Recharger des crédits <ArrowRight size={12}/>
-          </Link>
-        </div>
-      </div>}
-
-      {/* ── Section : Analyser un document */}
-      <div>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
-          <h2 style={{ fontSize:16, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em' }}>Analyser un document</h2>
-          <span style={{ fontSize:12, color:'#94a3b8' }}>Choisissez selon votre besoin</span>
-        </div>
-        <div className="action-grid" style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
-
-          {/* Analyse simple */}
-          <Link to="/dashboard/nouvelle-analyse?type=document" style={{ textDecoration:'none' }}>
-            <div style={{ background:'#fff', borderRadius:18, border:`1.5px solid ${credits.document > 0 ? '#edf2f7' : '#fecaca'}`, padding:'24px', cursor:'pointer', transition:'all 0.2s', height:'100%', boxSizing:'border-box' as const, position:'relative', opacity: credits.document > 0 ? 1 : 0.7 }}
-              onMouseOver={e=>{ if(credits.document > 0){ const el=e.currentTarget as HTMLElement; el.style.borderColor='#2a7d9c'; el.style.boxShadow='0 8px 24px rgba(42,125,156,0.1)'; el.style.transform='translateY(-2px)'; }}}
-              onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor=credits.document>0?'#edf2f7':'#fecaca'; el.style.boxShadow='none'; el.style.transform='translateY(0)'; }}>
-              {credits.document === 0 && (
-                <div style={{ position:'absolute', top:14, right:14, display:'flex', alignItems:'center', gap:4, fontSize:10, fontWeight:700, color:'#ef4444', background:'#fef2f2', border:'1px solid #fecaca', padding:'3px 8px', borderRadius:6 }}>
-                  <Lock size={10}/> 0 crédit
-                </div>
-              )}
-              {credits.document > 0 && (
-                <div style={{ position:'absolute', top:14, right:14, fontSize:10, fontWeight:700, color:'#16a34a', background:'#f0fdf4', border:'1px solid #bbf7d0', padding:'3px 8px', borderRadius:6 }}>
-                  {credits.document} crédit{credits.document > 1 ? 's' : ''} dispo
-                </div>
-              )}
-              <div style={{ width:50, height:50, borderRadius:14, background:'rgba(42,125,156,0.08)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:16 }}>
-                <FileText size={22} style={{ color:'#2a7d9c' }}/>
-              </div>
-              <div style={{ fontSize:17, fontWeight:800, color:'#0f172a', marginBottom:6 }}>Analyse d'un document</div>
-              <div style={{ fontSize:12, color:'#64748b', lineHeight:1.6, marginBottom:18 }}>
-                Un seul fichier analysé — PV d'AG, règlement, diagnostic ou appel de charges.
-              </div>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                <span style={{ fontSize:13, fontWeight:700, color: credits.document > 0 ? '#2a7d9c' : '#94a3b8', display:'flex', alignItems:'center', gap:5 }}>
-                  {credits.document > 0 ? 'Commencer' : 'Acheter un crédit'} <ArrowRight size={14}/>
-                </span>
-                <span style={{ fontSize:20, fontWeight:900, color:'#0f172a' }}>4,90€</span>
-              </div>
-            </div>
-          </Link>
-
-          {/* Analyse complète */}
-          <Link to={credits.complete > 0 ? '/dashboard/nouvelle-analyse?type=complete' : '/tarifs'} style={{ textDecoration:'none' }}>
-            <div style={{ background:'linear-gradient(145deg, #0f2d3d 0%, #1a5068 100%)', borderRadius:18, padding:'24px', cursor:'pointer', transition:'all 0.2s', position:'relative', overflow:'hidden', height:'100%', boxSizing:'border-box' as const }}
-              onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 12px 36px rgba(15,45,61,0.3)'; el.style.transform='translateY(-2px)'; }}
-              onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='none'; el.style.transform='translateY(0)'; }}>
-              <div style={{ position:'absolute', top:-20, right:-20, width:120, height:120, borderRadius:'50%', background:'rgba(42,125,156,0.2)', pointerEvents:'none' }}/>
-              {/* Badge crédits */}
-              {credits.complete > 0 ? (
-                <div style={{ position:'absolute', top:14, right:14, fontSize:10, fontWeight:700, color:'#fff', background:'rgba(255,255,255,0.2)', border:'1px solid rgba(255,255,255,0.3)', padding:'3px 8px', borderRadius:6 }}>
-                  {credits.complete} crédit{credits.complete > 1 ? 's' : ''} dispo
-                </div>
-              ) : (
-                <div style={{ position:'absolute', top:14, right:14, display:'flex', alignItems:'center', gap:4, fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.7)', background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', padding:'3px 8px', borderRadius:6 }}>
-                  <Lock size={10}/> Acheter
-                </div>
-              )}
-              <div style={{ position:'absolute', top:14, left:14, fontSize:9, fontWeight:800, color:'#fff', background:'rgba(255,255,255,0.15)', border:'1px solid rgba(255,255,255,0.2)', padding:'3px 10px', borderRadius:100 }}>
-                ⭐ RECOMMANDÉ
-              </div>
-              <div style={{ width:50, height:50, borderRadius:14, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:16, marginTop:8 }}>
-                <ShieldCheck size={22} style={{ color:'#fff' }}/>
-              </div>
-              <div style={{ fontSize:17, fontWeight:800, color:'#fff', marginBottom:6 }}>Analyse complète d'un logement</div>
-              <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)', lineHeight:1.6, marginBottom:18 }}>
-                Tous les documents du bien — score /10, risques, recommandation Analymo.
-              </div>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                <span style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.85)', display:'flex', alignItems:'center', gap:5 }}>
-                  {credits.complete > 0 ? 'Commencer l\'audit' : 'Acheter un crédit'} <ArrowRight size={14}/>
-                </span>
-                <span style={{ fontSize:20, fontWeight:900, color:'#fff' }}>19,90€</span>
-              </div>
-            </div>
+          <Link to="/dashboard/nouvelle-analyse"
+            style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'12px 22px', borderRadius:12, background:'#fff', color:'#0f2d3d', fontSize:14, fontWeight:800, textDecoration:'none', whiteSpace:'nowrap', flexShrink:0 }}>
+            Lancer l&apos;analyse <ArrowRight size={14}/>
           </Link>
         </div>
       </div>
@@ -608,22 +501,42 @@ function HomeView() {
       {/* ── Analyses récentes */}
       <div>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
-          <h2 style={{ fontSize:16, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em' }}>Analyses récentes</h2>
-          <Link to="/dashboard/analyses" style={{ fontSize:13, color:'#2a7d9c', textDecoration:'none', fontWeight:700, display:'flex', alignItems:'center', gap:3 }}>
-            Tout voir <ChevronRight size={14}/>
-          </Link>
+          <h2 style={{ fontSize:15, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em' }}>Analyses récentes</h2>
+          {hasAnalyses && (
+            <Link to="/dashboard/analyses" style={{ fontSize:13, color:'#2a7d9c', textDecoration:'none', fontWeight:700, display:'flex', alignItems:'center', gap:3 }}>
+              Tout voir <ChevronRight size={14}/>
+            </Link>
+          )}
         </div>
-        {!hasAnalyses ? (
-          <EmptyAnalyses/>
-        ) : (
+        {!hasAnalyses ? <EmptyAnalyses/> : (
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-            {MOCK_ANALYSES.slice(0,3).map(a=><AnalyseRow key={a.id} a={a}/>)}
+            {analyses.slice(0,3).map(a=><AnalyseRow key={a.id} a={a}/>)}
           </div>
         )}
       </div>
+
+      {/* ── Tips toujours en bas */}
+      <div>
+        <div style={{ fontSize:13, fontWeight:700, color:'#94a3b8', letterSpacing:'0.06em', marginBottom:14 }}>CONSEILS POUR BIEN DÉMARRER</div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12 }} className="stats-grid">
+          {[
+            { icon:'📎', title:'Préparez vos documents', desc:'Rassemblez PV d'AG, règlement copro, diagnostics et appels de charges au même endroit avant d'uploader.' },
+            { icon:'⚡', title:'Rapport en 30 secondes', desc:'Notre outil traite vos documents et génère un rapport complet avec score et recommandation instantanément.' },
+            { icon:'📄', title:'Téléchargez votre rapport', desc:'Votre rapport est téléchargeable en PDF à tout moment depuis "Mes analyses".' },
+          ].map((tip, i) => (
+            <div key={i} style={{ background:'#fff', borderRadius:14, border:'1px solid #edf2f7', padding:'18px 20px' }}>
+              <div style={{ fontSize:22, marginBottom:10 }}>{tip.icon}</div>
+              <div style={{ fontSize:13, fontWeight:800, color:'#0f172a', marginBottom:6 }}>{tip.title}</div>
+              <div style={{ fontSize:12, color:'#94a3b8', lineHeight:1.6 }}>{tip.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
     </div>
   );
 }
+
 
 /* ─── EMPTY STATE ────────────────────────── */
 function EmptyAnalyses() {
@@ -907,7 +820,7 @@ function NouvelleAnalyse() {
             <span style={{ fontSize:13, fontWeight:700, color:'#2a7d9c', display:'flex', alignItems:'center', gap:5 }}>
               {freePreviewUsed && credits.document===0 ? <><Lock size={13}/> Acheter un crédit</> : <><ArrowRight size={14}/> Commencer</>}
             </span>
-            <span style={{ fontSize:22, fontWeight:900, color:'#0f172a' }}>4,90€</span>
+            {freePreviewUsed && <span style={{ fontSize:22, fontWeight:900, color:'#0f172a' }}>4,90€</span>}
           </div>
         </button>
 
@@ -936,7 +849,7 @@ function NouvelleAnalyse() {
             <span style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.85)', display:'flex', alignItems:'center', gap:5 }}>
               {freePreviewUsed && credits.complete===0 ? <>Acheter un crédit <ArrowRight size={14}/></> : <>Commencer l&apos;audit <ArrowRight size={14}/></>}
             </span>
-            <span style={{ fontSize:22, fontWeight:900, color:'#fff' }}>19,90€</span>
+            {freePreviewUsed && <span style={{ fontSize:22, fontWeight:900, color:'#fff' }}>19,90€</span>}
           </div>
         </button>
       </div>
