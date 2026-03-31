@@ -1,6 +1,6 @@
 # ANALYMO — Contexte Projet
 > **Colle ce fichier en début de conversation Claude pour reprendre le contexte.**
-> Dernière mise à jour : 30 mars 2026
+> Dernière mise à jour : 31 mars 2026
 
 ---
 
@@ -17,37 +17,41 @@
 ## 🏠 Le produit
 **Analymo** — SaaS d'analyse de documents immobiliers (PV d'AG, règlements copro, diagnostics, appels de charges). Rapport clair avec score /10, risques, recommandations en 30 secondes*.
 
-*Pour les documents PDF nativement numériques. Les documents scannés peuvent nécessiter un délai supplémentaire.
-
 **Cible :** Acheteurs particuliers (principal), notaires, agents, syndics, marchands de biens.
 
 **Logique crédits / prix :**
 - 4,90€ → 1 crédit analyse simple (1 seul document) — PAS de score /10
 - 19,90€ → 1 crédit analyse complète
-- 29,90€ → 2 crédits analyse complète
-- 39,90€ → 3 crédits analyse complète
+- 29,90€ → 2 crédits analyse complète (Pack 2 biens — comparaison côte à côte incluse)
+- 39,90€ → 3 crédits analyse complète (Pack 3 biens — comparaison + classement final inclus)
 - Les crédits n'expirent jamais et s'accumulent
+- **MOCK_CREDITS = { document: 0, complete: 0 }** — tous les nouveaux comptes arrivent à 0
 
 **Fonctionnement :**
-1. Client paie (Stripe — pas encore branché)
-2. Upload ses documents (1 pour simple, illimités pour complète)
-3. Notre outil détecte le nom du doc (4,90€) ou l'adresse complète du bien (19,90€+)
-4. Rapport généré en 30 secondes* via API Claude
+1. Client arrive → voit son analyse offerte gratuite (aperçu)
+2. Upload ses documents → prompt allégé → aperçu du rapport (sans score, sans détail)
+3. Paie → re-uploade ses documents (RGPD : docs supprimés après chaque traitement)
+4. Rapport complet généré via API Claude
 5. Rapport sauvegardé dans Supabase, visible dans le dashboard
 6. Rapport téléchargeable en PDF
-7. Comparaison uniquement disponible pour les analyses complètes
+7. Option D : pendant 7 jours après génération, peut ajouter des docs gratuitement (régénération)
+8. Comparaison disponible uniquement pour analyses complètes (pack2 / pack3)
 
-**⚠️ Règle absolue : ne jamais écrire "IA" dans les textes visibles par l'utilisateur.** Utiliser "notre outil", "notre moteur", "traitement", etc.
+**Règles absolues :**
+- Ne jamais écrire "IA" → "notre outil", "notre moteur", "traitement"
+- Prix correct partout : **4,90€** (jamais 4,99€)
+- Analyse simple → jamais de score /10
+- "Traitement en cours" (jamais "Analyse en cours") dans les écrans de chargement
 
 ---
 
 ## 🛠 Stack technique
 | Technologie | Usage |
 |---|---|
-| React 18 + Vite + TypeScript | Frontend |
+| React 19 + Vite + TypeScript | Frontend |
 | Tailwind CSS v3 | Styles |
 | Framer Motion | Animations |
-| React Router DOM | Navigation |
+| React Router DOM v7 | Navigation |
 | Supabase | Auth + Base de données |
 | Claude API (claude-sonnet-4-20250514) | Analyse des documents |
 | Stripe | Paiements — **pas encore configuré** |
@@ -56,314 +60,261 @@
 
 **Police :** DM Sans
 **Couleurs :** `#2a7d9c` (teal) / `#0f2d3d` (navy) / `#f0a500` (gold)
-**Fond général :** `#f4f7f9` (bleuté clair)
-**Fond dashboard :** `#f5f9fb`
-**Sidebar dashboard :** blanche `#fff` avec bordure légère `#edf2f7`
-**Style général :** moderne SaaS, cartes blanches, fond bleuté, pas de dark mode
+**Fond général :** `#f4f7f9` / **Fond dashboard :** `#f5f9fb`
+**Style :** moderne SaaS, cartes blanches, fond bleuté, pas de dark mode
 
 ---
 
 ## 📁 Structure du projet
 ```
 src/
-├── App.tsx                        ← routing complet + SessionManager 1h + ScrollToTop ✅
-├── index.css                      ← variables CSS globales
-├── components/layout/
-│   ├── Navbar.tsx                 ← navbar dynamique (Mon espace si connecté)
-│   └── Footer.tsx                 ← footer dark navy + disclaimer outil
+├── App.tsx                  ← routing + SessionManager 1h + ScrollToTop + route /start ✅
 ├── lib/
-│   ├── supabase.ts                ← client Supabase
-│   ├── analyses.ts                ← fonctions CRUD analyses Supabase
-│   └── prompts.ts                 ← prompts Claude
+│   ├── supabase.ts          ← client Supabase
+│   ├── analyses.ts          ← CRUD + aperçu + localStorage sync ✅ MAJ 31/03
+│   └── prompts.ts           ← 5 prompts Claude ✅ MAJ 31/03
 ├── pages/
-│   ├── HomePage.tsx               ← landing page principale ✅ REFAITE ENTIÈREMENT (session 30/03)
-│   ├── TarifsPage.tsx             ← page tarifs PUBLIQUE ✅ REFAITE ENTIÈREMENT
-│   ├── ExemplePage.tsx            ← exemple rapport interactif
-│   ├── ContactPage.tsx            ← formulaire contact
-│   ├── LoginPage.tsx              ← connexion email/password + Google
-│   ├── SignupPage.tsx             ← inscription avec vérification email
-│   ├── DashboardPage.tsx          ← dashboard complet
-│   ├── RapportPage.tsx            ← page rapport avec 4 onglets
-│   ├── AuthCallbackPage.tsx       ← /auth/callback ✅ CORRIGÉ iOS Safari (session 30/03)
-│   ├── ForgotPasswordPage.tsx     ← /mot-de-passe-oublie
-│   └── ResetPasswordPage.tsx      ← /auth/reset-password
-├── types/
-│   └── index.ts                   ← types + PRICING_PLANS (NE PAS toucher TarifsPage l'importe plus)
+│   ├── HomePage.tsx         ← CTAs → /start (redirection intelligente) ✅
+│   ├── StartPage.tsx        ← /start : connecté→/dashboard/nouvelle-analyse, sinon→/inscription ✅ NOUVEAU
+│   ├── TarifsPage.tsx       ← tarifs publique, pack2/pack3 enrichis ✅
+│   ├── ExemplePage.tsx      ← 4,90€ corrigé (était 4,99€) ✅
+│   ├── ContactPage.tsx      ← formulaire contact
+│   ├── LoginPage.tsx        ← login + sync localStorage (nom + free_preview_used) ✅
+│   ├── SignupPage.tsx       ← inscription email vérifié
+│   ├── DashboardPage.tsx    ← dashboard REFAIT 31/03 ✅
+│   ├── RapportPage.tsx      ← rapport + docs analysés + bannière 7j ✅
+│   ├── AuthCallbackPage.tsx ← callback iOS Safari (4 cas) + sync localStorage ✅
+│   ├── ForgotPasswordPage.tsx
+│   └── ResetPasswordPage.tsx
+├── types/index.ts           ← types + PRICING_PLANS (price: 4.90 ✅)
 ```
 
 ---
 
 ## 🗺 Routes (App.tsx)
 ```
-/                           → HomePage (public)
-/tarifs                     → TarifsPage (public)
-/contact                    → ContactPage (public)
-/exemple                    → ExemplePage (public)
+/start                      → StartPage ← NOUVEAU
+/                           → HomePage
+/tarifs                     → TarifsPage
+/contact / /exemple         → pages publiques
 /connexion                  → LoginPage
 /inscription                → SignupPage
 /auth/callback              → AuthCallbackPage
 /mot-de-passe-oublie        → ForgotPasswordPage
 /auth/reset-password        → ResetPasswordPage
-/dashboard                  → DashboardPage
-/dashboard/nouvelle-analyse → DashboardPage
-/dashboard/analyses         → DashboardPage
-/dashboard/compare          → DashboardPage
-/dashboard/compte           → DashboardPage
-/dashboard/support          → DashboardPage
-/dashboard/tarifs           → DashboardPage ← INTERNE, ne redirige PAS vers /tarifs
+/dashboard                  → DashboardPage (HomeView)
+/dashboard/nouvelle-analyse → DashboardPage (NouvelleAnalyse)
+/dashboard/analyses         → DashboardPage (MesAnalyses)
+/dashboard/compare          → DashboardPage (Compare)
+/dashboard/compte           → DashboardPage (Compte)
+/dashboard/support          → DashboardPage (Support)
+/dashboard/tarifs           → DashboardPage (Tarifs interne)
 /dashboard/rapport?id=XXX   → RapportPage
 ```
 
 ---
 
-## 🏠 HomePage.tsx — état actuel détaillé (refaite le 30/03/2026)
+## 🎁 Système aperçu gratuit (Option 3 — décidé 31/03)
 
-### Ordre des sections (NOUVEAU — remplace l'ancienne structure)
-1. `HeroSection` — hero avec animation téléphone (desktop + mobile différents)
-2. `AvantApresSection` — "Deux façons d'acheter" (rouge/vert)
-3. `ProblemSolutionSection` — "Pourquoi Analymo" (problème + solution fusionnés, 4 cartes)
-4. `SecuriteSection` — "Vos documents, protégés." (4 garanties + bandeau RGPD) ← NOUVEAU
-5. `ForWhoSection` — "Fait pour vous." avec onglets Particuliers/Professionnels
-6. `HowItWorksSection` — "Comment ça marche" 4 étapes
-7. `ApercuRapportSection` — "Ce que vous recevez." mockup rapport complet ← NOUVEAU
-8. `FaqSection` — FAQ accordéon 6 questions ← NOUVEAU
-9. `CtaFinal` — bloc final fond navy
+### Principe
+- 1 aperçu gratuit par compte (inscrits + email vérifié)
+- Stocké dans `profiles.free_preview_used` + `localStorage.analymo_free_preview_used`
+- Sync au login (LoginPage + AuthCallbackPage) → zéro flash UI
+- Badge disparaît définitivement après utilisation (pas de badge grisé)
 
-### ⚠️ Sections SUPPRIMÉES par rapport à l'ancienne version
-- `StatsBar` — supprimée (chiffres non réels)
-- `TestimonialsSection` — supprimée (pas de vrais témoignages)
-- `ProblemSection` et `SolutionSection` — fusionnées en `ProblemSolutionSection`
+### Flow complet
+1. Badge "1 analyse offerte 🎁" visible (navy, animation pulseGlow)
+2. Upload → prompt allégé → docs supprimés immédiatement (RGPD)
+3. Aperçu : titre + recommandation courte + 2-3 vigilances + score grisé (complète seulement)
+4. Sauvegardé avec badge "Aperçu gratuit" dans Mes analyses
+5. Paiement → re-upload → message RGPD sympa → rapport complet remplace aperçu
 
-### Composants réutilisables
-- **`Reveal`** : wrapper `motion.div` avec `useInView` (once: true, margin: -50px)
-- **`SectionTitle`** : label teal + h2 clamp + accent coloré + trait animé
+### Comportement badges/prix sur NouvelleAnalyse
+- Offre dispo → badge "1 analyse offerte" visible, **prix cachés** sur les cartes
+- Offre utilisée → badge disparaît, prix réapparaissent, crédits affichés
 
-### HeroSection — Mobile (lg:hidden)
-- Titre : `clamp(28px, 7.5vw, 36px)` + `whitespace-nowrap` sur "avant de signer." → forcé sur 2 lignes
-- Sous-texte : `text-[15px]` pleine largeur `w-full px-3`
-- Animation : `PhoneMockupMini` (150×300px) collé côté droit + 3 badges en colonne à gauche
-- Badges : largeur fixe `w-[138px]`, `gap-3`, centrés via `flex items-center justify-center`
-- **NE PAS remettre PhoneMockup plein format sur mobile** — utiliser uniquement PhoneMockupMini
+### Message RGPD au re-upload (après paiement)
+> "Bonne nouvelle ! Conformément au RGPD, vos documents ont été supprimés 🔒. Re-uploadez vos documents pour générer votre rapport complet... et profitez-en pour ajouter ceux que vous aviez oubliés ! 😉"
 
-### HeroSection — Desktop (hidden lg:grid)
-- `grid-cols-2 gap-6`, texte à gauche, `PhoneMockup` (275×580px) à droite
-- Bulles flottantes : left-36 top 20% / right-36 bottom 28% / right-28 top 10%
+### Message post-paiement si offre encore dispo (à implémenter avec Stripe)
+Bannière une seule fois sur dashboard (pas popup) :
+> "Petite info de notre côté 👋 Votre analyse découverte non utilisée a été remplacée par votre achat. Après tout, pourquoi regarder par le trou de la serrure quand on peut ouvrir la porte en grand ? 🚪 Maintenant vous avez toutes les clés en main 🔑 Bonne analyse avec Analymo !"
+- Flag localStorage : `show_upgrade_banner`
+- Déclenché par webhook Stripe si `free_preview_used = false` au moment du paiement
 
-### PhoneMockup (desktop uniquement)
-- Timings : 0→3.5s PhaseUpload, 3.5→7s PhaseScan, 7→14s PhaseResult, cycle infini
-- `PhaseScan` : titre "Traitement en cours" (jamais "Analyse en cours")
-
-### PhoneMockupMini (mobile uniquement)
-- 150×300px, `rounded-[32px]`
-- Mêmes 3 phases que PhoneMockup mais versions Mini : PhaseUploadMini / PhaseScanMini / PhaseResultMini
-
-### HowItWorksSection
-- **CRITIQUE — deux refs séparés** :
-  - `refMobile` + `inViewMobile` pour `div.flex.flex-col.md:hidden`
-  - `refDesktop` + `inViewDesktop` pour `div.hidden.md:block`
-  - Si on fusionne, le mobile affiche blanc (bug connu et corrigé)
-
-### ProblemSolutionSection
-- 4 cartes `grid-cols-1 sm:grid-cols-2`
-- Sur mobile : centré (`text-center md:text-left`, icône `mx-auto md:mx-0`)
-- Chaque carte : problème en gris + solution en teal avec checkmark
-
----
-
-## 💰 TarifsPage.tsx — état actuel détaillé
-
-### Structure desktop
-- `max-w-[1400px]` + `px-4 md:px-10 lg:px-20` → pleine largeur, pas d'espace vide
-- Grille `grid-cols-4 items-stretch` → cartes égales en hauteur, boutons alignés en bas
-- Prix grand : `text-[52px] font-black`
-- Carte highlighted (19,90€) : barre teal en haut, ring teal, bouton teal `#2a7d9c`
-- Badge : `whitespace-nowrap` + `pr-24` sur le nom → badge ne chevauche pas le texte
-
-### Structure mobile
-- Cartes empilées `flex-col gap-4`
-- Prix + badge sur la même ligne (`justify-between`)
-- Bouton pleine largeur en bas
-
-### Ordre des blocs sous les cartes
-1. Offre Professionnelle (pleine largeur, horizontal)
-2. Garanties (4 blocs)
-3. FAQ (3 colonnes desktop, 1 mobile)
-
-### IMPORTANT : TarifsPage définit ses propres plans
-TarifsPage.tsx définit `const plans = [...]` localement — elle **n'importe plus** `PRICING_PLANS` depuis types/index.ts. Les prix corrects sont : 4,90 / 19,90 / 29,90 / 39,90.
-
----
-
-## 📊 Dashboard (DashboardPage.tsx)
-
-### Sidebar blanche
-- Logo Analymo cliquable → /
-- Bouton "Nouvelle analyse" teal gradient en haut
-- Navigation : Tableau de bord / Mes analyses / Comparer mes biens / Tarifs / Mon compte / Support / Aide
-- Mini-widget crédits : 2 cases (SIMPLE / COMPLÈTE) avec quantité
-- Infos utilisateur + bouton déconnexion en bas
-
-### Logique crédits (MOCK — à remplacer après Stripe)
-```ts
-const MOCK_CREDITS = { document: 1, complete: 2 }
-```
-
-### Nouvelle analyse
-- Étape 1 : Choix du type (simple / complète / pack2 / pack3) avec badge crédits
-- Étape 2 : Upload fichiers (drag & drop) — 1 fichier max pour simple, 20 pour complète
-- Étape 3 : Barre de progression pendant le traitement
-- Résultat : redirection automatique vers /dashboard/rapport?id=XXX
-
-### Mes analyses
-- Charge depuis Supabase (vraies données utilisateur)
-- Analyse simple → affiche nom du fichier (PAS de score)
-- Analyse complète → affiche adresse du bien + score /10 coloré
-- Bouton "Rapport" → /dashboard/rapport?id=XXX
-
----
-
-## 📄 Page Rapport (RapportPage.tsx)
-
-**Route :** `/dashboard/rapport?id=XXX`
-**Chargement :** `fetchAnalyseById(id)` depuis Supabase
-**PDF :** `window.print()` avec styles @media print
-
-### 4 onglets (analyse complète uniquement)
-1. Vue d'ensemble — jauge score, recommandation, points forts/vigilance, avis
-2. Financier — charges, fonds travaux, appels de charges votés
-3. Travaux — réalisés / votés / à prévoir
-4. Procédures — masqué si `procedures_en_cours: false`
-
-**Analyse simple (4,90€) :** pas d'onglets, affichage simplifié
+### Option D — Compléter le dossier (7 jours)
+- Bouton "Compléter mon dossier" dans RapportPage pendant 7 jours après génération
+- Compteur couleur urgence (orange J-2, rouge J-1), grisé après expiration
+- Gratuit — Claude reçoit nouveaux docs + JSON rapport existant → régénération
+- Stocké dans `analyses.regeneration_deadline`
 
 ---
 
 ## 🤖 Prompts (lib/prompts.ts)
 
-### PROMPT_ANALYSE_COMPLETE (19,90€ / 29,90€ / 39,90€)
-- Note UNIQUEMENT si PV d'AG + diagnostics présents
-- Base 10/10 → pénalités → bonus, arrondi à 0,5 près
-- Si docs insuffisants → `score: null` + `raison_absence_score`
-- Retourne JSON : titre, score, score_niveau, recommandation, resume, points_forts, points_vigilance, travaux_*, charges_mensuelles, fonds_travaux, appels_charges_votes, risques_financiers, impact_financier, procedures_en_cours, procedures, avis_analymo
+| Prompt | Usage | Score |
+|---|---|---|
+| PROMPT_ANALYSE_COMPLETE | 19,90€+ payant complet | ✅ Oui (base 10 - pénalités + bonus) |
+| PROMPT_ANALYSE_SIMPLE | 4,90€ payant simple | ❌ Non |
+| PROMPT_APERCU_COMPLET | Aperçu gratuit complète | ❌ Non |
+| PROMPT_APERCU_SIMPLE | Aperçu gratuit simple | ❌ Non |
+| PROMPT_REGENERATION | Option D ajout docs | ✅ Recalcul |
 
-### PROMPT_ANALYSE_SIMPLE (4,90€)
-- **Jamais de note sur 10** (règle absolue)
-- Retourne JSON simple : titre / résumé / points_forts / points_vigilance / conclusion
+**Calcul note /10 (actuel — à revoir) :**
+- Départ : 10/10
+- Pénalités : Copropriété (-1 à -3), Procédures (-2 à -4), Finances (-1 à -2), Diagnostics (DPE E:-0,5 / F:-1,5 / G:-2 à -3 / Amiante:-1 à -2), Juridique (-0,5 à -1,5)
+- Bonus : Travaux réalisés, bonne gestion, diagnostics rassurants, charges maîtrisées (+0,5 à +1 chacun)
+- Arrondi au 0,5 près
+- ⚠️ Méthode à revoir lors d'une prochaine session
 
 ---
 
 ## 🗄 Supabase
 
 **Project ID :** `veszrayromldfgetqaxb`
-**Project URL :** `https://veszrayromldfgetqaxb.supabase.co`
+**URL :** `https://veszrayromldfgetqaxb.supabase.co`
 
-### Tables
-- `profiles` — id, full_name, created_at + trigger auto à l'inscription
-- `analyses` — id, user_id, type, status, title, address, result (JSONB), created_at
+### Schéma (MAJ 31/03 — colonnes ajoutées via SQL Editor)
+```sql
+profiles:
+  id, full_name, created_at
+  free_preview_used BOOLEAN DEFAULT FALSE ← AJOUTÉ 31/03
+
+analyses:
+  id, user_id, type, status, title, address
+  result JSONB               -- rapport complet
+  apercu JSONB               -- aperçu gratuit ← AJOUTÉ 31/03
+  is_preview BOOLEAN         -- true = aperçu non payé ← AJOUTÉ 31/03
+  paid BOOLEAN               -- true = paiement confirmé ← AJOUTÉ 31/03
+  document_names TEXT[]      -- noms fichiers conservés ← AJOUTÉ 31/03
+  regeneration_deadline      -- date limite 7j ← AJOUTÉ 31/03
+  stripe_payment_id, document_urls, created_at
+```
 
 ### Auth configuré
 - Email/password ✅ + Google OAuth ✅
-- SMTP Mailjet : notification@analymo.fr / SPF ✅ + DKIM ✅ + DMARC ✅
-- Redirect URLs configurées pour appdemo.analymo.fr + analymo.fr
+- SMTP Mailjet : notification@analymo.fr
+- Redirect URLs : appdemo.analymo.fr + analymo.fr
+- AuthCallbackPage gère 4 cas (hash token, code iOS Safari, session existante, compte activé sans session)
 
-### Vercel env vars
-- `VITE_SUPABASE_URL` = `https://veszrayromldfgetqaxb.supabase.co`
-- `VITE_SUPABASE_ANON_KEY` = clé publique Supabase
+### localStorage (côté client)
+- `analymo_free_preview_used` → sync Supabase au login, mis à jour après aperçu
+- `analymo_user_name` → prénom pour affichage instantané (zéro flash)
+- `analymo_user_email` → email
+- `analymo_login_time` → session 1h (SessionManager App.tsx)
 
 ---
 
-## 📧 Configuration email (Mailjet)
+## 📧 Mailjet (état 31/03)
+- SPF ✅ / DKIM ✅ / DMARC ✅ (ajouté 30/03)
+- CNAME `bnc3.analymo.fr → bnc3.mailjet.com` ✅ (corrigé : était DNAME → remplacé par CNAME)
+- Ticket Mailjet Custom Return-Path : **en attente réponse support**
+- Objectif : "envoyé par" affichera `bnc3.analymo.fr` au lieu de `bnc3.mailjet.com`
 
-**Expéditeur :** notification@analymo.fr
-**Statut authentification :**
-- SPF ✅ (`v=spf1 include:mx.ovh.com include:spf.mailjet.com -all`)
-- DKIM ✅ (2048 bits, mailjet._domainkey.analymo.fr)
-- DMARC ✅ ajouté le 30/03/2026 (`_dmarc.analymo.fr` → `v=DMARC1; p=none; rua=mailto:notification@analymo.fr`)
+---
 
-**Problème connu :** L'email affiche "envoyé par : bnc3.mailjet.com" au lieu de "analymo.fr" dans certains clients (Hotmail/Outlook). Cela peut déclencher des filtres spam.
+## 📊 Dashboard (DashboardPage.tsx) — état 31/03
 
-**Solution à appliquer (Custom Return-Path) :**
-1. Dans OVH DNS : ajouter un enregistrement CNAME → `bnc3` pointant vers `bnc3.mailjet.com`
-2. Faire une capture d'écran du CNAME créé
-3. Ouvrir un ticket support Mailjet avec la capture + clé API pour activation
-4. Résultat : "envoyé par" affichera `bnc3.analymo.fr` au lieu de `bnc3.mailjet.com`
-- **Disponible sur tous les plans Mailjet (y compris gratuit)** — nécessite intervention manuelle du support
+### Topbar
+- Titre page + cloche uniquement
+- **Crédits supprimés de la topbar** (restent dans sidebar)
+
+### Sidebar
+- Logo + bouton "Nouvelle analyse" navy
+- Mini-widget crédits : Document / Complète + lien "Acheter"
+- Navigation + infos utilisateur + déconnexion
+
+### HomeView — layout 2 colonnes
+**Colonne gauche (flex) :**
+- Badge "1 analyse offerte 🎁" navy + pulseGlow (si non utilisé)
+- Stats 3 blocs (si analyses existantes) : totales / dernière / crédits
+- Analyses récentes (vraies données Supabase)
+- Guide "Comment ça marche" (card navy + timeline 4 étapes numérotées)
+- Conseils & astuces (4 tips avec bordure colorée à gauche)
+
+**Colonne droite (320px) :**
+- "Conseil important Analymo" (card amber)
+- Glossaire immobilier (accordéon 6 termes : PV AG, DPE, Fonds travaux, Charges copro, Règlement copro, Appel de charges)
+
+**Pleine largeur sous le grid :**
+- "Découvrez comment nous calculons la note /10" — onglets : Bonus (défaut) / Pénalités / Échelle de lecture
+
+### NouvelleAnalyse
+- Badge offerte grand + visible (si non utilisé), prix cachés
+- 2 cartes : "Analyse d'un seul document" / "Analyse complète d'un logement"
+  - Textes enrichis avec exemples de documents
+  - Prix réapparaissent + crédits affichés après utilisation offre
+- Packs 2 et 3 biens **supprimés** de cette page (disponibles dans /tarifs)
+- Step aperçu : titre + vigilances + score grisé + sections grisées + CTA débloquer
+
+### Mes analyses
+- Vraies données Supabase
+- Badge "Aperçu gratuit" si `is_preview = true`
+- Analyse simple → nom fichier (PAS de score)
+- Analyse complète → adresse + score /10 coloré
+
+### Mon compte
+- Modification nom → met à jour auth metadata ET table profiles ✅
+- Section changement mot de passe (validation longueur + correspondance)
+- Historique achats (mock — à remplacer par Stripe)
+- Zone de danger avec confirmation avant déconnexion (suppression réelle pas encore implémentée)
+
+### Support
+- FAQ accordéon 4 questions
+- Formulaire contact (envoi simulé)
+
+### RapportPage
+- Section "Documents analysés" avec noms fichiers + mention RGPD
+- Bannière 7 jours avec compteur (orange J-2, rouge J-1, grisé expiré)
+
+---
+
+## 💰 TarifsPage.tsx — état 31/03
+- Pack 2 biens : "Vous hésitez entre deux biens ? Uploadez les documents des deux et laissez Analymo les comparer côte à côte"
+- Pack 3 biens : "Comparez-les tous en un seul achat... classement final pour vous aider à faire le meilleur choix" + badge "Meilleure valeur"
+- Définit ses propres `plans` localement (n'importe plus PRICING_PLANS de types/index.ts)
+- Prix corrects : 4,90 / 19,90 / 29,90 / 39,90
 
 ---
 
 ## ⚠️ Points importants à retenir
 
-1. **Stripe PAS branché** → crédits simulés via `MOCK_CREDITS` dans DashboardPage.tsx
-2. **Table `credits` PAS créée** dans Supabase → à faire après Stripe
-3. **API Claude côté client** → appel direct depuis le navigateur (à sécuriser avec une edge function plus tard)
-4. **Tarifs = 2 pages différentes** :
-   - `/tarifs` → TarifsPage.tsx (publique, définit ses propres `plans`)
-   - `/dashboard/tarifs` → onglet interne dashboard (dans DashboardPage.tsx)
-5. **vercel.json** → rewrites SPA → NE PAS supprimer
-6. **Session 1h** gérée via localStorage (`analymo_login_time`) dans SessionManager (App.tsx)
-7. **PRICING_PLANS dans types/index.ts** → encore utilisé par DashboardPage, mais PAS par TarifsPage
-8. **Prix correct** : 4,90€ (pas 4,99€) partout dans les textes visibles
-9. **Mot "IA" interdit** dans tous les textes visibles utilisateur
-10. **HowItWorksSection** : utilise `refMobile`/`inViewMobile` et `refDesktop`/`inViewDesktop` séparés — NE PAS fusionner sinon le mobile affiche blanc
-11. **ScrollToTop** ajouté dans App.tsx → scroll automatique en haut à chaque changement de page
-12. **AuthCallbackPage** corrigée pour iOS Safari → gère 4 cas : hash token, query code, session existante, compte activé sans session
+1. **Stripe PAS branché** → MOCK_CREDITS = {0,0} partout
+2. **Aperçu gratuit = seule vraie fonctionnalité opérationnelle sans Stripe**
+3. **API Claude côté client** → appel direct navigateur → à sécuriser (edge function Vercel)
+4. **vercel.json** → rewrites SPA → NE PAS supprimer
+5. **StartPage.tsx** → nouveau fichier créé 31/03 → NE PAS supprimer
+6. **HowItWorksSection** dans HomePage → refs mobile/desktop séparés → NE PAS fusionner (sinon blanc sur mobile)
+7. **TarifsPage** définit ses propres plans localement → ne pas toucher à PRICING_PLANS pour elle
+8. **Calcul note /10** → méthode actuelle base 10 - pénalités + bonus → À REVOIR
+9. **Suppression compte** → déconnecte + redirige vers / mais ne supprime PAS réellement dans Supabase
+10. **Historique achats** dans Mon compte = mock → à remplacer par vraies données Stripe
+11. **"Traitement en cours"** → jamais "Analyse en cours" dans les écrans de chargement
+12. **Mise à jour profil** → met à jour auth metadata ET table profiles simultanément
 
 ---
 
-## 🔜 Prochaines étapes (dans l'ordre)
+## 🔜 Prochaines étapes
 
-### Email / Délivrabilité
-- [ ] **Custom Return-Path Mailjet** — ajouter CNAME `bnc3` dans OVH + ticket support Mailjet (voir section 📧 ci-dessus)
+### 🔴 Stripe (priorité 1)
+- [ ] Connecter Stripe (4 produits : 4,90 / 19,90 / 29,90 / 39,90)
+- [ ] Webhook → crédite compte + marque free_preview_used si encore dispo
+- [ ] Bannière post-paiement (message serrure/clés — voir section aperçu gratuit)
+- [ ] Remplacer MOCK_CREDITS par vraies données Supabase
+- [ ] Remplacer historique achats mock par vraies données Stripe
 
-### Paiements
-- [ ] **Connecter Stripe** — paiement réel (4 produits : 4,90 / 19,90 / 29,90 / 39,90)
-- [ ] **Créer table `credits`** dans Supabase + webhook Stripe qui crédite
-- [ ] **Remplacer `MOCK_CREDITS`** par vraies données Supabase dans DashboardPage.tsx
+### 🟠 Technique
+- [ ] Sécuriser appel Claude (edge function Vercel)
+- [ ] Email Mailjet quand rapport prêt
+- [ ] Améliorer PDF (html2pdf ou Puppeteer)
+- [ ] Implémenter régénération Option D (appel Claude avec rapport existant + nouveaux docs)
+- [ ] Implémenter suppression réelle compte Supabase (actuellement juste déconnexion)
+- [ ] **Revoir méthode calcul note /10** (méthode actuelle à affiner)
 
-### Technique
-- [ ] Mettre à jour `PRICING_PLANS` dans types/index.ts (prix 4,90 au lieu de 4,99)
-- [ ] Envoyer email Mailjet quand rapport prêt
-- [ ] Améliorer le PDF (html2pdf ou Puppeteer)
-- [ ] Sécuriser l'appel API Claude (edge function Vercel)
+### 🟡 Mailjet
+- [ ] Attendre réponse ticket Custom Return-Path (CNAME déjà créé ✅)
 
-### Growth / Marketing
+### ⚪ Plus tard
 - [ ] Google OAuth branding (publier app Google Cloud)
 - [ ] Page admin (voir tous les clients/analyses)
-- [ ] Récupérer de vrais témoignages utilisateurs pour les remettre sur la HomePage
-
-- [ ] ## 🔄 Session du 30 mars 2026 — suite (après-midi)
-
-### 📧 Email / Délivrabilité
-- CNAME `bnc3.analymo.fr → bnc3.mailjet.com` créé dans OVH ✅
-- Ticket support Mailjet ouvert pour activation Custom Return-Path (en attente de réponse)
-- Note : disponible uniquement sur comptes payants Mailjet — à confirmer avec leur support
-
-### 🖥 DashboardPage.tsx — modifications appliquées
-
-#### Bugs corrigés
-- `4,99€` → `4,90€` partout (7 endroits : MOCK_ANALYSES, useAnalyses, cartes HomeView, NouvelleAnalyse, Tarifs, FAQ Support, carte crédits)
-- Bouton Pack 3 Biens couleur `#7c3aed` (violet) → `#1a5068` (navy cohérent)
-- Compteur "Mes analyses" affichait `MOCK_ANALYSES.length` au lieu de `analyses.length` (vrai compte Supabase)
-- "Analyse en cours…" → "Traitement en cours…" (2 endroits — règle absolue)
-
-#### Topbar
-- Suppression du bouton "+ Nouvelle analyse" en haut à droite (trop répétitif)
-- Remplacé par un **indicateur de crédits** cliquable (`X simple | X complets`) → redirige vers `/dashboard/tarifs`
-
-#### HomeView (page d'accueil dashboard)
-- Quand 0 analyses : affiche un **bloc bienvenue navy** "Prêt à analyser votre premier bien ?" avec bouton "Lancer une analyse" + lien "Voir les tarifs"
-- Quand analyses existantes : les stats (totales, dernière, crédits) réapparaissent normalement
-- Suppression de la bande info crédits (redondante)
-
-#### Mon compte
-- Ajout section **changement de mot de passe** (avec validation longueur + correspondance)
-- Ajout section **historique des achats** (mock — prêt pour Stripe)
-- Ajout **zone de danger** avec confirmation avant suppression de compte
-
-#### Largeur des pages
-- `Mon compte`, `Support`, `Nouvelle analyse` n'ont plus de `maxWidth` interne restrictif → prennent toute la largeur disponible sur desktop
-
-### ⚠️ Points importants
-- `MOCK_CREDITS` toujours actif dans la Topbar pour afficher les crédits → à brancher sur Supabase après Stripe
-- Historique achats dans Mon compte = mock — à remplacer par vraies données Stripe/Supabase
-- La suppression de compte dans Mon compte déconnecte et redirige vers `/` mais ne supprime pas réellement le compte Supabase (à implémenter côté backend)
+- [ ] Vrais témoignages utilisateurs pour HomePage
