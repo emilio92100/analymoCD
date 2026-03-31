@@ -263,14 +263,7 @@ function Topbar({ onMenuClick, title }: { onMenuClick:()=>void; title:string }) 
   return (
     <header style={{ height:68, background:'#fff', borderBottom:'1px solid #edf2f7', display:'flex', alignItems:'center', padding:'0 24px', gap:12, position:'sticky', top:0, zIndex:40, flexShrink:0 }}>
       <button className="mobile-menu-btn" onClick={onMenuClick} style={{ background:'none', border:'none', cursor:'pointer', color:'#0f2d3d', padding:4, display:'none' }}><Menu size={20}/></button>
-      <p style={{ flex:1, fontSize:16, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em', margin:0 }}>{title}</p>
-      <div className="topbar-cta" style={{ display:'flex', alignItems:'center', gap:8 }}>
-        <Link to="/dashboard/tarifs" style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:9, background:'#f0f7fb', border:'1px solid #dbeafe', textDecoration:'none' }}>
-          <span style={{ fontSize:12, fontWeight:700, color:'#2a7d9c' }}>{MOCK_CREDITS.document} simple</span>
-          <span style={{ width:1, height:12, background:'#cbd5e1' }}/>
-          <span style={{ fontSize:12, fontWeight:700, color:'#0f2d3d' }}>{MOCK_CREDITS.complete} complet{MOCK_CREDITS.complete > 1 ? 's' : ''}</span>
-        </Link>
-      </div>
+      <p style={{ flex:1, fontSize:17, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em', margin:0 }}>{title}</p>
       <button style={{ width:36, height:36, borderRadius:9, background:'#f8fafc', border:'1px solid #edf2f7', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#94a3b8' }}><Bell size={15}/></button>
     </header>
   );
@@ -375,10 +368,10 @@ function HomeView() {
 
       {/* ── Greeting */}
       <div>
-        <h1 style={{ fontSize:'clamp(22px,2.5vw,30px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:4 }}>
+        <h1 style={{ fontSize:'clamp(26px,3vw,34px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.025em', marginBottom:4 }}>
           {greeting}{name ? `, ${name}` : ''} 👋
         </h1>
-        <p style={{ fontSize:14, color:'#94a3b8' }}>
+        <p style={{ fontSize:15, color:'#94a3b8' }}>
           {hasAnalyses ? 'Bienvenue sur votre espace Analymo.' : 'Bienvenue sur Analymo — lancez votre première analyse.'}
         </p>
       </div>
@@ -485,19 +478,47 @@ function HomeView() {
         )}
       </div>
 
-      {/* ── Tips toujours en bas */}
-      <div>
-        <div style={{ fontSize:13, fontWeight:700, color:'#94a3b8', letterSpacing:'0.06em', marginBottom:14 }}>CONSEILS POUR BIEN DÉMARRER</div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12 }} className="stats-grid">
+      {/* ── Guide + Tips enrichis */}
+      <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+
+        {/* Titre section */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <h2 style={{ fontSize:17, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em' }}>Guide & conseils Analymo</h2>
+        </div>
+
+        {/* Guide étapes */}
+        <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'24px', display:'flex', flexDirection:'column', gap:18 }}>
+          <div style={{ fontSize:13, fontWeight:700, color:'#2a7d9c', letterSpacing:'0.06em', marginBottom:4 }}>COMMENT ÇA MARCHE</div>
           {[
-            { icon:'📎', title:'Préparez vos documents', desc:'Rassemblez PV d&apos;AG, r&egrave;glement copro, diagnostics et appels de charges avant d&apos;uploader.' },
-            { icon:'⚡', title:'Rapport en 30 secondes', desc:'Notre outil traite vos documents et génère un rapport complet avec score et recommandation instantanément.' },
-            { icon:'📄', title:'Téléchargez votre rapport', desc:'Votre rapport est téléchargeable en PDF depuis "Mes analyses" à tout moment.' },
+            { num:'1', title:'Rassemblez vos documents', desc:'PV d\'AG des 3 dernières années, règlement de copropriété, diagnostics (DPE, électricité, amiante, plomb), appels de charges, carnet d\'entretien.' },
+            { num:'2', title:'Choisissez votre analyse', desc:'Analyse simple (4,90€) pour un seul document. Analyse complète (19,90€) pour un rapport global avec score /10 et recommandation d\'achat.' },
+            { num:'3', title:'Uploadez et patientez 30s', desc:'Notre outil analyse vos documents et génère un rapport détaillé en moins de 30 secondes.' },
+            { num:'4', title:'Lisez et téléchargez', desc:'Consultez votre rapport depuis "Mes analyses". Téléchargez-le en PDF pour le partager à votre notaire ou agent.' },
+          ].map((step, i) => (
+            <div key={i} style={{ display:'flex', gap:16, alignItems:'flex-start' }}>
+              <div style={{ width:36, height:36, borderRadius:'50%', background:'#0f2d3d', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:900, flexShrink:0 }}>{step.num}</div>
+              <div>
+                <div style={{ fontSize:15, fontWeight:800, color:'#0f172a', marginBottom:4 }}>{step.title}</div>
+                <div style={{ fontSize:13, color:'#64748b', lineHeight:1.7 }}>{step.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Tips pratiques */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }} className="action-grid">
+          {[
+            { icon:'💡', color:'#fef9c3', border:'#fde047', title:'Conseil pro', desc:'Pour une analyse complète fiable, incluez au minimum les 3 derniers PV d\'AG et le DPE. Plus vous fournissez de documents, plus le score sera précis.' },
+            { icon:'⚠️', color:'#fef2f2', border:'#fecaca', title:'Points de vigilance', desc:'Un DPE classé F ou G peut impacter la valeur du bien. Les travaux votés en AG mais non réalisés sont à surveiller de près.' },
+            { icon:'📋', color:'#f0fdf4', border:'#bbf7d0', title:'Documents prioritaires', desc:'PV d\'AG 2022/2023/2024, règlement copro, DPE, diagnostic électricité et gaz, appel de charges du dernier trimestre.' },
+            { icon:'🔑', color:'#eff6ff', border:'#bfdbfe', title:'Bon à savoir', desc:'Votre rapport est sauvegardé définitivement dans votre espace. Vous pouvez le consulter et le télécharger à tout moment, sans limite de durée.' },
+            { icon:'🏠', color:'#f5f3ff', border:'#ddd6fe', title:'Score /10 : comment le lire ?', desc:'8-10 : achetez sereinement. 6-7 : quelques points à négocier. 4-5 : risques modérés, soyez vigilant. En dessous de 4 : achat déconseillé.' },
+            { icon:'📞', color:'#fff7ed', border:'#fed7aa', title:'Besoin d\'aide ?', desc:'Notre équipe est disponible depuis la page Support pour toute question sur votre rapport ou l\'utilisation d\'Analymo.' },
           ].map((tip, i) => (
-            <div key={i} style={{ background:'#fff', borderRadius:14, border:'1px solid #edf2f7', padding:'18px 20px' }}>
-              <div style={{ fontSize:22, marginBottom:10 }}>{tip.icon}</div>
-              <div style={{ fontSize:13, fontWeight:800, color:'#0f172a', marginBottom:6 }}>{tip.title}</div>
-              <div style={{ fontSize:12, color:'#94a3b8', lineHeight:1.6 }}>{tip.desc}</div>
+            <div key={i} style={{ background:tip.color, borderRadius:14, border:`1px solid ${tip.border}`, padding:'18px 20px' }}>
+              <div style={{ fontSize:24, marginBottom:10 }}>{tip.icon}</div>
+              <div style={{ fontSize:14, fontWeight:800, color:'#0f172a', marginBottom:6 }}>{tip.title}</div>
+              <div style={{ fontSize:13, color:'#64748b', lineHeight:1.7 }}>{tip.desc}</div>
             </div>
           ))}
         </div>
@@ -759,8 +780,8 @@ function NouvelleAnalyse() {
             <Sparkles size={16} style={{ color:'#fff'}}/>
           </div>
           <div style={{ flex:1 }}>
-            <div style={{ fontSize:13, fontWeight:800, color:'#fff', marginBottom:2 }}>1 analyse offerte 🎁</div>
-            <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', lineHeight:1.4 }}>Profitez d'une analyse gratuite afin de visualiser un aperçu du rapport et découvrir notre outil.</div>
+            <div style={{ fontSize:16, fontWeight:900, color:'#fff', marginBottom:4 }}>1 analyse offerte 🎁</div>
+            <div style={{ fontSize:14, color:'rgba(255,255,255,0.7)', lineHeight:1.5 }}>Profitez d'une analyse gratuite pour visualiser un aperçu du rapport et découvrir notre outil.</div>
           </div>
           <span style={{ fontSize:10, fontWeight:800, color:'#0f2d3d', background:'#fff', padding:'4px 12px', borderRadius:100, whiteSpace:'nowrap', flexShrink:0 }}>OFFERT</span>
         </div>
