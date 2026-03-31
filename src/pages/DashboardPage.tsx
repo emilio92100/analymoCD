@@ -539,83 +539,161 @@ function HomeView() {
             </div>
           </div>
 
-          {/* Comprendre la note */}
-          <div style={{ background:'#fff', border:'1px solid #edf2f7', borderRadius:14, overflow:'hidden' }}>
-            <div style={{ padding:'14px 18px', borderBottom:'1px solid #edf2f7', display:'flex', alignItems:'center', gap:10 }}>
-              <div style={{ width:30, height:30, borderRadius:8, background:'#0f2d3d', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                <Star size={14} style={{ color:'#fff' }}/>
-              </div>
-              <div>
-                <div style={{ fontSize:14, fontWeight:700, color:'#0f172a' }}>Comment est calculée la note ?</div>
-                <div style={{ fontSize:11, color:'#94a3b8' }}>Transparence totale sur notre méthode</div>
-              </div>
-            </div>
-            <div style={{ padding:'16px 18px', display:'flex', flexDirection:'column', gap:14 }}>
-
-              {/* Départ */}
-              <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:'#f0f7fb', borderRadius:10 }}>
-                <div style={{ width:8, height:8, borderRadius:'50%', background:'#2a7d9c', flexShrink:0 }}/>
-                <div>
-                  <div style={{ fontSize:12, fontWeight:700, color:'#0f172a', marginBottom:1 }}>Point de départ : 10/10</div>
-                  <div style={{ fontSize:11, color:'#64748b', lineHeight:1.5 }}>On démarre toujours de 10. Notre outil retire des points selon les risques détectés.</div>
-                </div>
-              </div>
-
-              {/* Pénalités */}
-              <div>
-                <div style={{ fontSize:11, fontWeight:700, color:'#dc2626', letterSpacing:'0.06em', marginBottom:8 }}>PÉNALITÉS</div>
-                <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
-                  {penalties.map((p, i) => (
-                    <div key={i} style={{ background:'#fff', border:'0.5px solid #edf2f7', borderRadius:8, overflow:'hidden' }}>
-                      <div style={{ padding:'5px 10px', background:'#fef2f2', fontSize:10, fontWeight:700, color:'#dc2626', letterSpacing:'0.04em' }}>{p.cat.toUpperCase()}</div>
-                      {p.items.map((item, j) => (
-                        <div key={j} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'5px 10px', borderTop:'0.5px solid #edf2f7' }}>
-                          <span style={{ fontSize:12, color:'#374151' }}>{item.l}</span>
-                          <span style={{ fontSize:11, fontWeight:700, color:'#dc2626', background:'#fef2f2', padding:'1px 7px', borderRadius:4 }}>{item.v}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Bonus */}
-              <div>
-                <div style={{ fontSize:11, fontWeight:700, color:'#16a34a', letterSpacing:'0.06em', marginBottom:8 }}>BONUS</div>
-                <div style={{ background:'#fff', border:'0.5px solid #edf2f7', borderRadius:8, overflow:'hidden' }}>
-                  {bonuses.map((b, i) => (
-                    <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 10px', borderTop: i>0 ? '0.5px solid #edf2f7' : 'none' }}>
-                      <span style={{ fontSize:12, color:'#374151' }}>{b.l}</span>
-                      <span style={{ fontSize:11, fontWeight:700, color:'#16a34a', background:'#f0fdf4', padding:'1px 7px', borderRadius:4 }}>{b.v}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Échelle */}
-              <div>
-                <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', letterSpacing:'0.06em', marginBottom:8 }}>ÉCHELLE DE LECTURE</div>
-                <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-                  {scale.map((s, i) => (
-                    <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'6px 10px', borderRadius:8, background:s.bg }}>
-                      <span style={{ fontSize:12, fontWeight:700, color:s.c }}>{s.r}</span>
-                      <span style={{ fontSize:11, color:s.c }}>{s.l}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ padding:'10px 12px', background:'#f8fafc', borderRadius:8, fontSize:11, color:'#94a3b8', lineHeight:1.6 }}>
-                La note est arrondie au 0,5 près et établie uniquement à partir des documents fournis.
-              </div>
-            </div>
-          </div>
+          {/* Glossaire immobilier */}
+          <GlossaireBlock/>
 
         </div>
       </div>
 
+      {/* ── Section note /10 — pleine largeur avec onglets */}
+      <NoteExplicativeBlock penalties={penalties} bonuses={bonuses} scale={scale}/>
+
     </div>
   );
+}
+
+/* ─── GLOSSAIRE ─────────────────────────── */
+function GlossaireBlock() {
+  const [open, setOpen] = useState<number|null>(null);
+  const termes = [
+    { t: 'PV d'AG', d: 'Procès-verbal d'Assemblée Générale — compte-rendu officiel des décisions votées par les copropriétaires lors de leur réunion annuelle. Contient les travaux votés, les charges, les litiges.' },
+    { t: 'DPE', d: 'Diagnostic de Performance Énergétique — note de A (très économe) à G (très énergivore) évaluant la consommation d'énergie du logement. Un DPE F ou G peut impacter la valeur et la revente.' },
+    { t: 'Fonds de travaux', d: 'Somme mise de côté chaque année par la copropriété pour financer les futurs travaux importants. Un fonds bien provisionné est rassurant pour l'acheteur.' },
+    { t: 'Charges de copropriété', d: 'Frais mensuels ou trimestriels payés par chaque copropriétaire pour l'entretien des parties communes (ascenseur, jardins, gardien, etc.).' },
+    { t: 'Règlement de copropriété', d: 'Document juridique définissant les règles de vie dans la copropriété, la répartition des charges et l'usage des parties communes et privatives.' },
+    { t: 'Appel de charges', d: 'Document envoyé par le syndic demandant le paiement des charges de copropriété. Permet de vérifier le montant réel des charges courantes.' },
+  ];
+  return (
+    <div style={{ background:'#fff', border:'1px solid #edf2f7', borderRadius:14, overflow:'hidden' }}>
+      <div style={{ padding:'14px 18px', borderBottom:'1px solid #edf2f7', display:'flex', alignItems:'center', gap:10 }}>
+        <div style={{ width:30, height:30, borderRadius:8, background:'#2a7d9c', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+          <Info size={14} style={{ color:'#fff' }}/>
+        </div>
+        <div>
+          <div style={{ fontSize:14, fontWeight:700, color:'#0f172a' }}>Glossaire immobilier</div>
+          <div style={{ fontSize:11, color:'#94a3b8' }}>6 termes clés expliqués simplement</div>
+        </div>
+      </div>
+      <div style={{ display:'flex', flexDirection:'column' }}>
+        {termes.map((terme, i) => (
+          <div key={i} style={{ borderBottom: i < termes.length-1 ? '0.5px solid #edf2f7' : 'none' }}>
+            <button onClick={()=>setOpen(open===i?null:i)}
+              style={{ width:'100%', padding:'12px 18px', display:'flex', alignItems:'center', justifyContent:'space-between', background:'none', border:'none', cursor:'pointer', textAlign:'left' }}>
+              <span style={{ fontSize:13, fontWeight:700, color:'#0f172a' }}>{terme.t}</span>
+              <ChevronDown size={14} style={{ color:'#94a3b8', flexShrink:0, transform:open===i?'rotate(180deg)':'none', transition:'transform 0.2s' }}/>
+            </button>
+            {open===i && (
+              <div style={{ padding:'0 18px 14px', fontSize:13, color:'#64748b', lineHeight:1.7 }}>
+                {terme.d}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── NOTE EXPLICATIVE ───────────────────── */
+function NoteExplicativeBlock({ penalties, bonuses, scale }: {
+  penalties: { cat: string; items: { l: string; v: string }[] }[];
+  bonuses: { l: string; v: string }[];
+  scale: { r: string; l: string; c: string; bg: string }[];
+}) {
+  const [activeTab, setActiveTab] = useState<'bonus'|'penalites'|'echelle'>('bonus');
+  const tabs: { id: 'bonus'|'penalites'|'echelle'; label: string }[] = [
+    { id: 'bonus', label: '✓ Bonus' },
+    { id: 'penalites', label: '− Pénalités' },
+    { id: 'echelle', label: '📊 Échelle' },
+  ];
+  return (
+    <div style={{ background:'#fff', border:'1px solid #edf2f7', borderRadius:16, overflow:'hidden' }}>
+      {/* Header */}
+      <div style={{ padding:'20px 28px', borderBottom:'1px solid #edf2f7', display:'flex', alignItems:'center', gap:14 }}>
+        <div style={{ width:40, height:40, borderRadius:10, background:'#0f2d3d', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+          <Star size={18} style={{ color:'#fff' }}/>
+        </div>
+        <div>
+          <div style={{ fontSize:17, fontWeight:800, color:'#0f172a', marginBottom:2 }}>Découvrez comment nous calculons la note /10</div>
+          <div style={{ fontSize:13, color:'#94a3b8' }}>Transparence totale sur notre méthode de calcul</div>
+        </div>
+      </div>
+
+      <div style={{ padding:'20px 28px', display:'flex', flexDirection:'column', gap:18 }}>
+
+        {/* Point de départ */}
+        <div style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 18px', background:'#f0f7fb', borderRadius:12 }}>
+          <div style={{ width:42, height:42, borderRadius:'50%', background:'#2a7d9c', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:900, flexShrink:0 }}>10</div>
+          <div>
+            <div style={{ fontSize:14, fontWeight:800, color:'#0f172a', marginBottom:2 }}>Point de départ : 10/10</div>
+            <div style={{ fontSize:13, color:'#64748b', lineHeight:1.5 }}>On démarre toujours de la note maximale. Notre outil retire des points selon les risques détectés dans vos documents, et en ajoute pour les points positifs.</div>
+          </div>
+        </div>
+
+        {/* Onglets */}
+        <div style={{ display:'flex', gap:8, padding:'4px', background:'#f8fafc', borderRadius:12 }}>
+          {tabs.map(tab => (
+            <button key={tab.id} onClick={()=>setActiveTab(tab.id)}
+              style={{ flex:1, padding:'10px', borderRadius:9, border:'none', background:activeTab===tab.id?'#fff':'transparent', color:activeTab===tab.id?'#0f172a':'#94a3b8', fontSize:13, fontWeight:activeTab===tab.id?700:500, cursor:'pointer', boxShadow:activeTab===tab.id?'0 1px 4px rgba(0,0,0,0.08)':'none', transition:'all 0.15s' }}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Contenu onglet Bonus */}
+        {activeTab==='bonus' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+            <div style={{ fontSize:12, color:'#64748b', marginBottom:4 }}>Ces éléments <strong>ajoutent</strong> des points à la note finale :</div>
+            <div style={{ background:'#fff', border:'0.5px solid #edf2f7', borderRadius:10, overflow:'hidden' }}>
+              {bonuses.map((b, i) => (
+                <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 14px', borderTop:i>0?'0.5px solid #edf2f7':'none' }}>
+                  <span style={{ fontSize:13, color:'#374151' }}>{b.l}</span>
+                  <span style={{ fontSize:12, fontWeight:700, color:'#16a34a', background:'#f0fdf4', padding:'3px 10px', borderRadius:6 }}>{b.v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Contenu onglet Pénalités */}
+        {activeTab==='penalites' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            <div style={{ fontSize:12, color:'#64748b', marginBottom:2 }}>Ces éléments <strong>retirent</strong> des points à la note finale :</div>
+            {penalties.map((p, i) => (
+              <div key={i} style={{ background:'#fff', border:'0.5px solid #edf2f7', borderRadius:10, overflow:'hidden' }}>
+                <div style={{ padding:'7px 14px', background:'#fef2f2', fontSize:11, fontWeight:700, color:'#dc2626', letterSpacing:'0.04em' }}>{p.cat.toUpperCase()}</div>
+                {p.items.map((item, j) => (
+                  <div key={j} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 14px', borderTop:'0.5px solid #edf2f7' }}>
+                    <span style={{ fontSize:13, color:'#374151' }}>{item.l}</span>
+                    <span style={{ fontSize:12, fontWeight:700, color:'#dc2626', background:'#fef2f2', padding:'3px 10px', borderRadius:6 }}>{item.v}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Contenu onglet Échelle */}
+        {activeTab==='echelle' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+            <div style={{ fontSize:12, color:'#64748b', marginBottom:4 }}>Comment interpréter votre note :</div>
+            {scale.map((s, i) => (
+              <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', borderRadius:10, background:s.bg }}>
+                <span style={{ fontSize:16, fontWeight:900, color:s.c }}>{s.r}</span>
+                <span style={{ fontSize:13, fontWeight:600, color:s.c }}>{s.l}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ padding:'12px 16px', background:'#f8fafc', borderRadius:10, fontSize:12, color:'#94a3b8', lineHeight:1.6 }}>
+          La note est arrondie au 0,5 près et établie uniquement à partir des documents fournis. Elle ne remplace pas une visite du bien ni l&apos;avis d&apos;un professionnel.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 }
 
 
