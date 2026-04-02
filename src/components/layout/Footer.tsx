@@ -9,12 +9,12 @@ export default function Footer() {
         {/* Col 1 — texte EN HAUT, logo EN BAS */}
         <div className="md:col-span-1 flex flex-col gap-4">
           <p className="text-sm text-slate-400 leading-relaxed max-w-xs">
-            Analymo analyse vos documents immobiliers pour vous aider à acheter en toute sérénité.
+            Verimo décrypte vos documents immobiliers pour vous aider à décider en toute sérénité.
           </p>
           <div className="w-40">
             <img
               src="/logo.png"
-              alt="Analymo"
+              alt="Verimo"
               className="w-full h-auto object-contain object-left"
               style={{ filter: 'brightness(0) invert(1)' }}
             />
@@ -42,8 +42,8 @@ export default function Footer() {
         {/* Col 4 — Contact */}
         <div className="flex flex-col gap-3">
           <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400">Contact</h4>
-          <a href="mailto:contact@analymo.fr" className="text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2">
-            <Mail size={13} className="shrink-0" /> contact@analymo.fr
+          <a href="mailto:hello@verimo.fr" className="text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-2">
+            <Mail size={13} className="shrink-0" /> hello@verimo.fr
           </a>
           <div className="text-sm text-slate-400 flex items-center gap-2">
             <MapPin size={13} className="shrink-0" /> France
@@ -56,10 +56,10 @@ export default function Footer() {
       <div className="max-w-5xl mx-auto px-6 pb-5">
         <div className="border-t border-white/10 pt-4 flex flex-col gap-2">
           <p className="text-xs text-white/25 leading-relaxed">
-            ⚠️ Analymo est un outil d'aide à la lecture et à la compréhension de documents immobiliers. Les rapports générés sont fournis à titre informatif uniquement. Analymo n'est pas un cabinet d'expertise, de conseil juridique ou financier. Les résultats peuvent être incomplets ou contenir des inexactitudes — nous recommandons de consulter un professionnel qualifié avant toute décision d'achat.
+            ⚠️ Verimo est un outil d'aide à la lecture et à la compréhension de documents immobiliers. Les rapports générés sont fournis à titre informatif uniquement. Verimo n'est pas un cabinet d'expertise, de conseil juridique ou financier. Les résultats peuvent être incomplets ou contenir des inexactitudes — nous recommandons de consulter un professionnel qualifié avant toute décision d'achat.
           </p>
           <div className="flex flex-col sm:flex-row justify-between gap-1">
-            <p className="text-xs text-white/30">© {new Date().getFullYear()} Analymo. Tous droits réservés.</p>
+            <p className="text-xs text-white/30">© {new Date().getFullYear()} Verimo. Tous droits réservés.</p>
             <p className="text-xs text-white/20">Outil d'aide à la décision — pas un cabinet de conseil.</p>
           </div>
         </div>
