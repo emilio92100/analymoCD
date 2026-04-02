@@ -304,7 +304,7 @@ function PhoneMockup() {
               <span className="text-[8px] font-bold text-slate-300">5G ▪▪▪</span>
             </div>
             <div className="bg-white border-b border-slate-100 px-4 py-2 shrink-0 flex items-center justify-between">
-              <span className="text-[10px] font-black text-[#0f2d3d] tracking-wide">ANALYMO</span>
+              <span className="text-[10px] font-black text-[#0f2d3d] tracking-wide">VERIMO</span>
               <span className="text-[8px] font-bold bg-[#2a7d9c]/10 text-[#2a7d9c] px-2 py-0.5 rounded-full">Mon espace</span>
             </div>
             <div className="flex-1 flex flex-col min-h-0">
@@ -395,7 +395,7 @@ function PhaseResult() {
     <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
       className="flex-1 flex flex-col px-4 py-4">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-[10px] font-black text-[#0f172a]">Rapport Analymo</p>
+        <p className="text-[10px] font-black text-[#0f172a]">Rapport Verimo</p>
         <span className="text-[8px] font-bold bg-green-50 text-green-700 px-2 py-0.5 rounded-full">✓ Terminé</span>
       </div>
       <div className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-slate-100 shadow-sm mb-3">
@@ -462,7 +462,7 @@ function PhoneMockupMini() {
             <span className="text-[7px] font-bold text-slate-300">5G</span>
           </div>
           <div className="bg-white border-b border-slate-100 px-3 py-1.5 shrink-0 flex items-center justify-between">
-            <span className="text-[8px] font-black text-[#0f2d3d] tracking-wide">ANALYMO</span>
+            <span className="text-[8px] font-black text-[#0f2d3d] tracking-wide">VERIMO</span>
             <span className="text-[7px] font-bold bg-[#2a7d9c]/10 text-[#2a7d9c] px-1.5 py-0.5 rounded-full">Mon espace</span>
           </div>
           <div className="flex-1 flex flex-col min-h-0">
@@ -544,7 +544,7 @@ function PhaseResultMini() {
   return (
     <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="flex-1 flex flex-col px-3 py-3">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-[8px] font-black text-[#0f172a]">Rapport Analymo</p>
+        <p className="text-[8px] font-black text-[#0f172a]">Rapport Verimo</p>
         <span className="text-[6px] font-bold bg-green-50 text-green-700 px-1.5 py-0.5 rounded-full">✓ OK</span>
       </div>
       <div className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-100 shadow-sm mb-2">
@@ -605,13 +605,13 @@ function AvantApresSection() {
             <div className="w-6 h-6 rounded-full bg-white border border-red-200 flex items-center justify-center shrink-0">
               <X size={11} className="text-red-500" />
             </div>
-            <span className="text-sm md:text-base font-bold text-red-500">Sans Analymo</span>
+            <span className="text-sm md:text-base font-bold text-red-500">Sans Verimo</span>
           </div>
           <div className="flex items-center gap-2 px-3 md:px-5 py-2.5 rounded-xl bg-green-50 border border-green-100">
             <div className="w-6 h-6 rounded-full bg-white border border-green-200 flex items-center justify-center shrink-0">
               <Check size={11} className="text-green-500" />
             </div>
-            <span className="text-sm md:text-base font-bold text-green-600">Avec Analymo</span>
+            <span className="text-sm md:text-base font-bold text-green-600">Avec Verimo</span>
           </div>
         </div>
 
@@ -682,7 +682,7 @@ function ProblemSolutionSection() {
   return (
     <section className="py-16 md:py-28 px-4 md:px-6 bg-[#f4f7f9]">
       <div className="max-w-6xl mx-auto">
-        <SectionTitle label="Pourquoi Analymo" title="Un problème réel," accent="une réponse claire."
+        <SectionTitle label="Pourquoi Verimo" title="Un problème réel," accent="une réponse claire."
           sub="Chaque achat immobilier cache des risques que les documents ne rendent pas évidents. Voici comment on les résout." />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
           {items.map((item, i) => (
@@ -824,7 +824,7 @@ function ForWhoSection() {
                     Ne signez plus<br />les yeux fermés.
                   </h3>
                   <p className="text-slate-400 text-sm md:text-base leading-relaxed mb-8 max-w-sm">
-                    Analymo décrypte la santé financière de la copropriété, les travaux à venir et les risques juridiques — avant votre offre.
+                    Verimo décrypte la santé financière de la copropriété, les travaux à venir et les risques juridiques — avant votre offre.
                   </p>
                   <Link to="/start" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-[#0f2d3d] text-sm md:text-base font-bold hover:bg-slate-50 transition-colors">
                     Commencer — dès 4,90€ <ArrowRight size={15} />
@@ -833,7 +833,7 @@ function ForWhoSection() {
                 <div className="bg-white p-8 md:p-12">
                   <h4 className="text-sm md:text-base font-bold text-[#0f172a] mb-5 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-[#2a7d9c] shrink-0" />
-                    Ce qu'Analymo détecte pour vous
+                    Ce que Verimo détecte pour vous
                   </h4>
                   {detected.map((item, i) => (
                     <motion.div key={i} initial={{opacity:0,x:-8}} animate={{opacity:1,x:0}} transition={{delay:i*0.08}}
@@ -853,7 +853,7 @@ function ForWhoSection() {
             <motion.div key="pros" initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-12}} transition={{duration:0.28}}>
               <div className="mb-6 text-center">
                 <p className="text-slate-500 text-sm md:text-lg max-w-2xl mx-auto">
-                  Analymo s'intègre naturellement dans votre quotidien professionnel pour vous faire gagner du temps et de la crédibilité.
+                  Verimo s'intègre naturellement dans votre quotidien professionnel pour vous faire gagner du temps et de la crédibilité.
                 </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-5">
@@ -1015,7 +1015,7 @@ function ApercuRapportSection() {
     <section className="py-16 md:py-28 px-4 md:px-6 bg-[#f4f7f9]">
       <div className="max-w-6xl mx-auto">
         <SectionTitle label="Exemple de rapport" title="Ce que vous" accent="recevez."
-          sub="Voici exactement ce qu'Analymo vous fournit en moins de 30 secondes*." />
+          sub="Voici exactement ce que Verimo vous fournit en moins de 30 secondes*." />
 
         <Reveal>
           <div className="bg-white rounded-2xl md:rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
@@ -1023,7 +1023,7 @@ function ApercuRapportSection() {
             {/* Header rapport */}
             <div className="bg-[#0f2d3d] px-6 md:px-10 py-5 md:py-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
-                <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-1">Rapport Analymo — Analyse complète</p>
+                <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-1">Rapport Verimo — Analyse complète</p>
                 <p className="text-white font-black text-lg md:text-xl">12 rue des Lilas, 69003 Lyon</p>
                 <p className="text-white/40 text-sm mt-0.5">Analysé le 28 mars 2026 · 3 documents</p>
               </div>
@@ -1092,7 +1092,7 @@ function ApercuRapportSection() {
                 </div>
 
                 <div className="rounded-xl bg-[#0f2d3d]/5 border border-[#0f2d3d]/10 p-5">
-                  <p className="text-xs font-bold uppercase tracking-widest text-[#2a7d9c] mb-2">Avis Analymo</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-[#2a7d9c] mb-2">Avis Verimo</p>
                   <p className="text-sm text-slate-600 leading-relaxed">
                     Ce bien présente une copropriété globalement saine. Les travaux de toiture votés représentent une charge à anticiper. Le ratio charges/fonds travaux est satisfaisant. <span className="font-semibold text-[#0f172a]">Recommandé à l'achat avec négociation possible.</span>
                   </p>
@@ -1132,7 +1132,7 @@ function FaqSection() {
     },
     {
       q: "Ça fonctionne avec tous les types de documents ?",
-      a: "Analymo traite les PDF nativement numériques (PDF texte) en 30 secondes. Les documents scannés ou photographiés peuvent nécessiter un délai supplémentaire. Les formats Word, images JPEG ou PNG ne sont pas pris en charge.",
+      a: "Verimo traite les PDF nativement numériques (PDF texte) en 30 secondes. Les documents scannés ou photographiés peuvent nécessiter un délai supplémentaire. Les formats Word, images JPEG ou PNG ne sont pas pris en charge.",
     },
     {
       q: "Et si je n'ai qu'un seul document ?",
