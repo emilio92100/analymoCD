@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════
-   PROMPTS ANALYMO
+   PROMPTS VERIMO
    Prompts système pour l'API Claude.
    Ne modifier que si tu sais ce que tu fais.
 ══════════════════════════════════════════ */
