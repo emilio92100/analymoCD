@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════
--- ANALYMO — Schéma base de données Supabase
+-- VERIMO — Schéma base de données Supabase
 -- Collez ce script dans SQL Editor de votre projet Supabase
 -- ══════════════════════════════════════════════════════════════
 
