@@ -37,7 +37,7 @@ export default function ResetPasswordPage() {
   if (success) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(160deg, #f5f9fb 0%, #eaf4f8 100%)', padding: 24 }}>
       <div style={{ maxWidth: 480, width: '100%', textAlign: 'center' }}>
-        <img src="/logo.png" alt="Analymo" style={{ height: 56, display: 'block', margin: '0 auto 40px' }} />
+        <img src="/logo.png" alt="Verimo" style={{ height: 56, display: 'block', margin: '0 auto 40px' }} />
         <div style={{ width: 96, height: 96, borderRadius: '50%', background: 'linear-gradient(135deg, #22c55e, #16a34a)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 32px', boxShadow: '0 16px 48px rgba(34,197,94,0.3)' }}>
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
@@ -53,7 +53,7 @@ export default function ResetPasswordPage() {
   if (!ready) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(160deg, #f5f9fb 0%, #eaf4f8 100%)', padding: 24 }}>
       <div style={{ maxWidth: 480, width: '100%', textAlign: 'center' }}>
-        <img src="/logo.png" alt="Analymo" style={{ height: 56, display: 'block', margin: '0 auto 40px' }} />
+        <img src="/logo.png" alt="Verimo" style={{ height: 56, display: 'block', margin: '0 auto 40px' }} />
         <div style={{ width: 96, height: 96, borderRadius: '50%', background: 'linear-gradient(135deg, #ef4444, #dc2626)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 32px', boxShadow: '0 16px 48px rgba(239,68,68,0.3)' }}>
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -71,14 +71,14 @@ export default function ResetPasswordPage() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: 'linear-gradient(160deg, #f5f9fb 0%, #eaf4f8 100%)' }}>
       <div className="auth-panel" style={{ flex: 1, background: 'linear-gradient(160deg, var(--brand-teal) 0%, var(--brand-navy) 100%)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '60px 64px' }}>
-        <a href="/"><img src="/logo.png" alt="Analymo" style={{ height: 40, objectFit: 'contain', filter: 'brightness(0) invert(1)', marginBottom: 48 }} /></a>
+        <a href="/"><img src="/logo.png" alt="Verimo" style={{ height: 40, objectFit: 'contain', filter: 'brightness(0) invert(1)', marginBottom: 48 }} /></a>
         <h2 style={{ fontSize: 32, fontWeight: 800, color: '#fff', marginBottom: 16 }}>Choisissez un mot de passe sécurisé.</h2>
         <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.65)', lineHeight: 1.7 }}>Votre nouveau mot de passe doit contenir au moins 8 caractères. Choisissez quelque chose de mémorable mais difficile à deviner.</p>
       </div>
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
         <div style={{ width: '100%', maxWidth: 420 }}>
           <div className="auth-mobile-logo" style={{ display: 'none', marginBottom: 24 }}>
-            <a href="/"><img src="/logo.png" alt="Analymo" style={{ height: 36 }} /></a>
+            <a href="/"><img src="/logo.png" alt="Verimo" style={{ height: 36 }} /></a>
           </div>
           <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--brand-navy)', marginBottom: 8 }}>Nouveau mot de passe</h1>
           <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 32 }}>Choisissez un mot de passe sécurisé pour votre compte.</p>
