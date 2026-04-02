@@ -1,6 +1,7 @@
-# ANALYMO — Contexte Projet
+# VERIMO — Contexte Projet
+> ⚠️ **Renommage** : le produit s'appelait **Analymo**, il s'appelle désormais **Verimo** — slogan : *Vos documents décryptés, votre décision éclairée.*
 > **Colle ce fichier en début de conversation Claude pour reprendre le contexte.**
-> Dernière mise à jour : 31 mars 2026
+> Dernière mise à jour : 2 avril 2026
 
 ---
 
@@ -15,7 +16,9 @@
 ---
 
 ## 🏠 Le produit
-**Analymo** — SaaS d'analyse de documents immobiliers (PV d'AG, règlements copro, diagnostics, appels de charges). Rapport clair avec score /10, risques, recommandations en 30 secondes*.
+**Verimo** — SaaS d'analyse de documents immobiliers (PV d'AG, règlements copro, diagnostics, appels de charges). Rapport clair avec score /10, risques, recommandations en 30 secondes*.
+
+**Slogan :** *Vos documents décryptés, votre décision éclairée.*
 
 **Cible :** Acheteurs particuliers (principal), notaires, agents, syndics, marchands de biens.
 
@@ -118,7 +121,7 @@ src/
 
 ### Principe
 - 1 aperçu gratuit par compte (inscrits + email vérifié)
-- Stocké dans `profiles.free_preview_used` + `localStorage.analymo_free_preview_used`
+- Stocké dans `profiles.free_preview_used` + `localStorage.verimo_free_preview_used`
 - Sync au login (LoginPage + AuthCallbackPage) → zéro flash UI
 - Badge disparaît définitivement après utilisation (pas de badge grisé)
 
@@ -138,7 +141,7 @@ src/
 
 ### Message post-paiement si offre encore dispo (à implémenter avec Stripe)
 Bannière une seule fois sur dashboard (pas popup) :
-> "Petite info de notre côté 👋 Votre analyse découverte non utilisée a été remplacée par votre achat. Après tout, pourquoi regarder par le trou de la serrure quand on peut ouvrir la porte en grand ? 🚪 Maintenant vous avez toutes les clés en main 🔑 Bonne analyse avec Analymo !"
+> "Petite info de notre côté 👋 Votre analyse découverte non utilisée a été remplacée par votre achat. Après tout, pourquoi regarder par le trou de la serrure quand on peut ouvrir la porte en grand ? 🚪 Maintenant vous avez toutes les clés en main 🔑 Bonne analyse avec Verimo !"
 - Flag localStorage : `show_upgrade_banner`
 - Déclenché par webhook Stripe si `free_preview_used = false` au moment du paiement
 
@@ -174,7 +177,7 @@ Bannière une seule fois sur dashboard (pas popup) :
 **Project ID :** `veszrayromldfgetqaxb`
 **URL :** `https://veszrayromldfgetqaxb.supabase.co`
 
-### Schéma (MAJ 31/03 — colonnes ajoutées via SQL Editor)
+### Schéma (MAJ 2/04 — rebrand + renommage colonne)
 ```sql
 profiles:
   id, full_name, created_at
@@ -188,28 +191,29 @@ analyses:
   paid BOOLEAN               -- true = paiement confirmé ← AJOUTÉ 31/03
   document_names TEXT[]      -- noms fichiers conservés ← AJOUTÉ 31/03
   regeneration_deadline      -- date limite 7j ← AJOUTÉ 31/03
+  avis_verimo TEXT           -- anciennement avis_analymo ← RENOMMÉ 2/04
   stripe_payment_id, document_urls, created_at
 ```
 
 ### Auth configuré
 - Email/password ✅ + Google OAuth ✅
-- SMTP Mailjet : notification@analymo.fr
-- Redirect URLs : appdemo.analymo.fr + analymo.fr
+- SMTP Mailjet : notification@verimo.fr ← à mettre à jour dans Supabase
+- Redirect URLs : à mettre à jour vers verimo.fr dans Supabase
 - AuthCallbackPage gère 4 cas (hash token, code iOS Safari, session existante, compte activé sans session)
 
 ### localStorage (côté client)
-- `analymo_free_preview_used` → sync Supabase au login, mis à jour après aperçu
-- `analymo_user_name` → prénom pour affichage instantané (zéro flash)
-- `analymo_user_email` → email
-- `analymo_login_time` → session 1h (SessionManager App.tsx)
+- `verimo_free_preview_used` → sync Supabase au login, mis à jour après aperçu
+- `verimo_user_name` → prénom pour affichage instantané (zéro flash)
+- `verimo_user_email` → email
+- `verimo_login_time` → session 1h (SessionManager App.tsx)
 
 ---
 
-## 📧 Mailjet (état 31/03)
-- SPF ✅ / DKIM ✅ / DMARC ✅ (ajouté 30/03)
-- CNAME `bnc3.analymo.fr → bnc3.mailjet.com` ✅ (corrigé : était DNAME → remplacé par CNAME)
+## 📧 Mailjet (état 2/04)
+- SPF ✅ / DKIM ✅ / DMARC ✅
+- CNAME `bnc3.verimo.fr → bnc3.mailjet.com` ← à mettre à jour dans DNS (était bnc3.analymo.fr)
 - Ticket Mailjet Custom Return-Path : **en attente réponse support**
-- Objectif : "envoyé par" affichera `bnc3.analymo.fr` au lieu de `bnc3.mailjet.com`
+- Objectif : "envoyé par" affichera `bnc3.verimo.fr` au lieu de `bnc3.mailjet.com`
 
 ---
 
@@ -233,7 +237,7 @@ analyses:
 - Conseils & astuces (4 tips avec bordure colorée à gauche)
 
 **Colonne droite (320px) :**
-- "Conseil important Analymo" (card amber)
+- "Conseil important Verimo" (card amber)
 - Glossaire immobilier (accordéon 6 termes : PV AG, DPE, Fonds travaux, Charges copro, Règlement copro, Appel de charges)
 
 **Pleine largeur sous le grid :**
@@ -270,7 +274,7 @@ analyses:
 ---
 
 ## 💰 TarifsPage.tsx — état 31/03
-- Pack 2 biens : "Vous hésitez entre deux biens ? Uploadez les documents des deux et laissez Analymo les comparer côte à côte"
+- Pack 2 biens : "Vous hésitez entre deux biens ? Uploadez les documents des deux et laissez Verimo les comparer côte à côte"
 - Pack 3 biens : "Comparez-les tous en un seul achat... classement final pour vous aider à faire le meilleur choix" + badge "Meilleure valeur"
 - Définit ses propres `plans` localement (n'importe plus PRICING_PLANS de types/index.ts)
 - Prix corrects : 4,90 / 19,90 / 29,90 / 39,90
@@ -291,6 +295,7 @@ analyses:
 10. **Historique achats** dans Mon compte = mock → à remplacer par vraies données Stripe
 11. **"Traitement en cours"** → jamais "Analyse en cours" dans les écrans de chargement
 12. **Mise à jour profil** → met à jour auth metadata ET table profiles simultanément
+13. **Colonne `avis_verimo`** → anciennement `avis_analymo`, renommée en Supabase le 2/04
 
 ---
 
@@ -311,8 +316,11 @@ analyses:
 - [ ] Implémenter suppression réelle compte Supabase (actuellement juste déconnexion)
 - [ ] **Revoir méthode calcul note /10** (méthode actuelle à affiner)
 
-### 🟡 Mailjet
-- [ ] Attendre réponse ticket Custom Return-Path (CNAME déjà créé ✅)
+### 🟡 Mailjet / DNS
+- [ ] Mettre à jour CNAME dans DNS : bnc3.analymo.fr → bnc3.verimo.fr
+- [ ] Mettre à jour adresse SMTP dans Supabase : notification@verimo.fr
+- [ ] Mettre à jour Redirect URLs Supabase vers verimo.fr
+- [ ] Attendre réponse ticket Custom Return-Path
 
 ### ⚪ Plus tard
 - [ ] Google OAuth branding (publier app Google Cloud)
