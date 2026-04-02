@@ -17,7 +17,7 @@ export default function ExemplePage() {
           Rapport exemple
         </motion.div>
         <motion.h1 initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} style={{ fontSize: 'clamp(28px,4.5vw,50px)', fontWeight: 900, color: '#0f2d3d', marginBottom: 14, letterSpacing: '-0.025em', lineHeight: 1.1 }}>
-          Voici ce qu'Analymo <span style={{ color: '#2a7d9c' }}>vous produit.</span>
+          Voici ce que Verimo <span style={{ color: '#2a7d9c' }}>vous produit.</span>
         </motion.h1>
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} style={{ fontSize: 17, color: '#6b8a96', maxWidth: 520, margin: '0 auto 28px', lineHeight: 1.7 }}>
           Rapport généré à partir d'un dossier réel (données anonymisées). PV d'AG, règlement de copropriété, diagnostics et appels de charges.
@@ -34,7 +34,7 @@ export default function ExemplePage() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
             style={{ padding: '28px 32px', borderRadius: 22, background: 'linear-gradient(135deg,#0f2d3d,#1a4a60)', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20 }}>
             <div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: 700, letterSpacing: '0.08em', marginBottom: 5 }}>RAPPORT ANALYMO · EXEMPLE</div>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: 700, letterSpacing: '0.08em', marginBottom: 5 }}>RAPPORT VERIMO · EXEMPLE</div>
               <h2 style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 3 }}>24 rue des Lilas, Appartement 4B — Lyon 6e</h2>
               <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>Analyse Complète · 104 pages analysées · 1 min 42s</div>
             </div>
@@ -79,7 +79,7 @@ export default function ExemplePage() {
               {active === 0 && (
                 <div>
                   <div style={{ padding: '14px 18px', borderRadius: 12, background: '#fffbeb', border: '1px solid #fde68a', marginBottom: 24 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', marginBottom: 7, letterSpacing: '0.05em' }}>CONCLUSION ANALYMO</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', marginBottom: 7, letterSpacing: '0.05em' }}>CONCLUSION VERIMO</div>
                     <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.7, margin: 0 }}>Ce bien présente un profil intéressant mais nécessite une vigilance particulière sur l'état financier de la copropriété et les travaux à venir. Nous recommandons de négocier le prix à la baisse pour intégrer les coûts prévisibles.</p>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
