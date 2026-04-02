@@ -29,7 +29,7 @@ export default function ContactPage() {
           {/* Left */}
           <div>
             <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f2d3d', marginBottom: 28 }}>Nos coordonnées</h2>
-            {[{ I: Mail, l: 'Email', v: 'contact@analymo.fr' }, { I: Clock, l: 'Horaires', v: 'Lun–Ven, 9h–18h' }, { I: MapPin, l: 'Localisation', v: 'France (100% en ligne)' }].map(info => (
+            {[{ I: Mail, l: 'Email', v: 'hello@verimo.fr' }, { I: Clock, l: 'Horaires', v: 'Lun–Ven, 9h–18h' }, { I: MapPin, l: 'Localisation', v: 'France (100% en ligne)' }].map(info => (
               <motion.div key={info.l} initial={{ opacity: 0, x: -14 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
                 style={{ display: 'flex', gap: 14, marginBottom: 22 }}>
                 <div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2a7d9c', flexShrink: 0 }}>
@@ -51,8 +51,8 @@ export default function ContactPage() {
               <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, marginBottom: 14 }}>
                 Notaire, agent, syndic ? Découvrez notre offre pro avec accès dédié et volumes illimités.
               </p>
-              <a href="mailto:pro@analymo.fr" style={{ fontSize: 13, fontWeight: 700, color: '#f59e0b', textDecoration: 'none' }}>
-                pro@analymo.fr →
+              <a href="mailto:pro@verimo.fr" style={{ fontSize: 13, fontWeight: 700, color: '#f59e0b', textDecoration: 'none' }}>
+                pro@verimo.fr →
               </a>
             </motion.div>
           </div>
