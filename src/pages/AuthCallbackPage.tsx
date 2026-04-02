@@ -7,8 +7,8 @@ async function cacheUserInfo(): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (user) {
     const n = user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0] || 'Utilisateur';
-    localStorage.setItem('analymo_user_name', n);
-    localStorage.setItem('analymo_user_email', user.email || '');
+    localStorage.setItem('verimo_user_name', n);
+    localStorage.setItem('verimo_user_email', user.email || '');
   }
 }
 
@@ -87,7 +87,7 @@ export default function AuthCallbackPage() {
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(160deg, #f5f9fb 0%, #eaf4f8 100%)', padding: 24 }}>
       <div style={{ maxWidth: 480, width: '100%', textAlign: 'center' }}>
 
-        <img src="/logo.png" alt="Analymo" style={{ height: 64, marginBottom: 48, display: 'block', margin: '0 auto 48px' }} />
+        <img src="/logo.png" alt="Verimo" style={{ height: 64, marginBottom: 48, display: 'block', margin: '0 auto 48px' }} />
 
         {status === 'loading' && (
           <>
