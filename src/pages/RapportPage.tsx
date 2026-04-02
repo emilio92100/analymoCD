@@ -303,7 +303,7 @@ export default function RapportPage() {
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 40, flexWrap: 'wrap' }}>
               <ScoreGauge score={rapport.score}/>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.14em', marginBottom: 8 }}>RAPPORT ANALYMO — ANALYSE COMPLÈTE</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.14em', marginBottom: 8 }}>RAPPORT VERIMO — ANALYSE COMPLÈTE</div>
                 <h1 style={{ fontSize: 'clamp(18px,2.5vw,24px)', fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', marginBottom: 8, lineHeight: 1.25 }}>{rapport.adresse}</h1>
                 <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', marginBottom: 18 }}>Analysé le {rapport.date}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -376,13 +376,13 @@ export default function RapportPage() {
               </SectionCard>
             </div>
 
-            {/* Avis Analymo */}
+            {/* Avis Verimo */}
             <div style={{ background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', borderRadius: 18, padding: '24px 28px', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(42,125,156,0.2)', pointerEvents: 'none' }}/>
               <div style={{ position: 'relative' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                   <Shield size={16} style={{ color: '#5bb8d4' }}/>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em' }}>AVIS ANALYMO</span>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em' }}>AVIS VERIMO</span>
                 </div>
                 <p style={{ fontSize: 14.5, color: 'rgba(255,255,255,0.88)', lineHeight: 1.8, fontWeight: 500 }}>{rapport.avis_verimo}</p>
               </div>
@@ -402,7 +402,7 @@ export default function RapportPage() {
                 <StatBox label="Fonds travaux" value={`${(rapport.fonds_travaux/1000).toFixed(0)}k€`} sub="Disponibles" color="#2a7d9c"/>
               </div>
               <div style={{ padding: '14px 16px', background: '#f0fdf4', borderRadius: 12, border: '1px solid #dcfce7' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', letterSpacing: '0.08em', marginBottom: 6 }}>ANALYSE ANALYMO</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', letterSpacing: '0.08em', marginBottom: 6 }}>ANALYSE VERIMO</div>
                 <p style={{ fontSize: 13, color: '#166534', lineHeight: 1.6 }}>{rapport.impact_financier}</p>
               </div>
             </SectionCard>
@@ -489,7 +489,7 @@ export default function RapportPage() {
                 <>
                   <div style={{ padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0', marginBottom: 14, display: 'flex', gap: 8, alignItems: 'center' }}>
                     <Info size={13} style={{ color: '#94a3b8', flexShrink: 0 }}/>
-                    <span style={{ fontSize: 12, color: '#64748b' }}>Ces travaux sont estimés par Analymo sur la base des documents analysés. Ils ne sont pas encore votés en AG.</span>
+                    <span style={{ fontSize: 12, color: '#64748b' }}>Ces travaux sont estimés par Verimo sur la base des documents analysés. Ils ne sont pas encore votés en AG.</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {rapport.travaux_a_prevoir.map((t, i) => (
@@ -617,7 +617,7 @@ export default function RapportPage() {
         <div style={{ marginTop: 16, padding: '16px 20px', background: '#fff', borderRadius: 13, border: '1px solid #edf2f7', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <Shield size={14} style={{ color: '#94a3b8', flexShrink: 0 }}/>
           <span style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>
-            Ce rapport est fourni à titre informatif par Analymo. Il ne constitue pas un conseil juridique ou financier et ne remplace pas l'avis d'un notaire ou d'un expert immobilier.
+            Ce rapport est fourni à titre informatif par Verimo. Il ne constitue pas un conseil juridique ou financier et ne remplace pas l'avis d'un notaire ou d'un expert immobilier.
           </span>
           <span style={{ marginLeft: 'auto', fontSize: 11, color: '#cbd5e1', flexShrink: 0 }}>Rapport #{id}</span>
         </div>
