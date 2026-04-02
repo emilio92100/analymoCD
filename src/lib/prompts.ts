@@ -134,7 +134,7 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
   "impact_financier": "analyse financière sur 10 ans",
   "procedures_en_cours": false,
   "procedures": [],
-  "avis_analymo": "avis final en 2-3 phrases avec mention obligatoire : Cette note est établie uniquement à partir des documents analysés et ne remplace ni une visite du bien, ni l'avis d'un professionnel."
+  "avis_verimo": "avis final en 2-3 phrases avec mention obligatoire : Cette note est établie uniquement à partir des documents analysés et ne remplace ni une visite du bien, ni l'avis d'un professionnel."
 }
 
 Valeurs possibles pour recommandation : "Acheter", "Négocier", "Risqué", "Déconseillé"
