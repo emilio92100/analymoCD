@@ -17,14 +17,14 @@ const plans = [
   },
   {
     id: 'pack2', name: 'Pack 2 Biens', price: '29,90', sub: '2 crédits complets',
-    idealFor: 'Vous hésitez entre deux biens ? Uploadez les documents des deux et laissez Analymo les comparer côte à côte pour vous aider à décider.',
-    features: ['2 analyses complètes indépendantes', 'Rapport de comparaison côte à côte', 'Score /10 pour chaque bien', 'Recommandation Analymo : quel bien choisir ?', 'Économisez 10€ vs 2 analyses séparées'],
+    idealFor: 'Vous hésitez entre deux biens ? Uploadez les documents des deux et laissez Verimo les comparer côte à côte pour vous aider à décider.',
+    features: ['2 analyses complètes indépendantes', 'Rapport de comparaison côte à côte', 'Score /10 pour chaque bien', 'Recommandation Verimo : quel bien choisir ?', 'Économisez 10€ vs 2 analyses séparées'],
     cta: 'Comparer 2 biens', highlighted: false, badge: 'Économique',
   },
   {
     id: 'pack3', name: 'Pack 3 Biens', price: '39,90', sub: '3 crédits complets',
-    idealFor: 'Vous avez 3 biens en tête ? Comparez-les tous en un seul achat. Analymo génère 3 rapports indépendants et un classement final pour vous aider à faire le meilleur choix.',
-    features: ['3 analyses complètes indépendantes', 'Comparaison des 3 biens côte à côte', 'Score /10 pour chaque bien', 'Classement final + recommandation Analymo', 'Économisez 20€ vs 3 analyses séparées'],
+    idealFor: 'Vous avez 3 biens en tête ? Comparez-les tous en un seul achat. Verimo génère 3 rapports indépendants et un classement final pour vous aider à faire le meilleur choix.',
+    features: ['3 analyses complètes indépendantes', 'Comparaison des 3 biens côte à côte', 'Score /10 pour chaque bien', 'Classement final + recommandation Verimo', 'Économisez 20€ vs 3 analyses séparées'],
     cta: 'Comparer 3 biens', highlighted: false, badge: 'Meilleure valeur',
   },
 ];
