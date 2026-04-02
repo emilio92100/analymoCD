@@ -37,18 +37,18 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
 function SessionManager() {
   useEffect(() => {
     const checkSession = async () => {
-      const loginTime = localStorage.getItem('analymo_login_time');
+      const loginTime = localStorage.getItem('verimo_login_time');
       if (loginTime) {
         const elapsed = Date.now() - parseInt(loginTime);
         if (elapsed > 3600000) {
-          localStorage.removeItem('analymo_login_time');
+          localStorage.removeItem('verimo_login_time');
           await supabase.auth.signOut();
         }
       }
     };
     supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') localStorage.setItem('analymo_login_time', Date.now().toString());
-      if (event === 'SIGNED_OUT') localStorage.removeItem('analymo_login_time');
+      if (event === 'SIGNED_IN') localStorage.setItem('verimo_login_time', Date.now().toString());
+      if (event === 'SIGNED_OUT') localStorage.removeItem('verimo_login_time');
     });
     checkSession();
     const interval = setInterval(checkSession, 60000);
