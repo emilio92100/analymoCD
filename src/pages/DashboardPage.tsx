@@ -84,8 +84,8 @@ const navItems = [
 ══════════════════════════════════════════ */
 function useUser() {
   // Lecture instantanée depuis localStorage — zéro flash
-  const [name, setName] = useState<string>(() => localStorage.getItem('analymo_user_name') || '');
-  const [email, setEmail] = useState<string>(() => localStorage.getItem('analymo_user_email') || '');
+  const [name, setName] = useState<string>(() => localStorage.getItem('verimo_user_name') || '');
+  const [email, setEmail] = useState<string>(() => localStorage.getItem('verimo_user_email') || '');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -95,8 +95,8 @@ function useUser() {
         setName(n);
         setEmail(e);
         // Mise en cache pour le prochain chargement
-        localStorage.setItem('analymo_user_name', n);
-        localStorage.setItem('analymo_user_email', e);
+        localStorage.setItem('verimo_user_name', n);
+        localStorage.setItem('verimo_user_email', e);
       }
     });
   }, []);
@@ -186,7 +186,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
     <aside style={{ width:260, minHeight:'100vh', height:'100%', background:'#fff', display:'flex', flexDirection:'column', borderRight:'1px solid #edf2f7', boxShadow:'2px 0 16px rgba(15,45,61,0.05)' }}>
       {/* Logo */}
       <div style={{ height:68, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 20px', borderBottom:'1px solid #f0f5f9', flexShrink:0 }}>
-        <Link to="/" onClick={onClose}><img src="/logo.png" alt="Analymo" style={{ height:28, objectFit:'contain' }}/></Link>
+        <Link to="/" onClick={onClose}><img src="/logo.png" alt="Verimo" style={{ height:28, objectFit:'contain' }}/></Link>
         {onClose && <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'#94a3b8', padding:4 }}><X size={18}/></button>}
       </div>
 
@@ -390,7 +390,7 @@ function HomeView() {
     { color: '#d97706', title: 'Points de vigilance', desc: 'Un DPE classé F ou G peut impacter la valeur du bien. Les travaux votés en AG mais non réalisés sont à surveiller de près.' },
     { color: '#16a34a', title: 'Documents à prioriser', desc: 'PV d\'AG, règlement de copropriété, DPE, diagnostic électricité et gaz, appels de charges — ce sont les docs les plus riches en informations.' },
     { color: '#7c3aed', title: 'Vos rapports sont permanents', desc: 'Chaque rapport est sauvegardé définitivement dans votre espace. Consultez-le et téléchargez-le en PDF à tout moment.' },
-    { color: '#dc2626', title: 'Besoin d\'aide ?', desc: 'Notre équipe est disponible depuis la page Support pour toute question sur votre rapport ou l\'utilisation d\'Analymo.' },
+    { color: '#dc2626', title: 'Besoin d\'aide ?', desc: 'Notre équipe est disponible depuis la page Support pour toute question sur votre rapport ou l\'utilisation d\'Verimo.' },
   ];
 
   return (
@@ -402,7 +402,7 @@ function HomeView() {
           {greeting}{name ? `, ${name}` : ''} 👋
         </h1>
         <p style={{ fontSize:15, color:'#94a3b8' }}>
-          {hasAnalyses ? 'Bienvenue sur votre espace Analymo.' : 'Bienvenue sur Analymo — lancez votre première analyse.'}
+          {hasAnalyses ? 'Bienvenue sur votre espace Verimo.' : 'Bienvenue sur Verimo — lancez votre première analyse.'}
         </p>
       </div>
 
@@ -531,7 +531,7 @@ function HomeView() {
           <div style={{ background:'#fff7ed', border:'1px solid #fed7aa', borderRadius:14, padding:'18px 20px' }}>
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
               <span style={{ fontSize:18 }}>💡</span>
-              <span style={{ fontSize:13, fontWeight:800, color:'#92400e' }}>Conseil important Analymo</span>
+              <span style={{ fontSize:13, fontWeight:800, color:'#92400e' }}>Conseil important Verimo</span>
             </div>
             <div style={{ fontSize:13, color:'#78350f', lineHeight:1.7 }}>
               Plus vous fournissez de documents pour une analyse complète, plus le score /10 sera précis et le rapport détaillé.<br/><br/>
@@ -792,7 +792,7 @@ function NouvelleAnalyse() {
 
   const plans = {
     document: { label:"Analyse d'un document",       price:'4,90€',  max:1,  desc:'Un seul fichier — PV d\'AG, règlement, diagnostic, appel de charges.', creditsKey:'document' as keyof Credits },
-    complete: { label:"Analyse complète d'un logement", price:'19,90€', max:20, desc:'Tous les documents du bien — score /10, risques, recommandation Analymo.', creditsKey:'complete' as keyof Credits },
+    complete: { label:"Analyse complète d'un logement", price:'19,90€', max:20, desc:'Tous les documents du bien — score /10, risques, recommandation Verimo.', creditsKey:'complete' as keyof Credits },
   };
   const plan = type ? plans[type] : null;
 
@@ -1098,7 +1098,7 @@ function NouvelleAnalyse() {
       <div style={{ maxWidth:760, margin:'0 auto' }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:28, flexWrap:'wrap', gap:14 }}>
           <div>
-            <div style={{ fontSize:10, fontWeight:800, color:'#2a7d9c', letterSpacing:'0.14em', marginBottom:6 }}>RAPPORT ANALYMO</div>
+            <div style={{ fontSize:10, fontWeight:800, color:'#2a7d9c', letterSpacing:'0.14em', marginBottom:6 }}>RAPPORT VERIMO</div>
             <h1 style={{ fontSize:'clamp(16px,2.5vw,22px)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.02em' }}>{result.titre}</h1>
           </div>
           <div style={{ display:'flex', gap:10 }}>
@@ -1141,7 +1141,7 @@ function NouvelleAnalyse() {
           </div>
         </div>
         <div style={{ background:'linear-gradient(135deg, #0f2d3d, #1a5068)', borderRadius:16, padding:'20px 22px' }}>
-          <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.45)', letterSpacing:'0.1em', marginBottom:10 }}>AVIS ANALYMO</div>
+          <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.45)', letterSpacing:'0.1em', marginBottom:10 }}>AVIS VERIMO</div>
           <p style={{ fontSize:14, color:'rgba(255,255,255,0.9)', lineHeight:1.75, fontWeight:500 }}>{result.conclusion}</p>
         </div>
       </div>
@@ -1199,7 +1199,7 @@ function NouvelleAnalyse() {
         <div style={{ background:'#f8fafc', borderRadius:16, border:'1px solid #e2e8f0', padding:'20px 22px', marginBottom:24, position:'relative', overflow:'hidden' }}>
           <div style={{ filter:'blur(4px)', pointerEvents:'none', userSelect:'none' }}>
             <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.1em', marginBottom:12 }}>ANALYSE COMPLÈTE</div>
-            {['Rapport financier détaillé', 'Liste des travaux votés et à prévoir', 'Analyse des charges et fonds travaux', 'Procédures en cours', 'Avis Analymo personnalisé'].map((item, i) => (
+            {['Rapport financier détaillé', 'Liste des travaux votés et à prévoir', 'Analyse des charges et fonds travaux', 'Procédures en cours', 'Avis Verimo personnalisé'].map((item, i) => (
               <div key={i} style={{ display:'flex', gap:8, marginBottom:8, alignItems:'center' }}>
                 <div style={{ width:8, height:8, borderRadius:'50%', background:'#cbd5e1', flexShrink:0 }}/>
                 <span style={{ fontSize:13, color:'#cbd5e1' }}>{item}</span>
@@ -1221,7 +1221,7 @@ function NouvelleAnalyse() {
               {isComplete ? 'Accédez au rapport complet' : 'Accédez à l&apos;analyse complète du document'}
             </h2>
             <p style={{ fontSize:13, color:'rgba(255,255,255,0.65)', lineHeight:1.6, marginBottom:20 }}>
-              Score {isComplete ? '/10, travaux, charges, procédures et avis Analymo' : 'et analyse approfondie'}. Rapport PDF téléchargeable inclus.
+              Score {isComplete ? '/10, travaux, charges, procédures et avis Verimo' : 'et analyse approfondie'}. Rapport PDF téléchargeable inclus.
             </p>
             <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
               <Link to="/dashboard/tarifs"
@@ -1414,7 +1414,7 @@ function Compare() {
           <div style={{ padding:'20px 22px', borderRadius:14, background:'#fff', border:'1px solid #edf2f7', display:'flex', gap:12, alignItems:'flex-start' }}>
             <Shield size={18} color="#2a7d9c" style={{ flexShrink:0, marginTop:2 }}/>
             <div>
-              <div style={{ fontSize:10, fontWeight:800, color:'#2a7d9c', letterSpacing:'0.12em', marginBottom:6 }}>VERDICT ANALYMO</div>
+              <div style={{ fontSize:10, fontWeight:800, color:'#2a7d9c', letterSpacing:'0.12em', marginBottom:6 }}>VERDICT VERIMO</div>
               {(() => {
                 const [b1, b2] = selectedAnalyses;
                 const s1 = b1.score ?? 0, s2 = b2.score ?? 0;
@@ -1608,7 +1608,7 @@ function Support() {
           <div style={{ textAlign:'center', padding:'28px 0' }}>
             <div style={{ fontSize:40, marginBottom:12 }}>✅</div>
             <h3 style={{ fontSize:16, fontWeight:800, color:'#0f172a', marginBottom:5 }}>Message envoyé !</h3>
-            <p style={{ fontSize:13, color:'#94a3b8' }}>Réponse sous 24h à hello@analymo.fr</p>
+            <p style={{ fontSize:13, color:'#94a3b8' }}>Réponse sous 24h à hello@verimo.fr</p>
           </div>
         ) : (
           <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
@@ -1677,7 +1677,7 @@ function Tarifs() {
         'Score global noté /10',
         'Recommandation : Acheter / Négocier / Risqué',
         'Estimation des risques financiers',
-        'Avis Analymo complet',
+        'Avis Verimo complet',
         'Rapport PDF téléchargeable',
         'Résultat en moins de 2 minutes',
       ],
@@ -1695,7 +1695,7 @@ function Tarifs() {
       details: [
         '2 analyses complètes incluses',
         'Comparaison côte à côte des 2 biens',
-        'Verdict Analymo : quel bien choisir',
+        'Verdict Verimo : quel bien choisir',
         '14,95€ / analyse au lieu de 19,90€',
         'Rapport PDF pour chaque bien',
       ],
@@ -1713,7 +1713,7 @@ function Tarifs() {
       details: [
         '3 analyses complètes incluses',
         'Comparaison des 3 biens',
-        'Classement final Analymo',
+        'Classement final Verimo',
         'Recommandation définitive',
         '13,30€ / analyse au lieu de 19,90€',
         'Rapport PDF pour chaque bien',
@@ -1771,7 +1771,7 @@ function Tarifs() {
                 <div style={{ background:'linear-gradient(90deg, #0f2d3d, #1a5068)', padding:'7px 20px', display:'flex', alignItems:'center', gap:7 }}>
                   <Star size={11} style={{ color:'#fbbf24' }}/>
                   <span style={{ fontSize:10, fontWeight:800, color:'#fff', letterSpacing:'0.1em' }}>LE PLUS POPULAIRE</span>
-                  <span style={{ marginLeft:'auto', fontSize:10, color:'rgba(255,255,255,0.45)' }}>Recommandé par Analymo</span>
+                  <span style={{ marginLeft:'auto', fontSize:10, color:'rgba(255,255,255,0.45)' }}>Recommandé par Verimo</span>
                 </div>
               )}
 
