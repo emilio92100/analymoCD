@@ -133,7 +133,7 @@ export async function updateApercuResult(
   return true;
 }
 
-/* ─── Mettre à jour une analyse avec le résultat IA (rapport complet) */
+/* ─── Mettre à jour une analyse avec le résultat (rapport complet) */
 export async function updateAnalyseResult(
   id: string,
   result: Record<string, unknown>,
