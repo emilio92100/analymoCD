@@ -32,7 +32,7 @@ const MOCK_RAPPORT = {
     "2 lots en situation d'impayés (inférieurs à 6 mois)",
     "Ascenseur à remettre aux normes avant fin 2027",
   ],
-  avis_analymo: "Ce bien présente un excellent profil d'investissement. La copropriété est saine et bien gérée. Notre recommandation est d'acheter en intégrant le coût du ravalement dans votre négociation — une demande de réduction de 5 000 à 8 000€ est justifiée et argumentable.",
+  avis_verimo: "Ce bien présente un excellent profil d'investissement. La copropriété est saine et bien gérée. Notre recommandation est d'acheter en intégrant le coût du ravalement dans votre négociation — une demande de réduction de 5 000 à 8 000€ est justifiée et argumentable.",
 
   // Financier
   charges_mensuelles: 180,
@@ -212,7 +212,7 @@ export default function RapportPage() {
         resume: (r.resume as string) || '',
         points_forts: (r.points_forts as string[]) || [],
         points_vigilance: (r.points_vigilance as string[]) || [],
-        avis_analymo: (r.avis_analymo as string) || '',
+        avis_verimo: (r.avis_verimo as string) || '',
         charges_mensuelles: (r.charges_mensuelles as number) || 0,
         charges_annuelles: ((r.charges_mensuelles as number) || 0) * 12,
         fonds_travaux: (r.fonds_travaux as number) || 0,
@@ -384,7 +384,7 @@ export default function RapportPage() {
                   <Shield size={16} style={{ color: '#5bb8d4' }}/>
                   <span style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em' }}>AVIS ANALYMO</span>
                 </div>
-                <p style={{ fontSize: 14.5, color: 'rgba(255,255,255,0.88)', lineHeight: 1.8, fontWeight: 500 }}>{rapport.avis_analymo}</p>
+                <p style={{ fontSize: 14.5, color: 'rgba(255,255,255,0.88)', lineHeight: 1.8, fontWeight: 500 }}>{rapport.avis_verimo}</p>
               </div>
             </div>
           </div>
