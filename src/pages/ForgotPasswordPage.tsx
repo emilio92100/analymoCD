@@ -24,7 +24,7 @@ export default function ForgotPasswordPage() {
   if (sent) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(160deg, #f5f9fb 0%, #eaf4f8 100%)', padding: 24 }}>
       <div style={{ maxWidth: 480, width: '100%', textAlign: 'center' }}>
-        <img src="/logo.png" alt="Analymo" style={{ height: 56, display: 'block', margin: '0 auto 40px' }} />
+        <img src="/logo.png" alt="Verimo" style={{ height: 56, display: 'block', margin: '0 auto 40px' }} />
         <div style={{ width: 96, height: 96, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand-teal), var(--brand-navy))', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 32px', boxShadow: '0 16px 48px rgba(42,125,156,0.35)' }}>
           <Mail size={40} color="#fff" />
         </div>
@@ -42,14 +42,14 @@ export default function ForgotPasswordPage() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: 'linear-gradient(160deg, #f5f9fb 0%, #eaf4f8 100%)' }}>
       <div className="auth-panel" style={{ flex: 1, background: 'linear-gradient(160deg, var(--brand-teal) 0%, var(--brand-navy) 100%)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '60px 64px' }}>
-        <Link to="/"><img src="/logo.png" alt="Analymo" style={{ height: 40, objectFit: 'contain', filter: 'brightness(0) invert(1)', marginBottom: 48 }} /></Link>
+        <Link to="/"><img src="/logo.png" alt="Verimo" style={{ height: 40, objectFit: 'contain', filter: 'brightness(0) invert(1)', marginBottom: 48 }} /></Link>
         <h2 style={{ fontSize: 32, fontWeight: 800, color: '#fff', marginBottom: 16 }}>Pas de panique, ça arrive à tout le monde.</h2>
         <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.65)', lineHeight: 1.7 }}>Entrez votre email et nous vous enverrons un lien pour créer un nouveau mot de passe en quelques secondes.</p>
       </div>
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
         <div style={{ width: '100%', maxWidth: 420 }}>
           <div className="auth-mobile-logo" style={{ display: 'none', marginBottom: 24 }}>
-            <Link to="/"><img src="/logo.png" alt="Analymo" style={{ height: 36 }} /></Link>
+            <Link to="/"><img src="/logo.png" alt="Verimo" style={{ height: 36 }} /></Link>
           </div>
           <Link to="/connexion" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--text-muted)', textDecoration: 'none', marginBottom: 32 }}>
             <ArrowLeft size={14} /> Retour à la connexion
