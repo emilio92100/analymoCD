@@ -62,7 +62,7 @@ export default function Navbar() {
 
             {/* Logo */}
             <Link to="/" className="flex items-center shrink-0">
-              <img src="/logo.png" alt="Analymo" className="h-14 object-contain" />
+              <img src="/logo.png" alt="Verimo" className="h-14 object-contain" />
             </Link>
 
             {/* Desktop nav */}
