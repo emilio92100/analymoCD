@@ -15,6 +15,7 @@ import AuthCallbackPage from './pages/AuthCallbackPage';
 import StartPage from './pages/StartPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import MethodePage from './pages/MethodePage';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -68,6 +69,7 @@ export default function App() {
         <Route path="/tarifs" element={<PublicLayout><TarifsPage /></PublicLayout>} />
         <Route path="/contact" element={<PublicLayout><ContactPage /></PublicLayout>} />
         <Route path="/exemple" element={<PublicLayout><ExemplePage /></PublicLayout>} />
+        <Route path="/methode" element={<PublicLayout><MethodePage /></PublicLayout>} />
 
         {/* Auth */}
         <Route path="/connexion" element={<LoginPage />} />
