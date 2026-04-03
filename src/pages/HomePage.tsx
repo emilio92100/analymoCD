@@ -1125,11 +1125,11 @@ function ApercuRapportSection() {
 /* ═══ SCORE /20 ══════════════════════════════════════════════ */
 function ScoreSection() {
   const levels = [
-    { r: '17 – 20', l: 'Excellent', c: '#15803d', bg: '#f0fdf4', border: '#bbf7d0' },
-    { r: '14 – 16', l: 'Bon profil', c: '#16a34a', bg: '#f0fdf4', border: '#d1fae5' },
-    { r: '10 – 13', l: 'Correct avec réserves', c: '#d97706', bg: '#fffbeb', border: '#fde68a' },
-    { r: '7 – 9',   l: 'Vigilance requise', c: '#ea580c', bg: '#fff7ed', border: '#fed7aa' },
-    { r: '0 – 6',   l: 'Risqué', c: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
+    { r: '17 – 20', l: 'Bien irréprochable', c: '#15803d', bg: '#f0fdf4', border: '#bbf7d0' },
+    { r: '14 – 16', l: 'Bien sain', c: '#16a34a', bg: '#f0fdf4', border: '#d1fae5' },
+    { r: '10 – 13', l: 'Bien correct avec réserves', c: '#d97706', bg: '#fffbeb', border: '#fde68a' },
+    { r: '7 – 9',   l: 'Bien risqué', c: '#ea580c', bg: '#fff7ed', border: '#fed7aa' },
+    { r: '0 – 6',   l: 'Bien à éviter', c: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
   ];
   const cats = [
     { emoji: '🏗️', label: 'Travaux', pts: 5 },
