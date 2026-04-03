@@ -496,9 +496,9 @@ const penalties = [
             <div style={{ padding:'20px', display:'flex', flexDirection:'column', gap:0 }}>
               {[
                 { num:'1', title:'Rassemblez vos documents', desc:'PV d\'AG, règlement de copropriété, diagnostics, appels de charges — tout au même endroit.' },
-                { num:'2', title:'Choisissez votre analyse', desc:'Simple (4,90€) pour un document. Complète (19,90€) pour un rapport global avec score /10.' },
+                { num:'2', title:'Choisissez votre analyse', desc:'Simple (4,90€) pour un document. Complète (19,90€) pour un rapport global avec note /20.' },
                 { num:'3', title:'Uploadez en quelques secondes', desc:'Glissez-déposez vos fichiers PDF, Word ou images directement.' },
-                { num:'4', title:'Rapport prêt en 30 secondes', desc:'Score /10, risques, travaux et recommandation. Téléchargeable en PDF.' },
+                { num:'4', title:'Rapport prêt en 30 secondes', desc:'Note /20, risques, travaux et recommandation personnalisée. Téléchargeable en PDF.' },
               ].map((step, i, arr) => (
                 <div key={i} style={{ display:'flex', gap:14, alignItems:'flex-start' }}>
                   <div style={{ display:'flex', flexDirection:'column', alignItems:'center', flexShrink:0 }}>
@@ -538,7 +538,7 @@ const penalties = [
               <span style={{ fontSize:13, fontWeight:800, color:'#92400e' }}>Conseil important Verimo</span>
             </div>
             <div style={{ fontSize:13, color:'#78350f', lineHeight:1.7 }}>
-              Plus vous fournissez de documents pour une analyse complète, plus le score /10 sera précis et le rapport détaillé.<br/><br/>
+              Plus vous fournissez de documents pour une analyse complète, plus la note /20 sera précise et le rapport détaillé.<br/><br/>
               Idéalement : 3 derniers PV d&apos;AG + DPE + règlement de copropriété + appels de charges.
             </div>
           </div>
@@ -618,7 +618,7 @@ function NoteExplicativeBlock({ penalties, bonuses, scale }: {
           <Star size={18} style={{ color:'#fff' }}/>
         </div>
         <div>
-          <div style={{ fontSize:17, fontWeight:800, color:'#0f172a', marginBottom:2 }}>Découvrez comment nous calculons la note /10</div>
+          <div style={{ fontSize:17, fontWeight:800, color:'#0f172a', marginBottom:2 }}>Découvrez comment nous calculons la note /20</div>
           <div style={{ fontSize:13, color:'#94a3b8' }}>Transparence totale sur notre méthode de calcul</div>
         </div>
       </div>
@@ -629,7 +629,7 @@ function NoteExplicativeBlock({ penalties, bonuses, scale }: {
         <div style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 18px', background:'#f0f7fb', borderRadius:12 }}>
           <div style={{ width:42, height:42, borderRadius:'50%', background:'#2a7d9c', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:900, flexShrink:0 }}>10</div>
           <div>
-            <div style={{ fontSize:14, fontWeight:800, color:'#0f172a', marginBottom:2 }}>Point de départ : 10/10</div>
+            <div style={{ fontSize:14, fontWeight:800, color:'#0f172a', marginBottom:2 }}>Note sur 20 points</div>
             <div style={{ fontSize:13, color:'#64748b', lineHeight:1.5 }}>On démarre toujours de la note maximale. Notre outil retire des points selon les risques détectés dans vos documents, et en ajoute pour les points positifs.</div>
           </div>
         </div>
