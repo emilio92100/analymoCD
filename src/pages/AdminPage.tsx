@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import {
   LayoutDashboard, Users, FileText, Mail, BarChart2,
-  Plus, Search, ChevronDown, X, Check, AlertTriangle,
+  Search, X, Check, AlertTriangle,
   Shield, CreditCard, Trash2, RefreshCw, Eye, EyeOff,
   TrendingUp, ArrowRight, LogOut, Send, UserPlus,
 } from 'lucide-react';
