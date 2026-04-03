@@ -1,241 +1,318 @@
+import { useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { CheckCircle2, Crown, Mail, Shield, Zap, FileText, ArrowRight, Star, Check } from 'lucide-react';
+import { motion, useInView } from 'framer-motion';
+import {
+  ArrowRight, Check, Shield, Zap, FileText,
+  Crown, Mail, GitCompare, Star,
+} from 'lucide-react';
 
+/* ══════════════════════════════════════════
+   DATA
+══════════════════════════════════════════ */
 const plans = [
   {
-    id: 'document', name: 'Analyse Document', price: '4,90', sub: '1 document',
-    idealFor: 'Lever un doute sur un document précis avant de se décider.',
-    features: ["Analyse d'un seul document", "PV d'AG, règlement, diagnostic ou appel de charges", 'Résumé clair des points clés', 'Rapport PDF téléchargeable'],
-    cta: 'Analyser un document', highlighted: false, badge: null,
+    id: 'document',
+    name: 'Analyse Simple',
+    price: '4,90',
+    unit: '1 document',
+    desc: 'Vous avez un seul document sous la main et vous voulez comprendre ce qu\'il dit avant d\'aller plus loin.',
+    features: [
+      { t: "Analyse d'un seul document", sub: "PV d'AG, DPE, règlement, appel de charges..." },
+      { t: 'Identification et explication du document', sub: 'On vous dit ce que c\'est et ce qu\'il signifie' },
+      { t: 'Points forts et points de vigilance', sub: 'Détectés automatiquement' },
+      { t: 'Recommandation adaptée', sub: 'Positive ou prudente selon le contenu' },
+    ],
+    notIncluded: ['Score /20 global du bien', 'Comparaison de biens', 'Rapport PDF complet'],
+    cta: 'Analyser un document',
+    highlighted: false,
+    badge: null,
+    color: '#64748b',
+    accent: '#f4f7f9',
   },
   {
-    id: 'complete', name: 'Analyse Complète', price: '19,90', sub: 'Documents illimités',
-    idealFor: 'Comprendre un bien en profondeur avant de faire une offre.',
-    features: ['Analyse multi-documents illimitée', 'Score global /20 du bien', 'Travaux, charges, risques, procédures', 'Recommandation personnalisée', 'Rapport PDF complet'],
-    cta: 'Analyser un bien', highlighted: true, badge: 'Le plus populaire',
+    id: 'complete',
+    name: 'Analyse Complète',
+    price: '19,90',
+    unit: 'Documents illimités',
+    desc: 'Vous voulez comprendre un bien en profondeur avant de faire une offre. C\'est l\'analyse recommandée pour tout achat immobilier.',
+    features: [
+      { t: 'Tous vos documents analysés ensemble', sub: 'PV d\'AG, DPE, règlement, charges, diagnostics...' },
+      { t: 'Score global /20 du bien', sub: 'Calculé sur 5 catégories : travaux, finances, procédures...' },
+      { t: 'Recommandation d\'achat personnalisée', sub: 'Bien irréprochable, Bien sain, Bien risqué...' },
+      { t: 'Travaux votés avec estimation financière', sub: 'Quote-part calculée pour votre lot' },
+      { t: 'Santé financière de la copropriété', sub: 'Charges, fonds travaux, impayés, budget' },
+      { t: 'Procédures judiciaires détectées', sub: 'Signalées avec niveau de gravité' },
+      { t: 'Pistes de négociation si score < 14', sub: 'Arguments concrets pour revoir le prix' },
+      { t: 'Rapport PDF complet téléchargeable', sub: 'Partageable avec votre notaire ou banquier' },
+      { t: 'Compléter le dossier sous 7 jours', sub: 'Ajoutez des documents gratuitement après analyse' },
+    ],
+    notIncluded: ['Comparaison de biens (disponible dès le Pack 2)'],
+    cta: 'Analyser mon bien',
+    highlighted: true,
+    badge: 'Le plus populaire',
+    color: '#2a7d9c',
+    accent: 'rgba(42,125,156,0.06)',
   },
   {
-    id: 'pack2', name: 'Pack 2 Biens', price: '29,90', sub: '2 crédits complets',
-    idealFor: 'Vous hésitez entre deux biens ? Uploadez les documents des deux et laissez Verimo les comparer côte à côte pour vous aider à décider.',
-    features: ['2 analyses complètes indépendantes', 'Rapport de comparaison côte à côte', 'Score /20 pour chaque bien', 'Recommandation Verimo : quel bien choisir ?', 'Économisez 10€ vs 2 analyses séparées'],
-    cta: 'Comparer 2 biens', highlighted: false, badge: 'Économique',
+    id: 'pack2',
+    name: 'Pack 2 Biens',
+    price: '29,90',
+    unit: '2 analyses complètes',
+    desc: 'Vous hésitez entre deux biens ? Analysez-les tous les deux et comparez-les côte à côte pour faire le bon choix.',
+    features: [
+      { t: '2 analyses complètes indépendantes', sub: 'Tout ce que comprend l\'analyse à 19,90€ × 2' },
+      { t: 'Comparaison côte à côte débloquée', sub: 'Score, travaux, finances, procédures des 2 biens' },
+      { t: 'Verdict Verimo : quel bien choisir ?', sub: 'Recommandation claire basée sur les deux scores' },
+      { t: 'Économisez 10€ vs 2 analyses séparées', sub: '29,90€ au lieu de 39,80€' },
+    ],
+    notIncluded: [],
+    cta: 'Comparer 2 biens',
+    highlighted: false,
+    badge: 'Économique',
+    color: '#0f2d3d',
+    accent: '#f4f7f9',
   },
   {
-    id: 'pack3', name: 'Pack 3 Biens', price: '39,90', sub: '3 crédits complets',
-    idealFor: 'Vous avez 3 biens en tête ? Comparez-les tous en un seul achat. Verimo génère 3 rapports indépendants et un classement final pour vous aider à faire le meilleur choix.',
-    features: ['3 analyses complètes indépendantes', 'Comparaison des 3 biens côte à côte', 'Score /20 pour chaque bien', 'Classement final + recommandation Verimo', 'Économisez 20€ vs 3 analyses séparées'],
-    cta: 'Comparer 3 biens', highlighted: false, badge: 'Meilleure valeur',
+    id: 'pack3',
+    name: 'Pack 3 Biens',
+    price: '39,90',
+    unit: '3 analyses complètes',
+    desc: 'Vous avez 3 biens en tête ? Obtenez 3 rapports complets et un classement final pour identifier le meilleur sans hésitation.',
+    features: [
+      { t: '3 analyses complètes indépendantes', sub: 'Tout ce que comprend l\'analyse à 19,90€ × 3' },
+      { t: 'Comparaison côte à côte débloquée', sub: 'Comparez 2 ou 3 biens entre eux librement' },
+      { t: 'Classement final + verdict Verimo', sub: 'Quel bien est le meilleur selon nos analyses ?' },
+      { t: 'Économisez 20€ vs 3 analyses séparées', sub: '39,90€ au lieu de 59,70€' },
+    ],
+    notIncluded: [],
+    cta: 'Comparer 3 biens',
+    highlighted: false,
+    badge: 'Meilleure valeur',
+    color: '#0f2d3d',
+    accent: '#f4f7f9',
   },
 ];
 
+const garanties = [
+  { icon: Shield, t: 'Paiement sécurisé', s: 'Via Stripe, chiffré SSL' },
+  { icon: FileText, t: 'PDF inclus', s: 'Dans toutes les analyses complètes' },
+  { icon: Zap, t: 'Résultats en 30s*', s: 'Pour les PDF natifs' },
+  { icon: Crown, t: 'Sans abonnement', s: 'Payez une seule fois' },
+];
+
+/* ══════════════════════════════════════════
+   COMPOSANTS
+══════════════════════════════════════════ */
+function Reveal({ children, delay = 0, className = '' }: { children: React.ReactNode; delay?: number; className?: string }) {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: '-40px' });
+  return (
+    <motion.div ref={ref} className={className}
+      initial={{ opacity: 0, y: 16 }} animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.5, delay, ease: [0.22, 1, 0.36, 1] }}>
+      {children}
+    </motion.div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   PAGE
+══════════════════════════════════════════ */
 export default function TarifsPage() {
   return (
-    <main className="min-h-screen bg-[#f4f7f9]" style={{ fontFamily: "'DM Sans', system-ui, sans-serif", paddingTop: 88 }}>
+    <main style={{ fontFamily: "'DM Sans', system-ui, sans-serif", background: '#f4f7f9', paddingTop: 80, minHeight: '100vh' }}>
 
-      {/* HERO */}
-      <section className="px-4 md:px-10 lg:px-20 pt-12 pb-10 text-center">
+      {/* ── HERO ── */}
+      <section style={{ textAlign: 'center', padding: 'clamp(40px,6vw,72px) 20px 36px' }}>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#2a7d9c]/20 bg-white text-[#1a5e78] text-sm font-semibold mb-5 shadow-sm">
-          <span className="w-2 h-2 rounded-full bg-[#22c55e]" style={{ animation: 'pulse2 2s ease-in-out infinite' }} />
-          Tarification transparente
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 16px', borderRadius: 100, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.2)', fontSize: 12, fontWeight: 700, color: '#1a5e78', marginBottom: 20, letterSpacing: '0.06em' }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', animation: 'pulse2 2s ease-in-out infinite', display: 'inline-block' }} />
+          TARIFICATION TRANSPARENTE
         </motion.div>
+
         <motion.h1 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}
-          className="text-[clamp(28px,5vw,64px)] font-black tracking-[-0.03em] text-[#0f172a] mb-4 leading-[1.08]">
+          style={{ fontSize: 'clamp(28px,4.5vw,56px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em', lineHeight: 1.08, marginBottom: 16 }}>
           Des tarifs simples,<br />
-          <span className="text-[#2a7d9c]">sans surprise.</span>
+          <span style={{ color: '#2a7d9c' }}>sans surprise.</span>
         </motion.h1>
+
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.13 }}
-          className="text-base md:text-xl text-slate-500 max-w-lg mx-auto mb-7 leading-relaxed">
+          style={{ fontSize: 'clamp(15px,1.8vw,18px)', color: '#64748b', maxWidth: 480, margin: '0 auto 28px', lineHeight: 1.7 }}>
           Payez uniquement pour ce dont vous avez besoin. Sans abonnement, sans engagement.
         </motion.p>
+
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.18 }}
-          className="flex justify-center gap-6 flex-wrap">
-          {[{ I: Shield, l: 'Paiement sécurisé Stripe' }, { I: Zap, l: 'Résultats en 30 secondes*' }, { I: FileText, l: 'Rapport PDF inclus' }].map(({ I, l }) => (
-            <div key={l} className="flex items-center gap-2 text-sm md:text-base text-slate-400 font-medium">
-              <I size={15} className="text-[#2a7d9c] shrink-0" /> {l}
+          style={{ display: 'flex', justifyContent: 'center', gap: 28, flexWrap: 'wrap' }}>
+          {garanties.map(({ icon: Icon, t, s }) => (
+            <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#64748b', fontWeight: 500 }}>
+              <Icon size={15} style={{ color: '#2a7d9c', flexShrink: 0 }} /> {t}
             </div>
           ))}
         </motion.div>
       </section>
 
-      <section className="px-4 md:px-10 lg:px-20 pb-16">
-        <div className="max-w-[1400px] mx-auto">
+      {/* ── CARTES ── */}
+      <section style={{ padding: '0 20px 60px', maxWidth: 1200, margin: '0 auto' }}>
 
-          {/* ── MOBILE : cartes empilées ── */}
-          <div className="flex flex-col gap-4 md:hidden mb-8">
-            {plans.map((plan, i) => (
-              <motion.div key={plan.id}
-                initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
-                className={`rounded-2xl overflow-hidden bg-white border shadow-sm ${plan.highlighted ? 'border-[#2a7d9c]/30 ring-1 ring-[#2a7d9c]/20' : 'border-slate-100'}`}>
-                {/* Barre top */}
-                <div className="h-1 w-full" style={{ background: plan.highlighted ? '#2a7d9c' : '#e2e8f0' }} />
-                <div className="p-5">
-                  {/* En-tête */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1 text-center">
-                      <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">{plan.name}</p>
-                      <div className="flex items-end gap-1">
-                        <span className="text-4xl font-black leading-none text-[#0f172a]">{plan.price}</span>
-                        <span className="text-xl font-bold text-slate-300 mb-0.5">€</span>
+        {/* Grille desktop */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }} className="plans-grid">
+          {plans.map((plan, i) => (
+            <motion.div key={plan.id}
+              initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.09 }}
+              style={{
+                background: '#fff', borderRadius: 20,
+                border: plan.highlighted ? `2px solid #2a7d9c` : '1.5px solid #edf2f7',
+                boxShadow: plan.highlighted ? '0 8px 32px rgba(42,125,156,0.15)' : '0 1px 4px rgba(0,0,0,0.04)',
+                display: 'flex', flexDirection: 'column' as const,
+                position: 'relative' as const, overflow: 'hidden',
+                transform: plan.highlighted ? 'scale(1.02)' : 'none',
+              }}>
+
+              {/* Barre top */}
+              <div style={{ height: 4, background: plan.highlighted ? 'linear-gradient(90deg, #2a7d9c, #0f2d3d)' : '#edf2f7', flexShrink: 0 }} />
+
+              {/* Badge */}
+              {plan.badge && (
+                <div style={{
+                  position: 'absolute' as const, top: 20, right: 16,
+                  padding: '3px 10px', borderRadius: 100, fontSize: 11, fontWeight: 700,
+                  background: plan.highlighted ? '#2a7d9c' : '#f0a500', color: '#fff',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}>
+                  {plan.highlighted && <Star size={9} fill="white" />}
+                  {plan.badge}
+                </div>
+              )}
+
+              <div style={{ padding: '24px 22px', display: 'flex', flexDirection: 'column' as const, flex: 1 }}>
+
+                {/* Nom */}
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 16, paddingRight: plan.badge ? 80 : 0 }}>
+                  {plan.name}
+                </div>
+
+                {/* Prix */}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 2, marginBottom: 4 }}>
+                  <span style={{ fontSize: 'clamp(36px,3.5vw,48px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em', lineHeight: 1 }}>{plan.price}</span>
+                  <span style={{ fontSize: 22, fontWeight: 700, color: '#cbd5e1', marginBottom: 2 }}>€</span>
+                </div>
+                <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 20 }}>{plan.unit} · paiement unique</div>
+
+                {/* Description */}
+                <div style={{ padding: '12px 14px', borderRadius: 12, background: plan.highlighted ? 'rgba(42,125,156,0.06)' : '#f8fafc', border: `1px solid ${plan.highlighted ? 'rgba(42,125,156,0.15)' : '#edf2f7'}`, marginBottom: 20 }}>
+                  <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.65, margin: 0 }}>{plan.desc}</p>
+                </div>
+
+                {/* Features incluses */}
+                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10, flex: 1 }}>
+                  {plan.features.map((f, fi) => (
+                    <div key={fi} style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: plan.highlighted ? 'rgba(42,125,156,0.12)' : '#f0fdf4', border: `1px solid ${plan.highlighted ? 'rgba(42,125,156,0.2)' : '#d1fae5'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
+                        <Check size={10} color={plan.highlighted ? '#2a7d9c' : '#16a34a'} />
                       </div>
-                      <p className="text-xs text-slate-400 mt-1">{plan.sub} · paiement unique</p>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', lineHeight: 1.4 }}>{f.t}</div>
+                        <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.3, marginTop: 1 }}>{f.sub}</div>
+                      </div>
                     </div>
-                    {plan.badge && (
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold shrink-0 ml-2 whitespace-nowrap ${plan.highlighted ? 'bg-[#2a7d9c] text-white' : 'bg-[#f59e0b] text-white'}`}>
-                        {plan.badge}
-                      </span>
-                    )}
-                  </div>
-                  {/* Idéal pour */}
-                  <div className="bg-[#f4f7f9] rounded-xl p-3 mb-4">
-                    <p className="text-xs font-bold text-[#2a7d9c] uppercase tracking-wider mb-1">Idéal pour</p>
-                    <p className="text-sm text-slate-600 leading-snug">{plan.idealFor}</p>
-                  </div>
-                  {/* Features */}
-                  <ul className="flex flex-col gap-2 mb-4">
-                    {plan.features.map(f => (
-                      <li key={f} className="flex items-start gap-2.5">
-                        <CheckCircle2 size={14} className="text-[#22c55e] shrink-0 mt-0.5" />
-                        <span className="text-sm text-slate-600">{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  {/* CTA */}
-                  <Link to={`/inscription?plan=${plan.id}`}
-                    className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl text-sm font-bold transition-all duration-200"
-                    style={{ background: plan.highlighted ? '#2a7d9c' : '#0f2d3d', color: 'white' }}>
-                    {plan.cta} <ArrowRight size={14} />
-                  </Link>
+                  ))}
+
+                  {/* Non inclus */}
+                  {plan.notIncluded.map((f, fi) => (
+                    <div key={fi} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, opacity: 0.45 }}>
+                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
+                        <span style={{ fontSize: 10, color: '#94a3b8', lineHeight: 1, fontWeight: 700 }}>—</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.4 }}>{f}</div>
+                    </div>
+                  ))}
                 </div>
-              </motion.div>
-            ))}
+
+                {/* CTA */}
+                <Link to={`/start?plan=${plan.id}`}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                    padding: '13px', borderRadius: 13, marginTop: 24,
+                    background: plan.highlighted ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#0f2d3d',
+                    color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none',
+                    boxShadow: plan.highlighted ? '0 6px 20px rgba(42,125,156,0.3)' : 'none',
+                    transition: 'all 0.2s',
+                  }}>
+                  {plan.cta} <ArrowRight size={14} />
+                </Link>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Encart comparaison */}
+        <Reveal delay={0.3}>
+          <div style={{ marginTop: 20, padding: '18px 24px', borderRadius: 16, background: '#fff', border: '1.5px solid #bae3f5', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' as const }}>
+            <div style={{ width: 40, height: 40, borderRadius: 11, background: '#f0f7fb', border: '1px solid #bae3f5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <GitCompare size={18} color="#2a7d9c" />
+            </div>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>La comparaison de biens se débloque automatiquement</div>
+              <p style={{ fontSize: 13, color: '#64748b', margin: 0, lineHeight: 1.6 }}>
+                Dès que votre compte contient <strong style={{ color: '#0f172a' }}>au minimum 2 analyses complètes</strong>, l'onglet "Comparer mes biens" s'active dans votre espace. Disponible avec le Pack 2 biens, le Pack 3 biens, ou en cumulant des analyses séparées.
+              </p>
+            </div>
           </div>
+        </Reveal>
 
-          {/* ── DESKTOP : grille 4 colonnes ── */}
-          <div className="hidden md:grid grid-cols-4 gap-5 mb-8 items-stretch">
-            {plans.map((plan, i) => (
-              <motion.div key={plan.id}
-                initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.09 }}
-                className={`relative flex flex-col rounded-3xl overflow-hidden bg-white border shadow-sm transition-all duration-300 ${
-                  plan.highlighted
-                    ? 'border-[#2a7d9c]/30 ring-2 ring-[#2a7d9c]/15 shadow-xl hover:-translate-y-1'
-                    : 'border-slate-100 hover:-translate-y-1 hover:shadow-lg'
-                }`}>
-                {/* Barre top */}
-                <div className="h-1 w-full shrink-0" style={{ background: plan.highlighted ? '#2a7d9c' : '#e2e8f0' }} />
-
-                {plan.badge && (
-                  <div className={`absolute top-5 right-4 px-2.5 py-1 rounded-full text-xs font-bold z-10 flex items-center gap-1 whitespace-nowrap ${
-                    plan.highlighted ? 'bg-[#2a7d9c] text-white' : 'bg-[#f59e0b] text-white'
-                  }`}>
-                    {plan.highlighted && <Star size={9} fill="white" />}
-                    {plan.badge}
-                  </div>
-                )}
-
-                <div className="p-7 flex flex-col flex-1">
-                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4 pr-24">{plan.name}</p>
-
-                  <div className="flex items-end gap-1 mb-1">
-                    <span className="text-[52px] font-black leading-none text-[#0f172a]">{plan.price}</span>
-                    <span className="text-2xl mb-2 font-bold text-slate-300">€</span>
-                  </div>
-                  <p className="text-sm text-slate-400 mb-6">{plan.sub} · paiement unique</p>
-
-                  {/* Idéal pour — mis en avant */}
-                  <div className="rounded-xl p-4 mb-6" style={{ background: plan.highlighted ? 'rgba(42,125,156,0.07)' : '#f4f7f9' }}>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#2a7d9c] mb-1.5">Idéal pour</p>
-                    <p className="text-sm text-slate-600 leading-relaxed">{plan.idealFor}</p>
-                  </div>
-
-                  <ul className="flex flex-col gap-3 mb-7 flex-1">
-                    {plan.features.map(f => (
-                      <li key={f} className="flex items-start gap-2.5">
-                        <CheckCircle2 size={15} className="text-[#22c55e] shrink-0 mt-0.5" />
-                        <span className="text-sm text-slate-500 leading-snug">{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <Link to={`/inscription?plan=${plan.id}`}
-                    className="flex items-center justify-center gap-2 w-full py-4 rounded-xl text-base font-bold transition-all duration-200 hover:-translate-y-0.5 mt-auto"
-                    style={{ background: plan.highlighted ? '#2a7d9c' : '#0f2d3d', color: 'white' }}>
-                    {plan.cta} <ArrowRight size={15} />
-                  </Link>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* ── OFFRE PRO — pleine largeur juste sous les cartes ── */}
-          <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-            className="rounded-2xl bg-white border border-slate-100 shadow-sm p-5 md:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-            <div className="flex items-center gap-4">
-              <div className="w-11 h-11 rounded-2xl bg-[#f59e0b]/10 border border-[#f59e0b]/20 flex items-center justify-center shrink-0">
-                <Crown size={20} className="text-[#f59e0b]" />
+        {/* Offre Pro */}
+        <Reveal delay={0.1}>
+          <div style={{ marginTop: 16, padding: '18px 24px', borderRadius: 16, background: '#fff', border: '1px solid #edf2f7', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' as const, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Crown size={20} color="#f59e0b" />
               </div>
               <div>
-                <h3 className="text-base md:text-lg font-bold text-[#0f172a] mb-0.5">Offre Professionnelle</h3>
-                <p className="text-sm md:text-base text-slate-400 leading-relaxed">Notaires, agents immobiliers, syndics — volumes illimités, support prioritaire et tarification dédiée.</p>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 2 }}>Offre Professionnelle</div>
+                <div style={{ fontSize: 13, color: '#94a3b8' }}>Notaires, agents immobiliers, syndics — volumes illimités, support prioritaire, tarification dédiée.</div>
               </div>
             </div>
             <Link to="/contact"
-              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-[#0f2d3d] text-white text-sm font-bold whitespace-nowrap hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 shrink-0">
-              <Mail size={14} /> Nous contacter
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '11px 22px', borderRadius: 11, background: '#0f2d3d', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none', flexShrink: 0, whiteSpace: 'nowrap' as const }}>
+              <Mail size={13} /> Nous contacter
             </Link>
-          </motion.div>
+          </div>
+        </Reveal>
 
-          {/* ── GARANTIES ── */}
-          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
-            className="rounded-2xl bg-white border border-slate-100 shadow-sm p-5 md:p-6 mb-8">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-              {[
-                { I: Shield, t: 'Paiement sécurisé', s: 'Via Stripe, chiffré' },
-                { I: FileText, t: 'PDF inclus', s: 'Dans tous les plans' },
-                { I: Zap, t: '30 secondes*', s: 'Résultats immédiats' },
-                { I: Crown, t: 'Sans abonnement', s: 'Payez une seule fois' },
-              ].map(({ I, t, s }, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#2a7d9c]/8 flex items-center justify-center shrink-0">
-                    <I size={17} className="text-[#2a7d9c]" />
+        {/* Garanties */}
+        <Reveal delay={0.15}>
+          <div style={{ marginTop: 16, padding: '18px 24px', borderRadius: 16, background: '#fff', border: '1px solid #edf2f7', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 20 }}>
+              {garanties.map(({ icon: Icon, t, s }) => (
+                <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon size={16} color="#2a7d9c" />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-[#0f172a]">{t}</p>
-                    <p className="text-xs text-slate-400">{s}</p>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{t}</div>
+                    <div style={{ fontSize: 11, color: '#94a3b8' }}>{s}</div>
                   </div>
                 </div>
               ))}
             </div>
-          </motion.div>
-
-          {/* ── FAQ ── */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            {[
-              { q: 'Comment fonctionne le paiement ?', a: 'Paiement sécurisé via Stripe. Votre rapport est disponible immédiatement après confirmation.' },
-              { q: 'Mes documents sont-ils sécurisés ?', a: "Vos fichiers sont chiffrés et supprimés automatiquement après traitement. Aucune donnée n'est conservée." },
-              { q: 'Puis-je me faire rembourser ?', a: 'En cas de problème technique, contactez-nous sous 48h. Nous étudions chaque demande.' },
-            ].map((faq, i) => (
-              <motion.div key={i} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.07 }}
-                className="p-5 md:p-6 rounded-xl bg-white border border-slate-100 shadow-sm">
-                <div className="flex items-start gap-2.5 mb-2">
-                  <div className="w-5 h-5 rounded-full bg-[#2a7d9c]/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <Check size={10} className="text-[#2a7d9c]" />
-                  </div>
-                  <h4 className="text-sm md:text-base font-bold text-[#0f172a]">{faq.q}</h4>
-                </div>
-                <p className="text-sm md:text-base text-slate-400 leading-relaxed pl-7">{faq.a}</p>
-              </motion.div>
-            ))}
           </div>
+        </Reveal>
 
-          <p className="text-xs md:text-sm text-slate-400 text-center italic">
-            * Pour les documents PDF nativement numériques. Les documents scannés peuvent nécessiter un délai supplémentaire.
-          </p>
-        </div>
+        {/* Note bas de page */}
+        <p style={{ fontSize: 12, color: '#94a3b8', textAlign: 'center' as const, marginTop: 24, fontStyle: 'italic' }}>
+          * Pour les documents PDF nativement numériques. Les documents scannés peuvent nécessiter un délai supplémentaire.
+        </p>
       </section>
 
-      <style>{`@keyframes pulse2 { 0%,100%{opacity:1} 50%{opacity:.4} }`}</style>
+      <style>{`
+        @keyframes pulse2 { 0%,100%{opacity:1} 50%{opacity:.4} }
+        @media (max-width: 900px) {
+          .plans-grid { grid-template-columns: 1fr 1fr !important; }
+        }
+        @media (max-width: 560px) {
+          .plans-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </main>
   );
 }
