@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import {
   ArrowRight, ChevronDown, TrendingDown, TrendingUp,
-  CheckCircle, AlertTriangle, FileText, Shield,
+  AlertTriangle, Shield,
 } from 'lucide-react';
 
 /* ══════════════════════════════════════════
