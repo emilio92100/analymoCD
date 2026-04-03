@@ -11,12 +11,17 @@ export type AnalyseDB = {
   status: 'pending' | 'processing' | 'completed' | 'failed';
   title: string;
   address: string | null;
+  score: number | null;
+  score_couleur: string | null;
+  profil: 'rp' | 'invest' | null;
+  type_bien: 'appartement' | 'maison' | 'maison_copro' | 'indetermine' | null;
   result: Record<string, unknown> | null;
-  apercu: Record<string, unknown> | null;     // résultat aperçu gratuit
-  is_preview: boolean;                        // true = aperçu gratuit non payé
-  paid: boolean;                              // true = paiement confirmé
-  document_names: string[] | null;            // noms des fichiers analysés
-  regeneration_deadline: string | null;       // date limite 7 jours pour compléter
+  apercu: Record<string, unknown> | null;
+  is_preview: boolean;
+  paid: boolean;
+  document_names: string[] | null;
+  regeneration_deadline: string | null;
+  avis_verimo: string | null;
   created_at: string;
 };
 
@@ -49,10 +54,11 @@ export async function fetchAnalyseById(id: string): Promise<AnalyseDB | null> {
   return data;
 }
 
-/* ─── Créer une analyse normale (avant l'IA) ──── */
+/* ─── Créer une analyse normale (avant traitement) ── */
 export async function createAnalyse(
   type: AnalyseDB['type'],
   title: string,
+  profil: 'rp' | 'invest',
   documentNames?: string[]
 ): Promise<AnalyseDB | null> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -65,6 +71,7 @@ export async function createAnalyse(
       type,
       status: 'processing',
       title,
+      profil,
       is_preview: false,
       paid: true,
       document_names: documentNames || [],
@@ -83,6 +90,7 @@ export async function createAnalyse(
 export async function createApercu(
   type: AnalyseDB['type'],
   title: string,
+  profil: 'rp' | 'invest',
   documentNames: string[]
 ): Promise<AnalyseDB | null> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -95,6 +103,7 @@ export async function createApercu(
       type,
       status: 'processing',
       title,
+      profil,
       is_preview: true,
       paid: false,
       document_names: documentNames,
@@ -133,7 +142,7 @@ export async function updateApercuResult(
   return true;
 }
 
-/* ─── Mettre à jour une analyse avec le résultat (rapport complet) */
+/* ─── Mettre à jour une analyse avec le résultat complet ── */
 export async function updateAnalyseResult(
   id: string,
   result: Record<string, unknown>,
@@ -141,15 +150,23 @@ export async function updateAnalyseResult(
   address: string | null,
   documentNames?: string[]
 ): Promise<boolean> {
-  // Calculer la deadline 7 jours pour la régénération
   const deadline = new Date();
   deadline.setDate(deadline.getDate() + 7);
+
+  const score = typeof result.score === 'number' ? result.score : null;
+  const score_couleur = typeof result.score_couleur === 'string' ? result.score_couleur : null;
+  const type_bien = typeof result.type_bien === 'string' ? result.type_bien : null;
+  const avis_verimo = typeof result.avis_verimo === 'string' ? result.avis_verimo : null;
 
   const updateData: Record<string, unknown> = {
     status: 'completed',
     result,
     title,
     address,
+    score,
+    score_couleur,
+    type_bien,
+    avis_verimo,
     is_preview: false,
     paid: true,
     regeneration_deadline: deadline.toISOString(),
@@ -169,7 +186,7 @@ export async function updateAnalyseResult(
 }
 
 /* ─── Débloquer un aperçu après paiement ─────── */
-export async function debloquerapercu(id: string): Promise<boolean> {
+export async function debloquerApercu(id: string): Promise<boolean> {
   const { error } = await supabase
     .from('analyses')
     .update({ paid: true })
@@ -184,9 +201,7 @@ export async function debloquerapercu(id: string): Promise<boolean> {
 
 /* ─── Marquer l'aperçu gratuit comme utilisé ──── */
 export async function markFreePreviewUsed(): Promise<void> {
-  // Immédiat : localStorage pour éviter le flash UI
   localStorage.setItem('verimo_free_preview_used', 'true');
-  // Persistant : Supabase
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
   await supabase
@@ -195,12 +210,12 @@ export async function markFreePreviewUsed(): Promise<void> {
     .eq('id', user.id);
 }
 
-/* ─── Vérifier si l'aperçu gratuit a été utilisé (instantané via localStorage) */
+/* ─── Vérifier si l'aperçu gratuit a été utilisé (instantané) ── */
 export function checkFreePreviewUsedSync(): boolean {
   return localStorage.getItem('verimo_free_preview_used') === 'true';
 }
 
-/* ─── Synchroniser localStorage depuis Supabase (au login) */
+/* ─── Synchroniser localStorage depuis Supabase (au login) ── */
 export async function syncFreePreviewUsed(): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
@@ -216,7 +231,7 @@ export async function syncFreePreviewUsed(): Promise<void> {
   }
 }
 
-/* ─── Vérifier si l'aperçu gratuit a été utilisé (async Supabase) */
+/* ─── Vérifier si l'aperçu gratuit a été utilisé (async) ── */
 export async function checkFreePreviewUsed(): Promise<boolean> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return true;
