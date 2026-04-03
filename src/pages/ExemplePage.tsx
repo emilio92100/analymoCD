@@ -7,7 +7,7 @@ const tabs = ['Vue d\'ensemble', 'Financier', 'Travaux', 'Juridique', 'Documents
 
 export default function ExemplePage() {
   const [active, setActive] = useState(0);
-  const scores = [{ l: 'Financier', v: 68, c: '#f0a500' }, { l: 'Travaux', v: 62, c: '#fb923c' }, { l: 'Juridique', v: 88, c: '#22c55e' }, { l: 'Charges', v: 80, c: '#2a7d9c' }];
+  const scores = [{ l: 'Financier', v: 13, max: 20, c: '#f0a500' }, { l: 'Travaux', v: 12, max: 20, c: '#fb923c' }, { l: 'Juridique', v: 18, max: 20, c: '#22c55e' }, { l: 'Charges', v: 16, max: 20, c: '#2a7d9c' }];
 
   return (
     <main style={{ background: '#f8fafc', fontFamily: "'DM Sans', system-ui, sans-serif", paddingTop: 70 }}>
@@ -40,8 +40,8 @@ export default function ExemplePage() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 54, fontWeight: 900, color: '#f0a500', lineHeight: 1 }}>74</div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>Score global /100</div>
+                <div style={{ fontSize: 54, fontWeight: 900, color: '#f0a500', lineHeight: 1 }}>14,8</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>Score global /20</div>
               </div>
               <div style={{ padding: '8px 18px', borderRadius: 10, background: 'rgba(240,165,0,0.15)', border: '1px solid rgba(240,165,0,0.3)' }}>
                 <div style={{ fontSize: 14, fontWeight: 800, color: '#f0a500' }}>Négocier</div>
@@ -54,10 +54,10 @@ export default function ExemplePage() {
             {scores.map((s, i) => (
               <motion.div key={s.l} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + i * 0.07 }}
                 style={{ padding: '16px', borderRadius: 14, background: '#fff', border: '1px solid #edf2f4', textAlign: 'center', boxShadow: '0 2px 8px rgba(15,45,61,0.05)' }}>
-                <div style={{ fontSize: 30, fontWeight: 900, color: s.c, marginBottom: 4 }}>{s.v}</div>
+                <div style={{ fontSize: 30, fontWeight: 900, color: s.c, marginBottom: 4 }}>{s.v}<span style={{ fontSize: 14, fontWeight: 600, opacity: 0.6 }}>/20</span></div>
                 <div style={{ fontSize: 12, color: '#7a9aaa' }}>{s.l}</div>
                 <div style={{ height: 4, borderRadius: 2, background: '#f0f4f6', marginTop: 8 }}>
-                  <div style={{ width: `${s.v}%`, height: '100%', borderRadius: 2, background: s.c }} />
+                  <div style={{ width: `${(s.v / s.max) * 100}%`, height: '100%', borderRadius: 2, background: s.c }} />
                 </div>
               </motion.div>
             ))}
@@ -135,7 +135,7 @@ export default function ExemplePage() {
               {active === 3 && (
                 <div>
                   <div style={{ display: 'inline-block', padding: '6px 14px', borderRadius: 8, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', marginBottom: 20 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#15803d' }}>✓ Score juridique : 88/100 — Bonne situation</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#15803d' }}>✓ Score juridique : 18/20 — Bonne situation</span>
                   </div>
                   {["Règlement de copropriété conforme à la loi ALUR", "Pas de procédure judiciaire en cours", "Syndic professionnel en exercice", "Assemblées générales tenues régulièrement"].map(p => (
                     <div key={p} style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
