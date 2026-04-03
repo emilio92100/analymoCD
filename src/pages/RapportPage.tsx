@@ -4,8 +4,8 @@ import { fetchAnalyseById } from '../lib/analyses';
 import {
   ChevronLeft, Download, Building2, TrendingUp, Wrench,
   AlertTriangle, CheckCircle, Shield, BarChart2, FileText,
-  Clock, Euro, HardHat, Gavel, Info, Star, Paperclip, RefreshCw, Lock,
-  ChevronDown, ChevronUp, Home, TrendingDown
+  Euro, HardHat, Gavel, Info, Star, Paperclip, RefreshCw, Lock,
+  ChevronDown, ChevronUp, TrendingDown
 } from 'lucide-react';
 
 /* ══════════════════════════════════════════
@@ -484,7 +484,7 @@ export default function RapportPage() {
                           </div>
                         </div>
                       </div>
-                      {t.montant_estime && <span style={{ fontSize: 14, fontWeight: 800, color: '#16a34a' }}>{t.montant_estime.toLocaleString()}€</span>}
+                      {t.montant_estime && <span style={{ fontSize: 14, fontWeight: 800, color: '#16a34a' }}>{(t.montant_estime as number).toLocaleString()}€</span>}
                     </div>
                   ))}
                 </div>
@@ -514,7 +514,7 @@ export default function RapportPage() {
                             </div>
                           </div>
                         </div>
-                        {t.montant_estime && <span style={{ fontSize: 14, fontWeight: 800, color: '#16a34a' }}>~{t.montant_estime.toLocaleString()}€</span>}
+                        {t.montant_estime && <span style={{ fontSize: 14, fontWeight: 800, color: '#16a34a' }}>~{(t.montant_estime as number).toLocaleString()}€</span>}
                       </div>
                     ))}
                   </div>
@@ -546,7 +546,7 @@ export default function RapportPage() {
                           </div>
                         </div>
                         {t.montant_estime
-                          ? <span style={{ fontSize: 14, fontWeight: 800, color: '#d97706' }}>~{t.montant_estime.toLocaleString()}€</span>
+                          ? <span style={{ fontSize: 14, fontWeight: 800, color: '#d97706' }}>~{(t.montant_estime as number).toLocaleString()}€</span>
                           : <span style={{ fontSize: 12, color: '#94a3b8' }}>Montant non précisé</span>}
                       </div>
                     ))}
