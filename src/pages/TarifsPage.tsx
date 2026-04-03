@@ -239,16 +239,16 @@ export default function TarifsPage() {
               <div style={{ padding: '24px 22px 22px', display: 'flex', flexDirection: 'column' as const, flex: 1 }}>
 
                 {/* Nom */}
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: '#94a3b8', marginBottom: 14, paddingTop: plan.badge ? 8 : 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: '#94a3b8', marginBottom: 14, paddingTop: plan.badge ? 8 : 0, textAlign: 'center' as const }}>
                   {plan.name}
                 </div>
 
                 {/* Prix */}
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 1, marginBottom: 3 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 1, marginBottom: 3, justifyContent: 'center' }}>
                   <span style={{ fontSize: 'clamp(34px,3.5vw,46px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.04em', lineHeight: 1 }}>{plan.price}</span>
                   <span style={{ fontSize: 18, fontWeight: 700, color: '#cbd5e1', marginBottom: 1 }}>€</span>
                 </div>
-                <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 18 }}>TTC · paiement unique</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 18, textAlign: 'center' as const }}>TTC · paiement unique</div>
 
                 {/* Description */}
                 <div style={{ padding: '10px 12px', borderRadius: 10, background: plan.accentBg, marginBottom: 20, minHeight: 52, display: 'flex', alignItems: 'center' }}>
