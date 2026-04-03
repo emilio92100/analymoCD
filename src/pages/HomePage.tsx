@@ -135,7 +135,7 @@ function HeroSection() {
                     </div>
                     <div>
                       <p className="text-[10px] font-bold text-[#0f172a]">Score 15/20</p>
-                      <p className="text-[9px] text-slate-400">Bien recommandé</p>
+                      <p className="text-[9px] text-slate-400">Bien sain ✓</p>
                     </div>
                   </motion.div>
 
@@ -285,7 +285,7 @@ function PhoneMockup() {
         </div>
         <div>
           <p className="text-xs font-bold text-[#0f172a]">Score : 15/20</p>
-          <p className="text-[11px] text-slate-400">Bien recommandé</p>
+          <p className="text-[11px] text-slate-400">Bien sain ✓</p>
         </div>
       </motion.div>
 
@@ -589,48 +589,91 @@ function PhaseResultMini() {
 
 /* ═══ AVANT / APRÈS ════════════════════════════════════════ */
 function AvantApresSection() {
-  const rows = [
-    { before: "40 pages de PV illisibles à parcourir seul", after: "Rapport structuré clair en 30 secondes*" },
-    { before: "Jargon juridique incompréhensible", after: "Informations clés expliquées simplement" },
-    { before: "Travaux découverts après la signature", after: "Risques et travaux détectés en amont" },
-    { before: "Décision prise dans l'incertitude totale", after: "Décision éclairée, offre négociée" },
-    { before: "Mauvaises surprises financières", after: "Économies réalisées avant la signature" },
+  const items = [
+    {
+      icon: '📄',
+      before: "40 pages de PV illisibles à parcourir seul",
+      after: "Rapport structuré et clair en 30 secondes*",
+    },
+    {
+      icon: '⚖️',
+      before: "Jargon juridique incompréhensible",
+      after: "Informations clés expliquées simplement",
+    },
+    {
+      icon: '🏗️',
+      before: "Travaux découverts après la signature",
+      after: "Risques et travaux détectés en amont",
+    },
+    {
+      icon: '💰',
+      before: "Mauvaises surprises financières",
+      after: "Charges, fonds travaux et impayés chiffrés",
+    },
+    {
+      icon: '🎯',
+      before: "Décision prise dans l'incertitude totale",
+      after: "Décision éclairée, offre négociée en confiance",
+    },
   ];
+
   return (
     <section className="py-16 md:py-28 px-4 md:px-6 bg-white">
       <div className="max-w-5xl mx-auto">
         <SectionTitle label="Avant / Après" title="Deux façons d'acheter." accent="Une seule bonne." />
 
-        <div className="grid grid-cols-2 gap-3 md:gap-4 mb-3">
-          <div className="flex items-center gap-2 px-3 md:px-5 py-2.5 rounded-xl bg-red-50 border border-red-100">
-            <div className="w-6 h-6 rounded-full bg-white border border-red-200 flex items-center justify-center shrink-0">
-              <X size={11} className="text-red-500" />
-            </div>
-            <span className="text-sm md:text-base font-bold text-red-500">Sans Verimo</span>
-          </div>
-          <div className="flex items-center gap-2 px-3 md:px-5 py-2.5 rounded-xl bg-green-50 border border-green-100">
-            <div className="w-6 h-6 rounded-full bg-white border border-green-200 flex items-center justify-center shrink-0">
-              <Check size={11} className="text-green-500" />
-            </div>
-            <span className="text-sm md:text-base font-bold text-green-600">Avec Verimo</span>
-          </div>
-        </div>
+        <div className="flex flex-col gap-4">
+          {items.map((item, i) => (
+            <motion.div key={i}
+              initial={{ opacity: 0, y: 14 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.07 }}
+              className="grid grid-cols-1 md:grid-cols-[48px_1fr_40px_1fr] items-center gap-3 md:gap-4 p-4 md:p-5 rounded-2xl border border-slate-100 bg-white hover:shadow-md transition-all duration-200"
+              style={{ boxShadow: '0 1px 4px rgba(15,45,61,0.05)' }}>
 
-        <div className="flex flex-col gap-2 md:gap-2.5">
-          {rows.map((row, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.07 }}
-              className="grid grid-cols-2 gap-2 md:gap-3">
-              <div className="flex items-start gap-2 md:gap-3 p-3 md:p-5 rounded-xl md:rounded-2xl bg-red-50/50 border border-red-100 hover:bg-red-50 transition-colors">
-                <div className="w-5 h-5 md:w-7 md:h-7 rounded-full bg-white border border-red-100 flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+              {/* Icône */}
+              <div className="hidden md:flex w-12 h-12 rounded-xl bg-slate-50 border border-slate-100 items-center justify-center text-2xl shrink-0">
+                {item.icon}
+              </div>
+
+              {/* Sans Verimo */}
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-red-50/60 border border-red-100 md:bg-transparent md:border-0 md:p-0">
+                <div className="w-6 h-6 rounded-full bg-white border border-red-200 flex items-center justify-center shrink-0 mt-0.5 shadow-sm md:hidden">
                   <X size={10} className="text-red-400" />
                 </div>
-                <span className="text-xs md:text-sm text-slate-500 leading-snug">{row.before}</span>
+                <div>
+                  <div className="text-[10px] font-700 text-red-400 uppercase tracking-widest mb-1 md:hidden">Sans Verimo</div>
+                  <div className="hidden md:flex items-center gap-2 mb-1.5">
+                    <div className="w-5 h-5 rounded-full bg-red-50 border border-red-200 flex items-center justify-center shrink-0">
+                      <X size={9} className="text-red-400" />
+                    </div>
+                    <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Sans Verimo</span>
+                  </div>
+                  <p className="text-sm text-slate-500 leading-snug">{item.before}</p>
+                </div>
               </div>
-              <div className="flex items-start gap-2 md:gap-3 p-3 md:p-5 rounded-xl md:rounded-2xl bg-green-50/50 border border-green-100 hover:bg-green-50 transition-colors">
-                <div className="w-5 h-5 md:w-7 md:h-7 rounded-full bg-white border border-green-100 flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+
+              {/* Flèche */}
+              <div className="hidden md:flex items-center justify-center">
+                <ArrowRight size={18} className="text-[#2a7d9c]" />
+              </div>
+
+              {/* Avec Verimo */}
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-green-50/60 border border-green-100 md:bg-transparent md:border-0 md:p-0">
+                <div className="w-6 h-6 rounded-full bg-white border border-green-200 flex items-center justify-center shrink-0 mt-0.5 shadow-sm md:hidden">
                   <Check size={10} className="text-green-500" />
                 </div>
-                <span className="text-xs md:text-sm text-[#0f172a] font-semibold leading-snug">{row.after}</span>
+                <div>
+                  <div className="text-[10px] font-700 text-green-600 uppercase tracking-widest mb-1 md:hidden">Avec Verimo</div>
+                  <div className="hidden md:flex items-center gap-2 mb-1.5">
+                    <div className="w-5 h-5 rounded-full bg-green-50 border border-green-200 flex items-center justify-center shrink-0">
+                      <Check size={9} className="text-green-500" />
+                    </div>
+                    <span className="text-[10px] font-bold text-green-600 uppercase tracking-widest">Avec Verimo</span>
+                  </div>
+                  <p className="text-sm font-semibold text-[#0f172a] leading-snug">{item.after}</p>
+                </div>
               </div>
             </motion.div>
           ))}
@@ -684,7 +727,7 @@ function ProblemSolutionSection() {
     <section className="py-16 md:py-28 px-4 md:px-6 bg-[#f4f7f9]">
       <div className="max-w-6xl mx-auto">
         <SectionTitle label="Pourquoi Verimo" title="Un problème réel," accent="une réponse claire."
-          sub="Chaque achat immobilier cache des risques que les documents ne rendent pas évidents. Voici comment on les résout." />
+          sub="Chaque achat immobilier cache des risques que les documents ne rendent pas évidents. Voici comment on les détecte." />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
           {items.map((item, i) => (
             <Reveal key={i} delay={i}
@@ -828,7 +871,7 @@ function ForWhoSection() {
                     Verimo décrypte la santé financière de la copropriété, les travaux à venir et les risques juridiques — avant votre offre.
                   </p>
                   <Link to="/start" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-[#0f2d3d] text-sm md:text-base font-bold hover:bg-slate-50 transition-colors">
-                    Commencer — dès 4,90€ <ArrowRight size={15} />
+                    Commencer <ArrowRight size={15} />
                   </Link>
                 </div>
                 <div className="bg-white p-8 md:p-12">
@@ -1044,7 +1087,7 @@ function ApercuRapportSection() {
                 </div>
                 <div>
                   <span className="inline-block px-3 py-1 rounded-full bg-green-500/15 text-green-400 text-xs font-bold mb-1">✓ Recommandé</span>
-                  <p className="text-white/60 text-xs">Bien globalement sain</p>
+                  <p className="text-white/60 text-xs">Bien sain ✓</p>
                 </div>
               </div>
             </div>
