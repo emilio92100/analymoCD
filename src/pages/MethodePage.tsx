@@ -176,7 +176,7 @@ export default function MethodePage() {
               {/* Content */}
               {openCat === cat.id && (
                 <div style={{ padding: '0 24px 24px' }}>
-                  <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, marginBottom: 20, paddingTop: 4, borderTop: `1px solid ${cat.border}`, paddingTop: 16 }}>{cat.desc}</p>
+                  <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, marginBottom: 20, borderTop: `1px solid ${cat.border}`, paddingTop: 16 }}>{cat.desc}</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {cat.items.map((item, i) => (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', borderRadius: 10, background: item.type === 'good' ? '#f0fdf4' : item.type === 'bad' ? '#fef2f2' : '#f8fafc', border: `1px solid ${item.type === 'good' ? '#d1fae5' : item.type === 'bad' ? '#fecaca' : '#edf2f7'}`, gap: 12 }}>
