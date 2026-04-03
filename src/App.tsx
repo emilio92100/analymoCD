@@ -16,6 +16,7 @@ import StartPage from './pages/StartPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import MethodePage from './pages/MethodePage';
+import AdminPage from './pages/AdminPage';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -78,6 +79,9 @@ export default function App() {
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/mot-de-passe-oublie" element={<ForgotPasswordPage />} />
         <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
+
+        {/* Admin */}
+        <Route path="/admin" element={<AdminPage />} />
 
         {/* Dashboard */}
         <Route path="/dashboard" element={<DashboardPage />} />
