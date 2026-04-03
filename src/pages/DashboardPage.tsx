@@ -118,7 +118,7 @@ function useAnalyses() {
         const reco = result?.recommandation as string | undefined;
         const recoColor = reco === 'Acheter' ? '#16a34a'
           : reco === 'Négocier' ? '#d97706'
-          : reco === 'Risqué' ? '#dc2626'
+          : reco === 'Bien à éviter' ? '#dc2626'
           : '#7c3aed';
         return {
           id: a.id,
@@ -396,11 +396,11 @@ const penalties = [
   ];
 
   const scale = [
-    { r: '17 – 20', l: 'Excellent', c: '#15803d', bg: '#f0fdf4' },
-    { r: '14 – 16', l: 'Bon profil', c: '#16a34a', bg: '#f0fdf4' },
-    { r: '10 – 13', l: 'Correct avec réserves', c: '#d97706', bg: '#fffbeb' },
-    { r: '7 – 9', l: 'Vigilance requise', c: '#ea580c', bg: '#fff7ed' },
-    { r: '0 – 6', l: 'Risqué', c: '#dc2626', bg: '#fef2f2' },
+    { r: '17 – 20', l: 'Bien irréprochable', c: '#15803d', bg: '#f0fdf4' },
+    { r: '14 – 16', l: 'Bien sain', c: '#16a34a', bg: '#f0fdf4' },
+    { r: '10 – 13', l: 'Bien correct avec réserves', c: '#d97706', bg: '#fffbeb' },
+    { r: '7 – 9', l: 'Bien risqué', c: '#ea580c', bg: '#fff7ed' },
+    { r: '0 – 6', l: 'Bien à éviter', c: '#dc2626', bg: '#fef2f2' },
   ];
 
   const tips = [
