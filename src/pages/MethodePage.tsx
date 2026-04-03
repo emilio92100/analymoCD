@@ -249,7 +249,7 @@ export default function MethodePage() {
             </span>
           </motion.h1>
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
-            style={{ fontSize: 'clamp(15px,1.8vw,19px)', color: '#64748b', lineHeight: 1.7, maxWidth: 520, margin: '0 auto' }}>
+            style={{ fontSize: 'clamp(15px,1.8vw,19px)', color: '#64748b', lineHeight: 1.7, maxWidth: 700, margin: '0 auto', whiteSpace: 'nowrap' }}>
             Transparent, objectif, reproductible — sans formule magique.
           </motion.p>
         </div>
