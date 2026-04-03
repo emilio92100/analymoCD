@@ -302,7 +302,8 @@ export default function TarifsPage() {
         </Reveal>
 
         <Reveal delay={0.05}>
-          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.04)', minWidth: 560 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' as const }}>
               <thead>
                 <tr style={{ borderBottom: '1.5px solid #edf2f7' }}>
@@ -326,6 +327,7 @@ export default function TarifsPage() {
                 ))}
               </tbody>
             </table>
+          </div>
           </div>
         </Reveal>
       </section>
