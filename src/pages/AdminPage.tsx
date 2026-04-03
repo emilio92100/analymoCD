@@ -152,10 +152,25 @@ export default function AdminPage() {
     const checkAdmin = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { navigate('/connexion'); return; }
-      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-      if (profile?.role !== 'admin') { navigate('/dashboard'); return; }
-      setIsAdmin(true);
-      setLoading(false);
+
+      // Essai 1 : lecture via profiles
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      // Debug log pour identifier le problème
+      console.log('Admin check — user:', user.email, '| profile:', profile, '| error:', error);
+
+      if (profile?.role === 'admin') {
+        setIsAdmin(true);
+        setLoading(false);
+        return;
+      }
+
+      // Si erreur RLS ou profil sans role, redirige dashboard
+      navigate('/dashboard');
     };
     checkAdmin();
   }, [navigate]);
