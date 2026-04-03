@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
-import { ArrowRight, ChevronDown, TrendingDown, TrendingUp, AlertTriangle, Shield, Check, X } from 'lucide-react';
+import { ArrowRight, ChevronDown, TrendingDown, TrendingUp, AlertTriangle, Shield, Check } from 'lucide-react';
 
 /* ══════════════════════════════════════════
    DATA
@@ -233,14 +233,16 @@ export default function MethodePage() {
     <main style={{ fontFamily: "'DM Sans', system-ui, sans-serif", background: '#fff', paddingTop: 72 }}>
 
       {/* ── HERO COMPACT ──────────────────────────────────────── */}
-      <section style={{ background: '#f8fafc', borderBottom: '1px solid #edf2f7', padding: '36px 40px 32px' }}>
-        <div style={{ maxWidth: 1160, margin: '0 auto' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 10 }}>Notre méthode</div>
-          <h1 style={{ fontSize: 'clamp(24px,3.5vw,40px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em', lineHeight: 1.08, marginBottom: 10, maxWidth: 560 }}>
+      <section style={{ background: '#f8fafc', borderBottom: '1px solid #edf2f7', padding: '52px 24px 44px', textAlign: 'center' }}>
+        <div style={{ maxWidth: 680, margin: '0 auto' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 16px', borderRadius: 100, background: '#f0f7fb', border: '1px solid #bae3f5', fontSize: 12, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 20 }}>
+            Notre méthode
+          </div>
+          <h1 style={{ fontSize: 'clamp(30px,4vw,52px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em', lineHeight: 1.08, marginBottom: 16 }}>
             Comment Verimo analyse<br />vos documents
           </h1>
-          <p style={{ fontSize: 15, color: '#64748b', lineHeight: 1.65, maxWidth: 500, margin: 0 }}>
-            De l'upload du document à la recommandation finale — voici exactement ce qu'on fait, et pourquoi.
+          <p style={{ fontSize: 'clamp(15px,1.8vw,18px)', color: '#64748b', lineHeight: 1.7, margin: 0 }}>
+            De l'upload du document à la recommandation finale —<br />voici exactement ce qu'on fait, et pourquoi.
           </p>
         </div>
       </section>
@@ -250,20 +252,21 @@ export default function MethodePage() {
 
         {/* SIDEBAR */}
         <aside style={{ position: 'sticky', top: 96, paddingTop: 44, paddingBottom: 44 }}>
-          <nav style={{ display: 'flex', flexDirection: 'column' as const, gap: 1 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 12, paddingLeft: 4 }}>Sur cette page</div>
+          <nav style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
             {navSections.map((s) => (
               <button key={s.id} onClick={() => scrollTo(s.id)}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 9, border: 'none', background: activeSection === s.id ? '#f0f7fb' : 'transparent', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}>
-                <div style={{ width: 3, height: 13, borderRadius: 99, background: activeSection === s.id ? '#2a7d9c' : 'transparent', flexShrink: 0, transition: 'all 0.15s' }} />
-                <span style={{ fontSize: 12.5, fontWeight: activeSection === s.id ? 700 : 400, color: activeSection === s.id ? '#0f172a' : '#94a3b8', lineHeight: 1.35, transition: 'all 0.15s' }}>{s.label}</span>
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: 'none', background: activeSection === s.id ? '#f0f7fb' : 'transparent', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}>
+                <div style={{ width: 3, height: 16, borderRadius: 99, background: activeSection === s.id ? '#2a7d9c' : '#e2e8f0', flexShrink: 0, transition: 'all 0.15s' }} />
+                <span style={{ fontSize: 14, fontWeight: activeSection === s.id ? 700 : 400, color: activeSection === s.id ? '#0f172a' : '#64748b', lineHeight: 1.4, transition: 'all 0.15s' }}>{s.label}</span>
               </button>
             ))}
           </nav>
-          <div style={{ marginTop: 28, padding: '16px', borderRadius: 13, background: '#f8fafc', border: '1px solid #edf2f7' }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#0f2d3d', marginBottom: 5 }}>Analyser un bien</div>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 12, lineHeight: 1.5 }}>Score /20 en moins de 2 minutes</div>
-            <Link to="/start" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '9px', borderRadius: 9, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
-              Commencer <ArrowRight size={12} />
+          <div style={{ marginTop: 28, padding: '18px', borderRadius: 14, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f2d3d', marginBottom: 6 }}>Analyser un bien</div>
+            <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 14, lineHeight: 1.5 }}>Score /20 en moins de 2 minutes</div>
+            <Link to="/start" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', borderRadius: 10, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
+              Commencer <ArrowRight size={13} />
             </Link>
           </div>
         </aside>
@@ -274,96 +277,44 @@ export default function MethodePage() {
           {/* ── 1. ANALYSE SIMPLE VS COMPLÈTE ─────────────────── */}
           <section id="types-analyses">
             <Reveal>
-              <SectionHead label="Les deux types d'analyse" title="Analyse simple ou complète ?" sub="Deux offres, deux objectifs différents. Voici ce que chacune détecte." />
+              <SectionHead label="Les deux types d'analyse" title="Analyse simple ou analyse complète ?" sub="Verimo propose deux niveaux d'analyse selon ce que vous souhaitez comprendre." />
             </Reveal>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              {/* Simple */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <Reveal>
-                <div style={{ borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', height: '100%' }}>
-                  <div style={{ padding: '20px 22px', borderBottom: '1px solid #edf2f7', background: '#f8fafc' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <span style={{ fontSize: 16, fontWeight: 900, color: '#0f172a' }}>Analyse simple</span>
-                      <span style={{ fontSize: 18, fontWeight: 900, color: '#2a7d9c' }}>4,90€</span>
-                    </div>
-                    <div style={{ fontSize: 13, color: '#64748b' }}>1 document · Pas de note /20</div>
+                <div style={{ borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px 24px', background: '#fafbfc', height: '100%', boxSizing: 'border-box' as const }}>
+                  <div style={{ fontSize: 28, marginBottom: 12 }}>📄</div>
+                  <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Analyse simple</div>
+                  <div style={{ fontSize: 14, color: '#64748b', marginBottom: 18, lineHeight: 1.6 }}>
+                    Vous uploadez <strong style={{ color: '#0f172a' }}>un seul document</strong>. Notre outil l'identifie, en extrait les informations clés, et vous donne les points forts et les vigilances détectés.
                   </div>
-                  <div style={{ padding: '18px 22px' }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', marginBottom: 10, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>Ce qu'on détecte</div>
-                    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7, marginBottom: 18 }}>
-                      {[
-                        'Identification et explication du document',
-                        'Résumé clair du contenu',
-                        'Points forts détectés',
-                        'Points de vigilance identifiés',
-                        'Recommandation adaptée au document',
-                      ].map((item, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                          <Check size={13} color="#16a34a" style={{ flexShrink: 0, marginTop: 1 }} />
-                          <span style={{ fontSize: 13, color: '#374151' }}>{item}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', marginBottom: 8, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>Limites</div>
-                    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
-                      {[
-                        'Un seul document à la fois',
-                        'Pas de note /20 globale du bien',
-                        'Pas de rapport PDF complet',
-                        'Pas de recommandation d\'achat',
-                      ].map((item, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                          <X size={13} color="#94a3b8" style={{ flexShrink: 0, marginTop: 1 }} />
-                          <span style={{ fontSize: 13, color: '#94a3b8' }}>{item}</span>
-                        </div>
-                      ))}
-                    </div>
+                  <div style={{ padding: '12px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca' }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#dc2626', marginBottom: 2 }}>⚠ Pas de note /20</div>
+                    <div style={{ fontSize: 12, color: '#7f1d1d' }}>L'analyse simple porte sur un seul document, pas sur un bien complet.</div>
                   </div>
                 </div>
               </Reveal>
 
-              {/* Complète */}
-              <Reveal delay={0.08}>
-                <div style={{ borderRadius: 16, border: '1.5px solid #2a7d9c', overflow: 'hidden', height: '100%', boxShadow: '0 4px 20px rgba(42,125,156,0.1)' }}>
-                  <div style={{ padding: '20px 22px', borderBottom: '1px solid #e0eff6', background: 'linear-gradient(135deg,#f0f7fb,#e8f4fa)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <span style={{ fontSize: 16, fontWeight: 900, color: '#0f172a' }}>Analyse complète</span>
-                      <span style={{ fontSize: 18, fontWeight: 900, color: '#2a7d9c' }}>19,90€</span>
-                    </div>
-                    <div style={{ fontSize: 13, color: '#2a7d9c', fontWeight: 600 }}>Documents illimités · Score /20 inclus</div>
+              <Reveal delay={0.07}>
+                <div style={{ borderRadius: 16, border: '1.5px solid #2a7d9c', padding: '22px 24px', background: '#f0f7fb', height: '100%', boxSizing: 'border-box' as const, boxShadow: '0 4px 18px rgba(42,125,156,0.1)' }}>
+                  <div style={{ fontSize: 28, marginBottom: 12 }}>📊</div>
+                  <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Analyse complète</div>
+                  <div style={{ fontSize: 14, color: '#374151', marginBottom: 18, lineHeight: 1.6 }}>
+                    Vous uploadez <strong style={{ color: '#0f172a' }}>autant de documents que vous voulez</strong>. Notre outil les croise et génère un score /20 global du bien avec rapport complet.
                   </div>
-                  <div style={{ padding: '18px 22px' }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', marginBottom: 10, textTransform: 'uppercase' as const, letterSpacing: '0.06em' }}>Ce qu'on détecte</div>
-                    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7, marginBottom: 18 }}>
-                      {[
-                        'Analyse croisée de tous vos documents',
-                        'Score global /20 du bien',
-                        'Travaux, charges, procédures, diagnostics',
-                        'Recommandation d\'achat personnalisée',
-                        'Rapport PDF téléchargeable',
-                        'Pistes de négociation si score < 14',
-                        'Option compléter le dossier sous 7 jours',
-                      ].map((item, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                          <Check size={13} color="#2a7d9c" style={{ flexShrink: 0, marginTop: 1 }} />
-                          <span style={{ fontSize: 13, color: '#374151' }}>{item}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <Link to="/tarifs" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', borderRadius: 10, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
-                      Voir les tarifs <ArrowRight size={13} />
-                    </Link>
+                  <div style={{ padding: '12px 14px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #d1fae5' }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#16a34a', marginBottom: 2 }}>✓ Score /20 + rapport PDF</div>
+                    <div style={{ fontSize: 12, color: '#14532d' }}>Recommandation d'achat, travaux, charges, procédures — tout est inclus.</div>
                   </div>
                 </div>
               </Reveal>
             </div>
 
-            {/* Mention aperçu gratuit */}
-            <Reveal delay={0.12}>
-              <div style={{ marginTop: 14, padding: '14px 18px', borderRadius: 12, background: '#fffbeb', border: '1px solid #fde68a', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 18 }}>🎁</span>
+            <Reveal delay={0.1}>
+              <div style={{ marginTop: 12, padding: '13px 18px', borderRadius: 11, background: '#fffbeb', border: '1px solid #fde68a', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 16 }}>🎁</span>
                 <p style={{ fontSize: 13, color: '#92400e', margin: 0, lineHeight: 1.6 }}>
-                  <strong>Aperçu gratuit inclus à l'inscription</strong> — avant tout paiement, Verimo vous donne un aperçu rapide avec 2-3 points de vigilance détectés dans vos documents. Sans note /20.
+                  <strong>Aperçu gratuit à l'inscription</strong> — avant tout paiement, Verimo détecte 2-3 points de vigilance dans vos documents. Sans note /20.
                 </p>
               </div>
             </Reveal>
