@@ -627,7 +627,7 @@ function NoteExplicativeBlock({ penalties, bonuses, scale }: {
 
         {/* Point de départ */}
         <div style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 18px', background:'#f0f7fb', borderRadius:12 }}>
-          <div style={{ width:42, height:42, borderRadius:'50%', background:'#2a7d9c', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:900, flexShrink:0 }}>10</div>
+          <div style={{ width:42, height:42, borderRadius:'50%', background:'#2a7d9c', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:900, flexShrink:0 }}>20</div>
           <div>
             <div style={{ fontSize:14, fontWeight:800, color:'#0f172a', marginBottom:2 }}>Note sur 20 points</div>
             <div style={{ fontSize:13, color:'#64748b', lineHeight:1.5 }}>On démarre toujours de la note maximale. Notre outil retire des points selon les risques détectés dans vos documents, et en ajoute pour les points positifs.</div>
