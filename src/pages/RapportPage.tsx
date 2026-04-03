@@ -4,7 +4,8 @@ import { fetchAnalyseById } from '../lib/analyses';
 import {
   ChevronLeft, Download, Building2, TrendingUp, Wrench,
   AlertTriangle, CheckCircle, Shield, BarChart2, FileText,
-  Clock, Euro, HardHat, Gavel, Info, Star, Paperclip, RefreshCw, Lock
+  Clock, Euro, HardHat, Gavel, Info, Star, Paperclip, RefreshCw, Lock,
+  ChevronDown, ChevronUp, Home, TrendingDown
 } from 'lucide-react';
 
 /* ══════════════════════════════════════════
@@ -15,75 +16,94 @@ const MOCK_RAPPORT = {
   type: 'complete' as const,
   adresse: '12 rue de la Paix, 75002 Paris',
   date: '24 mars 2026',
-  score: 8.2,
-  recommandation: 'Acheter' as 'Acheter' | 'Négocier' | 'Risqué' | 'Déconseillé',
-
-  // Vue d'ensemble
+  score: 14.5,
+  score_couleur: 'vert' as string,
+  score_niveau: 'Bon profil' as string,
+  type_bien: 'appartement' as string,
+  profil: 'rp' as string,
   resume: "Appartement en bon état général situé dans une copropriété bien gérée. Le PV d'AG 2025 montre une gestion saine avec un fonds de travaux bien provisionné. Les charges sont raisonnables pour le secteur. Quelques points de vigilance à prendre en compte avant l'achat.",
-  points_forts: [
+  synthese_points_positifs: [
     "Fonds de travaux bien provisionné (42 000€ disponibles)",
     "Charges mensuelles raisonnables pour Paris 2e (180€/mois)",
     "Copropriété bien gérée, syndic réactif",
     "DPE classé C — bon pour la valeur future",
     "Aucun impayé de charges sur les 2 dernières années",
   ],
-  points_vigilance: [
-    "Ravalement de façade voté en AG 2025 — appel de charges estimé à ~8 000€",
+  synthese_points_vigilance: [
+    "Ravalement de façade évoqué en AG 2025 mais non encore voté",
     "2 lots en situation d'impayés (inférieurs à 6 mois)",
-    "Ascenseur à remettre aux normes avant fin 2027",
   ],
-  avis_verimo: "Ce bien présente un excellent profil d'investissement. La copropriété est saine et bien gérée. Notre recommandation est d'acheter en intégrant le coût du ravalement dans votre négociation — une demande de réduction de 5 000 à 8 000€ est justifiée et argumentable.",
-
-  // Financier
+  avis_verimo: "Ce bien présente un profil globalement satisfaisant. La copropriété est saine et bien gérée. Avant de vous engager, nous vous recommandons de vérifier l'avancement du ravalement évoqué en AG avec votre agent immobilier. Ce rapport est établi uniquement à partir des documents analysés et ne remplace pas l'avis d'un professionnel de l'immobilier.",
+  categories: {
+    travaux: { note: 4, note_max: 5, details: [{ label: 'Ravalement évoqué non voté', impact: 'negatif', message: 'Un ravalement a été évoqué sans avoir été voté. Si le vote intervient après votre acquisition, vous en supporterez une partie du coût.' }] },
+    procedures: { note: 4, note_max: 4, details: [] },
+    finances: { note: 3, note_max: 4, details: [{ label: 'Fonds travaux conforme', impact: 'positif', message: 'Le fonds travaux est conforme au minimum légal.' }] },
+    diags_privatifs: { note: 2, note_max: 4, details: [{ label: 'DPE C', impact: 'positif', message: 'Bonne performance énergétique.' }] },
+    diags_communs: { note: 1.5, note_max: 3, details: [] },
+  },
   charges_mensuelles: 180,
-  charges_annuelles: 2160,
   fonds_travaux: 42000,
-  appels_charges_votes: [
-    { label: 'Ravalement façade (voté AG 2025)', montant: 8000, echeance: '2026' },
-    { label: 'Remplacement chaudière collective', montant: 1200, echeance: '2025' },
-  ],
-  impact_financier: "Sur 10 ans, les charges prévisionnelles représentent environ 29 600€ (charges courantes + travaux votés). À intégrer dans votre plan de financement.",
-  risques_financiers: "Risque modéré. Le ravalement de 8 000€ est le principal poste à anticiper. Les impayés en copropriété restent faibles et ne compromettent pas la trésorerie.",
-
-  // Travaux
+  fonds_travaux_statut: 'conforme' as string,
   travaux_realises: [
-    { label: 'Réfection toiture', annee: '2021', montant: 35000 },
-    { label: 'Mise aux normes électriques parties communes', annee: '2022', montant: 12000 },
-    { label: 'Ravalement cour intérieure', annee: '2023', montant: 18000 },
+    { label: 'Réfection toiture', annee: '2021', montant_estime: 35000, justificatif: true },
+    { label: 'Mise aux normes électriques parties communes', annee: '2022', montant_estime: 12000, justificatif: true },
   ],
   travaux_votes: [
-    { label: 'Ravalement façade principale', annee: '2026', montant: 8000, statut: 'Voté' },
-    { label: 'Ascenseur mise aux normes', annee: '2027', montant: 4500, statut: 'Voté' },
+    { label: 'Ascenseur mise aux normes', annee: '2027', montant_estime: 4500, statut: 'Voté — à la charge du vendeur' },
   ],
   travaux_a_prevoir: [
-    { label: 'Remplacement boîtes aux lettres', annee: '2028', montant: 800, statut: 'Estimé' },
-    { label: 'Réfection hall d\'entrée', annee: '2029', montant: 6000, statut: 'Estimé' },
+    { label: 'Ravalement façade principale', annee: '2026', montant_estime: null, statut: 'Évoqué non voté' },
   ],
-
-  // Procédures
+  quote_part_travaux: "Pour calculer précisément votre part de ces travaux, ajoutez votre dernier appel de charges dans les 7 jours suivant ce rapport.",
+  procedures_en_cours: false,
+  procedures: [] as Array<{ label: string; type: string; gravite: 'faible' | 'moderee' | 'elevee'; message?: string }>,
+  documents_detectes: [
+    { nom: "PV d'Assemblée Générale 2024", explication: "Le procès-verbal d'Assemblée Générale est le compte-rendu officiel de la réunion annuelle des copropriétaires.", infos_cles: ["Budget voté : 45 000€", "Aucune procédure en cours"] },
+  ],
+  documents_manquants: ["Appels de charges", "Diagnostics parties communes"],
+  negociation: { applicable: false, elements: [] as string[] },
   document_names: [] as string[],
   regeneration_deadline: null as string | null,
   is_preview: false,
-  procedures_en_cours: true,
-  procedures: [
-    {
-      type: 'Impayés de charges',
-      statut: 'En cours',
-      severite: 'faible' as 'faible' | 'moyenne' | 'elevee',
-      detail: "2 copropriétaires en situation d'impayés. Montants inférieurs à 3 mois de charges. Recouvrement amiable en cours par le syndic.",
-      impact: "Impact limité sur la trésorerie. Surveillance recommandée.",
-    },
-  ],
 };
+
+/* ══════════════════════════════════════════
+   UTILITAIRES NOTE /20
+══════════════════════════════════════════ */
+function getScoreColor(score: number): string {
+  if (score >= 17) return '#15803d';
+  if (score >= 14) return '#16a34a';
+  if (score >= 10) return '#d97706';
+  if (score >= 7)  return '#ea580c';
+  return '#dc2626';
+}
+
+function getScoreLabel(score: number): string {
+  if (score >= 17) return 'Excellent';
+  if (score >= 14) return 'Bon profil';
+  if (score >= 10) return 'Correct avec réserves';
+  if (score >= 7)  return 'Vigilance requise';
+  return 'Risqué';
+}
+
+function getTypeBienLabel(type: string): string {
+  if (type === 'maison') return 'Maison individuelle';
+  if (type === 'maison_copro') return 'Maison en copropriété';
+  return 'Appartement en copropriété';
+}
+
+function getProfilLabel(profil: string): string {
+  return profil === 'invest' ? 'Investissement locatif' : 'Résidence principale';
+}
 
 /* ══════════════════════════════════════════
    COMPOSANTS UTILITAIRES
 ══════════════════════════════════════════ */
 function ScoreGauge({ score }: { score: number }) {
-  const color = score >= 7.5 ? '#16a34a' : score >= 5 ? '#d97706' : '#dc2626';
+  const color = getScoreColor(score);
+  const label = getScoreLabel(score);
   const r = 54, circ = 2 * Math.PI * r;
-  const dash = (score / 10) * circ;
-  const label = score >= 7.5 ? 'Excellent' : score >= 6 ? 'Bon' : score >= 5 ? 'Moyen' : 'Risqué';
+  const dash = (score / 20) * circ;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
@@ -93,31 +113,12 @@ function ScoreGauge({ score }: { score: number }) {
           strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
           transform="rotate(-90 70 70)"
           style={{ transition: 'stroke-dasharray 1s ease' }}/>
-        <text x="70" y="62" textAnchor="middle" fontSize="30" fontWeight="900" fill={color}>{score.toFixed(1)}</text>
-        <text x="70" y="82" textAnchor="middle" fontSize="13" fill="#94a3b8" fontWeight="600">/10</text>
+        <text x="70" y="62" textAnchor="middle" fontSize="28" fontWeight="900" fill={color}>{score.toFixed(1)}</text>
+        <text x="70" y="82" textAnchor="middle" fontSize="13" fill="#94a3b8" fontWeight="600">/20</text>
       </svg>
       <span style={{ fontSize: 13, fontWeight: 700, color, background: `${color}12`, border: `1px solid ${color}25`, padding: '3px 12px', borderRadius: 100 }}>
         {label}
       </span>
-    </div>
-  );
-}
-
-function RecoBadge({ reco }: { reco: string }) {
-  const map: Record<string, { color: string; bg: string; border: string; icon: string }> = {
-    'Acheter':     { color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', icon: '✓' },
-    'Négocier':    { color: '#d97706', bg: '#fffbeb', border: '#fde68a', icon: '↔' },
-    'Risqué':      { color: '#dc2626', bg: '#fef2f2', border: '#fecaca', icon: '⚠' },
-    'Déconseillé': { color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe', icon: '✕' },
-  };
-  const s = map[reco] || map['Négocier'];
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-      <div style={{ width: 72, height: 72, borderRadius: '50%', background: s.bg, border: `3px solid ${s.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, color: s.color, fontWeight: 900 }}>
-        {s.icon}
-      </div>
-      <div style={{ fontSize: 18, fontWeight: 900, color: s.color }}>{reco}</div>
-      <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>RECOMMANDATION</div>
     </div>
   );
 }
@@ -157,13 +158,13 @@ function Bullet({ text, color = '#16a34a', icon }: { text: string; color?: strin
   );
 }
 
-function SeveriteBadge({ sev }: { sev: 'faible' | 'moyenne' | 'elevee' }) {
+function SeveriteBadge({ sev }: { sev: 'faible' | 'moderee' | 'elevee' }) {
   const map = {
-    faible:  { label: 'Faible',  color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
-    moyenne: { label: 'Moyenne', color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
-    elevee:  { label: 'Élevée',  color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
+    faible:   { label: 'Faible',  color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
+    moderee:  { label: 'Modérée', color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
+    elevee:   { label: 'Élevée',  color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
   };
-  const s = map[sev];
+  const s = map[sev] || map['moderee'];
   return (
     <span style={{ fontSize: 11, fontWeight: 700, color: s.color, background: s.bg, border: `1px solid ${s.border}`, padding: '3px 10px', borderRadius: 100 }}>
       {s.label}
@@ -171,16 +172,60 @@ function SeveriteBadge({ sev }: { sev: 'faible' | 'moyenne' | 'elevee' }) {
   );
 }
 
+/* ── Détail de la note par catégorie ── */
+function DetailNote({ categories }: { categories: typeof MOCK_RAPPORT.categories }) {
+  const [open, setOpen] = useState(false);
+  const cats = [
+    { key: 'travaux',       label: 'Travaux',                icon: '🔨' },
+    { key: 'procedures',    label: 'Procédures juridiques',  icon: '⚖️' },
+    { key: 'finances',      label: 'Finances copropriété',   icon: '💰' },
+    { key: 'diags_privatifs', label: 'Diagnostics privatifs', icon: '🏠' },
+    { key: 'diags_communs', label: 'Diagnostics communs',    icon: '🏢' },
+  ];
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <button onClick={() => setOpen(!open)}
+        style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.6)', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, padding: '6px 14px', cursor: 'pointer' }}>
+        {open ? <ChevronUp size={13}/> : <ChevronDown size={13}/>}
+        {open ? 'Masquer' : 'Détail de la note'}
+      </button>
+      {open && (
+        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {cats.map(cat => {
+            const c = categories[cat.key as keyof typeof categories];
+            if (!c) return null;
+            const pct = (c.note / c.note_max) * 100;
+            const color = pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626';
+            return (
+              <div key={cat.key} style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 10, padding: '10px 14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', fontWeight: 600 }}>{cat.icon} {cat.label}</span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color }}>{c.note}/{c.note_max}</span>
+                </div>
+                <div style={{ height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 2 }}>
+                  <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 2, transition: 'width 0.5s ease' }}/>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ══════════════════════════════════════════
    ONGLETS
 ══════════════════════════════════════════ */
-type TabId = 'overview' | 'financier' | 'travaux' | 'procedures';
+type TabId = 'overview' | 'travaux' | 'finances' | 'procedures' | 'documents';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode; color: string }[] = [
-  { id: 'overview',   label: 'Vue d\'ensemble', icon: <BarChart2 size={15}/>,   color: '#2a7d9c' },
-  { id: 'financier',  label: 'Financier',        icon: <Euro size={15}/>,        color: '#16a34a' },
-  { id: 'travaux',    label: 'Travaux',           icon: <HardHat size={15}/>,     color: '#d97706' },
-  { id: 'procedures', label: 'Procédures',        icon: <Gavel size={15}/>,       color: '#dc2626' },
+  { id: 'overview',    label: 'Synthèse',      icon: <BarChart2 size={15}/>,    color: '#2a7d9c' },
+  { id: 'travaux',     label: 'Travaux',        icon: <HardHat size={15}/>,      color: '#d97706' },
+  { id: 'finances',    label: 'Finances',       icon: <Euro size={15}/>,         color: '#16a34a' },
+  { id: 'procedures',  label: 'Procédures',     icon: <Gavel size={15}/>,        color: '#dc2626' },
+  { id: 'documents',   label: 'Documents',      icon: <FileText size={15}/>,     color: '#7c3aed' },
 ];
 
 /* ══════════════════════════════════════════
@@ -191,7 +236,7 @@ export default function RapportPage() {
   const id = searchParams.get('id') || '';
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [loading, setLoading] = useState(true);
-  const [rapport, setRapport] = useState<(typeof MOCK_RAPPORT & { type: 'complete' | 'document' }) | null>(null);
+  const [rapport, setRapport] = useState<typeof MOCK_RAPPORT | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -200,30 +245,34 @@ export default function RapportPage() {
       const data = await fetchAnalyseById(id);
       if (!data || !data.result) { setRapport(MOCK_RAPPORT); setLoading(false); return; }
       const r = data.result as Record<string, unknown>;
-      // Mapper les données Supabase vers le format rapport
       const mappedType = (data.type === 'pack2' || data.type === 'pack3' ? 'complete' : data.type) as 'document' | 'complete';
       setRapport({
         id: data.id,
         type: mappedType as 'complete',
         adresse: (r.titre as string) || data.title,
         date: new Date(data.created_at).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' }),
-        score: (r.score as number) || 0,
-        recommandation: (r.recommandation as 'Acheter'|'Négocier'|'Risqué'|'Déconseillé') || 'Négocier',
+        score: typeof r.score === 'number' ? r.score : 0,
+        score_couleur: (r.score_couleur as string) || 'jaune',
+        score_niveau: (r.score_niveau as string) || '',
+        type_bien: (r.type_bien as string) || 'appartement',
+        profil: (data.profil as string) || 'rp',
         resume: (r.resume as string) || '',
-        points_forts: (r.points_forts as string[]) || [],
-        points_vigilance: (r.points_vigilance as string[]) || [],
+        synthese_points_positifs: (r.synthese_points_positifs as string[]) || [],
+        synthese_points_vigilance: (r.synthese_points_vigilance as string[]) || [],
         avis_verimo: (r.avis_verimo as string) || '',
+        categories: (r.categories as typeof MOCK_RAPPORT.categories) || MOCK_RAPPORT.categories,
         charges_mensuelles: (r.charges_mensuelles as number) || 0,
-        charges_annuelles: ((r.charges_mensuelles as number) || 0) * 12,
         fonds_travaux: (r.fonds_travaux as number) || 0,
-        appels_charges_votes: (r.appels_charges_votes as typeof MOCK_RAPPORT.appels_charges_votes) || [],
-        impact_financier: (r.impact_financier as string) || '',
-        risques_financiers: (r.risques_financiers as string) || '',
+        fonds_travaux_statut: (r.fonds_travaux_statut as string) || 'non_mentionne',
         travaux_realises: (r.travaux_realises as typeof MOCK_RAPPORT.travaux_realises) || [],
         travaux_votes: (r.travaux_votes as typeof MOCK_RAPPORT.travaux_votes) || [],
         travaux_a_prevoir: (r.travaux_a_prevoir as typeof MOCK_RAPPORT.travaux_a_prevoir) || [],
+        quote_part_travaux: (r.quote_part_travaux as string) || '',
         procedures_en_cours: (r.procedures_en_cours as boolean) || false,
         procedures: (r.procedures as typeof MOCK_RAPPORT.procedures) || [],
+        documents_detectes: (r.documents_detectes as typeof MOCK_RAPPORT.documents_detectes) || [],
+        documents_manquants: (r.documents_manquants as string[]) || [],
+        negociation: (r.negociation as typeof MOCK_RAPPORT.negociation) || { applicable: false, elements: [] },
         document_names: (data.document_names as string[]) || [],
         regeneration_deadline: data.regeneration_deadline || null,
         is_preview: data.is_preview ?? false,
@@ -250,25 +299,19 @@ export default function RapportPage() {
   );
 
   const isComplete = rapport.type === 'complete';
-  const scoreColor = rapport.score >= 7.5 ? '#16a34a' : rapport.score >= 5 ? '#d97706' : '#dc2626';
-
-  const handlePDF = () => {
-    window.print();
-  };
+  const scoreColor = getScoreColor(rapport.score);
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f9fb', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
 
-      {/* ── Topbar rapport */}
+      {/* ── Topbar */}
       <header style={{ background: '#fff', borderBottom: '1px solid #edf2f7', position: 'sticky', top: 0, zIndex: 40, padding: '0 24px', height: 64, display: 'flex', alignItems: 'center', gap: 14 }}>
         <Link to="/dashboard/analyses" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#64748b', textDecoration: 'none', flexShrink: 0 }}
           onMouseOver={e => (e.currentTarget.style.color = '#0f172a')}
           onMouseOut={e => (e.currentTarget.style.color = '#64748b')}>
           <ChevronLeft size={16}/> Mes analyses
         </Link>
-
         <div style={{ width: 1, height: 20, background: '#edf2f7', flexShrink: 0 }}/>
-
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Building2 size={14} style={{ color: '#94a3b8', flexShrink: 0 }}/>
@@ -278,43 +321,45 @@ export default function RapportPage() {
           </div>
           <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Analysé le {rapport.date}</div>
         </div>
-
-        {/* Score mini dans topbar */}
-        {isComplete && (
+        {isComplete && rapport.score > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 10, background: `${scoreColor}0d`, border: `1.5px solid ${scoreColor}22`, flexShrink: 0 }}>
             <Star size={13} style={{ color: scoreColor }}/>
-            <span style={{ fontSize: 15, fontWeight: 900, color: scoreColor }}>{rapport.score}/10</span>
+            <span style={{ fontSize: 15, fontWeight: 900, color: scoreColor }}>{rapport.score}/20</span>
           </div>
         )}
-
-        <button onClick={handlePDF}
-          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(15,45,61,0.2)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+        <button onClick={() => window.print()}
+          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>
           <Download size={14}/> Télécharger PDF
         </button>
       </header>
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '28px 20px' }}>
 
-        {/* ── Hero rapport */}
+        {/* ── Hero rapport complet */}
         {isComplete && (
           <div style={{ background: 'linear-gradient(135deg, #0f2d3d 0%, #1a5068 100%)', borderRadius: 22, padding: '32px 36px', marginBottom: 28, position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', top: -40, right: -40, width: 200, height: 200, borderRadius: '50%', background: 'rgba(42,125,156,0.2)', pointerEvents: 'none' }}/>
-            <div style={{ position: 'absolute', bottom: -30, left: -20, width: 160, height: 160, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', pointerEvents: 'none' }}/>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 40, flexWrap: 'wrap' }}>
               <ScoreGauge score={rapport.score}/>
               <div style={{ flex: 1, minWidth: 200 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.14em', marginBottom: 8 }}>RAPPORT VERIMO — ANALYSE COMPLÈTE</div>
                 <h1 style={{ fontSize: 'clamp(18px,2.5vw,24px)', fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', marginBottom: 8, lineHeight: 1.25 }}>{rapport.adresse}</h1>
-                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', marginBottom: 18 }}>Analysé le {rapport.date}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <RecoBadge reco={rapport.recommandation}/>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.08)', padding: '3px 10px', borderRadius: 100 }}>
+                    {getTypeBienLabel(rapport.type_bien)}
+                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.08)', padding: '3px 10px', borderRadius: 100 }}>
+                    {getProfilLabel(rapport.profil)}
+                  </span>
                 </div>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', marginBottom: 12 }}>Analysé le {rapport.date}</div>
+                <DetailNote categories={rapport.categories}/>
               </div>
             </div>
           </div>
         )}
 
-        {/* Rapport simple (document) — pas de hero */}
+        {/* ── Header rapport simple */}
         {!isComplete && (
           <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #edf2f7', padding: '24px', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
             <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -328,16 +373,32 @@ export default function RapportPage() {
           </div>
         )}
 
+        {/* ── Idées de négociation (si note < 14) */}
+        {isComplete && rapport.negociation?.applicable && rapport.negociation.elements.length > 0 && (
+          <div style={{ background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 16, padding: '18px 22px', marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <TrendingDown size={16} style={{ color: '#d97706' }}/>
+              <span style={{ fontSize: 14, fontWeight: 800, color: '#92400e' }}>Pistes de négociation</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {rapport.negociation.elements.map((el, i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#d97706', flexShrink: 0, marginTop: 7 }}/>
+                  <span style={{ fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>{el}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ── Onglets */}
         {isComplete && (
           <div style={{ display: 'flex', gap: 6, marginBottom: 24, background: '#fff', padding: '6px', borderRadius: 14, border: '1px solid #edf2f7', flexWrap: 'wrap' }}>
             {TABS.map(tab => {
-              // Masquer procédures si aucune
-              if (tab.id === 'procedures' && !rapport.procedures_en_cours) return null;
               const active = activeTab === tab.id;
               return (
                 <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                  style={{ flex: 1, minWidth: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '10px 16px', borderRadius: 10, border: 'none', background: active ? `${tab.color}0e` : 'transparent', color: active ? tab.color : '#64748b', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', transition: 'all 0.15s', borderBottom: active ? `2px solid ${tab.color}` : '2px solid transparent' }}>
+                  style={{ flex: 1, minWidth: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '10px 14px', borderRadius: 10, border: 'none', background: active ? `${tab.color}0e` : 'transparent', color: active ? tab.color : '#64748b', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', transition: 'all 0.15s', borderBottom: active ? `2px solid ${tab.color}` : '2px solid transparent' }}>
                   {tab.icon} {tab.label}
                   {tab.id === 'procedures' && rapport.procedures_en_cours && (
                     <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#dc2626', flexShrink: 0 }}/>
@@ -348,7 +409,7 @@ export default function RapportPage() {
           </div>
         )}
 
-        {/* ══ VUE D'ENSEMBLE ══ */}
+        {/* ══ SYNTHÈSE ══ */}
         {(activeTab === 'overview' || !isComplete) && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
@@ -357,21 +418,21 @@ export default function RapportPage() {
               <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>{rapport.resume}</p>
             </SectionCard>
 
-            {/* Points forts + vigilance */}
+            {/* Points positifs + vigilance */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-              <SectionCard title="Points forts" icon={<CheckCircle size={16}/>} color="#16a34a">
+              <SectionCard title="Points positifs" icon={<CheckCircle size={16}/>} color="#16a34a">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {rapport.points_forts.map((p, i) => (
-                    <Bullet key={i} text={p} color="#16a34a" icon={<CheckCircle size={10}/>}/>
-                  ))}
+                  {rapport.synthese_points_positifs.length > 0
+                    ? rapport.synthese_points_positifs.map((p, i) => <Bullet key={i} text={p} color="#16a34a" icon={<CheckCircle size={10}/>}/>)
+                    : <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun point positif identifié dans les documents transmis.</p>}
                 </div>
               </SectionCard>
 
               <SectionCard title="Points de vigilance" icon={<AlertTriangle size={16}/>} color="#d97706">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {rapport.points_vigilance.map((p, i) => (
-                    <Bullet key={i} text={p} color="#d97706" icon={<AlertTriangle size={10}/>}/>
-                  ))}
+                  {rapport.synthese_points_vigilance.length > 0
+                    ? rapport.synthese_points_vigilance.map((p, i) => <Bullet key={i} text={p} color="#d97706" icon={<AlertTriangle size={10}/>}/>)
+                    : <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun point de vigilance identifié dans les documents transmis.</p>}
                 </div>
               </SectionCard>
             </div>
@@ -387,48 +448,19 @@ export default function RapportPage() {
                 <p style={{ fontSize: 14.5, color: 'rgba(255,255,255,0.88)', lineHeight: 1.8, fontWeight: 500 }}>{rapport.avis_verimo}</p>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* ══ FINANCIER ══ */}
-        {activeTab === 'financier' && isComplete && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-
-            {/* Stats charges */}
-            <SectionCard title="Charges de copropriété" icon={<Euro size={16}/>} color="#16a34a">
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 20 }}>
-                <StatBox label="Mensuel" value={`${rapport.charges_mensuelles}€`} color="#16a34a"/>
-                <StatBox label="Annuel" value={`${rapport.charges_annuelles.toLocaleString()}€`} color="#0f172a"/>
-                <StatBox label="Fonds travaux" value={`${(rapport.fonds_travaux/1000).toFixed(0)}k€`} sub="Disponibles" color="#2a7d9c"/>
-              </div>
-              <div style={{ padding: '14px 16px', background: '#f0fdf4', borderRadius: 12, border: '1px solid #dcfce7' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', letterSpacing: '0.08em', marginBottom: 6 }}>ANALYSE VERIMO</div>
-                <p style={{ fontSize: 13, color: '#166534', lineHeight: 1.6 }}>{rapport.impact_financier}</p>
-              </div>
-            </SectionCard>
-
-            {/* Appels de charges votés */}
-            <SectionCard title="Appels de charges votés" icon={<Clock size={16}/>} color="#d97706">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {rapport.appels_charges_votes.map((ac, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a', gap: 12, flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <AlertTriangle size={14} style={{ color: '#d97706', flexShrink: 0 }}/>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#92400e' }}>{ac.label}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-                      <span style={{ fontSize: 11, color: '#94a3b8' }}>Échéance {ac.echeance}</span>
-                      <span style={{ fontSize: 16, fontWeight: 900, color: '#d97706' }}>~{ac.montant.toLocaleString()}€</span>
-                    </div>
+            {/* Documents manquants */}
+            {rapport.documents_manquants && rapport.documents_manquants.length > 0 && (
+              <div style={{ padding: '14px 18px', background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <Info size={14} style={{ color: '#94a3b8', flexShrink: 0, marginTop: 2 }}/>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 4 }}>Documents non fournis — note basée sur les documents disponibles</div>
+                  <div style={{ fontSize: 12, color: '#94a3b8' }}>
+                    {rapport.documents_manquants.join(', ')} — Nous vous recommandons de demander ces documents au vendeur ou à votre agent immobilier pour affiner l'analyse.
                   </div>
-                ))}
+                </div>
               </div>
-            </SectionCard>
-
-            {/* Risques financiers */}
-            <SectionCard title="Risques financiers" icon={<TrendingUp size={16}/>} color="#dc2626">
-              <p style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.7 }}>{rapport.risques_financiers}</p>
-            </SectionCard>
+            )}
           </div>
         )}
 
@@ -446,10 +478,13 @@ export default function RapportPage() {
                         <CheckCircle size={14} style={{ color: '#16a34a', flexShrink: 0 }}/>
                         <div>
                           <div style={{ fontSize: 13, fontWeight: 600, color: '#166534' }}>{t.label}</div>
-                          <div style={{ fontSize: 11, color: '#94a3b8' }}>Réalisé en {t.annee}</div>
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 2 }}>
+                            {t.annee && <span style={{ fontSize: 11, color: '#94a3b8' }}>Réalisé en {t.annee}</span>}
+                            {t.justificatif && <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '1px 7px', borderRadius: 100 }}>Justificatif</span>}
+                          </div>
                         </div>
                       </div>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: '#16a34a' }}>{t.montant.toLocaleString()}€</span>
+                      {t.montant_estime && <span style={{ fontSize: 14, fontWeight: 800, color: '#16a34a' }}>{t.montant_estime.toLocaleString()}€</span>}
                     </div>
                   ))}
                 </div>
@@ -459,90 +494,145 @@ export default function RapportPage() {
             </SectionCard>
 
             {/* Travaux votés */}
-            <SectionCard title="Travaux votés à venir" icon={<Wrench size={16}/>} color="#d97706">
+            <SectionCard title="Travaux votés" icon={<Wrench size={16}/>} color="#16a34a">
               {rapport.travaux_votes.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {rapport.travaux_votes.map((t, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a', flexWrap: 'wrap', gap: 8 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <AlertTriangle size={14} style={{ color: '#d97706', flexShrink: 0 }}/>
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: '#92400e' }}>{t.label}</div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                            <span style={{ fontSize: 11, color: '#94a3b8' }}>Prévu en {t.annee}</span>
-                            <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fef3c7', border: '1px solid #fde68a', padding: '1px 7px', borderRadius: 100 }}>{t.statut}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: '#d97706' }}>~{t.montant.toLocaleString()}€</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun travaux voté détecté dans les documents.</p>
-              )}
-            </SectionCard>
-
-            {/* Travaux à prévoir */}
-            <SectionCard title="Travaux estimés (non votés)" icon={<HardHat size={16}/>} color="#64748b">
-              {rapport.travaux_a_prevoir.length > 0 ? (
                 <>
-                  <div style={{ padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0', marginBottom: 14, display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <Info size={13} style={{ color: '#94a3b8', flexShrink: 0 }}/>
-                    <span style={{ fontSize: 12, color: '#64748b' }}>Ces travaux sont estimés par Verimo sur la base des documents analysés. Ils ne sont pas encore votés en AG.</span>
+                  <div style={{ padding: '10px 14px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0', marginBottom: 14, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <Info size={13} style={{ color: '#16a34a', flexShrink: 0, marginTop: 2 }}/>
+                    <span style={{ fontSize: 12, color: '#166534', lineHeight: 1.5 }}>Ces travaux ayant été votés avant votre acquisition, une convention entre vendeur et acheteur précise généralement que le vendeur en supporte les coûts. Vérifiez ce point avec votre notaire lors de la signature.</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {rapport.travaux_a_prevoir.map((t, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0', flexWrap: 'wrap', gap: 8 }}>
+                    {rapport.travaux_votes.map((t, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0', flexWrap: 'wrap', gap: 8 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <HardHat size={14} style={{ color: '#64748b', flexShrink: 0 }}/>
+                          <CheckCircle size={14} style={{ color: '#16a34a', flexShrink: 0 }}/>
                           <div>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>{t.label}</div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#166534' }}>{t.label}</div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                              <span style={{ fontSize: 11, color: '#94a3b8' }}>Horizon {t.annee}</span>
-                              <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '1px 7px', borderRadius: 100 }}>{t.statut}</span>
+                              {t.annee && <span style={{ fontSize: 11, color: '#94a3b8' }}>Prévu en {t.annee}</span>}
+                              {t.statut && <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '1px 7px', borderRadius: 100 }}>{t.statut}</span>}
                             </div>
                           </div>
                         </div>
-                        <span style={{ fontSize: 14, fontWeight: 800, color: '#64748b' }}>~{t.montant.toLocaleString()}€</span>
+                        {t.montant_estime && <span style={{ fontSize: 14, fontWeight: 800, color: '#16a34a' }}>~{t.montant_estime.toLocaleString()}€</span>}
                       </div>
                     ))}
                   </div>
                 </>
               ) : (
-                <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun travaux supplémentaire estimé.</p>
+                <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun travaux voté détecté dans les documents. Aucun élément préoccupant identifié concernant ce point.</p>
               )}
             </SectionCard>
+
+            {/* Travaux évoqués non votés */}
+            <SectionCard title="Travaux évoqués (non votés)" icon={<HardHat size={16}/>} color="#d97706">
+              {rapport.travaux_a_prevoir.length > 0 ? (
+                <>
+                  <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a', marginBottom: 14, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <AlertTriangle size={13} style={{ color: '#d97706', flexShrink: 0, marginTop: 2 }}/>
+                    <span style={{ fontSize: 12, color: '#92400e', lineHeight: 1.5 }}>Ces travaux ont été évoqués mais pas encore votés. Si le vote intervient après votre acquisition, vous en supporterez une partie du coût. Nous vous recommandons d'en parler avec le vendeur ou votre agent immobilier.</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {rapport.travaux_a_prevoir.map((t, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a', flexWrap: 'wrap', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <AlertTriangle size={14} style={{ color: '#d97706', flexShrink: 0 }}/>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#92400e' }}>{t.label}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                              {t.annee && <span style={{ fontSize: 11, color: '#94a3b8' }}>Horizon {t.annee}</span>}
+                              {t.statut && <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fef3c7', border: '1px solid #fde68a', padding: '1px 7px', borderRadius: 100 }}>{t.statut}</span>}
+                            </div>
+                          </div>
+                        </div>
+                        {t.montant_estime
+                          ? <span style={{ fontSize: 14, fontWeight: 800, color: '#d97706' }}>~{t.montant_estime.toLocaleString()}€</span>
+                          : <span style={{ fontSize: 12, color: '#94a3b8' }}>Montant non précisé</span>}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun travaux évoqué sans vote détecté dans les documents. Aucun élément préoccupant identifié concernant ce point.</p>
+              )}
+            </SectionCard>
+
+            {/* Quote-part travaux */}
+            {rapport.quote_part_travaux && (
+              <div style={{ padding: '14px 18px', background: '#f0f9ff', borderRadius: 12, border: '1px solid #bae6fd', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <Info size={14} style={{ color: '#0284c7', flexShrink: 0, marginTop: 2 }}/>
+                <span style={{ fontSize: 13, color: '#0369a1', lineHeight: 1.6 }}>{rapport.quote_part_travaux}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══ FINANCES ══ */}
+        {activeTab === 'finances' && isComplete && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+            <SectionCard title="Charges de copropriété" icon={<Euro size={16}/>} color="#16a34a">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
+                {rapport.charges_mensuelles > 0 && <StatBox label="Mensuel" value={`${rapport.charges_mensuelles}€`} color="#16a34a"/>}
+                {rapport.charges_mensuelles > 0 && <StatBox label="Annuel" value={`${(rapport.charges_mensuelles * 12).toLocaleString()}€`} color="#0f172a"/>}
+                {rapport.fonds_travaux > 0 && <StatBox label="Fonds travaux" value={`${(rapport.fonds_travaux/1000).toFixed(0)}k€`} sub="Disponibles" color="#2a7d9c"/>}
+              </div>
+
+              {/* Statut fonds travaux */}
+              {rapport.fonds_travaux_statut && rapport.fonds_travaux_statut !== 'non_mentionne' && (
+                <div style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid', marginTop: 8,
+                  background: rapport.fonds_travaux_statut === 'conforme' || rapport.fonds_travaux_statut === 'au_dessus' ? '#f0fdf4' : '#fef2f2',
+                  borderColor: rapport.fonds_travaux_statut === 'conforme' || rapport.fonds_travaux_statut === 'au_dessus' ? '#bbf7d0' : '#fecaca' }}>
+                  <span style={{ fontSize: 12, color: rapport.fonds_travaux_statut === 'conforme' || rapport.fonds_travaux_statut === 'au_dessus' ? '#166534' : '#991b1b', fontWeight: 600 }}>
+                    Fonds travaux : {rapport.fonds_travaux_statut === 'conforme' ? 'conforme au minimum légal' : rapport.fonds_travaux_statut === 'insuffisant' ? 'insuffisant' : 'absent'}
+                  </span>
+                </div>
+              )}
+            </SectionCard>
+
+            {/* Détail catégorie finances */}
+            {rapport.categories.finances.details.length > 0 && (
+              <SectionCard title="Détail finances" icon={<TrendingUp size={16}/>} color="#d97706">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {rapport.categories.finances.details.map((d, i) => (
+                    <div key={i} style={{ padding: '12px 16px', borderRadius: 10, border: '1px solid', background: d.impact === 'positif' ? '#f0fdf4' : d.impact === 'negatif' ? '#fef2f2' : '#f8fafc', borderColor: d.impact === 'positif' ? '#bbf7d0' : d.impact === 'negatif' ? '#fecaca' : '#e2e8f0' }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginBottom: 4 }}>{d.label}</div>
+                      <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>{d.message}</div>
+                    </div>
+                  ))}
+                </div>
+              </SectionCard>
+            )}
+
+            {rapport.categories.finances.details.length === 0 && (
+              <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #edf2f7', padding: '32px', textAlign: 'center' }}>
+                <CheckCircle size={28} style={{ color: '#16a34a', margin: '0 auto 12px' }}/>
+                <p style={{ fontSize: 14, color: '#374151', fontWeight: 600 }}>Aucun élément préoccupant identifié</p>
+                <p style={{ fontSize: 13, color: '#94a3b8', marginTop: 4 }}>La situation financière de la copropriété semble saine selon les documents analysés.</p>
+              </div>
+            )}
           </div>
         )}
 
         {/* ══ PROCÉDURES ══ */}
         {activeTab === 'procedures' && isComplete && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            {rapport.procedures_en_cours ? (
+            {rapport.procedures_en_cours && rapport.procedures.length > 0 ? (
               <>
                 <div style={{ padding: '14px 18px', background: '#fef2f2', borderRadius: 13, border: '1.5px solid #fecaca', display: 'flex', gap: 10, alignItems: 'center' }}>
                   <AlertTriangle size={16} style={{ color: '#dc2626', flexShrink: 0 }}/>
                   <span style={{ fontSize: 13, fontWeight: 600, color: '#991b1b' }}>
-                    {rapport.procedures.length} procédure{rapport.procedures.length > 1 ? 's' : ''} en cours détectée{rapport.procedures.length > 1 ? 's' : ''} dans les documents.
+                    {rapport.procedures.length} procédure{rapport.procedures.length > 1 ? 's' : ''} détectée{rapport.procedures.length > 1 ? 's' : ''} dans les documents.
                   </span>
                 </div>
-
                 {rapport.procedures.map((proc, i) => (
                   <SectionCard key={i} title={proc.type} icon={<Gavel size={16}/>} color="#dc2626">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Statut :</span>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#dc2626', background: '#fef2f2', border: '1px solid #fecaca', padding: '2px 10px', borderRadius: 100 }}>{proc.statut}</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginLeft: 8 }}>Sévérité :</span>
-                      <SeveriteBadge sev={proc.severite}/>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                      <SeveriteBadge sev={proc.gravite}/>
                     </div>
-                    <div style={{ marginBottom: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 6 }}>DÉTAIL</div>
-                      <p style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.7 }}>{proc.detail}</p>
-                    </div>
-                    <div style={{ padding: '12px 16px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a' }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#d97706', letterSpacing: '0.08em', marginBottom: 5 }}>IMPACT SUR VOTRE ACQUISITION</div>
-                      <p style={{ fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>{proc.impact}</p>
+                    {proc.message && <p style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.7 }}>{proc.message}</p>}
+                    <div style={{ padding: '12px 16px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a', marginTop: 12 }}>
+                      <p style={{ fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>Nous vous recommandons de demander des précisions au vendeur ou à votre agent immobilier sur cette procédure avant de vous engager.</p>
                     </div>
                   </SectionCard>
                 ))}
@@ -552,14 +642,39 @@ export default function RapportPage() {
                 <div style={{ width: 64, height: 64, borderRadius: 18, background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
                   <CheckCircle size={28} style={{ color: '#16a34a' }}/>
                 </div>
-                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Aucune procédure en cours</h3>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Aucune procédure identifiée</h3>
                 <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.6 }}>Aucune procédure judiciaire ou litige n'a été détecté dans les documents analysés.</p>
               </div>
             )}
           </div>
         )}
 
-        {/* ── Bannière 7 jours (rapport complet non preview) */}
+        {/* ══ DOCUMENTS ══ */}
+        {activeTab === 'documents' && isComplete && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            {rapport.documents_detectes && rapport.documents_detectes.length > 0 ? (
+              rapport.documents_detectes.map((doc, i) => (
+                <SectionCard key={i} title={doc.nom} icon={<FileText size={16}/>} color="#7c3aed">
+                  <p style={{ fontSize: 13, color: '#64748b', lineHeight: 1.6, marginBottom: 14, fontStyle: 'italic' }}>{doc.explication}</p>
+                  {doc.infos_cles && doc.infos_cles.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {doc.infos_cles.map((info, j) => (
+                        <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #edf2f7' }}>
+                          <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#7c3aed', flexShrink: 0 }}/>
+                          <span style={{ fontSize: 13, color: '#374151' }}>{info}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </SectionCard>
+              ))
+            ) : (
+              <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun document détecté.</p>
+            )}
+          </div>
+        )}
+
+        {/* ── Bannière 7 jours */}
         {isComplete && !rapport.is_preview && rapport.regeneration_deadline && (() => {
           const deadline = new Date(rapport.regeneration_deadline);
           const now = new Date();
@@ -568,52 +683,51 @@ export default function RapportPage() {
           const urgent = diffDays <= 2 && !expired;
           return (
             <div style={{ marginTop: 20, padding: '16px 20px', borderRadius: 14, background: expired ? '#f8fafc' : urgent ? '#fffbeb' : '#f0fdf4', border: `1.5px solid ${expired ? '#e2e8f0' : urgent ? '#fde68a' : '#bbf7d0'}`, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-              <RefreshCw size={16} style={{ color: expired ? '#94a3b8' : urgent ? '#d97706' : '#16a34a', flexShrink: 0 }} />
+              <RefreshCw size={16} style={{ color: expired ? '#94a3b8' : urgent ? '#d97706' : '#16a34a', flexShrink: 0 }}/>
               <div style={{ flex: 1, minWidth: 200 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: expired ? '#94a3b8' : urgent ? '#92400e' : '#166534', marginBottom: 2 }}>
                   {expired ? 'Délai de complétion expiré' : `Vous pouvez compléter ce dossier — encore ${diffDays} jour${diffDays > 1 ? 's' : ''}`}
                 </div>
                 <div style={{ fontSize: 12, color: expired ? '#cbd5e1' : '#64748b' }}>
-                  {expired ? 'Le délai de 7 jours pour ajouter des documents est dépassé.' : 'Ajoutez des documents oubliés et obtenez un rapport mis à jour — gratuitement.'}
+                  {expired ? 'Le délai de 7 jours pour ajouter des documents est dépassé.' : 'Ajoutez votre appel de charges ou tout autre document oubliés et obtenez un rapport mis à jour — gratuitement.'}
                 </div>
               </div>
               {!expired ? (
-                <button
-                  onClick={() => window.location.href = `/dashboard/rapport?id=${id}&action=complement`}
+                <button onClick={() => window.location.href = `/dashboard/rapport?id=${id}&action=complement`}
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 10, border: 'none', background: urgent ? '#d97706' : '#16a34a', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                  <RefreshCw size={13} /> Compléter le dossier
+                  <RefreshCw size={13}/> Compléter le dossier
                 </button>
               ) : (
                 <button disabled style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 10, border: '1px solid #e2e8f0', background: '#f1f5f9', color: '#94a3b8', fontSize: 13, fontWeight: 700, cursor: 'not-allowed', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                  <Lock size={13} /> Délai expiré
+                  <Lock size={13}/> Délai expiré
                 </button>
               )}
             </div>
           );
         })()}
 
-        {/* ── Section documents analysés */}
+        {/* ── Documents analysés */}
         {rapport.document_names && rapport.document_names.length > 0 && (
           <div style={{ marginTop: 16, padding: '16px 20px', background: '#fff', borderRadius: 14, border: '1px solid #edf2f7' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-              <Paperclip size={14} style={{ color: '#94a3b8' }} />
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b', letterSpacing: '0.06em' }}>DOCUMENTS ANALYSÉS</span>
+              <Paperclip size={14} style={{ color: '#94a3b8' }}/>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b', letterSpacing: '0.06em' }}>FICHIERS ANALYSÉS</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {rapport.document_names.map((name: string, i: number) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7' }}>
-                  <FileText size={12} style={{ color: '#2a7d9c', flexShrink: 0 }} />
+                  <FileText size={12} style={{ color: '#2a7d9c', flexShrink: 0 }}/>
                   <span style={{ fontSize: 12, color: '#374151', fontWeight: 500 }}>{name}</span>
                 </div>
               ))}
             </div>
             <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 10, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <Shield size={11} /> Ces documents ne sont plus stockés sur nos serveurs, conformément à notre politique RGPD.
+              <Shield size={11}/> Ces documents ne sont plus stockés sur nos serveurs, conformément à notre politique RGPD.
             </p>
           </div>
         )}
 
-        {/* Footer rapport */}
+        {/* Footer */}
         <div style={{ marginTop: 16, padding: '16px 20px', background: '#fff', borderRadius: 13, border: '1px solid #edf2f7', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <Shield size={14} style={{ color: '#94a3b8', flexShrink: 0 }}/>
           <span style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>
@@ -623,7 +737,6 @@ export default function RapportPage() {
         </div>
       </div>
 
-      {/* Print styles */}
       <style>{`
         @media print {
           header { display: none !important; }
