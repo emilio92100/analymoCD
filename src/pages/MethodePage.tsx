@@ -234,16 +234,24 @@ export default function MethodePage() {
 
       {/* ── HERO COMPACT ──────────────────────────────────────── */}
       <section style={{ background: '#f8fafc', borderBottom: '1px solid #edf2f7', padding: '52px 24px 44px', textAlign: 'center' }}>
-        <div style={{ maxWidth: 680, margin: '0 auto' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 16px', borderRadius: 100, background: '#f0f7fb', border: '1px solid #bae3f5', fontSize: 12, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 20 }}>
+        <div style={{ maxWidth: 760, margin: '0 auto' }}>
+          <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.22em', textTransform: 'uppercase' as const, marginBottom: 16 }}>
             Notre méthode
-          </div>
-          <h1 style={{ fontSize: 'clamp(30px,4vw,52px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em', lineHeight: 1.08, marginBottom: 16 }}>
-            Comment Verimo analyse<br />vos documents
-          </h1>
-          <p style={{ fontSize: 'clamp(15px,1.8vw,18px)', color: '#64748b', lineHeight: 1.7, margin: 0 }}>
-            De l'upload du document à la recommandation finale —<br />voici exactement ce qu'on fait, et pourquoi.
-          </p>
+          </motion.p>
+          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}
+            style={{ fontSize: 'clamp(28px,5.5vw,64px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em', lineHeight: 1.08, marginBottom: 20 }}>
+            Comment Verimo analyse{' '}
+            <span style={{ position: 'relative', display: 'inline-block' }}>
+              <span style={{ color: '#2a7d9c' }}>vos documents</span>
+              <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 2.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                style={{ position: 'absolute', bottom: -4, left: 0, right: 0, height: 4, background: 'rgba(42,125,156,0.25)', borderRadius: 99, transformOrigin: 'left', display: 'block' }} />
+            </span>
+          </motion.h1>
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
+            style={{ fontSize: 'clamp(15px,1.8vw,19px)', color: '#64748b', lineHeight: 1.7, maxWidth: 520, margin: '0 auto' }}>
+            De l'upload du document à la recommandation finale — voici exactement ce qu'on fait, et pourquoi.
+          </motion.p>
         </div>
       </section>
 
@@ -314,7 +322,7 @@ export default function MethodePage() {
               <div style={{ marginTop: 12, padding: '13px 18px', borderRadius: 11, background: '#fffbeb', border: '1px solid #fde68a', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 16 }}>🎁</span>
                 <p style={{ fontSize: 13, color: '#92400e', margin: 0, lineHeight: 1.6 }}>
-                  <strong>Aperçu gratuit à l'inscription</strong> — avant tout paiement, Verimo détecte 2-3 points de vigilance dans vos documents. Sans note /20.
+                  <strong>Aperçu gratuit à l'inscription</strong> — avant tout paiement, Verimo génère un aperçu avec les points de vigilance clés. Pour l'analyse complète, le score /20 est visible mais grisé jusqu'au paiement.
                 </p>
               </div>
             </Reveal>
