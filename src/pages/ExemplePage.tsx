@@ -137,7 +137,12 @@ export default function ExemplePage() {
         </motion.div>
         <motion.h1 initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
           style={{ fontSize: 'clamp(26px,4.5vw,52px)', fontWeight: 900, color: '#0f2d3d', marginBottom: 14, letterSpacing: '-0.025em', lineHeight: 1.1 }}>
-          Voici ce que Verimo <span style={{ color: '#2a7d9c' }}>vous produit.</span>
+          Voici ce que Verimo{' '}
+          <span style={{ position: 'relative', display: 'inline-block', whiteSpace: 'nowrap' }}>
+            <span style={{ color: '#2a7d9c' }}>vous produit.</span>
+            <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 2.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              style={{ position: 'absolute', bottom: -4, left: 0, right: 0, height: 4, background: 'rgba(42,125,156,0.25)', borderRadius: 99, transformOrigin: 'left', display: 'block' }} />
+          </span>
         </motion.h1>
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.18 }}
           style={{ fontSize: 16, color: '#6b8a96', maxWidth: 520, margin: '0 auto 28px', lineHeight: 1.7 }}>
