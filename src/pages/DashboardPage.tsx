@@ -828,7 +828,7 @@ function NouvelleAnalyse() {
     setStep('analyse'); setError(''); setProgress(5); setProgressMsg('Lecture des documents…');
 
     const docNames = files.map(f => f.name);
-    const analyseDB = await createApercu(type, files[0].name, docNames);
+    const analyseDB = await createApercu(type, files[0].name, 'rp', docNames);
     const analyseId = analyseDB?.id || null;
 
     try {
@@ -884,7 +884,7 @@ function NouvelleAnalyse() {
     setStep('analyse'); setError(''); setProgress(5); setProgressMsg('Lecture des documents…');
 
     const docNames = files.map(f => f.name);
-    const analyseDB = await createAnalyse(type, files[0].name, docNames);
+    const analyseDB = await createAnalyse(type, files[0].name, 'rp', docNames);
     const analyseId = analyseDB?.id || null;
 
     try {
