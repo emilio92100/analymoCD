@@ -81,12 +81,6 @@ function HeroSection() {
 
         {/* MOBILE */}
         <div className="flex flex-col items-center lg:hidden pt-8 pb-4">
-          <motion.div variants={up} initial="hidden" animate="show" custom={0}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#2a7d9c]/25 bg-white text-[#1a5e78] text-sm font-semibold mb-5 shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-[#22c55e] shrink-0" style={{ animation: "pulse 2s ease-in-out infinite" }} />
-            Analyse immobilière intelligente
-          </motion.div>
-
           <motion.h1 variants={up} initial="hidden" animate="show" custom={0.5}
             className="font-black leading-[1.08] tracking-[-0.03em] text-[#0f172a] mb-3 text-center w-full px-2"
             style={{ fontSize: "clamp(28px, 7.5vw, 36px)" }}>
