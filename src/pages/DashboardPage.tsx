@@ -156,14 +156,14 @@ function useAnalyses() {
    SCORE BADGE
 ══════════════════════════════════════════ */
 function ScoreBadge({ score, size = 'md' }: { score: number; size?: 'sm' | 'md' | 'lg' }) {
-  const color = score >= 7.5 ? '#16a34a' : score >= 5 ? '#d97706' : '#dc2626';
-  const bg    = score >= 7.5 ? '#f0fdf4' : score >= 5 ? '#fffbeb' : '#fef2f2';
-  const bord  = score >= 7.5 ? '#bbf7d0' : score >= 5 ? '#fde68a' : '#fecaca';
+  const color = score >= 14 ? '#16a34a' : score >= 10 ? '#d97706' : '#dc2626';
+  const bg    = score >= 14 ? '#f0fdf4' : score >= 10 ? '#fffbeb' : '#fef2f2';
+  const bord  = score >= 14 ? '#bbf7d0' : score >= 10 ? '#fde68a' : '#fecaca';
   const fs    = size === 'lg' ? 52 : size === 'md' ? 18 : 14;
   const pad   = size === 'lg' ? '12px 28px' : size === 'md' ? '5px 12px' : '3px 9px';
   return (
     <span style={{ display:'inline-flex', alignItems:'baseline', gap:2, padding:pad, borderRadius:10, background:bg, border:`1.5px solid ${bord}`, fontSize:fs, fontWeight:900, color, letterSpacing:'-0.01em', flexShrink:0 }}>
-      {score.toFixed(1)}<span style={{ fontSize: fs * 0.55, fontWeight:600, opacity:0.65 }}>/10</span>
+      {score.toFixed(1)}<span style={{ fontSize: fs * 0.55, fontWeight:600, opacity:0.65 }}>/20</span>
     </span>
   );
 }
@@ -260,11 +260,24 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
    TOPBAR
 ══════════════════════════════════════════ */
 function Topbar({ onMenuClick, title }: { onMenuClick:()=>void; title:string }) {
+  const { name } = useUser();
+  const navigate = useNavigate();
   return (
     <header style={{ height:68, background:'#fff', borderBottom:'1px solid #edf2f7', display:'flex', alignItems:'center', padding:'0 24px', gap:12, position:'sticky', top:0, zIndex:40, flexShrink:0 }}>
       <button className="mobile-menu-btn" onClick={onMenuClick} style={{ background:'none', border:'none', cursor:'pointer', color:'#0f2d3d', padding:4, display:'none' }}><Menu size={20}/></button>
       <p style={{ flex:1, fontSize:17, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em', margin:0 }}>{title}</p>
       <button style={{ width:36, height:36, borderRadius:9, background:'#f8fafc', border:'1px solid #edf2f7', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#94a3b8' }}><Bell size={15}/></button>
+      <button
+        onClick={() => navigate('/dashboard/compte')}
+        title="Mon compte"
+        style={{ display:'flex', alignItems:'center', gap:9, padding:'6px 10px 6px 6px', borderRadius:10, background:'#f8fafc', border:'1px solid #edf2f7', cursor:'pointer', transition:'all 0.15s' }}
+        onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#f0f7fb'; (e.currentTarget as HTMLElement).style.borderColor = '#c7dde8'; }}
+        onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = '#f8fafc'; (e.currentTarget as HTMLElement).style.borderColor = '#edf2f7'; }}>
+        <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color:'#fff', flexShrink:0 }}>
+          {(name.charAt(0) || 'U').toUpperCase()}
+        </div>
+        <span style={{ fontSize:13, fontWeight:700, color:'#0f172a', whiteSpace:'nowrap' }} className="topbar-cta">{name || 'Mon compte'}</span>
+      </button>
     </header>
   );
 }
@@ -549,7 +562,7 @@ const penalties = [
         </div>
       </div>
 
-      {/* ── Section note /10 — pleine largeur avec onglets */}
+      {/* ── Section note /20 — pleine largeur avec onglets */}
       <NoteExplicativeBlock penalties={penalties} bonuses={bonuses} scale={scale}/>
 
     </div>
@@ -796,7 +809,7 @@ function NouvelleAnalyse() {
 
   const plans = {
     document: { label:"Analyse d'un document",       price:'4,90€',  max:1,  desc:'Un seul fichier — PV d\'AG, règlement, diagnostic, appel de charges.', creditsKey:'document' as keyof Credits },
-    complete: { label:"Analyse complète d'un logement", price:'19,90€', max:20, desc:'Tous les documents du bien — score /10, risques, recommandation Verimo.', creditsKey:'complete' as keyof Credits },
+    complete: { label:"Analyse complète d'un logement", price:'19,90€', max:20, desc:'Tous les documents du bien — score /20, risques, recommandation Verimo.', creditsKey:'complete' as keyof Credits },
   };
   const plan = type ? plans[type] : null;
 
@@ -1117,7 +1130,7 @@ function NouvelleAnalyse() {
             <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'24px', textAlign:'center' }}>
               <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.1em', marginBottom:12 }}>SCORE GLOBAL</div>
               <div style={{ fontSize:56, fontWeight:900, color:scoreColor, letterSpacing:'-0.03em', lineHeight:1, marginBottom:4 }}>{result.score.toFixed(1)}</div>
-              <div style={{ fontSize:14, color:'#94a3b8' }}>/ 10</div>
+              <div style={{ fontSize:14, color:'#94a3b8' }}>/ 20</div>
             </div>
             <div style={{ background:'#fff', borderRadius:16, border:'1px solid #edf2f7', padding:'24px', textAlign:'center' }}>
               <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.1em', marginBottom:12 }}>RECOMMANDATION</div>
@@ -1190,7 +1203,7 @@ function NouvelleAnalyse() {
             <div style={{ filter:'blur(6px)', pointerEvents:'none', userSelect:'none' }}>
               <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.1em', marginBottom:8 }}>SCORE GLOBAL</div>
               <div style={{ fontSize:52, fontWeight:900, color:'#94a3b8', letterSpacing:'-0.03em', lineHeight:1 }}>?.?</div>
-              <div style={{ fontSize:14, color:'#94a3b8' }}>/10</div>
+              <div style={{ fontSize:14, color:'#94a3b8' }}>/20</div>
             </div>
             <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:8 }}>
               <Lock size={22} style={{ color:'#64748b' }}/>
@@ -1225,7 +1238,7 @@ function NouvelleAnalyse() {
               {isComplete ? 'Accédez au rapport complet' : 'Accédez à l&apos;analyse complète du document'}
             </h2>
             <p style={{ fontSize:13, color:'rgba(255,255,255,0.65)', lineHeight:1.6, marginBottom:20 }}>
-              Score {isComplete ? '/10, travaux, charges, procédures et avis Verimo' : 'et analyse approfondie'}. Rapport PDF téléchargeable inclus.
+              Score {isComplete ? '/20, travaux, charges, procédures et avis Verimo' : 'et analyse approfondie'}. Rapport PDF téléchargeable inclus.
             </p>
             <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
               <Link to="/dashboard/tarifs"
@@ -1423,7 +1436,7 @@ function Compare() {
                 const [b1, b2] = selectedAnalyses;
                 const s1 = b1.score ?? 0, s2 = b2.score ?? 0;
                 const best = s1 >= s2 ? b1 : b2;
-                return <p style={{ fontSize:14, color:'#0f172a', fontWeight:600, lineHeight:1.6 }}>Le bien <strong>"{best.adresse_bien}"</strong> (score {(best.score??0).toFixed(1)}/10) est recommandé selon nos analyses. Consultez les rapports détaillés pour affiner votre décision.</p>;
+                return <p style={{ fontSize:14, color:'#0f172a', fontWeight:600, lineHeight:1.6 }}>Le bien <strong>"{best.adresse_bien}"</strong> (score {(best.score??0).toFixed(1)}/20) est recommandé selon nos analyses. Consultez les rapports détaillés pour affiner votre décision.</p>;
               })()}
             </div>
           </div>
@@ -1559,8 +1572,37 @@ function Compte() {
           </button>
         ) : (
           <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
-            <span style={{ fontSize:13, color:'#dc2626', fontWeight:600 }}>Êtes-vous sûr ?</span>
-            <button onClick={async ()=>{ await supabase.auth.signOut(); window.location.href='/'; }}
+            <span style={{ fontSize:13, color:'#dc2626', fontWeight:600 }}>Êtes-vous sûr ? Cette action est irréversible.</span>
+            <button onClick={async () => {
+              try {
+                // Suppression réelle du compte via RPC Supabase
+                const { error } = await supabase.rpc('delete_current_user');
+                if (error) {
+                  // Fallback : suppression via API REST avec le token actuel
+                  const { data: { session } } = await supabase.auth.getSession();
+                  if (session) {
+                    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/auth/v1/user`, {
+                      method: 'DELETE',
+                      headers: {
+                        'Authorization': `Bearer ${session.access_token}`,
+                        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+                      },
+                    });
+                    if (!res.ok) {
+                      alert('Erreur lors de la suppression. Contactez le support à hello@verimo.fr');
+                      return;
+                    }
+                  }
+                }
+                // Nettoyage localStorage
+                localStorage.removeItem('verimo_user_name');
+                localStorage.removeItem('verimo_user_email');
+                await supabase.auth.signOut();
+                window.location.href = '/';
+              } catch {
+                alert('Erreur lors de la suppression. Contactez le support à hello@verimo.fr');
+              }
+            }}
               style={{ padding:'10px 18px', borderRadius:9, background:'#dc2626', border:'none', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer' }}>
               Confirmer la suppression
             </button>
@@ -1678,7 +1720,7 @@ function Tarifs() {
       popular: true,
       details: [
         'Documents illimités pour un seul bien',
-        'Score global noté /10',
+        'Score global noté /20',
         'Recommandation : Acheter / Négocier / Risqué',
         'Estimation des risques financiers',
         'Avis Verimo complet',
