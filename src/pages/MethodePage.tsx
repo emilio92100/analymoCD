@@ -428,6 +428,15 @@ export default function MethodePage() {
                 </Reveal>
               ))}
             </div>
+
+            <Reveal delay={0.3}>
+              <div style={{ marginTop: 14, padding: '13px 18px', borderRadius: 11, background: '#f0fdf4', border: '1px solid #d1fae5', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Shield size={14} color="#16a34a" style={{ flexShrink: 0 }} />
+                <p style={{ fontSize: 13, color: '#15803d', fontWeight: 600, margin: 0 }}>
+                  Vos documents sont supprimés immédiatement après traitement. Aucun stockage permanent — RGPD complet.
+                </p>
+              </div>
+            </Reveal>
           </section>
 
           {/* ── 3. PRINCIPE SCORE /20 ─────────────────────────── */}
