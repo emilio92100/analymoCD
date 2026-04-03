@@ -734,8 +734,8 @@ function SecuriteSection() {
     },
     {
       icon: Shield,
-      title: "Hébergement en Europe",
-      desc: "Toutes vos données sont hébergées sur des serveurs européens, conformément au RGPD.",
+      title: "Hébergement en France",
+      desc: "Toutes vos données sont hébergées sur des serveurs français, conformément au RGPD.",
       color: "#f0a500",
       bg: "rgba(240,165,0,0.08)",
     },
