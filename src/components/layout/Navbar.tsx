@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 
 const navLinks = [
   { to: '/', label: 'Accueil' },
+  { to: '/methode', label: 'Notre méthode' },
   { to: '/exemple', label: 'Exemple' },
   { to: '/tarifs', label: 'Tarifs' },
   { to: '/contact', label: 'Contact' },
