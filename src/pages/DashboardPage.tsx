@@ -363,27 +363,31 @@ function HomeView() {
     ? (completedComplete.reduce((s: number, a: Analyse) => s + (a.score||0), 0) / completedComplete.length).toFixed(1)
     : null;
 
-  const penalties = [
-    { cat: 'Copropriété', items: [{ l: 'Travaux votés', v: '-1 à -2' }, { l: 'Gros travaux lourds', v: '-2 à -3' }, { l: 'Problèmes récurrents', v: '-1 à -2' }] },
-    { cat: 'Procédures', items: [{ l: 'Procédure en cours', v: '-2 à -4' }] },
-    { cat: 'Finances', items: [{ l: 'Charges élevées', v: '-1 à -2' }, { l: 'Impayés', v: '-1 à -2' }] },
-    { cat: 'Diagnostics', items: [{ l: 'DPE E', v: '-0,5' }, { l: 'DPE F', v: '-1,5' }, { l: 'DPE G', v: '-2 à -3' }, { l: 'Anomalies gaz/élec', v: '-0,5 à -1,5' }, { l: 'Amiante / plomb', v: '-1 à -2' }] },
-    { cat: 'Juridique', items: [{ l: 'Contraintes légales', v: '-0,5 à -1,5' }] },
+const penalties = [
+    { cat: 'Travaux', items: [{ l: 'Gros travaux évoqués non votés', v: '-2 à -3' }, { l: 'Travaux urgents non anticipés', v: '-3 à -4' }] },
+    { cat: 'Procédures', items: [{ l: 'Copro vs syndic', v: '-2 à -4' }, { l: 'Copro vs copropriétaire', v: '-0,5 à -1' }, { l: 'Copropriété en difficulté', v: '-3 à -4' }] },
+    { cat: 'Finances', items: [{ l: 'Écart budget >30%', v: '-3' }, { l: 'Écart budget 15-30%', v: '-2' }, { l: 'Fonds travaux nul', v: '-2' }, { l: 'Impayés charges', v: '-1 à -2' }] },
+    { cat: 'Diagnostics privatifs', items: [{ l: 'DPE F (résidence principale)', v: '-2' }, { l: 'DPE G (résidence principale)', v: '-3' }, { l: 'DPE F (investissement)', v: '-4' }, { l: 'DPE G (investissement)', v: '-6' }, { l: 'Électricité anomalies majeures', v: '-2' }, { l: 'Amiante accessible dégradé', v: '-2' }, { l: 'Termites non traités', v: '-2' }] },
+    { cat: 'Diagnostics communs', items: [{ l: 'Amiante parties communes dégradé', v: '-2' }, { l: 'Termites parties communes non traités', v: '-2' }] },
   ];
 
   const bonuses = [
-    { l: 'Travaux déjà réalisés', v: '+0,5 à +1' },
-    { l: 'Bonne gestion copropriété', v: '+0,5 à +1' },
-    { l: 'Diagnostics rassurants', v: '+0,5 à +1' },
-    { l: 'Charges maîtrisées', v: '+0,5 à +1' },
+    { l: 'Travaux votés (à la charge du vendeur)', v: '+0,5 à +1' },
+    { l: 'Garantie décennale sur travaux récents', v: '+0,5 à +1' },
+    { l: 'Fonds travaux conforme au minimum légal', v: '+0,5' },
+    { l: 'Fonds travaux au-dessus du minimum légal', v: '+1' },
+    { l: 'Certificat entretien chaudière/ramonage', v: '+0,5' },
+    { l: 'Immeuble bien entretenu', v: '+0,5' },
+    { l: 'DPE A', v: '+1' },
+    { l: 'DPE B ou C', v: '+0,5' },
   ];
 
   const scale = [
-    { r: '9 – 10', l: 'Très rassurant', c: '#16a34a', bg: '#f0fdf4' },
-    { r: '7 – 8,5', l: 'Globalement sain', c: '#16a34a', bg: '#f0fdf4' },
-    { r: '5 – 6,5', l: 'Moyen / à surveiller', c: '#d97706', bg: '#fffbeb' },
-    { r: '3 – 4,5', l: 'Risqué', c: '#dc2626', bg: '#fef2f2' },
-    { r: '0 – 2,5', l: 'Très risqué', c: '#dc2626', bg: '#fef2f2' },
+    { r: '17 – 20', l: 'Excellent', c: '#15803d', bg: '#f0fdf4' },
+    { r: '14 – 16', l: 'Bon profil', c: '#16a34a', bg: '#f0fdf4' },
+    { r: '10 – 13', l: 'Correct avec réserves', c: '#d97706', bg: '#fffbeb' },
+    { r: '7 – 9', l: 'Vigilance requise', c: '#ea580c', bg: '#fff7ed' },
+    { r: '0 – 6', l: 'Risqué', c: '#dc2626', bg: '#fef2f2' },
   ];
 
   const tips = [
@@ -431,7 +435,7 @@ function HomeView() {
           <div style={{ background:'#fff', borderRadius:14, border:'1px solid #edf2f7', padding:'18px' }}>
             <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', letterSpacing:'0.08em', marginBottom:8 }}>ANALYSES TOTALES</div>
             <div style={{ fontSize:34, fontWeight:900, color:'#0f172a', letterSpacing:'-0.03em', lineHeight:1, marginBottom:4 }}>{totalAnalyses}</div>
-            {avgScore ? <div style={{ fontSize:12, color:'#16a34a', fontWeight:700 }}>Score moyen : {avgScore}/10</div> : <div style={{ fontSize:12, color:'#94a3b8' }}>Aucune analyse complète</div>}
+            {avgScore ? <div style={{ fontSize:12, color:'#16a34a', fontWeight:700 }}>Note moyenne : {avgScore}/20</div> : <div style={{ fontSize:12, color:'#94a3b8' }}>Aucune analyse complète</div>}
           </div>
           <div style={{ background:'#fff', borderRadius:14, border:'1px solid #edf2f7', padding:'18px' }}>
             <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', letterSpacing:'0.08em', marginBottom:8 }}>DERNIÈRE ANALYSE</div>
