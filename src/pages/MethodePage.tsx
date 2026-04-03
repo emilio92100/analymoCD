@@ -240,7 +240,7 @@ export default function MethodePage() {
             Notre méthode
           </motion.p>
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}
-            style={{ fontSize: 'clamp(28px,5.5vw,64px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em', lineHeight: 1.08, marginBottom: 20 }}>
+            style={{ fontSize: 'clamp(28px,4vw,52px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em', lineHeight: 1.08, marginBottom: 20 }}>
             Comment Verimo analyse<br />
             <span style={{ position: 'relative', display: 'inline-block' }}>
               <span style={{ color: '#2a7d9c' }}>vos documents</span>
