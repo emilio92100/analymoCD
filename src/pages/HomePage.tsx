@@ -61,6 +61,7 @@ export default function HomePage() {
       <SecuriteSection />
       <ForWhoSection />
       <HowItWorksSection />
+      <ScoreSection />
       <ApercuRapportSection />
       <FaqSection />
       <CtaFinal />
@@ -1116,6 +1117,83 @@ function ApercuRapportSection() {
             Voir un exemple complet interactif <ChevronRight size={16} className="text-slate-400" />
           </Link>
         </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/* ═══ SCORE /20 ══════════════════════════════════════════════ */
+function ScoreSection() {
+  const levels = [
+    { r: '17 – 20', l: 'Excellent', c: '#15803d', bg: '#f0fdf4', border: '#bbf7d0' },
+    { r: '14 – 16', l: 'Bon profil', c: '#16a34a', bg: '#f0fdf4', border: '#d1fae5' },
+    { r: '10 – 13', l: 'Correct avec réserves', c: '#d97706', bg: '#fffbeb', border: '#fde68a' },
+    { r: '7 – 9',   l: 'Vigilance requise', c: '#ea580c', bg: '#fff7ed', border: '#fed7aa' },
+    { r: '0 – 6',   l: 'Risqué', c: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
+  ];
+  const cats = [
+    { emoji: '🏗️', label: 'Travaux', pts: 5 },
+    { emoji: '⚖️', label: 'Procédures', pts: 4 },
+    { emoji: '💰', label: 'Finances', pts: 4 },
+    { emoji: '🏠', label: 'Diagnostics privatifs', pts: 4 },
+    { emoji: '🏢', label: 'Diagnostics communs', pts: 3 },
+  ];
+  return (
+    <section className="py-16 md:py-28 px-4 md:px-6 bg-[#f4f7f9]">
+      <div className="max-w-5xl mx-auto">
+        <SectionTitle label="Notre méthode" title="Un score objectif" accent="sur 20 points." sub="Chaque bien reçoit une note calculée à partir de 5 catégories analysées dans vos documents. Transparent, reproductible, actionnable." />
+
+        <div className="grid md:grid-cols-2 gap-6 md:gap-8 items-start">
+
+          {/* Gauche — catégories */}
+          <Reveal>
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100">
+                <p className="text-xs font-bold text-[#2a7d9c] uppercase tracking-widest">5 catégories analysées</p>
+              </div>
+              <div className="p-4 flex flex-col gap-2">
+                {cats.map((cat, i) => (
+                  <div key={i} className="flex items-center justify-between px-4 py-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">{cat.emoji}</span>
+                      <span className="text-sm font-700 text-[#0f172a] font-semibold">{cat.label}</span>
+                    </div>
+                    <span className="text-sm font-black text-[#2a7d9c]">{cat.pts} pts</span>
+                  </div>
+                ))}
+              </div>
+              <div className="px-6 pb-5 pt-2">
+                <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-[#0f2d3d] text-white">
+                  <span className="text-sm font-bold">Total</span>
+                  <span className="text-base font-black">20 pts</span>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
+          {/* Droite — échelle */}
+          <Reveal delay={1}>
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100">
+                <p className="text-xs font-bold text-[#2a7d9c] uppercase tracking-widest">L'échelle des notes</p>
+              </div>
+              <div className="p-4 flex flex-col gap-2">
+                {levels.map((level, i) => (
+                  <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: level.bg, border: `1px solid ${level.border}` }}>
+                    <span className="text-base font-black min-w-[70px]" style={{ color: level.c }}>{level.r}</span>
+                    <span className="text-sm font-semibold" style={{ color: level.c }}>{level.l}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="px-6 pb-5 pt-2">
+                <Link to="/methode"
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold text-[#2a7d9c] border border-[#2a7d9c]/20 bg-[#2a7d9c]/5 hover:bg-[#2a7d9c]/10 transition-colors">
+                  Voir la méthode complète <ArrowRight size={14} />
+                </Link>
+              </div>
+            </div>
+          </Reveal>
+        </div>
       </div>
     </section>
   );
