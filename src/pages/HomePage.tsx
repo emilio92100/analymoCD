@@ -64,7 +64,6 @@ export default function HomePage() {
       <ScoreSection />
       <ApercuRapportSection />
       <FaqSection />
-      <CtaFinal />
     </div>
   );
 }
@@ -285,7 +284,7 @@ function PhoneMockup() {
           <motion.div key={doc.label}
             initial={{ x: doc.startX, y: doc.startY, opacity: 0, scale: 0.7, rotateZ: -8 }}
             animate={{ x: 0, y: 0, opacity: [0, 1, 1, 0], scale: [0.7, 1, 1, 0.4], rotateZ: [doc.startX > 0 ? 8 : -8, 0, 0, 0] }}
-            transition={{ delay: doc.delay, duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ delay: doc.delay + 1.6, duration: 1.8, ease: [0.22, 1, 0.36, 1] }}
             style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', zIndex: 20 + i }}
             className="flex items-center gap-2 bg-white rounded-xl px-3 py-2.5 shadow-xl border border-slate-100 min-w-[148px]">
             <div style={{ width: 28, height: 28, borderRadius: 8, background: `${doc.color}15`, border: `1px solid ${doc.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>
@@ -331,9 +330,13 @@ function PhoneMockup() {
       </motion.div>
 
       {/* Téléphone 3D */}
-      <motion.div animate={{ y: [0, -10, 0], rotateY: [0, 2, 0], rotateX: [0, 1, 0] }}
-        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-        style={{ perspective: 1000, transformStyle: 'preserve-3d' }}>
+      <motion.div
+        initial={{ opacity: 0, y: 30, scale: 0.94 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 1.4, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}>
+        <motion.div animate={{ y: [0, -10, 0], rotateY: [0, 2, 0], rotateX: [0, 1, 0] }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+          style={{ perspective: 1000, transformStyle: 'preserve-3d' }}>
         <div style={{
           width: 275, height: 580,
           background: 'linear-gradient(145deg, #1a1a2e 0%, #0f172a 100%)',
@@ -367,6 +370,7 @@ function PhoneMockup() {
             </div>
           </div>
         </div>
+        </motion.div>
       </motion.div>
     </div>
   );
@@ -921,95 +925,137 @@ function SecuriteSection() {
 /* ═══ FOR WHO ══════════════════════════════════════════════ */
 function ForWhoSection() {
   const [activeTab, setActiveTab] = useState(0);
-  const detected = [
-    "Travaux votés et leur coût estimé par lot",
-    "Santé financière réelle de la copropriété",
-    "Procédures judiciaires ou impayés en cours",
-    "Conformité des diagnostics obligatoires",
-    "Points de vigilance avant de faire une offre",
+
+  const profiles = [
+    {
+      id: 'first',
+      label: 'Premier achat',
+      emoji: '🏠',
+      headline: 'Vous achetez pour la première fois.',
+      sub: 'Tout est nouveau — les documents, le jargon, les risques. Verimo les lit à votre place et vous explique l\'essentiel en français simple.',
+      points: [
+        'Comprenez un PV d\'AG sans formation juridique',
+        'Découvrez les travaux cachés avant de signer',
+        'Obtenez une recommandation claire : achetez ou négociez',
+        'Partagez le rapport avec votre notaire ou banquier',
+      ],
+      color: '#2a7d9c',
+      bg: '#f0f7fb',
+    },
+    {
+      id: 'buyer',
+      label: 'Déjà propriétaire',
+      emoji: '🔑',
+      headline: 'Vous avez déjà acheté. Vous savez ce que ça coûte de se tromper.',
+      sub: 'Cette fois, vous voulez des données concrètes — pas des impressions. Verimo chiffre les risques et vous donne les arguments pour négocier.',
+      points: [
+        'Comparez plusieurs biens avec un score /20 par dossier',
+        'Chiffrez les travaux à venir avant de faire une offre',
+        'Détectez les procédures judiciaires en cours',
+        'Utilisez le rapport comme levier de négociation',
+      ],
+      color: '#0f2d3d',
+      bg: '#f4f7f9',
+    },
+    {
+      id: 'invest',
+      label: 'Investisseur',
+      emoji: '📈',
+      headline: 'Chaque bien est une opportunité. Ou un piège.',
+      sub: 'Les charges, les impayés, les travaux votés — tout impacte votre rentabilité. Verimo les lit et les chiffre en moins de 2 minutes.',
+      points: [
+        'Calculez l\'impact des charges sur votre rendement',
+        'Détectez les travaux qui grèveront votre ROI',
+        'Score /20 par bien pour comparer objectivement',
+        'Analysez plusieurs biens avec les packs 2 et 3',
+      ],
+      color: '#7c3aed',
+      bg: '#f5f3ff',
+    },
+    {
+      id: 'pro',
+      label: 'Professionnel',
+      emoji: '💼',
+      headline: 'Vos clients méritent mieux qu\'un avis à l\'œil.',
+      sub: 'Notaires, agents, syndics — Verimo s\'intègre dans votre process pour apporter un niveau d\'objectivité et de transparence qui rassure.',
+      points: [
+        'Préparez des dossiers complets et objectifs',
+        'Valorisez votre conseil avec un rapport structuré',
+        'Identifiez les risques avant qu\'ils ne posent problème',
+        'Offre professionnelle avec tarification dédiée',
+      ],
+      color: '#f0a500',
+      bg: '#fffbeb',
+    },
   ];
-  const pros = [
-    { title: "Notaires", desc: "Dossiers préparés plus vite. Clients mieux informés avant la signature.", I: Shield },
-    { title: "Agents immobiliers", desc: "Un rapport de transparence qui valorise votre conseil et rassure l'acheteur.", I: UserCheck },
-    { title: "Syndics", desc: "Transmissions d'info fluides et complètes lors des ventes en copropriété.", I: Building2 },
-    { title: "Marchands de biens", desc: "Risques et potentiel identifiés instantanément sur chaque bien du portefeuille.", I: BadgeCheck },
-  ];
-  const tabs = ["Acheteurs particuliers", "Professionnels"];
+
+  const active = profiles[activeTab];
 
   return (
     <section className="py-16 md:py-28 px-4 md:px-6 bg-[#f4f7f9]">
       <div className="max-w-5xl mx-auto">
         <SectionTitle label="Pour qui" title="Fait pour" accent="vous." />
 
-        <Reveal className="flex justify-center mb-8">
-          <div className="inline-flex bg-white rounded-2xl p-1.5 shadow-sm border border-slate-100 gap-1">
-            {tabs.map((t, i) => (
+        {/* Onglets */}
+        <Reveal className="flex justify-center mb-10">
+          <div className="inline-flex bg-white rounded-2xl p-1.5 shadow-sm border border-slate-100 gap-1 flex-wrap justify-center">
+            {profiles.map((p, i) => (
               <button key={i} onClick={() => setActiveTab(i)}
-                className={`px-4 md:px-6 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all duration-200 ${activeTab === i ? 'bg-[#0f2d3d] text-white shadow-sm' : 'text-slate-500 hover:text-[#0f172a]'}`}>
-                {t}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all duration-200 ${activeTab === i ? 'bg-[#0f2d3d] text-white shadow-sm' : 'text-slate-500 hover:text-[#0f172a]'}`}>
+                <span>{p.emoji}</span> {p.label}
               </button>
             ))}
           </div>
         </Reveal>
 
         <AnimatePresence mode="wait">
-          {activeTab === 0 && (
-            <motion.div key="buyers" initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-12}} transition={{duration:0.28}}>
-              <div className="rounded-2xl md:rounded-3xl overflow-hidden shadow-xl grid grid-cols-1 lg:grid-cols-2">
-                <div className="bg-[#0f2d3d] p-8 md:p-12">
-                  <span className="inline-block px-3 py-1.5 rounded-full bg-white/10 text-white/70 text-xs font-bold uppercase tracking-widest mb-5">Pour les particuliers</span>
-                  <h3 className="text-[clamp(22px,3vw,38px)] font-black text-white mb-4 leading-tight">
-                    Ne signez plus<br />les yeux fermés.
-                  </h3>
-                  <p className="text-slate-400 text-sm md:text-base leading-relaxed mb-8 max-w-sm">
-                    Verimo décrypte la santé financière de la copropriété, les travaux à venir et les risques juridiques — avant votre offre.
-                  </p>
-                  <Link to="/start" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white text-[#0f2d3d] text-sm md:text-base font-bold hover:bg-slate-50 transition-colors">
-                    Commencer <ArrowRight size={15} />
-                  </Link>
+          <motion.div key={activeTab}
+            initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.28 }}>
+            <div className="rounded-2xl md:rounded-3xl overflow-hidden shadow-xl grid grid-cols-1 lg:grid-cols-2">
+
+              {/* Gauche — contexte */}
+              <div className="p-8 md:p-10" style={{ background: '#0f2d3d' }}>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-6" style={{ background: `${active.color}20`, border: `1px solid ${active.color}40` }}>
+                  <span style={{ fontSize: 16 }}>{active.emoji}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: active.color, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>{active.label}</span>
                 </div>
-                <div className="bg-white p-8 md:p-12">
-                  <h4 className="text-sm md:text-base font-bold text-[#0f172a] mb-5 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[#2a7d9c] shrink-0" />
-                    Ce que Verimo détecte pour vous
-                  </h4>
-                  {detected.map((item, i) => (
-                    <motion.div key={i} initial={{opacity:0,x:-8}} animate={{opacity:1,x:0}} transition={{delay:i*0.08}}
-                      className="flex items-center gap-3 py-2.5 md:py-3 border-b border-slate-50 last:border-0">
-                      <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-[#2a7d9c]/10 flex items-center justify-center shrink-0">
-                        <Check size={11} className="text-[#2a7d9c]" />
+                <h3 className="text-[clamp(20px,2.5vw,30px)] font-black text-white mb-4 leading-tight">
+                  {active.headline}
+                </h3>
+                <p className="text-slate-400 text-sm md:text-base leading-relaxed mb-8">
+                  {active.sub}
+                </p>
+                <Link to="/start"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm md:text-base font-bold transition-colors"
+                  style={{ background: active.color, color: '#fff' }}>
+                  Commencer <ArrowRight size={15} />
+                </Link>
+              </div>
+
+              {/* Droite — ce que Verimo fait */}
+              <div className="bg-white p-8 md:p-10">
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="w-2 h-2 rounded-full" style={{ background: active.color }} />
+                  <span className="text-sm font-bold text-[#0f172a]">Ce que Verimo fait pour vous</span>
+                </div>
+                <div className="flex flex-col gap-3">
+                  {active.points.map((point, i) => (
+                    <motion.div key={i}
+                      initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
+                      className="flex items-start gap-3 p-3.5 rounded-xl"
+                      style={{ background: active.bg }}>
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                        style={{ background: `${active.color}15`, border: `1.5px solid ${active.color}30` }}>
+                        <Check size={11} style={{ color: active.color }} />
                       </div>
-                      <span className="text-sm md:text-base text-[#0f172a] font-medium">{item}</span>
+                      <span className="text-sm text-[#0f172a] font-medium leading-snug">{point}</span>
                     </motion.div>
                   ))}
                 </div>
               </div>
-            </motion.div>
-          )}
-
-          {activeTab === 1 && (
-            <motion.div key="pros" initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-12}} transition={{duration:0.28}}>
-              <div className="mb-6 text-center">
-                <p className="text-slate-500 text-sm md:text-lg max-w-2xl mx-auto">
-                  Verimo s'intègre naturellement dans votre quotidien professionnel pour vous faire gagner du temps et de la crédibilité.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-5">
-                {pros.map((p, i) => (
-                  <motion.div key={i} initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} transition={{delay:i*0.1}}
-                    className="flex items-start gap-4 p-5 md:p-7 rounded-2xl bg-white border border-slate-100 hover:-translate-y-1 hover:shadow-lg transition-all duration-200 cursor-default">
-                    <div className="w-12 h-12 rounded-2xl bg-[#2a7d9c]/8 flex items-center justify-center shrink-0">
-                      <p.I size={22} className="text-[#2a7d9c]" />
-                    </div>
-                    <div>
-                      <h4 className="text-base md:text-lg font-bold text-[#0f172a] mb-1">{p.title}</h4>
-                      <p className="text-sm md:text-base text-slate-500 leading-relaxed">{p.desc}</p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          )}
+            </div>
+          </motion.div>
         </AnimatePresence>
       </div>
     </section>
@@ -1343,27 +1389,38 @@ function FaqSection() {
   const faqs = [
     {
       q: "Mes documents sont-ils supprimés après traitement ?",
-      a: "Oui, automatiquement. Vos fichiers sont supprimés de nos serveurs dès que votre rapport est généré. Aucun stockage permanent — seul le rapport final est conservé dans votre espace.",
+      emoji: "🔒",
+      a: "Oui, automatiquement et immédiatement. Vos fichiers sont chiffrés dès l'upload et supprimés de nos serveurs dès que votre rapport est généré. Aucun stockage permanent — seul le rapport final est conservé dans votre espace personnel. Aucun humain ne consulte vos documents.",
     },
     {
       q: "Ça fonctionne avec tous les types de documents ?",
-      a: "Verimo traite les PDF nativement numériques (PDF texte) en 30 secondes. Les documents scannés ou photographiés peuvent nécessiter un délai supplémentaire. Les formats Word, images JPEG ou PNG ne sont pas pris en charge.",
+      emoji: "📄",
+      a: "Verimo traite les PDF nativement numériques (fichiers texte exportés depuis Word, Adobe, etc.) en moins de 2 minutes. Les documents scannés ou photographiés peuvent nécessiter un délai supplémentaire selon la qualité. Les formats Word, JPEG ou PNG ne sont pas pris en charge — convertissez-les d'abord en PDF.",
     },
     {
       q: "Et si je n'ai qu'un seul document ?",
-      a: "L'analyse simple à 4,90€ est faite pour ça — elle analyse un seul document et vous donne les informations clés sans score /20. L'analyse complète à 19,90€ accepte plusieurs documents et génère un score global.",
+      emoji: "📋",
+      a: "L'analyse simple à 4,90€ est faite exactement pour ça. Elle analyse un seul document (PV d'AG, DPE, règlement de copropriété…) et vous donne les informations clés, les points forts et les vigilances détectés — sans score /20. L'analyse complète à 19,90€ accepte plusieurs documents et génère un score global du bien.",
     },
     {
       q: "Le rapport est-il garanti exact ?",
-      a: "Notre outil traite vos documents avec soin, mais il reste un outil d'aide à la décision. Nous recommandons de confirmer les éléments importants avec un professionnel (notaire, avocat) avant toute signature.",
+      emoji: "⚖️",
+      a: "Notre outil analyse les informations présentes dans vos documents avec soin, mais il reste un outil d'aide à la décision. Il travaille sur ce que vous lui transmettez — si un document est manquant, l'analyse sera partielle. Nous recommandons de confirmer les éléments importants avec un professionnel (notaire, avocat) avant toute signature.",
     },
     {
       q: "Puis-je partager le rapport avec mon notaire ou mon banquier ?",
-      a: "Absolument. Le rapport est téléchargeable en PDF et peut être partagé librement. De nombreux utilisateurs l'envoient à leur notaire ou l'utilisent pour justifier une négociation de prix.",
+      emoji: "📤",
+      a: "Absolument. Le rapport est téléchargeable en PDF et peut être partagé librement avec qui vous le souhaitez. De nombreux utilisateurs l'envoient à leur notaire avant la signature, ou l'utilisent pour justifier une demande de baisse de prix auprès du vendeur ou de son agent.",
+    },
+    {
+      q: "Comment fonctionne la comparaison de biens ?",
+      emoji: "⚖️",
+      a: "La comparaison se débloque automatiquement dès que votre compte contient au minimum 2 analyses complètes — que vous les ayez achetées via un Pack ou séparément. Dans votre tableau de bord, l'onglet 'Comparer mes biens' s'active et vous pouvez sélectionner les biens à comparer côte à côte. Le Pack 3 biens permet en plus un classement automatique des 3 biens.",
     },
     {
       q: "Mes crédits ont-ils une date d'expiration ?",
-      a: "Non, jamais. Vos crédits sont valables indéfiniment. Vous pouvez acheter un pack aujourd'hui et l'utiliser dans 6 mois — ils vous attendent.",
+      emoji: "♾️",
+      a: "Non, jamais. Vos crédits sont valables indéfiniment. Vous pouvez acheter un Pack aujourd'hui et l'utiliser dans 6 mois — ils vous attendent. Il n'y a aucune pression temporelle.",
     },
   ];
 
@@ -1372,16 +1429,20 @@ function FaqSection() {
       <div className="max-w-3xl mx-auto">
         <SectionTitle label="Questions fréquentes" title="Tout ce que vous" accent="voulez savoir." />
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2.5">
           {faqs.map((faq, i) => (
-            <Reveal key={i} delay={i * 0.05}>
-              <div className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+            <Reveal key={i} delay={i * 0.04}>
+              <div className={`rounded-2xl border bg-white overflow-hidden transition-all duration-200 ${open === i ? 'border-[#2a7d9c]/40 shadow-md' : 'border-slate-100 shadow-sm'}`}>
                 <button
                   onClick={() => setOpen(open === i ? null : i)}
-                  className="w-full flex items-center justify-between gap-4 px-5 md:px-7 py-4 md:py-5 text-left hover:bg-[#f4f7f9] transition-colors">
-                  <span className="text-sm md:text-base font-bold text-[#0f172a]">{faq.q}</span>
+                  className="w-full flex items-center gap-4 px-5 md:px-6 py-4 md:py-5 text-left">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-base transition-colors"
+                    style={{ background: open === i ? 'rgba(42,125,156,0.1)' : '#f8fafc', border: open === i ? '1px solid rgba(42,125,156,0.2)' : '1px solid #edf2f7' }}>
+                    {faq.emoji}
+                  </div>
+                  <span className="text-sm md:text-base font-bold text-[#0f172a] flex-1">{faq.q}</span>
                   <motion.div animate={{ rotate: open === i ? 180 : 0 }} transition={{ duration: 0.2 }} className="shrink-0">
-                    <ChevronDown size={18} className="text-slate-400" />
+                    <ChevronDown size={18} className={open === i ? 'text-[#2a7d9c]' : 'text-slate-300'} />
                   </motion.div>
                 </button>
                 <AnimatePresence>
@@ -1391,7 +1452,7 @@ function FaqSection() {
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.25 }}>
-                      <div className="px-5 md:px-7 pb-5 text-sm md:text-base text-slate-500 leading-relaxed border-t border-slate-100 pt-4">
+                      <div className="px-5 md:px-6 pb-5 pt-1 text-sm md:text-base text-slate-500 leading-relaxed border-t border-slate-50 pl-[72px]">
                         {faq.a}
                       </div>
                     </motion.div>
@@ -1403,7 +1464,7 @@ function FaqSection() {
         </div>
 
         <Reveal className="text-center mt-10">
-          <p className="text-sm text-slate-400 mb-3">Vous avez une autre question ?</p>
+          <p className="text-sm text-slate-400 mb-4">Vous avez une autre question ?</p>
           <Link to="/contact"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-slate-200 text-[#0f172a] text-sm font-semibold hover:border-[#2a7d9c]/40 hover:bg-[#f0f8fc] transition-all duration-200">
             Contactez-nous <ArrowRight size={15} />
