@@ -24,7 +24,7 @@ export default function Footer() {
         {/* Col 2 — Produit */}
         <div className="flex flex-col gap-3">
           <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400">Produit</h4>
-          {[{ to: '/exemple', l: 'Voir un exemple' }, { to: '/tarifs', l: 'Tarifs' }, { to: '/contact', l: 'Contact' }].map(item => (
+          {[{ to: '/methode', l: 'Notre méthode' }, { to: '/exemple', l: 'Voir un exemple' }, { to: '/tarifs', l: 'Tarifs' }, { to: '/contact', l: 'Contact' }].map(item => (
             <Link key={item.to} to={item.to} className="text-sm text-slate-400 hover:text-white transition-colors">
               {item.l}
             </Link>
