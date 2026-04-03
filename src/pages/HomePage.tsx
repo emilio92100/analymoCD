@@ -6,7 +6,7 @@ import {
   ArrowRight, CheckCircle, AlertTriangle, FileText,
   Shield,
   TrendingUp, Clock, Check, X, ChevronRight,
-  Building2, UserCheck, BadgeCheck, ShieldCheck, Trash2,
+  ShieldCheck, Trash2,
   Download, Lock, Eye, ChevronDown,
 } from "lucide-react";
 
@@ -1469,83 +1469,6 @@ function FaqSection() {
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-slate-200 text-[#0f172a] text-sm font-semibold hover:border-[#2a7d9c]/40 hover:bg-[#f0f8fc] transition-all duration-200">
             Contactez-nous <ArrowRight size={15} />
           </Link>
-        </Reveal>
-      </div>
-    </section>
-  );
-}
-
-/* ═══ CTA FINAL ═════════════════════════════════════════════ */
-function CtaFinal() {
-  const included = [
-    "Score global /20 avec recommandation",
-    "Travaux votés + estimation financière",
-    "Santé financière de la copropriété",
-    "Procédures judiciaires & impayés",
-    "Rapport PDF téléchargeable",
-    "Crédits sans date d'expiration",
-  ];
-  return (
-    <section className="py-16 md:py-24 px-4 md:px-6 bg-white">
-      <div className="max-w-4xl mx-auto">
-        <Reveal>
-          <div className="rounded-2xl md:rounded-3xl overflow-hidden" style={{ background: "linear-gradient(135deg, #0f2d3d 0%, #1a4a5e 100%)" }}>
-            <div className="h-1 w-full" style={{ background: "linear-gradient(90deg, #4ade80 0%, #2a7d9c 100%)" }} />
-            <div className="p-8 md:p-12 lg:p-14">
-              <div className="text-center mb-10">
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/8 mb-5">
-                  <div className="w-2 h-2 rounded-full bg-[#4ade80]" />
-                  <span className="text-white/70 text-xs font-semibold tracking-wide">Analyse complète</span>
-                </div>
-                <h2 className="text-[clamp(22px,4vw,42px)] font-black text-white mb-3 leading-tight">
-                  Prenez votre décision<br />en toute clarté.
-                </h2>
-                <p className="text-white/50 text-sm md:text-base max-w-xl mx-auto leading-relaxed">
-                  Notre outil lit vos documents immobiliers et vous donne un rapport complet avant de signer. À partir de <span className="text-white font-bold">19,90€</span>, sans abonnement.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-10">
-                {included.map((item, i) => (
-                  <motion.div key={i} initial={{opacity:0,y:8}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*0.07}}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/6 hover:bg-white/10 transition-colors">
-                    <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ background: "rgba(74,222,128,0.15)" }}>
-                      <Check size={11} className="text-[#4ade80]" />
-                    </div>
-                    <span className="text-sm text-white/80 font-medium">{item}</span>
-                  </motion.div>
-                ))}
-              </div>
-
-              <div className="flex flex-col items-center gap-6">
-                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                  <Link to="/start"
-                    className="flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-sm md:text-base font-bold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl"
-                    style={{ background: "linear-gradient(135deg, #4ade80 0%, #22c55e 100%)", color: "#0f2d3d" }}>
-                    Lancer mon analyse <ArrowRight size={16} />
-                  </Link>
-                  <Link to="/exemple"
-                    className="flex items-center justify-center gap-2 px-7 py-4 rounded-xl border border-white/15 text-white/70 text-sm md:text-base font-semibold hover:bg-white/8 hover:text-white transition-all duration-200">
-                    Voir un exemple
-                  </Link>
-                </div>
-                <div className="flex flex-wrap justify-center gap-6 md:gap-10">
-                  {[
-                    { label: "Simple", price: "4,90€", sub: "1 document" },
-                    { label: "Complète", price: "19,90€", sub: "Docs illimités" },
-                    { label: "Pack 2 biens", price: "29,90€", sub: "2 crédits" },
-                  ].map((p, i) => (
-                    <div key={i} className="text-center">
-                      <p className="text-white/35 text-[10px] font-bold uppercase tracking-wider mb-0.5">{p.label}</p>
-                      <p className="text-white font-black text-lg leading-tight">{p.price}</p>
-                      <p className="text-white/30 text-[10px]">{p.sub}</p>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-white/25 text-xs italic text-center">* Pour documents PDF nativement numériques</p>
-              </div>
-            </div>
-          </div>
         </Reveal>
       </div>
     </section>
