@@ -43,11 +43,11 @@ const categories = [
 ];
 
 const levels = [
-  { r: '17 – 20', l: 'Excellent', emoji: '🏆', c: '#15803d', bar: '#16a34a', pct: 100, desc: 'Achetez sereinement. Bien en excellent état, copropriété saine.' },
-  { r: '14 – 16', l: 'Bon profil', emoji: '✅', c: '#16a34a', bar: '#22c55e', pct: 80, desc: 'Quelques points à surveiller mais rien de bloquant. Bon achat.' },
-  { r: '10 – 13', l: 'Correct avec réserves', emoji: '⚠️', c: '#d97706', bar: '#f59e0b', pct: 58, desc: 'Vigilances identifiées. Négociez le prix avant de signer.' },
-  { r: '7 – 9', l: 'Vigilance requise', emoji: '🚨', c: '#ea580c', bar: '#f97316', pct: 40, desc: 'Risques significatifs. Analyse approfondie recommandée.' },
-  { r: '0 – 6', l: 'Risqué', emoji: '🔴', c: '#dc2626', bar: '#ef4444', pct: 22, desc: 'Risques majeurs. Négociation forte ou abandon recommandé.' },
+  { r: '17 – 20', l: 'Bien irréprochable', emoji: '🏆', c: '#15803d', bar: '#16a34a', pct: 100, desc: 'Achetez sereinement. Bien en excellent état, copropriété saine.' },
+  { r: '14 – 16', l: 'Bien sain', emoji: '✅', c: '#16a34a', bar: '#22c55e', pct: 80, desc: 'Quelques points à surveiller mais rien de bloquant. Bon achat.' },
+  { r: '10 – 13', l: 'Bien correct avec réserves', emoji: '⚠️', c: '#d97706', bar: '#f59e0b', pct: 58, desc: 'Vigilances identifiées. Négociez le prix avant de signer.' },
+  { r: '7 – 9', l: 'Bien risqué', emoji: '🚨', c: '#ea580c', bar: '#f97316', pct: 40, desc: 'Risques significatifs. Analyse approfondie recommandée.' },
+  { r: '0 – 6', l: 'Bien à éviter', emoji: '🔴', c: '#dc2626', bar: '#ef4444', pct: 22, desc: 'Risques majeurs. Négociation forte ou abandon recommandé.' },
 ];
 
 const faqs = [
@@ -307,7 +307,7 @@ export default function MethodePage() {
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
                   <span style={{ fontSize: 40, fontWeight: 900, color: '#f0a500', letterSpacing: '-0.03em' }}>16</span>
                   <span style={{ fontSize: 18, fontWeight: 700, color: 'rgba(255,255,255,0.4)' }}>/20</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#4ade80', background: 'rgba(34,197,94,0.15)', padding: '3px 10px', borderRadius: 8, marginLeft: 8 }}>Bon profil ✓</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#4ade80', background: 'rgba(34,197,94,0.15)', padding: '3px 10px', borderRadius: 8, marginLeft: 8 }}>Bien sain ✓</span>
                 </div>
               </div>
             </Reveal>
