@@ -241,7 +241,7 @@ export default function MethodePage() {
           </motion.p>
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}
             style={{ fontSize: 'clamp(28px,5.5vw,64px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em', lineHeight: 1.08, marginBottom: 20 }}>
-            Comment Verimo analyse{' '}
+            Comment Verimo analyse<br />
             <span style={{ position: 'relative', display: 'inline-block' }}>
               <span style={{ color: '#2a7d9c' }}>vos documents</span>
               <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 2.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
@@ -288,7 +288,7 @@ export default function MethodePage() {
               <SectionHead label="Les deux types d'analyse" title="Analyse simple ou analyse complète ?" sub="Verimo propose deux niveaux d'analyse selon ce que vous souhaitez comprendre." />
             </Reveal>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div className="analyse-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <Reveal>
                 <div style={{ borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px 24px', background: '#fafbfc', height: '100%', boxSizing: 'border-box' as const }}>
                   <div style={{ fontSize: 28, marginBottom: 12 }}>📄</div>
@@ -317,15 +317,6 @@ export default function MethodePage() {
                 </div>
               </Reveal>
             </div>
-
-            <Reveal delay={0.1}>
-              <div style={{ marginTop: 12, padding: '13px 18px', borderRadius: 11, background: '#fffbeb', border: '1px solid #fde68a', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 16 }}>🎁</span>
-                <p style={{ fontSize: 13, color: '#92400e', margin: 0, lineHeight: 1.6 }}>
-                  <strong>Aperçu gratuit à l'inscription</strong> — avant tout paiement, Verimo génère un aperçu avec les points de vigilance clés. Pour l'analyse complète, le score /20 est visible mais grisé jusqu'au paiement.
-                </p>
-              </div>
-            </Reveal>
           </section>
 
           {/* ── 2. DOCUMENTS ANALYSÉS ─────────────────────────── */}
@@ -652,6 +643,9 @@ export default function MethodePage() {
         @media (max-width: 768px) {
           main > div { grid-template-columns: 1fr !important; padding: 0 16px !important; }
           main > div > aside { display: none !important; }
+        }
+        @media (max-width: 600px) {
+          .analyse-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </main>
