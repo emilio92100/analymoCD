@@ -12,19 +12,19 @@ const plans = [
   {
     id: 'complete', name: 'Analyse Complète', price: '19,90', sub: 'Documents illimités',
     idealFor: 'Comprendre un bien en profondeur avant de faire une offre.',
-    features: ['Analyse multi-documents illimitée', 'Score global /10 du bien', 'Travaux, charges, risques, procédures', 'Recommandation personnalisée', 'Rapport PDF complet'],
+    features: ['Analyse multi-documents illimitée', 'Score global /20 du bien', 'Travaux, charges, risques, procédures', 'Recommandation personnalisée', 'Rapport PDF complet'],
     cta: 'Analyser un bien', highlighted: true, badge: 'Le plus populaire',
   },
   {
     id: 'pack2', name: 'Pack 2 Biens', price: '29,90', sub: '2 crédits complets',
     idealFor: 'Vous hésitez entre deux biens ? Uploadez les documents des deux et laissez Verimo les comparer côte à côte pour vous aider à décider.',
-    features: ['2 analyses complètes indépendantes', 'Rapport de comparaison côte à côte', 'Score /10 pour chaque bien', 'Recommandation Verimo : quel bien choisir ?', 'Économisez 10€ vs 2 analyses séparées'],
+    features: ['2 analyses complètes indépendantes', 'Rapport de comparaison côte à côte', 'Score /20 pour chaque bien', 'Recommandation Verimo : quel bien choisir ?', 'Économisez 10€ vs 2 analyses séparées'],
     cta: 'Comparer 2 biens', highlighted: false, badge: 'Économique',
   },
   {
     id: 'pack3', name: 'Pack 3 Biens', price: '39,90', sub: '3 crédits complets',
     idealFor: 'Vous avez 3 biens en tête ? Comparez-les tous en un seul achat. Verimo génère 3 rapports indépendants et un classement final pour vous aider à faire le meilleur choix.',
-    features: ['3 analyses complètes indépendantes', 'Comparaison des 3 biens côte à côte', 'Score /10 pour chaque bien', 'Classement final + recommandation Verimo', 'Économisez 20€ vs 3 analyses séparées'],
+    features: ['3 analyses complètes indépendantes', 'Comparaison des 3 biens côte à côte', 'Score /20 pour chaque bien', 'Classement final + recommandation Verimo', 'Économisez 20€ vs 3 analyses séparées'],
     cta: 'Comparer 3 biens', highlighted: false, badge: 'Meilleure valeur',
   },
 ];
