@@ -1,11 +1,26 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Clock, MapPin, Send, CheckCircle, Crown } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 
 export default function ContactPage() {
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
+
+  const handleSubmit = async () => {
+    if (!form.name || !form.email || !form.message) return;
+    setSending(true);
+    await supabase.from('contact_messages').insert({
+      name: form.name,
+      email: form.email,
+      subject: form.subject || null,
+      message: form.message,
+    });
+    setSending(false);
+    setSent(true);
+  };
 
   return (
     <main style={{ background: '#f8fafc', fontFamily: "'DM Sans', system-ui, sans-serif", paddingTop: 70 }}>
@@ -92,9 +107,9 @@ export default function ContactPage() {
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#0f2d3d', marginBottom: 7 }}>Message</label>
                     <textarea value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} rows={5} placeholder="Décrivez votre demande..." style={{ width: '100%', padding: '12px 14px', borderRadius: 11, border: '1.5px solid #edf2f4', fontSize: 14, outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', color: '#0f2d3d', background: '#f8fafc' }} onFocus={e => (e.target as HTMLElement).style.borderColor = '#2a7d9c'} onBlur={e => (e.target as HTMLElement).style.borderColor = '#edf2f4'} />
                   </div>
-                  <button onClick={() => { if (form.name && form.email && form.message) setSent(true); }} disabled={!form.name || !form.email || !form.message}
+                  <button onClick={handleSubmit} disabled={!form.name || !form.email || !form.message || sending}
                     style={{ padding: '14px 28px', borderRadius: 13, background: !form.name || !form.email || !form.message ? 'rgba(42,125,156,0.3)' : 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 15, fontWeight: 700, cursor: !form.name || !form.email || !form.message ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                    <Send size={16} /> Envoyer le message
+                    <Send size={16} /> {sending ? 'Envoi...' : 'Envoyer le message'}
                   </button>
                 </div>
               </>
