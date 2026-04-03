@@ -18,7 +18,7 @@ const MOCK_RAPPORT = {
   date: '24 mars 2026',
   score: 14.5,
   score_couleur: 'vert' as string,
-  score_niveau: 'Bon profil' as string,
+  score_niveau: 'Bien sain' as string,
   type_bien: 'appartement' as string,
   profil: 'rp' as string,
   resume: "Appartement en bon état général situé dans une copropriété bien gérée. Le PV d'AG 2025 montre une gestion saine avec un fonds de travaux bien provisionné. Les charges sont raisonnables pour le secteur. Quelques points de vigilance à prendre en compte avant l'achat.",
@@ -79,11 +79,11 @@ function getScoreColor(score: number): string {
 }
 
 function getScoreLabel(score: number): string {
-  if (score >= 17) return 'Excellent';
-  if (score >= 14) return 'Bon profil';
-  if (score >= 10) return 'Correct avec réserves';
-  if (score >= 7)  return 'Vigilance requise';
-  return 'Risqué';
+  if (score >= 17) return 'Bien irréprochable';
+  if (score >= 14) return 'Bien sain';
+  if (score >= 10) return 'Bien correct avec réserves';
+  if (score >= 7)  return 'Bien risqué';
+  return 'Bien à éviter';
 }
 
 function getTypeBienLabel(type: string): string {
