@@ -44,7 +44,7 @@ export default function ExemplePage() {
                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>Score global /20</div>
               </div>
               <div style={{ padding: '8px 18px', borderRadius: 10, background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)' }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: '#22c55e' }}>Bon profil ✓</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#22c55e' }}>Bien sain ✓</div>
               </div>
             </div>
           </motion.div>
@@ -80,7 +80,7 @@ export default function ExemplePage() {
                 <div>
                   <div style={{ padding: '14px 18px', borderRadius: 12, background: '#fffbeb', border: '1px solid #fde68a', marginBottom: 24 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', marginBottom: 7, letterSpacing: '0.05em' }}>CONCLUSION VERIMO</div>
-                    <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.7, margin: 0 }}>Ce bien présente un bon profil global. La copropriété est globalement saine avec quelques points de vigilance sur les travaux à venir et l'état du fonds de prévoyance. Nous recommandons de vérifier l'avancement du ravalement évoqué avec votre agent immobilier avant de vous engager.</p>
+                    <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.7, margin: 0 }}>Ce bien présente un bilan sain. La copropriété est globalement saine avec quelques points de vigilance sur les travaux à venir et l'état du fonds de prévoyance. Nous recommandons de vérifier l'avancement du ravalement évoqué avec votre agent immobilier avant de vous engager.</p>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                     <div>
