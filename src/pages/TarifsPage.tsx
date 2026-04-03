@@ -143,7 +143,7 @@ export default function TarifsPage() {
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.18 }}
           style={{ display: 'flex', justifyContent: 'center', gap: 28, flexWrap: 'wrap' }}>
-          {garanties.map(({ icon: Icon, t, s }) => (
+          {garanties.map(({ icon: Icon, t }) => (
             <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#64748b', fontWeight: 500 }}>
               <Icon size={15} style={{ color: '#2a7d9c', flexShrink: 0 }} /> {t}
             </div>
