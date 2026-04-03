@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, FileText, Mail, BarChart2,
   Search, X, Check, AlertTriangle, Shield, CreditCard,
   Trash2, RefreshCw, Eye, EyeOff, TrendingUp, ArrowRight,
-  LogOut, Send, UserPlus, Building2, CheckCircle,
+  LogOut, Send, UserPlus, CheckCircle,
 } from 'lucide-react';
 
 /* ══════════════════════════════════════════
