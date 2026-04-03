@@ -362,7 +362,7 @@ export default function MethodePage() {
                           <div style={{ borderTop: `1px solid ${doc.pb2}`, padding: '18px 20px', background: doc.pb }}>
                             <p style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.75, marginBottom: 16 }}>{doc.what}</p>
                             <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', textTransform: 'uppercase' as const, letterSpacing: '0.07em', marginBottom: 10 }}>Ce qu'on en extrait</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7 }}>
+                            <div className="extracts-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7 }}>
                               {doc.extracts.map((e, i) => (
                                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 10px', borderRadius: 8, background: '#fff', border: `1px solid ${doc.pb2}` }}>
                                   <Check size={12} color={doc.pc} style={{ flexShrink: 0, marginTop: 2 }} />
@@ -466,7 +466,7 @@ export default function MethodePage() {
                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22 }} style={{ overflow: 'hidden' }}>
                           <div style={{ borderTop: `1px solid ${cat.border}`, padding: '16px 20px', background: cat.light }}>
                             <p style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.7, marginBottom: 16 }}>{cat.desc}</p>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                            <div className="cat-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                               <div style={{ background: '#fff', borderRadius: 11, border: '1px solid #fecaca', padding: '14px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
                                   <TrendingDown size={12} color="#dc2626" />
@@ -474,8 +474,8 @@ export default function MethodePage() {
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
                                   {cat.bad.map((item, i) => (
-                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                                      <span style={{ fontSize: 12, color: '#374151' }}>{item.l}</span>
+                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                                      <span style={{ fontSize: 12, color: '#374151', lineHeight: 1.4 }}>{item.l}</span>
                                       <span style={{ fontSize: 11, fontWeight: 800, color: '#dc2626', background: '#fee2e2', padding: '2px 7px', borderRadius: 5, flexShrink: 0 }}>{item.v}</span>
                                     </div>
                                   ))}
@@ -488,8 +488,8 @@ export default function MethodePage() {
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
                                   {cat.good.map((item, i) => (
-                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                                      <span style={{ fontSize: 12, color: '#374151' }}>{item.l}</span>
+                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                                      <span style={{ fontSize: 12, color: '#374151', lineHeight: 1.4 }}>{item.l}</span>
                                       <span style={{ fontSize: 11, fontWeight: 800, color: '#16a34a', background: '#dcfce7', padding: '2px 7px', borderRadius: 5, flexShrink: 0 }}>{item.v}</span>
                                     </div>
                                   ))}
@@ -646,6 +646,8 @@ export default function MethodePage() {
         }
         @media (max-width: 600px) {
           .analyse-grid { grid-template-columns: 1fr !important; }
+          .cat-grid { grid-template-columns: 1fr !important; }
+          .extracts-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </main>
