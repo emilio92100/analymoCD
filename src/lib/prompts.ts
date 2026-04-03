@@ -231,11 +231,11 @@ Combiner grille A et grille B en adaptant les catégories et points selon les do
 
 ÉTAPE 5 — NIVEAUX DE LA NOTE
 
-0-6   → Risqué (couleur: rouge)
-7-9   → Vigilance requise (couleur: orange)
-10-13 → Correct avec réserves (couleur: jaune)
-14-16 → Bon profil (couleur: vert)
-17-20 → Excellent (couleur: vert_fonce)
+0-6   → Bien à éviter (couleur: rouge)
+7-9   → Bien risqué (couleur: orange)
+10-13 → Bien correct avec réserves (couleur: jaune)
+14-16 → Bien sain (couleur: vert)
+17-20 → Bien irréprochable (couleur: vert_fonce)
 
 ÉTAPE 6 — IDÉES DE NÉGOCIATION
 
@@ -264,7 +264,7 @@ Réponds UNIQUEMENT en JSON valide, sans texte avant ou après :
   "profil": "rp | invest",
   "titre": "adresse complète détectée dans les documents, ou nom descriptif si pas d'adresse",
   "score": 14.5,
-  "score_niveau": "Bon profil",
+  "score_niveau": "Bien sain",
   "score_couleur": "vert",
   "raison_absence_score": null,
   "documents_detectes": [
