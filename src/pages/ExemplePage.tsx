@@ -145,18 +145,9 @@ export default function ExemplePage() {
           </span>
         </motion.h1>
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.18 }}
-          style={{ fontSize: 16, color: '#6b8a96', maxWidth: 520, margin: '0 auto 28px', lineHeight: 1.7 }}>
+          style={{ fontSize: 16, color: '#6b8a96', maxWidth: 520, margin: '0 auto', lineHeight: 1.7 }}>
           Rapport généré à partir d'un dossier réel (données anonymisées) — PV d'AG, règlement de copropriété, diagnostics et appels de charges.
         </motion.p>
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}
-          style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link to="/start" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '13px 28px', borderRadius: 13, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 700, textDecoration: 'none', boxShadow: '0 7px 24px rgba(42,125,156,0.28)' }}>
-            Analyser mon bien <ArrowRight size={16} />
-          </Link>
-          <Link to="/tarifs" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '13px 22px', borderRadius: 13, background: '#fff', border: '1.5px solid #d1e9f5', color: '#0f2d3d', fontSize: 15, fontWeight: 600, textDecoration: 'none' }}>
-            Voir les tarifs
-          </Link>
-        </motion.div>
       </section>
 
       {/* ── RAPPORT ────────────────────────────────────────────── */}
