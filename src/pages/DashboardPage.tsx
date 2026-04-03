@@ -262,11 +262,27 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
 function Topbar({ onMenuClick, title }: { onMenuClick:()=>void; title:string }) {
   const { name } = useUser();
   const navigate = useNavigate();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+      if (data?.role === 'admin') setIsAdmin(true);
+    });
+  }, []);
+
   return (
     <header style={{ height:68, background:'#fff', borderBottom:'1px solid #edf2f7', display:'flex', alignItems:'center', padding:'0 24px', gap:12, position:'sticky', top:0, zIndex:40, flexShrink:0 }}>
       <button className="mobile-menu-btn" onClick={onMenuClick} style={{ background:'none', border:'none', cursor:'pointer', color:'#0f2d3d', padding:4, display:'none' }}><Menu size={20}/></button>
       <p style={{ flex:1, fontSize:17, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em', margin:0 }}>{title}</p>
       <button style={{ width:36, height:36, borderRadius:9, background:'#f8fafc', border:'1px solid #edf2f7', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#94a3b8' }}><Bell size={15}/></button>
+      {isAdmin && (
+        <button onClick={() => navigate('/admin')}
+          style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:9, background:'linear-gradient(135deg,#0f2d3d,#1a4a60)', border:'none', cursor:'pointer', color:'#fff', fontSize:12, fontWeight:700, whiteSpace:'nowrap' }}>
+          <Shield size={13}/> Espace Admin
+        </button>
+      )}
       <button
         onClick={() => navigate('/dashboard/compte')}
         title="Mon compte"
