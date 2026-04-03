@@ -164,6 +164,7 @@ function TableCell({ val, isHighlight }: { val: boolean | string; isHighlight: b
 ══════════════════════════════════════════ */
 export default function TarifsPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [openAccordion, setOpenAccordion] = useState<number | null>(null);
 
   return (
     <main style={{ fontFamily: "'DM Sans', system-ui, sans-serif", background: '#f4f7f9', paddingTop: 72, minHeight: '100vh' }}>
@@ -178,8 +179,12 @@ export default function TarifsPage() {
 
         <motion.h1 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}
           style={{ fontSize: 'clamp(28px,4.5vw,52px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em', lineHeight: 1.08, marginBottom: 14 }}>
-          Des tarifs simples,{' '}
-          <span style={{ color: '#2a7d9c' }}>sans surprise.</span>
+          Des tarifs simples,<br />
+          <span style={{ position: 'relative', display: 'inline-block' }}>
+            <span style={{ color: '#2a7d9c' }}>sans surprise.</span>
+            <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 2.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              style={{ position: 'absolute', bottom: -4, left: 0, right: 0, height: 4, background: 'rgba(42,125,156,0.25)', borderRadius: 99, transformOrigin: 'left', display: 'block' }} />
+          </span>
         </motion.h1>
 
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.13 }}
@@ -301,8 +306,9 @@ export default function TarifsPage() {
           </h2>
         </Reveal>
 
-        <Reveal delay={0.05}>
-          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        {/* Desktop : tableau */}
+        <Reveal delay={0.05} className="table-desktop">
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' as any }}>
           <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.04)', minWidth: 560 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' as const }}>
               <thead>
@@ -330,6 +336,41 @@ export default function TarifsPage() {
           </div>
           </div>
         </Reveal>
+
+        {/* Mobile : accordéon par fonctionnalité */}
+        <div className="table-mobile" style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
+          {tableRows.map((row, i) => (
+            <div key={i} style={{ borderRadius: 12, border: `1.5px solid ${openAccordion === i ? '#2a7d9c' : '#edf2f7'}`, background: '#fff', overflow: 'hidden', transition: 'border-color 0.18s' }}>
+              <button onClick={() => setOpenAccordion(openAccordion === i ? null : i)}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' as const }}>
+                <span style={{ fontSize: 13.5, fontWeight: 600, color: '#0f172a' }}>{row.label}</span>
+                <ChevronDown size={15} color={openAccordion === i ? '#2a7d9c' : '#cbd5e1'} style={{ flexShrink: 0, transform: openAccordion === i ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              </button>
+              <AnimatePresence>
+                {openAccordion === i && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
+                    <div style={{ padding: '0 16px 14px', borderTop: '1px solid #f0f5f9', display: 'flex', flexDirection: 'column' as const, gap: 8, paddingTop: 12 }}>
+                      {plans.map((p, j) => {
+                        const val = row.vals[j];
+                        return (
+                          <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 9, background: j === 1 ? 'rgba(42,125,156,0.04)' : '#f8fafc', border: `1px solid ${j === 1 ? 'rgba(42,125,156,0.12)' : '#f1f5f9'}` }}>
+                            <div>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: j === 1 ? '#2a7d9c' : '#0f172a' }}>{p.name}</div>
+                              <div style={{ fontSize: 11, color: '#94a3b8' }}>{p.price}€ TTC</div>
+                            </div>
+                            {val === true && <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#f0fdf4', border: '1.5px solid #86efac', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={11} color="#16a34a" strokeWidth={2.5} /></div>}
+                            {val === false && <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={10} color="#cbd5e1" /></div>}
+                            {typeof val === 'string' && <span style={{ fontSize: 12, fontWeight: 700, color: val === '—' ? '#e2e8f0' : '#16a34a' }}>{val}</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* ── COMPARAISON INFO + PRO ── */}
@@ -404,6 +445,8 @@ export default function TarifsPage() {
         @keyframes pulse2 { 0%,100%{opacity:1} 50%{opacity:.4} }
         @media (max-width: 860px) { .plans-grid { grid-template-columns: 1fr 1fr !important; } }
         @media (max-width: 520px) { .plans-grid { grid-template-columns: 1fr !important; } }
+        @media (max-width: 640px) { .table-desktop { display: none !important; } .table-mobile { display: flex !important; } }
+        @media (min-width: 641px) { .table-mobile { display: none !important; } .table-desktop { display: block !important; } }
       `}</style>
     </main>
   );
