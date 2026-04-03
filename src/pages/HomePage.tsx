@@ -254,20 +254,52 @@ function HeroSection() {
   );
 }
 
-function PhoneMockup() {
-  const [step, setStep] = useState<0|1|2>(0);
-  useEffect(() => {
-    const t1 = setTimeout(() => setStep(1), 3500);
-    const t2 = setTimeout(() => setStep(2), 7000);
-    const t3 = setTimeout(() => setStep(0), 14000);
-    return () => [t1, t2, t3].forEach(clearTimeout);
-  }, [step]);
+/* ═══ PHONE — état partagé ══════════════════════════════════ */
+type PhoneStep = 0 | 1 | 2;
 
+function usePhoneSteps() {
+  const [step, setStep] = useState<PhoneStep>(0);
+  useEffect(() => {
+    const t1 = setTimeout(() => setStep(1), 3200);
+    const t2 = setTimeout(() => setStep(2), 6800);
+    const t3 = setTimeout(() => setStep(0), 13000);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, [step]);
+  return step;
+}
+
+const flyingDocs = [
+  { label: "PV AG 2024.pdf", color: "#2a7d9c", icon: "📋", startX: -120, startY: -60, delay: 0 },
+  { label: "Règlement copro.pdf", color: "#7c3aed", icon: "📑", startX: -140, startY: 20, delay: 0.4 },
+  { label: "Diagnostics.pdf", color: "#f0a500", icon: "⚡", startX: -130, startY: 100, delay: 0.8 },
+];
+
+function PhoneMockup() {
+  const step = usePhoneSteps();
   return (
-    <div className="relative">
+    <div className="relative flex items-center justify-center" style={{ width: 340, height: 580 }}>
+
+      {/* Documents qui volent (phase 0) */}
+      <AnimatePresence>
+        {step === 0 && flyingDocs.map((doc, i) => (
+          <motion.div key={doc.label}
+            initial={{ x: doc.startX, y: doc.startY, opacity: 0, scale: 0.7, rotateZ: -8 }}
+            animate={{ x: 0, y: 0, opacity: [0, 1, 1, 0], scale: [0.7, 1, 1, 0.4], rotateZ: [doc.startX > 0 ? 8 : -8, 0, 0, 0] }}
+            transition={{ delay: doc.delay, duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
+            style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', zIndex: 20 + i }}
+            className="flex items-center gap-2 bg-white rounded-xl px-3 py-2.5 shadow-xl border border-slate-100 min-w-[148px]">
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: `${doc.color}15`, border: `1px solid ${doc.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>
+              {doc.icon}
+            </div>
+            <span className="text-[11px] font-semibold text-slate-700 truncate">{doc.label}</span>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+
+      {/* Badge sécurité */}
       <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.2 }}
-        style={{ animation: "floatA 4s ease-in-out 1.2s infinite" }}
-        className="hidden sm:flex absolute -left-36 top-[20%] z-20 bg-white rounded-2xl px-4 py-3 shadow-xl border border-slate-100 items-center gap-3 min-w-[155px]">
+        style={{ animation: "floatA 4.5s ease-in-out 1.2s infinite", position: 'absolute', left: -130, top: '18%', zIndex: 30 }}
+        className="hidden sm:flex bg-white rounded-2xl px-4 py-3 shadow-xl border border-slate-100 items-center gap-3 min-w-[148px]">
         <div className="w-9 h-9 rounded-xl bg-[#2a7d9c]/8 flex items-center justify-center shrink-0">
           <ShieldCheck size={17} className="text-[#2a7d9c]" />
         </div>
@@ -277,9 +309,10 @@ function PhoneMockup() {
         </div>
       </motion.div>
 
+      {/* Badge score */}
       <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 2.0 }}
-        style={{ animation: "floatB 5s ease-in-out 2s infinite" }}
-        className="hidden sm:flex absolute -right-36 bottom-[28%] z-20 bg-white rounded-2xl px-4 py-3 shadow-xl border border-slate-100 items-center gap-3 min-w-[150px]">
+        style={{ animation: "floatB 5s ease-in-out 2s infinite", position: 'absolute', right: -130, bottom: '26%', zIndex: 30 }}
+        className="hidden sm:flex bg-white rounded-2xl px-4 py-3 shadow-xl border border-slate-100 items-center gap-3 min-w-[148px]">
         <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
           <TrendingUp size={17} className="text-green-500" />
         </div>
@@ -289,34 +322,48 @@ function PhoneMockup() {
         </div>
       </motion.div>
 
+      {/* Badge docs */}
       <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 2.8 }}
-        style={{ animation: "floatC 3.5s ease-in-out 2.8s infinite" }}
-        className="hidden sm:flex absolute -right-28 top-[10%] z-20 bg-white rounded-xl px-3.5 py-2.5 shadow-lg border border-slate-100 items-center gap-2">
+        style={{ animation: "floatC 3.5s ease-in-out 2.8s infinite", position: 'absolute', right: -120, top: '8%', zIndex: 30 }}
+        className="hidden sm:flex bg-white rounded-xl px-3.5 py-2.5 shadow-lg border border-slate-100 items-center gap-2">
         <FileText size={14} className="text-[#2a7d9c] shrink-0" />
         <span className="text-xs font-semibold text-[#0f172a]">3 docs chargés ✓</span>
       </motion.div>
 
-      <motion.div animate={{ y: [0, -10, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}>
-        <div className="w-[175px] sm:w-[275px] h-[370px] sm:h-[580px] bg-[#0f172a] rounded-[40px] sm:rounded-[46px] p-[5px] shadow-[0_32px_72px_rgba(15,23,42,0.25)]">
-          <div className="w-full h-full bg-[#f8fafc] rounded-[36px] sm:rounded-[42px] overflow-hidden flex flex-col">
-            <div className="bg-white shrink-0 px-4 pt-3 pb-1 flex items-center justify-between relative">
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-[60px] h-[18px] bg-[#0f172a] rounded-full z-10" />
-              <span className="text-[8px] font-bold text-slate-300">9:41</span>
-              <span className="text-[8px] font-bold text-slate-300">5G ▪▪▪</span>
+      {/* Téléphone 3D */}
+      <motion.div animate={{ y: [0, -10, 0], rotateY: [0, 2, 0], rotateX: [0, 1, 0] }}
+        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+        style={{ perspective: 1000, transformStyle: 'preserve-3d' }}>
+        <div style={{
+          width: 275, height: 580,
+          background: 'linear-gradient(145deg, #1a1a2e 0%, #0f172a 100%)',
+          borderRadius: 46,
+          padding: 5,
+          boxShadow: '0 40px 80px rgba(15,23,42,0.35), 0 0 0 1px rgba(255,255,255,0.08) inset, 2px 2px 0 rgba(255,255,255,0.04) inset',
+        }}>
+          <div style={{ width: '100%', height: '100%', background: '#f8fafc', borderRadius: 42, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            {/* Status bar */}
+            <div style={{ background: '#fff', padding: '10px 16px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, position: 'relative' }}>
+              <div style={{ position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', width: 64, height: 18, background: '#0f172a', borderRadius: 9 }} />
+              <span style={{ fontSize: 9, fontWeight: 700, color: '#cbd5e1' }}>9:41</span>
+              <span style={{ fontSize: 9, fontWeight: 700, color: '#cbd5e1' }}>5G ▪▪▪</span>
             </div>
-            <div className="bg-white border-b border-slate-100 px-4 py-2 shrink-0 flex items-center justify-between">
-              <span className="text-[10px] font-black text-[#0f2d3d] tracking-wide">VERIMO</span>
-              <span className="text-[8px] font-bold bg-[#2a7d9c]/10 text-[#2a7d9c] px-2 py-0.5 rounded-full">Mon espace</span>
+            {/* App header */}
+            <div style={{ background: '#fff', borderBottom: '1px solid #f1f5f9', padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+              <span style={{ fontSize: 11, fontWeight: 900, color: '#0f2d3d', letterSpacing: '0.06em' }}>VERIMO</span>
+              <span style={{ fontSize: 9, fontWeight: 700, background: 'rgba(42,125,156,0.1)', color: '#2a7d9c', padding: '2px 8px', borderRadius: 100 }}>Mon espace</span>
             </div>
-            <div className="flex-1 flex flex-col min-h-0">
+            {/* Content */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
               <AnimatePresence mode="wait">
                 {step === 0 && <PhaseUpload key="u" />}
                 {step === 1 && <PhaseScan key="s" />}
                 {step === 2 && <PhaseResult key="r" />}
               </AnimatePresence>
             </div>
-            <div className="bg-white shrink-0 py-2 flex justify-center border-t border-slate-50">
-              <div className="w-14 h-1 rounded-full bg-slate-200" />
+            {/* Home indicator */}
+            <div style={{ background: '#fff', padding: 8, display: 'flex', justifyContent: 'center', borderTop: '1px solid #f8fafc', flexShrink: 0 }}>
+              <div style={{ width: 56, height: 4, borderRadius: 2, background: '#e2e8f0' }} />
             </div>
           </div>
         </div>
@@ -325,33 +372,82 @@ function PhoneMockup() {
   );
 }
 
+/* ─── Téléphone mini (mobile homepage) ─── */
+function PhoneMockupMini() {
+  const step = usePhoneSteps();
+  return (
+    <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+      style={{ perspective: 800 }}>
+      <div style={{
+        width: 150, height: 300,
+        background: 'linear-gradient(145deg, #1a1a2e, #0f172a)',
+        borderRadius: 32, padding: 4,
+        boxShadow: '0 24px 56px rgba(15,23,42,0.32), 0 0 0 1px rgba(255,255,255,0.06) inset',
+      }}>
+        <div style={{ width: '100%', height: '100%', background: '#f8fafc', borderRadius: 29, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ background: '#fff', padding: '8px 12px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, position: 'relative' }}>
+            <div style={{ position: 'absolute', top: 6, left: '50%', transform: 'translateX(-50%)', width: 40, height: 13, background: '#0f172a', borderRadius: 7 }} />
+            <span style={{ fontSize: 7, fontWeight: 700, color: '#cbd5e1' }}>9:41</span>
+            <span style={{ fontSize: 7, fontWeight: 700, color: '#cbd5e1' }}>5G</span>
+          </div>
+          <div style={{ background: '#fff', borderBottom: '1px solid #f1f5f9', padding: '5px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <span style={{ fontSize: 8, fontWeight: 900, color: '#0f2d3d', letterSpacing: '0.06em' }}>VERIMO</span>
+            <span style={{ fontSize: 7, fontWeight: 700, background: 'rgba(42,125,156,0.1)', color: '#2a7d9c', padding: '1px 6px', borderRadius: 100 }}>Mon espace</span>
+          </div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <AnimatePresence mode="wait">
+              {step === 0 && <PhaseUploadMini key="u" />}
+              {step === 1 && <PhaseScanMini key="s" />}
+              {step === 2 && <PhaseResultMini key="r" />}
+            </AnimatePresence>
+          </div>
+          <div style={{ background: '#fff', padding: 6, display: 'flex', justifyContent: 'center', borderTop: '1px solid #f8fafc', flexShrink: 0 }}>
+            <div style={{ width: 40, height: 3, borderRadius: 2, background: '#e2e8f0' }} />
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ─── Phase 1 : Upload avec docs qui arrivent ─── */
 function PhaseUpload() {
+  const docs = ["PV AG 2024.pdf", "Règlement copro.pdf", "Diagnostics.pdf"];
+  const colors = ["#2a7d9c", "#7c3aed", "#f0a500"];
   const [prog, setProg] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setProg(p => Math.min(p + 2, 95)), 60);
+    const t = setInterval(() => setProg(p => Math.min(p + 1.8, 95)), 55);
     return () => clearInterval(t);
   }, []);
   return (
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
       className="flex-1 flex flex-col px-4 py-4">
       <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-3">Documents chargés</p>
       <div className="flex flex-col gap-2 mb-auto">
-        {["PV AG 2024.pdf","Règlement copro.pdf","Diagnostics.pdf"].map((f,i)=>(
-          <motion.div key={f} initial={{opacity:0,x:-10}} animate={{opacity:1,x:0}} transition={{delay:i*0.25}}
-            className="flex items-center gap-2 p-2.5 rounded-xl bg-white border border-slate-100 shadow-sm">
-            <FileText size={11} className="text-[#2a7d9c] shrink-0" />
+        {docs.map((f, i) => (
+          <motion.div key={f}
+            initial={{ opacity: 0, x: -30, rotateZ: -4 }}
+            animate={{ opacity: 1, x: 0, rotateZ: 0 }}
+            transition={{ delay: i * 0.28, type: 'spring', stiffness: 200, damping: 18 }}
+            className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white border border-slate-100 shadow-sm">
+            <div style={{ width: 24, height: 24, borderRadius: 7, background: `${colors[i]}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <FileText size={11} style={{ color: colors[i] }} />
+            </div>
             <span className="text-[10px] text-slate-700 font-semibold flex-1 truncate">{f}</span>
-            <CheckCircle size={11} className="text-green-500 shrink-0" />
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: i * 0.28 + 0.4, type: 'spring' }}>
+              <CheckCircle size={11} className="text-green-500 shrink-0" />
+            </motion.div>
           </motion.div>
         ))}
       </div>
       <div className="mt-4">
         <div className="flex justify-between mb-1.5">
           <span className="text-[9px] text-slate-400 font-medium">Préparation...</span>
-          <span className="text-[9px] font-bold text-[#2a7d9c]">{prog}%</span>
+          <span className="text-[9px] font-bold text-[#2a7d9c]">{Math.round(prog)}%</span>
         </div>
-        <div className="h-1.5 rounded-full bg-slate-200">
-          <motion.div className="h-full rounded-full bg-gradient-to-r from-[#2a7d9c] to-[#0f2d3d]"
+        <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+          <motion.div className="h-full rounded-full"
+            style={{ background: 'linear-gradient(90deg, #2a7d9c, #7c3aed)' }}
             animate={{ width: `${prog}%` }} transition={{ duration: 0.3 }} />
         </div>
         <p className="text-[8px] text-slate-400 mt-2 text-center italic">Lancement du traitement...</p>
@@ -360,29 +456,68 @@ function PhaseUpload() {
   );
 }
 
-function PhaseScan() {
-  const tasks = ["Lecture des pages...","Détection des travaux votés...","Analyse financière...","Vérification juridique...","Calcul du score..."];
-  const [done, setDone] = useState(0);
+function PhaseUploadMini() {
+  const docs = ["PV AG 2024.pdf", "Règlement.pdf", "Diagnostics.pdf"];
+  const colors = ["#2a7d9c", "#7c3aed", "#f0a500"];
+  const [prog, setProg] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setDone(d => Math.min(d + 1, tasks.length)), 600);
+    const t = setInterval(() => setProg(p => Math.min(p + 1.8, 95)), 55);
     return () => clearInterval(t);
   }, []);
   return (
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="flex-1 flex flex-col px-3 py-3">
+      <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mb-2">Documents chargés</p>
+      <div className="flex flex-col gap-1.5 mb-auto">
+        {docs.map((f, i) => (
+          <motion.div key={f}
+            initial={{ opacity: 0, x: -20, rotateZ: -4 }}
+            animate={{ opacity: 1, x: 0, rotateZ: 0 }}
+            transition={{ delay: i * 0.25, type: 'spring', stiffness: 200, damping: 18 }}
+            className="flex items-center gap-1.5 p-2 rounded-lg bg-white border border-slate-100 shadow-sm">
+            <div style={{ width: 18, height: 18, borderRadius: 5, background: `${colors[i]}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <FileText size={8} style={{ color: colors[i] }} />
+            </div>
+            <span className="text-[8px] text-slate-700 font-semibold flex-1 truncate">{f}</span>
+            <CheckCircle size={8} className="text-green-500 shrink-0" />
+          </motion.div>
+        ))}
+      </div>
+      <div className="mt-3">
+        <div className="h-1 rounded-full bg-slate-100 overflow-hidden">
+          <motion.div className="h-full rounded-full" style={{ background: 'linear-gradient(90deg,#2a7d9c,#7c3aed)' }}
+            animate={{ width: `${prog}%` }} transition={{ duration: 0.3 }} />
+        </div>
+        <p className="text-[7px] text-slate-400 mt-1 text-center italic">Lancement...</p>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ─── Phase 2 : Traitement ─── */
+function PhaseScan() {
+  const tasks = ["Lecture des pages...", "Détection des travaux votés...", "Analyse financière...", "Vérification juridique...", "Calcul du score /20..."];
+  const [done, setDone] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setDone(d => Math.min(d + 1, tasks.length)), 580);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
       className="flex-1 flex flex-col px-4 py-4">
       <div className="flex items-center justify-between mb-4">
         <p className="text-[10px] font-black text-[#0f172a]">Traitement en cours</p>
-        <div className="w-3.5 h-3.5 border-2 border-[#2a7d9c] border-t-transparent rounded-full animate-spin-slow" />
+        <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.9, repeat: Infinity, ease: 'linear' }}
+          style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid #2a7d9c', borderTopColor: 'transparent' }} />
       </div>
       <div className="flex flex-col gap-2 flex-1">
-        {tasks.map((t,i)=>(
-          <motion.div key={t} initial={{opacity:0}} animate={{opacity:1}} transition={{delay:i*0.15}}
+        {tasks.map((t, i) => (
+          <motion.div key={t} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.14 }}
             className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-all duration-500 ${i < done ? 'bg-green-50 border-green-100' : 'bg-white border-slate-100'}`}>
             {i < done
               ? <CheckCircle size={11} className="text-green-500 shrink-0" />
-              : <motion.div animate={i === done ? {opacity:[1,0.2,1]} : {opacity:0.25}} transition={{duration:0.8,repeat:Infinity}}
-                  className="w-2 h-2 rounded-full bg-[#2a7d9c] shrink-0" />
-            }
+              : <motion.div animate={i === done ? { opacity: [1, 0.2, 1] } : { opacity: 0.25 }} transition={{ duration: 0.8, repeat: Infinity }}
+                  style={{ width: 8, height: 8, borderRadius: '50%', background: '#2a7d9c', flexShrink: 0 }} />}
             <span className={`text-[10px] font-medium ${i < done ? 'text-green-700' : 'text-slate-500'}`}>{t}</span>
           </motion.div>
         ))}
@@ -391,41 +526,87 @@ function PhaseScan() {
   );
 }
 
-function PhaseResult() {
+function PhaseScanMini() {
+  const tasks = ["Lecture...", "Travaux...", "Finances...", "Juridique...", "Score..."];
+  const [done, setDone] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setDone(d => Math.min(d + 1, tasks.length)), 580);
+    return () => clearInterval(t);
+  }, []);
   return (
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="flex-1 flex flex-col px-3 py-3">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[8px] font-black text-[#0f172a]">Traitement en cours</p>
+        <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.9, repeat: Infinity, ease: 'linear' }}
+          style={{ width: 10, height: 10, borderRadius: '50%', border: '1.5px solid #2a7d9c', borderTopColor: 'transparent' }} />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {tasks.map((t, i) => (
+          <motion.div key={t} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.12 }}
+            className={`flex items-center gap-2 p-1.5 rounded-lg border ${i < done ? 'bg-green-50 border-green-100' : 'bg-white border-slate-100'}`}>
+            {i < done
+              ? <CheckCircle size={8} className="text-green-500 shrink-0" />
+              : <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#2a7d9c', flexShrink: 0, opacity: 0.35 }} />}
+            <span className={`text-[8px] font-medium ${i < done ? 'text-green-700' : 'text-slate-500'}`}>{t}</span>
+          </motion.div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+/* ─── Phase 3 : Résultat avec score animé ─── */
+function PhaseResult() {
+  const r = 22, circ = 2 * Math.PI * r;
+  return (
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
       className="flex-1 flex flex-col px-4 py-4">
       <div className="flex items-center justify-between mb-3">
         <p className="text-[10px] font-black text-[#0f172a]">Rapport Verimo</p>
-        <span className="text-[8px] font-bold bg-green-50 text-green-700 px-2 py-0.5 rounded-full">✓ Terminé</span>
+        <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', delay: 0.2 }}
+          className="text-[8px] font-bold bg-green-50 text-green-700 px-2 py-0.5 rounded-full">✓ Terminé</motion.span>
       </div>
-      <div className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-slate-100 shadow-sm mb-3">
-        <div className="relative w-14 h-14 shrink-0">
-          <svg className="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
-            <circle cx="28" cy="28" r="22" fill="none" stroke="#f1f5f9" strokeWidth="4" />
-            <motion.circle cx="28" cy="28" r="22" fill="none" stroke="#2a7d9c" strokeWidth="4" strokeLinecap="round"
-              strokeDasharray={138} initial={{ strokeDashoffset: 138 }}
-              animate={{ strokeDashoffset: 138 - 138 * 0.75 }} transition={{ duration: 1.2, delay: 0.3 }} />
+
+      {/* Score card avec jauge SVG */}
+      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3, type: 'spring' }}
+        className="flex items-center gap-3 p-3 rounded-xl bg-white border border-slate-100 shadow-sm mb-3">
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <svg width="56" height="56" style={{ transform: 'rotate(-90deg)' }}>
+            <circle cx="28" cy="28" r={r} fill="none" stroke="#f1f5f9" strokeWidth="5" />
+            <motion.circle cx="28" cy="28" r={r} fill="none" stroke="url(#scoreGrad)" strokeWidth="5" strokeLinecap="round"
+              strokeDasharray={circ}
+              initial={{ strokeDashoffset: circ }}
+              animate={{ strokeDashoffset: circ - circ * 0.74 }}
+              transition={{ duration: 1.4, delay: 0.5, ease: [0.22, 1, 0.36, 1] }} />
+            <defs>
+              <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#2a7d9c" />
+                <stop offset="100%" stopColor="#22c55e" />
+              </linearGradient>
+            </defs>
           </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-sm font-black text-[#0f172a] leading-none">15</span>
-            <span className="text-[7px] text-slate-400">/20</span>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }}
+              style={{ fontSize: 14, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>15</motion.span>
+            <span style={{ fontSize: 7, color: '#94a3b8' }}>/20</span>
           </div>
         </div>
         <div>
-          <p className="text-[9px] font-black text-[#0f172a] mb-0.5">Globalement sain</p>
-          <span className="text-[8px] font-bold bg-[#2a7d9c]/10 text-[#2a7d9c] px-1.5 py-0.5 rounded-full">Recommandé ✓</span>
+          <p className="text-[9px] font-black text-[#0f172a] mb-0.5">Bien sain ✓</p>
+          <span className="text-[8px] font-bold bg-[#2a7d9c]/10 text-[#2a7d9c] px-1.5 py-0.5 rounded-full">Recommandé</span>
           <p className="text-[8px] text-slate-400 mt-1">12 rue des Lilas, Lyon</p>
         </div>
-      </div>
+      </motion.div>
+
       <div className="flex flex-col gap-1.5 flex-1">
         {[
-          {icon:CheckCircle,c:"text-green-500",bg:"bg-green-50",border:"border-green-100",t:"Finances saines",s:"Fonds travaux bien dotés"},
-          {icon:AlertTriangle,c:"text-amber-500",bg:"bg-amber-50",border:"border-amber-100",t:"Toiture prévue 2026",s:"Estimé ~4 200€/lot"},
-          {icon:CheckCircle,c:"text-green-500",bg:"bg-green-50",border:"border-green-100",t:"Aucun impayé",s:"Copro bien gérée"},
-          {icon:TrendingUp,c:"text-[#2a7d9c]",bg:"bg-white",border:"border-slate-100",t:"Charges : 180€/mois",s:"Dans la moyenne"},
-        ].map((it,i)=>(
-          <motion.div key={i} initial={{opacity:0,y:4}} animate={{opacity:1,y:0}} transition={{delay:0.7+i*0.12}}
+          { icon: CheckCircle, c: "text-green-500", bg: "bg-green-50", border: "border-green-100", t: "Finances saines", s: "Fonds travaux bien dotés" },
+          { icon: AlertTriangle, c: "text-amber-500", bg: "bg-amber-50", border: "border-amber-100", t: "Toiture prévue 2026", s: "~4 200€/lot" },
+          { icon: CheckCircle, c: "text-green-500", bg: "bg-green-50", border: "border-green-100", t: "Aucun impayé", s: "Copro bien gérée" },
+          { icon: TrendingUp, c: "text-[#2a7d9c]", bg: "bg-white", border: "border-slate-100", t: "Charges : 180€/mois", s: "Dans la moyenne" },
+        ].map((it, i) => (
+          <motion.div key={i} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.7 + i * 0.1 }}
             className={`flex items-center gap-2 p-2 rounded-lg ${it.bg} border ${it.border}`}>
             <it.icon size={10} className={`${it.c} shrink-0`} />
             <div className="min-w-0">
@@ -435,7 +616,7 @@ function PhaseResult() {
           </motion.div>
         ))}
       </div>
-      <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:1.5}}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5 }}
         className="mt-3 w-full py-2.5 rounded-xl bg-[#0f2d3d] text-white text-[9px] font-bold text-center flex items-center justify-center gap-1.5">
         <Download size={9} /> Télécharger le rapport PDF
       </motion.div>
@@ -443,149 +624,62 @@ function PhaseResult() {
   );
 }
 
-/* ═══ PHONE MOCKUP MINI (mobile uniquement) ══════════════════ */
-function PhoneMockupMini() {
-  const [step, setStep] = useState<0|1|2>(0);
-  useEffect(() => {
-    const t1 = setTimeout(() => setStep(1), 3500);
-    const t2 = setTimeout(() => setStep(2), 7000);
-    const t3 = setTimeout(() => setStep(0), 14000);
-    return () => [t1, t2, t3].forEach(clearTimeout);
-  }, [step]);
-
-  return (
-    <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}>
-      <div className="w-[150px] h-[300px] bg-[#0f172a] rounded-[32px] p-[4px] shadow-[0_24px_56px_rgba(15,23,42,0.28)]">
-        <div className="w-full h-full bg-[#f8fafc] rounded-[29px] overflow-hidden flex flex-col">
-          <div className="bg-white shrink-0 px-3 pt-2.5 pb-1 flex items-center justify-between relative">
-            <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-[40px] h-[14px] bg-[#0f172a] rounded-full z-10" />
-            <span className="text-[7px] font-bold text-slate-300">9:41</span>
-            <span className="text-[7px] font-bold text-slate-300">5G</span>
-          </div>
-          <div className="bg-white border-b border-slate-100 px-3 py-1.5 shrink-0 flex items-center justify-between">
-            <span className="text-[8px] font-black text-[#0f2d3d] tracking-wide">VERIMO</span>
-            <span className="text-[7px] font-bold bg-[#2a7d9c]/10 text-[#2a7d9c] px-1.5 py-0.5 rounded-full">Mon espace</span>
-          </div>
-          <div className="flex-1 flex flex-col min-h-0">
-            <AnimatePresence mode="wait">
-              {step === 0 && <PhaseUploadMini key="u" />}
-              {step === 1 && <PhaseScanMini key="s" />}
-              {step === 2 && <PhaseResultMini key="r" />}
-            </AnimatePresence>
-          </div>
-          <div className="bg-white shrink-0 py-1.5 flex justify-center border-t border-slate-50">
-            <div className="w-10 h-[3px] rounded-full bg-slate-200" />
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-function PhaseUploadMini() {
-  const [prog, setProg] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setProg(p => Math.min(p + 2, 95)), 60);
-    return () => clearInterval(t);
-  }, []);
-  return (
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="flex-1 flex flex-col px-3 py-3">
-      <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest mb-2">Documents chargés</p>
-      <div className="flex flex-col gap-1.5 mb-auto">
-        {["PV AG 2024.pdf","Règlement.pdf","Diagnostics.pdf"].map((f,i)=>(
-          <motion.div key={f} initial={{opacity:0,x:-8}} animate={{opacity:1,x:0}} transition={{delay:i*0.2}}
-            className="flex items-center gap-1.5 p-2 rounded-lg bg-white border border-slate-100 shadow-sm">
-            <FileText size={8} className="text-[#2a7d9c] shrink-0" />
-            <span className="text-[8px] text-slate-700 font-semibold flex-1 truncate">{f}</span>
-            <CheckCircle size={8} className="text-green-500 shrink-0" />
-          </motion.div>
-        ))}
-      </div>
-      <div className="mt-3">
-        <div className="h-1 rounded-full bg-slate-200">
-          <motion.div className="h-full rounded-full bg-gradient-to-r from-[#2a7d9c] to-[#0f2d3d]"
-            animate={{ width: `${prog}%` }} transition={{ duration: 0.3 }} />
-        </div>
-        <p className="text-[7px] text-slate-400 mt-1 text-center italic">Lancement...</p>
-      </div>
-    </motion.div>
-  );
-}
-
-function PhaseScanMini() {
-  const tasks = ["Lecture...","Travaux...","Finances...","Juridique...","Score..."];
-  const [done, setDone] = useState(0);
-  useEffect(() => {
-    const t = setInterval(() => setDone(d => Math.min(d + 1, tasks.length)), 600);
-    return () => clearInterval(t);
-  }, []);
-  return (
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="flex-1 flex flex-col px-3 py-3">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[8px] font-black text-[#0f172a]">Traitement en cours</p>
-        <div className="w-2.5 h-2.5 border-[1.5px] border-[#2a7d9c] border-t-transparent rounded-full animate-spin-slow" />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        {tasks.map((t,i)=>(
-          <motion.div key={t} initial={{opacity:0}} animate={{opacity:1}} transition={{delay:i*0.12}}
-            className={`flex items-center gap-2 p-1.5 rounded-lg border ${i < done ? 'bg-green-50 border-green-100' : 'bg-white border-slate-100'}`}>
-            {i < done
-              ? <CheckCircle size={8} className="text-green-500 shrink-0" />
-              : <div className="w-1.5 h-1.5 rounded-full bg-[#2a7d9c] shrink-0 opacity-40" />
-            }
-            <span className={`text-[8px] font-medium ${i < done ? 'text-green-700' : 'text-slate-500'}`}>{t}</span>
-          </motion.div>
-        ))}
-      </div>
-    </motion.div>
-  );
-}
-
 function PhaseResultMini() {
+  const r = 15, circ = 2 * Math.PI * r;
   return (
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="flex-1 flex flex-col px-3 py-3">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="flex-1 flex flex-col px-3 py-3">
       <div className="flex items-center justify-between mb-2">
         <p className="text-[8px] font-black text-[#0f172a]">Rapport Verimo</p>
         <span className="text-[6px] font-bold bg-green-50 text-green-700 px-1.5 py-0.5 rounded-full">✓ OK</span>
       </div>
       <div className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-100 shadow-sm mb-2">
-        <div className="relative w-10 h-10 shrink-0">
-          <svg className="w-10 h-10 -rotate-90" viewBox="0 0 40 40">
-            <circle cx="20" cy="20" r="15" fill="none" stroke="#f1f5f9" strokeWidth="3" />
-            <motion.circle cx="20" cy="20" r="15" fill="none" stroke="#2a7d9c" strokeWidth="3" strokeLinecap="round"
-              strokeDasharray={94} initial={{ strokeDashoffset: 94 }}
-              animate={{ strokeDashoffset: 94 - 94 * 0.75 }} transition={{ duration: 1.2, delay: 0.3 }} />
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <svg width="38" height="38" style={{ transform: 'rotate(-90deg)' }}>
+            <circle cx="19" cy="19" r={r} fill="none" stroke="#f1f5f9" strokeWidth="3.5" />
+            <motion.circle cx="19" cy="19" r={r} fill="none" stroke="url(#scoreGrad2)" strokeWidth="3.5" strokeLinecap="round"
+              strokeDasharray={circ}
+              initial={{ strokeDashoffset: circ }}
+              animate={{ strokeDashoffset: circ - circ * 0.74 }}
+              transition={{ duration: 1.2, delay: 0.3 }} />
+            <defs>
+              <linearGradient id="scoreGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#2a7d9c" />
+                <stop offset="100%" stopColor="#22c55e" />
+              </linearGradient>
+            </defs>
           </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-[10px] font-black text-[#0f172a] leading-none">15</span>
-            <span className="text-[6px] text-slate-400">/20</span>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontSize: 10, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>15</span>
+            <span style={{ fontSize: 6, color: '#94a3b8' }}>/20</span>
           </div>
         </div>
         <div>
-          <p className="text-[8px] font-black text-[#0f172a] mb-0.5">Sain</p>
-          <span className="text-[6px] font-bold bg-[#2a7d9c]/10 text-[#2a7d9c] px-1 py-0.5 rounded-full">Recommandé ✓</span>
+          <p className="text-[8px] font-black text-[#0f172a] mb-0.5">Bien sain ✓</p>
+          <span className="text-[6px] font-bold bg-[#2a7d9c]/10 text-[#2a7d9c] px-1 py-0.5 rounded-full">Recommandé</span>
         </div>
       </div>
       <div className="flex flex-col gap-1">
         {[
-          {icon:CheckCircle,c:"text-green-500",bg:"bg-green-50",t:"Finances saines"},
-          {icon:AlertTriangle,c:"text-amber-500",bg:"bg-amber-50",t:"Toiture 2026 ~4 200€"},
-          {icon:CheckCircle,c:"text-green-500",bg:"bg-green-50",t:"Aucun impayé"},
-        ].map((it,i)=>(
-          <motion.div key={i} initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.5+i*0.1}}
+          { icon: CheckCircle, c: "text-green-500", bg: "bg-green-50", t: "Finances saines" },
+          { icon: AlertTriangle, c: "text-amber-500", bg: "bg-amber-50", t: "Toiture 2026 ~4 200€" },
+          { icon: CheckCircle, c: "text-green-500", bg: "bg-green-50", t: "Aucun impayé" },
+        ].map((it, i) => (
+          <motion.div key={i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 + i * 0.1 }}
             className={`flex items-center gap-1.5 p-1.5 rounded-lg ${it.bg}`}>
             <it.icon size={8} className={`${it.c} shrink-0`} />
             <p className="text-[8px] font-semibold text-[#0f172a] truncate">{it.t}</p>
           </motion.div>
         ))}
       </div>
-      <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:1.2}}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }}
         className="mt-2 w-full py-2 rounded-lg bg-[#0f2d3d] text-white text-[7px] font-bold text-center flex items-center justify-center gap-1">
         <Download size={7} /> Télécharger PDF
       </motion.div>
     </motion.div>
   );
 }
+
 
 /* ═══ AVANT / APRÈS ════════════════════════════════════════ */
 function AvantApresSection() {
