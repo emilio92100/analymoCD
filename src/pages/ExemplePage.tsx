@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import {
   ArrowRight, CheckCircle, AlertTriangle, FileText,
-  TrendingDown, TrendingUp, Euro, Wrench, Gavel,
+  Euro, Wrench, Gavel,
   Download, ChevronDown, Shield, Star, Info,
 } from 'lucide-react';
 
@@ -208,7 +208,7 @@ export default function ExemplePage() {
               const Icon = tab.icon;
               return (
                 <button key={tab.id} onClick={() => setActive(tab.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, border: 'none', background: active === tab.id ? 'linear-gradient(135deg,#2a7d9c,#0f2d3d)' : '#fff', color: active === tab.id ? '#fff' : '#64748b', fontSize: 13, fontWeight: active === tab.id ? 700 : 500, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s', boxShadow: active === tab.id ? '0 4px 14px rgba(42,125,156,0.25)' : '0 1px 3px rgba(0,0,0,0.06)', border: active === tab.id ? 'none' : '1px solid #edf2f7' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, background: active === tab.id ? 'linear-gradient(135deg,#2a7d9c,#0f2d3d)' : '#fff', color: active === tab.id ? '#fff' : '#64748b', fontSize: 13, fontWeight: active === tab.id ? 700 : 500, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s', boxShadow: active === tab.id ? '0 4px 14px rgba(42,125,156,0.25)' : '0 1px 3px rgba(0,0,0,0.06)', border: active === tab.id ? 'none' : '1px solid #edf2f7' }}>
                   <Icon size={14} style={{ flexShrink: 0 }} /> {tab.label}
                 </button>
               );
