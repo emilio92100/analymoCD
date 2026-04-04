@@ -2295,6 +2295,13 @@ function Tarifs() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+
+    if (params.get('cancelled') === 'true') {
+      // Retour depuis Stripe sans payer → juste nettoyer l'URL, ne rien toucher
+      window.history.replaceState({}, '', '/dashboard/tarifs');
+      return;
+    }
+
     if (params.get('success') === 'true') {
       // Nettoyer l'URL
       window.history.replaceState({}, '', '/dashboard/tarifs');
@@ -2308,9 +2315,6 @@ function Tarifs() {
       } else {
         setSuccessToast("✅ Paiement confirmé ! Vos crédits ont été ajoutés à votre compte. Bonne analyse !");
       }
-
-      // Cacher le toast après 8 secondes
-      // Pas de timer — l'utilisateur ferme manuellement avec "Compris !"
     }
   }, []);
 
