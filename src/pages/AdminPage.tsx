@@ -555,10 +555,19 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
   const handleCreate = async () => {
     setSending(true);
     try {
-      await callEdgeFunction('create', { email: form.email, password: form.password, full_name: form.name });
+      const result = await callEdgeFunction('create', { email: form.email, password: form.password, full_name: form.name });
+      // Forcer la création du profil si le trigger ne l'a pas fait
+      if (result.user?.id) {
+        await supabase.from('profiles').upsert({
+          id: result.user.id,
+          email: form.email,
+          full_name: form.name || null,
+          role: 'user',
+        }, { onConflict: 'id', ignoreDuplicates: true });
+      }
       await logAction('Compte créé', form.email);
       setFeedback('✓ Compte créé !');
-      setTimeout(() => { setModal(null); setFeedback(''); loadUsers(); }, 1200);
+      setTimeout(async () => { setModal(null); setFeedback(''); await loadUsers(); }, 1200);
       showToast(`Compte ${form.email} créé`);
     } catch (e) {
       setFeedback('Erreur : ' + (e as Error).message);
@@ -583,11 +592,18 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
   const handleSetCredits = async () => {
     if (!selectedUser) return;
     setSending(true);
-    await supabase.from('profiles').update({ credits_document: form.credits_doc, credits_complete: form.credits_complete }).eq('id', selectedUser.id);
+    const { error } = await supabase.from('profiles')
+      .update({ credits_document: form.credits_doc, credits_complete: form.credits_complete })
+      .eq('id', selectedUser.id);
+    if (error) { showToast('Erreur : ' + error.message); setSending(false); return; }
     await logAction('Crédits modifiés', `${selectedUser.email} → doc:${form.credits_doc} ana:${form.credits_complete}`);
     setSending(false);
     setModal(null);
-    loadUsers();
+    // Mettre à jour detailUser si on est sur sa fiche
+    if (detailUser?.id === selectedUser.id) {
+      setDetailUser(u => u ? { ...u, credits_document: form.credits_doc, credits_complete: form.credits_complete } : u);
+    }
+    await loadUsers();
     showToast(`Crédits mis à jour pour ${selectedUser.email}`);
   };
 
