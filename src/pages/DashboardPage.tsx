@@ -2273,7 +2273,14 @@ const handleAcheter = (plan: { id: string; label: string; price: string; priceNu
             </div>
           </div>
         ))}
-      </div>
+ </div>
+
+      {checkoutPlan && (
+        <CheckoutModal
+          plan={checkoutPlan}
+          onClose={() => setCheckoutPlan(null)}
+        />
+      )}
 
     </div>
   );
