@@ -48,10 +48,16 @@ function SessionManager() {
           return;
         }
       }
-      // Vérifier si le compte est suspendu
+      // Vérifier si le compte est suspendu ou supprimé
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase.from('profiles').select('suspended').eq('id', user.id).single();
+        const { data: profile, error } = await supabase.from('profiles').select('suspended').eq('id', user.id).single();
+        if (error || !profile) {
+          // Profil introuvable → compte supprimé
+          await supabase.auth.signOut();
+          window.location.href = '/connexion';
+          return;
+        }
         if (profile?.suspended) {
           await supabase.auth.signOut();
           window.location.href = '/connexion?suspended=true';
