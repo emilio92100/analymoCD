@@ -57,12 +57,9 @@ function SessionManager() {
         return;
       }
 
-      // Sync freePreview dans les DEUX sens
+      // Sync freePreview — uniquement si Supabase dit true (jamais effacer)
       if (profile.free_preview_used) {
         localStorage.setItem('verimo_free_preview_used', 'true');
-      } else {
-        // Supabase dit false → on remet le localStorage à false aussi
-        localStorage.removeItem('verimo_free_preview_used');
       }
       // Si crédits > 0 et pas encore marqué → marquer dans Supabase ET localStorage
       if ((profile.credits_document > 0 || profile.credits_complete > 0) && !profile.free_preview_used) {
@@ -106,11 +103,9 @@ function SessionManager() {
         return;
       }
 
-      // Sync free_preview_used dans les deux sens
+      // Sync free_preview_used — uniquement si Supabase dit true
       if (profile.free_preview_used) {
         localStorage.setItem('verimo_free_preview_used', 'true');
-      } else {
-        localStorage.removeItem('verimo_free_preview_used');
       }
     };
 
