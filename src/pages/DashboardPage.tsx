@@ -2018,15 +2018,10 @@ function Support() {
 ══════════════════════════════════════════ */
 function Tarifs() {
   const { credits } = useCredits();
-  const [loading, setLoading] = useState<string | null>(null);
   const [tooltip, setTooltip] = useState<string | null>(null);
 
-  const handleAcheter = (planId: string) => {
-    setLoading(planId);
-    setTimeout(() => {
-      setLoading(null);
-      alert('Redirection vers Stripe… (à connecter)');
-    }, 800);
+const handleAcheter = (plan: { id: string; label: string; price: string; priceNum: number; color: string; creditLabel: string }) => {
+    setCheckoutPlan(plan);
   };
 
   const plans: { id: string; label: string; price: string; priceNum: number; desc: string; creditLabel: string; creditType: keyof Credits; color: string; icon: React.ElementType; popular?: boolean; badge?: string; details: string[] }[] = [
