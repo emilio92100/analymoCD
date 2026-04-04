@@ -90,10 +90,38 @@ function SessionManager() {
       }
     };
 
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') {
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
         localStorage.setItem('verimo_login_time', Date.now().toString());
-        checkSession(); // Vérifier immédiatement à la connexion
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('suspended, free_preview_used, credits_document, credits_complete')
+          .eq('id', session.user.id)
+          .maybeSingle();
+
+        if (!profile) {
+          await supabase.auth.signOut();
+          window.location.href = '/connexion';
+          return;
+        }
+        if (profile.suspended) {
+          await supabase.auth.signOut();
+          window.location.href = '/connexion?suspended=true';
+          return;
+        }
+        if (profile.free_preview_used) {
+          localStorage.setItem('verimo_free_preview_used', 'true');
+        } else {
+          localStorage.removeItem('verimo_free_preview_used');
+        }
+        if ((profile.credits_document > 0 || profile.credits_complete > 0) && !profile.free_preview_used) {
+          await supabase.from('profiles').update({ free_preview_used: true }).eq('id', session.user.id);
+          localStorage.setItem('verimo_free_preview_used', 'true');
+        }
+        const n = session.user.user_metadata?.full_name?.split(' ')[0] || session.user.email?.split('@')[0] || 'Utilisateur';
+        localStorage.setItem('verimo_user_name', n);
+        localStorage.setItem('verimo_user_email', session.user.email || '');
       }
       if (event === 'SIGNED_OUT') localStorage.removeItem('verimo_login_time');
     });
