@@ -45,6 +45,16 @@ function SessionManager() {
         if (elapsed > 3600000) {
           localStorage.removeItem('verimo_login_time');
           await supabase.auth.signOut();
+          return;
+        }
+      }
+      // Vérifier si le compte est suspendu
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase.from('profiles').select('suspended').eq('id', user.id).single();
+        if (profile?.suspended) {
+          await supabase.auth.signOut();
+          window.location.href = '/connexion?suspended=true';
         }
       }
     };
