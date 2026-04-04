@@ -414,8 +414,7 @@ function DashboardContent({ path }: { path:string }) {
 function HomeView() {
   const { name } = useUser();
   const { analyses } = useAnalyses();
-  const { credits } = useCredits();
-  const hour = new Date().getHours();
+  const { credits, loadingCredits } = useCredits();
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
   const hasAnalyses = analyses.length > 0;
   const [freePreviewUsedHome] = useState<boolean>(() => checkFreePreviewUsedSync());
@@ -475,7 +474,7 @@ const penalties = [
       </div>
 
       {/* ── Bandeau offre gratuite — masqué si déjà utilisé OU si l'utilisateur a des crédits payés */}
-      {!freePreviewUsedHome && credits.document === 0 && credits.complete === 0 && (
+      {!loadingCredits && !freePreviewUsedHome && credits.document === 0 && credits.complete === 0 && (
         <div style={{ background:'#0f2d3d', borderRadius:16, padding:'22px 28px', position:'relative', overflow:'hidden' }}>
           <div style={{ position:'absolute', top:-30, right:-30, width:160, height:160, borderRadius:'50%', background:'rgba(42,125,156,0.18)', pointerEvents:'none' }}/>
           <div style={{ position:'relative', display:'flex', alignItems:'center', gap:20, flexWrap:'wrap' }}>
