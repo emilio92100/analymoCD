@@ -272,8 +272,6 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
         })}
       </nav>
 
-      {/* User */}
-      </div>
     </aside>
   );
 }
