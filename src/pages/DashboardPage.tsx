@@ -237,15 +237,19 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
 
       {/* Crédits mini */}
       <div style={{ margin:'0 14px 8px', padding:'12px', borderRadius:10, background:'#f8fafc', border:'1px solid #edf2f7' }}>
-        <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.12em', marginBottom:8 }}>MES ANALYSES</div>
+        <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.12em', marginBottom:8 }}>CRÉDITS RESTANTS</div>
         <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 8px', borderRadius:8, background:'#f8fafc', border:'1px solid #edf2f7' }}>
             <span style={{ fontSize:11, color:'#64748b', fontWeight:600 }}>Document</span>
-            <span style={{ fontSize:14, fontWeight:900, color:credits.document > 0 ? '#2a7d9c' : '#94a3b8' }}>{credits.document}</span>
+            <span style={{ fontSize:12, fontWeight:900, color:credits.document > 0 ? '#2a7d9c' : '#94a3b8' }}>
+              {credits.document} crédit{credits.document > 1 ? 's' : ''} restant{credits.document > 1 ? 's' : ''}
+            </span>
           </div>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 8px', borderRadius:8, background:'#f8fafc', border:'1px solid #edf2f7' }}>
             <span style={{ fontSize:11, color:'#64748b', fontWeight:600 }}>Complète</span>
-            <span style={{ fontSize:14, fontWeight:900, color:credits.complete > 0 ? '#0f2d3d' : '#94a3b8' }}>{credits.complete}</span>
+            <span style={{ fontSize:12, fontWeight:900, color:credits.complete > 0 ? '#0f2d3d' : '#94a3b8' }}>
+              {credits.complete} crédit{credits.complete > 1 ? 's' : ''} restant{credits.complete > 1 ? 's' : ''}
+            </span>
           </div>
         </div>
         <Link to="/dashboard/tarifs" onClick={onClose} style={{ display:'block', marginTop:8, fontSize:11, fontWeight:700, color:'#2a7d9c', textDecoration:'none', textAlign:'center' }}>
@@ -273,7 +277,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
 
       {/* User */}
       <div style={{ padding:'10px 14px 16px', borderTop:'1px solid #f0f5f9', flexShrink:0 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:10, background:'#f8fafc', border:'1px solid #edf2f7' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:10, background:'#f8fafc', border:'1px solid #edf2f7', marginBottom:8 }}>
           <div style={{ width:34, height:34, borderRadius:'50%', flexShrink:0, background:'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:'#fff' }}>
             {(name.charAt(0)||'U').toUpperCase()}
           </div>
@@ -281,11 +285,13 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
             <div style={{ fontSize:13, fontWeight:700, color:'#0f172a', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name||'…'}</div>
             <div style={{ fontSize:11, color:'#94a3b8', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{email}</div>
           </div>
-          <button onClick={handleLogout} title="Déconnexion" style={{ background:'none', border:'none', cursor:'pointer', color:'#cbd5e1', padding:4, transition:'color 0.15s', flexShrink:0 }}
-            onMouseOver={e=>(e.currentTarget.style.color='#ef4444')} onMouseOut={e=>(e.currentTarget.style.color='#cbd5e1')}>
-            <LogOut size={14}/>
-          </button>
         </div>
+        <button onClick={handleLogout}
+          style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'9px 12px', borderRadius:10, background:'none', border:'1.5px solid #fee2e2', cursor:'pointer', color:'#ef4444', fontSize:13, fontWeight:700, transition:'all 0.15s' }}
+          onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.background='#fef2f2'; }}
+          onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.background='none'; }}>
+          <LogOut size={14}/> Se déconnecter
+        </button>
       </div>
     </aside>
   );
@@ -1041,7 +1047,7 @@ function NouvelleAnalyse() {
           onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.borderColor='#edf2f7'; el.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)'; el.style.transform='translateY(0)'; }}>
           {freePreviewUsed && (
             <div style={{ position:'absolute', top:14, right:14, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:6, background:credits.document>0?'#f0fdf4':'#f8fafc', color:credits.document>0?'#16a34a':'#94a3b8', border:`1px solid ${credits.document>0?'#bbf7d0':'#e2e8f0'}` }}>
-              {credits.document > 0 ? `${credits.document} crédit${credits.document>1?'s':''}` : '0 crédit'}
+              {credits.document > 0 ? `${credits.document} crédit${credits.document>1?'s':''} restant${credits.document>1?'s':''}` : '0 crédit'}
             </div>
           )}
           <div style={{ width:52, height:52, borderRadius:14, background:'rgba(42,125,156,0.08)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:16, marginTop: freePreviewUsed ? 8 : 0 }}>
@@ -1069,7 +1075,7 @@ function NouvelleAnalyse() {
           <div style={{ position:'absolute', top:14, left:14, fontSize:9, fontWeight:800, color:'#fff', background:'rgba(255,255,255,0.15)', border:'1px solid rgba(255,255,255,0.2)', padding:'3px 10px', borderRadius:100 }}>&#9733; RECOMMANDÉ</div>
           {freePreviewUsed && (
             <div style={{ position:'absolute', top:14, right:14, fontSize:10, fontWeight:700, padding:'3px 8px', borderRadius:6, background:credits.complete>0?'rgba(255,255,255,0.2)':'rgba(255,255,255,0.08)', color:'#fff', border:'1px solid rgba(255,255,255,0.2)' }}>
-              {credits.complete > 0 ? `${credits.complete} crédit${credits.complete>1?'s':''}` : '0 crédit'}
+              {credits.complete > 0 ? `${credits.complete} crédit${credits.complete>1?'s':''} restant${credits.complete>1?'s':''}` : '0 crédit'}
             </div>
           )}
           <div style={{ width:52, height:52, borderRadius:14, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:16, marginTop: freePreviewUsed ? 18 : 10 }}>
@@ -2311,7 +2317,7 @@ function Tarifs() {
       if (!freePreviewUsed) {
         // Marquer l'offre gratuite comme utilisée
         markFreePreviewUsed();
-        setSuccessToast("🎉 Vous aviez une analyse gratuite disponible, mais pourquoi regarder par le trou de la serrure quand on peut ouvrir la porte en grand ? En payant directement, votre offre gratuite a été remplacée par l'analyse que vous avez choisie. Bonne analyse ! !");
+        setSuccessToast("🎉 Vous aviez une analyse gratuite disponible, mais pourquoi regarder par le trou de la serrure quand on peut ouvrir la porte en grand ? En payant directement, votre offre gratuite a été remplacée par votre analyse complète. Bonne analyse !");
       } else {
         setSuccessToast("✅ Paiement confirmé ! Vos crédits ont été ajoutés à votre compte. Bonne analyse !");
       }
