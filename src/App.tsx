@@ -64,10 +64,6 @@ function SessionManager() {
           return;
         }
 
-        if (error && error.code !== 'PGRST116') {
-          return; // Erreur réseau, on ignore
-        }
-
         if (profile.suspended) {
           await supabase.auth.signOut();
           window.location.href = '/connexion?suspended=true';
