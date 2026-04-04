@@ -2228,27 +2228,22 @@ function Tarifs() {
                 </div>
 
                 {/* CTA */}
-                <button
-                  onClick={()=>handleAcheter({ id: plan.id, label: plan.label, price: plan.price, priceNum: plan.priceNum, color: plan.color, creditLabel: plan.creditLabel })}
-                  disabled={loading===plan.id}
-                  style={{
-                    flexShrink:0, padding:'11px 22px', borderRadius:11, border:'none',
-                    background:`linear-gradient(135deg, ${plan.color}, ${plan.color}cc)`,
-                    color:'#fff', fontSize:13.5, fontWeight:800,
-                    cursor:loading===plan.id?'not-allowed':'pointer',
-                    boxShadow:`0 4px 14px ${plan.color}30`,
-                    display:'flex', alignItems:'center', gap:7,
-                    opacity:loading===plan.id?0.75:1,
-                    transition:'all 0.15s', whiteSpace:'nowrap',
-                  }}
-                  onMouseOver={e=>{ if(loading!==plan.id)(e.currentTarget as HTMLElement).style.filter='brightness(1.1)'; }}
-                  onMouseOut={e=>{ (e.currentTarget as HTMLElement).style.filter='brightness(1)'; }}
-                >
-                  {loading===plan.id
-                    ? <><div style={{ width:14,height:14,borderRadius:'50%',border:'2px solid rgba(255,255,255,0.35)',borderTopColor:'#fff',animation:'spin 0.8s linear infinite' }}/> Traitement…</>
-                    : hasCredits ? 'Racheter' : 'Acheter'
-                  }
-                </button>
+<button
+  onClick={()=>handleAcheter({ id: plan.id, label: plan.label, price: plan.price, priceNum: plan.priceNum, color: plan.color, creditLabel: plan.creditLabel })}
+  style={{
+    flexShrink:0, padding:'11px 22px', borderRadius:11, border:'none',
+    background:`linear-gradient(135deg, ${plan.color}, ${plan.color}cc)`,
+    color:'#fff', fontSize:13.5, fontWeight:800,
+    cursor:'pointer',
+    boxShadow:`0 4px 14px ${plan.color}30`,
+    display:'flex', alignItems:'center', gap:7,
+    transition:'all 0.15s', whiteSpace:'nowrap',
+  }}
+  onMouseOver={e=>{ (e.currentTarget as HTMLElement).style.filter='brightness(1.1)'; }}
+  onMouseOut={e=>{ (e.currentTarget as HTMLElement).style.filter='brightness(1)'; }}
+>
+  {hasCredits ? 'Racheter' : 'Acheter'}
+</button>
               </div>
 
               {/* Barre verte si crédits dispos */}
