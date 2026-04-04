@@ -197,7 +197,8 @@ export default function AdminPage() {
   // Créer table admin_logs si elle n'existe pas (silencieux)
   useEffect(() => {
     if (!isAdmin) return;
-    supabase.rpc('create_admin_logs_if_not_exists').then(() => {}).catch(() => {});
+    const init = async () => { try { await supabase.rpc('create_admin_logs_if_not_exists'); } catch { /* silencieux */ } };
+    init();
   }, [isAdmin]);
 
   if (loading) return (
