@@ -543,7 +543,7 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
   const filtered = users
     .filter(u => {
       const matchSearch = u.email?.toLowerCase().includes(search.toLowerCase()) || u.full_name?.toLowerCase().includes(search.toLowerCase());
-      const matchTab = filterTab === 'all' ? true : filterTab === 'verified' ? u.email_verified !== false : u.email_verified === false;
+      const matchTab = filterTab === 'all' ? true : filterTab === 'verified' ? u.email_verified === true : u.email_verified === false;
       return matchSearch && matchTab;
     })
     .sort((a, b) => {
@@ -728,7 +728,7 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
       <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
         {([
           { id: 'all', label: `Tous (${users.length})` },
-          { id: 'verified', label: `✓ Vérifiés (${users.filter(u => u.email_verified !== false).length})` },
+          { id: 'verified', label: `✓ Vérifiés (${users.filter(u => u.email_verified === true).length})` },
           { id: 'unverified', label: `⚠ Non vérifiés (${users.filter(u => u.email_verified === false).length})` },
         ] as const).map(t => (
           <button key={t.id} onClick={() => setFilterTab(t.id)}
@@ -759,7 +759,7 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
                 <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
                   {user.role === 'admin' && <Badge color="#7c3aed" bg="#f5f3ff">admin</Badge>}
                   {user.suspended && <Badge color="#dc2626" bg="#fef2f2">suspendu</Badge>}
-                  {user.email_verified !== false
+                  {user.email_verified === true
                     ? <Badge color="#16a34a" bg="#f0fdf4">✓ vérifié</Badge>
                     : <Badge color="#f0a500" bg="#fffbeb">⚠ non vérifié</Badge>
                   }
