@@ -223,6 +223,63 @@ export default function AdminPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#f4f7f9', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
 
+      {/* Styles responsive mobile */}
+      <style>{`
+        @media (max-width: 768px) {
+          .admin-sidebar { display: none !important; }
+          .admin-tabs-mobile { display: flex !important; }
+          .admin-main { padding: 16px 12px !important; }
+          .admin-topbar-title { display: none !important; }
+          .admin-topbar-buttons span { display: none !important; }
+          .admin-grid-users { grid-template-columns: 1fr !important; overflow-x: auto; }
+          .admin-grid-promos { grid-template-columns: 1fr !important; overflow-x: auto; }
+          .admin-stats-grid { grid-template-columns: 1fr 1fr !important; }
+          .admin-kpi-grid { grid-template-columns: 1fr 1fr !important; }
+          .admin-messages-grid { grid-template-columns: 1fr !important; }
+        }
+        .admin-tabs-mobile {
+          display: none;
+          overflow-x: auto;
+          gap: 6px;
+          padding: 10px 12px;
+          background: #fff;
+          border-bottom: 1px solid #edf2f7;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+        }
+        .admin-tabs-mobile::-webkit-scrollbar { display: none; }
+        .admin-tab-pill {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          padding: 7px 14px;
+          border-radius: 100px;
+          border: 1.5px solid #edf2f7;
+          background: #f8fafc;
+          cursor: pointer;
+          font-size: 12px;
+          font-weight: 700;
+          color: #64748b;
+          white-space: nowrap;
+          flex-shrink: 0;
+          transition: all 0.15s;
+        }
+        .admin-tab-pill.active {
+          background: linear-gradient(135deg, #2a7d9c, #0f2d3d);
+          color: #fff;
+          border-color: transparent;
+        }
+        .admin-user-row { display: grid; grid-template-columns: 1fr 100px 60px 60px 1fr; }
+        .admin-analyse-row { display: grid; grid-template-columns: 1fr 90px 80px 100px 90px; }
+        .admin-promo-row { display: grid; grid-template-columns: 140px 1fr 80px 100px 100px 90px 80px; }
+        @media (max-width: 768px) {
+          .admin-user-row, .admin-user-header { display: none !important; }
+          .admin-user-card { display: flex !important; }
+          .admin-analyse-row, .admin-analyse-header { overflow-x: auto; font-size: 11px !important; }
+          .admin-promo-row, .admin-promo-header { overflow-x: auto; font-size: 11px !important; }
+        }
+      `}</style>
+
       {/* Toast */}
       <AnimatePresence>
         {toast && (
@@ -236,31 +293,31 @@ export default function AdminPage() {
       <AnimatePresence>{confirm && <ConfirmModal action={confirm} onClose={() => setConfirm(null)} />}</AnimatePresence>
 
       {/* Topbar */}
-      <div style={{ background: 'linear-gradient(135deg,#0f2d3d,#1a4a60)', padding: '0 24px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(15,45,61,0.3)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(42,125,156,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: 'linear-gradient(135deg,#0f2d3d,#1a4a60)', padding: '0 16px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(15,45,61,0.3)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(42,125,156,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Shield size={17} color="#7dd3f0" />
           </div>
-          <div>
+          <div className="admin-topbar-title">
             <div style={{ fontSize: 14, fontWeight: 900, color: '#fff', letterSpacing: '0.05em' }}>VERIMO ADMIN</div>
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{adminEmail}</div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => navigate('/dashboard')}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-            ← Dashboard client
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 9, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+            ←<span className="admin-topbar-title" style={{ display: 'inline' }}> Dashboard</span>
           </button>
           <button onClick={() => { supabase.auth.signOut(); navigate('/'); }}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-            <LogOut size={13} /> Déconnexion
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 9, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+            <LogOut size={13} /><span className="admin-topbar-title" style={{ display: 'inline' }}> Déco</span>
           </button>
         </div>
       </div>
 
       <div style={{ display: 'flex', minHeight: 'calc(100vh - 60px)' }}>
-        {/* Sidebar */}
-        <aside style={{ width: 220, background: '#fff', borderRight: '1px solid #edf2f7', padding: '20px 12px', flexShrink: 0, position: 'sticky', top: 60, height: 'calc(100vh - 60px)', overflowY: 'auto' }}>
+        {/* Sidebar — cachée sur mobile */}
+        <aside className="admin-sidebar" style={{ width: 220, background: '#fff', borderRight: '1px solid #edf2f7', padding: '20px 12px', flexShrink: 0, position: 'sticky', top: 60, height: 'calc(100vh - 60px)', overflowY: 'auto' }}>
           <nav style={{ display: 'flex', flexDirection: 'column' as const, gap: 3 }}>
             {tabs.map(tab => {
               const Icon = tab.icon;
@@ -277,8 +334,24 @@ export default function AdminPage() {
           </nav>
         </aside>
 
+        {/* Navigation mobile en pills — visible uniquement sur mobile */}
+        <div className="admin-tabs-mobile" style={{ display: 'none', position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 90, background: '#fff', borderTop: '1px solid #edf2f7', padding: '8px 12px', overflowX: 'auto', gap: 6 }}>
+          {tabs.map(tab => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.id;
+            return (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                className={`admin-tab-pill${active ? ' active' : ''}`}>
+                <Icon size={13} />
+                {tab.label.split(' ')[0]}
+                {tab.badge ? <span style={{ background: '#f0a500', color: '#fff', borderRadius: 100, fontSize: 9, fontWeight: 800, padding: '1px 5px' }}>{tab.badge}</span> : null}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Content */}
-        <main style={{ flex: 1, padding: '28px 24px', overflowY: 'auto' }}>
+        <main className="admin-main" style={{ flex: 1, padding: '28px 24px', overflowY: 'auto', paddingBottom: 80 }}>
           <AnimatePresence mode="wait">
             <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
               {activeTab === 'dashboard' && <DashboardTab onNavigate={setActiveTab} />}
