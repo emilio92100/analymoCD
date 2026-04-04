@@ -2029,7 +2029,7 @@ function Tarifs() {
     }, 800);
   };
 
-  const plans = [
+  const plans: { id: string; label: string; price: string; priceNum: number; desc: string; creditLabel: string; creditType: keyof Credits; color: string; icon: React.ElementType; popular?: boolean; badge?: string; details: string[] }[] = [
 {
       id: 'document',
       label: 'Analyse Document',
