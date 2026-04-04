@@ -105,12 +105,18 @@ function SessionManager() {
 
     // Écouter les changements d'auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
         localStorage.setItem('verimo_login_time', Date.now().toString());
-        await handleUserSession(session.user.id, {
-          full_name: session.user.user_metadata?.full_name,
-          email: session.user.email,
-        });
+      }
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Uniquement à la vraie connexion (pas au refresh de token)
+        const isNewLogin = !localStorage.getItem('verimo_user_name');
+        if (isNewLogin) {
+          await handleUserSession(session.user.id, {
+            full_name: session.user.user_metadata?.full_name,
+            email: session.user.email,
+          });
+        }
       }
       if (event === 'SIGNED_OUT') {
         localStorage.removeItem('verimo_login_time');
