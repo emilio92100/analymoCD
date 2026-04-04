@@ -414,7 +414,7 @@ function DashboardContent({ path }: { path:string }) {
 function HomeView() {
   const { name } = useUser();
   const { analyses } = useAnalyses();
-  const { credits, loadingCredits } = useCredits();
+  const { credits, loadingCredits } = useCredits();   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
   const hasAnalyses = analyses.length > 0;
   const [freePreviewUsedHome] = useState<boolean>(() => checkFreePreviewUsedSync());
