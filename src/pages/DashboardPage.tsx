@@ -2291,6 +2291,28 @@ function Tarifs() {
   const { credits } = useCredits();
   const [tooltip, setTooltip] = useState<string | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<null | { id: string; label: string; price: string; priceNum: number; color: string; creditLabel: string }>(null);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('success') === 'true') {
+      // Nettoyer l'URL
+      window.history.replaceState({}, '', '/dashboard/tarifs');
+
+      // Vérifier si l'offre gratuite n'avait pas été utilisée
+      const freePreviewUsed = localStorage.getItem('verimo_free_preview_used') === 'true';
+      if (!freePreviewUsed) {
+        // Marquer l'offre gratuite comme utilisée
+        markFreePreviewUsed();
+        setSuccessToast("🎉 Vous aviez une analyse gratuite disponible, mais pourquoi regarder par le trou de la serrure quand on peut ouvrir la porte en grand ? En payant directement, votre offre gratuite a été remplacée par votre analyse complète. Bonne analyse !");
+      } else {
+        setSuccessToast("✅ Paiement confirmé ! Vos crédits ont été ajoutés à votre compte. Bonne analyse !");
+      }
+
+      // Cacher le toast après 8 secondes
+      setTimeout(() => setSuccessToast(null), 8000);
+    }
+  }, []);
 
   const handleAcheter = (plan: { id: string; label: string; price: string; priceNum: number; color: string; creditLabel: string }) => {
     setCheckoutPlan(plan);
@@ -2379,6 +2401,23 @@ function Tarifs() {
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:28, maxWidth:740, margin:'0 auto' }}>
+
+      {/* Toast succès paiement */}
+      {successToast && (
+        <div style={{
+          position: 'fixed', top: 24, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 9999, maxWidth: 480, width: '90%',
+          background: '#0f2d3d', borderRadius: 16, padding: '16px 20px',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+          display: 'flex', alignItems: 'flex-start', gap: 12,
+          animation: 'fadeInUp 0.4s ease both',
+        }}>
+          <div style={{ flex: 1, fontSize: 13, color: '#fff', lineHeight: 1.6 }}>{successToast}</div>
+          <button onClick={() => setSuccessToast(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.5)', flexShrink: 0, padding: 2 }}>
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       {/* Header */}
       <div>
