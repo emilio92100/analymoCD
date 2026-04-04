@@ -711,19 +711,26 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
   const handleSetCredits = async () => {
     if (!selectedUser) return;
     setSending(true);
+
+    // Si les deux crédits sont mis à 0 → réinitialiser aussi l'offre gratuite
+    const resetFreePreview = form.credits_doc === 0 && form.credits_complete === 0;
+
     const { error } = await supabase.from('profiles')
-      .update({ credits_document: form.credits_doc, credits_complete: form.credits_complete })
+      .update({
+        credits_document: form.credits_doc,
+        credits_complete: form.credits_complete,
+        ...(resetFreePreview ? { free_preview_used: false } : {}),
+      })
       .eq('id', selectedUser.id);
     if (error) { showToast('Erreur : ' + error.message); setSending(false); return; }
-    await logAction('Crédits modifiés', `${selectedUser.email} → doc:${form.credits_doc} ana:${form.credits_complete}`);
+    await logAction('Crédits modifiés', `${selectedUser.email} → doc:${form.credits_doc} ana:${form.credits_complete}${resetFreePreview ? ' + offre gratuite réinitialisée' : ''}`);
     setSending(false);
     setModal(null);
-    // Mettre à jour detailUser si on est sur sa fiche
     if (detailUser?.id === selectedUser.id) {
       setDetailUser(u => u ? { ...u, credits_document: form.credits_doc, credits_complete: form.credits_complete } : u);
     }
     await loadUsers();
-    showToast(`Crédits mis à jour pour ${selectedUser.email}`);
+    showToast(`Crédits mis à jour${resetFreePreview ? ' — offre gratuite réinitialisée' : ''}`);
   };
 
   const doExport = () => {
