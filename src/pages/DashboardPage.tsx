@@ -2116,8 +2116,42 @@ function CheckoutModal({
     }
   }
 
-  const handlePay = () => {
-    alert('Redirection vers Stripe… (à connecter)');
+  const [payLoading, setPayLoading] = useState(false);
+  const [payError, setPayError] = useState('');
+
+  const PRICE_IDS: Record<string, string> = {
+    'document': 'price_1TIb1LBO4ekMbwz0020eqcR0',
+    'complete': 'price_1TIb3XBO4ekMbwz0a7m7E7gD',
+    'pack2': 'price_1TIb4KBO4ekMbwz0gGF2gI1S',
+    'pack3': 'price_1TIb51BO4ekMbwz0mmEez47o',
+  };
+
+  const handlePay = async () => {
+    setPayLoading(true);
+    setPayError('');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Non connecté');
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          priceId: PRICE_IDS[plan.id],
+          userId: user.id,
+          promoCodeId: promoResult?.id ?? null,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      if (data.url) window.location.href = data.url;
+    } catch (e) {
+      setPayError((e as Error).message);
+    }
+    setPayLoading(false);
   };
 
   return (
@@ -2221,16 +2255,28 @@ function CheckoutModal({
           {/* Bouton paiement */}
           <button
             onClick={handlePay}
+            disabled={payLoading}
             style={{
               width: '100%', padding: '14px', borderRadius: 12, border: 'none',
               background: `linear-gradient(135deg, ${plan.color}, ${plan.color}cc)`,
               color: '#fff', fontSize: 15, fontWeight: 800,
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              cursor: payLoading ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               boxShadow: `0 6px 20px ${plan.color}40`,
+              opacity: payLoading ? 0.75 : 1,
             }}
           >
-            <Lock size={15} /> Continuer vers le paiement
+            {payLoading
+              ? <><div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.35)', borderTopColor: '#fff', animation: 'spin 0.8s linear infinite' }} /> Redirection…</>
+              : <><Lock size={15} /> Continuer vers le paiement</>
+            }
           </button>
+
+          {payError && (
+            <div style={{ fontSize: 12, color: '#dc2626', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+              <AlertTriangle size={12} /> {payError}
+            </div>
+          )}
 
           <div style={{ textAlign: 'center', fontSize: 11, color: '#94a3b8', marginTop: -8 }}>
             🔒 Paiement sécurisé par Stripe — vos données sont chiffrées
