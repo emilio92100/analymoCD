@@ -10,17 +10,23 @@ import {
   Download, Lock, Eye, ChevronDown,
 } from "lucide-react";
 
+const isMobile = () => typeof window !== 'undefined' && window.innerWidth <= 768;
+
 const up: Variants = {
-  hidden: { opacity: 0, y: 24 },
+  hidden: { opacity: 0, y: isMobile() ? 10 : 24 },
   show: (i: number = 0) => ({
     opacity: 1, y: 0,
-    transition: { duration: 0.55, delay: i * 0.09, ease: [0.22, 1, 0.36, 1] },
+    transition: {
+      duration: isMobile() ? 0.2 : 0.55,
+      delay: isMobile() ? Math.min(i * 0.03, 0.1) : i * 0.09,
+      ease: [0.22, 1, 0.36, 1],
+    },
   }),
 };
 
 function Reveal({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-50px" });
+  const inView = useInView(ref, { once: true, margin: isMobile() ? "0px" : "-50px" });
   return (
     <motion.div ref={ref} variants={up} initial="hidden" animate={inView ? "show" : "hidden"} custom={delay} className={className}>
       {children}
