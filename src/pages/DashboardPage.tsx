@@ -2311,7 +2311,7 @@ function Tarifs() {
       if (!freePreviewUsed) {
         // Marquer l'offre gratuite comme utilisée
         markFreePreviewUsed();
-        setSuccessToast("🎉 Vous aviez une analyse gratuite disponible, mais pourquoi regarder par le trou de la serrure quand on peut ouvrir la porte en grand ? En payant directement, votre offre gratuite a été remplacée par votre analyse complète. Bonne analyse !");
+        setSuccessToast("🎉 Vous aviez une analyse gratuite disponible, mais pourquoi regarder par le trou de la serrure quand on peut ouvrir la porte en grand ? En payant directement, votre offre gratuite a été remplacée par l'analyse que vous avez choisie. Bonne analyse ! !");
       } else {
         setSuccessToast("✅ Paiement confirmé ! Vos crédits ont été ajoutés à votre compte. Bonne analyse !");
       }
