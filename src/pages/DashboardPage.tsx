@@ -414,7 +414,7 @@ function DashboardContent({ path }: { path:string }) {
 function HomeView() {
   const { name } = useUser();
   const { analyses } = useAnalyses();
-  const { credits, loadingCredits } = useCredits();   const hour = new Date().getHours();
+  const { credits, loadingCredits } = useCredits();
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
   const hasAnalyses = analyses.length > 0;
   const [freePreviewUsedHome] = useState<boolean>(() => checkFreePreviewUsedSync());
@@ -2309,7 +2309,7 @@ function Tarifs() {
       }
 
       // Cacher le toast après 8 secondes
-      setTimeout(() => setSuccessToast(null), 10000);
+      // Pas de timer — l'utilisateur ferme manuellement avec "Compris !"
     }
   }, []);
 
