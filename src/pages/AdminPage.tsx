@@ -536,26 +536,48 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
 
   const filtered = users.filter(u => u.email?.toLowerCase().includes(search.toLowerCase()) || u.full_name?.toLowerCase().includes(search.toLowerCase()));
 
+  const callEdgeFunction = async (action: string, payload: Record<string, string>) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token}`,
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ action, ...payload }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return data;
+  };
+
   const handleCreate = async () => {
     setSending(true);
-    const { error } = await supabase.auth.admin.createUser({ email: form.email, password: form.password, user_metadata: { full_name: form.name }, email_confirm: true });
+    try {
+      await callEdgeFunction('create', { email: form.email, password: form.password, full_name: form.name });
+      await logAction('Compte créé', form.email);
+      setFeedback('✓ Compte créé !');
+      setTimeout(() => { setModal(null); setFeedback(''); loadUsers(); }, 1200);
+      showToast(`Compte ${form.email} créé`);
+    } catch (e) {
+      setFeedback('Erreur : ' + (e as Error).message);
+    }
     setSending(false);
-    if (error) { setFeedback('Erreur : ' + error.message); return; }
-    await logAction('Compte créé', form.email);
-    setFeedback('✓ Compte créé !');
-    setTimeout(() => { setModal(null); setFeedback(''); loadUsers(); }, 1200);
-    showToast(`Compte ${form.email} créé`);
   };
 
   const handleInvite = async () => {
     setSending(true);
-    const { error } = await supabase.auth.admin.inviteUserByEmail(form.email);
+    try {
+      await callEdgeFunction('invite', { email: form.email });
+      await logAction('Invitation envoyée', form.email);
+      setFeedback('✓ Invitation envoyée !');
+      setTimeout(() => { setModal(null); setFeedback(''); }, 1500);
+      showToast(`Invitation envoyée à ${form.email}`);
+    } catch (e) {
+      setFeedback('Erreur : ' + (e as Error).message);
+    }
     setSending(false);
-    if (error) { setFeedback('Erreur : ' + error.message); return; }
-    await logAction('Invitation envoyée', form.email);
-    setFeedback('✓ Invitation envoyée !');
-    setTimeout(() => { setModal(null); setFeedback(''); }, 1500);
-    showToast(`Invitation envoyée à ${form.email}`);
   };
 
   const handleSetCredits = async () => {
@@ -703,7 +725,7 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
                   color={user.suspended ? '#16a34a' : '#f0a500'} bg={user.suspended ? '#f0fdf4' : '#fffbeb'} border={user.suspended ? '#d1fae5' : '#fde68a'}
                   onClick={() => onConfirm({ title: user.suspended ? 'Réactiver' : 'Suspendre', message: `${user.suspended ? 'Réactiver' : 'Suspendre'} le compte de ${user.email} ?`, confirmLabel: user.suspended ? 'Réactiver' : 'Suspendre', variant: user.suspended ? 'info' : 'warning', onConfirm: async () => { await supabase.from('profiles').update({ suspended: !user.suspended }).eq('id', user.id); await logAction(user.suspended ? 'Réactivation' : 'Suspension', user.email); loadUsers(); showToast(`Compte ${user.suspended ? 'réactivé' : 'suspendu'}`); } })} />
                 <ActionBtn icon={<Trash2 size={11} />} label="Supprimer" color="#dc2626" bg="#fef2f2" border="#fecaca"
-                  onClick={() => onConfirm({ title: 'Supprimer le compte', message: `Supprimer définitivement ${user.email} ? Action irréversible.`, confirmLabel: 'Supprimer', variant: 'danger', onConfirm: async () => { await supabase.auth.admin.deleteUser(user.id); await logAction('Suppression compte', user.email); loadUsers(); showToast('Compte supprimé'); } })} />
+                  onClick={() => onConfirm({ title: 'Supprimer le compte', message: `Supprimer définitivement ${user.email} ? Action irréversible.`, confirmLabel: 'Supprimer', variant: 'danger', onConfirm: async () => { await callEdgeFunction('delete', { user_id: user.id }); await logAction('Suppression compte', user.email); loadUsers(); showToast('Compte supprimé'); } })} />
               </div>
             </div>
           ))}
