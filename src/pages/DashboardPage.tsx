@@ -2017,8 +2017,10 @@ function Support() {
    TARIFS — SaaS moderne avec tooltips
 ══════════════════════════════════════════ */
 function Tarifs() {
+  
   const { credits } = useCredits();
   const [tooltip, setTooltip] = useState<string | null>(null);
+  const [checkoutPlan, setCheckoutPlan] = useState<null | { id: string; label: string; price: string; priceNum: number; color: string; creditLabel: string }>(null);
 
 const handleAcheter = (plan: { id: string; label: string; price: string; priceNum: number; color: string; creditLabel: string }) => {
     setCheckoutPlan(plan);
