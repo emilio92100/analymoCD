@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -58,13 +58,48 @@ type AnalyseResult = {
 };
 
 /* ══════════════════════════════════════════
-   MOCK DATA — à remplacer par Supabase
+   HOOK CRÉDITS — lecture depuis Supabase
 ══════════════════════════════════════════ */
-// Crédits disponibles de l'utilisateur
-const MOCK_CREDITS: Credits = {
-  document: 0,   // 0 crédit — branché après Stripe
-  complete: 0,   // 0 crédit — branché après Stripe
-};
+function useCredits() {
+  const [credits, setCredits] = useState<Credits>({ document: 0, complete: 0 });
+  const [loadingCredits, setLoadingCredits] = useState(true);
+
+  const fetchCredits = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase
+      .from('profiles')
+      .select('credits_document, credits_complete')
+      .eq('id', user.id)
+      .single();
+    if (data) {
+      setCredits({
+        document: data.credits_document || 0,
+        complete: data.credits_complete || 0,
+      });
+    }
+    setLoadingCredits(false);
+  }, []);
+
+  useEffect(() => { fetchCredits(); }, [fetchCredits]);
+
+  const deductCredit = async (type: 'document' | 'complete') => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+    const field = type === 'document' ? 'credits_document' : 'credits_complete';
+    const current = type === 'document' ? credits.document : credits.complete;
+    if (current <= 0) return false;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ [field]: current - 1 })
+      .eq('id', user.id);
+    if (error) return false;
+    setCredits(prev => ({ ...prev, [type]: current - 1 }));
+    return true;
+  };
+
+  return { credits, loadingCredits, fetchCredits, deductCredit };
+}
 
 
 /* ══════════════════════════════════════════
@@ -179,8 +214,8 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { name, email } = useUser();
+  const { credits } = useCredits();
   const handleLogout = async () => { await supabase.auth.signOut(); navigate('/'); };
-  const credits = MOCK_CREDITS;
 
   return (
     <aside style={{ width:260, minHeight:'100vh', height:'100%', background:'#fff', display:'flex', flexDirection:'column', borderRight:'1px solid #edf2f7', boxShadow:'2px 0 16px rgba(15,45,61,0.05)' }}>
@@ -379,9 +414,9 @@ function DashboardContent({ path }: { path:string }) {
 function HomeView() {
   const { name } = useUser();
   const { analyses } = useAnalyses();
+  const { credits } = useCredits();
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
-  const credits = MOCK_CREDITS;
   const hasAnalyses = analyses.length > 0;
   const [freePreviewUsedHome] = useState<boolean>(() => checkFreePreviewUsedSync());
 
@@ -811,7 +846,7 @@ function AnalyseRow({ a }: { a:Analyse }) {
    NOUVELLE ANALYSE — avec logique crédits + API Claude
 ══════════════════════════════════════════ */
 function NouvelleAnalyse() {
-  const credits = MOCK_CREDITS;
+  const { credits, deductCredit } = useCredits();
   const [step, setStep] = useState<'choice'|'upload'|'analyse'|'apercu'|'result'>('choice');
   const [type, setType] = useState<'document'|'complete'|null>(null);
   const [files, setFiles] = useState<File[]>([]);
@@ -914,6 +949,15 @@ function NouvelleAnalyse() {
   /* ── Lancer l'ANALYSE COMPLÈTE PAYANTE */
   const lancer = async () => {
     if (!files.length || !type) return;
+
+    // Vérifier et déduire le crédit
+    const creditType = type === 'document' ? 'document' : 'complete';
+    const ok = await deductCredit(creditType);
+    if (!ok) {
+      setError("Vous n'avez plus de crédit disponible. Veuillez recharger votre compte.");
+      return;
+    }
+
     setStep('analyse'); setError(''); setProgress(5); setProgressMsg('Lecture des documents…');
 
     const docNames = files.map(f => f.name);
@@ -1973,7 +2017,7 @@ function Support() {
    TARIFS — SaaS moderne avec tooltips
 ══════════════════════════════════════════ */
 function Tarifs() {
-  const credits = MOCK_CREDITS;
+  const { credits } = useCredits();
   const [loading, setLoading] = useState<string | null>(null);
   const [tooltip, setTooltip] = useState<string | null>(null);
 
