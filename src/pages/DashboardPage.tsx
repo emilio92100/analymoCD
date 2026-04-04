@@ -2229,7 +2229,7 @@ function Tarifs() {
 
                 {/* CTA */}
                 <button
-                  onClick={()=>handleAcheter(plan.id)}
+                  onClick={()=>handleAcheter({ id: plan.id, label: plan.label, price: plan.price, priceNum: plan.priceNum, color: plan.color, creditLabel: plan.creditLabel })}
                   disabled={loading===plan.id}
                   style={{
                     flexShrink:0, padding:'11px 22px', borderRadius:11, border:'none',
