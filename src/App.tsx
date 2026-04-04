@@ -51,7 +51,7 @@ function SessionManager() {
 
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        const { data: profile, error } = await supabase
+        const { data: profile } = await supabase
           .from('profiles')
           .select('suspended, free_preview_used, credits_document, credits_complete')
           .eq('id', session.user.id)
