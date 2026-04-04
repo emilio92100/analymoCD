@@ -17,6 +17,7 @@ type AdminUser = {
   id: string; email: string; created_at: string;
   full_name?: string; role: string; suspended?: boolean;
   credits_document?: number; credits_complete?: number;
+  email_verified?: boolean; provider?: string;
 };
 type AdminAnalyse = {
   id: string; user_id: string; type: string; status: string;
@@ -519,9 +520,14 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
   const [feedback, setFeedback] = useState('');
   const [sending, setSending] = useState(false);
 
+  const [filterTab, setFilterTab] = useState<'all' | 'verified' | 'unverified'>('all');
+
   const loadUsers = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
     setUsers(data || []);
     setLoading(false);
   }, []);
@@ -534,7 +540,20 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
     setUserAnalyses(data || []);
   };
 
-  const filtered = users.filter(u => u.email?.toLowerCase().includes(search.toLowerCase()) || u.full_name?.toLowerCase().includes(search.toLowerCase()));
+  const filtered = users
+    .filter(u => {
+      const matchSearch = u.email?.toLowerCase().includes(search.toLowerCase()) || u.full_name?.toLowerCase().includes(search.toLowerCase());
+      const matchTab = filterTab === 'all' ? true : filterTab === 'verified' ? u.email_verified !== false : u.email_verified === false;
+      return matchSearch && matchTab;
+    })
+    .sort((a, b) => {
+      // Vérifiés en premier dans l'onglet "Tous"
+      if (filterTab === 'all') {
+        if (a.email_verified && !b.email_verified) return -1;
+        if (!a.email_verified && b.email_verified) return 1;
+      }
+      return 0;
+    });
 
   const callEdgeFunction = async (action: string, payload: Record<string, string>) => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -641,7 +660,7 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
                 style={{ padding: '10px', borderRadius: 10, background: '#f0f7fb', border: '1.5px solid #bae3f5', color: '#2a7d9c', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 <CreditCard size={14} /> Modifier les crédits
               </button>
-              <button onClick={() => onConfirm({ title: 'Réinitialiser le mot de passe', message: `Un email de réinitialisation sera envoyé à ${detailUser.email}.`, confirmLabel: "Envoyer l'email", variant: 'info', onConfirm: async () => { await supabase.auth.resetPasswordForEmail(detailUser.email); showToast(`Email envoyé`); } })}
+              <button onClick={() => onConfirm({ title: 'Réinitialiser le mot de passe', message: `Un email de réinitialisation sera envoyé à ${detailUser.email}.`, confirmLabel: "Envoyer l'email", variant: 'info', onConfirm: async () => { await supabase.auth.resetPasswordForEmail(detailUser.email, { redirectTo: 'https://verimo.fr/auth/reset-password' }); showToast(`Email envoyé`); } })}
                 style={{ padding: '10px', borderRadius: 10, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#64748b', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 <RefreshCw size={14} /> Reset mot de passe
               </button>
@@ -705,6 +724,20 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
         </div>
       </div>
 
+      {/* Onglets filtre */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+        {([
+          { id: 'all', label: `Tous (${users.length})` },
+          { id: 'verified', label: `✓ Vérifiés (${users.filter(u => u.email_verified !== false).length})` },
+          { id: 'unverified', label: `⚠ Non vérifiés (${users.filter(u => u.email_verified === false).length})` },
+        ] as const).map(t => (
+          <button key={t.id} onClick={() => setFilterTab(t.id)}
+            style={{ padding: '7px 14px', borderRadius: 10, border: `1.5px solid ${filterTab === t.id ? '#2a7d9c' : '#edf2f7'}`, background: filterTab === t.id ? '#f0f7fb' : '#fff', color: filterTab === t.id ? '#2a7d9c' : '#64748b', fontSize: 12, fontWeight: filterTab === t.id ? 700 : 500, cursor: 'pointer' }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       <div style={{ position: 'relative', marginBottom: 16 }}>
         <Search size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher..."
@@ -726,6 +759,11 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
                 <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
                   {user.role === 'admin' && <Badge color="#7c3aed" bg="#f5f3ff">admin</Badge>}
                   {user.suspended && <Badge color="#dc2626" bg="#fef2f2">suspendu</Badge>}
+                  {user.email_verified !== false
+                    ? <Badge color="#16a34a" bg="#f0fdf4">✓ vérifié</Badge>
+                    : <Badge color="#f0a500" bg="#fffbeb">⚠ non vérifié</Badge>
+                  }
+                  {user.provider === 'google' && <Badge color="#2a7d9c" bg="#f0f7fb">Google</Badge>}
                 </div>
               </button>
               <div style={{ fontSize: 12, color: '#64748b' }}>{fmtDate(user.created_at)}</div>
@@ -736,7 +774,7 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
                 <ActionBtn icon={<CreditCard size={11} />} label="Crédits" color="#7c3aed" bg="#f5f3ff" border="#ddd6fe"
                   onClick={() => { setSelectedUser(user); setForm(f => ({ ...f, credits_doc: user.credits_document || 0, credits_complete: user.credits_complete || 0 })); setModal('credits'); }} />
                 <ActionBtn icon={<RefreshCw size={11} />} label="Reset" color="#64748b" bg="#f8fafc" border="#edf2f7"
-                  onClick={() => onConfirm({ title: 'Reset mot de passe', message: `Email de réinitialisation → ${user.email}`, confirmLabel: "Envoyer", variant: 'info', onConfirm: async () => { await supabase.auth.resetPasswordForEmail(user.email); await logAction('Reset mdp', user.email); showToast(`Email envoyé à ${user.email}`); } })} />
+                  onClick={() => onConfirm({ title: 'Reset mot de passe', message: `Email de réinitialisation → ${user.email}`, confirmLabel: "Envoyer", variant: 'info', onConfirm: async () => { await supabase.auth.resetPasswordForEmail(user.email, { redirectTo: 'https://verimo.fr/auth/reset-password' }); await logAction('Reset mdp', user.email); showToast(`Email envoyé à ${user.email}`); } })} />
                 <ActionBtn icon={user.suspended ? <Eye size={11} /> : <EyeOff size={11} />} label={user.suspended ? 'Réactiver' : 'Suspendre'}
                   color={user.suspended ? '#16a34a' : '#f0a500'} bg={user.suspended ? '#f0fdf4' : '#fffbeb'} border={user.suspended ? '#d1fae5' : '#fde68a'}
                   onClick={() => onConfirm({ title: user.suspended ? 'Réactiver' : 'Suspendre', message: `${user.suspended ? 'Réactiver' : 'Suspendre'} le compte de ${user.email} ?`, confirmLabel: user.suspended ? 'Réactiver' : 'Suspendre', variant: user.suspended ? 'info' : 'warning', onConfirm: async () => { await supabase.from('profiles').update({ suspended: !user.suspended }).eq('id', user.id); await logAction(user.suspended ? 'Réactivation' : 'Suspension', user.email); loadUsers(); showToast(`Compte ${user.suspended ? 'réactivé' : 'suspendu'}`); } })} />
