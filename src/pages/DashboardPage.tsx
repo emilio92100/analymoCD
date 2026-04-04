@@ -2030,10 +2030,11 @@ function Tarifs() {
   };
 
   const plans = [
-    {
+{
       id: 'document',
       label: 'Analyse Document',
       price: '4,90€',
+      priceNum: 4.90,
       desc: 'Idéal pour lever un doute sur un document précis.',
       creditLabel: '1 crédit simple',
       creditType: 'document' as keyof Credits,
@@ -2051,6 +2052,7 @@ function Tarifs() {
       id: 'complete',
       label: 'Analyse Complète',
       price: '19,90€',
+      priceNum: 19.90,
       desc: "Audit global d'un bien avec score et recommandation.",
       creditLabel: '1 crédit complet',
       creditType: 'complete' as keyof Credits,
@@ -2071,6 +2073,7 @@ function Tarifs() {
       id: 'pack2',
       label: 'Pack 2 Biens',
       price: '29,90€',
+      priceNum: 29.90,
       desc: 'Comparez 2 biens côte à côte. 14,95€ / bien.',
       creditLabel: '2 crédits complets',
       creditType: 'complete' as keyof Credits,
@@ -2089,6 +2092,7 @@ function Tarifs() {
       id: 'pack3',
       label: 'Pack 3 Biens',
       price: '39,90€',
+      priceNum: 39.90,
       desc: 'Le meilleur rapport qualité/prix. 13,30€ / bien.',
       creditLabel: '3 crédits complets',
       creditType: 'complete' as keyof Credits,
