@@ -228,31 +228,67 @@ export default function AdminPage() {
         @media (max-width: 768px) {
           .admin-sidebar { display: none !important; }
           .admin-tabs-mobile { display: flex !important; }
-          .admin-main { padding: 16px 12px !important; }
-          .admin-topbar-title { display: none !important; }
-          .admin-topbar-buttons span { display: none !important; }
-          .admin-grid-users { grid-template-columns: 1fr !important; overflow-x: auto; }
-          .admin-grid-promos { grid-template-columns: 1fr !important; overflow-x: auto; }
-          .admin-stats-grid { grid-template-columns: 1fr 1fr !important; }
-          .admin-kpi-grid { grid-template-columns: 1fr 1fr !important; }
+          .admin-main { padding: 14px 12px 90px !important; }
+          .admin-topbar-label { display: none !important; }
+
+          /* KPI grid : 2 colonnes sur mobile */
+          .admin-kpi-grid { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+
+          /* Actions rapides + CA : stack vertical */
+          .admin-overview-grid { grid-template-columns: 1fr !important; }
+
+          /* Fiche user détail : stack vertical */
+          .admin-detail-grid { grid-template-columns: 1fr !important; }
+
+          /* Liste users : cards au lieu de table */
+          .admin-users-header { display: none !important; }
+          .admin-user-row { 
+            grid-template-columns: 1fr !important;
+            padding: 14px !important;
+            gap: 10px !important;
+          }
+          .admin-user-meta { display: none !important; }
+          .admin-user-actions { flex-wrap: wrap !important; }
+
+          /* Analyses table : scroll horizontal */
+          .admin-table-scroll { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+
+          /* Messages : stack vertical */
           .admin-messages-grid { grid-template-columns: 1fr !important; }
+
+          /* Promos table : scroll horizontal */
+          .admin-promo-scroll { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+
+          /* Stats : stack vertical */
+          .admin-stats-grid { grid-template-columns: 1fr !important; }
+          .admin-stats-kpi { grid-template-columns: 1fr 1fr !important; }
+
+          /* Filtres tabs : scroll horizontal */
+          .admin-filter-tabs { overflow-x: auto !important; flex-wrap: nowrap !important; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
         }
+
+        /* Nav mobile pills fixée en bas */
         .admin-tabs-mobile {
           display: none;
+          position: fixed;
+          bottom: 0; left: 0; right: 0;
+          z-index: 90;
+          background: #fff;
+          border-top: 1px solid #edf2f7;
+          padding: 8px 10px;
           overflow-x: auto;
           gap: 6px;
-          padding: 10px 12px;
-          background: #fff;
-          border-bottom: 1px solid #edf2f7;
           -webkit-overflow-scrolling: touch;
           scrollbar-width: none;
+          box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
         }
         .admin-tabs-mobile::-webkit-scrollbar { display: none; }
+
         .admin-tab-pill {
           display: flex;
           align-items: center;
           gap: 5px;
-          padding: 7px 14px;
+          padding: 8px 14px;
           border-radius: 100px;
           border: 1.5px solid #edf2f7;
           background: #f8fafc;
@@ -268,15 +304,6 @@ export default function AdminPage() {
           background: linear-gradient(135deg, #2a7d9c, #0f2d3d);
           color: #fff;
           border-color: transparent;
-        }
-        .admin-user-row { display: grid; grid-template-columns: 1fr 100px 60px 60px 1fr; }
-        .admin-analyse-row { display: grid; grid-template-columns: 1fr 90px 80px 100px 90px; }
-        .admin-promo-row { display: grid; grid-template-columns: 140px 1fr 80px 100px 100px 90px 80px; }
-        @media (max-width: 768px) {
-          .admin-user-row, .admin-user-header { display: none !important; }
-          .admin-user-card { display: flex !important; }
-          .admin-analyse-row, .admin-analyse-header { overflow-x: auto; font-size: 11px !important; }
-          .admin-promo-row, .admin-promo-header { overflow-x: auto; font-size: 11px !important; }
         }
       `}</style>
 
@@ -395,13 +422,13 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Vue d'ensemble</h1>
         <p style={{ fontSize: 13, color: '#94a3b8' }}>Résumé de l'activité Verimo en temps réel</p>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
+      <div className="admin-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
         <KpiCard label="Utilisateurs" value={kpis.users} color="#2a7d9c" icon={<Users size={16} color="#2a7d9c" />} delay={0} />
         <KpiCard label="Analyses" value={kpis.analyses} color="#7c3aed" icon={<FileText size={16} color="#7c3aed" />} delay={0.05} />
         <KpiCard label="Messages non lus" value={kpis.messages} color="#f0a500" icon={<Mail size={16} color="#f0a500" />} delay={0.1} />
         <KpiCard label="CA estimé" value={`${kpis.ca.toFixed(0)}€`} sub="Analyses complétées" color="#16a34a" icon={<TrendingUp size={16} color="#16a34a" />} delay={0.15} />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+      <div className="admin-overview-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px' }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 16 }}>Actions rapides</div>
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
@@ -710,7 +737,7 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
         <button onClick={() => setDetailUser(null)} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#2a7d9c' }}>
           <ChevronLeft size={16} /> Retour à la liste
         </button>
-        <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 16 }}>
+        <div className="admin-detail-grid" style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 16 }}>
           <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '24px', height: 'fit-content' }}>
             <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 900, color: '#fff', margin: '0 auto 16px' }}>
               {(detailUser.full_name || detailUser.email).charAt(0).toUpperCase()}
@@ -798,7 +825,7 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
       </div>
 
       {/* Onglets filtre */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+      <div className="admin-filter-tabs" style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
         {([
           { id: 'all', label: `Tous (${users.length})` },
           { id: 'verified', label: `✓ Vérifiés (${users.filter(u => u.email_verified === true).length})` },
@@ -818,14 +845,14 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
       </div>
 
       <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 60px 60px 1fr', borderBottom: '1.5px solid #edf2f7', padding: '10px 18px', background: '#f8fafc' }}>
+        <div className="admin-users-header" style={{ display: 'grid', gridTemplateColumns: '1fr 100px 60px 60px 1fr', borderBottom: '1.5px solid #edf2f7', padding: '10px 18px', background: '#f8fafc' }}>
           {['Utilisateur', 'Inscrit', 'Doc', 'Ana.', 'Actions'].map(h => (
             <div key={h} style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.07em', textTransform: 'uppercase' as const }}>{h}</div>
           ))}
         </div>
         {loading ? <div style={{ padding: '40px', textAlign: 'center' as const, color: '#94a3b8' }}>Chargement...</div>
           : filtered.map((user, i) => (
-            <div key={user.id} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 60px 60px 1fr', padding: '12px 18px', borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc', alignItems: 'center' }}>
+            <div key={user.id} className="admin-user-row" style={{ display: 'grid', gridTemplateColumns: '1fr 100px 60px 60px 1fr', padding: '12px 18px', borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc', alignItems: 'center' }}>
               <button onClick={() => openDetail(user)} style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' as const, padding: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#2a7d9c', textDecoration: 'underline', textDecorationColor: '#bae3f5' }}>{user.full_name || user.email}</div>
                 <div style={{ fontSize: 11, color: '#94a3b8' }}>{user.email}</div>
@@ -839,10 +866,10 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
                   {user.provider === 'google' && <Badge color="#2a7d9c" bg="#f0f7fb">Google</Badge>}
                 </div>
               </button>
-              <div style={{ fontSize: 12, color: '#64748b' }}>{fmtDate(user.created_at)}</div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: '#2a7d9c' }}>{user.credits_document || 0}</div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: '#2a7d9c' }}>{user.credits_complete || 0}</div>
-              <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
+              <div className="admin-user-meta" style={{ fontSize: 12, color: '#64748b' }}>{fmtDate(user.created_at)}</div>
+              <div className="admin-user-meta" style={{ fontSize: 14, fontWeight: 800, color: '#2a7d9c' }}>{user.credits_document || 0}</div>
+              <div className="admin-user-meta" style={{ fontSize: 14, fontWeight: 800, color: '#2a7d9c' }}>{user.credits_complete || 0}</div>
+              <div className="admin-user-actions" style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const }}>
                 <ActionBtn icon={<Eye size={11} />} label="Détail" color="#2a7d9c" bg="#f0f7fb" border="#bae3f5" onClick={() => openDetail(user)} />
                 <ActionBtn icon={<CreditCard size={11} />} label="Crédits" color="#7c3aed" bg="#f5f3ff" border="#ddd6fe"
                   onClick={() => { setSelectedUser(user); setForm(f => ({ ...f, credits_doc: user.credits_document || 0, credits_complete: user.credits_complete || 0 })); setModal('credits'); }} />
@@ -1041,7 +1068,7 @@ function MessagesTab({ onConfirm, showToast, onReadChange }: { onConfirm: (a: Co
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 1fr' : '1fr', gap: 16 }}>
+      <div className="admin-messages-grid" style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 1fr' : '1fr', gap: 16 }}>
         <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
           {loading ? <div style={{ padding: '40px', textAlign: 'center' as const, color: '#94a3b8' }}>Chargement...</div>
             : filtered.length === 0 ? (
