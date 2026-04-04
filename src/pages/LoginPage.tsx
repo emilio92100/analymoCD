@@ -10,21 +10,43 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('suspended') === 'true') {
+      window.history.replaceState({}, '', '/connexion');
+      return "Votre compte a été suspendu par mesure de sécurité. Merci de nous contacter pour plus d'informations.";
+    }
+    return '';
+  });
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true); setError('');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-   if (error) { if (error.message.includes('Email not confirmed')) { setError("Votre email n'a pas été validé. Veuillez vous réinscrire pour recevoir un nouveau lien d'activation."); } else { setError("Email ou mot de passe incorrect."); } setLoading(false); return; }
-    await syncFreePreviewUsed();
-    // Mettre en cache le nom/email pour affichage instantané
+    if (error) {
+      if (error.message.includes('Email not confirmed')) {
+        setError("Votre email n'a pas été validé. Veuillez vous réinscrire pour recevoir un nouveau lien d'activation.");
+      } else {
+        setError("Email ou mot de passe incorrect.");
+      }
+      setLoading(false); return;
+    }
+
+    // Vérifier si le compte est suspendu
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      const { data: profile } = await supabase.from('profiles').select('suspended').eq('id', user.id).single();
+      if (profile?.suspended) {
+        await supabase.auth.signOut();
+        setError("Votre compte a été suspendu par mesure de sécurité. Merci de nous contacter pour plus d'informations.");
+        setLoading(false); return;
+      }
       const n = user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0] || 'Utilisateur';
       localStorage.setItem('verimo_user_name', n);
       localStorage.setItem('verimo_user_email', user.email || '');
     }
+
+    await syncFreePreviewUsed();
     navigate('/dashboard');
   };
 
