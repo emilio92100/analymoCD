@@ -49,16 +49,27 @@ function SessionManager() {
         }
       }
       // Vérifier si le compte est suspendu ou supprimé
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile, error } = await supabase.from('profiles').select('suspended').eq('id', user.id).single();
-        if (error || !profile) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('suspended')
+          .eq('id', session.user.id)
+          .maybeSingle();
+
+        if (error?.code === 'PGRST116' || (!profile && !error)) {
           // Profil introuvable → compte supprimé
           await supabase.auth.signOut();
           window.location.href = '/connexion';
           return;
         }
-        if (profile?.suspended) {
+        if (!profile) {
+          // Aucun profil retourné → compte supprimé
+          await supabase.auth.signOut();
+          window.location.href = '/connexion';
+          return;
+        }
+        if (profile.suspended) {
           await supabase.auth.signOut();
           window.location.href = '/connexion?suspended=true';
         }
