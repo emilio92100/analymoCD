@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -175,7 +175,7 @@ export default function AdminPage() {
   }, []);
 
   const logAction = useCallback(async (action: string, target?: string) => {
-    await supabase.from('admin_logs').insert({ admin_email: adminEmail, action, target }).catch(() => {});
+    try { await supabase.from('admin_logs').insert({ admin_email: adminEmail, action, target }); } catch { /* silencieux */ }
   }, [adminEmail]);
 
   useEffect(() => {
@@ -197,7 +197,7 @@ export default function AdminPage() {
   // Créer table admin_logs si elle n'existe pas (silencieux)
   useEffect(() => {
     if (!isAdmin) return;
-    supabase.rpc('create_admin_logs_if_not_exists').catch(() => {});
+    supabase.rpc('create_admin_logs_if_not_exists').then(() => {}).catch(() => {});
   }, [isAdmin]);
 
   if (loading) return (
