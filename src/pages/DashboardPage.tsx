@@ -2016,18 +2016,242 @@ function Support() {
 /* ══════════════════════════════════════════
    TARIFS — SaaS moderne avec tooltips
 ══════════════════════════════════════════ */
+/* ── Types promo ── */
+type PromoResult = {
+  id: string;
+  code: string;
+  type: 'credits' | 'percent' | 'fixed';
+  value: number;
+  credit_type?: string;
+};
+
+/* ── Modale intermédiaire avant paiement ── */
+function CheckoutModal({
+  plan, onClose,
+}: {
+  plan: { id: string; label: string; price: string; priceNum: number; color: string; creditLabel: string };
+  onClose: () => void;
+}) {
+  const [promoCode, setPromoCode] = useState('');
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoResult, setPromoResult] = useState<PromoResult | null>(null);
+  const [promoError, setPromoError] = useState('');
+  const [promoApplied, setPromoApplied] = useState(false);
+
+  const applyPromo = async () => {
+    if (!promoCode.trim()) return;
+    setPromoLoading(true);
+    setPromoError('');
+    setPromoResult(null);
+    setPromoApplied(false);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Non connecté');
+
+      // Récupérer le code promo
+      const { data: promo, error } = await supabase
+        .from('promo_codes')
+        .select('*')
+        .eq('code', promoCode.trim().toUpperCase())
+        .eq('active', true)
+        .single();
+
+      if (error || !promo) { setPromoError('Code invalide ou expiré.'); setPromoLoading(false); return; }
+
+      // Vérifier expiration
+      if (promo.expires_at && new Date(promo.expires_at) < new Date()) {
+        setPromoError('Ce code a expiré.'); setPromoLoading(false); return;
+      }
+
+      // Vérifier max utilisations
+      if (promo.max_uses && promo.uses_count >= promo.max_uses) {
+        setPromoError('Ce code a atteint sa limite d\'utilisation.'); setPromoLoading(false); return;
+      }
+
+      // Vérifier restriction email
+      if (promo.restricted_email && promo.restricted_email !== user.email) {
+        setPromoError('Ce code n\'est pas disponible pour votre compte.'); setPromoLoading(false); return;
+      }
+
+      // Vérifier usage unique par compte
+      const { data: alreadyUsed } = await supabase
+        .from('promo_uses')
+        .select('id')
+        .eq('code_id', promo.id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (alreadyUsed) { setPromoError('Vous avez déjà utilisé ce code.'); setPromoLoading(false); return; }
+
+      setPromoResult(promo);
+      setPromoApplied(true);
+    } catch {
+      setPromoError('Erreur lors de la vérification du code.');
+    }
+    setPromoLoading(false);
+  };
+
+  const removePromo = () => {
+    setPromoResult(null);
+    setPromoApplied(false);
+    setPromoCode('');
+    setPromoError('');
+  };
+
+  // Calcul du prix final
+  const basePrice = plan.priceNum;
+  let finalPrice = basePrice;
+  let promoLabel = '';
+  if (promoResult) {
+    if (promoResult.type === 'percent') {
+      finalPrice = Math.max(0, basePrice * (1 - promoResult.value / 100));
+      promoLabel = `−${promoResult.value}%`;
+    } else if (promoResult.type === 'fixed') {
+      finalPrice = Math.max(0, basePrice - promoResult.value);
+      promoLabel = `−${promoResult.value.toFixed(2).replace('.', ',')}€`;
+    } else if (promoResult.type === 'credits') {
+      finalPrice = basePrice; // crédits bonus → prix inchangé
+      promoLabel = `+${promoResult.value} crédit${promoResult.value > 1 ? 's' : ''} offert${promoResult.value > 1 ? 's' : ''}`;
+    }
+  }
+
+  const handlePay = () => {
+    alert('Redirection vers Stripe… (à connecter)');
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(4px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+    }} onClick={onClose}>
+      <div style={{
+        background: '#fff', borderRadius: 20, width: '100%', maxWidth: 440,
+        boxShadow: '0 24px 80px rgba(0,0,0,0.22)', overflow: 'hidden',
+      }} onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div style={{ background: `linear-gradient(135deg, ${plan.color}, ${plan.color}cc)`, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.1em', marginBottom: 3 }}>RÉCAPITULATIF</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#fff' }}>{plan.label}</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', marginTop: 2 }}>{plan.creditLabel}</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}>
+            <X size={15} />
+          </button>
+        </div>
+
+        <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+          {/* Prix */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', background: '#f8fafc', borderRadius: 12, border: '1.5px solid #edf2f7' }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#64748b' }}>Total</span>
+            <div style={{ textAlign: 'right' }}>
+              {promoResult && promoResult.type !== 'credits' && (
+                <div style={{ fontSize: 12, color: '#94a3b8', textDecoration: 'line-through', marginBottom: 2 }}>{plan.price}</div>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {promoResult && (
+                  <span style={{ fontSize: 11, fontWeight: 800, color: promoResult.type === 'credits' ? '#7c3aed' : '#16a34a', background: promoResult.type === 'credits' ? '#f5f3ff' : '#f0fdf4', border: `1px solid ${promoResult.type === 'credits' ? '#ddd6fe' : '#d1fae5'}`, padding: '2px 8px', borderRadius: 100 }}>
+                    {promoLabel}
+                  </span>
+                )}
+                <span style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em' }}>
+                  {promoResult && promoResult.type !== 'credits' ? `${finalPrice.toFixed(2).replace('.', ',')}€` : plan.price}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Champ code promo */}
+          <div>
+            <label style={{ fontSize: 13, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 8 }}>
+              Code promo <span style={{ fontWeight: 400, color: '#94a3b8' }}>(optionnel)</span>
+            </label>
+
+            {promoApplied && promoResult ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: 11 }}>
+                <CheckCircle size={16} style={{ color: '#16a34a', flexShrink: 0 }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#16a34a', flex: 1 }}>Code <strong>{promoResult.code}</strong> appliqué — {promoLabel}</span>
+                <button onClick={removePromo} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 2 }}>
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  value={promoCode}
+                  onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoError(''); }}
+                  onKeyDown={e => e.key === 'Enter' && applyPromo()}
+                  placeholder="EX : VERIMO20"
+                  style={{
+                    flex: 1, padding: '11px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                    border: `1.5px solid ${promoError ? '#fca5a5' : '#e2e8f0'}`,
+                    outline: 'none', letterSpacing: '0.05em', fontFamily: 'monospace',
+                    background: promoError ? '#fef2f2' : '#fff', color: '#0f172a',
+                  }}
+                />
+                <button
+                  onClick={applyPromo}
+                  disabled={promoLoading || !promoCode.trim()}
+                  style={{
+                    padding: '11px 16px', borderRadius: 10, border: 'none',
+                    background: plan.color, color: '#fff', fontSize: 13, fontWeight: 700,
+                    cursor: promoLoading || !promoCode.trim() ? 'not-allowed' : 'pointer',
+                    opacity: promoLoading || !promoCode.trim() ? 0.6 : 1,
+                    display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap',
+                  }}
+                >
+                  {promoLoading
+                    ? <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.35)', borderTopColor: '#fff', animation: 'spin 0.8s linear infinite' }} />
+                    : 'Appliquer'}
+                </button>
+              </div>
+            )}
+
+            {promoError && (
+              <div style={{ fontSize: 12, color: '#dc2626', marginTop: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <AlertTriangle size={12} /> {promoError}
+              </div>
+            )}
+          </div>
+
+          {/* Bouton paiement */}
+          <button
+            onClick={handlePay}
+            style={{
+              width: '100%', padding: '14px', borderRadius: 12, border: 'none',
+              background: `linear-gradient(135deg, ${plan.color}, ${plan.color}cc)`,
+              color: '#fff', fontSize: 15, fontWeight: 800,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              boxShadow: `0 6px 20px ${plan.color}40`,
+            }}
+          >
+            <Lock size={15} /> Continuer vers le paiement
+          </button>
+
+          <div style={{ textAlign: 'center', fontSize: 11, color: '#94a3b8', marginTop: -8 }}>
+            🔒 Paiement sécurisé par Stripe — vos données sont chiffrées
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Tarifs() {
-  
   const { credits } = useCredits();
   const [tooltip, setTooltip] = useState<string | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<null | { id: string; label: string; price: string; priceNum: number; color: string; creditLabel: string }>(null);
 
-const handleAcheter = (plan: { id: string; label: string; price: string; priceNum: number; color: string; creditLabel: string }) => {
+  const handleAcheter = (plan: { id: string; label: string; price: string; priceNum: number; color: string; creditLabel: string }) => {
     setCheckoutPlan(plan);
   };
 
   const plans: { id: string; label: string; price: string; priceNum: number; desc: string; creditLabel: string; creditType: keyof Credits; color: string; icon: React.ElementType; popular?: boolean; badge?: string; details: string[] }[] = [
-{
+    {
       id: 'document',
       label: 'Analyse Document',
       price: '4,90€',
@@ -2225,22 +2449,22 @@ const handleAcheter = (plan: { id: string; label: string; price: string; priceNu
                 </div>
 
                 {/* CTA */}
-<button
-  onClick={()=>handleAcheter({ id: plan.id, label: plan.label, price: plan.price, priceNum: plan.priceNum, color: plan.color, creditLabel: plan.creditLabel })}
-  style={{
-    flexShrink:0, padding:'11px 22px', borderRadius:11, border:'none',
-    background:`linear-gradient(135deg, ${plan.color}, ${plan.color}cc)`,
-    color:'#fff', fontSize:13.5, fontWeight:800,
-    cursor:'pointer',
-    boxShadow:`0 4px 14px ${plan.color}30`,
-    display:'flex', alignItems:'center', gap:7,
-    transition:'all 0.15s', whiteSpace:'nowrap',
-  }}
-  onMouseOver={e=>{ (e.currentTarget as HTMLElement).style.filter='brightness(1.1)'; }}
-  onMouseOut={e=>{ (e.currentTarget as HTMLElement).style.filter='brightness(1)'; }}
->
-  {hasCredits ? 'Racheter' : 'Acheter'}
-</button>
+                <button
+                  onClick={()=>handleAcheter({ id: plan.id, label: plan.label, price: plan.price, priceNum: plan.priceNum, color: plan.color, creditLabel: plan.creditLabel })}
+                  style={{
+                    flexShrink:0, padding:'11px 22px', borderRadius:11, border:'none',
+                    background:`linear-gradient(135deg, ${plan.color}, ${plan.color}cc)`,
+                    color:'#fff', fontSize:13.5, fontWeight:800,
+                    cursor:'pointer',
+                    boxShadow:`0 4px 14px ${plan.color}30`,
+                    display:'flex', alignItems:'center', gap:7,
+                    transition:'all 0.15s', whiteSpace:'nowrap',
+                  }}
+                  onMouseOver={e=>{ (e.currentTarget as HTMLElement).style.filter='brightness(1.1)'; }}
+                  onMouseOut={e=>{ (e.currentTarget as HTMLElement).style.filter='brightness(1)'; }}
+                >
+                  {hasCredits ? 'Racheter' : 'Acheter'}
+                </button>
               </div>
 
               {/* Barre verte si crédits dispos */}
@@ -2273,8 +2497,9 @@ const handleAcheter = (plan: { id: string; label: string; price: string; priceNu
             </div>
           </div>
         ))}
- </div>
+      </div>
 
+      {/* Modale checkout + code promo */}
       {checkoutPlan && (
         <CheckoutModal
           plan={checkoutPlan}
