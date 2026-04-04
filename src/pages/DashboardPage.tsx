@@ -414,7 +414,7 @@ function DashboardContent({ path }: { path:string }) {
 function HomeView() {
   const { name } = useUser();
   const { analyses } = useAnalyses();
-  const { credits, loadingCredits } = useCredits();   const hour = new Date().getHours();
+  const { credits, loadingCredits } = useCredits();
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
   const hasAnalyses = analyses.length > 0;
   const [freePreviewUsedHome] = useState<boolean>(() => checkFreePreviewUsedSync());
@@ -2309,7 +2309,7 @@ function Tarifs() {
       }
 
       // Cacher le toast après 8 secondes
-      setTimeout(() => setSuccessToast(null), 8000);
+      setTimeout(() => setSuccessToast(null), 10000);
     }
   }, []);
 
@@ -2404,17 +2404,33 @@ function Tarifs() {
       {/* Toast succès paiement */}
       {successToast && (
         <div style={{
-          position: 'fixed', top: 24, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 9999, maxWidth: 480, width: '90%',
-          background: '#0f2d3d', borderRadius: 16, padding: '16px 20px',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-          display: 'flex', alignItems: 'flex-start', gap: 12,
-          animation: 'fadeInUp 0.4s ease both',
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '20px',
         }}>
-          <div style={{ flex: 1, fontSize: 13, color: '#fff', lineHeight: 1.6 }}>{successToast}</div>
-          <button onClick={() => setSuccessToast(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.5)', flexShrink: 0, padding: 2 }}>
-            <X size={14} />
-          </button>
+          <div style={{
+            background: '#0f2d3d', borderRadius: 20, padding: '28px 24px',
+            maxWidth: 420, width: '100%',
+            boxShadow: '0 24px 80px rgba(0,0,0,0.4)',
+            display: 'flex', flexDirection: 'column', gap: 16,
+            animation: 'fadeInUp 0.4s ease both',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <span style={{ fontSize: 32 }}>🎉</span>
+              <button onClick={() => setSuccessToast(null)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', flexShrink: 0 }}>
+                <X size={14} />
+              </button>
+            </div>
+            <div style={{ fontSize: 15, color: '#fff', lineHeight: 1.7, fontWeight: 500 }}>{successToast}</div>
+            <button onClick={() => setSuccessToast(null)} style={{
+              width: '100%', padding: '12px', borderRadius: 12, border: 'none',
+              background: 'rgba(255,255,255,0.15)', color: '#fff', fontSize: 14,
+              fontWeight: 700, cursor: 'pointer',
+            }}>
+              Compris !
+            </button>
+          </div>
         </div>
       )}
 
