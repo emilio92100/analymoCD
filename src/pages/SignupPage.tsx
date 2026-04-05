@@ -18,7 +18,7 @@ const { data, error } = await supabase.auth.signUp({ email, password, options: {
   };
 
   const handleGoogle = async () => {
-    await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/dashboard` } });
+    await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/auth/callback` } });
   };
 
   if (step === 'verify') return (
