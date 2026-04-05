@@ -293,7 +293,7 @@ function Topbar({ onMenuClick, title }: { onMenuClick:()=>void; title:string }) 
     });
   }, []);
 
-  const handleLogout = async () => { await supabase.auth.signOut(); navigate('/'); };
+  const handleLogout = async () => { await supabase.auth.signOut(); window.location.href = '/'; };
 
   return (
     <header style={{ height:68, background:'#fff', borderBottom:'1px solid #edf2f7', display:'flex', alignItems:'center', padding:'0 24px', gap:12, position:'sticky', top:0, zIndex:40, flexShrink:0 }}>
