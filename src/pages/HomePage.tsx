@@ -54,7 +54,7 @@ function SectionTitle({ label, title, accent, sub }: { label: string; title: str
       </motion.h2>
       {sub && (
         <motion.p initial={{ opacity: 0 }} animate={inView ? { opacity: 1 } : {}} transition={{ delay: 0.2 }}
-          className="text-base md:text-lg text-slate-500 max-w-xl mx-auto leading-relaxed">{sub}</motion.p>
+          className="text-base md:text-lg text-slate-500 max-w-xs md:max-w-2xl mx-auto leading-relaxed">{sub}</motion.p>
       )}
     </div>
   );
