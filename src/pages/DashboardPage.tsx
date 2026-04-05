@@ -339,7 +339,7 @@ function Topbar({ onMenuClick, title }: { onMenuClick:()=>void; title:string }) 
                 <User size={15} style={{ color:'#2a7d9c' }}/> Mon profil
               </button>
               {/* Se déconnecter */}
-              <button onClick={handleLogout}
+              <button onClick={(e) => { e.stopPropagation(); handleLogout(); }}
                 style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'12px 16px', background:'none', border:'none', borderTop:'1px solid #f0f5f9', cursor:'pointer', fontSize:13, fontWeight:600, color:'#ef4444', textAlign:'left' }}
                 onMouseOver={e => (e.currentTarget as HTMLElement).style.background='#fef2f2'}
                 onMouseOut={e => (e.currentTarget as HTMLElement).style.background='none'}>
