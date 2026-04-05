@@ -800,8 +800,8 @@ function ProblemSolutionSection() {
   const items = [
     {
       emoji: '📋',
-      title: "Des documents que personne ne comprend",
-      text: "PV d'AG, diagnostics, règlement de copropriété… Des dizaines de pages écrites en jargon. Vous les ouvrez, vous ne comprenez pas tout, et vous signez quand même.",
+      title: "Certaines infos passent toujours entre les mailles",
+      text: "PV d'AG, diagnostics, règlement de copropriété… Même en lisant, des détails importants sont faciles à rater. Un mot technique, une résolution en page 38 — et vous passez à côté.",
       tag: "Complexité",
       tagColor: '#2a7d9c',
       tagBg: 'rgba(42,125,156,0.1)',
@@ -836,21 +836,14 @@ function ProblemSolutionSection() {
     <section className="py-20 md:py-32 px-4 md:px-6" style={{ background: 'linear-gradient(180deg, #eef7f9 0%, #f4f9fb 100%)' }}>
       <div className="max-w-6xl mx-auto">
 
-        <Reveal className="text-center mb-4">
-          <span className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2a7d9c]">Pourquoi Verimo</span>
-        </Reveal>
-        <Reveal className="text-center mb-5">
-          <h2 className="font-black text-[#0f2d3d] leading-[1.15] tracking-[-0.03em]"
-            style={{ fontSize: 'clamp(22px,4vw,46px)' }}>
-            Vous avez visité. Vous avez aimé.<br />
-            <span className="text-[#2a7d9c]">Mais avez-vous vraiment lu ?</span>
-          </h2>
-        </Reveal>
-        <Reveal className="text-center mb-12">
-          <p className="text-slate-500 max-w-xl mx-auto leading-relaxed" style={{ fontSize: 'clamp(14px,2vw,17px)' }}>
-            Un achat immobilier, c'est des centaines de pages à lire. Les risques sont là — ils sont juste difficiles à voir sans les bons outils.
-          </p>
-        </Reveal>
+        <div style={{ fontSize: 0 }} className="[&_h2]:text-[clamp(20px,3.8vw,46px)]">
+          <SectionTitle
+            label="Pourquoi Verimo"
+            title="Vous avez visité. Vous avez aimé."
+            accent="Mais avez-vous vraiment lu ?"
+            sub="Même en lisant, certaines informations clés passent entre les mailles. Verimo est là pour que vous ayez une vision complète — sans rien manquer."
+          />
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
           {items.map((item, i) => (
