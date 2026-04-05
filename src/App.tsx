@@ -20,6 +20,7 @@ const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const MethodePage = lazy(() => import('./pages/MethodePage'));
 const ConfidentialitePage = lazy(() => import('./pages/ConfidentialitePage'));
+const CGUPage = lazy(() => import('./pages/CGUPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 
 function ScrollToTop() {
@@ -85,6 +86,7 @@ export default function App() {
           <Route path="/exemple" element={<PublicLayout><ExemplePage /></PublicLayout>} />
           <Route path="/methode" element={<PublicLayout><MethodePage /></PublicLayout>} />
           <Route path="/confidentialite" element={<PublicLayout><ConfidentialitePage /></PublicLayout>} />
+          <Route path="/cgu" element={<PublicLayout><CGUPage /></PublicLayout>} />
           <Route path="/connexion" element={<LoginPage />} />
           <Route path="/start" element={<StartPage />} />
           <Route path="/inscription" element={<SignupPage />} />
