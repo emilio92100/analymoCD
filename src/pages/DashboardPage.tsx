@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -284,6 +284,7 @@ function Topbar({ onMenuClick, title }: { onMenuClick:()=>void; title:string }) 
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -293,7 +294,22 @@ function Topbar({ onMenuClick, title }: { onMenuClick:()=>void; title:string }) 
     });
   }, []);
 
-  const handleLogout = async () => { await supabase.auth.signOut(); window.location.href = '/'; };
+  // Fermer le dropdown si clic en dehors
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    if (dropdownOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [dropdownOpen]);
+
+  const handleLogout = async () => {
+    setDropdownOpen(false);
+    await supabase.auth.signOut();
+    window.location.href = '/';
+  };
 
   return (
     <header style={{ height:68, background:'#fff', borderBottom:'1px solid #edf2f7', display:'flex', alignItems:'center', padding:'0 24px', gap:12, position:'sticky', top:0, zIndex:40, flexShrink:0 }}>
@@ -308,12 +324,10 @@ function Topbar({ onMenuClick, title }: { onMenuClick:()=>void; title:string }) 
       )}
 
       {/* Bouton profil + dropdown */}
-      <div style={{ position:'relative' }}>
+      <div ref={dropdownRef} style={{ position:'relative' }}>
         <button
           onClick={() => setDropdownOpen(!dropdownOpen)}
-          style={{ display:'flex', alignItems:'center', gap:9, padding:'6px 10px 6px 6px', borderRadius:10, background: dropdownOpen ? '#f0f7fb' : '#f8fafc', border:`1px solid ${dropdownOpen ? '#c7dde8' : '#edf2f7'}`, cursor:'pointer', transition:'all 0.15s' }}
-          onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#f0f7fb'; (e.currentTarget as HTMLElement).style.borderColor = '#c7dde8'; }}
-          onMouseOut={e => { if (!dropdownOpen) { (e.currentTarget as HTMLElement).style.background = '#f8fafc'; (e.currentTarget as HTMLElement).style.borderColor = '#edf2f7'; } }}>
+          style={{ display:'flex', alignItems:'center', gap:9, padding:'6px 10px 6px 6px', borderRadius:10, background: dropdownOpen ? '#f0f7fb' : '#f8fafc', border:`1px solid ${dropdownOpen ? '#c7dde8' : '#edf2f7'}`, cursor:'pointer', transition:'all 0.15s' }}>
           <div style={{ width:30, height:30, borderRadius:'50%', background:'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color:'#fff', flexShrink:0 }}>
             {(name.charAt(0) || 'U').toUpperCase()}
           </div>
@@ -321,37 +335,33 @@ function Topbar({ onMenuClick, title }: { onMenuClick:()=>void; title:string }) 
           <ChevronDown size={13} style={{ color:'#94a3b8', transition:'transform 0.2s', transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}/>
         </button>
 
-        {/* Dropdown menu */}
         {dropdownOpen && (
-          <>
-            <div onClick={() => setDropdownOpen(false)} style={{ position:'fixed', inset:0, zIndex:99 }}/>
-            <div style={{ position:'absolute', right:0, top:'calc(100% + 8px)', width:220, background:'#fff', borderRadius:14, border:'1px solid #edf2f7', boxShadow:'0 16px 48px rgba(0,0,0,0.12)', zIndex:100, overflow:'hidden' }}>
-              {/* Infos user */}
-              <div style={{ padding:'14px 16px', borderBottom:'1px solid #f0f5f9' }}>
-                <div style={{ fontSize:13, fontWeight:700, color:'#0f172a' }}>{name}</div>
-                <div style={{ fontSize:11, color:'#94a3b8', marginTop:2 }}>{email}</div>
-              </div>
-              {/* Mon profil */}
-              <button onClick={() => { navigate('/dashboard/compte'); setDropdownOpen(false); }}
-                style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'12px 16px', background:'none', border:'none', cursor:'pointer', fontSize:13, fontWeight:600, color:'#0f172a', textAlign:'left' }}
-                onMouseOver={e => (e.currentTarget as HTMLElement).style.background='#f8fafc'}
-                onMouseOut={e => (e.currentTarget as HTMLElement).style.background='none'}>
-                <User size={15} style={{ color:'#2a7d9c' }}/> Mon profil
-              </button>
-              {/* Se déconnecter */}
-              <button onClick={(e) => { e.stopPropagation(); handleLogout(); }}
-                style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'12px 16px', background:'none', border:'none', borderTop:'1px solid #f0f5f9', cursor:'pointer', fontSize:13, fontWeight:600, color:'#ef4444', textAlign:'left' }}
-                onMouseOver={e => (e.currentTarget as HTMLElement).style.background='#fef2f2'}
-                onMouseOut={e => (e.currentTarget as HTMLElement).style.background='none'}>
-                <LogOut size={15}/> Se déconnecter
-              </button>
+          <div style={{ position:'absolute', right:0, top:'calc(100% + 8px)', width:220, background:'#fff', borderRadius:14, border:'1px solid #edf2f7', boxShadow:'0 16px 48px rgba(0,0,0,0.12)', zIndex:9999, overflow:'hidden' }}>
+            <div style={{ padding:'14px 16px', borderBottom:'1px solid #f0f5f9' }}>
+              <div style={{ fontSize:13, fontWeight:700, color:'#0f172a' }}>{name}</div>
+              <div style={{ fontSize:11, color:'#94a3b8', marginTop:2 }}>{email}</div>
             </div>
-          </>
+            <button onClick={() => { navigate('/dashboard/compte'); setDropdownOpen(false); }}
+              style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'12px 16px', background:'none', border:'none', cursor:'pointer', fontSize:13, fontWeight:600, color:'#0f172a', textAlign:'left' as const }}
+              onMouseOver={e => (e.currentTarget as HTMLElement).style.background='#f8fafc'}
+              onMouseOut={e => (e.currentTarget as HTMLElement).style.background='none'}>
+              <User size={15} style={{ color:'#2a7d9c' }}/> Mon profil
+            </button>
+            <button onClick={handleLogout}
+              style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'12px 16px', background:'none', border:'none', borderTop:'1px solid #f0f5f9', cursor:'pointer', fontSize:13, fontWeight:600, color:'#ef4444', textAlign:'left' as const }}
+              onMouseOver={e => (e.currentTarget as HTMLElement).style.background='#fef2f2'}
+              onMouseOut={e => (e.currentTarget as HTMLElement).style.background='none'}>
+              <LogOut size={15}/> Se déconnecter
+            </button>
+          </div>
         )}
       </div>
     </header>
   );
 }
+
+
+
 
 /* ══════════════════════════════════════════
    ROOT LAYOUT
