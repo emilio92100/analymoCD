@@ -42,7 +42,7 @@ export default function AuthCallbackPage() {
             await syncFreePreviewUsed();
             await cacheUserInfo();
             setProgress(100);
-            setTimeout(() => setStatus('success'), 400);
+            setTimeout(() => { window.location.href = '/dashboard'; }, 400);
             return;
           }
         }
@@ -58,7 +58,7 @@ export default function AuthCallbackPage() {
           await syncFreePreviewUsed();
           await cacheUserInfo();
           setProgress(100);
-          setTimeout(() => setStatus('success'), 400);
+          setTimeout(() => { window.location.href = '/dashboard'; }, 400);
           return;
         }
       }
@@ -71,10 +71,9 @@ export default function AuthCallbackPage() {
         await syncFreePreviewUsed();
         await cacheUserInfo();
         setProgress(100);
-        setTimeout(() => setStatus('success'), 400);
+        setTimeout(() => { window.location.href = '/dashboard'; }, 400);
       } else {
-        // 4. Cas où le lien a déjà été cliqué ou a expiré — mais l'utilisateur
-        //    est peut-être inscrit sans être connecté (cas iOS sans session)
+        // 4. Cas où le lien a déjà été cliqué ou a expiré
         setStatus('already_confirmed');
       }
     };
