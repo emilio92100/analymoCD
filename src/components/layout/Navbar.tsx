@@ -153,43 +153,86 @@ export default function Navbar() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[99] md:hidden"
             onClick={() => setOpen(false)}>
-            <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
+            <div className="absolute inset-0 bg-[#0f2d3d]/40 backdrop-blur-sm" />
             <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="absolute top-[76px] left-4 right-4 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden"
+              initial={{ opacity: 0, y: -12, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -12, scale: 0.97 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute top-[76px] left-4 right-4 rounded-2xl shadow-2xl overflow-hidden"
+              style={{ background: 'linear-gradient(160deg, #0f2d3d 0%, #1a4a60 100%)' }}
               onClick={e => e.stopPropagation()}>
+
+              {/* Logo + slogan en haut */}
+              <div className="px-5 pt-5 pb-4 border-b border-white/10">
+                <p className="text-[11px] font-bold text-[#2a7d9c] tracking-[0.18em] uppercase">Navigation</p>
+              </div>
+
+              {/* Liens nav */}
               <div className="p-3">
-                {navLinks.map(l => {
+                {navLinks.map((l, i) => {
                   const active = location.pathname === l.to;
                   return (
-                    <Link key={l.to} to={l.to}
-                      className={`flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                        active ? 'text-white bg-[#0f2d3d] font-semibold' : 'text-slate-700 hover:bg-slate-50'
-                      }`}>
-                      {l.label}
-                    </Link>
+                    <motion.div
+                      key={l.to}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.04, duration: 0.18 }}>
+                      <Link
+                        to={l.to}
+                        onClick={() => setOpen(false)}
+                        className="flex items-center justify-between px-4 py-3.5 rounded-xl text-sm font-semibold transition-all mb-1"
+                        style={{
+                          background: active ? 'rgba(42,125,156,0.25)' : 'transparent',
+                          color: active ? '#7dd3f0' : 'rgba(255,255,255,0.75)',
+                          borderLeft: active ? '3px solid #2a7d9c' : '3px solid transparent',
+                        }}>
+                        {l.label}
+                        {active && (
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#2a7d9c', display: 'inline-block' }} />
+                        )}
+                      </Link>
+                    </motion.div>
                   );
                 })}
               </div>
-              <div className="border-t border-slate-100 p-3 flex flex-col gap-2">
+
+              {/* Boutons CTA */}
+              <div className="p-4 pt-2 flex flex-col gap-2.5 border-t border-white/10">
                 {user ? (
                   <>
-                    <Link to="/dashboard" className="text-center py-3 rounded-xl text-sm font-bold text-white bg-[#0f2d3d] transition-colors">
-                      Mon espace
+                    <Link to="/dashboard" onClick={() => setOpen(false)}
+                      className="text-center py-3.5 rounded-xl text-sm font-bold transition-all"
+                      style={{ background: '#2a7d9c', color: '#fff' }}>
+                      Mon espace →
                     </Link>
-                    <button onClick={handleLogout} className="text-center py-3 rounded-xl text-sm font-semibold text-red-500 border border-red-200 hover:bg-red-50 transition-colors">
+                    <button onClick={() => { handleLogout(); setOpen(false); }}
+                      className="text-center py-3 rounded-xl text-sm font-semibold transition-all"
+                      style={{ color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.06)' }}>
                       Se déconnecter
                     </button>
                   </>
                 ) : (
                   <>
-                    <Link to="/connexion" className="text-center py-3 rounded-xl text-sm font-semibold text-slate-700 border border-slate-200 hover:bg-slate-50 transition-colors">Connexion</Link>
-                    <Link to="/inscription" className="text-center py-3 rounded-xl text-sm font-bold text-white bg-[#0f2d3d] hover:bg-[#0f2d3d]/90 transition-colors">S'inscrire</Link>
+                    <Link to="/connexion" onClick={() => setOpen(false)}
+                      className="text-center py-3.5 rounded-xl text-sm font-semibold transition-all"
+                      style={{ color: 'rgba(255,255,255,0.8)', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                      Connexion
+                    </Link>
+                    <Link to="/inscription" onClick={() => setOpen(false)}
+                      className="text-center py-3.5 rounded-xl text-sm font-bold transition-all"
+                      style={{ background: '#2a7d9c', color: '#fff' }}>
+                      S'inscrire gratuitement
+                    </Link>
                   </>
                 )}
               </div>
+
+              {/* Slogan bas */}
+              <div className="px-5 py-3 border-t border-white/10">
+                <p className="text-[10px] text-white/30 text-center tracking-wide">Vos documents décryptés, votre décision éclairée.</p>
+              </div>
+
             </motion.div>
           </motion.div>
         )}
