@@ -76,6 +76,66 @@ PV d'AG, Règlement de copropriété, Appel de charges, DDT/Diagnostics, DPE, PP
 
 ---
 
+## STRUCTURE DES FICHIERS (après refactoring session 05/04/2026)
+
+```
+src/
+├── App.tsx                        — SessionManager + Routes
+├── hooks/                         — NOUVEAU (créé cette session)
+│   ├── useCredits.ts              — crédits Supabase + déduction
+│   ├── useUser.ts                 — nom/email avec cache localStorage
+│   └── useAnalyses.ts             — fetch + mapping des analyses
+├── lib/
+│   ├── supabase.ts                — Client Supabase
+│   ├── analyses.ts                — CRUD analyses + syncFreePreviewUsed
+│   └── prompts.ts                 — Prompts système IA
+├── components/layout/
+│   ├── Navbar.tsx
+│   └── Footer.tsx
+├── types/
+│   └── index.ts
+└── pages/
+    ├── DashboardPage.tsx          — Layout + routing (261 lignes, allégé depuis 2736)
+    ├── dashboard/                 — NOUVEAU (créé cette session)
+    │   ├── HomeView.tsx           — Accueil dashboard
+    │   ├── MesAnalyses.tsx        — Liste + recherche des analyses
+    │   ├── NouvelleAnalyse.tsx    — Flow upload + analyse + aperçu
+    │   ├── Compare.tsx            — Comparaison 2-3 biens
+    │   ├── Compte.tsx             — Profil, mot de passe, historique, suppression
+    │   ├── Support.tsx            — FAQ + formulaire contact
+    │   └── Tarifs.tsx             — Plans + modale checkout + codes promo
+    ├── RapportPage.tsx            — Page rapport détaillé (/dashboard/rapport?id=...)
+    ├── AdminPage.tsx              — Page admin complète
+    ├── HomePage.tsx
+    ├── MethodePage.tsx
+    ├── ExemplePage.tsx
+    ├── TarifsPage.tsx
+    ├── ContactPage.tsx
+    ├── LoginPage.tsx
+    ├── SignupPage.tsx
+    ├── StartPage.tsx
+    ├── ForgotPasswordPage.tsx
+    ├── ResetPasswordPage.tsx
+    └── AuthCallbackPage.tsx       — Animation confirmation + détection session
+```
+
+---
+
+## REFACTORING DASHBOARDPAGE (session 05/04/2026) ✅
+
+**Avant :** `DashboardPage.tsx` = 2736 lignes (God Component)
+**Après :** `DashboardPage.tsx` = 261 lignes (layout + routing uniquement)
+
+Logique extraite dans `src/hooks/` (3 hooks) et `src/pages/dashboard/` (7 vues).
+
+**Problèmes rencontrés lors du déploiement Vercel :**
+- Fichiers créés sans extension `.tsx`/`.ts` sur GitHub → corrigé
+- Casse des noms (Linux est sensible) : `Homeview` → `HomeView`, `Mesanalyses` → `MesAnalyses`, `Nouvelleanalyse` → `NouvelleAnalyse`, `Useuser` → `useUser`, `Usecredits` → `useCredits`, `Useanalyses` → `useAnalyses` → corrigés
+- Imports inutilisés (`AlertTriangle`, `CheckCircle` dans `HomeView.tsx`, `Link` dans `Tarifs.tsx`) → corrigés
+- Build Vercel opérationnel ✅
+
+---
+
 ## SUPABASE — État complet
 
 ### Compte admin
@@ -156,9 +216,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 Met à jour `email_verified = true` dans profiles quand l'email est confirmé dans auth.users.
 
 ### Fonction SQL `increment_promo_uses`
-```sql
--- incrémente uses_count sur promo_codes
-```
+Incrémente `uses_count` sur `promo_codes`.
 
 ### RLS
 - `profiles` : lecture pour tous les authentifiés, modification par soi-même ou admin
@@ -171,23 +229,40 @@ Met à jour `email_verified = true` dans profiles quand l'email est confirmé da
 
 ---
 
-## STRIPE — État
+## STRIPE — État complet
 
 ### Edge Functions déployées
-1. **`create-checkout-session`** — Crée une session Stripe et retourne l'URL de paiement
-   - `success_url` → `https://verimo.fr/dashboard/tarifs?success=true`
-   - `cancel_url` → `https://verimo.fr/dashboard/tarifs?cancelled=true`
-   - Headers CORS : `authorization, x-client-info, apikey, content-type`
-   - JWT legacy désactivé
 
-2. **`stripe-webhook`** — Reçoit les événements Stripe après paiement confirmé
-   - Event : `checkout.session.completed`
-   - Ajoute les crédits dans `profiles` selon le `priceId`
-   - JWT legacy désactivé
+**1. `create-checkout-session`** ✅ (mise à jour session 05/04/2026)
+- Crée une session Stripe et retourne l'URL de paiement
+- `success_url` → `https://verimo.fr/dashboard/tarifs?success=true`
+- `cancel_url` → `https://verimo.fr/dashboard/tarifs?cancelled=true`
+- Headers CORS : `authorization, x-client-info, apikey, content-type`
+- JWT legacy désactivé
+- Applique les codes promo via coupon Stripe à la volée :
+  - `percent` → `stripe.coupons.create({ percent_off: value })`
+  - `fixed` → `stripe.coupons.create({ amount_off: value * 100, currency: 'eur' })`
+  - `credits` → pas de réduction prix, crédits bonus à gérer séparément
+- Enregistre l'utilisation dans `promo_uses` et incrémente `uses_count`
 
-3. **`admin-user-management`** — Gestion des comptes depuis l'admin
-   - Actions : `create` / `invite` / `delete`
-   - Vérifie `role = 'admin'` avant d'agir
+**2. `stripe-webhook`** ✅ (mis à jour session 05/04/2026)
+- Écoute `checkout.session.completed`
+- Récupère le `priceId` via `stripe.checkout.sessions.listLineItems`
+- Attribue les crédits dans `profiles` selon le price ID (indépendant du code promo)
+- JWT legacy désactivé
+- Doublon supprimé : n'enregistre plus le code promo (géré dans `create-checkout-session`)
+
+**3. `admin-user-management`**
+- Actions : `create` / `invite` / `delete`
+- Vérifie `role = 'admin'` avant d'agir
+
+### Crédits attribués par price ID
+```
+price_1TIb1LBO4ekMbwz0020eqcR0  →  +1 credits_document
+price_1TIb3XBO4ekMbwz0a7m7E7gD  →  +1 credits_complete
+price_1TIb4KBO4ekMbwz0gGF2gI1S  →  +2 credits_complete
+price_1TIb51BO4ekMbwz0mmEez47o  →  +3 credits_complete
+```
 
 ### Secrets Supabase configurés
 - `STRIPE_SECRET_KEY` ✅
@@ -197,6 +272,57 @@ Met à jour `email_verified = true` dans profiles quand l'email est confirmé da
 - `VITE_STRIPE_PUBLIC_KEY` ✅
 - `VITE_SUPABASE_URL` ✅
 - `VITE_SUPABASE_ANON_KEY` ✅
+
+### Webhook Stripe
+- **URL :** `https://veszrayromldfgetqaxb.supabase.co/functions/v1/stripe-webhook`
+- **Événement écouté :** `checkout.session.completed`
+
+### Carte de test Stripe
+- **Numéro :** `4242 4242 4242 4242`
+- **Expiration :** n'importe quelle date future
+- **CVC :** n'importe quel 3 chiffres
+
+### Pour passer en production
+1. Basculer Stripe en mode live
+2. Recréer les 4 produits en mode live
+3. Mettre à jour les Price IDs dans `Tarifs.tsx`
+4. Mettre à jour `STRIPE_SECRET_KEY` (clé live) dans Supabase secrets
+5. Reconfigurer le webhook avec l'URL live et mettre à jour `STRIPE_WEBHOOK_SECRET`
+6. Mettre à jour `VITE_STRIPE_PUBLIC_KEY` (clé publique live) dans Vercel
+
+---
+
+## CODES PROMO — Logique complète ✅
+
+### Types
+- `percent` — % de réduction sur le prix
+- `fixed` — montant fixe de réduction en €
+- `credits` — crédits bonus offerts (pas de réduction sur le prix)
+
+### Restrictions combinables
+- Email restreint (`restricted_email`)
+- Date d'expiration (`expires_at`)
+- Nombre max d'utilisations (`max_uses`)
+- Usage unique par compte (table `promo_uses` avec UNIQUE constraint)
+
+### Vérifications frontend (`Tarifs.tsx`) au moment de la saisie
+| Cas | Message affiché |
+|---|---|
+| Code inexistant ou inactif | "Code invalide ou expiré" |
+| Date d'expiration dépassée | "Ce code a expiré" |
+| Max utilisations atteint | "Ce code a atteint sa limite d'utilisation" |
+| Email restreint | "Ce code n'est pas disponible pour votre compte" |
+| Déjà utilisé par ce compte | "Vous avez déjà utilisé ce code" |
+
+### Flow complet
+1. Utilisateur saisit le code → vérification frontend immédiate
+2. Code valide → nouveau prix affiché dans la modale
+3. Clic "Payer" → `create-checkout-session` recrée la vérification + crée coupon Stripe + enregistre usage
+4. Redirect Stripe → paiement avec réduction appliquée
+5. Retour `?success=true` → webhook attribue les crédits selon le price ID
+
+### Générateur auto
+Code aléatoire disponible dans l'onglet "Codes promo" de l'admin.
 
 ---
 
@@ -222,8 +348,27 @@ Met à jour `email_verified = true` dans profiles quand l'email est confirmé da
 2. Vérification suspension → sync localStorage → `navigate('/dashboard')`
 
 ### Déconnexion
-1. Clic "Se déconnecter" dans dropdown topbar
-2. `localStorage.clear()` + `supabase.auth.signOut()` + `window.location.replace('/')`
+```typescript
+const handleLogout = () => {
+  localStorage.clear();
+  supabase.auth.signOut(); // non-bloquant
+  window.location.replace('/');
+};
+```
+Synchrone, pas de `await` — évite les conflits avec `onAuthStateChange`.
+
+### AUTHCALLBACKPAGE — Logique de détection session
+```
+1. getSession() → session déjà établie (Google PKCE) ?
+2. token_hash dans URL → verifyOtp({ token_hash, type }) (confirmation email)
+3. code dans URL → exchangeCodeForSession(code) (PKCE fallback)
+4. access_token dans hash → setSession({ access_token, refresh_token }) (implicit flow)
+5. getSession() final → dernière vérification
+→ Si sessionOk : syncFreePreviewUsed() + cacheUserInfo() → status 'success'
+→ Sinon : status 'already_confirmed'
+```
+Animation : cercle SVG progressif, icône email pulsante, texte rotatif (4 étapes), points animés.
+Durée minimum : 3 secondes. Pas de redirection automatique — le client clique quand il est prêt.
 
 ---
 
@@ -243,16 +388,14 @@ Seul moyen de la réinitialiser : SQL manuel dans Supabase.
 5. Rapport partiel affiché avec partie grisée → invite à payer
 
 ### Si le client paie SANS avoir utilisé l'offre gratuite
-- Après retour Stripe (`?success=true`) :
-- Message : *"🎉 Vous aviez une analyse gratuite disponible, mais pourquoi regarder par le trou de la serrure quand on peut ouvrir la porte en grand ? En payant directement, votre offre gratuite a été remplacée par l'analyse que vous venez d'acheter. Bonne analyse !"*
-- `free_preview_used` → `true` automatiquement
+Message : *"🎉 Vous aviez une analyse gratuite disponible, mais pourquoi regarder par le trou de la serrure quand on peut ouvrir la porte en grand ? En payant directement, votre offre gratuite a été remplacée par l'analyse que vous venez d'acheter. Bonne analyse !"*
+→ `free_preview_used` → `true` automatiquement
 
 ### Si le client paie APRÈS avoir utilisé l'offre gratuite
-- Après retour Stripe (`?success=true`) :
-- Message : *"✅ Paiement confirmé ! Vos crédits ont été ajoutés. 🔒 P.S. : vos documents ont été supprimés de nos serveurs après votre analyse simplifiée (RGPD nous y oblige !). Re-uploadez-les sur votre analyse pour générer le rapport complet — promis, c'est rapide !"*
+Message : *"✅ Paiement confirmé ! Vos crédits ont été ajoutés. 🔒 P.S. : vos documents ont été supprimés de nos serveurs après votre analyse simplifiée (RGPD nous y oblige !). Re-uploadez-les sur votre analyse pour générer le rapport complet — promis, c'est rapide !"*
 
 ### Si le client revient sans payer (`?cancelled=true`)
-- Badge offre gratuite préservé, rien ne change
+Badge offre gratuite préservé, rien ne change.
 
 ### Sync `free_preview_used`
 - Au montage de `HomeView` : chargement direct depuis Supabase
@@ -263,20 +406,20 @@ Seul moyen de la réinitialiser : SQL manuel dans Supabase.
 ## DASHBOARD CLIENT — État détaillé
 
 ### Layout
-- **Sidebar** (desktop, 260px) : logo, crédits restants, navigation, pas de bloc user en bas
+- **Sidebar** (desktop, 260px) : logo, crédits restants, navigation
 - **Topbar** : titre page, cloche notif, bouton "Espace Admin" (admin only), dropdown profil
-- **Dropdown profil** (topbar droite) : nom + email, "Mon profil", "Se déconnecter"
-- **Bannière** : s'affiche sous la topbar si une bannière est active (fermable par session)
+- **Dropdown profil** : nom + email, "Mon profil", "Se déconnecter"
+- **Bannière** : s'affiche sous la topbar si active (fermable par session, réapparaît à la prochaine connexion)
 
 ### Pages du dashboard
-- `/dashboard` → HomeView (accueil, badge offre gratuite, stats)
-- `/dashboard/nouvelle-analyse` → NouvelleAnalyse
-- `/dashboard/analyses` → MesAnalyses
-- `/dashboard/compare` → Compare
-- `/dashboard/tarifs` → Tarifs + modale checkout Stripe
-- `/dashboard/compte` → Compte
-- `/dashboard/support` → Support
-- `/dashboard/rapport` → RapportPage (page dédiée)
+- `/dashboard` → HomeView (accueil, badge offre gratuite, stats, guide, glossaire, note /20)
+- `/dashboard/nouvelle-analyse` → NouvelleAnalyse (choice → upload → analyse → aperçu/result)
+- `/dashboard/analyses` → MesAnalyses (liste filtrée + recherche)
+- `/dashboard/compare` → Compare (jauges SVG animées, tableau, verdict Verimo)
+- `/dashboard/tarifs` → Tarifs + modale checkout Stripe + codes promo
+- `/dashboard/compte` → Compte (infos perso, mot de passe, historique achats, zone danger)
+- `/dashboard/support` → Support (FAQ accordion + formulaire contact)
+- `/dashboard/rapport?id=...` → RapportPage (page dédiée, non refactorisée)
 
 ### Crédits sidebar
 - "X crédit(s) document(s) restant(s)"
@@ -290,39 +433,23 @@ Seul moyen de la réinitialiser : SQL manuel dans Supabase.
 ### Accès
 - URL : `verimo.fr/admin`
 - Vérification `role = 'admin'` côté client
+- Bouton "Espace Admin" visible dans la topbar dashboard pour les admins
 - Responsive mobile : sidebar cachée, navigation en pills fixée en bas
 
 ### 8 onglets
+1. **Vue d'ensemble** — KPIs animés (utilisateurs, analyses, messages non lus, CA estimé), actions rapides
+2. **Statistiques** — Filtres période (7j/30j/3m/12m/personnalisé), KPIs, graphique CA barres
+3. **Utilisateurs** — Badges provider, fiche détail, actions (créer/inviter/modifier crédits/reset mdp/suspendre/supprimer)
+4. **Analyses** — Liste, recherche, filtre statut, export CSV
+5. **Messages** — Liste + détail, marquer lu, répondre, supprimer
+6. **Codes promo** — Créer (type/valeur/restrictions), activer/désactiver, supprimer, générateur auto
+7. **Bannière** — Créer/modifier/supprimer un message global (info/warning/success)
+8. **Historique** — 100 dernières actions admin avec timestamps
 
-**1. Vue d'ensemble**
-KPIs animés (utilisateurs, analyses, messages non lus, CA estimé), actions rapides
-
-**2. Statistiques**
-Filtres période (7j/30j/3m/12m/personnalisé), KPIs, graphique CA barres
-
-**3. Utilisateurs**
-- Badges : `✓ via Google` / `✓ via Email` / `⚠ non vérifié` / `admin` / `suspendu`
+### Badges utilisateurs
+- `✓ via Google` / `✓ via Email` / `⚠ non vérifié` / `admin` / `suspendu`
 - Provider lu depuis `profiles.provider` (rempli par trigger depuis `auth.users`)
-- Fiche détail : infos + analyses de l'utilisateur
-- Actions : créer, inviter, modifier crédits, reset mdp, suspendre, supprimer
 - Quand crédits remis à 0 → **ne remet PAS** `free_preview_used` à false (règle absolue)
-
-**4. Analyses**
-Liste, recherche, filtre statut, export CSV
-
-**5. Messages**
-Liste + détail, marquer lu, répondre, supprimer
-
-**6. Codes promo**
-Créer (type/valeur/restrictions), activer/désactiver, supprimer
-
-**7. Bannière**
-Créer/modifier/supprimer un message affiché sur tous les dashboards clients
-Types : info (bleu) / warning (orange) / success (vert)
-Fermeture client : par session (réapparaît à la prochaine connexion)
-
-**8. Historique**
-100 dernières actions admin avec timestamps
 
 ---
 
@@ -336,7 +463,7 @@ Fermeture client : par session (réapparaît à la prochaine connexion)
 ### Invite user
 - Subject : "Vous êtes invité à rejoindre Verimo"
 - Bouton : `{{ .ConfirmationURL }}`
-- Design : même charte, texte d'invitation
+- Design : même charte, texte d'invitation en français
 
 ### Reset password
 - Configuré et fonctionnel
@@ -358,6 +485,49 @@ checkSuspension (toutes les 60s) :
 
 ---
 
+## VARIABLES IMPORTANTES localStorage
+
+| Clé | Valeur | Quand |
+|-----|--------|-------|
+| `verimo_user_name` | prénom | à la connexion |
+| `verimo_user_email` | email | à la connexion |
+| `verimo_free_preview_used` | `'true'` | si offre utilisée/payé |
+| `verimo_login_time` | timestamp | à la connexion |
+
+Tout effacé via `localStorage.clear()` à la déconnexion.
+
+---
+
+## PALIERS DE NOTATION (/20)
+
+| Score | Label |
+|-------|-------|
+| 17–20 | Bien irréprochable |
+| 14–16 | Bien sain |
+| 10–13 | Bien correct avec réserves |
+| 7–9 | Bien risqué |
+| 0–6 | Bien à éviter |
+
+### Bonus principaux
+- Travaux votés à charge vendeur : +0,5 à +1
+- Garantie décennale sur travaux récents : +0,5 à +1
+- Fonds travaux conforme minimum légal : +0,5
+- Fonds travaux au-dessus minimum légal : +1
+- Certificat entretien chaudière/ramonage : +0,5
+- Immeuble bien entretenu : +0,5
+- DPE A : +1 / DPE B ou C : +0,5
+
+### Pénalités principales
+- Gros travaux évoqués non votés : -2 à -3
+- Travaux urgents non anticipés : -3 à -4
+- Copro vs syndic : -2 à -4
+- Écart budget >30% : -3
+- Fonds travaux nul : -2
+- DPE F (résidence principale) : -2 / DPE G : -3
+- DPE F (investissement) : -4 / DPE G : -6
+
+---
+
 ## POUR DONNER LE RÔLE ADMIN
 
 ```sql
@@ -374,238 +544,29 @@ WHERE email = 'email@exemple.com';
 - Connexion email classique
 - Déconnexion (dropdown topbar)
 - Badge offre gratuite pour nouveaux comptes
+- Aperçu gratuit (1 par compte)
+- Analyse simple et complète via Claude API
+- Comparaison de biens (dès 2 analyses complètes)
 - Messages popup après paiement Stripe (2 cas)
 - Paiement Stripe (mode test) avec rafraîchissement session automatique
 - Webhook Stripe → ajout crédits automatique
-- Codes promo (validation, usage unique, restrictions)
+- Codes promo (validation, réduction Stripe, usage unique, restrictions) ✅ corrigé session 05/04
+- Suppression doublon promo_uses entre create-checkout-session et webhook ✅ corrigé session 05/04
 - Suspension / suppression comptes depuis admin
 - Bannière admin → dashboard clients
 - Badges ✓ via Google / ✓ via Email dans admin
 - Provider rempli automatiquement par trigger SQL
 - Admin responsive mobile (pills nav en bas)
 - Email d'invitation depuis admin (en français)
+- Refactoring DashboardPage : 2736 → 261 lignes ✅ session 05/04
+- Build Vercel opérationnel ✅ après refactoring
+
+---
 
 ## PENDING / À FAIRE
 
-1. **Passer Stripe en production** (mode live)
-2. **Graphique inscriptions** semaine/semaine dans les stats admin
-3. Mettre à jour context.md après chaque session de dev
-
----
-
-## PALIERS DE NOTATION (/20)
-
-| Score | Label |
-|-------|-------|
-| 17–20 | Bien irréprochable |
-| 14–16 | Bien sain |
-| 10–13 | Bien correct avec réserves |
-| 7–9   | Bien risqué |
-| 0–6   | Bien à éviter |
-
----
-
-## CODES PROMO — Logique complète
-
-- **Types :** `credits` (ajoute des crédits) / `percent` (% de réduction) / `fixed` (€ de réduction)
-- **Restrictions combinables :** email restreint, date d'expiration, max_uses
-- **Usage unique par compte** (table `promo_uses` avec UNIQUE constraint)
-- **Validation côté client** : vérifie active, expiration, max_uses, email restreint, déjà utilisé
-- **Enregistrement** : dans `promo_uses` au moment de la confirmation paiement Stripe
-- **Générateur auto** dans l'admin (code aléatoire)
-
----
-
-## HANDLELOGOUT — Implémentation exacte
-
-```typescript
-const handleLogout = () => {
-  localStorage.clear();
-  supabase.auth.signOut(); // non-bloquant
-  window.location.replace('/');
-};
-```
-Appelé depuis le dropdown topbar (useRef + mousedown listener pour fermer).
-**Important** : synchrone, pas de `await` — évite les conflits avec `onAuthStateChange`.
-
----
-
-## HANDLEPAY — Implémentation exacte
-
-```typescript
-// Rafraîchit le token avant d'appeler Stripe
-const { data: refreshData } = await supabase.auth.refreshSession();
-const finalSession = refreshData.session || (await supabase.auth.getSession()).data.session;
-
-fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/create-checkout-session', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${finalSession.access_token}`,
-    'apikey': '<ANON_KEY>',
-  },
-  body: JSON.stringify({ priceId, userId, promoCodeId }),
-});
-```
-
----
-
-## AUTHCALLBACKPAGE — Logique de détection session
-
-```
-1. getSession() → session déjà établie (Google PKCE) ?
-2. token_hash dans URL → verifyOtp({ token_hash, type }) (confirmation email)
-3. code dans URL → exchangeCodeForSession(code) (PKCE fallback)
-4. access_token dans hash → setSession({ access_token, refresh_token }) (implicit flow)
-5. getSession() final → dernière vérification
-→ Si sessionOk : syncFreePreviewUsed() + cacheUserInfo() → status 'success'
-→ Sinon : status 'already_confirmed'
-```
-
-Animation : cercle SVG progressif, icône email pulsante, texte rotatif (4 étapes), points animés.
-Durée minimum : 3 secondes.
-Bouton "Accéder à mon tableau de bord" : apparaît après 3 secondes sur l'écran succès.
-**Pas de redirection automatique** — le client clique quand il est prêt.
-
----
-
-## VARIABLES IMPORTANTES localStorage
-
-| Clé | Valeur | Quand |
-|-----|--------|-------|
-| `verimo_user_name` | prénom | à la connexion |
-| `verimo_user_email` | email | à la connexion |
-| `verimo_free_preview_used` | `'true'` | si offre utilisée/payé |
-| `verimo_login_time` | timestamp | à la connexion |
-
-Tout effacé via `localStorage.clear()` à la déconnexion.
-
----
-
-## STRUCTURE DES FICHIERS
-
-```
-src/
-├── App.tsx                    — SessionManager + Routes
-├── lib/
-│   ├── supabase.ts            — Client Supabase
-│   ├── analyses.ts            — CRUD analyses + syncFreePreviewUsed
-│   └── prompts.ts             — Prompts système IA
-├── components/layout/
-│   ├── Navbar.tsx
-│   └── Footer.tsx
-└── pages/
-    ├── HomePage.tsx
-    ├── MethodePage.tsx
-    ├── ExemplePage.tsx
-    ├── TarifsPage.tsx
-    ├── ContactPage.tsx
-    ├── LoginPage.tsx
-    ├── SignupPage.tsx
-    ├── StartPage.tsx
-    ├── ForgotPasswordPage.tsx
-    ├── ResetPasswordPage.tsx
-    ├── AuthCallbackPage.tsx   — Animation confirmation + détection session
-    ├── DashboardPage.tsx      — Dashboard complet (~2700 lignes)
-    ├── RapportPage.tsx        — Page rapport détaillé
-    └── AdminPage.tsx          — Page admin complète
-```
-
----
-
-## STRIPE — Configuration complète (mode TEST)
-
-### Compte Stripe
-- Mode **TEST** actif — pas encore en production
-- Dashboard : https://dashboard.stripe.com
-
-### Produits créés dans Stripe (mode test)
-| Produit | Price ID | Prix |
-|---------|----------|------|
-| Analyse Simple | `price_1TIb1LBO4ekMbwz0020eqcR0` | 4,90€ |
-| Analyse Complète | `price_1TIb3XBO4ekMbwz0a7m7E7gD` | 19,90€ |
-| Pack 2 biens | `price_1TIb4KBO4ekMbwz0gGF2gI1S` | 29,90€ |
-| Pack 3 biens | `price_1TIb51BO4ekMbwz0mmEez47o` | 39,90€ |
-
-### Webhook Stripe configuré
-- **URL :** `https://veszrayromldfgetqaxb.supabase.co/functions/v1/stripe-webhook`
-- **Événement écouté :** `checkout.session.completed`
-- **Secret webhook :** configuré dans les secrets Supabase (`STRIPE_WEBHOOK_SECRET`)
-
-### Ce que fait le webhook après paiement confirmé
-1. Reçoit l'événement `checkout.session.completed`
-2. Lit `metadata.userId` et `metadata.priceId`
-3. Selon le `priceId` → ajoute les crédits correspondants dans `profiles`
-4. Logique crédits ajoutés :
-   - `price_1TIb1LBO4ekMbwz0020eqcR0` → +1 `credits_document`
-   - `price_1TIb3XBO4ekMbwz0a7m7E7gD` → +1 `credits_complete`
-   - `price_1TIb4KBO4ekMbwz0gGF2gI1S` → +2 `credits_complete`
-   - `price_1TIb51BO4ekMbwz0mmEez47o` → +3 `credits_complete`
-
-### Clés configurées
-- `STRIPE_SECRET_KEY` → secret Supabase Edge Functions ✅
-- `STRIPE_WEBHOOK_SECRET` → secret Supabase Edge Functions ✅
-- `VITE_STRIPE_PUBLIC_KEY` → variable Vercel ✅
-
-### Carte de test Stripe
-- **Numéro :** `4242 4242 4242 4242`
-- **Expiration :** n'importe quelle date future
-- **CVC :** n'importe quel 3 chiffres
-
-### Pour passer en production
-1. Basculer Stripe en mode live
-2. Recréer les 4 produits en mode live
-3. Mettre à jour les Price IDs dans `DashboardPage.tsx`
-4. Mettre à jour `STRIPE_SECRET_KEY` (clé live) dans Supabase secrets
-5. Reconfigurer le webhook avec l'URL live et mettre à jour `STRIPE_WEBHOOK_SECRET`
-6. Mettre à jour `VITE_STRIPE_PUBLIC_KEY` (clé publique live) dans Vercel
-
----
-
-## CE QUI A ÉTÉ FAIT PENDANT LA SESSION DU 05/04/2026
-
-### Auth & Redirections
-- Connexion Google : `redirectTo` → `/auth/callback` (plus `/dashboard` directement)
-- `AuthCallbackPage` : animation 3s minimum, bouton apparaît après 3s, pas de redirection auto
-- Email confirmation : template Supabase avec `{{ .ConfirmationURL }}` (plus `token_hash` custom)
-- `verifyOtp` pour gérer le flow email dans AuthCallbackPage
-- Redirection vers `/dashboard` uniquement si on est sur une page publique (géré dans `onAuthStateChange`)
-
-### Déconnexion
-- Bouton "Se déconnecter" dans dropdown topbar (plus en bas de sidebar)
-- Fix : `useRef` + `document.addEventListener('mousedown')` pour fermer le dropdown sans overlay
-- `handleLogout` synchrone : `localStorage.clear()` + `signOut()` + `window.location.replace('/')`
-
-### Offre gratuite
-- Badge affiché dans `HomeView` : chargement depuis Supabase au montage (état `null` → `false`/`true`)
-- Plus de dépendance au localStorage seul pour l'affichage du badge
-- `freePreviewUsedHome === false` (strict) pour afficher le badge
-- Règle absolue confirmée : `free_preview_used` ne revient jamais à `false` automatiquement
-
-### Admin
-- Sidebar supprimée sur mobile → pills nav fixée en bas
-- Badge `✓ via Google` / `✓ via Email` dans liste et fiche détail utilisateur
-- Colonne `provider` ajoutée à `profiles` + trigger mis à jour + rétroactivement rempli via SQL
-- Onglet "Bannière" ajouté (créer/modifier/supprimer message global)
-- Grille utilisateurs responsive (header caché sur mobile, actions visibles)
-- Fiche détail utilisateur : grid 1 colonne sur mobile
-
-### Bannière dashboard
-- Table `banners` créée dans Supabase avec RLS
-- Affichée sous la topbar sur toutes les pages du dashboard
-- Fermeture via sessionStorage (clé unique par bannière + par user)
-- Réapparaît à chaque nouvelle connexion
-
-### Stripe
-- `handlePay` : `refreshSession()` avant chaque appel pour éviter token expiré
-- Edge Function `create-checkout-session` : headers CORS ajoutés (`apikey` inclus)
-- `apikey` (anon key hardcodée) dans les headers du fetch
-
-### Emails
-- Template "Invite user" créé en français dans le style Verimo
-- Template "Confirm signup" mis à jour avec `{{ .ConfirmationURL }}`
-
-### Messages post-paiement
-- **Si offre gratuite non utilisée + paiement** : message serrure/porte → `free_preview_used = true`
-- **Si offre gratuite déjà utilisée + paiement** : message confirmation + RGPD re-upload docs
-- Message RGPD précise "analyse simplifiée" pour être exact
+1. **Passer Stripe en production** (mode live) — priorité principale
+2. **Historique achats réel** dans `Compte.tsx` — actuellement `mockAchats` hardcodé (2 lignes fictives), à remplacer par une vraie requête sur les paiements Stripe
+3. **Crédits bonus** (codes promo type `credits`) — affichés frontend, enregistrés dans `promo_uses`, mais pas encore attribués automatiquement dans le webhook après paiement
+4. **Graphique inscriptions** semaine/semaine dans les stats admin
+5. Mettre à jour `context.md` dans le repo GitHub après chaque session de dev
