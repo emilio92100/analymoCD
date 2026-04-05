@@ -428,6 +428,7 @@ function DashboardBanner() {
 
   useEffect(() => {
     const load = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
       const { data } = await supabase
         .from('banners')
         .select('*')
@@ -435,19 +436,23 @@ function DashboardBanner() {
         .order('created_at', { ascending: false })
         .limit(1);
       if (data && data.length > 0) {
-        // Vérifier si déjà fermée dans cette session
-        const dismissedId = sessionStorage.getItem('verimo_banner_dismissed');
-        if (dismissedId === data[0].id) {
+        const b = data[0];
+        // Clé unique par bannière ET par utilisateur pour reset à chaque connexion
+        const key = `verimo_banner_${b.id}_${user?.id}`;
+        if (sessionStorage.getItem(key) === 'dismissed') {
           setDismissed(true);
         }
-        setBanner(data[0]);
+        setBanner(b);
       }
     };
     load();
   }, []);
 
-  const handleDismiss = () => {
-    if (banner) sessionStorage.setItem('verimo_banner_dismissed', banner.id);
+  const handleDismiss = async () => {
+    if (!banner) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    const key = `verimo_banner_${banner.id}_${user?.id}`;
+    sessionStorage.setItem(key, 'dismissed');
     setDismissed(true);
   };
 
