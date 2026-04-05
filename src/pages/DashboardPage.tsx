@@ -305,10 +305,10 @@ function Topbar({ onMenuClick, title }: { onMenuClick:()=>void; title:string }) 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [dropdownOpen]);
 
-  const handleLogout = async () => {
-    setDropdownOpen(false);
-    await supabase.auth.signOut();
-    window.location.href = '/';
+  const handleLogout = () => {
+    localStorage.clear();
+    supabase.auth.signOut();
+    window.location.replace('/');
   };
 
   return (
