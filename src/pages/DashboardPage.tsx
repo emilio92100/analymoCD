@@ -575,8 +575,8 @@ const penalties = [
         </p>
       </div>
 
-      {/* ── Bandeau offre gratuite — masqué si déjà utilisé OU si l'utilisateur a des crédits payés */}
-      {!loadingCredits && freePreviewUsedHome === false && credits.document === 0 && credits.complete === 0 && (
+      {/* ── Bandeau offre gratuite */}
+      {freePreviewUsedHome === false && credits.document === 0 && credits.complete === 0 && (
         <div style={{ background:'#0f2d3d', borderRadius:16, padding:'22px 28px', position:'relative', overflow:'hidden' }}>
           <div style={{ position:'absolute', top:-30, right:-30, width:160, height:160, borderRadius:'50%', background:'rgba(42,125,156,0.18)', pointerEvents:'none' }}/>
           <div style={{ position:'relative', display:'flex', alignItems:'center', gap:20, flexWrap:'wrap' }}>
