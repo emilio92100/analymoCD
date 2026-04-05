@@ -4,7 +4,6 @@ import { motion, useInView, AnimatePresence } from "framer-motion";
 import type { Variants } from "framer-motion";
 import {
   ArrowRight, CheckCircle, AlertTriangle, FileText,
-  Shield,
   TrendingUp, Clock, Check, X, ChevronRight,
   ShieldCheck, Trash2,
   Download, Lock, Eye, ChevronDown,
@@ -89,9 +88,9 @@ function HeroSection() {
       <div className="relative z-10 max-w-6xl mx-auto w-full">
 
         {/* MOBILE */}
-        <div className="flex flex-col items-center lg:hidden pt-8 pb-4">
+        <div className="flex flex-col items-center lg:hidden pt-14 pb-4">
           <motion.h1 variants={up} initial="hidden" animate="show" custom={0.5}
-            className="font-black leading-[1.08] tracking-[-0.03em] text-[#0f172a] mb-3 text-center w-full px-2"
+            className="font-black leading-[1.08] tracking-[-0.03em] text-[#0f172a] mb-4 text-center w-full px-2"
             style={{ fontSize: "clamp(28px, 7.5vw, 36px)" }}>
             Vérifiez les éléments<br />
             <span className="relative inline-block whitespace-nowrap">
@@ -105,7 +104,7 @@ function HeroSection() {
           <motion.p variants={up} initial="hidden" animate="show" custom={0.8}
             className="text-[15px] text-slate-500 leading-relaxed text-center w-full px-4 mb-7">
             Diagnostics, PV d'AG, règlement de copropriété…<br />
-            <span className="font-semibold text-[#0f172a]">Comprenez l'essentiel<br />en 30 secondes*</span><br />
+            <span className="font-semibold text-[#0f172a]">Comprenez l'essentiel en 30 secondes*</span><br />
             avant de faire une offre.
           </motion.p>
 
@@ -703,7 +702,7 @@ function PhaseResultMini() {
 
 /* ═══ AVANT / APRÈS ════════════════════════════════════════ */
 function AvantApresSection() {
-  const [showVerimo, setShowVerimo] = useState(false);
+  const [showVerimo, setShowVerimo] = useState(true);
 
   const items = [
     { icon: '📄', before: "40 pages de PV illisibles à parcourir seul", after: "Rapport structuré et clair en 2 minutes" },
@@ -881,13 +880,6 @@ function SecuriteSection() {
       color: "#0f6e56",
       bg: "rgba(15,110,86,0.08)",
     },
-    {
-      icon: Shield,
-      title: "Hébergement en France",
-      desc: "Toutes vos données sont hébergées sur des serveurs français, conformément au RGPD.",
-      color: "#f0a500",
-      bg: "rgba(240,165,0,0.08)",
-    },
   ];
 
   return (
@@ -937,10 +929,10 @@ function ForWhoSection() {
   const profiles = [
     {
       id: 'first',
-      label: 'Premier achat',
+      label: 'Acheteur particulier',
       emoji: '🏠',
-      headline: 'Vous achetez pour la première fois.',
-      sub: 'Tout est nouveau — les documents, le jargon, les risques. Verimo les lit à votre place et vous explique l\'essentiel en français simple.',
+      headline: 'Vous achetez, et vous méritez de comprendre ce que vous signez.',
+      sub: 'Copropriété, diagnostics, charges… des dizaines de pages complexes à déchiffrer seul. Verimo les lit à votre place et vous donne l\'essentiel en français simple.',
       points: [
         'Comprenez un PV d\'AG sans formation juridique',
         'Découvrez les travaux cachés avant de signer',
@@ -951,16 +943,16 @@ function ForWhoSection() {
       bg: '#f0f7fb',
     },
     {
-      id: 'buyer',
-      label: 'Déjà propriétaire',
+      id: 'seller',
+      label: 'Vendeur',
       emoji: '🔑',
-      headline: 'Vous avez déjà acheté. Vous savez ce que ça coûte de se tromper.',
-      sub: 'Cette fois, vous voulez des données concrètes — pas des impressions. Verimo chiffre les risques et vous donne les arguments pour négocier.',
+      headline: 'Vendez mieux en rassurant votre acheteur dès le départ.',
+      sub: 'Un rapport Verimo sur votre bien, c\'est la preuve que vous n\'avez rien à cacher. Vous accélérez la vente et évitez les négociations de dernière minute.',
       points: [
-        'Comparez plusieurs biens avec un score /20 par dossier',
-        'Chiffrez les travaux à venir avant de faire une offre',
-        'Détectez les procédures judiciaires en cours',
-        'Utilisez le rapport comme levier de négociation',
+        'Anticipez les questions et objections de l\'acheteur',
+        'Valorisez votre bien avec un rapport transparent',
+        'Réduisez les délais de vente et les rétractations',
+        'Offrez une expérience d\'achat rassurante et professionnelle',
       ],
       color: '#0f2d3d',
       bg: '#f4f7f9',
