@@ -10,15 +10,18 @@ import {
   Download, Lock, Eye, ChevronDown,
 } from "lucide-react";
 
+// Détection iOS Safari — animations 3D et boucles infinies désactivées
+const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
 const isMobile = () => typeof window !== 'undefined' && window.innerWidth <= 768;
+const isLowPerf = () => isIOS() || isMobile();
 
 const up: Variants = {
-  hidden: { opacity: 0, y: isMobile() ? 10 : 24 },
+  hidden: { opacity: 0, y: isLowPerf() ? 6 : 20 },
   show: (i: number = 0) => ({
     opacity: 1, y: 0,
     transition: {
-      duration: isMobile() ? 0.2 : 0.55,
-      delay: isMobile() ? Math.min(i * 0.03, 0.1) : i * 0.09,
+      duration: isLowPerf() ? 0.18 : 0.45,
+      delay: isLowPerf() ? Math.min(i * 0.02, 0.06) : i * 0.09,
       ease: [0.22, 1, 0.36, 1],
     },
   }),
@@ -26,7 +29,7 @@ const up: Variants = {
 
 function Reveal({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: isMobile() ? "0px" : "-50px" });
+  const inView = useInView(ref, { once: true, margin: isLowPerf() ? "0px" : "-50px" });
   return (
     <motion.div ref={ref} variants={up} initial="hidden" animate={inView ? "show" : "hidden"} custom={delay} className={className}>
       {children}
@@ -247,9 +250,13 @@ function HeroSection() {
         @keyframes scanAnim { 0%{top:0%;opacity:0} 3%{opacity:1} 47%{opacity:1} 50%{top:100%;opacity:0} 51%{top:0%;opacity:0} }
         .animate-scan-phone { animation: scanAnim 3s linear infinite; }
         .animate-spin-slow { animation: spin 1s linear infinite; }
-        @keyframes floatA { 0%,100%{transform:translateY(0) translateX(0)} 50%{transform:translateY(-8px) translateX(3px)} }
-        @keyframes floatB { 0%,100%{transform:translateY(0) translateX(0)} 50%{transform:translateY(9px) translateX(-3px)} }
-        @keyframes floatC { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+        @keyframes floatA { 0%,100%{transform:translateY(0) translateX(0)} 50%{transform:translateY(-5px) translateX(2px)} }
+        @keyframes floatB { 0%,100%{transform:translateY(0) translateX(0)} 50%{transform:translateY(6px) translateX(-2px)} }
+        @keyframes floatC { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+        @media (prefers-reduced-motion: reduce), (-webkit-min-device-pixel-ratio: 2) and (max-width: 768px) {
+          .animate-scan-phone { animation-duration: 4s; }
+          .animate-spin-slow { animation-duration: 1.5s; }
+        }
       `}</style>
     </section>
   );
@@ -333,12 +340,17 @@ function PhoneMockup() {
 
       {/* Téléphone 3D */}
       <motion.div
-        initial={{ opacity: 0, y: 30, scale: 0.94 }}
+        initial={{ opacity: 0, y: 20, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 1.4, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}>
-        <motion.div animate={{ y: [0, -10, 0], rotateY: [0, 2, 0], rotateX: [0, 1, 0] }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-          style={{ perspective: 1000, transformStyle: 'preserve-3d' }}>
+        transition={{ duration: isIOS() ? 0.5 : 1.2, delay: isIOS() ? 0.2 : 0.4, ease: [0.22, 1, 0.36, 1] }}>
+        <motion.div
+          animate={isIOS()
+            ? { y: [0, -6, 0] }
+            : { y: [0, -10, 0], rotateY: [0, 2, 0], rotateX: [0, 1, 0] }}
+          transition={isIOS()
+            ? { duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }
+            : { duration: 6, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+          style={isIOS() ? {} : { perspective: 1000, transformStyle: 'preserve-3d' }}>
         <div style={{
           width: 275, height: 580,
           background: 'linear-gradient(145deg, #1a1a2e 0%, #0f172a 100%)',
@@ -382,8 +394,10 @@ function PhoneMockup() {
 function PhoneMockupMini() {
   const step = usePhoneSteps();
   return (
-    <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-      style={{ perspective: 800 }}>
+    <motion.div
+      animate={{ y: [0, isIOS() ? -4 : -8, 0] }}
+      transition={{ duration: isIOS() ? 3 : 5, repeat: Infinity, ease: "easeInOut" }}
+      style={isIOS() ? {} : { perspective: 800 }}>
       <div style={{
         width: 150, height: 300,
         background: 'linear-gradient(145deg, #1a1a2e, #0f172a)',
