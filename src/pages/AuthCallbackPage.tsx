@@ -26,6 +26,7 @@ export default function AuthCallbackPage() {
   const [progress, setProgress] = useState(0);
   const [stepIndex, setStepIndex] = useState(0);
   const [userName, setUserName] = useState('');
+  const [showButton, setShowButton] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -93,7 +94,6 @@ export default function AuthCallbackPage() {
   }, [navigate]);
 
   // Afficher le bouton après 6 secondes (pas de redirection automatique)
-  const [showButton, setShowButton] = useState(false);
   useEffect(() => {
     if (status === 'success') {
       const t = setTimeout(() => setShowButton(true), 6000);
