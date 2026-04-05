@@ -34,9 +34,9 @@ export default function Footer() {
         {/* Col 3 — Légal */}
         <div className="flex flex-col gap-3">
           <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400">Légal</h4>
-          {['Mentions légales', 'Confidentialité', 'CGV'].map(l => (
-            <a key={l} href="#" className="text-sm text-slate-400 hover:text-white transition-colors">{l}</a>
-          ))}
+          <Link to="/confidentialite" className="text-sm text-slate-400 hover:text-white transition-colors">Confidentialité</Link>
+          <a href="#" className="text-sm text-slate-400 hover:text-white transition-colors">Mentions légales</a>
+          <a href="#" className="text-sm text-slate-400 hover:text-white transition-colors">CGV</a>
         </div>
 
         {/* Col 4 — Contact */}
