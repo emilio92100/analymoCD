@@ -2425,17 +2425,14 @@ function Tarifs() {
     }
 
     if (params.get('success') === 'true') {
-      // Nettoyer l'URL
       window.history.replaceState({}, '', '/dashboard/tarifs');
 
-      // Vérifier si l'offre gratuite n'avait pas été utilisée
       const freePreviewUsed = localStorage.getItem('verimo_free_preview_used') === 'true';
       if (!freePreviewUsed) {
-        // Marquer l'offre gratuite comme utilisée
         markFreePreviewUsed();
         setSuccessToast("🎉 Vous aviez une analyse gratuite disponible, mais pourquoi regarder par le trou de la serrure quand on peut ouvrir la porte en grand ? En payant directement, votre offre gratuite a été remplacée par l'analyse que vous venez d'acheter. Bonne analyse !");
       } else {
-        setSuccessToast("✅ Paiement confirmé ! Vos crédits ont été ajoutés à votre compte. Bonne analyse !");
+        setSuccessToast("✅ Paiement confirmé ! Vos crédits ont été ajoutés. 🔒 P.S. : vos documents ont été supprimés de nos serveurs après votre analyse simplifiée (RGPD nous y oblige !). Re-uploadez-les sur votre analyse pour générer le rapport complet — promis, c'est rapide !");
       }
     }
   }, []);
