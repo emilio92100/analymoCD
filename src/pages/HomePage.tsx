@@ -799,36 +799,36 @@ function AvantApresSection() {
 function ProblemSolutionSection() {
   const items = [
     {
-      emoji: '📋',
-      title: "Certaines infos passent toujours entre les mailles",
-      text: "PV d'AG, diagnostics, règlement de copropriété… Même en lisant, des détails importants sont faciles à rater. Un mot technique, une résolution en page 38 — et vous passez à côté.",
-      tag: "Complexité",
+      emoji: '📄',
+      title: "Des documents difficiles à déchiffrer",
+      text: "PV d'AG, diagnostics, règlement de copropriété… Ces documents contiennent des informations cruciales, mais leur lecture demande du temps et de l'expérience. Verimo les décrypte pour vous.",
+      tag: "Lisibilité",
       tagColor: '#2a7d9c',
       tagBg: 'rgba(42,125,156,0.1)',
     },
     {
-      emoji: '🔨',
-      title: "Des travaux que vous ne voyez pas venir",
-      text: "Toiture, ascenseur, façade… Des gros travaux déjà votés par la copropriété. Vous les découvrez après avoir signé, souvent pour plusieurs milliers d'euros.",
-      tag: "Risque caché",
+      emoji: '🔧',
+      title: "Des travaux déjà votés, pas toujours visibles",
+      text: "Toiture, ravalement, ascenseur… Des travaux votés en assemblée générale avant votre arrivée. Verimo les détecte et vous indique ce que ça représente pour votre budget.",
+      tag: "Travaux",
       tagColor: '#d97706',
       tagBg: 'rgba(217,119,6,0.1)',
     },
     {
-      emoji: '⏱️',
-      title: "La pression qui fait aller trop vite",
-      text: "Le marché n'attend pas. Vous avez visité 10 appartements. Vous signez vite, sans avoir eu le temps de tout vérifier. C'est là que les mauvaises surprises arrivent.",
-      tag: "Urgence",
-      tagColor: '#7c3aed',
-      tagBg: 'rgba(124,58,237,0.1)',
-    },
-    {
-      emoji: '💸',
-      title: "Des charges plus élevées que prévu",
-      text: "Charges mensuelles, fonds de travaux vide, impayés dans la copropriété… Des coûts qui changent tout à votre budget, et que vous auriez pu anticiper.",
+      emoji: '💶',
+      title: "Des charges à bien anticiper",
+      text: "Charges mensuelles, fonds de travaux, impayés éventuels… Ces chiffres ont un impact direct sur votre budget. Verimo les ressort clairement pour que vous n'ayez pas de surprise.",
       tag: "Budget",
       tagColor: '#dc2626',
       tagBg: 'rgba(220,38,38,0.1)',
+    },
+    {
+      emoji: '✅',
+      title: "Une décision prise en toute sérénité",
+      text: "Avec Verimo, vous recevez un rapport clair sur le bien qui vous intéresse. Vous savez exactement ce que vous achetez — et vous pouvez décider ou négocier en confiance.",
+      tag: "Sérénité",
+      tagColor: '#16a34a',
+      tagBg: 'rgba(22,163,74,0.1)',
     },
   ];
 
@@ -841,7 +841,7 @@ function ProblemSolutionSection() {
             label="Pourquoi Verimo"
             title="Vous avez visité. Vous avez aimé."
             accent="Mais avez-vous vraiment lu ?"
-            sub="Même en lisant, certaines informations clés passent entre les mailles. Verimo est là pour que vous ayez une vision complète — sans rien manquer."
+            sub="Un achat immobilier, c'est des centaines de pages à parcourir. Verimo vous donne une vision complète et claire — pour décider sans stress."
           />
         </div>
 
@@ -861,15 +861,6 @@ function ProblemSolutionSection() {
             </Reveal>
           ))}
         </div>
-
-        <Reveal className="mt-10 text-center">
-          <div className="inline-flex items-center gap-3 px-5 py-4 rounded-2xl bg-white border border-[#2a7d9c]/20 shadow-sm max-w-lg mx-auto">
-            <span className="text-xl shrink-0">💡</span>
-            <p className="text-sm font-semibold text-[#0f2d3d] text-left">
-              Verimo lit tous ces documents à votre place et vous donne une réponse claire en 30 secondes.
-            </p>
-          </div>
-        </Reveal>
 
       </div>
     </section>
