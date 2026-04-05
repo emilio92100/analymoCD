@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { ArrowRight, Check, X, Shield, Zap, FileText, Crown, Mail, GitCompare, ChevronDown } from 'lucide-react';
 
+const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+const isLowPerf = () => isIOS() || (typeof window !== 'undefined' && window.innerWidth <= 768);
+
 /* ══════════════════════════════════════════
    DATA
 ══════════════════════════════════════════ */
@@ -120,12 +123,12 @@ const faqs = [
 ══════════════════════════════════════════ */
 function Reveal({ children, delay = 0, className = '' }: { children: React.ReactNode; delay?: number; className?: string }) {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: '-40px' });
+  const inView = useInView(ref, { once: true, margin: isLowPerf() ? '0px' : '-40px' });
   return (
     <motion.div ref={ref} className={className}
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: isLowPerf() ? 6 : 16 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.5, delay, ease: [0.22, 1, 0.36, 1] }}>
+      transition={{ duration: isLowPerf() ? 0.18 : 0.45, delay: isLowPerf() ? Math.min(delay, 0.05) : delay, ease: [0.22, 1, 0.36, 1] }}>
       {children}
     </motion.div>
   );
