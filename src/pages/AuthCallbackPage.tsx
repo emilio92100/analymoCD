@@ -73,8 +73,13 @@ export default function AuthCallbackPage() {
         setProgress(100);
         setTimeout(() => { window.location.href = '/dashboard'; }, 400);
       } else {
-        // 4. Cas où le lien a déjà été cliqué ou a expiré
-        setStatus('already_confirmed');
+        // 4. Pas de session → vérifier si déjà connecté ailleurs
+        const { data: existingSession } = await supabase.auth.getSession();
+        if (existingSession.session) {
+          window.location.href = '/dashboard';
+        } else {
+          setStatus('already_confirmed');
+        }
       }
     };
 
@@ -111,10 +116,10 @@ export default function AuthCallbackPage() {
               </svg>
             </div>
             <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--brand-navy)', marginBottom: 12 }}>Email confirmé ! ✅</h1>
-            <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 32 }}>Votre compte est activé avec succès !</p>
-            <a href="/connexion" style={{ display: 'inline-block', padding: '14px 32px', borderRadius: 12, fontSize: 15, fontWeight: 700, color: '#fff', background: 'linear-gradient(135deg, var(--brand-teal) 0%, var(--brand-navy) 100%)', textDecoration: 'none', boxShadow: '0 6px 24px rgba(42,125,156,0.3)' }}>
-              Se connecter →
-            </a>
+            <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 32 }}>Redirection vers votre espace…</p>
+            <div style={{ height: 8, borderRadius: 99, background: 'rgba(42,125,156,0.12)', overflow: 'hidden', maxWidth: 200, margin: '0 auto' }}>
+              <div style={{ height: '100%', borderRadius: 99, background: 'linear-gradient(90deg, var(--brand-teal), var(--brand-navy))', width: '100%', transition: 'width 0.3s ease' }} />
+            </div>
           </>
         )}
 
