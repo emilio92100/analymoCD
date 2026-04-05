@@ -2231,38 +2231,46 @@ function CheckoutModal({
     setPayLoading(true);
     setPayError('');
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('Session:', session ? 'OK' : 'NULL', session?.access_token?.substring(0, 20));
-      if (!session) throw new Error('Session expirée — veuillez vous reconnecter');
+      // Forcer le rafraîchissement du token
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      const session = refreshData.session;
+      
+      if (refreshError || !session) {
+        // Si refresh échoue, essayer la session existante
+        const { data: { session: existingSession } } = await supabase.auth.getSession();
+        if (!existingSession) {
+          window.location.href = '/connexion';
+          return;
+        }
+      }
+
+      const finalSession = refreshData.session || (await supabase.auth.getSession()).data.session;
+      if (!finalSession) throw new Error('Session expirée — veuillez vous reconnecter');
 
       const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${finalSession.access_token}`,
           'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlc3pyYXlyb21sZGZnZXRxYXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MzI5NTUsImV4cCI6MjA2MTAwODk1NX0.XsqzBPDMfHRFKgMhJxoLhgVWZMdV5YnFKM3VCBe9hOk',
         },
         body: JSON.stringify({
           priceId: PRICE_IDS[plan.id],
-          userId: session.user.id,
+          userId: finalSession.user.id,
           promoCodeId: promoResult?.id ?? null,
         }),
       });
 
-      console.log('Response status:', res.status);
       if (!res.ok) {
         const err = await res.text();
-        console.log('Error response:', err);
         throw new Error(err || `Erreur ${res.status}`);
       }
 
       const data = await res.json();
-      console.log('Response data:', data);
       if (data.error) throw new Error(data.error);
       if (data.url) window.location.href = data.url;
       else throw new Error('Lien de paiement non reçu');
     } catch (e) {
-      console.error('handlePay error:', e);
       setPayError((e as Error).message);
     }
     setPayLoading(false);
