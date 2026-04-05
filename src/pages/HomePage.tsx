@@ -103,7 +103,7 @@ function HeroSection() {
 
           <motion.p variants={up} initial="hidden" animate="show" custom={0.8}
             className="text-[15px] text-slate-500 leading-relaxed text-center w-full px-4 mb-7">
-            Diagnostics, PV d'AG, règlement de copropriété…<br />
+            Diagnostics, PV d'AG, copropriété…<br />
             <span className="font-semibold text-[#0f172a]">Comprenez l'essentiel en 30 secondes*</span><br />
             avant de faire une offre.
           </motion.p>
@@ -797,60 +797,97 @@ function AvantApresSection() {
 
 /* ═══ PROBLÈME + SOLUTION (fusionnées) ══════════════════════ */
 function ProblemSolutionSection() {
-  const items = [
-    {
-      icon: FileText,
-      title: "Documents complexes",
-      problem: "Des dizaines de pages de jargon juridique et technique que personne ne lit vraiment avant de signer.",
-      solution: "Notre outil lit chaque document à votre place et vous présente l'essentiel en langage clair.",
-      pc: "text-red-500", pb: "bg-red-50", pBorder: "border-red-100",
-    },
-    {
-      icon: AlertTriangle,
-      title: "Travaux cachés",
-      problem: "Ravalement, toiture, ascenseur : des travaux votés découverts après la signature, trop tard pour négocier.",
-      solution: "Chaque travail voté est détecté, daté et estimé financièrement pour votre lot.",
-      pc: "text-amber-500", pb: "bg-amber-50", pBorder: "border-amber-100",
-    },
-    {
-      icon: TrendingUp,
-      title: "Charges sous-estimées",
-      problem: "Des charges bien plus élevées que prévu, des impayés de copropriété ou un fonds travaux insuffisant.",
-      solution: "Charges mensuelles, fonds travaux, appels votés — tout est chiffré et comparé.",
-      pc: "text-orange-500", pb: "bg-orange-50", pBorder: "border-orange-100",
-    },
-    {
-      icon: Clock,
-      title: "Décisions sous pression",
-      problem: "Sous la pression du marché, vous signez sans avoir eu le temps d'analyser ce que vous achetez vraiment.",
-      solution: "En 30 secondes*, vous avez une recommandation claire : acheter, négocier ou fuir.",
-      pc: "text-blue-500", pb: "bg-blue-50", pBorder: "border-blue-100",
-    },
-  ];
-
   return (
-    <section className="py-16 md:py-28 px-4 md:px-6 bg-[#f4f7f9]">
-      <div className="max-w-6xl mx-auto">
-        <SectionTitle label="Pourquoi Verimo" title="Acheter sans lire," accent="c'est risqué."
-          sub="Un achat immobilier c'est des centaines de pages de documents. Les risques sont là — ils sont juste difficiles à voir sans aide." />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-          {items.map((item, i) => (
-            <Reveal key={i} delay={i}
-              className="group p-5 md:p-8 rounded-2xl md:rounded-3xl bg-white border border-slate-100 shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-default text-center md:text-left">
-              <div className={`w-11 h-11 rounded-xl ${item.pb} border ${item.pBorder} flex items-center justify-center mb-4 mx-auto md:mx-0`}>
-                <item.icon size={18} className={item.pc} />
-              </div>
-              <h3 className="text-base md:text-lg font-bold text-[#0f172a] mb-2">{item.title}</h3>
-              <p className="text-sm text-slate-500 leading-relaxed mb-3">{item.problem}</p>
-              <div className="flex items-start gap-2 pt-3 border-t border-slate-100">
-                <div className="w-5 h-5 rounded-full bg-[#2a7d9c]/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <Check size={10} className="text-[#2a7d9c]" />
+    <section className="py-20 md:py-32 px-4 md:px-6 bg-[#0f2d3d] overflow-hidden relative">
+      {/* Fond décoratif */}
+      <div className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full opacity-5" style={{ background: 'radial-gradient(circle, #2a7d9c, transparent)' }} />
+      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full opacity-5" style={{ background: 'radial-gradient(circle, #2a7d9c, transparent)' }} />
+
+      <div className="max-w-4xl mx-auto relative z-10">
+
+        {/* Label */}
+        <Reveal>
+          <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2a7d9c] mb-6 text-center">Pourquoi Verimo</p>
+        </Reveal>
+
+        {/* Accroche principale */}
+        <Reveal>
+          <h2 className="text-[clamp(28px,5vw,52px)] font-black text-white leading-[1.1] tracking-[-0.03em] text-center mb-6">
+            Vous êtes sur le point<br />
+            <span className="text-[#2a7d9c]">de signer.</span>
+          </h2>
+        </Reveal>
+
+        <Reveal>
+          <p className="text-lg md:text-xl text-slate-400 text-center leading-relaxed mb-16 max-w-2xl mx-auto">
+            Le bien vous plaît. Le quartier est parfait. L'agent vous dit que c'est une opportunité. 
+            Et là, on vous envoie un dossier de <span className="text-white font-semibold">200 pages de documents</span>.
+          </p>
+        </Reveal>
+
+        {/* Scène narrative — 3 moments */}
+        <div className="flex flex-col gap-4 mb-16">
+          {[
+            {
+              icon: '📄',
+              moment: 'Moment 1',
+              title: 'Vous ouvrez le PV d\'assemblée générale.',
+              text: '47 pages. Des termes comme "quote-part des parties communes", "fonds de prévoyance", "résolution adoptée à la majorité de l\'article 25"… Vous parcourez en diagonale. Vous ne comprenez pas vraiment. Mais vous faites confiance.',
+              color: 'rgba(239,68,68,0.12)',
+              border: 'rgba(239,68,68,0.2)',
+              dot: '#ef4444',
+            },
+            {
+              icon: '🔍',
+              moment: 'Moment 2',
+              title: 'Vous regardez les diagnostics.',
+              text: 'DPE, amiante, plomb, électricité, gaz… Chaque document a ses propres codes, ses propres seuils. Est-ce que la note D c\'est grave ? Les travaux votés en page 31 du règlement, ça représente combien pour votre lot ? Vous ne savez pas.',
+              color: 'rgba(245,158,11,0.12)',
+              border: 'rgba(245,158,11,0.2)',
+              dot: '#f59e0b',
+            },
+            {
+              icon: '✍️',
+              moment: 'Moment 3',
+              title: 'Vous signez quand même.',
+              text: 'Parce que le marché n\'attend pas. Parce que vous avez visité 12 biens. Parce que vous pensez que "ça ira". Six mois plus tard, vous découvrez 8 000€ de travaux votés. Le syndic vous réclame un appel de fonds. Vous n\'aviez pas vu.',
+              color: 'rgba(99,102,241,0.12)',
+              border: 'rgba(99,102,241,0.2)',
+              dot: '#6366f1',
+            },
+          ].map((item, i) => (
+            <Reveal key={i} delay={i}>
+              <div className="rounded-2xl p-6 md:p-8 border relative overflow-hidden"
+                style={{ background: item.color, borderColor: item.border }}>
+                <div className="flex items-start gap-4">
+                  <div className="text-3xl shrink-0 mt-1">{item.icon}</div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: item.dot }} />
+                      <span className="text-[11px] font-bold tracking-widest uppercase" style={{ color: item.dot }}>{item.moment}</span>
+                    </div>
+                    <h3 className="text-base md:text-lg font-bold text-white mb-2">{item.title}</h3>
+                    <p className="text-sm md:text-base text-slate-400 leading-relaxed">{item.text}</p>
+                  </div>
                 </div>
-                <p className="text-sm text-[#2a7d9c] font-semibold leading-relaxed">{item.solution}</p>
               </div>
             </Reveal>
           ))}
         </div>
+
+        {/* Transition vers la solution */}
+        <Reveal>
+          <div className="rounded-2xl p-8 md:p-10 text-center" style={{ background: 'rgba(42,125,156,0.15)', border: '1px solid rgba(42,125,156,0.3)' }}>
+            <p className="text-2xl md:text-3xl font-black text-white mb-4 leading-tight">
+              Ce n'est pas un manque d'intelligence.<br />
+              <span className="text-[#2a7d9c]">C'est un manque d'outil.</span>
+            </p>
+            <p className="text-slate-400 text-base md:text-lg leading-relaxed max-w-xl mx-auto">
+              Verimo lit ces documents à votre place. Il détecte les risques, chiffre les charges, et vous donne une recommandation claire — en 30 secondes.
+            </p>
+          </div>
+        </Reveal>
+
       </div>
     </section>
   );
@@ -892,7 +929,7 @@ function SecuriteSection() {
           sub="Vous allez uploader des documents sensibles. Voici exactement comment nous les protégeons."
         />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-10">
           {garanties.map((g, i) => (
             <Reveal key={i} delay={i}
               className="group p-6 md:p-7 rounded-2xl border border-slate-100 bg-white shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-default text-center">
