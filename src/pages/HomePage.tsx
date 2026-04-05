@@ -40,7 +40,7 @@ function SectionTitle({ label, title, accent, sub }: { label: string; title: str
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-50px" });
   return (
-    <div ref={ref} className="text-center mb-10 md:mb-16 px-2">
+    <div ref={ref} className="text-center mb-8 md:mb-12 px-2">
       <motion.p initial={{ opacity: 0, y: 10 }} animate={inView ? { opacity: 1, y: 0 } : {}}
         className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.22em] mb-4">{label}</motion.p>
       <motion.h2 initial={{ opacity: 0, y: 20 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ delay: 0.07 }}
@@ -54,7 +54,7 @@ function SectionTitle({ label, title, accent, sub }: { label: string; title: str
       </motion.h2>
       {sub && (
         <motion.p initial={{ opacity: 0 }} animate={inView ? { opacity: 1 } : {}} transition={{ delay: 0.2 }}
-          className="text-base md:text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed">{sub}</motion.p>
+          className="text-base md:text-lg text-slate-500 max-w-lg mx-auto leading-relaxed">{sub}</motion.p>
       )}
     </div>
   );
@@ -713,7 +713,7 @@ function AvantApresSection() {
   ];
 
   return (
-    <section className="py-16 md:py-28 px-4 md:px-6 bg-white">
+    <section className="py-12 md:py-20 px-4 md:px-6 bg-white">
       <div className="max-w-4xl mx-auto">
         <SectionTitle label="Avant / Après" title="Deux façons d'acheter." accent="Une seule bonne." />
 
@@ -833,7 +833,7 @@ function ProblemSolutionSection() {
   ];
 
   return (
-    <section className="py-20 md:py-32 px-4 md:px-6" style={{ background: 'linear-gradient(180deg, #eef7f9 0%, #f4f9fb 100%)' }}>
+    <section className="py-12 md:py-20 px-4 md:px-6" style={{ background: 'linear-gradient(180deg, #eef7f9 0%, #f4f9fb 100%)' }}>
       <div className="max-w-6xl mx-auto">
 
         <div style={{ fontSize: 0 }} className="[&_h2]:text-[clamp(20px,3.8vw,46px)]">
@@ -894,7 +894,7 @@ function SecuriteSection() {
   ];
 
   return (
-    <section className="py-16 md:py-28 px-4 md:px-6 bg-white">
+    <section className="py-12 md:py-20 px-4 md:px-6 bg-white">
       <div className="max-w-6xl mx-auto">
         <SectionTitle
           label="Sécurité & Confidentialité"
@@ -1003,7 +1003,7 @@ function ForWhoSection() {
   const active = profiles[activeTab];
 
   return (
-    <section className="py-16 md:py-28 px-4 md:px-6 bg-[#f4f7f9]">
+    <section className="py-12 md:py-20 px-4 md:px-6 bg-[#f4f7f9]">
       <div className="max-w-5xl mx-auto">
         <SectionTitle label="Pour qui" title="Fait pour" accent="vous." />
 
@@ -1108,7 +1108,7 @@ function HowItWorksSection() {
   ];
 
   return (
-    <section className="py-16 md:py-24 px-4 md:px-6 bg-white">
+    <section className="py-12 md:py-18 px-4 md:px-6 bg-white">
       <div className="max-w-6xl mx-auto">
         <SectionTitle label="Comment ça marche" title="Quatre étapes," accent="c'est tout."
           sub="Pas de formation, pas de jargon. Vous déposez vos fichiers — on fait le reste." />
@@ -1207,7 +1207,7 @@ function ApercuRapportSection() {
   ];
 
   return (
-    <section className="py-16 md:py-28 px-4 md:px-6 bg-[#f4f7f9]">
+    <section className="py-12 md:py-20 px-4 md:px-6 bg-[#f4f7f9]">
       <div className="max-w-6xl mx-auto">
         <SectionTitle label="Exemple de rapport" title="Ce que vous" accent="recevez."
           sub="Voici exactement ce que Verimo vous fournit en moins de 30 secondes*." />
@@ -1333,7 +1333,7 @@ function ScoreSection() {
     { emoji: '🏢', label: 'Diagnostics communs', pts: 3 },
   ];
   return (
-    <section className="py-16 md:py-28 px-4 md:px-6 bg-[#f4f7f9]">
+    <section className="py-12 md:py-20 px-4 md:px-6 bg-[#f4f7f9]">
       <div className="max-w-5xl mx-auto">
         <SectionTitle label="Notre méthode" title="Un score objectif" accent="sur 20 points." sub="Chaque bien reçoit une note calculée à partir de 5 catégories analysées dans vos documents. Transparent, reproductible, actionnable." />
 
@@ -1436,7 +1436,7 @@ function FaqSection() {
   ];
 
   return (
-    <section className="py-16 md:py-28 px-4 md:px-6 bg-white">
+    <section className="py-12 md:py-20 px-4 md:px-6 bg-white">
       <div className="max-w-3xl mx-auto">
         <SectionTitle label="Questions fréquentes" title="Tout ce que vous" accent="voulez savoir." />
 
