@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { FileText, ShieldCheck, GitCompare, BarChart2, CreditCard, CheckCircle, AlertTriangle, Lock, X, Star, Info } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { markFreePreviewUsed } from '../../lib/analyses';
