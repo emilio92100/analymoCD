@@ -506,21 +506,17 @@ function HomeView() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
   const hasAnalyses = analyses.length > 0;
-  const [freePreviewUsedHome, setFreePreviewUsedHome] = useState<boolean>(() => checkFreePreviewUsedSync());
+  const [freePreviewUsedHome, setFreePreviewUsedHome] = useState<boolean | null>(null);
 
-  // Synchroniser depuis Supabase au montage pour avoir la vraie valeur
   useEffect(() => {
     const sync = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) { setFreePreviewUsedHome(true); return; }
       const { data } = await supabase.from('profiles').select('free_preview_used').eq('id', user.id).single();
-      if (data?.free_preview_used) {
-        localStorage.setItem('verimo_free_preview_used', 'true');
-        setFreePreviewUsedHome(true);
-      } else {
-        localStorage.removeItem('verimo_free_preview_used');
-        setFreePreviewUsedHome(false);
-      }
+      const used = data?.free_preview_used === true;
+      if (used) localStorage.setItem('verimo_free_preview_used', 'true');
+      else localStorage.removeItem('verimo_free_preview_used');
+      setFreePreviewUsedHome(used);
     };
     sync();
   }, []);
@@ -580,7 +576,7 @@ const penalties = [
       </div>
 
       {/* ── Bandeau offre gratuite — masqué si déjà utilisé OU si l'utilisateur a des crédits payés */}
-      {!loadingCredits && !freePreviewUsedHome && credits.document === 0 && credits.complete === 0 && (
+      {!loadingCredits && freePreviewUsedHome === false && credits.document === 0 && credits.complete === 0 && (
         <div style={{ background:'#0f2d3d', borderRadius:16, padding:'22px 28px', position:'relative', overflow:'hidden' }}>
           <div style={{ position:'absolute', top:-30, right:-30, width:160, height:160, borderRadius:'50%', background:'rgba(42,125,156,0.18)', pointerEvents:'none' }}/>
           <div style={{ position:'relative', display:'flex', alignItems:'center', gap:20, flexWrap:'wrap' }}>
