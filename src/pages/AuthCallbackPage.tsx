@@ -41,13 +41,24 @@ export default function AuthCallbackPage() {
       const minWait = new Promise(r => setTimeout(r, 3000));
       let sessionOk = false;
 
-      // 1. Attendre que Supabase établisse la session (flow PKCE Google)
+      // 1. Session déjà établie (Google PKCE flow)
       const { data: sessionData } = await supabase.auth.getSession();
       if (sessionData.session) {
         sessionOk = true;
       }
 
-      // 2. Token dans le hash (flow implicite)
+      // 2. token_hash dans les query params (confirmation email)
+      if (!sessionOk) {
+        const searchParams = new URLSearchParams(window.location.search);
+        const tokenHash = searchParams.get('token_hash');
+        const type = searchParams.get('type');
+        if (tokenHash && type) {
+          const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: type as 'signup' | 'email' });
+          if (!error) sessionOk = true;
+        }
+      }
+
+      // 3. Token dans le hash (flow implicite)
       if (!sessionOk) {
         const hash = window.location.hash;
         if (hash && hash.includes('access_token')) {
@@ -61,7 +72,7 @@ export default function AuthCallbackPage() {
         }
       }
 
-      // 3. Code dans les query params
+      // 4. Code dans les query params (PKCE)
       if (!sessionOk) {
         const code = new URLSearchParams(window.location.search).get('code');
         if (code) {
@@ -70,7 +81,7 @@ export default function AuthCallbackPage() {
         }
       }
 
-      // 4. Dernière vérification session
+      // 5. Dernière vérification session
       if (!sessionOk) {
         const { data } = await supabase.auth.getSession();
         if (data.session) sessionOk = true;
