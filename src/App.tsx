@@ -115,13 +115,18 @@ function SessionManager() {
         localStorage.setItem('verimo_login_time', Date.now().toString());
       }
       if (event === 'SIGNED_IN' && session?.user) {
-        // Uniquement à la vraie connexion (pas au refresh de token)
         const isNewLogin = !localStorage.getItem('verimo_user_name');
         if (isNewLogin) {
           await handleUserSession(session.user.id, {
             full_name: session.user.user_metadata?.full_name,
             email: session.user.email,
           });
+        }
+        // Rediriger vers dashboard si on est sur une page publique ou auth
+        const publicPaths = ['/', '/connexion', '/inscription', '/start', '/auth/callback', '/tarifs', '/contact', '/exemple', '/methode', '/mot-de-passe-oublie'];
+        const currentPath = window.location.pathname;
+        if (publicPaths.some(p => currentPath === p || currentPath.startsWith('/auth/'))) {
+          window.location.href = '/dashboard';
         }
       }
       if (event === 'SIGNED_OUT') {
