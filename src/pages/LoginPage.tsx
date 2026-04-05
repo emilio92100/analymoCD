@@ -58,7 +58,7 @@ export default function LoginPage() {
     <div style={{ minHeight: '100vh', display: 'flex', background: 'linear-gradient(160deg, #f5f9fb 0%, #eaf4f8 100%)' }}>
       <div className="auth-panel" style={{ flex: 1, background: 'linear-gradient(160deg, var(--brand-teal) 0%, var(--brand-navy) 100%)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '60px 64px', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: -80, right: -80, width: 300, height: 300, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
-        <Link to="/"><img src="/logo.png" alt="Verimo" style={{ height: 40, objectFit: 'contain', filter: 'brightness(0) invert(1)', marginBottom: 48 }} /></Link>
+        <Link to="/"><img src="/logo.png" alt="Verimo" style={{ height: 64, objectFit: 'contain', filter: 'brightness(0) invert(1)', marginBottom: 48, display: 'block' }} /></Link>
         <h2 style={{ fontSize: 32, fontWeight: 800, color: '#fff', marginBottom: 16, lineHeight: 1.2 }}>Vos analyses immobilières vous attendent.</h2>
         <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, marginBottom: 48 }}>Connectez-vous pour accéder à votre tableau de bord.</p>
         {['Accédez à toutes vos analyses passées', 'Comparez plusieurs biens côte à côte', 'Téléchargez vos rapports PDF'].map(b => (
@@ -70,8 +70,8 @@ export default function LoginPage() {
       </div>
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
         <div style={{ width: '100%', maxWidth: 420 }}>
-          <div className="auth-mobile-logo" style={{ display: 'none', marginBottom: 24 }}>
-            <Link to="/"><img src="/logo.png" alt="Verimo" style={{ height: 36, objectFit: 'contain' }} /></Link>
+          <div className="auth-mobile-logo" style={{ display: 'none', marginBottom: 28, textAlign: 'center' }}>
+            <Link to="/"><img src="/logo.png" alt="Verimo" style={{ height: 70, objectFit: 'contain', display: 'inline-block' }} /></Link>
           </div>
           <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--brand-navy)', marginBottom: 8 }}>Connexion</h1>
           <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 32 }}>Pas encore de compte ? <Link to="/inscription" style={{ color: 'var(--brand-teal)', fontWeight: 600, textDecoration: 'none' }}>Créer un compte</Link></p>
