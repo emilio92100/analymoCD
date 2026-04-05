@@ -18,28 +18,29 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import MethodePage from './pages/MethodePage';
 import AdminPage from './pages/AdminPage';
 
+const PUBLIC_PATHS = ['/', '/connexion', '/inscription', '/start', '/tarifs', '/contact', '/exemple', '/methode', '/mot-de-passe-oublie'];
+
+function clearLocalStorage() {
+  localStorage.removeItem('verimo_login_time');
+  localStorage.removeItem('verimo_user_name');
+  localStorage.removeItem('verimo_user_email');
+  localStorage.removeItem('verimo_free_preview_used');
+}
+
 function ScrollToTop() {
   const { pathname } = useLocation();
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
   return null;
 }
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <Navbar />
-      {children}
-      <Footer />
-    </>
-  );
+  return (<><Navbar />{children}<Footer /></>);
 }
 
 function SessionManager() {
   useEffect(() => {
-    // Fonction centrale qui gère tout après connexion
-    const handleUserSession = async (userId: string, userMeta: { full_name?: string; email?: string }) => {
+
+    const syncProfile = async (userId: string, userMeta?: { full_name?: string; email?: string }) => {
       const { data: profile } = await supabase
         .from('profiles')
         .select('suspended, free_preview_used, credits_document, credits_complete')
@@ -47,95 +48,91 @@ function SessionManager() {
         .maybeSingle();
 
       if (!profile) {
+        clearLocalStorage();
         await supabase.auth.signOut();
         window.location.href = '/connexion';
-        return;
-      }
-      if (profile.suspended) {
-        await supabase.auth.signOut();
-        window.location.href = '/connexion?suspended=true';
-        return;
+        return false;
       }
 
-      // Sync freePreview dans les deux sens à chaque connexion
+      if (profile.suspended) {
+        clearLocalStorage();
+        await supabase.auth.signOut();
+        window.location.href = '/connexion?suspended=true';
+        return false;
+      }
+
+      // Sync free_preview_used dans les deux sens
       if (profile.free_preview_used) {
         localStorage.setItem('verimo_free_preview_used', 'true');
       } else {
         localStorage.removeItem('verimo_free_preview_used');
       }
-      // Si crédits > 0 et pas encore marqué → marquer dans Supabase ET localStorage
+
+      // Si crédits > 0 et pas encore marqué → marquer
       if ((profile.credits_document > 0 || profile.credits_complete > 0) && !profile.free_preview_used) {
         await supabase.from('profiles').update({ free_preview_used: true }).eq('id', userId);
         localStorage.setItem('verimo_free_preview_used', 'true');
       }
 
-      // Cache nom/email
-      const n = userMeta.full_name?.split(' ')[0] || userMeta.email?.split('@')[0] || 'Utilisateur';
-      localStorage.setItem('verimo_user_name', n);
-      localStorage.setItem('verimo_user_email', userMeta.email || '');
+      // Cache nom/email si fourni
+      if (userMeta) {
+        const n = userMeta.full_name?.split(' ')[0] || userMeta.email?.split('@')[0] || 'Utilisateur';
+        localStorage.setItem('verimo_user_name', n);
+        localStorage.setItem('verimo_user_email', userMeta.email || '');
+      }
+
+      return true;
     };
 
-    // Vérification périodique (suspension/suppression toutes les 60s)
-    const checkSuspension = async () => {
+    // Vérification périodique toutes les 60s
+    const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
 
-      // Vérifier expiration 1h
+      // Expiration 1h
       const loginTime = localStorage.getItem('verimo_login_time');
       if (loginTime && Date.now() - parseInt(loginTime) > 3600000) {
-        localStorage.removeItem('verimo_login_time');
+        clearLocalStorage();
         await supabase.auth.signOut();
         return;
       }
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('suspended, free_preview_used, credits_document, credits_complete')
-        .eq('id', session.user.id)
-        .maybeSingle();
-
-      if (!profile) {
-        await supabase.auth.signOut();
-        window.location.href = '/connexion';
-        return;
-      }
-      if (profile.suspended) {
-        await supabase.auth.signOut();
-        window.location.href = '/connexion?suspended=true';
-        return;
-      }
-
-      // Sync free_preview_used — uniquement si Supabase dit true
-      if (profile.free_preview_used) {
-        localStorage.setItem('verimo_free_preview_used', 'true');
-      }
+      await syncProfile(session.user.id);
     };
 
     // Écouter les changements d'auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
-        localStorage.setItem('verimo_login_time', Date.now().toString());
-      }
+
       if (event === 'SIGNED_IN' && session?.user) {
-        await handleUserSession(session.user.id, {
+        localStorage.setItem('verimo_login_time', Date.now().toString());
+
+        const ok = await syncProfile(session.user.id, {
           full_name: session.user.user_metadata?.full_name,
           email: session.user.email,
         });
-        // Rediriger vers dashboard si on est sur une page publique ou auth
-        const publicPaths = ['/', '/connexion', '/inscription', '/start', '/auth/callback', '/tarifs', '/contact', '/exemple', '/methode', '/mot-de-passe-oublie'];
+
+        if (!ok) return;
+
+        // Rediriger vers dashboard si sur page publique
         const currentPath = window.location.pathname;
-        if (publicPaths.some(p => currentPath === p || currentPath.startsWith('/auth/'))) {
+        const isPublic = PUBLIC_PATHS.includes(currentPath) || currentPath.startsWith('/auth/');
+        if (isPublic) {
           window.location.href = '/dashboard';
         }
       }
+
+      if (event === 'TOKEN_REFRESHED' && session?.user) {
+        localStorage.setItem('verimo_login_time', Date.now().toString());
+      }
+
       if (event === 'SIGNED_OUT') {
-        localStorage.removeItem('verimo_login_time');
+        clearLocalStorage();
+        // Ne pas rediriger ici — laisser le composant gérer
       }
     });
 
-    // Vérification au démarrage si session existante
-    checkSuspension();
-    const interval = setInterval(checkSuspension, 60000);
+    checkSession();
+    const interval = setInterval(checkSession, 60000);
 
     return () => {
       subscription.unsubscribe();
@@ -151,25 +148,18 @@ export default function App() {
       <SessionManager />
       <ScrollToTop />
       <Routes>
-        {/* Pages publiques */}
         <Route path="/" element={<PublicLayout><HomePage /></PublicLayout>} />
         <Route path="/tarifs" element={<PublicLayout><TarifsPage /></PublicLayout>} />
         <Route path="/contact" element={<PublicLayout><ContactPage /></PublicLayout>} />
         <Route path="/exemple" element={<PublicLayout><ExemplePage /></PublicLayout>} />
         <Route path="/methode" element={<PublicLayout><MethodePage /></PublicLayout>} />
-
-        {/* Auth */}
         <Route path="/connexion" element={<LoginPage />} />
         <Route path="/start" element={<StartPage />} />
         <Route path="/inscription" element={<SignupPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/mot-de-passe-oublie" element={<ForgotPasswordPage />} />
         <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
-
-        {/* Admin */}
         <Route path="/admin" element={<AdminPage />} />
-
-        {/* Dashboard */}
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/dashboard/nouvelle-analyse" element={<DashboardPage />} />
         <Route path="/dashboard/analyses" element={<DashboardPage />} />
@@ -177,11 +167,7 @@ export default function App() {
         <Route path="/dashboard/compte" element={<DashboardPage />} />
         <Route path="/dashboard/support" element={<DashboardPage />} />
         <Route path="/dashboard/tarifs" element={<DashboardPage />} />
-
-        {/* Rapport — page dédiée */}
         <Route path="/dashboard/rapport" element={<RapportPage />} />
-
-        {/* 404 */}
         <Route path="*" element={
           <PublicLayout>
             <div style={{ minHeight:'60vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', paddingTop:80 }}>
