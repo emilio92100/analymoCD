@@ -116,6 +116,8 @@ src/
     ├── StartPage.tsx
     ├── ForgotPasswordPage.tsx
     ├── ResetPasswordPage.tsx
+    ├── ConfidentialitePage.tsx    — Politique de confidentialité RGPD (/confidentialite)
+    ├── CGUPage.tsx                — CGU droit français (/cgu)
     └── AuthCallbackPage.tsx       — Animation confirmation + détection session
 ```
 
@@ -159,7 +161,7 @@ created_at timestamptz
 id uuid PK | user_id uuid FK | type (document|complete|pack2|pack3)
 status (pending|processing|completed|failed) | title text
 score numeric | profil (rp|invest) | type_bien
-result jsonb | apercu jsonb | is_preview boolean | paid boolean
+result jsonb | apercu jsonb | avis_verimo text | is_preview boolean | paid boolean
 document_names text[] | regeneration_deadline text | created_at timestamptz
 ```
 
@@ -546,6 +548,9 @@ WHERE email = 'email@exemple.com';
 - Badge offre gratuite pour nouveaux comptes
 - Aperçu gratuit (1 par compte)
 - Analyse simple et complète via Claude API
+- Validation upload : format PDF uniquement, taille max 20Mo, détection PDF protégé par mot de passe
+- Remboursement automatique crédit si analyse échoue
+- Blocage multi-fichiers sur analyse simple (1 seul PDF accepté)
 - Comparaison de biens (dès 2 analyses complètes)
 - Messages popup après paiement Stripe (2 cas)
 - Paiement Stripe (mode test) avec rafraîchissement session automatique
@@ -570,3 +575,165 @@ WHERE email = 'email@exemple.com';
 3. **Crédits bonus** (codes promo type `credits`) — affichés frontend, enregistrés dans `promo_uses`, mais pas encore attribués automatiquement dans le webhook après paiement
 4. **Graphique inscriptions** semaine/semaine dans les stats admin
 5. Mettre à jour `context.md` dans le repo GitHub après chaque session de dev
+
+---
+
+## SESSION 06/04/2026 — Travaux effectués
+
+### UX / Design HomePage ✅
+
+**Optimisations performances iOS (session 05/04/2026) :**
+- Favicon : 159Ko → 335 octets (bouclier teal SVG)
+- `src/App.tsx` : lazy loading toutes les routes avec `React.lazy + Suspense`
+- `src/pages/HomePage.tsx` : détection iOS, suppression `rotateY`/`rotateX`/`perspective` sur iPhone, animations réduites (y: 6px, duration: 0.18s)
+- `TarifsPage`, `MethodePage`, `ExemplePage`, `ContactPage` : Reveal optimisé iOS
+- **Statut : à tester sur iPhone réel — résultat non encore confirmé**
+
+**Favicon :** Nouveau favicon bouclier teal avec V blanc (option I) — 335 octets vs 159Ko avant
+
+**Navbar mobile :** Refonte complète — fond blanc, compact, lien actif fond `#f0f7fb` + texte teal + point teal, bouton S'inscrire teal `#2a7d9c`, menu s'accroche sous la navbar sans espace, coins ronds en bas uniquement
+
+**Navbar desktop :** Lien actif harmonisé avec mobile (fond `#f0f7fb` + texte teal), bouton S'inscrire teal au lieu de navy
+
+**Logos connexion/inscription :** Mobile `100px` centré, desktop `90px` — LoginPage.tsx + SignupPage.tsx
+
+**Hero mobile :** `pt-14` (espace sous navbar), sous-titre reformulé sur 3 lignes propres : "Diagnostics, PV d'AG, copropriété…" / "Comprenez l'essentiel en 30 secondes*" / "avant de faire une offre."
+
+**Ordre sections HomePage (nouveau) :**
+1. Hero → 2. Pourquoi Verimo → 3. Comment ça marche → 4. Aperçu rapport → 5. Avant/Après → 6. Pour qui → 7. Score → 8. Sécurité → 9. FAQ
+
+**Section "Pourquoi Verimo" :** Refonte complète — fond teal très subtil `#eef7f9`, titre "Vous avez visité. Vous avez aimé. Mais avez-vous vraiment lu ?", 4 cartes blanches modernes avec badge coloré, textes simples et accessibles, utilise `SectionTitle` (trait animé inclus)
+
+**Section "Pour qui" :** "Premier achat" → "Acheteur particulier", "Déjà propriétaire" → "Vendeur" (nouveau texte orienté vente et réassurance acheteur)
+
+**Section Sécurité :** Carte "Hébergement en France" supprimée (doublon avec bandeau), grille corrigée `sm:grid-cols-3`
+
+**Section "Comment ça marche" :** Étape 01 reformulée "Déposez vos documents — Tout document lié à votre futur logement"
+
+**Avant/Après :** Onglet "Avec Verimo" par défaut (`useState(true)`)
+
+**SectionTitle :** Taille réduite `clamp(26px,4vw,52px)`, sous-titre `max-w-xs md:max-w-2xl`, marges réduites
+
+**Espacement sections :** Réduit partout `py-16 md:py-28` → `py-12 md:py-20`
+
+**FAQ :** Titre reformulé "Vos questions, nos réponses."
+
+---
+
+### Pages légales créées ✅
+
+- `src/pages/ConfidentialitePage.tsx` — politique RGPD complète (10 sections), route `/confidentialite`
+- `src/pages/CGUPage.tsx` — CGU droit français complet (14 sections, art. L.221-28, art. 1218 Code civil, médiation consommation), route `/cgu`
+- Footer mis à jour : liens réels vers `/confidentialite` et `/cgu`
+
+---
+
+### Google OAuth — Nouveau projet ✅
+
+**Ancien projet :** Analymo Auth (compte analymo75000@gmail.com) — abandonné
+**Nouveau projet :** VERIMO (verimo-492420) depuis `hello@verimo.fr`
+
+**Nouveau Client OAuth :**
+- ID : `220743216898-6kic0d4hn80odnbelmsn1sfqpv0behr2.apps.googleusercontent.com`
+- Redirect URI : `https://veszrayromldfgetqaxb.supabase.co/auth/v1/callback`
+- Origines JS : `https://verimo.fr`
+
+**Supabase → Authentication → Providers → Google** mis à jour avec les nouvelles clés
+
+**Branding Google :**
+- Nom : `Verimo`
+- Logo uploadé (120×120px fond blanc)
+- Page d'accueil : `https://verimo.fr`
+- Confidentialité : `https://verimo.fr/confidentialite`
+- CGU : `https://verimo.fr/cgu`
+- **Statut : en cours d'examen humain Google** (quelques jours)
+- En attendant : URL Supabase affichée dans la popup Google (fonctionnel mais non brandé)
+
+---
+
+### NouvelleAnalyse.tsx — Validations robustes ✅
+
+**Validations ajoutées :**
+- ❌ Fichier non PDF (Word, JPEG, PNG) → bloqué avec message adapté au format
+- ❌ Fichier > 20Mo → bloqué avec conseil de compression
+- ❌ PDF protégé par mot de passe → détecté via lecture des premiers octets (`/Encrypt`), bloqué
+- ❌ Analyse simple + plusieurs fichiers → bloqué, 1 fichier max
+- ⚠️ PDF scanné illisible → warning pendant chargement, analyse continue
+- 🔄 Erreur à mi-parcours → reset complet, retour upload vierge
+- 💰 Erreur après débit crédit → **remboursement automatique** via Supabase
+- Zone de dépôt : `accept=".pdf"` uniquement
+- Encart informatif : formats acceptés / non supportés / PDF protégés
+- `max_tokens` extraction augmenté à 4000
+
+---
+
+### Architecture traitement documents — À FAIRE (priorité haute)
+
+**Problème critique identifié :** Le `.slice(0, 8000)` actuel ignore silencieusement les documents au-delà des 8000 premiers caractères. Sur une analyse complète avec 10 PDFs × 40 pages, seuls les premiers documents sont vraiment analysés.
+
+**Solution décidée : Edge Function Supabase + Map-Reduce**
+
+**Pourquoi Edge Function :**
+- Pas de timeout navigateur (tourne 150s indépendamment du client)
+- Client peut fermer l'onglet → traitement continue → résultat disponible au retour
+- Clé API jamais exposée côté client (Supabase Secrets)
+- Remboursement automatique si échec côté serveur
+- Conforme RGPD : PDFs traités en mémoire uniquement, aucun stockage
+
+**Architecture Map-Reduce :**
+```
+Phase 1 MAP — par document :
+  PDF (40p, ~40 000 tokens) → extraction structurée JSON → ~2000 tokens
+  {
+    resolutions: [{ num, intitule, montant, vote, annee_prevue }],
+    charges_annuelles, fonds_travaux,
+    procedures, impayes, travaux, diagnostics
+  }
+
+Phase 2 REDUCE — synthèse globale :
+  10 × 2000 tokens = 20 000 tokens → rapport final complet
+  → Zéro perte d'information sur les résolutions/montants
+```
+
+**Couche abstraction IA (`src/lib/ai-provider.ts`) :**
+- 1 seul fichier à modifier pour changer de modèle (Claude → GPT-4o → Gemini)
+- Clé API dans Supabase Secrets (`ANTHROPIC_API_KEY`)
+- Edge Function lit `Deno.env.get('ANTHROPIC_API_KEY')`
+
+**Expérience client si fermeture onglet :**
+- Dashboard → Mes analyses → animation "En cours..." avec polling toutes 5s
+- Dès completed → "Rapport prêt ! Voir le rapport →"
+
+**Fichiers à créer :**
+| Fichier | Rôle |
+|---------|------|
+| `supabase/functions/analyser/index.ts` | Edge Function — Map-Reduce |
+| `src/lib/ai-provider.ts` | Abstraction IA |
+| `src/lib/analyse-client.ts` | Appel Edge Function + polling |
+
+**Fichiers à modifier :**
+| Fichier | Modification |
+|---------|-------------|
+| `src/pages/dashboard/NouvelleAnalyse.tsx` | Utiliser Edge Function |
+| `src/pages/dashboard/MesAnalyses.tsx` | Polling + animation "en cours" |
+
+**Prérequis pour implémenter :**
+1. Ouvrir GitHub Codespaces sur le repo (terminal dans navigateur)
+2. `supabase init` puis `supabase link --project-ref veszrayromldfgetqaxb`
+3. Supabase Dashboard → Settings → Edge Functions → Secrets → ajouter `ANTHROPIC_API_KEY`
+4. Déployer la Edge Function via `supabase functions deploy analyser`
+
+---
+
+### PENDING mis à jour
+
+1. **Passer Stripe en production** (mode live)
+2. **Historique achats réel** dans `Compte.tsx` (mockAchats → vraie requête Stripe)
+3. **Crédits bonus** codes promo type `credits` — pas encore attribués dans webhook
+4. **Graphique inscriptions** semaine/semaine dans stats admin
+5. **Edge Function + Map-Reduce** — traitement documents robuste (voir section ci-dessus)
+6. **Polling MesAnalyses.tsx** — animation "en cours" pour analyses en attente
+7. **Mentions légales** — page `/mentions-legales` à créer
+8. **Branding Google** — en cours d'examen, vérifier dans 3-7 jours
+9. **Tests iOS** — fluidité à tester après déploiement des optimisations
+10. Mettre à jour `context.md` dans le repo GitHub après chaque session
