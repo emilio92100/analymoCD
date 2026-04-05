@@ -72,10 +72,11 @@ export default function Navbar() {
                     style={{ color: active ? '#fff' : '#64748b' }}>
                     {active && (
                       <motion.span layoutId="nav-pill"
-                        className="absolute inset-0 rounded-xl bg-[#0f2d3d]"
+                        className="absolute inset-0 rounded-xl"
+                        style={{ background: '#f0f7fb' }}
                         transition={{ type: 'spring', stiffness: 380, damping: 32 }} />
                     )}
-                    <span className="relative z-10">{l.label}</span>
+                    <span className="relative z-10" style={{ color: active ? '#2a7d9c' : '#64748b', fontWeight: active ? 700 : 500 }}>{l.label}</span>
                   </Link>
                 );
               })}
@@ -125,7 +126,8 @@ export default function Navbar() {
                     Connexion
                   </Link>
                   <Link to="/inscription"
-                    className="px-5 py-2 rounded-xl text-sm font-bold text-white bg-[#0f2d3d] hover:bg-[#0f2d3d]/90 hover:-translate-y-px shadow-sm hover:shadow-md transition-all duration-200">
+                    className="px-5 py-2 rounded-xl text-sm font-bold text-white hover:-translate-y-px shadow-sm hover:shadow-md transition-all duration-200"
+                    style={{ background: '#2a7d9c' }}>
                     S'inscrire
                   </Link>
                 </>
