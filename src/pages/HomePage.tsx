@@ -44,7 +44,7 @@ function SectionTitle({ label, title, accent, sub }: { label: string; title: str
       <motion.p initial={{ opacity: 0, y: 10 }} animate={inView ? { opacity: 1, y: 0 } : {}}
         className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.22em] mb-4">{label}</motion.p>
       <motion.h2 initial={{ opacity: 0, y: 20 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ delay: 0.07 }}
-        className="text-[clamp(28px,5.5vw,72px)] font-black tracking-[-0.03em] leading-[1.08] text-[#0f172a] mb-4">
+        className="text-[clamp(26px,4vw,52px)] font-black tracking-[-0.03em] leading-[1.1] text-[#0f172a] mb-4">
         {title}{' '}
         <span className="relative inline-block max-w-fit">
           <span className="text-[#2a7d9c]">{accent}</span>
@@ -54,7 +54,7 @@ function SectionTitle({ label, title, accent, sub }: { label: string; title: str
       </motion.h2>
       {sub && (
         <motion.p initial={{ opacity: 0 }} animate={inView ? { opacity: 1 } : {}} transition={{ delay: 0.2 }}
-          className="text-base md:text-lg text-slate-500 max-w-xs md:max-w-2xl mx-auto leading-relaxed">{sub}</motion.p>
+          className="text-base md:text-lg text-slate-500 max-w-sm md:max-w-3xl mx-auto leading-relaxed">{sub}</motion.p>
       )}
     </div>
   );
@@ -900,7 +900,7 @@ function SecuriteSection() {
           label="Sécurité & Confidentialité"
           title="Vos documents,"
           accent="protégés."
-          sub="Vous allez uploader des documents sensibles. Voici exactement comment nous les protégeons."
+          sub="Vos documents sont sensibles. Voici exactement comment nous les protégeons."
         />
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-10">
@@ -1210,7 +1210,7 @@ function ApercuRapportSection() {
     <section className="py-12 md:py-20 px-4 md:px-6 bg-[#f4f7f9]">
       <div className="max-w-6xl mx-auto">
         <SectionTitle label="Exemple de rapport" title="Ce que vous" accent="recevez."
-          sub="Voici exactement ce que Verimo vous fournit en moins de 30 secondes*." />
+          sub="Voici ce que Verimo vous fournit en moins de 30 secondes*." />
 
         <Reveal>
           <div className="bg-white rounded-2xl md:rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
@@ -1438,7 +1438,7 @@ function FaqSection() {
   return (
     <section className="py-12 md:py-20 px-4 md:px-6 bg-white">
       <div className="max-w-3xl mx-auto">
-        <SectionTitle label="Questions fréquentes" title="Tout ce que vous" accent="voulez savoir." />
+        <SectionTitle label="Questions fréquentes" title="Vos questions," accent="nos réponses." />
 
         <div className="flex flex-col gap-2.5">
           {faqs.map((faq, i) => (
