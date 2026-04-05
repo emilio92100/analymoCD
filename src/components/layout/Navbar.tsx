@@ -140,7 +140,7 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* Mobile menu — Option A : compact blanc épuré */}
+      {/* Mobile menu — compact blanc épuré */}
       <AnimatePresence>
         {open && (
           <motion.div
@@ -151,16 +151,19 @@ export default function Navbar() {
             onClick={() => setOpen(false)}>
             <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
             <motion.div
-              initial={{ opacity: 0, y: -8, scale: 0.98 }}
+              initial={{ opacity: 0, y: -12, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.98 }}
-              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute top-[76px] left-4 right-4 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden"
+              exit={{ opacity: 0, y: -12, scale: 0.98 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute left-4 right-4 bg-white rounded-b-2xl rounded-t-none shadow-xl border border-slate-100 border-t-0 overflow-hidden"
+              style={{ top: '68px' }}
               onClick={e => e.stopPropagation()}>
 
+              {/* Petite ligne de raccordement visuel */}
+              <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, #e2e8f0 20%, #e2e8f0 80%, transparent)' }} />
+
               {/* Liens nav */}
-              <div className="px-2.5 pt-2.5 pb-1">
-                <p className="text-[10px] font-semibold text-slate-400 tracking-[0.1em] uppercase px-2 pb-1.5">Menu</p>
+              <div className="px-2.5 pt-3 pb-1">
                 {navLinks.map((l) => {
                   const active = location.pathname === l.to;
                   return (
@@ -184,7 +187,7 @@ export default function Navbar() {
               </div>
 
               {/* CTA */}
-              <div className="px-2.5 pb-2.5 pt-1.5 border-t border-slate-100 flex gap-2">
+              <div className="px-2.5 pb-3 pt-2 border-t border-slate-100 flex gap-2">
                 {user ? (
                   <>
                     <Link to="/dashboard" onClick={() => setOpen(false)}
