@@ -3,6 +3,9 @@ import { motion } from 'framer-motion';
 import { Mail, Clock, MapPin, Send, CheckCircle, Crown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
+const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+const isLowPerf = () => isIOS() || (typeof window !== 'undefined' && window.innerWidth <= 768);
+
 
 export default function ContactPage() {
   const [sent, setSent] = useState(false);
@@ -26,10 +29,10 @@ export default function ContactPage() {
     <main style={{ background: '#f8fafc', fontFamily: "'DM Sans', system-ui, sans-serif", paddingTop: 70 }}>
       {/* Hero */}
       <section style={{ padding: '56px 28px 48px', background: 'linear-gradient(150deg,#eef7fb 0%,#e4f2f8 50%,#f8fafc 100%)', textAlign: 'center' }}>
-        <motion.h1 initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} style={{ fontSize: 'clamp(28px,4.5vw,50px)', fontWeight: 900, color: '#0f2d3d', marginBottom: 14, letterSpacing: '-0.025em' }}>
+        <motion.h1 initial={{ opacity: 0, y: isLowPerf() ? 6 : 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: isLowPerf() ? 0.18 : 0.4 }} style={{ fontSize: 'clamp(28px,4.5vw,50px)', fontWeight: 900, color: '#0f2d3d', marginBottom: 14, letterSpacing: '-0.025em' }}>
           On est là <span style={{ color: '#2a7d9c' }}>pour vous.</span>
         </motion.h1>
-        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} style={{ fontSize: 17, color: '#6b8a96', maxWidth: 480, margin: '0 auto', lineHeight: 1.7 }}>
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: isLowPerf() ? 0.06 : 0.2 }} style={{ fontSize: 17, color: '#6b8a96', maxWidth: 480, margin: '0 auto', lineHeight: 1.7 }}>
           Une question, une demande pro, ou simplement envie d'en savoir plus — écrivez-nous.
         </motion.p>
       </section>
@@ -42,7 +45,8 @@ export default function ContactPage() {
           <div>
             <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f2d3d', marginBottom: 28 }}>Nos coordonnées</h2>
             {[{ I: Mail, l: 'Email', v: 'hello@verimo.fr' }, { I: Clock, l: 'Horaires', v: 'Lun–Ven, 9h–18h' }, { I: MapPin, l: 'Localisation', v: 'France (100% en ligne)' }].map(info => (
-              <motion.div key={info.l} initial={{ opacity: 0, x: -14 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
+              <motion.div key={info.l} initial={{ opacity: 0, x: isLowPerf() ? 0 : -14 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
+                transition={{ duration: isLowPerf() ? 0.18 : 0.35 }}
                 style={{ display: 'flex', gap: 14, marginBottom: 22 }}>
                 <div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2a7d9c', flexShrink: 0 }}>
                   <info.I size={18} />
@@ -54,7 +58,8 @@ export default function ContactPage() {
               </motion.div>
             ))}
 
-            <motion.div initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+            <motion.div initial={{ opacity: 0, y: isLowPerf() ? 6 : 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+              transition={{ duration: isLowPerf() ? 0.18 : 0.35 }}
               style={{ marginTop: 28, padding: '22px', borderRadius: 18, background: 'linear-gradient(135deg,#0f2d3d,#1a4a60)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                 <Crown size={18} style={{ color: '#f59e0b' }} />
@@ -70,7 +75,8 @@ export default function ContactPage() {
           </div>
 
           {/* Right form */}
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+          <motion.div initial={{ opacity: 0, y: isLowPerf() ? 8 : 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+            transition={{ duration: isLowPerf() ? 0.2 : 0.4 }}
             style={{ padding: '36px', borderRadius: 22, background: '#fff', border: '1px solid #edf2f4', boxShadow: '0 4px 24px rgba(15,45,61,0.06)' }}>
             {sent ? (
               <div style={{ textAlign: 'center', padding: '44px 0' }}>
