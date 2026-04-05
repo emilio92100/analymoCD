@@ -41,17 +41,27 @@ export default function AuthCallbackPage() {
       const minWait = new Promise(r => setTimeout(r, 3000));
       let sessionOk = false;
 
-      const hash = window.location.hash;
-      if (hash && hash.includes('access_token')) {
-        const params = new URLSearchParams(hash.replace('#', ''));
-        const accessToken = params.get('access_token');
-        const refreshToken = params.get('refresh_token');
-        if (accessToken && refreshToken) {
-          const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-          if (!error) sessionOk = true;
+      // 1. Attendre que Supabase établisse la session (flow PKCE Google)
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData.session) {
+        sessionOk = true;
+      }
+
+      // 2. Token dans le hash (flow implicite)
+      if (!sessionOk) {
+        const hash = window.location.hash;
+        if (hash && hash.includes('access_token')) {
+          const params = new URLSearchParams(hash.replace('#', ''));
+          const accessToken = params.get('access_token');
+          const refreshToken = params.get('refresh_token');
+          if (accessToken && refreshToken) {
+            const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+            if (!error) sessionOk = true;
+          }
         }
       }
 
+      // 3. Code dans les query params
       if (!sessionOk) {
         const code = new URLSearchParams(window.location.search).get('code');
         if (code) {
@@ -60,6 +70,7 @@ export default function AuthCallbackPage() {
         }
       }
 
+      // 4. Dernière vérification session
       if (!sessionOk) {
         const { data } = await supabase.auth.getSession();
         if (data.session) sessionOk = true;
@@ -80,12 +91,7 @@ export default function AuthCallbackPage() {
         }
         setTimeout(() => setStatus('success'), 600);
       } else {
-        const { data: existingSession } = await supabase.auth.getSession();
-        if (existingSession.session) {
-          window.location.href = '/dashboard';
-        } else {
-          setTimeout(() => setStatus('already_confirmed'), 600);
-        }
+        setTimeout(() => setStatus('already_confirmed'), 600);
       }
     };
 
