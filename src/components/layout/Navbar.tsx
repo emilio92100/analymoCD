@@ -163,7 +163,7 @@ export default function Navbar() {
               <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, #e2e8f0 20%, #e2e8f0 80%, transparent)' }} />
 
               {/* Liens nav */}
-              <div className="px-2.5 pt-3 pb-1">
+              <div className="px-2.5 pt-4 pb-1">
                 {navLinks.map((l) => {
                   const active = location.pathname === l.to;
                   return (
