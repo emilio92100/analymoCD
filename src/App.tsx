@@ -18,15 +18,6 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import MethodePage from './pages/MethodePage';
 import AdminPage from './pages/AdminPage';
 
-const PUBLIC_PATHS = ['/', '/connexion', '/inscription', '/start', '/tarifs', '/contact', '/exemple', '/methode', '/mot-de-passe-oublie'];
-
-function clearLocalStorage() {
-  localStorage.removeItem('verimo_login_time');
-  localStorage.removeItem('verimo_user_name');
-  localStorage.removeItem('verimo_user_email');
-  localStorage.removeItem('verimo_free_preview_used');
-}
-
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
@@ -40,104 +31,93 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
 function SessionManager() {
   useEffect(() => {
 
-    const syncProfile = async (userId: string, userMeta?: { full_name?: string; email?: string }) => {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('suspended, free_preview_used, credits_document, credits_complete')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (!profile) {
-        clearLocalStorage();
-        await supabase.auth.signOut();
-        window.location.href = '/connexion';
-        return false;
-      }
-
-      if (profile.suspended) {
-        clearLocalStorage();
-        await supabase.auth.signOut();
-        window.location.href = '/connexion?suspended=true';
-        return false;
-      }
-
-      // Sync free_preview_used dans les deux sens
-      if (profile.free_preview_used) {
-        localStorage.setItem('verimo_free_preview_used', 'true');
-      } else {
-        localStorage.removeItem('verimo_free_preview_used');
-      }
-
-      // Si crédits > 0 et pas encore marqué → marquer
-      if ((profile.credits_document > 0 || profile.credits_complete > 0) && !profile.free_preview_used) {
-        await supabase.from('profiles').update({ free_preview_used: true }).eq('id', userId);
-        localStorage.setItem('verimo_free_preview_used', 'true');
-      }
-
-      // Cache nom/email si fourni
-      if (userMeta) {
-        const n = userMeta.full_name?.split(' ')[0] || userMeta.email?.split('@')[0] || 'Utilisateur';
-        localStorage.setItem('verimo_user_name', n);
-        localStorage.setItem('verimo_user_email', userMeta.email || '');
-      }
-
-      return true;
-    };
-
-    // Vérification périodique toutes les 60s
+    // Vérification toutes les 60s — suspension et expiration
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
 
-      // Expiration 1h
       const loginTime = localStorage.getItem('verimo_login_time');
       if (loginTime && Date.now() - parseInt(loginTime) > 3600000) {
-        clearLocalStorage();
         await supabase.auth.signOut();
+        window.location.href = '/connexion';
         return;
       }
 
-      await syncProfile(session.user.id);
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('suspended, free_preview_used')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+      if (!profile) {
+        await supabase.auth.signOut();
+        window.location.href = '/connexion';
+        return;
+      }
+      if (profile.suspended) {
+        await supabase.auth.signOut();
+        window.location.href = '/connexion?suspended=true';
+        return;
+      }
     };
 
-    // Écouter les changements d'auth
+    // À chaque connexion
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
 
       if (event === 'SIGNED_IN' && session?.user) {
         localStorage.setItem('verimo_login_time', Date.now().toString());
 
-        const ok = await syncProfile(session.user.id, {
-          full_name: session.user.user_metadata?.full_name,
-          email: session.user.email,
-        });
+        // Récupérer le profil
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('suspended, free_preview_used, credits_document, credits_complete')
+          .eq('id', session.user.id)
+          .maybeSingle();
 
-        if (!ok) return;
+        if (!profile) return;
+        if (profile.suspended) {
+          await supabase.auth.signOut();
+          window.location.href = '/connexion?suspended=true';
+          return;
+        }
+
+        // Sync free_preview_used dans les deux sens
+        if (profile.free_preview_used) {
+          localStorage.setItem('verimo_free_preview_used', 'true');
+        } else {
+          localStorage.removeItem('verimo_free_preview_used');
+        }
+
+        // Si crédits > 0 → marquer offre gratuite comme utilisée
+        if ((profile.credits_document > 0 || profile.credits_complete > 0) && !profile.free_preview_used) {
+          await supabase.from('profiles').update({ free_preview_used: true }).eq('id', session.user.id);
+          localStorage.setItem('verimo_free_preview_used', 'true');
+        }
+
+        // Cache nom/email
+        const n = session.user.user_metadata?.full_name?.split(' ')[0] || session.user.email?.split('@')[0] || 'Utilisateur';
+        localStorage.setItem('verimo_user_name', n);
+        localStorage.setItem('verimo_user_email', session.user.email || '');
 
         // Rediriger vers dashboard si sur page publique
-        const currentPath = window.location.pathname;
-        const isPublic = PUBLIC_PATHS.includes(currentPath) || currentPath.startsWith('/auth/');
-        if (isPublic) {
+        const pub = ['/', '/connexion', '/inscription', '/start', '/tarifs', '/contact', '/exemple', '/methode', '/mot-de-passe-oublie'];
+        if (pub.includes(window.location.pathname) || window.location.pathname.startsWith('/auth/')) {
           window.location.href = '/dashboard';
         }
       }
 
-      if (event === 'TOKEN_REFRESHED' && session?.user) {
-        localStorage.setItem('verimo_login_time', Date.now().toString());
-      }
-
       if (event === 'SIGNED_OUT') {
-        clearLocalStorage();
-        // Ne pas rediriger ici — laisser le composant gérer
+        localStorage.removeItem('verimo_login_time');
+        localStorage.removeItem('verimo_user_name');
+        localStorage.removeItem('verimo_user_email');
+        localStorage.removeItem('verimo_free_preview_used');
+        window.location.href = '/';
       }
     });
 
     checkSession();
     const interval = setInterval(checkSession, 60000);
-
-    return () => {
-      subscription.unsubscribe();
-      clearInterval(interval);
-    };
+    return () => { subscription.unsubscribe(); clearInterval(interval); };
   }, []);
   return null;
 }
