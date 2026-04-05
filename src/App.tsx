@@ -57,9 +57,11 @@ function SessionManager() {
         return;
       }
 
-      // Sync freePreview — uniquement si Supabase dit true (jamais effacer)
+      // Sync freePreview dans les deux sens à chaque connexion
       if (profile.free_preview_used) {
         localStorage.setItem('verimo_free_preview_used', 'true');
+      } else {
+        localStorage.removeItem('verimo_free_preview_used');
       }
       // Si crédits > 0 et pas encore marqué → marquer dans Supabase ET localStorage
       if ((profile.credits_document > 0 || profile.credits_complete > 0) && !profile.free_preview_used) {
@@ -115,13 +117,10 @@ function SessionManager() {
         localStorage.setItem('verimo_login_time', Date.now().toString());
       }
       if (event === 'SIGNED_IN' && session?.user) {
-        const isNewLogin = !localStorage.getItem('verimo_user_name');
-        if (isNewLogin) {
-          await handleUserSession(session.user.id, {
-            full_name: session.user.user_metadata?.full_name,
-            email: session.user.email,
-          });
-        }
+        await handleUserSession(session.user.id, {
+          full_name: session.user.user_metadata?.full_name,
+          email: session.user.email,
+        });
         // Rediriger vers dashboard si on est sur une page publique ou auth
         const publicPaths = ['/', '/connexion', '/inscription', '/start', '/auth/callback', '/tarifs', '/contact', '/exemple', '/methode', '/mot-de-passe-oublie'];
         const currentPath = window.location.pathname;
