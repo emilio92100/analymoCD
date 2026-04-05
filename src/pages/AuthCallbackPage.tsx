@@ -100,7 +100,6 @@ export default function AuthCallbackPage() {
       return () => clearTimeout(t);
     }
   }, [status]);
-  }, [status]);
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(160deg, #f5f9fb 0%, #eaf4f8 100%)', padding: 24, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
