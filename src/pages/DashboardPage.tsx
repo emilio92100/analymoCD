@@ -2233,23 +2233,18 @@ function CheckoutModal({
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Non connecté');
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`,
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({
+
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: {
           priceId: PRICE_IDS[plan.id],
           userId: user.id,
           promoCodeId: promoResult?.id ?? null,
-        }),
+        },
       });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      if (data.url) window.location.href = data.url;
+
+      if (error) throw new Error(error.message);
+      if (data?.url) window.location.href = data.url;
+      else throw new Error('Lien de paiement non reçu');
     } catch (e) {
       setPayError((e as Error).message);
     }
