@@ -52,7 +52,21 @@ export default function AuthCallbackPage() {
         const searchParams = new URLSearchParams(window.location.search);
         const tokenHash = searchParams.get('token_hash');
         const type = searchParams.get('type');
-        if (tokenHash && type) {
+        if (tokenHash) {
+          // Essayer signup d'abord, puis email
+          const types: Array<'signup' | 'email'> = ['signup', 'email'];
+          for (const t of types) {
+            const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: t });
+            if (!error) { sessionOk = true; break; }
+          }
+          // Si verifyOtp a réussi, recréer la session
+          if (sessionOk) {
+            const { data } = await supabase.auth.getSession();
+            if (!data.session) sessionOk = false;
+          }
+        }
+        // Compatibilité ancien format avec type dans l'URL
+        if (!sessionOk && tokenHash && type) {
           const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: type as 'signup' | 'email' });
           if (!error) sessionOk = true;
         }
