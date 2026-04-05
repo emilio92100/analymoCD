@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { ArrowRight, ChevronDown, TrendingDown, TrendingUp, AlertTriangle, Shield, Check } from 'lucide-react';
 
+const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+const isLowPerf = () => isIOS() || (typeof window !== 'undefined' && window.innerWidth <= 768);
+
 /* ══════════════════════════════════════════
    DATA
 ══════════════════════════════════════════ */
@@ -167,7 +170,7 @@ function ScoreBar({ pct, color, delay = 0 }: { pct: number; color: string; delay
   const inView = useInView(ref, { once: true });
   return (
     <div ref={ref} style={{ height: 7, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
-      <motion.div initial={{ width: 0 }} animate={inView ? { width: `${pct}%` } : {}} transition={{ duration: 1, delay, ease: [0.22, 1, 0.36, 1] }}
+      <motion.div initial={{ width: 0 }} animate={inView ? { width: `${pct}%` } : {}} transition={{ duration: isLowPerf() ? 0.4 : 1, delay: isLowPerf() ? 0 : delay, ease: [0.22, 1, 0.36, 1] }}
         style={{ height: '100%', background: color, borderRadius: 99 }} />
     </div>
   );
@@ -193,9 +196,9 @@ function SectionHead({ label, title, sub }: { label: string; title: string; sub?
 
 function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: '-30px' });
+  const inView = useInView(ref, { once: true, margin: isLowPerf() ? '0px' : '-30px' });
   return (
-    <motion.div ref={ref} initial={{ opacity: 0, y: 14 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.45, delay, ease: [0.22, 1, 0.36, 1] }}>
+    <motion.div ref={ref} initial={{ opacity: 0, y: isLowPerf() ? 6 : 14 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ duration: isLowPerf() ? 0.18 : 0.45, delay: isLowPerf() ? Math.min(delay, 0.05) : delay, ease: [0.22, 1, 0.36, 1] }}>
       {children}
     </motion.div>
   );
@@ -235,20 +238,21 @@ export default function MethodePage() {
       {/* ── HERO COMPACT ──────────────────────────────────────── */}
       <section style={{ background: '#f8fafc', borderBottom: '1px solid #edf2f7', padding: '52px 24px 44px', textAlign: 'center' }}>
         <div style={{ maxWidth: 760, margin: '0 auto' }}>
-          <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          <motion.p initial={{ opacity: 0, y: isLowPerf() ? 4 : 10 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: isLowPerf() ? 0.18 : 0.4 }}
             style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.22em', textTransform: 'uppercase' as const, marginBottom: 16 }}>
             Notre méthode
           </motion.p>
-          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}
+          <motion.h1 initial={{ opacity: 0, y: isLowPerf() ? 6 : 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: isLowPerf() ? 0.04 : 0.07, duration: isLowPerf() ? 0.2 : 0.45 }}
             style={{ fontSize: 'clamp(28px,4vw,52px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em', lineHeight: 1.08, marginBottom: 20 }}>
             Comment Verimo analyse<br />
             <span style={{ position: 'relative', display: 'inline-block' }}>
               <span style={{ color: '#2a7d9c' }}>vos documents</span>
-              <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 2.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: isLowPerf() ? 0.5 : 2.5, delay: isLowPerf() ? 0.1 : 0.2, ease: [0.22, 1, 0.36, 1] }}
                 style={{ position: 'absolute', bottom: -4, left: 0, right: 0, height: 4, background: 'rgba(42,125,156,0.25)', borderRadius: 99, transformOrigin: 'left', display: 'block' }} />
             </span>
           </motion.h1>
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: isLowPerf() ? 0.08 : 0.2 }}
             style={{ fontSize: 'clamp(14px,1.6vw,17px)', color: '#64748b', lineHeight: 1.7, maxWidth: 600, margin: '0 auto' }}>
             Comprendre comment votre bien est noté, en toute transparence.
           </motion.p>
