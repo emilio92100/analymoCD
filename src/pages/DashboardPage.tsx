@@ -506,7 +506,24 @@ function HomeView() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
   const hasAnalyses = analyses.length > 0;
-  const [freePreviewUsedHome] = useState<boolean>(() => checkFreePreviewUsedSync());
+  const [freePreviewUsedHome, setFreePreviewUsedHome] = useState<boolean>(() => checkFreePreviewUsedSync());
+
+  // Synchroniser depuis Supabase au montage pour avoir la vraie valeur
+  useEffect(() => {
+    const sync = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from('profiles').select('free_preview_used').eq('id', user.id).single();
+      if (data?.free_preview_used) {
+        localStorage.setItem('verimo_free_preview_used', 'true');
+        setFreePreviewUsedHome(true);
+      } else {
+        localStorage.removeItem('verimo_free_preview_used');
+        setFreePreviewUsedHome(false);
+      }
+    };
+    sync();
+  }, []);
 
   const totalAnalyses = analyses.length;
   const lastAnalyse = [...analyses].sort((a: Analyse, b: Analyse) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
