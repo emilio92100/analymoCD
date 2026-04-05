@@ -156,14 +156,14 @@ export default function Navbar() {
               exit={{ opacity: 0, y: -12, scale: 0.98 }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
               className="absolute left-4 right-4 bg-white rounded-b-2xl rounded-t-none shadow-xl border border-slate-100 border-t-0 overflow-hidden"
-              style={{ top: '68px' }}
+              style={{ top: '76px' }}
               onClick={e => e.stopPropagation()}>
 
               {/* Petite ligne de raccordement visuel */}
               <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, #e2e8f0 20%, #e2e8f0 80%, transparent)' }} />
 
               {/* Liens nav */}
-              <div className="px-2.5 pt-4 pb-1">
+              <div className="px-2.5 pt-6 pb-1">
                 {navLinks.map((l) => {
                   const active = location.pathname === l.to;
                   return (
