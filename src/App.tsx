@@ -99,6 +99,7 @@ function SessionManager() {
         localStorage.removeItem('verimo_user_name');
         localStorage.removeItem('verimo_user_email');
         localStorage.removeItem('verimo_free_preview_used');
+        window.location.href = '/';
       }
     });
 
