@@ -64,13 +64,13 @@ export default function HomePage() {
   return (
     <div className="bg-white text-[#0f172a] antialiased overflow-x-hidden" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <HeroSection />
-      <AvantApresSection />
       <ProblemSolutionSection />
-      <SecuriteSection />
-      <ForWhoSection />
       <HowItWorksSection />
-      <ScoreSection />
       <ApercuRapportSection />
+      <AvantApresSection />
+      <ForWhoSection />
+      <ScoreSection />
+      <SecuriteSection />
       <FaqSection />
     </div>
   );
@@ -800,30 +800,30 @@ function ProblemSolutionSection() {
   const items = [
     {
       icon: FileText,
-      title: "Documents illisibles",
-      problem: "Des PV de 40 pages remplis de jargon juridique que personne ne lit vraiment.",
-      solution: "Notre outil extrait l'essentiel et vous le présente en langage clair.",
+      title: "Documents complexes",
+      problem: "Des dizaines de pages de jargon juridique et technique que personne ne lit vraiment avant de signer.",
+      solution: "Notre outil lit chaque document à votre place et vous présente l'essentiel en langage clair.",
       pc: "text-red-500", pb: "bg-red-50", pBorder: "border-red-100",
     },
     {
       icon: AlertTriangle,
       title: "Travaux cachés",
-      problem: "Ravalement, toiture, ascenseur : des travaux votés découverts après la signature.",
+      problem: "Ravalement, toiture, ascenseur : des travaux votés découverts après la signature, trop tard pour négocier.",
       solution: "Chaque travail voté est détecté, daté et estimé financièrement pour votre lot.",
       pc: "text-amber-500", pb: "bg-amber-50", pBorder: "border-amber-100",
     },
     {
       icon: TrendingUp,
       title: "Charges sous-estimées",
-      problem: "Des charges bien plus élevées que prévu qui pèsent lourd sur votre budget d'achat.",
-      solution: "Charges mensuelles, fonds travaux, appels votés — tout est chiffré.",
+      problem: "Des charges bien plus élevées que prévu, des impayés de copropriété ou un fonds travaux insuffisant.",
+      solution: "Charges mensuelles, fonds travaux, appels votés — tout est chiffré et comparé.",
       pc: "text-orange-500", pb: "bg-orange-50", pBorder: "border-orange-100",
     },
     {
       icon: Clock,
-      title: "Décisions précipitées",
-      problem: "Sous la pression du marché, vous signez sans avoir eu le temps d'analyser.",
-      solution: "En 30 secondes*, vous avez une recommandation claire : acheter ou négocier.",
+      title: "Décisions sous pression",
+      problem: "Sous la pression du marché, vous signez sans avoir eu le temps d'analyser ce que vous achetez vraiment.",
+      solution: "En 30 secondes*, vous avez une recommandation claire : acheter, négocier ou fuir.",
       pc: "text-blue-500", pb: "bg-blue-50", pBorder: "border-blue-100",
     },
   ];
@@ -831,8 +831,8 @@ function ProblemSolutionSection() {
   return (
     <section className="py-16 md:py-28 px-4 md:px-6 bg-[#f4f7f9]">
       <div className="max-w-6xl mx-auto">
-        <SectionTitle label="Pourquoi Verimo" title="Un problème réel," accent="une réponse claire."
-          sub="Chaque achat immobilier cache des risques que les documents ne rendent pas évidents. Voici comment on les détecte." />
+        <SectionTitle label="Pourquoi Verimo" title="Acheter sans lire," accent="c'est risqué."
+          sub="Un achat immobilier c'est des centaines de pages de documents. Les risques sont là — ils sont juste difficiles à voir sans aide." />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
           {items.map((item, i) => (
             <Reveal key={i} delay={i}
@@ -1072,8 +1072,8 @@ function HowItWorksSection() {
   const steps = [
     {
       n: "01", color: "#2a7d9c", bg: "rgba(42,125,156,0.08)", border: "rgba(42,125,156,0.18)",
-      title: "Déposez vos fichiers",
-      desc: "PV d'AG, règlement de copropriété, diagnostics, appels de charges — glissez-déposez vos PDF.",
+      title: "Déposez vos documents",
+      desc: "Tout document lié à votre futur logement : PV d'AG, diagnostics, règlement, DPE, compromis… en quelques clics.",
       icon: (<svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-8m0 0-3 3m3-3 3 3M6.5 20h11A2.5 2.5 0 0 0 20 17.5v-11A2.5 2.5 0 0 0 17.5 4h-7L6 8.5V17.5A2.5 2.5 0 0 0 8.5 20Z" /></svg>),
     },
     {
