@@ -800,32 +800,32 @@ function ProblemSolutionSection() {
   const items = [
     {
       emoji: '📋',
-      title: "Des documents que personne ne lit vraiment",
-      text: "PV d'AG, diagnostics, règlement de copropriété… Des centaines de pages techniques que vous parcourez en diagonale, faute de temps et de clés de lecture.",
+      title: "Des documents que personne ne comprend",
+      text: "PV d'AG, diagnostics, règlement de copropriété… Des dizaines de pages écrites en jargon. Vous les ouvrez, vous ne comprenez pas tout, et vous signez quand même.",
       tag: "Complexité",
       tagColor: '#2a7d9c',
       tagBg: 'rgba(42,125,156,0.1)',
     },
     {
       emoji: '🔨',
-      title: "Des travaux découverts après la signature",
-      text: "Ravalement, toiture, ascenseur… Des milliers d'euros de travaux votés en assemblée générale, cachés dans les pages que vous n'avez pas lues. Trop tard pour négocier.",
-      tag: "Risque financier",
+      title: "Des travaux que vous ne voyez pas venir",
+      text: "Toiture, ascenseur, façade… Des gros travaux déjà votés par la copropriété. Vous les découvrez après avoir signé, souvent pour plusieurs milliers d'euros.",
+      tag: "Risque caché",
       tagColor: '#d97706',
       tagBg: 'rgba(217,119,6,0.1)',
     },
     {
       emoji: '⏱️',
-      title: "La pression qui fait signer trop vite",
-      text: "Le marché n'attend pas. L'agent vous dit que d'autres visiteurs sont intéressés. Vous signez sans avoir eu le temps de vraiment comprendre ce que vous achetez.",
+      title: "La pression qui fait aller trop vite",
+      text: "Le marché n'attend pas. Vous avez visité 10 appartements. Vous signez vite, sans avoir eu le temps de tout vérifier. C'est là que les mauvaises surprises arrivent.",
       tag: "Urgence",
       tagColor: '#7c3aed',
       tagBg: 'rgba(124,58,237,0.1)',
     },
     {
-      emoji: '📉',
-      title: "Des charges sous-estimées qui pèsent lourd",
-      text: "Charges mensuelles, fonds travaux insuffisant, impayés de copropriété… Des coûts cachés qui changent complètement la rentabilité de votre achat.",
+      emoji: '💸',
+      title: "Des charges plus élevées que prévu",
+      text: "Charges mensuelles, fonds de travaux vide, impayés dans la copropriété… Des coûts qui changent tout à votre budget, et que vous auriez pu anticiper.",
       tag: "Budget",
       tagColor: '#dc2626',
       tagBg: 'rgba(220,38,38,0.1)',
@@ -836,46 +836,44 @@ function ProblemSolutionSection() {
     <section className="py-20 md:py-32 px-4 md:px-6" style={{ background: 'linear-gradient(180deg, #eef7f9 0%, #f4f9fb 100%)' }}>
       <div className="max-w-6xl mx-auto">
 
-        {/* Titre percutant */}
         <Reveal className="text-center mb-4">
           <span className="text-[11px] font-bold tracking-[0.18em] uppercase text-[#2a7d9c]">Pourquoi Verimo</span>
         </Reveal>
-        <Reveal className="text-center mb-6">
-          <h2 className="text-[clamp(30px,5vw,52px)] font-black text-[#0f2d3d] leading-[1.1] tracking-[-0.03em]">
+        <Reveal className="text-center mb-5">
+          <h2 className="font-black text-[#0f2d3d] leading-[1.15] tracking-[-0.03em]"
+            style={{ fontSize: 'clamp(22px,4vw,46px)' }}>
             Vous avez visité. Vous avez aimé.<br />
             <span className="text-[#2a7d9c]">Mais avez-vous vraiment lu ?</span>
           </h2>
         </Reveal>
-        <Reveal className="text-center mb-14">
-          <p className="text-slate-500 text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
-            Un achat immobilier c'est des centaines de pages de documents complexes. Les risques sont là — ils sont juste difficiles à voir sans les bons outils.
+        <Reveal className="text-center mb-12">
+          <p className="text-slate-500 max-w-xl mx-auto leading-relaxed" style={{ fontSize: 'clamp(14px,2vw,17px)' }}>
+            Un achat immobilier, c'est des centaines de pages à lire. Les risques sont là — ils sont juste difficiles à voir sans les bons outils.
           </p>
         </Reveal>
 
-        {/* Grille de cartes */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
           {items.map((item, i) => (
             <Reveal key={i} delay={i}>
-              <div className="bg-white rounded-2xl p-7 border border-slate-100 shadow-sm hover:-translate-y-1 hover:shadow-md transition-all duration-300 h-full">
+              <div className="bg-white rounded-2xl p-6 md:p-7 border border-slate-100 shadow-sm hover:-translate-y-1 hover:shadow-md transition-all duration-300 h-full">
                 <div className="flex items-start justify-between mb-4">
-                  <span className="text-3xl">{item.emoji}</span>
+                  <span className="text-2xl">{item.emoji}</span>
                   <span className="text-[11px] font-bold px-3 py-1 rounded-full" style={{ color: item.tagColor, background: item.tagBg }}>
                     {item.tag}
                   </span>
                 </div>
-                <h3 className="text-base md:text-lg font-bold text-[#0f2d3d] mb-3 leading-snug">{item.title}</h3>
+                <h3 className="text-sm md:text-base font-bold text-[#0f2d3d] mb-2 leading-snug">{item.title}</h3>
                 <p className="text-sm text-slate-500 leading-relaxed">{item.text}</p>
               </div>
             </Reveal>
           ))}
         </div>
 
-        {/* Conclusion */}
-        <Reveal className="mt-12 text-center">
-          <div className="inline-flex items-center gap-3 px-6 py-4 rounded-2xl bg-white border border-[#2a7d9c]/20 shadow-sm">
-            <span className="text-2xl">💡</span>
-            <p className="text-sm md:text-base font-semibold text-[#0f2d3d]">
-              Verimo lit ces documents à votre place — et vous donne une réponse claire en 30 secondes.
+        <Reveal className="mt-10 text-center">
+          <div className="inline-flex items-center gap-3 px-5 py-4 rounded-2xl bg-white border border-[#2a7d9c]/20 shadow-sm max-w-lg mx-auto">
+            <span className="text-xl shrink-0">💡</span>
+            <p className="text-sm font-semibold text-[#0f2d3d] text-left">
+              Verimo lit tous ces documents à votre place et vous donne une réponse claire en 30 secondes.
             </p>
           </div>
         </Reveal>
