@@ -38,7 +38,7 @@ const { data, error } = await supabase.auth.signUp({ email, password, options: {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: 'linear-gradient(160deg, #f5f9fb 0%, #eaf4f8 100%)' }}>
       <div className="auth-panel" style={{ flex: 1, background: 'linear-gradient(160deg, var(--brand-teal) 0%, var(--brand-navy) 100%)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '60px 64px' }}>
-        <Link to="/"><img src="/logo.png" alt="Verimo" style={{ height: 64, objectFit: 'contain', filter: 'brightness(0) invert(1)', marginBottom: 48, display: 'block' }} /></Link>
+        <Link to="/"><img src="/logo.png" alt="Verimo" style={{ height: 90, objectFit: 'contain', filter: 'brightness(0) invert(1)', marginBottom: 48, display: 'block' }} /></Link>
         <h2 style={{ fontSize: 32, fontWeight: 800, color: '#fff', marginBottom: 16 }}>Votre premier achat immobilier mérite la meilleure analyse.</h2>
         <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, marginBottom: 48 }}>Créez votre compte en 30 secondes et analysez vos premiers documents dès aujourd'hui.</p>
         {[['⚡','Résultats en moins de 2 minutes'],['🔒','Données chiffrées et sécurisées'],['📄','Rapports PDF téléchargeables'],['💬','Support client réactif']].map(([icon, text]) => (
@@ -47,7 +47,7 @@ const { data, error } = await supabase.auth.signUp({ email, password, options: {
       </div>
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
         <div style={{ width: '100%', maxWidth: 420 }}>
-          <div className="auth-mobile-logo" style={{ display: 'none', marginBottom: 28, textAlign: 'center' }}><Link to="/"><img src="/logo.png" alt="Verimo" style={{ height: 70, objectFit: 'contain', display: 'inline-block' }} /></Link></div>
+          <div className="auth-mobile-logo" style={{ display: 'none', marginBottom: 32, textAlign: 'center' }}><Link to="/"><img src="/logo.png" alt="Verimo" style={{ height: 100, objectFit: 'contain', display: 'inline-block' }} /></Link></div>
           <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--brand-navy)', marginBottom: 8 }}>Créer un compte</h1>
           <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 32 }}>Déjà un compte ? <Link to="/connexion" style={{ color: 'var(--brand-teal)', fontWeight: 600, textDecoration: 'none' }}>Se connecter</Link></p>
           <button onClick={handleGoogle} style={{ width: '100%', padding: '13px 20px', borderRadius: 12, border: '1.5px solid rgba(42,125,156,0.2)', background: '#fff', fontSize: 15, fontWeight: 600, color: 'var(--brand-navy)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
