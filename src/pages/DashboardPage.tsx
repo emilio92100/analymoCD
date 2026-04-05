@@ -389,6 +389,7 @@ export default function DashboardPage() {
       </AnimatePresence>
       <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0 }}>
         <Topbar onMenuClick={()=>setMobileOpen(true)} title={title}/>
+        <DashboardBanner />
         <main style={{ flex:1, padding:'28px 20px', overflowX:'hidden' }}>
           <div style={{ maxWidth:1040, margin:'0 auto' }}>
             <DashboardContent path={location.pathname}/>
@@ -414,6 +415,58 @@ export default function DashboardPage() {
         @keyframes shimmer { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
         @keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,0.15)} 50%{box-shadow:0 0 0 10px rgba(255,255,255,0)} }
       `}</style>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   BANNIÈRE DASHBOARD
+══════════════════════════════════════════ */
+function DashboardBanner() {
+  const [banner, setBanner] = useState<{ id: string; message: string; type: string } | null>(null);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from('banners')
+        .select('*')
+        .eq('active', true)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (data && data.length > 0) {
+        // Vérifier si déjà fermée dans cette session
+        const dismissedId = sessionStorage.getItem('verimo_banner_dismissed');
+        if (dismissedId === data[0].id) {
+          setDismissed(true);
+        }
+        setBanner(data[0]);
+      }
+    };
+    load();
+  }, []);
+
+  const handleDismiss = () => {
+    if (banner) sessionStorage.setItem('verimo_banner_dismissed', banner.id);
+    setDismissed(true);
+  };
+
+  if (!banner || dismissed) return null;
+
+  const STYLES: Record<string, { bg: string; border: string; color: string; icon: string }> = {
+    info:    { bg: '#f0f7fb', border: '#bae3f5', color: '#2a7d9c', icon: 'ℹ️' },
+    warning: { bg: '#fffbeb', border: '#fde68a', color: '#d97706', icon: '⚠️' },
+    success: { bg: '#f0fdf4', border: '#86efac', color: '#16a34a', icon: '✅' },
+  };
+  const s = STYLES[banner.type] || STYLES.info;
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px', background: s.bg, borderBottom: `1.5px solid ${s.border}` }}>
+      <span style={{ fontSize: 16, flexShrink: 0 }}>{s.icon}</span>
+      <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: s.color }}>{banner.message}</span>
+      <button onClick={handleDismiss} style={{ background: 'none', border: 'none', cursor: 'pointer', color: s.color, opacity: 0.5, padding: 4, flexShrink: 0 }}>
+        <X size={15} />
+      </button>
     </div>
   );
 }
