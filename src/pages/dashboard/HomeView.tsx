@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, ChevronRight, Plus, Sparkles, ArrowRight, Building2, ExternalLink, Info, Star, AlertTriangle, CheckCircle } from 'lucide-react';
+import { FileText, ChevronRight, Plus, Sparkles, ArrowRight, Building2, ExternalLink, Info, Star } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useUser } from '../../hooks/useUser';
 import { useAnalyses, type Analyse } from '../../hooks/useAnalyses';
