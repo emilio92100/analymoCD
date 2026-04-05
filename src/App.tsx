@@ -31,10 +31,7 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
 function SessionManager() {
   useEffect(() => {
     // Rafraîchir le token automatiquement
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'TOKEN_REFRESHED') {
-        console.log('Token rafraîchi');
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, _session) => {
       if (event === 'SIGNED_OUT') {
         localStorage.removeItem('verimo_login_time');
         localStorage.removeItem('verimo_user_name');
