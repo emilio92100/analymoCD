@@ -875,6 +875,14 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
               <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>{detailUser.full_name || '—'}</div>
               <div style={{ fontSize: 13, color: '#2a7d9c' }}>{detailUser.email}</div>
               <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Inscrit le {fmtDate(detailUser.created_at)}</div>
+              <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 10, flexWrap: 'wrap' as const }}>
+                {detailUser.role === 'admin' && <Badge color="#7c3aed" bg="#f5f3ff">admin</Badge>}
+                {detailUser.suspended && <Badge color="#dc2626" bg="#fef2f2">suspendu</Badge>}
+                {detailUser.email_verified === true
+                  ? <Badge color="#16a34a" bg="#f0fdf4">✓ {detailUser.provider === 'google' ? 'via Google' : 'via Email'}</Badge>
+                  : <Badge color="#f0a500" bg="#fffbeb">⚠ non vérifié</Badge>
+                }
+              </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
               {[{ l: 'Crédits Simple', v: detailUser.credits_document || 0, c: '#2a7d9c' }, { l: 'Crédits Complet', v: detailUser.credits_complete || 0, c: '#7c3aed' }, { l: 'Analyses', v: userAnalyses.length, c: '#16a34a' }].map((s, i) => (
@@ -989,10 +997,9 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
                   {user.role === 'admin' && <Badge color="#7c3aed" bg="#f5f3ff">admin</Badge>}
                   {user.suspended && <Badge color="#dc2626" bg="#fef2f2">suspendu</Badge>}
                   {user.email_verified === true
-                    ? <Badge color="#16a34a" bg="#f0fdf4">✓ vérifié</Badge>
+                    ? <Badge color="#16a34a" bg="#f0fdf4">✓ {user.provider === 'google' ? 'via Google' : 'via Email'}</Badge>
                     : <Badge color="#f0a500" bg="#fffbeb">⚠ non vérifié</Badge>
                   }
-                  {user.provider === 'google' && <Badge color="#2a7d9c" bg="#f0f7fb">Google</Badge>}
                 </div>
               </button>
               <div className="admin-user-meta" style={{ fontSize: 12, color: '#64748b' }}>{fmtDate(user.created_at)}</div>
