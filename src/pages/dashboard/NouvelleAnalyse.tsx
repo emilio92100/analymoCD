@@ -5,6 +5,13 @@ import { PROMPT_ANALYSE_COMPLETE, PROMPT_ANALYSE_SIMPLE, PROMPT_APERCU_COMPLET, 
 import { createAnalyse, createApercu, updateAnalyseResult, updateApercuResult, markAnalyseFailed, markFreePreviewUsed, checkFreePreviewUsedSync } from '../../lib/analyses';
 import { useCredits, type Credits } from '../../hooks/useCredits';
 
+// ─── Constantes ───────────────────────────────────────────────
+const MAX_FILE_SIZE_MB = 20;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+const ACCEPTED_TYPE = 'application/pdf';
+
+type FileError = { name: string; reason: string };
+
 type ApercuResult = {
   titre: string;
   recommandation_courte: string;
@@ -22,11 +29,38 @@ type AnalyseResult = {
   conclusion: string;
 };
 
+// ─── Validation fichier ───────────────────────────────────────
+function validateFile(file: File): string | null {
+  if (file.type !== ACCEPTED_TYPE) {
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (ext === 'doc' || ext === 'docx') return 'Format Word non supporté. Convertissez votre document en PDF avant de l\'uploader.';
+    if (ext === 'jpg' || ext === 'jpeg' || ext === 'png') return 'Les images ne sont pas supportées. Si votre document est une photo, convertissez-la en PDF.';
+    return `Format "${ext?.toUpperCase() || 'inconnu'}" non supporté. Seuls les fichiers PDF sont acceptés.`;
+  }
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    return `Fichier trop volumineux (${(file.size / 1024 / 1024).toFixed(1)} Mo). La limite est de ${MAX_FILE_SIZE_MB} Mo. Essayez de compresser votre PDF.`;
+  }
+  return null;
+}
+
+// ─── Détection PDF protégé (heuristique rapide) ───────────────
+async function isPdfPasswordProtected(file: File): Promise<boolean> {
+  try {
+    const buf = await file.arrayBuffer();
+    const bytes = new Uint8Array(buf).slice(0, 2048);
+    const str = new TextDecoder('latin1').decode(bytes);
+    return str.includes('/Encrypt');
+  } catch {
+    return false;
+  }
+}
+
 export default function NouvelleAnalyse() {
   const { credits, deductCredit } = useCredits();
   const [step, setStep] = useState<'choice' | 'upload' | 'analyse' | 'apercu' | 'result'>('choice');
   const [type, setType] = useState<'document' | 'complete' | null>(null);
   const [files, setFiles] = useState<File[]>([]);
+  const [fileWarnings, setFileWarnings] = useState<string[]>([]); // warnings non bloquants
   const [progress, setProgress] = useState(0);
   const [progressMsg, setProgressMsg] = useState('');
   const [result, setResult] = useState<AnalyseResult | null>(null);
@@ -36,11 +70,49 @@ export default function NouvelleAnalyse() {
   const [error, setError] = useState('');
 
   const plans = {
-    document: { label: "Analyse d'un document", price: '4,90€', max: 1, desc: "Un seul fichier — PV d'AG, règlement, diagnostic, appel de charges.", creditsKey: 'document' as keyof Credits },
+    document: { label: "Analyse d'un document", price: '4,90€', max: 1, desc: "Un seul fichier PDF — PV d'AG, règlement, diagnostic, appel de charges.", creditsKey: 'document' as keyof Credits },
     complete: { label: "Analyse complète d'un logement", price: '19,90€', max: 20, desc: 'Tous les documents du bien — score /20, risques, recommandation Verimo.', creditsKey: 'complete' as keyof Credits },
   };
   const plan = type ? plans[type] : null;
 
+  const resetUpload = () => { setFiles([]); setError(''); setFileWarnings([]); };
+
+  // ─── Ajout de fichiers avec validation ────────────────────
+  const handleFiles = async (incoming: File[]) => {
+    setError('');
+    const isSimple = type === 'document';
+
+    // Analyse simple : 1 seul fichier max
+    if (isSimple && incoming.length > 1) {
+      setError("L'analyse simple accepte un seul fichier PDF. Sélectionnez uniquement le document à analyser, ou passez à l'analyse complète pour plusieurs fichiers.");
+      return;
+    }
+    if (isSimple && files.length >= 1) {
+      setError("L'analyse simple n'accepte qu'un seul fichier. Supprimez le fichier actuel pour en ajouter un autre.");
+      return;
+    }
+
+    const blocked: FileError[] = [];
+    const valid: File[] = [];
+
+    for (const file of incoming) {
+      const err = validateFile(file);
+      if (err) { blocked.push({ name: file.name, reason: err }); continue; }
+      const protected_ = await isPdfPasswordProtected(file);
+      if (protected_) { blocked.push({ name: file.name, reason: 'Ce PDF est protégé par un mot de passe. Retirez la protection depuis Adobe Reader ou votre logiciel PDF, puis réessayez.' }); continue; }
+      valid.push(file);
+    }
+
+    if (blocked.length > 0) {
+      setError(blocked.map(b => `"${b.name}" : ${b.reason}`).join('\n\n'));
+    }
+    if (valid.length > 0) {
+      const allFiles = [...files, ...valid].slice(0, plan?.max || 1);
+      setFiles(allFiles);
+    }
+  };
+
+  // ─── Extraction texte avec warning si vide ────────────────
   const fileToBase64 = (file: File): Promise<string> =>
     new Promise((res, rej) => {
       const r = new FileReader();
@@ -49,37 +121,59 @@ export default function NouvelleAnalyse() {
       r.readAsDataURL(file);
     });
 
-  const extractText = async (file: File): Promise<string> => {
+  const extractText = async (file: File): Promise<{ text: string; warning?: string }> => {
     const b64 = await fileToBase64(file);
-    const isPdf = file.type === 'application/pdf';
-    const mediaType = isPdf ? 'application/pdf' : file.type as 'image/jpeg' | 'image/png';
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514', max_tokens: 2000,
+        model: 'claude-sonnet-4-20250514', max_tokens: 4000,
         messages: [{ role: 'user', content: [
-          { type: isPdf ? 'document' : 'image', source: { type: 'base64', media_type: mediaType, data: b64 } },
-          { type: 'text', text: 'Extrais tout le texte de ce document immobilier de façon fidèle. Conserve les sections, données chiffrées et informations clés.' }
+          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } },
+          { type: 'text', text: 'Extrais tout le texte de ce document immobilier de façon fidèle. Conserve les sections, données chiffrées et informations clés. Si le document est illisible ou de mauvaise qualité, indique-le en commençant ta réponse par "QUALITE_FAIBLE:".' }
         ]}]
       })
     });
     const d = await res.json();
-    return d.content?.find((b: any) => b.type === 'text')?.text || '';
+    const text = d.content?.find((b: any) => b.type === 'text')?.text || '';
+    if (text.startsWith('QUALITE_FAIBLE:') || text.trim().length < 50) {
+      return { text: text.replace('QUALITE_FAIBLE:', '').trim(), warning: `"${file.name}" semble être un scan de qualité insuffisante. L'analyse pourra être partielle sur ce document.` };
+    }
+    return { text };
   };
 
+  // ─── Remboursement crédit ─────────────────────────────────
+  const refundCredit = async (creditType: 'document' | 'complete') => {
+    try {
+      const { supabase } = await import('../../lib/supabase');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const col = creditType === 'document' ? 'credits_document' : 'credits_complete';
+      const { data } = await supabase.from('profiles').select(col).eq('id', user.id).single();
+      if (data) {
+        const current = (data as Record<string, number>)[col] || 0;
+        await supabase.from('profiles').update({ [col]: current + 1 }).eq('id', user.id);
+      }
+    } catch { /* silencieux */ }
+  };
+
+  // ─── Lancer aperçu gratuit ────────────────────────────────
   const lancerApercu = async () => {
     if (!files.length || !type) return;
-    setStep('analyse'); setError(''); setProgress(5); setProgressMsg('Lecture des documents…');
+    setStep('analyse'); setError(''); setFileWarnings([]); setProgress(5); setProgressMsg('Lecture des documents…');
     const docNames = files.map(f => f.name);
     const analyseDB = await createApercu(type, files[0].name, 'rp', docNames);
     const analyseId = analyseDB?.id || null;
     try {
       const textes: string[] = [];
+      const warnings: string[] = [];
       for (let i = 0; i < files.length; i++) {
-        setProgressMsg(`Extraction document ${i + 1}/${files.length}…`);
+        setProgressMsg(`Lecture document ${i + 1}/${files.length}…`);
         setProgress(10 + Math.floor((i / files.length) * 30));
-        textes.push(`=== ${files[i].name} ===\n${await extractText(files[i])}`);
+        const { text, warning } = await extractText(files[i]);
+        textes.push(`=== ${files[i].name} ===\n${text}`);
+        if (warning) warnings.push(warning);
       }
+      if (warnings.length) setFileWarnings(warnings);
       setProgress(50); setProgressMsg('Traitement en cours…');
       const systemPrompt = type === 'complete' ? PROMPT_APERCU_COMPLET : PROMPT_APERCU_SIMPLE;
       setProgress(70); setProgressMsg('Génération de votre aperçu…');
@@ -92,41 +186,44 @@ export default function NouvelleAnalyse() {
       const raw = d.content?.find((b: any) => b.type === 'text')?.text || '{}';
       const parsed: ApercuResult = JSON.parse(raw.replace(/```json|```/g, '').trim());
       if (analyseId) {
-        const isComplete = type === 'complete';
         const title = parsed.titre || files[0].name;
-        const address = isComplete ? (parsed.titre || null) : null;
+        const address = type === 'complete' ? (parsed.titre || null) : null;
         await updateApercuResult(analyseId, parsed as unknown as Record<string, unknown>, title, address);
         await markFreePreviewUsed();
       }
       setFreePreviewUsed(true);
       setProgress(100); setProgressMsg('Aperçu prêt !');
       await new Promise(r => setTimeout(r, 400));
-      setApercu(parsed);
-      setApercuId(analyseId);
-      setStep('apercu');
+      setApercu(parsed); setApercuId(analyseId); setStep('apercu');
     } catch {
       if (analyseId) await markAnalyseFailed(analyseId);
-      setError("Erreur lors de l'analyse. Vérifiez vos fichiers et réessayez.");
+      setError("Une erreur est survenue pendant l'analyse. Vos fichiers n'ont pas été débités. Veuillez réessayer.");
       setStep('upload');
+      resetUpload();
     }
   };
 
+  // ─── Lancer analyse payante ───────────────────────────────
   const lancer = async () => {
     if (!files.length || !type) return;
     const creditType = type === 'document' ? 'document' : 'complete';
     const ok = await deductCredit(creditType);
     if (!ok) { setError("Vous n'avez plus de crédit disponible. Veuillez recharger votre compte."); return; }
-    setStep('analyse'); setError(''); setProgress(5); setProgressMsg('Lecture des documents…');
+    setStep('analyse'); setError(''); setFileWarnings([]); setProgress(5); setProgressMsg('Lecture des documents…');
     const docNames = files.map(f => f.name);
     const analyseDB = await createAnalyse(type, files[0].name, 'rp', docNames);
     const analyseId = analyseDB?.id || null;
     try {
       const textes: string[] = [];
+      const warnings: string[] = [];
       for (let i = 0; i < files.length; i++) {
-        setProgressMsg(`Extraction document ${i + 1}/${files.length}…`);
+        setProgressMsg(`Lecture document ${i + 1}/${files.length}…`);
         setProgress(10 + Math.floor((i / files.length) * 30));
-        textes.push(`=== ${files[i].name} ===\n${await extractText(files[i])}`);
+        const { text, warning } = await extractText(files[i]);
+        textes.push(`=== ${files[i].name} ===\n${text}`);
+        if (warning) warnings.push(warning);
       }
+      if (warnings.length) setFileWarnings(warnings);
       setProgress(50); setProgressMsg('Traitement en cours…');
       const isComplete = type === 'complete';
       const systemPrompt = isComplete ? PROMPT_ANALYSE_COMPLETE : PROMPT_ANALYSE_SIMPLE;
@@ -149,9 +246,12 @@ export default function NouvelleAnalyse() {
       if (analyseId) { window.location.href = `/dashboard/rapport?id=${analyseId}`; }
       else { setResult(parsed); setStep('result'); }
     } catch {
+      // Remboursement automatique du crédit
+      await refundCredit(creditType);
       if (analyseId) await markAnalyseFailed(analyseId);
-      setError("Erreur lors de l'analyse. Vérifiez vos fichiers et réessayez.");
+      setError("Une erreur est survenue pendant l'analyse. Votre crédit a été remboursé automatiquement. Veuillez réessayer.");
       setStep('upload');
+      resetUpload();
     }
   };
 
@@ -183,7 +283,7 @@ export default function NouvelleAnalyse() {
           )}
           <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginTop: freePreviewUsed ? 8 : 0 }}><FileText size={24} style={{ color: '#2a7d9c' }} /></div>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Analyse d&apos;un seul document</div>
-          <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.7, marginBottom: 20 }}>Retenez l&apos;essentiel d&apos;un document précis :<br /><span style={{ color: '#94a3b8' }}>Règlement de copro, PV d&apos;AG, diagnostic, DPE, appel de charges…</span></div>
+          <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.7, marginBottom: 20 }}>Retenez l&apos;essentiel d&apos;un document précis :<br /><span style={{ color: '#94a3b8' }}>Règlement de copro, PV d&apos;AG, diagnostic, DPE, appel de charges…</span><br /><span style={{ fontSize: 11, color: '#cbd5e1' }}>1 fichier PDF uniquement</span></div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 5 }}>
               {freePreviewUsed && credits.document === 0 ? <><Lock size={13} /> Acheter un crédit</> : <><ArrowRight size={14} /> Commencer</>}
@@ -219,7 +319,7 @@ export default function NouvelleAnalyse() {
   /* ── UPLOAD */
   if (step === 'upload' && plan) return (
     <div style={{ maxWidth: 640, margin: '0 auto' }}>
-      <button onClick={() => { setStep('choice'); setFiles([]); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
+      <button onClick={() => { setStep('choice'); resetUpload(); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24, padding: '16px 18px', background: '#fff', borderRadius: 14, border: '1px solid #edf2f7' }}>
         <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           {type === 'complete' ? <ShieldCheck size={19} style={{ color: '#2a7d9c' }} /> : <FileText size={19} style={{ color: '#2a7d9c' }} />}
@@ -227,43 +327,66 @@ export default function NouvelleAnalyse() {
         <div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>{plan.label}</div><div style={{ fontSize: 12, color: '#94a3b8' }}>{plan.desc}</div></div>
         <span style={{ fontSize: 16, fontWeight: 900, color: '#2a7d9c', flexShrink: 0 }}>{plan.price}</span>
       </div>
+
+      {/* Erreur bloquante */}
       {error && (
-        <div style={{ padding: '12px 16px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16 }}>
-          <AlertTriangle size={15} color="#dc2626" style={{ flexShrink: 0 }} /><span style={{ fontSize: 13, color: '#dc2626' }}>{error}</span>
+        <div style={{ padding: '14px 16px', borderRadius: 12, background: '#fef2f2', border: '1px solid #fecaca', marginBottom: 16 }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: error.includes('\n') ? 8 : 0 }}>
+            <AlertTriangle size={15} color="#dc2626" style={{ flexShrink: 0, marginTop: 1 }} />
+            <span style={{ fontSize: 13, color: '#dc2626', fontWeight: 700 }}>Fichier non accepté</span>
+          </div>
+          {error.split('\n\n').map((msg, i) => (
+            <p key={i} style={{ fontSize: 13, color: '#b91c1c', lineHeight: 1.6, margin: '6px 0 0 25px' }}>{msg}</p>
+          ))}
         </div>
       )}
+
+      {/* Zone de dépôt */}
       <div onClick={() => document.getElementById('file-input')?.click()}
-        style={{ padding: '52px 32px', borderRadius: 18, border: '2px dashed #dde6ec', background: '#fafcfe', textAlign: 'center', cursor: 'pointer', marginBottom: 14, transition: 'all 0.18s' }}
+        style={{ padding: '44px 32px', borderRadius: 18, border: '2px dashed #dde6ec', background: '#fafcfe', textAlign: 'center', cursor: 'pointer', marginBottom: 14, transition: 'all 0.18s' }}
         onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.background = 'rgba(42,125,156,0.02)'; }}
         onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#dde6ec'; el.style.background = '#fafcfe'; }}
         onDragOver={e => { e.preventDefault(); (e.currentTarget as HTMLElement).style.borderColor = '#2a7d9c'; }}
-        onDrop={e => { e.preventDefault(); setFiles(prev => [...prev, ...Array.from(e.dataTransfer.files)].slice(0, plan.max)); }}>
-        <input id="file-input" type="file" multiple={plan.max > 1} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" style={{ display: 'none' }}
-          onChange={e => { if (e.target.files) setFiles(prev => [...prev, ...Array.from(e.target.files!)].slice(0, plan.max)); }} />
+        onDrop={e => { e.preventDefault(); handleFiles(Array.from(e.dataTransfer.files)); }}>
+        <input id="file-input" type="file" multiple={plan.max > 1} accept=".pdf" style={{ display: 'none' }}
+          onChange={e => { if (e.target.files) handleFiles(Array.from(e.target.files)); }} />
         <div style={{ width: 54, height: 54, borderRadius: 15, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}><Upload size={24} style={{ color: '#2a7d9c' }} /></div>
         <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 5 }}>Déposez vos documents ici</div>
         <div style={{ fontSize: 13, color: '#94a3b8' }}>ou <span style={{ color: '#2a7d9c', fontWeight: 700 }}>cliquez pour sélectionner</span></div>
-        <div style={{ fontSize: 12, color: '#cbd5e1', marginTop: 7 }}>PDF, Word, JPG/PNG · Max {plan.max} fichier{plan.max > 1 ? 's' : ''}</div>
+        <div style={{ fontSize: 12, color: '#cbd5e1', marginTop: 8 }}>
+          PDF uniquement · Max {MAX_FILE_SIZE_MB} Mo par fichier{plan.max > 1 ? ` · ${plan.max} fichiers max` : ' · 1 fichier'}
+        </div>
       </div>
+
+      {/* Formats acceptés */}
+      <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16, padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #f1f5f9' }}>
+        ✅ <strong>Formats acceptés :</strong> PDF natif ou scanné<br />
+        ❌ <strong>Non supportés :</strong> Word (.doc/.docx), images (JPG/PNG) — convertissez-les en PDF d'abord<br />
+        🔒 Les PDF protégés par mot de passe doivent être déverrouillés avant l'upload
+      </div>
+
+      {/* Liste fichiers */}
       {files.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
           {files.map((f, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, background: '#fff', border: '1px solid #edf2f7' }}>
               <FileText size={14} color="#2a7d9c" style={{ flexShrink: 0 }} />
               <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
-              <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{(f.size / 1024).toFixed(0)} Ko</span>
+              <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{(f.size / 1024 / 1024).toFixed(1)} Mo</span>
               <CheckCircle size={13} color="#16a34a" style={{ flexShrink: 0 }} />
               <button onClick={() => setFiles(prev => prev.filter((_, idx) => idx !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 18, lineHeight: 1, flexShrink: 0 }}>×</button>
             </div>
           ))}
         </div>
       )}
+
       {!freePreviewUsed && (
         <div style={{ padding: '12px 16px', borderRadius: 12, background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
           <Sparkles size={13} style={{ color: '#fff', flexShrink: 0 }} />
           <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.9)' }}>Votre analyse offerte — aperçu du rapport généré gratuitement.</span>
         </div>
       )}
+
       <button onClick={!freePreviewUsed ? lancerApercu : lancer} disabled={files.length === 0}
         style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: files.length > 0 ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#e2e8f0', color: files.length > 0 ? '#fff' : '#94a3b8', fontSize: 15, fontWeight: 800, cursor: files.length > 0 ? 'pointer' : 'default', boxShadow: files.length > 0 ? '0 4px 18px rgba(15,45,61,0.2)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.15s' }}>
         <Sparkles size={16} /> {!freePreviewUsed ? 'Générer mon aperçu gratuit' : 'Analyser'} {files.length > 0 ? `(${files.length} fichier${files.length > 1 ? 's' : ''})` : ''}
@@ -279,6 +402,16 @@ export default function NouvelleAnalyse() {
       </div>
       <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Traitement en cours…</h2>
       <p style={{ fontSize: 14, color: '#64748b', marginBottom: 32 }}>{progressMsg}</p>
+      {fileWarnings.length > 0 && (
+        <div style={{ padding: '12px 16px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fde68a', marginBottom: 24, textAlign: 'left' }}>
+          {fileWarnings.map((w, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: i < fileWarnings.length - 1 ? 8 : 0 }}>
+              <AlertTriangle size={13} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
+              <span style={{ fontSize: 12, color: '#92400e', lineHeight: 1.5 }}>{w}</span>
+            </div>
+          ))}
+        </div>
+      )}
       <div style={{ height: 8, borderRadius: 99, background: '#edf2f7', overflow: 'hidden', marginBottom: 8 }}>
         <div style={{ height: '100%', borderRadius: 99, background: 'linear-gradient(90deg, #2a7d9c, #0f2d3d)', width: `${progress}%`, transition: 'width 0.4s ease' }} />
       </div>
