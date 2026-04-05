@@ -7,6 +7,9 @@ import {
   Download, ChevronDown, Shield, Star, Info,
 } from 'lucide-react';
 
+const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+const isLowPerf = () => isIOS() || (typeof window !== 'undefined' && window.innerWidth <= 768);
+
 /* ══════════════════════════════════════════
    DONNÉES DU RAPPORT EXEMPLE
 ══════════════════════════════════════════ */
@@ -86,9 +89,9 @@ const rapport = {
 ══════════════════════════════════════════ */
 function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: '-30px' });
+  const inView = useInView(ref, { once: true, margin: isLowPerf() ? '0px' : '-30px' });
   return (
-    <motion.div ref={ref} initial={{ opacity: 0, y: 14 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.45, delay, ease: [0.22, 1, 0.36, 1] }}>
+    <motion.div ref={ref} initial={{ opacity: 0, y: isLowPerf() ? 6 : 14 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ duration: isLowPerf() ? 0.18 : 0.45, delay: isLowPerf() ? Math.min(delay, 0.05) : delay, ease: [0.22, 1, 0.36, 1] }}>
       {children}
     </motion.div>
   );
@@ -131,20 +134,21 @@ export default function ExemplePage() {
 
       {/* ── HERO ───────────────────────────────────────────────── */}
       <section style={{ background: 'linear-gradient(150deg, #eef7fb, #e4f2f8 50%, #f8fafc)', padding: '52px 24px 44px', textAlign: 'center', borderBottom: '1px solid #e2edf3' }}>
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+        <motion.div initial={{ opacity: 0, scale: isLowPerf() ? 0.97 : 0.9 }} animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: isLowPerf() ? 0.18 : 0.4 }}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 16px', borderRadius: 100, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.2)', fontSize: 12, fontWeight: 700, color: '#1a5e78', marginBottom: 18, letterSpacing: '0.06em' }}>
           RAPPORT EXEMPLE
         </motion.div>
-        <motion.h1 initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
+        <motion.h1 initial={{ opacity: 0, y: isLowPerf() ? 6 : 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: isLowPerf() ? 0.04 : 0.08, duration: isLowPerf() ? 0.2 : 0.45 }}
           style={{ fontSize: 'clamp(26px,4.5vw,52px)', fontWeight: 900, color: '#0f2d3d', marginBottom: 14, letterSpacing: '-0.025em', lineHeight: 1.1 }}>
           Voici ce que Verimo{' '}
           <span style={{ position: 'relative', display: 'inline-block', whiteSpace: 'nowrap' }}>
             <span style={{ color: '#2a7d9c' }}>vous produit.</span>
-            <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 2.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: isLowPerf() ? 0.5 : 2.5, delay: isLowPerf() ? 0.1 : 0.3, ease: [0.22, 1, 0.36, 1] }}
               style={{ position: 'absolute', bottom: -4, left: 0, right: 0, height: 4, background: 'rgba(42,125,156,0.25)', borderRadius: 99, transformOrigin: 'left', display: 'block' }} />
           </span>
         </motion.h1>
-        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.18 }}
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: isLowPerf() ? 0.08 : 0.18 }}
           style={{ fontSize: 16, color: '#6b8a96', maxWidth: 520, margin: '0 auto', lineHeight: 1.7 }}>
           Rapport généré à partir d'un dossier réel (données anonymisées) — PV d'AG, règlement de copropriété, diagnostics et appels de charges.
         </motion.p>
