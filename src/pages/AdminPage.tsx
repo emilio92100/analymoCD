@@ -159,7 +159,7 @@ function ActionBtn({ icon, label, color = '#64748b', bg = '#f8fafc', border = '#
 /* ══════════════════════════════════════════
    ADMIN PAGE ROOT
 ══════════════════════════════════════════ */
-type TabId = 'dashboard' | 'users' | 'analyses' | 'messages' | 'stats' | 'promos' | 'logs';
+type TabId = 'dashboard' | 'users' | 'analyses' | 'messages' | 'stats' | 'promos' | 'logs' | 'banner';
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -217,6 +217,7 @@ export default function AdminPage() {
     { id: 'analyses', label: 'Analyses', icon: FileText },
     { id: 'messages', label: 'Messages', icon: Mail, badge: unreadCount },
     { id: 'promos', label: 'Codes promo', icon: Tag },
+    { id: 'banner', label: 'Bannière', icon: Bell },
     { id: 'logs', label: 'Historique', icon: Bell },
   ];
 
@@ -387,6 +388,7 @@ export default function AdminPage() {
               {activeTab === 'analyses' && <AnalysesTab />}
               {activeTab === 'messages' && <MessagesTab onConfirm={setConfirm} showToast={showToast} onReadChange={setUnreadCount} />}
               {activeTab === 'promos' && <PromosTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} />}
+              {activeTab === 'banner' && <BannerTab showToast={showToast} logAction={logAction} />}
               {activeTab === 'logs' && <LogsTab />}
             </motion.div>
           </AnimatePresence>
@@ -397,8 +399,132 @@ export default function AdminPage() {
 }
 
 /* ══════════════════════════════════════════
-   DASHBOARD TAB
+   BANNER TAB
 ══════════════════════════════════════════ */
+function BannerTab({ showToast, logAction }: { showToast: (m: string) => void; logAction: (a: string, t?: string) => Promise<void> }) {
+  const [banner, setBanner] = useState<{ id: string; message: string; type: string; active: boolean } | null>(null);
+  const [message, setMessage] = useState('');
+  const [type, setType] = useState<'info' | 'warning' | 'success'>('info');
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase.from('banners').select('*').eq('active', true).order('created_at', { ascending: false }).limit(1);
+      if (data && data.length > 0) {
+        setBanner(data[0]);
+        setMessage(data[0].message);
+        setType(data[0].type);
+      }
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  const handleSave = async () => {
+    if (!message.trim()) return;
+    setSaving(true);
+    if (banner) {
+      await supabase.from('banners').update({ message, type, updated_at: new Date().toISOString() }).eq('id', banner.id);
+      setBanner({ ...banner, message, type });
+      await logAction('Bannière modifiée', message.substring(0, 50));
+      showToast('Bannière mise à jour !');
+    } else {
+      const { data } = await supabase.from('banners').insert({ message, type, active: true }).select().single();
+      if (data) setBanner(data);
+      await logAction('Bannière créée', message.substring(0, 50));
+      showToast('Bannière créée et activée !');
+    }
+    setSaving(false);
+  };
+
+  const handleDelete = async () => {
+    if (!banner) return;
+    await supabase.from('banners').delete().eq('id', banner.id);
+    setBanner(null);
+    setMessage('');
+    await logAction('Bannière supprimée');
+    showToast('Bannière supprimée — plus visible sur le dashboard');
+  };
+
+  const COLORS: Record<string, { bg: string; border: string; color: string; label: string }> = {
+    info:    { bg: '#f0f7fb', border: '#bae3f5', color: '#2a7d9c', label: 'ℹ️ Information' },
+    warning: { bg: '#fffbeb', border: '#fde68a', color: '#d97706', label: '⚠️ Avertissement' },
+    success: { bg: '#f0fdf4', border: '#86efac', color: '#16a34a', label: '✅ Succès' },
+  };
+
+  if (loading) return <div style={{ padding: 40, textAlign: 'center' as const, color: '#94a3b8' }}>Chargement...</div>;
+
+  return (
+    <div style={{ maxWidth: 620 }}>
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Bannière dashboard</h1>
+        <p style={{ fontSize: 13, color: '#94a3b8' }}>Affichez un message sur le dashboard de tous vos utilisateurs connectés.</p>
+      </div>
+
+      {/* Aperçu */}
+      {message.trim() && (
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', marginBottom: 8, letterSpacing: '0.08em' }}>APERÇU</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', borderRadius: 12, background: COLORS[type].bg, border: `1.5px solid ${COLORS[type].border}` }}>
+            <span style={{ fontSize: 18, flexShrink: 0 }}>{type === 'info' ? 'ℹ️' : type === 'warning' ? '⚠️' : '✅'}</span>
+            <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: COLORS[type].color }}>{message}</span>
+            <X size={16} style={{ color: COLORS[type].color, opacity: 0.5, flexShrink: 0 }} />
+          </div>
+        </div>
+      )}
+
+      {/* Formulaire */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: 24, display: 'flex', flexDirection: 'column' as const, gap: 18 }}>
+
+        {/* Type */}
+        <div>
+          <label style={{ fontSize: 13, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 10 }}>Type de bannière</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {(['info', 'warning', 'success'] as const).map(t => (
+              <button key={t} onClick={() => setType(t)}
+                style={{ flex: 1, padding: '10px 8px', borderRadius: 10, border: `1.5px solid ${type === t ? COLORS[t].border : '#edf2f7'}`, background: type === t ? COLORS[t].bg : '#f8fafc', color: type === t ? COLORS[t].color : '#64748b', fontSize: 12, fontWeight: type === t ? 700 : 500, cursor: 'pointer', transition: 'all 0.15s' }}>
+                {COLORS[t].label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Message */}
+        <div>
+          <label style={{ fontSize: 13, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 8 }}>Message</label>
+          <textarea
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            placeholder="Ex : Verimo est en maintenance ce soir de 22h à 23h. Merci de votre compréhension."
+            rows={3}
+            style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 14, outline: 'none', boxSizing: 'border-box' as const, resize: 'vertical', fontFamily: 'inherit', color: '#0f172a', background: '#f8fafc' }}
+          />
+        </div>
+
+        {/* Boutons */}
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={handleSave} disabled={saving || !message.trim()}
+            style={{ flex: 1, padding: '12px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: saving || !message.trim() ? 'not-allowed' : 'pointer', opacity: saving || !message.trim() ? 0.6 : 1 }}>
+            {saving ? 'Enregistrement...' : banner ? '💾 Mettre à jour' : '🚀 Publier la bannière'}
+          </button>
+          {banner && (
+            <button onClick={handleDelete}
+              style={{ padding: '12px 18px', borderRadius: 11, background: '#fef2f2', border: '1.5px solid #fecaca', color: '#dc2626', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+              🗑️ Supprimer
+            </button>
+          )}
+        </div>
+
+        {banner && (
+          <div style={{ fontSize: 12, color: '#16a34a', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '10px 14px', fontWeight: 600 }}>
+            ✓ Bannière active — visible sur le dashboard de tous les utilisateurs
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
   const [kpis, setKpis] = useState({ users: 0, analyses: 0, messages: 0, ca: 0 });
 
