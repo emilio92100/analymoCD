@@ -14,7 +14,7 @@ type PromoResult = {
 
 function CheckoutModal({ plan, onClose }: {
   plan: { id: string; label: string; price: string; priceNum: number; color: string; creditLabel: string };
-  onClose: () => void;
+  onClose: (type?: 'credits_applied', count?: number, creditType?: string) => void;
 }) {
   const [promoCode, setPromoCode] = useState('');
   const [promoLoading, setPromoLoading] = useState(false);
@@ -60,7 +60,48 @@ function CheckoutModal({ plan, onClose }: {
     'pack3': 'price_1TIb51BO4ekMbwz0mmEez47o',
   };
 
+  const handleApplyCredits = async () => {
+    if (!promoResult || promoResult.type !== 'credits') return;
+    setPayLoading(true); setPayError('');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Non connecté');
+
+      // Vérification anti-doublon (au cas où)
+      const { data: alreadyUsed } = await supabase.from('promo_uses').select('id').eq('code_id', promoResult.id).eq('user_id', user.id).single();
+      if (alreadyUsed) throw new Error('Vous avez déjà utilisé ce code.');
+
+      // Lire les crédits actuels
+      const creditCol = promoResult.credit_type === 'document' ? 'credits_document'
+        : promoResult.credit_type === 'complete' ? 'credits_complete'
+        : 'credits_complete'; // par défaut complete si credit_type non défini
+
+      const { data: profile } = await supabase.from('profiles').select(creditCol).eq('id', user.id).single();
+      if (!profile) throw new Error('Profil introuvable.');
+
+      const current = (profile as Record<string, number>)[creditCol] || 0;
+      const toAdd = promoResult.value;
+
+      // Ajouter les crédits
+      const { error: updateError } = await supabase.from('profiles').update({ [creditCol]: current + toAdd }).eq('id', user.id);
+      if (updateError) throw new Error('Impossible d\'ajouter les crédits. Veuillez réessayer.');
+
+      // Enregistrer l'usage du code
+      await supabase.from('promo_uses').insert({ code_id: promoResult.id, user_id: user.id });
+
+      // Incrémenter uses_count
+      await supabase.rpc('increment_promo_uses', { code_id: promoResult.id });
+
+      // Fermer la modale et afficher un toast de succès
+      onClose('credits_applied', toAdd, creditCol === 'credits_document' ? 'simple' : 'complet');
+    } catch (e) { setPayError((e as Error).message); }
+    setPayLoading(false);
+  };
+
   const handlePay = async () => {
+    // Si code de type credits → pas de Stripe, on applique directement
+    if (promoResult?.type === 'credits') { await handleApplyCredits(); return; }
+
     setPayLoading(true); setPayError('');
     try {
       const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
@@ -130,11 +171,21 @@ function CheckoutModal({ plan, onClose }: {
             {promoError && <div style={{ fontSize: 12, color: '#dc2626', marginTop: 6, display: 'flex', alignItems: 'center', gap: 5 }}><AlertTriangle size={12} /> {promoError}</div>}
           </div>
           <button onClick={handlePay} disabled={payLoading}
-            style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg, ${plan.color}, ${plan.color}cc)`, color: '#fff', fontSize: 15, fontWeight: 800, cursor: payLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: `0 6px 20px ${plan.color}40`, opacity: payLoading ? 0.75 : 1 }}>
-            {payLoading ? <><div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.35)', borderTopColor: '#fff', animation: 'spin 0.8s linear infinite' }} /> Redirection…</> : <><Lock size={15} /> Continuer vers le paiement</>}
+            style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: promoResult?.type === 'credits' ? 'linear-gradient(135deg, #7c3aed, #6d28d9)' : `linear-gradient(135deg, ${plan.color}, ${plan.color}cc)`, color: '#fff', fontSize: 15, fontWeight: 800, cursor: payLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: promoResult?.type === 'credits' ? '0 6px 20px rgba(124,58,237,0.35)' : `0 6px 20px ${plan.color}40`, opacity: payLoading ? 0.75 : 1 }}>
+            {payLoading
+              ? <><div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.35)', borderTopColor: '#fff', animation: 'spin 0.8s linear infinite' }} /> {promoResult?.type === 'credits' ? 'Application en cours…' : 'Redirection…'}</>
+              : promoResult?.type === 'credits'
+                ? <><CheckCircle size={15} /> Recevoir mes {promoResult.value} crédit{promoResult.value > 1 ? 's' : ''} gratuitement</>
+                : <><Lock size={15} /> Continuer vers le paiement</>
+            }
           </button>
+          {promoResult?.type === 'credits' && !payLoading && (
+            <div style={{ textAlign: 'center', fontSize: 11, color: '#7c3aed', marginTop: -8, fontWeight: 600 }}>
+              ✨ Aucun paiement requis — crédits ajoutés instantanément
+            </div>
+          )}
+          {promoResult?.type !== 'credits' && <div style={{ textAlign: 'center', fontSize: 11, color: '#94a3b8', marginTop: -8 }}>🔒 Paiement sécurisé par Stripe — vos données sont chiffrées</div>}
           {payError && <div style={{ fontSize: 12, color: '#dc2626', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><AlertTriangle size={12} /> {payError}</div>}
-          <div style={{ textAlign: 'center', fontSize: 11, color: '#94a3b8', marginTop: -8 }}>🔒 Paiement sécurisé par Stripe — vos données sont chiffrées</div>
         </div>
       </div>
     </div>
@@ -142,7 +193,8 @@ function CheckoutModal({ plan, onClose }: {
 }
 
 export default function Tarifs() {
-  const { credits } = useCredits();
+  const [creditsToast, setCreditsToast] = useState<string | null>(null);
+  const { credits, fetchCredits } = useCredits();
   const [tooltip, setTooltip] = useState<string | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<null | { id: string; label: string; price: string; priceNum: number; color: string; creditLabel: string }>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
@@ -167,6 +219,19 @@ export default function Tarifs() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28, maxWidth: 740, margin: '0 auto' }}>
+      {creditsToast && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div style={{ background: 'linear-gradient(135deg, #4c1d95, #7c3aed)', borderRadius: 20, padding: '28px 24px', maxWidth: 420, width: '100%', boxShadow: '0 24px 80px rgba(0,0,0,0.4)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+              <span style={{ fontSize: 32 }}>✨</span>
+              <button onClick={() => setCreditsToast(null)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', flexShrink: 0 }}><X size={14} /></button>
+            </div>
+            <div style={{ fontSize: 15, color: '#fff', lineHeight: 1.7, fontWeight: 500 }}>{creditsToast}</div>
+            <button onClick={() => setCreditsToast(null)} style={{ width: '100%', padding: '12px', borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.15)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Parfait !</button>
+          </div>
+        </div>
+      )}
+
       {successToast && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ background: '#0f2d3d', borderRadius: 20, padding: '28px 24px', maxWidth: 420, width: '100%', boxShadow: '0 24px 80px rgba(0,0,0,0.4)', display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -272,7 +337,13 @@ export default function Tarifs() {
         ))}
       </div>
 
-      {checkoutPlan && <CheckoutModal plan={checkoutPlan} onClose={() => setCheckoutPlan(null)} />}
+      {checkoutPlan && <CheckoutModal plan={checkoutPlan} onClose={(type, count, creditType) => {
+        setCheckoutPlan(null);
+        if (type === 'credits_applied' && count) {
+          fetchCredits();
+          setCreditsToast(`🎉 ${count} crédit${count > 1 ? 's' : ''} ${creditType} ajouté${count > 1 ? 's' : ''} à votre compte ! Vous pouvez les utiliser dès maintenant depuis "Nouvelle analyse".`);
+        }
+      }} />}
     </div>
   );
 }
