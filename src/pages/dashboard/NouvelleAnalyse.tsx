@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, ShieldCheck, Upload, CheckCircle, AlertTriangle, ChevronLeft, Sparkles, ArrowRight, Lock, Download } from 'lucide-react';
 import { lancerAnalyseEdge, type AnalyseProgress } from '../../lib/analyse-client';
-import { createAnalyse, createApercu, updateAnalyseResult, updateApercuResult, markAnalyseFailed, markFreePreviewUsed, checkFreePreviewUsedSync } from '../../lib/analyses';
+import { createAnalyse, createApercu, markAnalyseFailed, markFreePreviewUsed, checkFreePreviewUsedSync } from '../../lib/analyses';
+import { supabase } from '../../lib/supabase';
 import { useCredits, type Credits } from '../../hooks/useCredits';
 
 // ─── Constantes ───────────────────────────────────────────────
