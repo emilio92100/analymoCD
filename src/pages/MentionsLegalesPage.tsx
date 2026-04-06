@@ -65,9 +65,19 @@ Conformément au Règlement Général sur la Protection des Données (RGPD) et �
           },
           {
             title: '6. Cookies',
-            content: `Le site verimo.fr utilise des cookies techniques nécessaires au fonctionnement du service (authentification, session). Ces cookies ne collectent pas de données à des fins publicitaires.
+            content: `Le site verimo.fr utilise uniquement des cookies techniques, strictement nécessaires au bon fonctionnement du service.
 
-En utilisant le site, vous acceptez l'utilisation de ces cookies techniques. Vous pouvez configurer votre navigateur pour refuser les cookies, mais certaines fonctionnalités du site pourraient ne plus fonctionner correctement.`
+Conformément aux recommandations de la CNIL et à la directive européenne ePrivacy (transposée à l'article 82 de la loi Informatique et Libertés), les cookies strictement nécessaires au fonctionnement d'un service numérique sont dispensés de l'obligation de recueil du consentement préalable de l'utilisateur.
+
+À ce titre, Verimo ne vous présente pas de bannière de consentement aux cookies : nous appliquons simplement la loi.
+
+Cookies utilisés par Verimo :
+— Cookie de session (authentification Supabase) : maintient votre connexion sécurisée entre les pages. Strictement nécessaire.
+— Cookie de token d'accès : permet de vous identifier de façon sécurisée sans ressaisir vos identifiants. Strictement nécessaire.
+
+Verimo n'utilise aucun cookie publicitaire, aucun cookie de tracking comportemental, et aucun outil d'analyse de trafic tiers (pas de Google Analytics, pas de pixel publicitaire).
+
+Vous pouvez configurer votre navigateur pour bloquer les cookies, mais le service Verimo ne pourra plus fonctionner correctement (connexion impossible). Pour en savoir plus, consultez notre Politique de confidentialité.`
           },
           {
             title: '7. Droit applicable et juridiction',
