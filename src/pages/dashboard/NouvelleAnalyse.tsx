@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, ShieldCheck, Upload, CheckCircle, AlertTriangle, ChevronLeft, Sparkles, ArrowRight, Lock, Download } from 'lucide-react';
 import { lancerAnalyseEdge, type AnalyseProgress } from '../../lib/analyse-client';
@@ -72,6 +72,8 @@ export default function NouvelleAnalyse() {
   const [error, setError] = useState('');
   const [isAnalysing, setIsAnalysing] = useState(false);
   const [profil, setProfil] = useState<'rp' | 'invest' | null>(null);
+  const [animatedProgress, setAnimatedProgress] = useState(0);
+  const animRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const plans = {
     document: { label: "Analyse d'un document", price: '4,90€', max: 1, desc: "Un seul fichier PDF — PV d'AG, règlement, diagnostic, appel de charges.", creditsKey: 'document' as keyof Credits },
@@ -130,6 +132,22 @@ export default function NouvelleAnalyse() {
       }
     } catch { /* silencieux */ }
   };
+
+  // ─── Animation barre de progression ─────────────────────
+  useEffect(() => {
+    if (step !== 'analyse') { setAnimatedProgress(0); return; }
+    // La barre ne dépasse jamais le vrai progress mais avance toujours doucement
+    if (animRef.current) clearInterval(animRef.current);
+    animRef.current = setInterval(() => {
+      setAnimatedProgress(prev => {
+        const target = progress;
+        const maxFake = Math.min(target + 2, 98); // avance max 2% au-delà du réel
+        if (prev >= maxFake) return prev;
+        return prev + 0.3;
+      });
+    }, 120);
+    return () => { if (animRef.current) clearInterval(animRef.current); };
+  }, [step, progress]);
 
   // ─── Callback progression Edge Function ───────────────────
   const handleProgress = (p: AnalyseProgress) => {
@@ -268,7 +286,7 @@ export default function NouvelleAnalyse() {
 
   /* ── PROFIL */
   if (step === 'profil' && type) return (
-    <div style={{ maxWidth: 520, margin: '0 auto' }}>
+    <div style={{ maxWidth: 600 }}>
       <button onClick={() => { setStep('choice'); setProfil(null); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
       <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 8 }}>Ce bien, c'est pour vous ?</h1>
       <p style={{ fontSize: 14, color: '#64748b', marginBottom: 32, lineHeight: 1.6 }}>Votre profil d'achat influence la notation du bien — notamment sur le DPE et les charges.</p>
@@ -306,15 +324,40 @@ export default function NouvelleAnalyse() {
 
   /* ── UPLOAD */
   if (step === 'upload' && plan) return (
-    <div style={{ maxWidth: 640, margin: '0 auto' }}>
+    <div>
       <button onClick={() => { setStep('profil'); resetUpload(); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24, padding: '16px 18px', background: '#fff', borderRadius: 14, border: '1px solid #edf2f7' }}>
         <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           {type === 'complete' ? <ShieldCheck size={19} style={{ color: '#2a7d9c' }} /> : <FileText size={19} style={{ color: '#2a7d9c' }} />}
         </div>
         <div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>{plan.label}</div><div style={{ fontSize: 12, color: '#94a3b8' }}>{plan.desc}</div></div>
-        <span style={{ fontSize: 16, fontWeight: 900, color: '#2a7d9c', flexShrink: 0 }}>{plan.price}</span>
+
       </div>
+
+      {/* Fichiers uploadés — en haut, bien visibles */}
+      {files.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            {files.length} fichier{files.length > 1 ? 's' : ''} sélectionné{files.length > 1 ? 's' : ''}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {files.map((f, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 12, background: '#f0f9ff', border: '2px solid #bae6fd', boxShadow: '0 2px 8px rgba(42,125,156,0.08)' }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fff', border: '1px solid #bae6fd', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <FileText size={18} color="#2a7d9c" />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</div>
+                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{(f.size / 1024 / 1024).toFixed(2)} Mo · PDF</div>
+                </div>
+                <CheckCircle size={16} color="#16a34a" style={{ flexShrink: 0 }} />
+                <button onClick={() => setFiles(prev => prev.filter((_, idx) => idx !== i))}
+                  style={{ width: 28, height: 28, borderRadius: 8, background: '#fee2e2', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', flexShrink: 0, fontSize: 16, fontWeight: 700 }}>×</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Erreur bloquante */}
       {error && (
@@ -349,24 +392,11 @@ export default function NouvelleAnalyse() {
       {/* Formats acceptés */}
       <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16, padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #f1f5f9' }}>
         ✅ <strong>Formats acceptés :</strong> PDF natif ou scanné<br />
-        ❌ <strong>Non supportés :</strong> Word (.doc/.docx), images (JPG/PNG) — convertissez-les en PDF d'abord<br />
+        ❌ <strong>Non supportés :</strong> Word (.doc/.docx) — convertissez-les en PDF d'abord<br />
         🔒 Les PDF protégés par mot de passe doivent être déverrouillés avant l'upload
       </div>
 
-      {/* Liste fichiers */}
-      {files.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
-          {files.map((f, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, background: '#fff', border: '1px solid #edf2f7' }}>
-              <FileText size={14} color="#2a7d9c" style={{ flexShrink: 0 }} />
-              <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
-              <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{(f.size / 1024 / 1024).toFixed(1)} Mo</span>
-              <CheckCircle size={13} color="#16a34a" style={{ flexShrink: 0 }} />
-              <button onClick={() => setFiles(prev => prev.filter((_, idx) => idx !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 18, lineHeight: 1, flexShrink: 0 }}>×</button>
-            </div>
-          ))}
-        </div>
-      )}
+
 
       {!freePreviewUsed && (
         <div style={{ padding: '12px 16px', borderRadius: 12, background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
@@ -382,46 +412,123 @@ export default function NouvelleAnalyse() {
     </div>
   );
 
-  /* ── LOADING */
-  if (step === 'analyse') return (
-    <div style={{ maxWidth: 480, margin: '80px auto 0', textAlign: 'center' }}>
-      <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg, rgba(42,125,156,0.1), rgba(15,45,61,0.07))', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', animation: 'float 3s ease-in-out infinite' }}>
-        <Sparkles size={32} style={{ color: '#2a7d9c' }} />
-      </div>
-      <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Traitement en cours…</h2>
-      <p style={{ fontSize: 14, color: '#64748b', marginBottom: 32 }}>{progressMsg}</p>
-      {fileWarnings.length > 0 && (
-        <div style={{ padding: '12px 16px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fde68a', marginBottom: 24, textAlign: 'left' }}>
-          {fileWarnings.map((w, i) => (
-            <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: i < fileWarnings.length - 1 ? 8 : 0 }}>
-              <AlertTriangle size={13} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
-              <span style={{ fontSize: 12, color: '#92400e', lineHeight: 1.5 }}>{w}</span>
-            </div>
-          ))}
+  /* ── LOADING PREMIUM */
+  if (step === 'analyse') {
+    const pct = Math.round(animatedProgress);
+    const etapes = [
+      { min: 0,  max: 15, label: 'Réception des documents', icon: '📥', detail: 'Vos fichiers sont en cours de transfert sécurisé…' },
+      { min: 15, max: 35, label: 'Lecture des documents', icon: '📖', detail: progressDoc.total > 1 ? `Document ${progressDoc.current + 1} sur ${progressDoc.total} en cours de lecture…` : 'Lecture et extraction du contenu…' },
+      { min: 35, max: 60, label: 'Analyse du contenu', icon: '🔍', detail: 'Identification des informations clés, travaux, procédures…' },
+      { min: 60, max: 80, label: 'Extraction des données', icon: '⚡', detail: 'Structuration des résultats et calcul des indicateurs…' },
+      { min: 80, max: 95, label: 'Génération du rapport', icon: '📊', detail: 'Rédaction de votre rapport personnalisé Verimo…' },
+      { min: 95, max: 100, label: 'Finalisation', icon: '✅', detail: 'Votre rapport est presque prêt…' },
+    ];
+    const etapeActive = etapes.find(e => pct >= e.min && pct < e.max) || etapes[etapes.length - 1];
+    const etapeIndex = etapes.indexOf(etapeActive);
+
+    return (
+      <div style={{ maxWidth: 580, margin: '0 auto', padding: '40px 0' }}>
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: 40 }}>
+          <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg, #e0f2fe, #f0f9ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: 32, boxShadow: '0 8px 32px rgba(42,125,156,0.15)', animation: 'float 3s ease-in-out infinite' }}>
+            {etapeActive.icon}
+          </div>
+          <h2 style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', marginBottom: 8, letterSpacing: '-0.025em' }}>
+            {etapeActive.label}…
+          </h2>
+          <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6 }}>{etapeActive.detail}</p>
         </div>
-      )}
-      {progressDoc.total > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-          {Array.from({ length: progressDoc.total }).map((_, i) => (
-            <div key={i} style={{
-              width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, fontWeight: 700,
-              background: i < progressDoc.current ? '#f0fdf4' : i === progressDoc.current ? 'rgba(42,125,156,0.12)' : '#f8fafc',
-              border: `1.5px solid ${i < progressDoc.current ? '#86efac' : i === progressDoc.current ? '#2a7d9c' : '#e2e8f0'}`,
-              color: i < progressDoc.current ? '#16a34a' : i === progressDoc.current ? '#2a7d9c' : '#94a3b8',
-              transition: 'all 0.3s',
-            }}>
-              {i < progressDoc.current ? '✓' : i + 1}
-            </div>
-          ))}
+
+        {/* Barre de progression principale */}
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#2a7d9c' }}>Progression</span>
+            <span style={{ fontSize: 18, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em' }}>{pct}<span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 600 }}>%</span></span>
+          </div>
+          <div style={{ height: 12, borderRadius: 99, background: '#e2e8f0', overflow: 'hidden', position: 'relative' }}>
+            <div style={{
+              position: 'absolute', inset: 0, borderRadius: 99,
+              background: 'linear-gradient(90deg, #2a7d9c, #1a5068)',
+              width: `${animatedProgress}%`,
+              transition: 'width 0.15s linear',
+            }} />
+            {/* Effet shimmer */}
+            <div style={{
+              position: 'absolute', top: 0, left: `${animatedProgress - 8}%`, width: '8%', height: '100%',
+              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
+              animation: 'shimmer 1.5s ease-in-out infinite',
+            }} />
+          </div>
         </div>
-      )}
-      <div style={{ height: 8, borderRadius: 99, background: '#edf2f7', overflow: 'hidden', marginBottom: 8 }}>
-        <div style={{ height: '100%', borderRadius: 99, background: 'linear-gradient(90deg, #2a7d9c, #0f2d3d)', width: `${progress}%`, transition: 'width 0.4s ease' }} />
+
+        {/* Étapes */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 32 }}>
+          {etapes.map((e, i) => {
+            const done = i < etapeIndex;
+            const active = i === etapeIndex;
+            return (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 12,
+                background: active ? '#f0f9ff' : done ? '#f0fdf4' : '#f8fafc',
+                border: `1.5px solid ${active ? '#bae6fd' : done ? '#bbf7d0' : '#f1f5f9'}`,
+                transition: 'all 0.3s',
+              }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 13,
+                  background: active ? '#2a7d9c' : done ? '#16a34a' : '#e2e8f0',
+                  color: active || done ? '#fff' : '#94a3b8',
+                  fontWeight: 700,
+                }}>
+                  {done ? '✓' : active ? <div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.5)', borderTopColor: '#fff', animation: 'spin 0.8s linear infinite' }} /> : i + 1}
+                </div>
+                <span style={{ fontSize: 13, fontWeight: active ? 700 : done ? 600 : 400, color: active ? '#0f172a' : done ? '#16a34a' : '#94a3b8' }}>
+                  {e.label}
+                </span>
+                {done && <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#16a34a' }}>Terminé</span>}
+                {active && <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#2a7d9c' }}>En cours…</span>}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Indicateur documents si multiple */}
+        {progressDoc.total > 1 && (
+          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '16px 20px' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Documents ({progressDoc.current}/{progressDoc.total})
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {Array.from({ length: progressDoc.total }).map((_, i) => (
+                <div key={i} style={{
+                  width: 36, height: 36, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 700,
+                  background: i < progressDoc.current ? '#f0fdf4' : i === progressDoc.current ? 'rgba(42,125,156,0.1)' : '#f8fafc',
+                  border: `1.5px solid ${i < progressDoc.current ? '#86efac' : i === progressDoc.current ? '#2a7d9c' : '#e2e8f0'}`,
+                  color: i < progressDoc.current ? '#16a34a' : i === progressDoc.current ? '#2a7d9c' : '#94a3b8',
+                  transition: 'all 0.3s',
+                  boxShadow: i === progressDoc.current ? '0 0 0 3px rgba(42,125,156,0.15)' : 'none',
+                }}>
+                  {i < progressDoc.current ? '✓' : i + 1}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Message rassurant */}
+        <p style={{ textAlign: 'center', fontSize: 12, color: '#cbd5e1', marginTop: 24, lineHeight: 1.6 }}>
+          Vous pouvez fermer cette page — votre analyse continuera en arrière-plan.<br />
+          Retrouvez-la dans <strong style={{ color: '#94a3b8' }}>Mes analyses</strong> dès qu'elle sera prête.
+        </p>
+
+        <style>{`
+          @keyframes shimmer { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
+          @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+          @keyframes spin { to { transform: rotate(360deg); } }
+        `}</style>
       </div>
-      <div style={{ fontSize: 13, color: '#94a3b8', fontWeight: 600 }}>{progress}%</div>
-    </div>
-  );
+    );
+  }
 
   /* ── RESULT */
   if (step === 'result' && result) {
