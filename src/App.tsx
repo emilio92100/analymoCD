@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { useEffect, lazy, Suspense } from 'react';
+import React, { useEffect, lazy, Suspense, Component } from 'react';
+import type { ReactNode, ErrorInfo } from 'react';
 import { supabase } from './lib/supabase';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
@@ -23,6 +24,123 @@ const ConfidentialitePage = lazy(() => import('./pages/ConfidentialitePage'));
 const CGUPage = lazy(() => import('./pages/CGUPage'));
 const MentionsLegalesPage = lazy(() => import('./pages/MentionsLegalesPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
+
+// ─── Écran de chargement premium ─────────────────────────────
+function LoadingScreen() {
+  const [seconds, setSeconds] = React.useState(0);
+  const [autoRetried, setAutoRetried] = React.useState(false);
+  const [showButton, setShowButton] = React.useState(false);
+  const [showHome, setShowHome] = React.useState(false);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSeconds(s => {
+        const next = s + 1;
+        // Après 8s : rechargement automatique silencieux (1 fois)
+        if (next === 8 && !autoRetried) {
+          setAutoRetried(true);
+          window.location.reload();
+        }
+        // Après 12s : afficher bouton rafraîchir
+        if (next >= 12) setShowButton(true);
+        // Après 20s : afficher bouton retour accueil
+        if (next >= 20) setShowHome(true);
+        return next;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [autoRetried]);
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      {/* Logo */}
+      <div style={{ marginBottom: 32 }}>
+        <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+          <rect width="44" height="44" rx="12" fill="#2a7d9c"/>
+          <path d="M22 10L34 18V26L22 34L10 26V18L22 10Z" fill="white" fillOpacity="0.9"/>
+          <path d="M22 16L29 20.5V29.5L22 34L15 29.5V20.5L22 16Z" fill="#2a7d9c"/>
+          <text x="22" y="27" textAnchor="middle" fontSize="10" fontWeight="800" fill="white">V</text>
+        </svg>
+      </div>
+
+      {/* Spinner */}
+      <div style={{ position: 'relative', width: 56, height: 56, marginBottom: 28 }}>
+        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '3px solid #e2e8f0' }} />
+        <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '3px solid transparent', borderTopColor: '#2a7d9c', animation: 'spin 0.8s linear infinite' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+
+      <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Chargement en cours…</h2>
+      <p style={{ fontSize: 14, color: '#94a3b8', marginBottom: 32, textAlign: 'center', maxWidth: 280, lineHeight: 1.6 }}>
+        {seconds < 8 ? 'Préparation de votre espace Verimo…' : 'Cela prend un peu plus de temps que prévu…'}
+      </p>
+
+      {/* Bouton rafraîchir */}
+      {showButton && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, animation: 'fadeIn 0.3s ease' }}>
+          <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+          <button onClick={() => window.location.reload()}
+            style={{ padding: '12px 28px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(42,125,156,0.25)' }}>
+            Rafraîchir la page
+          </button>
+          {showHome && (
+            <a href="/"
+              style={{ padding: '10px 24px', borderRadius: 12, border: '1.5px solid #e2e8f0', background: '#fff', color: '#64748b', fontSize: 13, fontWeight: 600, cursor: 'pointer', textDecoration: 'none', textAlign: 'center' }}>
+              Revenir à l'accueil
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Error Boundary — capture les erreurs silencieuses ────────
+interface EBState { hasError: boolean; retried: boolean; }
+class ErrorBoundary extends Component<{ children: ReactNode }, EBState> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, retried: false };
+  }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('Verimo Error Boundary:', error, info);
+  }
+  handleRetry = () => {
+    if (!this.state.retried) {
+      this.setState({ hasError: false, retried: true });
+      window.location.reload();
+    } else {
+      this.setState({ hasError: false });
+    }
+  };
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+          <div style={{ fontSize: 52, marginBottom: 20 }}>⚠️</div>
+          <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 8, textAlign: 'center' }}>Une erreur est survenue</h2>
+          <p style={{ fontSize: 14, color: '#64748b', marginBottom: 32, textAlign: 'center', maxWidth: 320, lineHeight: 1.6 }}>
+            {this.state.retried
+              ? "Le problème persiste. Revenez à l'accueil pour repartir de zéro."
+              : "Ne vous inquiétez pas, vos données sont intactes. Essayez de rafraîchir la page."}
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            <button onClick={this.handleRetry}
+              style={{ padding: '12px 28px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(42,125,156,0.25)' }}>
+              {this.state.retried ? 'Réessayer' : 'Rafraîchir la page'}
+            </button>
+            <a href="/"
+              style={{ padding: '10px 24px', borderRadius: 12, border: '1.5px solid #e2e8f0', background: '#fff', color: '#64748b', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+              Revenir à l'accueil
+            </a>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -79,7 +197,8 @@ export default function App() {
     <BrowserRouter>
       <SessionManager />
       <ScrollToTop />
-      <Suspense fallback={<div style={{ minHeight: '100vh', background: '#f8fafc' }} />}>
+      <ErrorBoundary>
+      <Suspense fallback={<LoadingScreen />}>
         <Routes>
           <Route path="/" element={<PublicLayout><HomePage /></PublicLayout>} />
           <Route path="/tarifs" element={<PublicLayout><TarifsPage /></PublicLayout>} />
@@ -116,6 +235,7 @@ export default function App() {
           } />
         </Routes>
       </Suspense>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }
