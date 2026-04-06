@@ -430,6 +430,14 @@ export default function NouvelleAnalyse() {
 
     return (
       <div style={{ maxWidth: 580, margin: '0 auto', padding: '40px 0' }}>
+        {/* Message Ne quittez pas — en haut */}
+        <div style={{ marginBottom: 24, padding: '12px 16px', borderRadius: 12, background: '#fffbeb', border: '1px solid #fde68a', textAlign: 'center' }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 2 }}>⚠ Ne quittez pas cette page</p>
+          <p style={{ fontSize: 12, color: '#b45309', lineHeight: 1.5, margin: 0 }}>
+            Si vous quittez, retrouvez votre analyse dans <strong>Mes analyses</strong> — elle continuera en arrière-plan.
+          </p>
+        </div>
+
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
           <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg, #e0f2fe, #f0f9ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: 32, boxShadow: '0 8px 32px rgba(42,125,156,0.15)', animation: 'float 3s ease-in-out infinite' }}>
@@ -526,14 +534,7 @@ export default function NouvelleAnalyse() {
           </div>
         )}
         {/* Message rassurant */}
-        <div style={{ marginTop: 24, padding: '14px 18px', borderRadius: 12, background: '#fffbeb', border: '1px solid #fde68a', textAlign: 'center' }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 4 }}>
-            ⚠ Ne quittez pas cette page
-          </p>
-          <p style={{ fontSize: 12, color: '#b45309', lineHeight: 1.6, margin: 0 }}>
-            Si vous quittez, retrouvez votre analyse dans <strong>Mes analyses</strong> — elle continuera en arrière-plan et le résultat sera disponible dès qu'elle sera prête.
-          </p>
-        </div>
+
 
         <style>{`
           @keyframes shimmer { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
