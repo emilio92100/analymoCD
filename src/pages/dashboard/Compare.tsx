@@ -58,7 +58,7 @@ export default function Compare() {
   const canCompare = selected.length >= 2;
 
   if (completedAnalyses.length === 0) return (
-    <div style={{ maxWidth: 600, margin: '0 auto' }}>
+    <div>
       <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 24 }}>Comparer mes biens</h1>
       <div style={{ background: '#fff', borderRadius: 20, border: '1.5px solid #edf2f7', padding: '52px 32px', textAlign: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
         <div style={{ width: 72, height: 72, borderRadius: 20, background: 'rgba(42,125,156,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}><GitCompare size={30} style={{ color: '#94a3b8' }} /></div>
@@ -68,9 +68,7 @@ export default function Compare() {
           <Link to="/dashboard/nouvelle-analyse?type=complete" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '13px 24px', borderRadius: 12, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 16px rgba(15,45,61,0.2)' }}>
             <ShieldCheck size={16} /> Lancer une analyse complète
           </Link>
-          <Link to="/tarifs" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 24px', borderRadius: 12, background: '#f4f7f9', border: '1.5px solid #edf2f7', color: '#64748b', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-            Voir les packs (Pack 2 et 3 biens)
-          </Link>
+
         </div>
       </div>
     </div>
