@@ -57,7 +57,7 @@ async function isPdfPasswordProtected(file: File): Promise<boolean> {
 
 export default function NouvelleAnalyse() {
   const { credits, deductCredit } = useCredits();
-  const [step, setStep] = useState<'choice' | 'upload' | 'analyse' | 'apercu' | 'result'>('choice');
+  const [step, setStep] = useState<'choice' | 'profil' | 'upload' | 'analyse' | 'apercu' | 'result'>('choice');
   const [type, setType] = useState<'document' | 'complete' | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [fileWarnings, setFileWarnings] = useState<string[]>([]); // warnings non bloquants
@@ -68,6 +68,8 @@ export default function NouvelleAnalyse() {
   const [apercuId, setApercuId] = useState<string | null>(null);
   const [freePreviewUsed, setFreePreviewUsed] = useState<boolean>(() => checkFreePreviewUsedSync());
   const [error, setError] = useState('');
+  const [isAnalysing, setIsAnalysing] = useState(false);
+  const [profil, setProfil] = useState<'rp' | 'invest' | null>(null);
 
   const plans = {
     document: { label: "Analyse d'un document", price: '4,90€', max: 1, desc: "Un seul fichier PDF — PV d'AG, règlement, diagnostic, appel de charges.", creditsKey: 'document' as keyof Credits },
@@ -158,10 +160,12 @@ export default function NouvelleAnalyse() {
 
   // ─── Lancer aperçu gratuit ────────────────────────────────
   const lancerApercu = async () => {
+    if (isAnalysing) return;
+    setIsAnalysing(true);
     if (!files.length || !type) return;
     setStep('analyse'); setError(''); setFileWarnings([]); setProgress(5); setProgressMsg('Lecture des documents…');
     const docNames = files.map(f => f.name);
-    const analyseDB = await createApercu(type, files[0].name, 'rp', docNames);
+    const analyseDB = await createApercu(type, files[0].name, profil || 'rp', docNames);
     const analyseId = analyseDB?.id || null;
     try {
       const textes: string[] = [];
@@ -195,23 +199,27 @@ export default function NouvelleAnalyse() {
       setProgress(100); setProgressMsg('Aperçu prêt !');
       await new Promise(r => setTimeout(r, 400));
       setApercu(parsed); setApercuId(analyseId); setStep('apercu');
+      setIsAnalysing(false);
     } catch {
       if (analyseId) await markAnalyseFailed(analyseId);
       setError("Une erreur est survenue pendant l'analyse. Vos fichiers n'ont pas été débités. Veuillez réessayer.");
       setStep('upload');
       resetUpload();
+      setIsAnalysing(false);
     }
   };
 
   // ─── Lancer analyse payante ───────────────────────────────
   const lancer = async () => {
     if (!files.length || !type) return;
+    if (isAnalysing) return;
+    setIsAnalysing(true);
     const creditType = type === 'document' ? 'document' : 'complete';
     const ok = await deductCredit(creditType);
     if (!ok) { setError("Vous n'avez plus de crédit disponible. Veuillez recharger votre compte."); return; }
     setStep('analyse'); setError(''); setFileWarnings([]); setProgress(5); setProgressMsg('Lecture des documents…');
     const docNames = files.map(f => f.name);
-    const analyseDB = await createAnalyse(type, files[0].name, 'rp', docNames);
+    const analyseDB = await createAnalyse(type, files[0].name, profil || 'rp', docNames);
     const analyseId = analyseDB?.id || null;
     try {
       const textes: string[] = [];
@@ -230,7 +238,7 @@ export default function NouvelleAnalyse() {
       setProgress(70); setProgressMsg('Génération du rapport…');
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1500, system: systemPrompt, messages: [{ role: 'user', content: `Documents à analyser :\n\n${textes.join('\n\n').slice(0, 8000)}` }] })
+        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, system: systemPrompt, messages: [{ role: 'user', content: `Documents à analyser :\n\n${textes.join('\n\n').slice(0, 8000)}` }] })
       });
       setProgress(88); setProgressMsg('Finalisation…');
       const d = await res.json();
@@ -252,6 +260,7 @@ export default function NouvelleAnalyse() {
       setError("Une erreur est survenue pendant l'analyse. Votre crédit a été remboursé automatiquement. Veuillez réessayer.");
       setStep('upload');
       resetUpload();
+      setIsAnalysing(false);
     }
   };
 
@@ -272,7 +281,7 @@ export default function NouvelleAnalyse() {
         </div>
       )}
       <div className="type-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        <button onClick={() => { setType('document'); setStep('upload'); }}
+        <button onClick={() => { setType('document'); setStep('profil'); }}
           style={{ padding: '28px 24px', borderRadius: 20, border: '1.5px solid #edf2f7', background: '#fff', cursor: 'pointer', textAlign: 'left', transition: 'all 0.18s', position: 'relative', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
           onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.boxShadow = '0 8px 28px rgba(42,125,156,0.1)'; el.style.transform = 'translateY(-2px)'; }}
           onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'; el.style.transform = 'translateY(0)'; }}>
@@ -291,7 +300,7 @@ export default function NouvelleAnalyse() {
             {freePreviewUsed && <span style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>4,90€</span>}
           </div>
         </button>
-        <button onClick={() => { setType('complete'); setStep('upload'); }}
+        <button onClick={() => { setType('complete'); setStep('profil'); }}
           style={{ padding: '28px 24px', borderRadius: 20, border: '1.5px solid transparent', background: 'linear-gradient(145deg, #0f2d3d, #1a5068)', cursor: 'pointer', textAlign: 'left', transition: 'all 0.18s', position: 'relative', overflow: 'hidden', boxShadow: '0 4px 20px rgba(15,45,61,0.15)' }}
           onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.boxShadow = '0 12px 40px rgba(15,45,61,0.28)'; el.style.transform = 'translateY(-2px)'; }}
           onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.boxShadow = '0 4px 20px rgba(15,45,61,0.15)'; el.style.transform = 'translateY(0)'; }}>
@@ -316,10 +325,49 @@ export default function NouvelleAnalyse() {
     </div>
   );
 
+
+  /* ── PROFIL */
+  if (step === 'profil' && type) return (
+    <div style={{ maxWidth: 520, margin: '0 auto' }}>
+      <button onClick={() => { setStep('choice'); setProfil(null); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
+      <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 8 }}>Ce bien, c'est pour vous ?</h1>
+      <p style={{ fontSize: 14, color: '#64748b', marginBottom: 32, lineHeight: 1.6 }}>Votre profil d'achat influence la notation du bien — notamment sur le DPE et les charges.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <button onClick={() => { setProfil('rp'); setStep('upload'); }}
+          style={{ padding: '24px 28px', borderRadius: 18, border: '2px solid #edf2f7', background: '#fff', cursor: 'pointer', textAlign: 'left', transition: 'all 0.18s', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+          onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.boxShadow = '0 8px 28px rgba(42,125,156,0.1)'; el.style.transform = 'translateY(-2px)'; }}
+          onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'; el.style.transform = 'translateY(0)'; }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 24 }}>🏠</div>
+            <div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Résidence principale</div>
+              <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>Vous allez y vivre — confort, charges et DPE comptent davantage.</div>
+            </div>
+            <ArrowRight size={18} style={{ color: '#2a7d9c', marginLeft: 'auto', flexShrink: 0 }} />
+          </div>
+        </button>
+        <button onClick={() => { setProfil('invest'); setStep('upload'); }}
+          style={{ padding: '24px 28px', borderRadius: 18, border: '2px solid #edf2f7', background: '#fff', cursor: 'pointer', textAlign: 'left', transition: 'all 0.18s', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+          onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#f0a500'; el.style.boxShadow = '0 8px 28px rgba(240,165,0,0.12)'; el.style.transform = 'translateY(-2px)'; }}
+          onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'; el.style.transform = 'translateY(0)'; }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(240,165,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 24 }}>📈</div>
+            <div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Investissement locatif</div>
+              <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>Vous cherchez un rendement — rentabilité et risques locatifs sont prioritaires.</div>
+            </div>
+            <ArrowRight size={18} style={{ color: '#f0a500', marginLeft: 'auto', flexShrink: 0 }} />
+          </div>
+        </button>
+      </div>
+      <p style={{ fontSize: 11, color: '#cbd5e1', marginTop: 20, textAlign: 'center' }}>Ce choix influence uniquement la notation — votre analyse reste complète dans tous les cas.</p>
+    </div>
+  );
+
   /* ── UPLOAD */
   if (step === 'upload' && plan) return (
     <div style={{ maxWidth: 640, margin: '0 auto' }}>
-      <button onClick={() => { setStep('choice'); resetUpload(); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
+      <button onClick={() => { setStep('profil'); resetUpload(); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24, padding: '16px 18px', background: '#fff', borderRadius: 14, border: '1px solid #edf2f7' }}>
         <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           {type === 'complete' ? <ShieldCheck size={19} style={{ color: '#2a7d9c' }} /> : <FileText size={19} style={{ color: '#2a7d9c' }} />}
@@ -387,7 +435,7 @@ export default function NouvelleAnalyse() {
         </div>
       )}
 
-      <button onClick={!freePreviewUsed ? lancerApercu : lancer} disabled={files.length === 0}
+      <button onClick={!freePreviewUsed ? lancerApercu : lancer} disabled={files.length === 0 || isAnalysing}
         style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: files.length > 0 ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#e2e8f0', color: files.length > 0 ? '#fff' : '#94a3b8', fontSize: 15, fontWeight: 800, cursor: files.length > 0 ? 'pointer' : 'default', boxShadow: files.length > 0 ? '0 4px 18px rgba(15,45,61,0.2)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.15s' }}>
         <Sparkles size={16} /> {!freePreviewUsed ? 'Générer mon aperçu gratuit' : 'Analyser'} {files.length > 0 ? `(${files.length} fichier${files.length > 1 ? 's' : ''})` : ''}
       </button>
