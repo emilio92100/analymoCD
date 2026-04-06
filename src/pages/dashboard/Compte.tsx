@@ -9,12 +9,37 @@ export default function Compte() {
   const [pwdMsg, setPwdMsg] = useState('');
   const [pwdError, setPwdError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [payments, setPayments] = useState<{ id: string; description: string; amount: number; source: string; created_at: string }[]>([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(true);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user: u } }) => {
       if (u) setUser({ name: u.user_metadata?.full_name || '', email: u.email || '' });
     });
+    loadPayments();
   }, []);
+
+  const loadPayments = async () => {
+    setPaymentsLoading(true);
+    const { data: { user: u } } = await supabase.auth.getUser();
+    if (!u) { setPaymentsLoading(false); return; }
+    const { data } = await supabase
+      .from('payments')
+      .select('id, description, amount, credit_type, promo_code, created_at')
+      .eq('user_id', u.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    if (data) {
+      setPayments(data.map(p => ({
+        id: p.id,
+        description: p.description || 'Achat',
+        amount: p.amount,
+        source: p.promo_code && p.amount === 0 ? 'Code promo' : 'Paiement sécurisé Stripe',
+        created_at: new Date(p.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
+      })));
+    }
+    setPaymentsLoading(false);
+  };
 
   const save = async () => {
     const { data: { user: u } } = await supabase.auth.getUser();
@@ -32,11 +57,6 @@ export default function Compte() {
     if (error) { setPwdError('Erreur : ' + error.message); }
     else { setPwdMsg('Mot de passe modifié avec succès !'); setPwd({ current: '', next: '', confirm: '' }); setTimeout(() => { setPwdMsg(''); setPwdSection(false); }, 3000); }
   };
-
-  const mockAchats = [
-    { date: '24 mars 2026', label: 'Analyse Complète', montant: '19,90€', statut: 'Payé' },
-    { date: '19 mars 2026', label: 'Analyse Document', montant: '4,90€', statut: 'Payé' },
-  ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -99,19 +119,30 @@ export default function Compte() {
       <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
         <h2 style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 18, paddingBottom: 13, borderBottom: '1px solid #f0f5f9' }}>Historique des achats</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {mockAchats.map((a, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7', flexWrap: 'wrap', gap: 8 }}>
+          {paymentsLoading ? (
+            <div style={{ textAlign: 'center', padding: '24px', color: '#94a3b8', fontSize: 13 }}>Chargement…</div>
+          ) : payments.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '24px', color: '#94a3b8', fontSize: 13 }}>
+              Aucun achat pour le moment.
+            </div>
+          ) : payments.map(p => (
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7', flexWrap: 'wrap', gap: 8 }}>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{a.label}</div>
-                <div style={{ fontSize: 11, color: '#94a3b8' }}>{a.date}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{p.description}</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3, display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <span>{p.created_at}</span>
+                  <span>·</span>
+                  <span style={{ fontWeight: 600, color: p.source === 'Code promo' ? '#7c3aed' : '#2a7d9c' }}>{p.source}</span>
+                </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>{a.montant}</span>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '2px 8px', borderRadius: 6 }}>{a.statut}</span>
+                <span style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>
+                  {p.amount === 0 ? 'Gratuit' : `${p.amount.toFixed(2).replace('.', ',')}€`}
+                </span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '2px 8px', borderRadius: 6 }}>Confirmé</span>
               </div>
             </div>
           ))}
-          <p style={{ fontSize: 11, color: '#cbd5e1', marginTop: 4 }}>Les factures détaillées seront disponibles après connexion de Stripe.</p>
         </div>
       </div>
 
