@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, FileText, Building2, ExternalLink } from 'lucide-react';
 import { useAnalyses, type Analyse } from '../../hooks/useAnalyses';
@@ -43,7 +43,9 @@ function AnalyseRow({ a }: { a: Analyse }) {
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
         {a.status === 'processing' ? (
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: 'rgba(42,125,156,0.07)', padding: '4px 10px', borderRadius: 7 }}>En cours…</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: 'rgba(42,125,156,0.07)', padding: '4px 10px', borderRadius: 7 }}>
+            {(a as Analyse & { progress_message?: string }).progress_message || 'Analyse en cours…'}
+          </span>
         ) : (
           <>
             {isComplete && a.score != null && <ScoreBadge score={a.score} size="sm" />}
@@ -64,9 +66,21 @@ function AnalyseRow({ a }: { a: Analyse }) {
 }
 
 export default function MesAnalyses() {
-  const { analyses, loading } = useAnalyses();
+  const { analyses, loading, refetch } = useAnalyses();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'complete' | 'document'>('all');
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Polling automatique si une analyse est en cours
+  useEffect(() => {
+    const hasProcessing = analyses.some(a => a.status === 'processing');
+    if (hasProcessing) {
+      pollingRef.current = setInterval(() => { refetch(); }, 4000);
+    } else {
+      if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
+    }
+    return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
+  }, [analyses, refetch]);
 
   const filtered = analyses.filter(a => {
     const matchSearch = (a.adresse_bien || a.nom_document || '').toLowerCase().includes(search.toLowerCase());
