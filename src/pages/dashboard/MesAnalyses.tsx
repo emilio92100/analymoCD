@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, FileText, Building2, ExternalLink } from 'lucide-react';
+import { Plus, Search, FileText, Building2, ExternalLink, Trash2 } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 import { useAnalyses, type Analyse } from '../../hooks/useAnalyses';
 
 function ScoreBadge({ score, size = 'md' }: { score: number; size?: 'sm' | 'md' | 'lg' }) {
@@ -16,7 +17,8 @@ function ScoreBadge({ score, size = 'md' }: { score: number; size?: 'sm' | 'md' 
   );
 }
 
-function AnalyseRow({ a }: { a: Analyse }) {
+function AnalyseRow({ a, onDelete }: { a: Analyse; onDelete: (id: string) => void }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const isComplete = a.type === 'complete';
   const displayTitle = isComplete ? (a.adresse_bien || 'Adresse en cours de détection…') : (a.nom_document || 'Document sans nom');
   const isPreview = a.is_preview ?? false;
@@ -38,14 +40,16 @@ function AnalyseRow({ a }: { a: Analyse }) {
         <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ background: typeBg, borderRadius: 5, padding: '2px 7px', fontSize: 10, fontWeight: 700, color: typeColor }}>{typeLabel}</span>
           <span>·</span><span>{a.date}</span>
-          <span>·</span><span style={{ fontWeight: 700, color: '#64748b' }}>{a.price}</span>
+          {a.status !== 'processing' && <><span>·</span><span style={{ fontWeight: 700, color: '#64748b' }}>{a.price}</span></>}
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
         {a.status === 'processing' ? (
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: 'rgba(42,125,156,0.07)', padding: '4px 10px', borderRadius: 7 }}>
-            {(a as Analyse & { progress_message?: string }).progress_message || 'Analyse en cours…'}
-          </span>
+          <Link to="/dashboard/nouvelle-analyse"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#2a7d9c', background: 'rgba(42,125,156,0.07)', padding: '6px 12px', borderRadius: 8, textDecoration: 'none', border: '1px solid rgba(42,125,156,0.15)', whiteSpace: 'nowrap' }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#2a7d9c', animation: 'pulse 1.5s ease-in-out infinite' }} />
+            Voir la progression
+          </Link>
         ) : (
           <>
             {isComplete && a.score != null && <ScoreBadge score={a.score} size="sm" />}
@@ -60,7 +64,26 @@ function AnalyseRow({ a }: { a: Analyse }) {
             </Link>
           </>
         )}
+        {/* Bouton supprimer */}
+        {!confirmDelete ? (
+          <button onClick={() => setConfirmDelete(true)}
+            style={{ width: 30, height: 30, borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s' }}
+            onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#fee2e2'; }}
+            onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = '#fef2f2'; }}
+            title="Supprimer cette analyse">
+            <Trash2 size={12} color="#dc2626" />
+          </button>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#dc2626' }}>Supprimer ?</span>
+            <button onClick={() => onDelete(a.id)}
+              style={{ padding: '3px 10px', borderRadius: 6, background: '#dc2626', border: 'none', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Oui</button>
+            <button onClick={() => setConfirmDelete(false)}
+              style={{ padding: '3px 8px', borderRadius: 6, background: 'none', border: 'none', color: '#94a3b8', fontSize: 11, cursor: 'pointer' }}>Non</button>
+          </div>
+        )}
       </div>
+      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }`}</style>
     </div>
   );
 }
@@ -69,6 +92,11 @@ export default function MesAnalyses() {
   const { analyses, loading, refetch } = useAnalyses();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'complete' | 'document'>('all');
+
+  const deleteAnalyse = async (id: string) => {
+    await supabase.from('analyses').delete().eq('id', id);
+    refetch();
+  };
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Polling automatique si une analyse est en cours
@@ -119,7 +147,7 @@ export default function MesAnalyses() {
       {loading ? (
         <div style={{ textAlign: 'center', padding: '48px', color: '#94a3b8', fontSize: 14 }}>Chargement de vos analyses…</div>
       ) : filtered.length > 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{filtered.map(a => <AnalyseRow key={a.id} a={a} />)}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{filtered.map(a => <AnalyseRow key={a.id} a={a} onDelete={deleteAnalyse} />)}</div>
       ) : (
         <div style={{ background: '#fff', borderRadius: 18, border: '2px dashed #e2e8f0', padding: '48px 32px', textAlign: 'center' }}>
           <p style={{ fontSize: 14, color: '#94a3b8' }}>Aucune analyse ne correspond à votre recherche.</p>
