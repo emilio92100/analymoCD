@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, ShieldCheck, Upload, CheckCircle, AlertTriangle, ChevronLeft, Sparkles, ArrowRight, Lock, Download } from 'lucide-react';
-import { PROMPT_ANALYSE_COMPLETE, PROMPT_ANALYSE_SIMPLE, PROMPT_APERCU_COMPLET, PROMPT_APERCU_SIMPLE } from '../../lib/prompts';
+import { lancerAnalyseEdge, type AnalyseProgress } from '../../lib/analyse-client';
 import { createAnalyse, createApercu, updateAnalyseResult, updateApercuResult, markAnalyseFailed, markFreePreviewUsed, checkFreePreviewUsedSync } from '../../lib/analyses';
 import { useCredits, type Credits } from '../../hooks/useCredits';
 
@@ -63,6 +63,7 @@ export default function NouvelleAnalyse() {
   const [fileWarnings, setFileWarnings] = useState<string[]>([]); // warnings non bloquants
   const [progress, setProgress] = useState(0);
   const [progressMsg, setProgressMsg] = useState('');
+  const [progressDoc, setProgressDoc] = useState({ current: 0, total: 0 });
   const [result, setResult] = useState<AnalyseResult | null>(null);
   const [apercu, setApercu] = useState<ApercuResult | null>(null);
   const [apercuId, setApercuId] = useState<string | null>(null);
@@ -115,38 +116,9 @@ export default function NouvelleAnalyse() {
   };
 
   // ─── Extraction texte avec warning si vide ────────────────
-  const fileToBase64 = (file: File): Promise<string> =>
-    new Promise((res, rej) => {
-      const r = new FileReader();
-      r.onload = () => res((r.result as string).split(',')[1]);
-      r.onerror = () => rej(new Error('Lecture impossible'));
-      r.readAsDataURL(file);
-    });
-
-  const extractText = async (file: File): Promise<{ text: string; warning?: string }> => {
-    const b64 = await fileToBase64(file);
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514', max_tokens: 4000,
-        messages: [{ role: 'user', content: [
-          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } },
-          { type: 'text', text: 'Extrais tout le texte de ce document immobilier de façon fidèle. Conserve les sections, données chiffrées et informations clés. Si le document est illisible ou de mauvaise qualité, indique-le en commençant ta réponse par "QUALITE_FAIBLE:".' }
-        ]}]
-      })
-    });
-    const d = await res.json();
-    const text = d.content?.find((b: any) => b.type === 'text')?.text || '';
-    if (text.startsWith('QUALITE_FAIBLE:') || text.trim().length < 50) {
-      return { text: text.replace('QUALITE_FAIBLE:', '').trim(), warning: `"${file.name}" semble être un scan de qualité insuffisante. L'analyse pourra être partielle sur ce document.` };
-    }
-    return { text };
-  };
-
   // ─── Remboursement crédit ─────────────────────────────────
   const refundCredit = async (creditType: 'document' | 'complete') => {
     try {
-      const { supabase } = await import('../../lib/supabase');
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const col = creditType === 'document' ? 'credits_document' : 'credits_complete';
@@ -158,55 +130,47 @@ export default function NouvelleAnalyse() {
     } catch { /* silencieux */ }
   };
 
+  // ─── Callback progression Edge Function ───────────────────
+  const handleProgress = (p: AnalyseProgress) => {
+    setProgress(p.percent);
+    setProgressMsg(p.message);
+    if (p.total > 1) setProgressDoc({ current: p.current, total: p.total });
+  };
+
   // ─── Lancer aperçu gratuit ────────────────────────────────
   const lancerApercu = async () => {
     if (isAnalysing) return;
     setIsAnalysing(true);
     if (!files.length || !type) return;
-    setStep('analyse'); setError(''); setFileWarnings([]); setProgress(5); setProgressMsg('Lecture des documents…');
+    setStep('analyse'); setError(''); setFileWarnings([]); setProgress(5);
+    setProgressMsg('Préparation des documents…'); setProgressDoc({ current: 0, total: files.length });
     const docNames = files.map(f => f.name);
     const analyseDB = await createApercu(type, files[0].name, profil || 'rp', docNames);
     const analyseId = analyseDB?.id || null;
-    try {
-      const textes: string[] = [];
-      const warnings: string[] = [];
-      for (let i = 0; i < files.length; i++) {
-        setProgressMsg(`Lecture document ${i + 1}/${files.length}…`);
-        setProgress(10 + Math.floor((i / files.length) * 30));
-        const { text, warning } = await extractText(files[i]);
-        textes.push(`=== ${files[i].name} ===\n${text}`);
-        if (warning) warnings.push(warning);
-      }
-      if (warnings.length) setFileWarnings(warnings);
-      setProgress(50); setProgressMsg('Traitement en cours…');
-      const systemPrompt = type === 'complete' ? PROMPT_APERCU_COMPLET : PROMPT_APERCU_SIMPLE;
-      setProgress(70); setProgressMsg('Génération de votre aperçu…');
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 800, system: systemPrompt, messages: [{ role: 'user', content: `Documents à analyser :\n\n${textes.join('\n\n').slice(0, 8000)}` }] })
-      });
-      setProgress(88); setProgressMsg('Finalisation…');
-      const d = await res.json();
-      const raw = d.content?.find((b: any) => b.type === 'text')?.text || '{}';
-      const parsed: ApercuResult = JSON.parse(raw.replace(/```json|```/g, '').trim());
-      if (analyseId) {
-        const title = parsed.titre || files[0].name;
-        const address = type === 'complete' ? (parsed.titre || null) : null;
-        await updateApercuResult(analyseId, parsed as unknown as Record<string, unknown>, title, address);
-        await markFreePreviewUsed();
-      }
-      setFreePreviewUsed(true);
-      setProgress(100); setProgressMsg('Aperçu prêt !');
-      await new Promise(r => setTimeout(r, 400));
-      setApercu(parsed); setApercuId(analyseId); setStep('apercu');
-      setIsAnalysing(false);
-    } catch {
-      if (analyseId) await markAnalyseFailed(analyseId);
-      setError("Une erreur est survenue pendant l'analyse. Vos fichiers n'ont pas été débités. Veuillez réessayer.");
-      setStep('upload');
-      resetUpload();
-      setIsAnalysing(false);
+    if (!analyseId) {
+      setError("Impossible de créer l'analyse. Veuillez réessayer.");
+      setStep('upload'); resetUpload(); setIsAnalysing(false); return;
     }
+    const mode = type === 'complete' ? 'apercu_complete' : 'apercu_document';
+    const result = await lancerAnalyseEdge({ files, mode, analyseId, profil: profil || 'rp', onProgress: handleProgress });
+    if (!result.success) {
+      await markAnalyseFailed(analyseId);
+      setError(result.errorMessage || "Une erreur est survenue. Veuillez réessayer.");
+      setStep('upload'); resetUpload(); setIsAnalysing(false); return;
+    }
+    // Lire le résultat depuis Supabase
+    const { data: analyseData } = await supabase.from('analyses').select('apercu, title').eq('id', analyseId).single();
+    if (analyseData?.apercu) {
+      await markFreePreviewUsed();
+      setFreePreviewUsed(true);
+      setApercu(analyseData.apercu as ApercuResult);
+      setApercuId(analyseId);
+      setStep('apercu');
+    } else {
+      setError("Rapport non disponible. Veuillez réessayer.");
+      setStep('upload'); resetUpload();
+    }
+    setIsAnalysing(false);
   };
 
   // ─── Lancer analyse payante ───────────────────────────────
@@ -216,52 +180,27 @@ export default function NouvelleAnalyse() {
     setIsAnalysing(true);
     const creditType = type === 'document' ? 'document' : 'complete';
     const ok = await deductCredit(creditType);
-    if (!ok) { setError("Vous n'avez plus de crédit disponible. Veuillez recharger votre compte."); return; }
-    setStep('analyse'); setError(''); setFileWarnings([]); setProgress(5); setProgressMsg('Lecture des documents…');
+    if (!ok) { setError("Vous n'avez plus de crédit disponible. Veuillez recharger votre compte."); setIsAnalysing(false); return; }
+    setStep('analyse'); setError(''); setFileWarnings([]); setProgress(5);
+    setProgressMsg('Préparation des documents…'); setProgressDoc({ current: 0, total: files.length });
     const docNames = files.map(f => f.name);
     const analyseDB = await createAnalyse(type, files[0].name, profil || 'rp', docNames);
     const analyseId = analyseDB?.id || null;
-    try {
-      const textes: string[] = [];
-      const warnings: string[] = [];
-      for (let i = 0; i < files.length; i++) {
-        setProgressMsg(`Lecture document ${i + 1}/${files.length}…`);
-        setProgress(10 + Math.floor((i / files.length) * 30));
-        const { text, warning } = await extractText(files[i]);
-        textes.push(`=== ${files[i].name} ===\n${text}`);
-        if (warning) warnings.push(warning);
-      }
-      if (warnings.length) setFileWarnings(warnings);
-      setProgress(50); setProgressMsg('Traitement en cours…');
-      const isComplete = type === 'complete';
-      const systemPrompt = isComplete ? PROMPT_ANALYSE_COMPLETE : PROMPT_ANALYSE_SIMPLE;
-      setProgress(70); setProgressMsg('Génération du rapport…');
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, system: systemPrompt, messages: [{ role: 'user', content: `Documents à analyser :\n\n${textes.join('\n\n').slice(0, 8000)}` }] })
-      });
-      setProgress(88); setProgressMsg('Finalisation…');
-      const d = await res.json();
-      const raw = d.content?.find((b: any) => b.type === 'text')?.text || '{}';
-      const parsed: AnalyseResult = JSON.parse(raw.replace(/```json|```/g, '').trim());
-      if (analyseId) {
-        const title = isComplete ? (parsed.titre || 'Bien analysé') : (parsed.titre || files[0].name);
-        const address = isComplete ? (parsed.titre || null) : null;
-        await updateAnalyseResult(analyseId, parsed as unknown as Record<string, unknown>, title, address, docNames);
-      }
-      setProgress(100); setProgressMsg('Rapport prêt !');
-      await new Promise(r => setTimeout(r, 500));
-      if (analyseId) { window.location.href = `/dashboard/rapport?id=${analyseId}`; }
-      else { setResult(parsed); setStep('result'); }
-    } catch {
-      // Remboursement automatique du crédit
+    if (!analyseId) {
       await refundCredit(creditType);
-      if (analyseId) await markAnalyseFailed(analyseId);
-      setError("Une erreur est survenue pendant l'analyse. Votre crédit a été remboursé automatiquement. Veuillez réessayer.");
-      setStep('upload');
-      resetUpload();
-      setIsAnalysing(false);
+      setError("Impossible de créer l'analyse. Votre crédit a été remboursé. Veuillez réessayer.");
+      setStep('upload'); resetUpload(); setIsAnalysing(false); return;
     }
+    const result = await lancerAnalyseEdge({ files, mode: type, analyseId, profil: profil || 'rp', onProgress: handleProgress });
+    if (!result.success) {
+      await refundCredit(creditType);
+      await markAnalyseFailed(analyseId);
+      setError(result.errorMessage || "Une erreur est survenue. Votre crédit a été remboursé automatiquement.");
+      setStep('upload'); resetUpload(); setIsAnalysing(false); return;
+    }
+    setProgress(100); setProgressMsg('Rapport prêt !');
+    await new Promise(r => setTimeout(r, 500));
+    window.location.href = `/dashboard/rapport?id=${analyseId}`;
   };
 
   /* ── CHOICE */
@@ -456,6 +395,22 @@ export default function NouvelleAnalyse() {
             <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: i < fileWarnings.length - 1 ? 8 : 0 }}>
               <AlertTriangle size={13} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
               <span style={{ fontSize: 12, color: '#92400e', lineHeight: 1.5 }}>{w}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {progressDoc.total > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+          {Array.from({ length: progressDoc.total }).map((_, i) => (
+            <div key={i} style={{
+              width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 700,
+              background: i < progressDoc.current ? '#f0fdf4' : i === progressDoc.current ? 'rgba(42,125,156,0.12)' : '#f8fafc',
+              border: `1.5px solid ${i < progressDoc.current ? '#86efac' : i === progressDoc.current ? '#2a7d9c' : '#e2e8f0'}`,
+              color: i < progressDoc.current ? '#16a34a' : i === progressDoc.current ? '#2a7d9c' : '#94a3b8',
+              transition: 'all 0.3s',
+            }}>
+              {i < progressDoc.current ? '✓' : i + 1}
             </div>
           ))}
         </div>
