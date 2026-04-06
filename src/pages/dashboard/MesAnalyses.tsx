@@ -40,16 +40,16 @@ function AnalyseRow({ a, onDelete }: { a: Analyse; onDelete: (id: string) => voi
         <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ background: typeBg, borderRadius: 5, padding: '2px 7px', fontSize: 10, fontWeight: 700, color: typeColor }}>{typeLabel}</span>
           <span>·</span><span>{a.date}</span>
-          {a.status !== 'processing' && <><span>·</span><span style={{ fontWeight: 700, color: '#64748b' }}>{a.price}</span></>}
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
         {a.status === 'processing' ? (
-          <Link to="/dashboard/nouvelle-analyse"
-            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#2a7d9c', background: 'rgba(42,125,156,0.07)', padding: '6px 12px', borderRadius: 8, textDecoration: 'none', border: '1px solid rgba(42,125,156,0.15)', whiteSpace: 'nowrap' }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#2a7d9c', animation: 'pulse 1.5s ease-in-out infinite' }} />
-            Voir la progression
-          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#2a7d9c', background: 'rgba(42,125,156,0.07)', padding: '6px 12px', borderRadius: 8, border: '1px solid rgba(42,125,156,0.15)', whiteSpace: 'nowrap' }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#2a7d9c', animation: 'pulse 1.5s ease-in-out infinite' }} />
+              {(a as Analyse & { progress_message?: string }).progress_message || 'Analyse en cours…'}
+            </div>
+          </div>
         ) : (
           <>
             {isComplete && a.score != null && <ScoreBadge score={a.score} size="sm" />}
