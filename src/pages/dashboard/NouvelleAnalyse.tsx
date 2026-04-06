@@ -61,8 +61,10 @@ export default function NouvelleAnalyse() {
   const [step, setStep] = useState<'choice' | 'profil' | 'upload' | 'analyse' | 'apercu' | 'result'>('choice');
   const [type, setType] = useState<'document' | 'complete' | null>(null);
   const [files, setFiles] = useState<File[]>([]);
-  const [fileWarnings, setFileWarnings] = useState<string[]>([]); // warnings non bloquants
+
   const [progress, setProgress] = useState(0);
+
+  const [fileWarnings, setFileWarnings] = useState<string[]>([]);
   const [progressMsg, setProgressMsg] = useState('');
   const [progressDoc, setProgressDoc] = useState({ current: 0, total: 0 });
   const [result, setResult] = useState<AnalyseResult | null>(null);
@@ -417,7 +419,7 @@ export default function NouvelleAnalyse() {
     const pct = Math.round(animatedProgress);
     const etapes = [
       { min: 0,  max: 15, label: 'Réception des documents', icon: '📥', detail: 'Vos fichiers sont en cours de transfert sécurisé…' },
-      { min: 15, max: 35, label: 'Lecture des documents', icon: '📖', detail: progressDoc.total > 1 ? `Document ${progressDoc.current + 1} sur ${progressDoc.total} en cours de lecture…` : 'Lecture et extraction du contenu…' },
+      { min: 15, max: 35, label: 'Lecture des documents', icon: '📖', detail: progressMsg || (progressDoc.total > 1 ? `Document ${progressDoc.current + 1} sur ${progressDoc.total} en cours de lecture…` : 'Lecture et extraction du contenu…') },
       { min: 35, max: 60, label: 'Analyse du contenu', icon: '🔍', detail: 'Identification des informations clés, travaux, procédures…' },
       { min: 60, max: 80, label: 'Extraction des données', icon: '⚡', detail: 'Structuration des résultats et calcul des indicateurs…' },
       { min: 80, max: 95, label: 'Génération du rapport', icon: '📊', detail: 'Rédaction de votre rapport personnalisé Verimo…' },
@@ -515,6 +517,14 @@ export default function NouvelleAnalyse() {
           </div>
         )}
 
+        {/* Warnings fichiers si présents */}
+        {fileWarnings.length > 0 && (
+          <div style={{ padding: '12px 16px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fde68a', marginTop: 16 }}>
+            {fileWarnings.map((w, i) => (
+              <div key={i} style={{ fontSize: 12, color: '#92400e', lineHeight: 1.5 }}>⚠ {w}</div>
+            ))}
+          </div>
+        )}
         {/* Message rassurant */}
         <p style={{ textAlign: 'center', fontSize: 12, color: '#cbd5e1', marginTop: 24, lineHeight: 1.6 }}>
           Vous pouvez fermer cette page — votre analyse continuera en arrière-plan.<br />
