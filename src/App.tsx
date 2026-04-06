@@ -166,19 +166,28 @@ function SessionManager() {
 
     // Vérification toutes les 60s — suspension uniquement
     const checkSuspension = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) return;
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('suspended')
-        .eq('id', session.user.id)
-        .maybeSingle();
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('suspended')
+          .eq('id', session.user.id)
+          .maybeSingle();
 
-      if (!profile || profile.suspended) {
-        localStorage.clear();
-        await supabase.auth.signOut();
-        window.location.href = '/connexion?suspended=true';
+        // Si erreur réseau ou RLS → on ne déconnecte PAS, on ignore silencieusement
+        if (error) return;
+        // Si profil introuvable → on ne déconnecte PAS (peut arriver pendant chargement)
+        if (!profile) return;
+        // Uniquement si explicitement suspendu
+        if (profile.suspended === true) {
+          localStorage.clear();
+          await supabase.auth.signOut();
+          window.location.href = '/connexion?suspended=true';
+        }
+      } catch {
+        // Erreur réseau → on ignore, on ne déconnecte jamais par erreur
       }
     };
 
