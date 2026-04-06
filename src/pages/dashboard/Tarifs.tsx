@@ -92,6 +92,19 @@ function CheckoutModal({ plan, onClose }: {
       // Incrémenter uses_count
       await supabase.rpc('increment_promo_uses', { code_id: promoResult.id });
 
+      // Enregistrer dans l'historique payments
+      const creditTypeLabel = creditCol === 'credits_document' ? 'simple' : 'complet';
+      await supabase.from('payments').insert({
+        user_id: user.id,
+        amount: 0,
+        currency: 'eur',
+        description: `${toAdd} crédit${toAdd > 1 ? 's' : ''} ${creditTypeLabel}${toAdd > 1 ? 's' : ''} offert${toAdd > 1 ? 's' : ''} · Code ${promoResult.code}`,
+        promo_code: promoResult.code,
+        credits_added: toAdd,
+        credit_type: creditCol === 'credits_document' ? 'document' : 'complete',
+        status: 'completed',
+      });
+
       // Fermer la modale et afficher un toast de succès
       onClose('credits_applied', toAdd, creditCol === 'credits_document' ? 'simple' : 'complet');
     } catch (e) { setPayError((e as Error).message); }
