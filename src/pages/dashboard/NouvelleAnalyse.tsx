@@ -526,10 +526,14 @@ export default function NouvelleAnalyse() {
           </div>
         )}
         {/* Message rassurant */}
-        <p style={{ textAlign: 'center', fontSize: 12, color: '#cbd5e1', marginTop: 24, lineHeight: 1.6 }}>
-          Vous pouvez fermer cette page — votre analyse continuera en arrière-plan.<br />
-          Retrouvez-la dans <strong style={{ color: '#94a3b8' }}>Mes analyses</strong> dès qu'elle sera prête.
-        </p>
+        <div style={{ marginTop: 24, padding: '14px 18px', borderRadius: 12, background: '#fffbeb', border: '1px solid #fde68a', textAlign: 'center' }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 4 }}>
+            ⚠ Ne quittez pas cette page
+          </p>
+          <p style={{ fontSize: 12, color: '#b45309', lineHeight: 1.6, margin: 0 }}>
+            Si vous quittez, retrouvez votre analyse dans <strong>Mes analyses</strong> — elle continuera en arrière-plan et le résultat sera disponible dès qu'elle sera prête.
+          </p>
+        </div>
 
         <style>{`
           @keyframes shimmer { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
