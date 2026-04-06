@@ -737,3 +737,201 @@ Phase 2 REDUCE — synthèse globale :
 8. **Branding Google** — en cours d'examen, vérifier dans 3-7 jours
 9. **Tests iOS** — fluidité à tester après déploiement des optimisations
 10. Mettre à jour `context.md` dans le repo GitHub après chaque session
+
+---
+
+## COMPLÉMENT SESSION 06/04/2026 — Détails techniques manquants
+
+### NouvelleAnalyse.tsx — Toutes les modifications ✅
+
+**Step `profil` ajouté (entre choice et upload) :**
+- Deux cartes : 🏠 Résidence principale / 📈 Investissement locatif
+- Valeur transmise à l'Edge Function et sauvegardée en base
+- Plus de `'rp'` hardcodé — vrai profil acheteur utilisé
+
+**Race condition corrigée :**
+- État `isAnalysing` — bouton "Analyser" désactivé dès le premier clic
+- Impossible de déclencher deux analyses simultanées
+
+**Layout upload amélioré :**
+- Suppression `maxWidth: 640` et `margin: 0 auto` → pleine largeur
+- Fichiers uploadés affichés EN HAUT avant la zone de dépôt, fond bleu clair, plus grands
+- Prix supprimé du header upload
+- Images (JPG/PNG) retirées des "non supportés" — l'API Anthropic les lit nativement
+- Word (.docx) reste non supporté
+
+**`max_tokens` corrigé :**
+- Analyse complète : 1500 → 4000 tokens
+
+**UX Loading premium :**
+- 6 étapes narratives : Réception → Lecture → Analyse → Extraction → Génération → Finalisation
+- Barre shimmer animée en continu (ne se fige jamais)
+- Indicateur documents X/Y avec cases numérotées
+- Message "⚠ Ne quittez pas cette page" en haut
+- État `animatedProgress` avec animation douce via `setInterval`
+
+---
+
+### MesAnalyses.tsx — Toutes les modifications ✅
+
+- Bouton poubelle rouge sur chaque ligne avec confirmation "Supprimer ? Oui / Non"
+- Suppression via `supabase.from('analyses').delete()`
+- Prix supprimé sur TOUTES les lignes (complètes et en cours)
+- Ligne "en cours" : badge animé avec message de progression en temps réel (pas de redirection)
+- Polling automatique toutes les 4 secondes si analyse `processing`
+- Polling s'arrête automatiquement quand toutes les analyses sont `completed`
+
+---
+
+### useAnalyses.ts — Modifications ✅
+
+- Import `useCallback` ajouté
+- Fonction `load` extraite en `useCallback`
+- `refetch` exposé dans le return du hook
+- Permet au polling de `MesAnalyses.tsx` de rafraîchir la liste
+
+---
+
+### AdminPage.tsx — Graphique inscriptions ✅
+
+- Nouveau graphique barres violettes dans l'onglet Statistiques
+- Inscriptions par semaine sur les 8 dernières semaines
+- Requête `supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', wStart).lt('created_at', wEnd)`
+- Total sur 8 semaines affiché en bas à droite
+- Animation Framer Motion identique au graphique CA
+
+---
+
+### Compte.tsx — Historique achats réel ✅
+
+- `mockAchats` supprimés
+- Vraie requête sur `public.payments` avec `loadPayments()`
+- Affiche : description, date, source ("Paiement sécurisé Stripe" ou "Code promo"), montant
+- Montant 0€ → affiche "Gratuit"
+- Chargement avec spinner, état vide avec message "Aucun achat pour le moment"
+
+---
+
+### Tarifs.tsx dashboard — Codes promo `credits` ✅
+
+- Code promo type `credits` : bypass Stripe complet
+- Dans la modale : bouton violet "Recevoir mes X crédits gratuitement"
+- Message "✨ Aucun paiement requis" affiché
+- Crédits ajoutés directement en base + `promo_uses` enregistré
+- Enregistrement dans `payments` avec montant 0€ et source "Code promo"
+- Toast de confirmation violet après application
+- `fetchCredits()` appelé pour rafraîchir la sidebar
+
+---
+
+### Webhook Stripe — Mis à jour dans Supabase ✅
+
+- Enregistre chaque paiement dans `public.payments`
+- Montant réel payé récupéré depuis `session.amount_total`
+- Code promo détecté et inclus dans la description si réduction
+- Description : "Analyse Complète — 1 crédit complet · Code VERIMO20 (−20%)"
+- `free_preview_used` mis à `true` si offre gratuite non encore utilisée au moment du paiement
+
+---
+
+### Supabase — Nouvelles colonnes et tables ✅
+
+**Table `analyses` — nouvelles colonnes :**
+```sql
+ALTER TABLE analyses ADD COLUMN progress_current integer DEFAULT 0;
+ALTER TABLE analyses ADD COLUMN progress_total integer DEFAULT 0;
+ALTER TABLE analyses ADD COLUMN progress_message text DEFAULT '';
+```
+
+**Table `payments` — nouvelle table :**
+```sql
+CREATE TABLE public.payments (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  amount numeric NOT NULL DEFAULT 0,
+  currency text DEFAULT 'eur',
+  description text,
+  stripe_session_id text,
+  promo_code text,
+  credits_added integer DEFAULT 0,
+  credit_type text,
+  status text DEFAULT 'completed',
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Voir ses propres paiements" ON public.payments FOR SELECT USING (auth.uid() = user_id);
+```
+
+**RLS `profiles` — état final :**
+- Policy `authenticated_read_profiles` remise à l'originale
+- `USING (auth.role() = 'authenticated')` — tout utilisateur connecté peut lire tous les profils
+- Tentative de restriction annulée (récursion infinie PostgreSQL)
+- À traiter dans une future session via Edge Function
+
+**RLS `profiles` UPDATE — credits bloqués :**
+- Policy `profiles_update_policy` : clients ne peuvent plus modifier `credits_*`, `role`, `free_preview_used` directement
+- Seuls les champs autorisés (nom, etc.) sont modifiables côté client
+
+---
+
+### Support.tsx — FAQ complète (10 questions) ✅
+
+1. Quels documents analyser ?
+2. Différence analyse simple vs complète ?
+3. Durée d'une analyse ?
+4. Sécurité des documents ?
+5. Fonctionnement des crédits ?
+6. Codes promo ?
+7. Verimo remplace-t-il un notaire/expert ?
+8. PDF protégé par mot de passe ?
+9. Comparaison de biens ?
+10. Suppression de compte ?
+
+Formulaire de contact : vrai INSERT dans `contact_messages` + champ sujet + gestion erreur.
+
+---
+
+### DashboardPage.tsx — Logo ✅
+
+- Logo sidebar centré et agrandi : hauteur 28px → 52px
+- `justifyContent: 'center'` ajouté sur le lien
+
+---
+
+### App.tsx — Stabilité ✅
+
+**LoadingScreen :**
+- Spinner élégant avec logo Verimo
+- Auto-reload après 8s, bouton "Rafraîchir" après 12s, bouton "Revenir à l'accueil" après 20s
+
+**ErrorBoundary :**
+- Capture les erreurs React silencieuses (ex: cache navigateur obsolète après déploiement)
+- Affiche écran ⚠️ avec bouton "Rafraîchir" puis "Revenir à l'accueil"
+
+**checkSuspension robuste :**
+- Erreur réseau ou profil `null` → ignoré (plus de déconnexion par erreur)
+- Déconnexion uniquement si `profile.suspended === true` explicitement
+
+---
+
+### Fichiers modifiés cette session (liste complète)
+
+| Fichier | Modifications |
+|---------|--------------|
+| `src/App.tsx` | LoadingScreen, ErrorBoundary, checkSuspension robuste |
+| `src/pages/DashboardPage.tsx` | Logo agrandi et centré |
+| `src/pages/AdminPage.tsx` | Graphique inscriptions |
+| `src/pages/dashboard/NouvelleAnalyse.tsx` | Step profil, race condition, layout, loading premium |
+| `src/pages/dashboard/MesAnalyses.tsx` | Suppression, prix, polling, badge en cours |
+| `src/pages/dashboard/Compte.tsx` | Historique achats réel |
+| `src/pages/dashboard/Tarifs.tsx` | Codes crédits, pleine largeur |
+| `src/pages/dashboard/Support.tsx` | Bug envoi corrigé, FAQ enrichie |
+| `src/pages/dashboard/Compare.tsx` | Pleine largeur, bouton packs supprimé |
+| `src/lib/ai-provider.ts` | NOUVEAU — abstraction IA |
+| `src/lib/analyse-client.ts` | NOUVEAU — appel Edge Function |
+| `src/hooks/useAnalyses.ts` | refetch exposé |
+| `src/pages/MentionsLegalesPage.tsx` | NOUVEAU — page mentions légales |
+| `src/pages/ConfidentialitePage.tsx` | Section cookies enrichie |
+| `src/components/layout/Footer.tsx` | Lien mentions légales (doublon supprimé) |
+| `supabase/functions/analyser/index.ts` | NOUVEAU — Edge Function Map-Reduce |
+| `supabase/functions/stripe-webhook` | Mis à jour dans Supabase (pas dans repo) |
