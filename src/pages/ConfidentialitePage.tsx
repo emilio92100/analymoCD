@@ -81,7 +81,20 @@ Vous pouvez également introduire une réclamation auprès de la CNIL (www.cnil.
           },
           {
             title: '8. Cookies',
-            content: `Verimo utilise uniquement des cookies strictement nécessaires au fonctionnement du service (gestion de session, authentification). Aucun cookie publicitaire ou de tracking tiers n'est utilisé.`
+            content: `Verimo utilise uniquement des cookies techniques, strictement nécessaires au bon fonctionnement du service.
+
+Conformément aux recommandations de la CNIL (délibération n°2013-378 du 5 décembre 2013) et à la directive ePrivacy, les cookies strictement nécessaires au fonctionnement d'un service sont exemptés de l'obligation de recueil du consentement préalable. C'est pourquoi Verimo ne vous affiche pas de bannière de consentement aux cookies : nous n'en avons pas l'obligation légale.
+
+Les cookies que nous utilisons sont les suivants :
+
+— Cookie de session Supabase : permet de maintenir votre connexion active et de sécuriser l'accès à votre compte. Sans ce cookie, vous seriez déconnecté à chaque page.
+— Cookie d'authentification : stocke votre token d'accès de manière sécurisée pour vous éviter de vous reconnecter à chaque visite.
+
+Ces cookies ne collectent aucune donnée à des fins publicitaires, de profilage ou de suivi comportemental. Ils ne sont jamais partagés avec des tiers.
+
+Verimo n'utilise aucun cookie de tracking, analytics ou publicitaire (pas de Google Analytics, pas de Facebook Pixel, pas de publicité ciblée).
+
+Si vous souhaitez bloquer ces cookies via les paramètres de votre navigateur, vous pouvez le faire, mais sachez que le service Verimo ne pourra plus fonctionner correctement (connexion impossible).`
           },
           {
             title: '9. Sécurité',
