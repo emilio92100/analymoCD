@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { fetchAnalyses, type AnalyseDB } from '../lib/analyses';
 
 export type AnalyseType = 'document' | 'complete';
@@ -24,8 +24,7 @@ export function useAnalyses() {
   const [analyses, setAnalyses] = useState<Analyse[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const load = async () => {
+  const load = useCallback(async () => {
       setLoading(true);
       const data = await fetchAnalyses();
       const mapped: Analyse[] = data.map((a: AnalyseDB) => {
@@ -59,9 +58,9 @@ export function useAnalyses() {
       });
       setAnalyses(mapped);
       setLoading(false);
-    };
-    load();
   }, []);
 
-  return { analyses, loading };
+  useEffect(() => { load(); }, [load]);
+
+  return { analyses, loading, refetch: load };
 }
