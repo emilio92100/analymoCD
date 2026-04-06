@@ -231,7 +231,7 @@ export default function Tarifs() {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 28, maxWidth: 740, margin: '0 auto' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
       {creditsToast && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ background: 'linear-gradient(135deg, #4c1d95, #7c3aed)', borderRadius: 20, padding: '28px 24px', maxWidth: 420, width: '100%', boxShadow: '0 24px 80px rgba(0,0,0,0.4)', display: 'flex', flexDirection: 'column', gap: 16 }}>
