@@ -643,7 +643,8 @@ function StatsTab() {
         const label = wStart.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
         const weekAnal = (analyses || []).filter(a => { const d = new Date(a.created_at); return d >= wStart && d < wEnd && a.status === 'completed'; });
         const weekCa = weekAnal.reduce((s, a) => s + (PLAN_PRICES[a.type] || 0), 0);
-        weeks.push({ week: label, ca: weekCa, users: 0 });
+        const { count: weekUsers } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', wStart.toISOString()).lt('created_at', wEnd.toISOString());
+        weeks.push({ week: label, ca: weekCa, users: weekUsers || 0 });
       }
       setWeeklyData(weeks);
     };
@@ -696,6 +697,31 @@ function StatsTab() {
               <div style={{ fontSize: 9, color: '#94a3b8', textAlign: 'center' as const }}>{w.week}</div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Graphique inscriptions semaine par semaine */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '24px', marginBottom: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Inscriptions par semaine (8 dernières semaines)</div>
+        <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 20 }}>Nouveaux comptes créés chaque semaine</div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 120 }}>
+          {weeklyData.map((w, i) => {
+            const maxU = Math.max(...weeklyData.map(x => x.users), 1);
+            return (
+              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 6 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed' }}>{w.users > 0 ? w.users : ''}</div>
+                <motion.div initial={{ height: 0 }} animate={{ height: `${Math.max((w.users / maxU) * 80, w.users > 0 ? 4 : 0)}px` }}
+                  transition={{ duration: 0.6, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] }}
+                  style={{ width: '100%', background: w.users > 0 ? 'linear-gradient(to top,#7c3aed,#c4b5fd)' : '#f1f5f9', borderRadius: '6px 6px 0 0', minHeight: 4 }} />
+                <div style={{ fontSize: 9, color: '#94a3b8', textAlign: 'center' as const }}>{w.week}</div>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#7c3aed' }}>
+            Total : {weeklyData.reduce((s, w) => s + w.users, 0)} inscrits sur 8 semaines
+          </span>
         </div>
       </div>
 
