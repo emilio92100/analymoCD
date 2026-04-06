@@ -37,7 +37,6 @@ export default function Footer() {
           <Link to="/confidentialite" className="text-sm text-slate-400 hover:text-white transition-colors">Confidentialité</Link>
           <Link to="/cgu" className="text-sm text-slate-400 hover:text-white transition-colors">CGU</Link>
           <Link to="/mentions-legales" className="text-sm text-slate-400 hover:text-white transition-colors">Mentions légales</Link>
-          <a href="#" className="text-sm text-slate-400 hover:text-white transition-colors">Mentions légales</a>
         </div>
 
         {/* Col 4 — Contact */}
