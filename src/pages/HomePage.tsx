@@ -68,6 +68,7 @@ export default function HomePage() {
       <HowItWorksSection />
       <ApercuRapportSection />
       <AvantApresSection />
+      <AvisSection />
       <ForWhoSection />
       <ScoreSection />
       <SecuriteSection />
@@ -92,7 +93,7 @@ function HeroSection() {
           <motion.h1 variants={up} initial="hidden" animate="show" custom={0.5}
             className="font-black leading-[1.08] tracking-[-0.03em] text-[#0f172a] mb-4 text-center w-full px-2"
             style={{ fontSize: "clamp(28px, 7.5vw, 36px)" }}>
-            Vérifiez les éléments<br />
+            Comprenez l'essentiel de votre achat<br />
             <span className="relative inline-block whitespace-nowrap">
               <span className="text-[#2a7d9c]">avant de signer.</span>
               <motion.span
@@ -714,75 +715,75 @@ function AvantApresSection() {
 
   return (
     <section className="py-12 md:py-20 px-4 md:px-6 bg-white">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <SectionTitle label="Avant / Après" title="Deux façons d'acheter." accent="Une seule bonne." />
 
-        {/* Toggle interactif */}
-        <Reveal className="flex justify-center mb-10">
-          <div className="inline-flex items-center gap-0 p-1 rounded-2xl bg-slate-100 shadow-inner">
-            <button onClick={() => setShowVerimo(false)}
-              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${!showVerimo ? 'bg-white text-red-500 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
-              ✗ Sans Verimo
-            </button>
-            <button onClick={() => setShowVerimo(true)}
-              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${showVerimo ? 'bg-white text-green-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
-              ✓ Avec Verimo
-            </button>
+        {/* Tableau comparatif côte à côte */}
+        <Reveal>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+
+            {/* Colonne AVEC VERIMO — à gauche */}
+            <div className="rounded-2xl overflow-hidden border border-green-100 shadow-sm">
+              <div className="bg-[#0f2d3d] px-5 py-4 flex items-center gap-3">
+                <div className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center shrink-0">
+                  <Check size={14} className="text-white" strokeWidth={3} />
+                </div>
+                <span className="text-white font-black text-base">Avec Verimo</span>
+              </div>
+              <div className="bg-[#f0fdf4] p-4 flex flex-col gap-2.5">
+                {items.map((item, i) => (
+                  <motion.div key={i}
+                    initial={{ opacity: 0, x: -16 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.07, duration: 0.35 }}
+                    className="flex items-start gap-3 p-3.5 rounded-xl bg-white border border-green-100 shadow-sm">
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0 bg-green-50 border border-green-100">
+                      {item.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-[#15803d] leading-snug">{item.after}</p>
+                    </div>
+                    <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center shrink-0 mt-0.5">
+                      <Check size={11} className="text-white" strokeWidth={3} />
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+            {/* Colonne SANS VERIMO — à droite */}
+            <div className="rounded-2xl overflow-hidden border border-red-100 shadow-sm opacity-75">
+              <div className="bg-slate-200 px-5 py-4 flex items-center gap-3">
+                <div className="w-7 h-7 rounded-full bg-red-400 flex items-center justify-center shrink-0">
+                  <X size={14} className="text-white" strokeWidth={3} />
+                </div>
+                <span className="text-slate-600 font-black text-base">Sans Verimo</span>
+              </div>
+              <div className="bg-[#fef2f2] p-4 flex flex-col gap-2.5">
+                {items.map((item, i) => (
+                  <motion.div key={i}
+                    initial={{ opacity: 0, x: 16 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.07, duration: 0.35 }}
+                    className="flex items-start gap-3 p-3.5 rounded-xl bg-white border border-red-100">
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0 bg-red-50 border border-red-100 opacity-60">
+                      {item.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-slate-400 leading-snug line-through decoration-red-300">{item.before}</p>
+                    </div>
+                    <div className="w-5 h-5 rounded-full bg-red-400 flex items-center justify-center shrink-0 mt-0.5">
+                      <X size={11} className="text-white" strokeWidth={3} />
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
           </div>
         </Reveal>
-
-        {/* Cards animées */}
-        <div className="flex flex-col gap-3">
-          <AnimatePresence mode="wait">
-            {items.map((item, i) => (
-              <motion.div key={`${showVerimo}-${i}`}
-                initial={{ opacity: 0, x: showVerimo ? 24 : -24, scale: 0.97 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
-                exit={{ opacity: 0, x: showVerimo ? -24 : 24, scale: 0.97 }}
-                transition={{ delay: i * 0.06, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                className="flex items-center gap-4 p-4 md:p-5 rounded-2xl border transition-all duration-300"
-                style={{
-                  background: showVerimo ? '#f0fdf4' : '#fef2f2',
-                  borderColor: showVerimo ? '#d1fae5' : '#fecaca',
-                  boxShadow: `0 1px 4px ${showVerimo ? 'rgba(22,163,74,0.08)' : 'rgba(220,38,38,0.06)'}`,
-                }}>
-                {/* Icône */}
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0"
-                  style={{ background: showVerimo ? '#dcfce7' : '#fee2e2', border: `1px solid ${showVerimo ? '#bbf7d0' : '#fecaca'}` }}>
-                  {item.icon}
-                </div>
-
-                {/* Statut */}
-                <div className="flex items-center shrink-0">
-                  <motion.div
-                    key={showVerimo ? 'check' : 'cross'}
-                    initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 18, delay: i * 0.06 + 0.1 }}
-                    className="w-7 h-7 rounded-full flex items-center justify-center"
-                    style={{ background: showVerimo ? '#16a34a' : '#dc2626' }}>
-                    {showVerimo
-                      ? <Check size={13} className="text-white" strokeWidth={3} />
-                      : <X size={13} className="text-white" strokeWidth={3} />
-                    }
-                  </motion.div>
-                </div>
-
-                {/* Texte */}
-                <div className="flex-1 min-w-0">
-                  <AnimatePresence mode="wait">
-                    <motion.p key={showVerimo ? 'after' : 'before'}
-                      initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.2, delay: i * 0.04 }}
-                      className={`text-sm md:text-base font-${showVerimo ? 'semibold' : 'normal'} leading-snug`}
-                      style={{ color: showVerimo ? '#15803d' : '#64748b' }}>
-                      {showVerimo ? item.after : item.before}
-                    </motion.p>
-                  </AnimatePresence>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
 
         <Reveal className="text-center mt-10 md:mt-12">
           <Link to="/start"
@@ -1321,6 +1322,82 @@ function ApercuRapportSection() {
 }
 
 /* ═══ SCORE /20 ══════════════════════════════════════════════ */
+function AvisSection() {
+  const avis = [
+    {
+      nom: 'Sophie M.',
+      ville: 'Paris 11e',
+      note: 5,
+      texte: "J'ai uploadé le PV d'AG et le règlement de copropriété avant de faire mon offre. Verimo m'a signalé un ravalement voté non réalisé et des impayés sur 2 lots. J'ai pu négocier 8 000€ de moins. Indispensable.",
+      profil: 'Acheteuse — appartement 3 pièces',
+      initiale: 'S',
+      color: '#2a7d9c',
+    },
+    {
+      nom: 'Thomas R.',
+      ville: 'Lyon 6e',
+      note: 5,
+      texte: "Le DPE de l'appartement que je visitais datait de 2019 — Verimo m'a alerté qu'il était invalide et qu'un nouveau diagnostic était obligatoire. Le vendeur ne le savait même pas. Ça m'a évité une mauvaise surprise.",
+      profil: 'Acheteur — primo-accédant',
+      initiale: 'T',
+      color: '#7c3aed',
+    },
+    {
+      nom: 'Camille D.',
+      ville: 'Bordeaux',
+      note: 5,
+      texte: "En 2 minutes j'avais un rapport complet sur la copropriété. La participation aux AG, le syndic, les travaux votés, les charges… tout était là. J'ai partagé le rapport avec mon notaire qui a été bluffé.",
+      profil: 'Acheteuse — investissement locatif',
+      initiale: 'C',
+      color: '#16a34a',
+    },
+    {
+      nom: 'Marc L.',
+      ville: 'Nantes',
+      note: 5,
+      texte: "J'étais stressé à l'idée de rater quelque chose dans les documents. Verimo m'a donné une vision claire et structurée. Le score /20 et l'avis Verimo m'ont vraiment aidé à prendre ma décision sereinement.",
+      profil: 'Acheteur — résidence principale',
+      initiale: 'M',
+      color: '#d97706',
+    },
+  ];
+
+  return (
+    <section className="py-12 md:py-20 px-4 md:px-6 bg-[#f4f7f9]">
+      <div className="max-w-6xl mx-auto">
+        <SectionTitle label="Ils ont utilisé Verimo" title="Ce qu'ils en" accent="pensent." />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {avis.map((a, i) => (
+            <Reveal key={i} delay={i * 0.08}>
+              <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm flex flex-col gap-4 h-full">
+                {/* Étoiles */}
+                <div className="flex gap-1">
+                  {Array.from({ length: a.note }).map((_, j) => (
+                    <span key={j} className="text-amber-400 text-base">★</span>
+                  ))}
+                </div>
+                {/* Texte */}
+                <p className="text-sm md:text-base text-slate-600 leading-relaxed flex-1">"{a.texte}"</p>
+                {/* Auteur */}
+                <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-base shrink-0"
+                    style={{ background: a.color }}>
+                    {a.initiale}
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-[#0f172a]">{a.nom} <span className="text-slate-400 font-normal">· {a.ville}</span></div>
+                    <div className="text-xs text-slate-400 mt-0.5">{a.profil}</div>
+                  </div>
+                </div>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function ScoreSection() {
   const levels = [
     { r: '17 – 20', l: 'Bien irréprochable', c: '#15803d', bg: '#f0fdf4', border: '#bbf7d0' },
