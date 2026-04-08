@@ -235,6 +235,8 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode; color: string }[]
 export default function RapportPage() {
   const [searchParams] = useSearchParams();
   const id = searchParams.get('id') || '';
+  const action = searchParams.get('action') || '';
+  const [showReupload, setShowReupload] = useState(action === 'reupload');
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [loading, setLoading] = useState(true);
   const [rapport, setRapport] = useState<typeof MOCK_RAPPORT | null>(null);
@@ -370,6 +372,32 @@ export default function RapportPage() {
               <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 4 }}>ANALYSE DOCUMENT</div>
               <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>{rapport.adresse}</div>
               <div style={{ fontSize: 13, color: '#94a3b8' }}>Analysé le {rapport.date}</div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Bandeau re-upload après paiement depuis aperçu */}
+        {showReupload && (
+          <div style={{ background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', borderRadius: 18, padding: '24px 28px', marginBottom: 20, position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: -30, right: -30, width: 150, height: 150, borderRadius: '50%', background: 'rgba(42,125,156,0.2)', pointerEvents: 'none' }} />
+            <div style={{ position: 'relative' }}>
+              <div style={{ fontSize: 24, marginBottom: 8 }}>🎉</div>
+              <div style={{ fontSize: 16, fontWeight: 900, color: '#fff', marginBottom: 8 }}>Paiement confirmé !</div>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', lineHeight: 1.7, marginBottom: 16 }}>
+                Bonne nouvelle ! Conformément au RGPD, vos documents ont été supprimés 🔒<br />
+                Re-uploadez vos documents pour générer votre rapport complet...<br />
+                <span style={{ color: 'rgba(255,255,255,0.55)' }}>et profitez-en pour ajouter ceux que vous aviez oubliés ! 😉</span>
+              </p>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <Link to="/dashboard/nouvelle-analyse"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 22px', borderRadius: 12, background: '#fff', color: '#0f2d3d', fontSize: 14, fontWeight: 800, textDecoration: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
+                  Re-uploader mes documents →
+                </Link>
+                <button onClick={() => setShowReupload(false)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '12px 18px', borderRadius: 12, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                  Voir l'aperçu d'abord
+                </button>
+              </div>
             </div>
           </div>
         )}
