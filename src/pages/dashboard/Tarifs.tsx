@@ -188,7 +188,13 @@ function CheckoutModal({ plan, onClose }: {
             {payLoading
               ? <><div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.35)', borderTopColor: '#fff', animation: 'spin 0.8s linear infinite' }} /> {promoResult?.type === 'credits' ? 'Application en cours…' : 'Redirection…'}</>
               : promoResult?.type === 'credits'
-                ? <><CheckCircle size={15} /> Recevoir mes {promoResult.value} crédit{promoResult.value > 1 ? 's' : ''} gratuitement</>
+                ? (() => {
+                    const n = promoResult.value;
+                    const isDoc = promoResult.credit_type === 'document';
+                    const plural = n > 1;
+                    if (isDoc) return <><CheckCircle size={15} /> {plural ? `Recevoir mes ${n} crédits d'analyse d'un seul document gratuitement` : 'Recevoir mon crédit d\'analyse d\'un seul document gratuitement'}</>;
+                    return <><CheckCircle size={15} /> {plural ? `Recevoir mes ${n} crédits d'analyse complète d'un bien gratuitement` : 'Recevoir mon crédit d\'analyse complète d\'un bien gratuitement'}</>;
+                  })()
                 : <><Lock size={15} /> Continuer vers le paiement</>
             }
           </button>
