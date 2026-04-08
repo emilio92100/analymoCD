@@ -650,6 +650,211 @@ export default function RapportPage() {
           </div>
         )}
 
+        {/* ══ COPROPRIÉTÉ ══ */}
+        {activeTab === 'copropriete' && isComplete && (() => {
+          const r = rapport as unknown as Record<string, unknown>;
+          const vie = r.vie_copropriete as Record<string, unknown> | undefined;
+          const lot = r.lot_achete as Record<string, unknown> | undefined;
+          const syndic = vie?.syndic as Record<string, unknown> | undefined;
+          const participation = vie?.participation_ag as Array<Record<string, unknown>> | undefined;
+          const tendance = vie?.tendance_participation as string | undefined;
+          const analyse = vie?.analyse_participation as string | undefined;
+          const travaux_nr = vie?.travaux_votes_non_realises as string[] | undefined;
+          const questions = vie?.questions_diverses_notables as string[] | undefined;
+          const appels = vie?.appels_fonds_exceptionnels as string[] | undefined;
+
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+              {/* Syndic */}
+              {syndic?.nom && (
+                <SectionCard title="Syndic" icon={<Building2 size={16}/>} color="#7c3aed">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>
+                      <Building2 size={14} style={{ color: '#7c3aed', flexShrink: 0 }}/>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{syndic.nom as string}</div>
+                        {syndic.fin_mandat && (
+                          <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                            Mandat jusqu'au {syndic.fin_mandat as string} — renouvellement habituel en AG
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {syndic.tensions_detectees && (
+                      <div style={{ padding: '10px 14px', background: '#fef2f2', borderRadius: 10, border: '1px solid #fecaca', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                        <AlertTriangle size={13} style={{ color: '#dc2626', flexShrink: 0, marginTop: 2 }}/>
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: '#991b1b', marginBottom: 2 }}>Tensions détectées sur le syndic</div>
+                          <div style={{ fontSize: 12, color: '#991b1b' }}>{syndic.tensions_detail as string}</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </SectionCard>
+              )}
+
+              {/* Participation AG */}
+              {participation && participation.length > 0 && (
+                <SectionCard title="Participation aux assemblées générales" icon={<BarChart2 size={16}/>} color="#7c3aed">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+                    {/* Tendance */}
+                    {tendance && tendance !== 'Non déterminable' && (
+                      <div style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid', marginBottom: 6,
+                        background: tendance === 'En hausse' ? '#f0fdf4' : tendance === 'En baisse' ? '#fef2f2' : '#f8fafc',
+                        borderColor: tendance === 'En hausse' ? '#bbf7d0' : tendance === 'En baisse' ? '#fecaca' : '#e2e8f0' }}>
+                        <div style={{ fontSize: 12, fontWeight: 700,
+                          color: tendance === 'En hausse' ? '#166534' : tendance === 'En baisse' ? '#991b1b' : '#64748b' }}>
+                          Tendance : {tendance}
+                        </div>
+                        {analyse && <div style={{ fontSize: 12, color: '#64748b', marginTop: 4, lineHeight: 1.5 }}>{analyse}</div>}
+                      </div>
+                    )}
+
+                    {/* Tableau par année */}
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ background: '#f8fafc' }}>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7' }}>Année</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7' }}>Présents / représentés</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7' }}>Tantièmes</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7' }}>Note</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {participation.map((p, i) => (
+                            <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                              <td style={{ padding: '10px 12px', fontWeight: 700, color: '#0f172a' }}>{p.annee as string}</td>
+                              <td style={{ padding: '10px 12px', color: '#374151' }}>{p.copropietaires_presents_representes as string || '—'}</td>
+                              <td style={{ padding: '10px 12px', color: '#374151' }}>
+                                {p.tantiemes_representes as string || '—'}
+                                {p.taux_tantiemes_pct && <span style={{ marginLeft: 6, fontSize: 11, color: '#94a3b8' }}>({p.taux_tantiemes_pct as string})</span>}
+                              </td>
+                              <td style={{ padding: '10px 12px' }}>
+                                {p.quorum_note && (
+                                  <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fffbeb', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 100 }}>
+                                    {p.quorum_note as string}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Résolutions refusées */}
+                    {participation.some(p => (p.resolutions_refusees as string[])?.length > 0) && (
+                      <div style={{ marginTop: 4 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#dc2626', marginBottom: 6 }}>Résolutions refusées détectées :</div>
+                        {participation.map((p, i) =>
+                          (p.resolutions_refusees as string[])?.map((r, j) => (
+                            <div key={`${i}-${j}`} style={{ fontSize: 12, color: '#991b1b', padding: '6px 10px', background: '#fef2f2', borderRadius: 8, marginBottom: 4 }}>
+                              {p.annee as string} — {r}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </SectionCard>
+              )}
+
+              {/* Votre lot */}
+              {lot && (lot.quote_part_tantiemes || lot.fonds_travaux_alur || (lot.restrictions_usage as string[])?.length > 0 || (lot.parties_privatives as string[])?.length > 0) && (
+                <SectionCard title="Votre lot" icon={<Info size={16}/>} color="#2a7d9c">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {lot.quote_part_tantiemes && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>
+                        <span style={{ fontSize: 13, color: '#64748b' }}>Quote-part en tantièmes</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{lot.quote_part_tantiemes as string}</span>
+                      </div>
+                    )}
+                    {lot.fonds_travaux_alur && (
+                      <div style={{ padding: '10px 14px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0' }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#166534', marginBottom: 2 }}>Fonds travaux ALUR récupérable</div>
+                        <div style={{ fontSize: 12, color: '#166534' }}>{lot.fonds_travaux_alur as string} — cette somme vous revient à la signature de l'acte authentique.</div>
+                      </div>
+                    )}
+                    {(lot.parties_privatives as string[])?.length > 0 && (
+                      <div style={{ padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 6 }}>Parties privatives identifiées</div>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {(lot.parties_privatives as string[]).map((p, i) => (
+                            <span key={i} style={{ fontSize: 11, fontWeight: 600, color: '#2a7d9c', background: '#e0f2fe', border: '1px solid #bae6fd', padding: '2px 10px', borderRadius: 100 }}>{p}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {(lot.restrictions_usage as string[])?.length > 0 && (
+                      <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a' }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#92400e', marginBottom: 6 }}>Restrictions d'usage détectées</div>
+                        {(lot.restrictions_usage as string[]).map((r, i) => (
+                          <div key={i} style={{ fontSize: 12, color: '#92400e', marginBottom: 3 }}>• {r}</div>
+                        ))}
+                      </div>
+                    )}
+                    {(lot.travaux_votes_charge_vendeur as string[])?.length > 0 && (
+                      <div style={{ padding: '10px 14px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0' }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#166534', marginBottom: 6 }}>Travaux votés — charge vendeur</div>
+                        <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Votés avant le compromis → à la charge du vendeur. Vérifiez ce point avec votre notaire.</div>
+                        {(lot.travaux_votes_charge_vendeur as string[]).map((t, i) => (
+                          <div key={i} style={{ fontSize: 12, color: '#166534', marginBottom: 3 }}>• {t}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </SectionCard>
+              )}
+
+              {/* Travaux votés non réalisés */}
+              {travaux_nr && travaux_nr.length > 0 && (
+                <SectionCard title="Travaux votés non réalisés" icon={<AlertTriangle size={16}/>} color="#d97706">
+                  <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a', marginBottom: 10, fontSize: 12, color: '#92400e' }}>
+                    Ces travaux ont été votés mais leur réalisation n'est pas confirmée dans les PV suivants. Demandez une mise à jour au vendeur.
+                  </div>
+                  {travaux_nr.map((t, i) => (
+                    <div key={i} style={{ fontSize: 13, color: '#92400e', padding: '8px 12px', background: '#fffbeb', borderRadius: 8, marginBottom: 6 }}>• {t}</div>
+                  ))}
+                </SectionCard>
+              )}
+
+              {/* Appels de fonds exceptionnels */}
+              {appels && appels.length > 0 && (
+                <SectionCard title="Appels de fonds exceptionnels" icon={<Euro size={16}/>} color="#d97706">
+                  <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a', marginBottom: 10, fontSize: 12, color: '#92400e' }}>
+                    Appels de fonds hors budget ordinaire votés en AG. Si votés avant le compromis, c'est la charge du vendeur.
+                  </div>
+                  {appels.map((a, i) => (
+                    <div key={i} style={{ fontSize: 13, color: '#92400e', padding: '8px 12px', background: '#fffbeb', borderRadius: 8, marginBottom: 6 }}>• {a}</div>
+                  ))}
+                </SectionCard>
+              )}
+
+              {/* Questions diverses */}
+              {questions && questions.length > 0 && (
+                <SectionCard title="Questions diverses notables" icon={<Info size={16}/>} color="#64748b">
+                  {questions.map((q, i) => (
+                    <div key={i} style={{ fontSize: 13, color: '#374151', padding: '8px 12px', background: '#f8fafc', borderRadius: 8, marginBottom: 6, border: '1px solid #edf2f7' }}>• {q}</div>
+                  ))}
+                </SectionCard>
+              )}
+
+              {/* Aucune donnée */}
+              {!vie && !lot && (
+                <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #edf2f7', padding: '48px 32px', textAlign: 'center' }}>
+                  <Info size={28} style={{ color: '#94a3b8', margin: '0 auto 12px' }}/>
+                  <p style={{ fontSize: 14, color: '#374151', fontWeight: 600 }}>Données copropriété non disponibles</p>
+                  <p style={{ fontSize: 13, color: '#94a3b8', marginTop: 4 }}>Uploadez les PV d'AG et le règlement de copropriété pour obtenir cette analyse.</p>
+                </div>
+              )}
+
+            </div>
+          );
+        })()}
+
         {/* ══ DOCUMENTS ══ */}
         {activeTab === 'documents' && isComplete && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
