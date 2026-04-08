@@ -284,7 +284,7 @@ export default function NouvelleAnalyse() {
         </div>
       )}
       <div className="type-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        <button onClick={() => { setType('document'); setStep('profil'); }}
+        <button onClick={() => { if (freePreviewUsed && credits.document === 0) { window.location.href = '/dashboard/tarifs'; return; } setType('document'); setStep('profil'); }}
           style={{ padding: '28px 24px', borderRadius: 20, border: '1.5px solid #edf2f7', background: '#fff', cursor: 'pointer', textAlign: 'left', transition: 'all 0.18s', position: 'relative', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
           onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.boxShadow = '0 8px 28px rgba(42,125,156,0.1)'; el.style.transform = 'translateY(-2px)'; }}
           onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'; el.style.transform = 'translateY(0)'; }}>
@@ -303,7 +303,7 @@ export default function NouvelleAnalyse() {
             {freePreviewUsed && <span style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>4,90€</span>}
           </div>
         </button>
-        <button onClick={() => { setType('complete'); setStep('profil'); }}
+        <button onClick={() => { if (freePreviewUsed && credits.complete === 0) { window.location.href = '/dashboard/tarifs'; return; } setType('complete'); setStep('profil'); }}
           style={{ padding: '28px 24px', borderRadius: 20, border: '1.5px solid transparent', background: 'linear-gradient(145deg, #0f2d3d, #1a5068)', cursor: 'pointer', textAlign: 'left', transition: 'all 0.18s', position: 'relative', overflow: 'hidden', boxShadow: '0 4px 20px rgba(15,45,61,0.15)' }}
           onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.boxShadow = '0 12px 40px rgba(15,45,61,0.28)'; el.style.transform = 'translateY(-2px)'; }}
           onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.boxShadow = '0 4px 20px rgba(15,45,61,0.15)'; el.style.transform = 'translateY(0)'; }}>
@@ -650,14 +650,17 @@ export default function NouvelleAnalyse() {
   if (step === 'apercu' && apercu) {
     const isComplete = type === 'complete';
     return (
-      <div style={{ maxWidth: 640, margin: '0 auto', animation: 'fadeUp 0.35s ease both' }}>
-        <div style={{ marginBottom: 24 }}>
+      <style>{`.apercu-grid { display: flex; flex-direction: column; gap: 20px; } @media (min-width: 900px) { .apercu-grid { display: grid; grid-template-columns: 1fr 340px; gap: 28px; align-items: start; } }`}</style>
+      <div style={{ animation: 'fadeUp 0.35s ease both' }}>
+        <div style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <span style={{ fontSize: 10, fontWeight: 800, color: '#16a34a', letterSpacing: '0.14em', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '3px 10px', borderRadius: 100 }}>APERÇU GRATUIT</span>
           </div>
           <h1 style={{ fontSize: 'clamp(18px,2.5vw,24px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em', marginBottom: 4 }}>{apercu.titre}</h1>
           <p style={{ fontSize: 13, color: '#94a3b8' }}>Voici un aperçu de votre analyse. Débloquez le rapport complet pour accéder à tous les détails.</p>
         </div>
+        <div className="apercu-grid">
+        <div>
         <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 22px', marginBottom: 14 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 8 }}>RÉSUMÉ</div>
           <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.75 }}>{apercu.recommandation_courte}</p>
@@ -699,23 +702,38 @@ export default function NouvelleAnalyse() {
             <Lock size={20} style={{ color: '#64748b' }} /><span style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>Contenu réservé aux analyses payantes</span>
           </div>
         </div>
-        <div style={{ background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', borderRadius: 18, padding: '24px 26px', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(42,125,156,0.2)', pointerEvents: 'none' }} />
-          <div style={{ position: 'relative' }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em', marginBottom: 8 }}>DÉBLOQUER LE RAPPORT COMPLET</div>
-            <h2 style={{ fontSize: 18, fontWeight: 900, color: '#fff', marginBottom: 8 }}>{isComplete ? 'Accédez au rapport complet' : "Accédez à l'analyse complète du document"}</h2>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 1.6, marginBottom: 20 }}>Score {isComplete ? '/20, travaux, charges, procédures et avis Verimo' : 'et analyse approfondie'}. Rapport PDF téléchargeable inclus.</p>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <button onClick={() => lancerPaiementApercu(isComplete, apercuId)}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '13px 24px', borderRadius: 12, background: '#fff', color: '#0f2d3d', fontSize: 14, fontWeight: 800, border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
-                <Sparkles size={15} /> Débloquer — {isComplete ? '19,90€' : '4,90€'}
-              </button>
-              <button onClick={() => { setStep('choice'); setType(null); setFiles([]); setApercu(null); }}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '13px 18px', borderRadius: 12, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                Nouvelle analyse
-              </button>
+        </div>
+
+          {/* Colonne droite — CTA sticky */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', borderRadius: 18, padding: '24px 26px', overflow: 'hidden', position: 'sticky' as const, top: 80 }}>
+              <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(42,125,156,0.2)', pointerEvents: 'none' }} />
+              <div style={{ position: 'relative' }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em', marginBottom: 8 }}>DÉBLOQUER LE RAPPORT COMPLET</div>
+                <h2 style={{ fontSize: 18, fontWeight: 900, color: '#fff', marginBottom: 8 }}>{isComplete ? 'Accédez au rapport complet' : "Accédez à l'analyse complète du document"}</h2>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 1.6, marginBottom: 20 }}>Score {isComplete ? '/20, travaux, charges, procédures et avis Verimo' : 'et analyse approfondie'}. Rapport PDF téléchargeable inclus.</p>
+                <button onClick={() => lancerPaiementApercu(isComplete, apercuId)}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px', borderRadius: 12, background: '#fff', color: '#0f2d3d', fontSize: 14, fontWeight: 800, border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,0,0,0.15)', width: '100%', marginBottom: 10 }}>
+                  <Sparkles size={15} /> Débloquer — {isComplete ? '19,90€' : '4,90€'}
+                </button>
+                <button onClick={() => { setStep('choice'); setType(null); setFiles([]); setApercu(null); }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '11px', borderRadius: 12, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer', width: '100%' }}>
+                  Nouvelle analyse
+                </button>
+                {apercuId && <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 12, textAlign: 'center' }}>Aperçu sauvegardé dans "Mes analyses"</p>}
+              </div>
             </div>
-            {apercuId && <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 12 }}>Votre aperçu est sauvegardé dans "Mes analyses" avec le badge Aperçu gratuit.</p>}
+            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '16px 18px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 10 }}>CE QUI VOUS ATTEND</div>
+              {(isComplete ? ['Score global /20', 'Analyse travaux détaillée', 'Finances copropriété', 'Procédures juridiques', 'Onglet Copropriété complet', 'Avis Verimo personnalisé', 'Rapport PDF téléchargeable'] : ['Analyse approfondie du document', 'Points clés détaillés', 'Recommandations personnalisées', 'Rapport PDF téléchargeable']).map((item, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+                  <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#f0fdf4', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <CheckCircle size={10} color="#16a34a" />
+                  </div>
+                  <span style={{ fontSize: 12, color: '#374151' }}>{item}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
