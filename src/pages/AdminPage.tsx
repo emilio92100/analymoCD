@@ -1360,11 +1360,15 @@ function PromosTab({ onConfirm, showToast, logAction }: { onConfirm: (a: Confirm
       </div>
 
       <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 80px 100px 100px 90px 80px', borderBottom: '1.5px solid #edf2f7', padding: '10px 18px', background: '#f8fafc' }}>
+        {/* Header desktop uniquement */}
+        <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 80px 100px 100px 90px 80px', borderBottom: '1.5px solid #edf2f7', padding: '10px 18px', background: '#f8fafc' }} className="promo-header-desktop">
           {['Code', 'Avantage', 'Utilisations', 'Expiration', 'Email limité', 'Statut', 'Actions'].map(h => (
             <div key={h} style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.07em', textTransform: 'uppercase' as const }}>{h}</div>
           ))}
         </div>
+        <style>{`
+          @media (max-width: 768px) { .promo-header-desktop { display: none !important; } }
+        `}</style>
         {loading ? <div style={{ padding: '40px', textAlign: 'center' as const, color: '#94a3b8' }}>Chargement...</div>
           : promos.length === 0 ? (
             <div style={{ padding: '52px', textAlign: 'center' as const, color: '#94a3b8' }}>
@@ -1372,30 +1376,70 @@ function PromosTab({ onConfirm, showToast, logAction }: { onConfirm: (a: Confirm
               <div style={{ fontSize: 14, fontWeight: 600 }}>Aucun code promo créé</div>
             </div>
           ) : promos.map((promo, i) => (
-            <div key={promo.id} style={{ display: 'grid', gridTemplateColumns: '140px 1fr 80px 100px 100px 90px 80px', padding: '13px 18px', borderBottom: i < promos.length - 1 ? '1px solid #f8fafc' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc', alignItems: 'center', opacity: promo.active ? 1 : 0.5 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 14, fontWeight: 900, color: '#0f172a', letterSpacing: '0.05em', fontFamily: 'monospace' }}>{promo.code}</span>
-                <button onClick={() => copyCode(promo.code, promo.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: copiedId === promo.id ? '#16a34a' : '#94a3b8', padding: 2 }}>
-                  {copiedId === promo.id ? <Check size={12} /> : <Copy size={12} />}
-                </button>
+            <div key={promo.id} style={{ borderBottom: i < promos.length - 1 ? '1px solid #f8fafc' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc', opacity: promo.active ? 1 : 0.5 }}>
+              {/* Vue desktop */}
+              <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr 80px 100px 100px 90px 80px', padding: '13px 18px', alignItems: 'center' }} className="promo-row-desktop">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 14, fontWeight: 900, color: '#0f172a', letterSpacing: '0.05em', fontFamily: 'monospace' }}>{promo.code}</span>
+                  <button onClick={() => copyCode(promo.code, promo.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: copiedId === promo.id ? '#16a34a' : '#94a3b8', padding: 2 }}>
+                    {copiedId === promo.id ? <Check size={12} /> : <Copy size={12} />}
+                  </button>
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#2a7d9c' }}>{typeLabel(promo.type, promo.value, promo.credit_type)}</div>
+                <div style={{ fontSize: 13, color: '#64748b' }}>{promo.uses_count}{promo.max_uses ? `/${promo.max_uses}` : ''}</div>
+                <div style={{ fontSize: 12, color: '#64748b' }}>{promo.expires_at ? fmtDate(promo.expires_at) : '—'}</div>
+                <div style={{ fontSize: 12, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{promo.restricted_email || '—'}</div>
+                <div>{promo.active ? <Badge color="#16a34a" bg="#f0fdf4">Actif</Badge> : <Badge color="#94a3b8" bg="#f8fafc">Inactif</Badge>}</div>
+                <div style={{ display: 'flex', gap: 5 }}>
+                  <button onClick={() => toggleActive(promo)} title={promo.active ? 'Désactiver' : 'Activer'}
+                    style={{ padding: '5px 8px', borderRadius: 7, background: promo.active ? '#fffbeb' : '#f0fdf4', border: `1px solid ${promo.active ? '#fde68a' : '#d1fae5'}`, cursor: 'pointer' }}>
+                    {promo.active ? <EyeOff size={12} color="#f0a500" /> : <Eye size={12} color="#16a34a" />}
+                  </button>
+                  <button onClick={() => onConfirm({ title: 'Supprimer le code', message: `Supprimer le code ${promo.code} définitivement ?`, confirmLabel: 'Supprimer', variant: 'danger', onConfirm: async () => { await supabase.from('promo_codes').delete().eq('id', promo.id); await logAction('Code supprimé', promo.code); loadPromos(); showToast('Code supprimé'); } })}
+                    style={{ padding: '5px 8px', borderRadius: 7, background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer' }}>
+                    <Trash2 size={12} color="#dc2626" />
+                  </button>
+                </div>
               </div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#2a7d9c' }}>{typeLabel(promo.type, promo.value, promo.credit_type)}</div>
-              <div style={{ fontSize: 13, color: '#64748b' }}>{promo.uses_count}{promo.max_uses ? `/${promo.max_uses}` : ''}</div>
-              <div style={{ fontSize: 12, color: '#64748b' }}>{promo.expires_at ? fmtDate(promo.expires_at) : '—'}</div>
-              <div style={{ fontSize: 12, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{promo.restricted_email || '—'}</div>
-              <div>{promo.active ? <Badge color="#16a34a" bg="#f0fdf4">Actif</Badge> : <Badge color="#94a3b8" bg="#f8fafc">Inactif</Badge>}</div>
-              <div style={{ display: 'flex', gap: 5 }}>
-                <button onClick={() => toggleActive(promo)} title={promo.active ? 'Désactiver' : 'Activer'}
-                  style={{ padding: '5px 8px', borderRadius: 7, background: promo.active ? '#fffbeb' : '#f0fdf4', border: `1px solid ${promo.active ? '#fde68a' : '#d1fae5'}`, cursor: 'pointer' }}>
-                  {promo.active ? <EyeOff size={12} color="#f0a500" /> : <Eye size={12} color="#16a34a" />}
-                </button>
-                <button onClick={() => onConfirm({ title: 'Supprimer le code', message: `Supprimer le code ${promo.code} définitivement ?`, confirmLabel: 'Supprimer', variant: 'danger', onConfirm: async () => { await supabase.from('promo_codes').delete().eq('id', promo.id); await logAction('Code supprimé', promo.code); loadPromos(); showToast('Code supprimé'); } })}
-                  style={{ padding: '5px 8px', borderRadius: 7, background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer' }}>
-                  <Trash2 size={12} color="#dc2626" />
-                </button>
+
+              {/* Vue mobile — carte */}
+              <div style={{ padding: '14px 16px' }} className="promo-row-mobile">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 15, fontWeight: 900, color: '#0f172a', letterSpacing: '0.05em', fontFamily: 'monospace' }}>{promo.code}</span>
+                    <button onClick={() => copyCode(promo.code, promo.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: copiedId === promo.id ? '#16a34a' : '#94a3b8', padding: 2 }}>
+                      {copiedId === promo.id ? <Check size={14} /> : <Copy size={14} />}
+                    </button>
+                    {promo.active ? <Badge color="#16a34a" bg="#f0fdf4">Actif</Badge> : <Badge color="#94a3b8" bg="#f8fafc">Inactif</Badge>}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => toggleActive(promo)}
+                      style={{ padding: '8px 12px', borderRadius: 8, background: promo.active ? '#fffbeb' : '#f0fdf4', border: `1px solid ${promo.active ? '#fde68a' : '#d1fae5'}`, cursor: 'pointer' }}>
+                      {promo.active ? <EyeOff size={14} color="#f0a500" /> : <Eye size={14} color="#16a34a" />}
+                    </button>
+                    <button onClick={() => onConfirm({ title: 'Supprimer le code', message: `Supprimer le code ${promo.code} définitivement ?`, confirmLabel: 'Supprimer', variant: 'danger', onConfirm: async () => { await supabase.from('promo_codes').delete().eq('id', promo.id); await logAction('Code supprimé', promo.code); loadPromos(); showToast('Code supprimé'); } })}
+                      style={{ padding: '8px 12px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer' }}>
+                      <Trash2 size={14} color="#dc2626" />
+                    </button>
+                  </div>
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#2a7d9c', marginBottom: 4 }}>{typeLabel(promo.type, promo.value, promo.credit_type)}</div>
+                <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' as const }}>
+                  <span style={{ fontSize: 12, color: '#64748b' }}>Utilisations : {promo.uses_count}{promo.max_uses ? `/${promo.max_uses}` : ''}</span>
+                  <span style={{ fontSize: 12, color: '#64748b' }}>Expire : {promo.expires_at ? fmtDate(promo.expires_at) : '—'}</span>
+                  {promo.restricted_email && <span style={{ fontSize: 12, color: '#64748b' }}>Email : {promo.restricted_email}</span>}
+                </div>
               </div>
             </div>
           ))}
+        <style>{`
+          .promo-row-desktop { display: grid; }
+          .promo-row-mobile { display: none; }
+          @media (max-width: 768px) {
+            .promo-row-desktop { display: none !important; }
+            .promo-row-mobile { display: block !important; }
+          }
+        `}</style>
       </div>
 
       <AnimatePresence>
@@ -1426,7 +1470,7 @@ function PromosTab({ onConfirm, showToast, logAction }: { onConfirm: (a: Confirm
               {/* Valeur */}
               {form.type === 'credits' ? (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <Input label="Nombre de crédits" type="number" value={form.value} onChange={e => setForm(f => ({ ...f, value: parseInt(e.target.value) || 1 }))} min={1} />
+                  <Input label="Nombre de crédits" type="number" value={form.value} onChange={e => { const v = e.target.value; setForm(f => ({ ...f, value: v === '' ? 0 : Math.max(1, parseInt(v) || 1) })); }} min={1} />
                   <Select label="Type de crédit" value={form.credit_type} onChange={e => setForm(f => ({ ...f, credit_type: e.target.value }))}>
                     <option value="complete">Analyse Complète</option>
                     <option value="document">Analyse Simple</option>
