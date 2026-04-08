@@ -204,7 +204,7 @@ function RapportDashboard() {
         setApercuData({ apercu: data.apercu as Record<string, unknown>, type: data.type, id: data.id });
       } else if (data?.result) {
         // Rapport complet → rediriger vers RapportPage standalone
-        window.location.href = `/dashboard/rapport-complet?id=${id}${action ? '&action=' + action : ''}`;
+        window.location.href = `/rapport?id=${id}${action ? '&action=' + action : ''}`;
       }
       setLoading(false);
     });
