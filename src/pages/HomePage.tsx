@@ -92,7 +92,7 @@ function HeroSection() {
         <div className="flex flex-col items-center lg:hidden pt-14 pb-4">
           <motion.h1 variants={up} initial="hidden" animate="show" custom={0.5}
             className="font-black leading-[1.08] tracking-[-0.03em] text-[#0f172a] mb-4 text-center w-full px-2"
-            style={{ fontSize: "clamp(28px, 7.5vw, 36px)" }}>
+            style={{ fontSize: "clamp(22px, 5.5vw, 30px)" }}>
             Comprenez l'essentiel<br />de votre achat immobilier<br />
             <span className="relative inline-block whitespace-nowrap">
               <span className="text-[#2a7d9c]">avant de signer.</span>
@@ -191,7 +191,7 @@ function HeroSection() {
             </motion.div>
 
             <motion.h1 variants={up} initial="hidden" animate="show" custom={1}
-              className="text-[clamp(28px,4vw,56px)] font-black leading-[1.06] tracking-[-0.03em] text-[#0f172a] mb-5">
+              className="text-[clamp(28px,3.2vw,44px)] font-black leading-[1.1] tracking-[-0.03em] text-[#0f172a] mb-5">
               Comprenez l'essentiel{' '}<br />de votre achat immobilier{' '}
               <span className="relative inline-block">
                 <span className="text-[#2a7d9c]">avant de signer.</span>
