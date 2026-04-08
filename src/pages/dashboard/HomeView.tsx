@@ -217,6 +217,14 @@ export default function HomeView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, animation: 'fadeUp 0.35s ease both' }}>
+      <style>{`
+        @media (max-width: 640px) {
+          .stats-grid { grid-template-columns: 1fr 1fr !important; }
+          .stats-grid > div:last-child { grid-column: span 2; }
+          .compare-grid { grid-template-columns: 1fr !important; }
+          .compare-grid > div:last-child { display: none; }
+        }
+      `}</style>
       <div>
         <h1 style={{ fontSize: 'clamp(26px,3vw,34px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 4 }}>{greeting}{name ? `, ${name}` : ''} 👋</h1>
         <p style={{ fontSize: 15, color: '#94a3b8' }}>{hasAnalyses ? 'Bienvenue sur votre espace Verimo.' : 'Bienvenue sur Verimo — lancez votre première analyse.'}</p>
