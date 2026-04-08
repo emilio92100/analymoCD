@@ -93,7 +93,7 @@ function HeroSection() {
           <motion.h1 variants={up} initial="hidden" animate="show" custom={0.5}
             className="font-black leading-[1.08] tracking-[-0.03em] text-[#0f172a] mb-4 text-center w-full px-2"
             style={{ fontSize: "clamp(28px, 7.5vw, 36px)" }}>
-            Comprenez l'essentiel de votre achat<br />
+            Comprenez l'essentiel de votre achat immobilier<br />
             <span className="relative inline-block whitespace-nowrap">
               <span className="text-[#2a7d9c]">avant de signer.</span>
               <motion.span
@@ -104,7 +104,7 @@ function HeroSection() {
 
           <motion.p variants={up} initial="hidden" animate="show" custom={0.8}
             className="text-[15px] text-slate-500 leading-relaxed text-center w-full px-4 mb-7">
-            Diagnostics, PV d'AG, copropriété…<br />
+            PV d'AG, règlement de copropriété, diagnostics, appels de charges, compromis de vente…<br />
             <span className="font-semibold text-[#0f172a]">Comprenez l'essentiel en 30 secondes*</span><br />
             avant de faire une offre.
           </motion.p>
@@ -192,7 +192,7 @@ function HeroSection() {
 
             <motion.h1 variants={up} initial="hidden" animate="show" custom={1}
               className="text-[clamp(28px,4vw,56px)] font-black leading-[1.06] tracking-[-0.03em] text-[#0f172a] mb-5">
-              Vérifiez les éléments<br />essentiels{' '}
+              Comprenez l'essentiel de votre achat immobilier{' '}
               <span className="relative inline-block">
                 <span className="text-[#2a7d9c]">avant de signer.</span>
                 <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.9, duration: 1.4 }}
