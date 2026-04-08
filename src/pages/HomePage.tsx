@@ -104,7 +104,7 @@ function HeroSection() {
 
           <motion.p variants={up} initial="hidden" animate="show" custom={0.8}
             className="text-[15px] text-slate-500 leading-relaxed text-center w-full px-4 mb-7">
-            PV d'AG, règlement de copropriété, diagnostics, appels de charges, compromis de vente…<br />
+            PV d'AG, règlement de copropriété, diagnostics, appels de charges…<br />
             <span className="font-semibold text-[#0f172a]">Comprenez l'essentiel en 30 secondes*</span><br />
             avant de faire une offre.
           </motion.p>
