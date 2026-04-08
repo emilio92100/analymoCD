@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import {
   ArrowRight, CheckCircle, AlertTriangle, FileText,
-  Euro, Wrench, Gavel,
+  Euro, Wrench, Gavel, Building2, BarChart2,
   Download, ChevronDown, Shield, Star, Info,
 } from 'lucide-react';
 
@@ -78,6 +78,27 @@ const rapport = {
 
   documents_manquants: ["Diagnostics parties communes", "Carnet d'entretien de l'immeuble"],
 
+  copropriete: {
+    syndic: { nom: 'Cabinet Immo Lyon Gestion', fin_mandat: 'Juin 2026', tensions_detectees: false },
+    participation_ag: [
+      { annee: '2024', presents_representes: '28 sur 42', tantiemes: '670/1000', taux: '67%', quorum: null },
+      { annee: '2023', presents_representes: '26 sur 42', tantiemes: '640/1000', taux: '64%', quorum: null },
+      { annee: '2022', presents_representes: '30 sur 42', tantiemes: '710/1000', taux: '71%', quorum: null },
+    ],
+    tendance: 'Stable',
+    analyse: 'La participation est stable autour de 65-70% des tantièmes sur 3 ans. Bon indicateur d'implication des copropriétaires.',
+    questions_diverses: ['Demande d'amélioration de l'éclairage du parking — en cours d'étude', 'Proposition d'installer des bornes de recharge électrique — renvoyé à l'AG 2025'],
+    honoraires_syndic: '8 400 €/an',
+  },
+
+  lot: {
+    quote_part: '312/10 000 tantièmes',
+    parties_privatives: ['Cave n°12', 'Parking n°8'],
+    fonds_travaux_alur: '3 200 €',
+    restrictions: ['Location de courte durée (Airbnb) soumise à autorisation de l'AG', 'Animaux autorisés — chiens de catégorie 1 et 2 interdits'],
+    travaux_charge_vendeur: ['Ascenseur mise aux normes — voté en 2023, à charge du vendeur'],
+  },
+
   negociation: {
     applicable: false,
     message: "Avec un score de 14,8/20, ce bien ne justifie pas de négociation agressive. Toutefois, le ravalement évoqué peut être un argument pour demander une légère baisse ou une clause de garantie dans l'acte de vente.",
@@ -116,10 +137,11 @@ function ScoreGauge({ score, color }: { score: number; color: string }) {
 
 const tabs = [
   { id: 0, label: 'Synthèse', icon: Star },
-  { id: 1, label: 'Finances', icon: Euro },
-  { id: 2, label: 'Travaux', icon: Wrench },
-  { id: 3, label: 'Procédures', icon: Gavel },
-  { id: 4, label: 'Documents', icon: FileText },
+  { id: 1, label: 'Copropriété', icon: Building2 },
+  { id: 2, label: 'Finances', icon: Euro },
+  { id: 3, label: 'Travaux', icon: Wrench },
+  { id: 4, label: 'Procédures', icon: Gavel },
+  { id: 5, label: 'Documents', icon: FileText },
 ];
 
 /* ══════════════════════════════════════════
@@ -297,7 +319,7 @@ export default function ExemplePage() {
             )}
 
             {/* ── FINANCES ── */}
-            {active === 1 && (
+            {active === 2 && (
               <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
                 <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', marginBottom: 20 }}>État financier de la copropriété</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12, marginBottom: 24 }} className="fin-grid">
@@ -324,7 +346,7 @@ export default function ExemplePage() {
             )}
 
             {/* ── TRAVAUX ── */}
-            {active === 2 && (
+            {active === 3 && (
               <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
                 <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Travaux identifiés dans les documents</h3>
                 <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 20 }}>Réalisés, votés ou évoqués — tout ce qui impacte votre budget.</p>
@@ -354,7 +376,7 @@ export default function ExemplePage() {
             )}
 
             {/* ── PROCÉDURES ── */}
-            {active === 3 && (
+            {active === 4 && (
               <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
                 <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', marginBottom: 20 }}>Situation juridique de la copropriété</h3>
                 <div style={{ padding: '20px 22px', borderRadius: 14, background: '#f0fdf4', border: '1.5px solid #d1fae5', display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
@@ -384,7 +406,7 @@ export default function ExemplePage() {
             )}
 
             {/* ── DOCUMENTS ── */}
-            {active === 4 && (
+            {active === 5 && (
               <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
                 <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Documents analysés</h3>
                 <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 20 }}>{rapport.pages} pages analysées en {rapport.duree}</p>
