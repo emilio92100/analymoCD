@@ -158,6 +158,29 @@ export default function NouvelleAnalyse() {
     if (p.total > 1) setProgressDoc({ current: p.current, total: p.total });
   };
 
+  // ─── Paiement depuis l'aperçu gratuit ─────────────────────
+  const lancerPaiementApercu = async (isComplete: boolean, apercuId: string | null) => {
+    const PRICE_IDS: Record<string, string> = {
+      document: 'price_1TIb1LBO4ekMbwz0020eqcR0',
+      complete: 'price_1TIb3XBO4ekMbwz0a7m7E7gD',
+    };
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { window.location.href = '/connexion'; return; }
+      const priceId = isComplete ? PRICE_IDS.complete : PRICE_IDS.document;
+      const successUrl = apercuId
+        ? `https://verimo.fr/dashboard/rapport?id=${apercuId}&action=reupload`
+        : `https://verimo.fr/dashboard/tarifs?success=true`;
+      const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlc3pyYXlyb21sZGZnZXRxYXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MzI5NTUsImV4cCI6MjA2MTAwODk1NX0.XsqzBPDMfHRFKgMhJxoLhgVWZMdV5YnFKM3VCBe9hOk' },
+        body: JSON.stringify({ priceId, userId: session.user.id, successUrl }),
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch (e) { console.error(e); }
+  };
+
   // ─── Lancer aperçu gratuit ────────────────────────────────
   const lancerApercu = async () => {
     if (isAnalysing) return;
@@ -663,9 +686,10 @@ export default function NouvelleAnalyse() {
             <h2 style={{ fontSize: 18, fontWeight: 900, color: '#fff', marginBottom: 8 }}>{isComplete ? 'Accédez au rapport complet' : "Accédez à l'analyse complète du document"}</h2>
             <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 1.6, marginBottom: 20 }}>Score {isComplete ? '/20, travaux, charges, procédures et avis Verimo' : 'et analyse approfondie'}. Rapport PDF téléchargeable inclus.</p>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <Link to="/dashboard/tarifs" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '13px 24px', borderRadius: 12, background: '#fff', color: '#0f2d3d', fontSize: 14, fontWeight: 800, textDecoration: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
+              <button onClick={() => lancerPaiementApercu(isComplete, apercuId)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '13px 24px', borderRadius: 12, background: '#fff', color: '#0f2d3d', fontSize: 14, fontWeight: 800, border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
                 <Sparkles size={15} /> Débloquer — {isComplete ? '19,90€' : '4,90€'}
-              </Link>
+              </button>
               <button onClick={() => { setStep('choice'); setType(null); setFiles([]); setApercu(null); }}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '13px 18px', borderRadius: 12, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                 Nouvelle analyse
