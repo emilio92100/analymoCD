@@ -81,37 +81,39 @@ export default function Compte() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em' }}>Mon compte</h1>
 
-      {/* Résumé rapide */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
-        {[
-          { label: 'Crédits complets', value: credits.complete, color: '#2a7d9c' },
-          { label: 'Crédits simples', value: credits.document, color: '#7c3aed' },
-          { label: 'Analyses réalisées', value: analysesCount, color: '#16a34a' },
-        ].map(s => (
-          <div key={s.label} style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '16px', textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
-            <div style={{ fontSize: 28, fontWeight: 900, color: s.color, letterSpacing: '-0.02em' }}>{s.value}</div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: 4 }}>{s.label}</div>
-          </div>
-        ))}
+      {/* Résumé rapide — 2 colonnes sur mobile, 3 sur desktop */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '16px', textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
+          <div style={{ fontSize: 28, fontWeight: 900, color: '#2a7d9c', letterSpacing: '-0.02em' }}>{credits.complete}</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginTop: 4 }}>Crédits complets</div>
+        </div>
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '16px', textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
+          <div style={{ fontSize: 28, fontWeight: 900, color: '#7c3aed', letterSpacing: '-0.02em' }}>{credits.document}</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginTop: 4 }}>Crédits simples</div>
+        </div>
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '16px', textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.03)', gridColumn: 'span 2' }}>
+          <div style={{ fontSize: 28, fontWeight: 900, color: '#16a34a', letterSpacing: '-0.02em' }}>{analysesCount}</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginTop: 4 }}>Analyses réalisées</div>
+        </div>
       </div>
 
-      {/* Infos compte + bouton recharger */}
-      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 24px', boxShadow: '0 1px 4px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+      {/* Infos compte */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 24px', boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
+        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' as const, marginBottom: 16 }}>
           {provider && (
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 3 }}>Connexion</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 3 }}>Connexion</div>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>{provider}</div>
             </div>
           )}
           {createdAt && (
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 3 }}>Membre depuis</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 3 }}>Membre depuis</div>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>{createdAt}</div>
             </div>
           )}
         </div>
-        <Link to="/dashboard/tarifs" style={{ padding: '10px 20px', borderRadius: 10, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+        <Link to="/dashboard/tarifs" style={{ display: 'block', width: '100%', padding: '12px', borderRadius: 10, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none', textAlign: 'center' as const, boxSizing: 'border-box' as const }}>
           + Recharger des crédits
         </Link>
       </div>
