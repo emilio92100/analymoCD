@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { fetchAnalyseById } from '../lib/analyses';
+import { supabase } from '../lib/supabase';
 import {
   ChevronLeft, Download, Building2, TrendingUp, Wrench,
   AlertTriangle, CheckCircle, Shield, BarChart2, FileText,
@@ -240,15 +241,17 @@ export default function RapportPage() {
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [loading, setLoading] = useState(true);
   const [rapport, setRapport] = useState<typeof MOCK_RAPPORT | null>(null);
+  const [apercuData, setApercuData] = useState<{ apercu: Record<string, unknown>; type: string; id: string } | null>(null);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       if (!id) { setRapport(MOCK_RAPPORT); setLoading(false); return; }
       const data = await fetchAnalyseById(id);
-      // Si c'est un aperçu gratuit → rediriger vers la page d'aperçu
+      // Si c'est un aperçu gratuit → stocker l'aperçu pour affichage inline
       if (data?.is_preview && data?.apercu && !data?.result) {
-        window.location.href = `/dashboard/nouvelle-analyse?apercu_id=${id}`;
+        setApercuData({ apercu: data.apercu as Record<string, unknown>, type: data.type, id: data.id });
+        setLoading(false);
         return;
       }
       if (!data || !data.result) { setRapport(MOCK_RAPPORT); setLoading(false); return; }
@@ -300,6 +303,97 @@ export default function RapportPage() {
     </div>
   );
 
+  if (apercuData) {
+    const ap = apercuData.apercu;
+    const isComplete = apercuData.type === 'complete' || apercuData.type === 'apercu_complete';
+    return (
+      <div style={{ minHeight: '100vh', background: '#f5f9fb', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+        <header style={{ background: '#fff', borderBottom: '1px solid #edf2f7', position: 'sticky', top: 0, zIndex: 40, padding: '0 24px', height: 64, display: 'flex', alignItems: 'center', gap: 14 }}>
+          <Link to="/dashboard/analyses" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#64748b', textDecoration: 'none' }}><ChevronLeft size={16}/> Mes analyses</Link>
+          <div style={{ width: 1, height: 20, background: '#edf2f7' }}/>
+          <span style={{ fontSize: 10, fontWeight: 800, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '3px 10px', borderRadius: 100 }}>APERÇU GRATUIT</span>
+        </header>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 20px', display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24, alignItems: 'start' }} className="apercu-page-grid">
+          <style>{`@media (max-width: 860px) { .apercu-page-grid { grid-template-columns: 1fr !important; } }`}</style>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <h1 style={{ fontSize: 'clamp(18px,2.5vw,26px)', fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>{ap.titre as string}</h1>
+              <p style={{ fontSize: 13, color: '#94a3b8' }}>Voici un aperçu de votre analyse. Débloquez le rapport complet pour accéder à tous les détails.</p>
+            </div>
+            <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 22px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 8 }}>RÉSUMÉ</div>
+              <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.75 }}>{ap.recommandation_courte as string}</p>
+            </div>
+            {(ap.points_vigilance as string[])?.length > 0 && (
+              <div style={{ background: '#fffbeb', borderRadius: 16, border: '1px solid #fde68a', padding: '20px 22px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#d97706', letterSpacing: '0.1em', marginBottom: 12 }}>⚠ POINTS DE VIGILANCE</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {(ap.points_vigilance as string[]).map((p, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                      <AlertTriangle size={13} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
+                      <span style={{ fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>{p}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {isComplete && (
+              <div style={{ background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0', padding: '20px 22px', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ filter: 'blur(6px)', pointerEvents: 'none', userSelect: 'none' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 8 }}>SCORE GLOBAL</div>
+                  <div style={{ fontSize: 52, fontWeight: 900, color: '#94a3b8' }}>?.?</div>
+                  <div style={{ fontSize: 14, color: '#94a3b8' }}>/20</div>
+                </div>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8 }}>
+                  <Lock size={22} style={{ color: '#64748b' }}/><span style={{ fontSize: 13, fontWeight: 700, color: '#64748b' }}>Score disponible après paiement</span>
+                </div>
+              </div>
+            )}
+            <div style={{ background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0', padding: '20px 22px', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ filter: 'blur(4px)', pointerEvents: 'none', userSelect: 'none' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 12 }}>ANALYSE COMPLÈTE</div>
+                {['Rapport financier détaillé', 'Liste des travaux votés et à prévoir', 'Analyse des charges et fonds travaux', 'Procédures en cours', 'Avis Verimo personnalisé'].map((item, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#cbd5e1', flexShrink: 0 }} />
+                    <span style={{ fontSize: 13, color: '#cbd5e1' }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 6 }}>
+                <Lock size={20} style={{ color: '#64748b' }}/><span style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>Contenu réservé aux analyses payantes</span>
+              </div>
+            </div>
+          </div>
+          {/* Colonne droite CTA */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, position: 'sticky', top: 80 }}>
+            <div style={{ background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', borderRadius: 18, padding: '24px', overflow: 'hidden' }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em', marginBottom: 8 }}>DÉBLOQUER LE RAPPORT</div>
+              <h2 style={{ fontSize: 17, fontWeight: 900, color: '#fff', marginBottom: 8 }}>{isComplete ? 'Rapport complet' : 'Analyse du document'}</h2>
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 1.6, marginBottom: 16 }}>{isComplete ? 'Score /20, travaux, charges, procédures et avis Verimo.' : 'Analyse approfondie et recommandations.'} Rapport PDF inclus.</p>
+              <button onClick={async () => {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session) { window.location.href = '/connexion'; return; }
+                const priceId = isComplete ? 'price_1TIb3XBO4ekMbwz0a7m7E7gD' : 'price_1TIb1LBO4ekMbwz0020eqcR0';
+                const successUrl = `https://verimo.fr/dashboard/rapport?id=${apercuData.id}&action=reupload`;
+                const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/create-checkout-session', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlc3pyYXlyb21sZGZnZXRxYXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MzI5NTUsImV4cCI6MjA2MTAwODk1NX0.XsqzBPDMfHRFKgMhJxoLhgVWZMdV5YnFKM3VCBe9hOk' },
+                  body: JSON.stringify({ priceId, userId: session.user.id, successUrl }),
+                });
+                const data = await res.json();
+                if (data.url) window.location.href = data.url;
+              }}
+                style={{ width: '100%', padding: '14px', borderRadius: 12, background: '#fff', color: '#0f2d3d', fontSize: 14, fontWeight: 800, border: 'none', cursor: 'pointer', marginBottom: 10 }}>
+                Débloquer — {isComplete ? '19,90€' : '4,90€'}
+              </button>
+              <Link to="/dashboard/analyses" style={{ display: 'block', textAlign: 'center', fontSize: 12, color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>← Mes analyses</Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!rapport) return (
     <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f5f9fb' }}>
       <p style={{ fontSize:14, color:'#94a3b8' }}>Rapport introuvable.</p>
@@ -341,7 +435,7 @@ export default function RapportPage() {
         </button>
       </header>
 
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '28px 20px' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '28px 20px' }}>
 
         {/* ── Hero rapport complet */}
         {isComplete && (
