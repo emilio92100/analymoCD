@@ -182,8 +182,7 @@ export default function TarifsPage() {
 
         <motion.h1 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}
           style={{ fontSize: 'clamp(28px,4.5vw,52px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em', lineHeight: 1.08, marginBottom: 14 }}>
-          Des tarifs simples,<br />
-          <span style={{ position: 'relative', display: 'inline-block' }}>
+          Des tarifs simples, <span style={{ position: 'relative', display: 'inline-block' }}>
             <span style={{ color: '#2a7d9c' }}>sans surprise.</span>
             <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 2.5, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
               style={{ position: 'absolute', bottom: -4, left: 0, right: 0, height: 4, background: 'rgba(42,125,156,0.25)', borderRadius: 99, transformOrigin: 'left', display: 'block' }} />
@@ -191,7 +190,7 @@ export default function TarifsPage() {
         </motion.h1>
 
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.13 }}
-          style={{ fontSize: 16, color: '#64748b', maxWidth: 420, margin: '0 auto 28px', lineHeight: 1.65 }}>
+          style={{ fontSize: 16, color: '#64748b', maxWidth: 700, margin: '0 auto 28px', lineHeight: 1.65, whiteSpace: 'nowrap' }}>
           Sans abonnement. Sans engagement. Payez une fois, gardez votre rapport.
         </motion.p>
 
@@ -304,7 +303,7 @@ export default function TarifsPage() {
       {/* ── TABLEAU COMPARATIF ── */}
       <section style={{ padding: 'clamp(40px,5vw,60px) 20px', maxWidth: 1100, margin: '0 auto' }}>
         <Reveal>
-          <h2 style={{ fontSize: 'clamp(18px,2vw,22px)', fontWeight: 800, color: '#0f172a', marginBottom: 16, letterSpacing: '-0.01em' }}>
+          <h2 style={{ fontSize: 'clamp(22px,2.5vw,30px)', fontWeight: 900, color: '#0f172a', marginBottom: 20, letterSpacing: '-0.02em' }}>
             Tout ce qui est inclus
           </h2>
         </Reveal>
@@ -379,21 +378,21 @@ export default function TarifsPage() {
       {/* ── COMPARAISON INFO + PRO ── */}
       <section style={{ padding: '0 20px clamp(40px,5vw,60px)', maxWidth: 1100, margin: '0 auto', display: 'flex', flexDirection: 'column' as const, gap: 12 }}>
         <Reveal>
-          <div style={{ padding: '16px 22px', borderRadius: 14, background: '#fff', border: '1.5px solid #bae3f5', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' as const }}>
-            <GitCompare size={18} color="#2a7d9c" style={{ flexShrink: 0 }} />
-            <p style={{ fontSize: 13, color: '#374151', margin: 0, lineHeight: 1.6, flex: 1 }}>
+          <div style={{ padding: '20px 28px', borderRadius: 16, background: '#fff', border: '1.5px solid #bae3f5', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' as const }}>
+            <GitCompare size={22} color="#2a7d9c" style={{ flexShrink: 0 }} />
+            <p style={{ fontSize: 14, color: '#374151', margin: 0, lineHeight: 1.6, flex: 1 }}>
               <strong style={{ color: '#0f2d3d' }}>La comparaison se débloque automatiquement</strong> dès que votre compte contient au minimum 2 analyses complètes — via un Pack ou des achats séparés.
             </p>
           </div>
         </Reveal>
 
         <Reveal delay={0.05}>
-          <div style={{ padding: '16px 22px', borderRadius: 14, background: '#0f2d3d', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' as const }}>
+          <div style={{ padding: '20px 28px', borderRadius: 16, background: '#0f2d3d', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' as const }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <Crown size={18} color="#f0a500" style={{ flexShrink: 0 }} />
               <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Offre Professionnelle</div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>Notaires, agents, syndics — volumes illimités, tarif dédié.</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>Offre Professionnelle</div>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>Notaires, agents, syndics — volumes illimités, tarif dédié.</div>
               </div>
             </div>
             <Link to="/contact" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 10, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' as const }}>
@@ -406,7 +405,7 @@ export default function TarifsPage() {
       {/* ── FAQ ── */}
       <section style={{ padding: '0 20px clamp(48px,6vw,80px)', maxWidth: 680, margin: '0 auto' }}>
         <Reveal>
-          <h2 style={{ fontSize: 'clamp(18px,2vw,22px)', fontWeight: 800, color: '#0f172a', marginBottom: 16, letterSpacing: '-0.01em' }}>
+          <h2 style={{ fontSize: 'clamp(22px,2.5vw,30px)', fontWeight: 900, color: '#0f172a', marginBottom: 20, letterSpacing: '-0.02em' }}>
             Questions fréquentes
           </h2>
         </Reveal>
