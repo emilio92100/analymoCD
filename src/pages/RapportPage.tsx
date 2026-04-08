@@ -450,6 +450,23 @@ export default function RapportPage() {
               </div>
             </div>
 
+            {/* Alerte DPE invalide */}
+            {(() => {
+              const r3 = rapport as unknown as Record<string, unknown>;
+              const diag = r3.diagnostics_resume as string | undefined;
+              const showAlerte = diag && diag.toLowerCase().includes('invalide') || diag?.toLowerCase().includes('avant 2021') || diag?.toLowerCase().includes('2018') || diag?.toLowerCase().includes('2019') || diag?.toLowerCase().includes('2020');
+              if (!showAlerte) return null;
+              return (
+                <div style={{ padding: '14px 18px', background: '#fef2f2', borderRadius: 13, border: '1.5px solid #fecaca', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <AlertTriangle size={16} style={{ color: '#dc2626', flexShrink: 0, marginTop: 1 }}/>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#991b1b', marginBottom: 2 }}>DPE potentiellement invalide</div>
+                    <div style={{ fontSize: 12, color: '#991b1b', lineHeight: 1.5 }}>Un DPE réalisé avant le 01/07/2021 est invalide depuis le 01/01/2025. Un nouveau diagnostic est obligatoire pour toute vente ou location. Vérifiez la date du DPE avec le vendeur.</div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Documents manquants */}
             {rapport.documents_manquants && rapport.documents_manquants.length > 0 && (
               <div style={{ padding: '14px 18px', background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -500,24 +517,39 @@ export default function RapportPage() {
                 <>
                   <div style={{ padding: '10px 14px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0', marginBottom: 14, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                     <Info size={13} style={{ color: '#16a34a', flexShrink: 0, marginTop: 2 }}/>
-                    <span style={{ fontSize: 12, color: '#166534', lineHeight: 1.5 }}>Ces travaux ayant été votés avant votre acquisition, une convention entre vendeur et acheteur précise généralement que le vendeur en supporte les coûts. Vérifiez ce point avec votre notaire lors de la signature.</span>
+                    <span style={{ fontSize: 12, color: '#166534', lineHeight: 1.5 }}>Les travaux votés avant la signature du compromis sont à la charge du vendeur, même si les appels de fonds n'ont pas encore commencé. Vérifiez ce point avec votre notaire.</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {rapport.travaux_votes.map((t, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0', flexWrap: 'wrap', gap: 8 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <CheckCircle size={14} style={{ color: '#16a34a', flexShrink: 0 }}/>
-                          <div>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: '#166534' }}>{t.label}</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                              {t.annee && <span style={{ fontSize: 11, color: '#94a3b8' }}>Prévu en {t.annee}</span>}
-                              {t.statut && <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '1px 7px', borderRadius: 100 }}>{t.statut}</span>}
+                    {rapport.travaux_votes.map((t, i) => {
+                      const tv = t as unknown as Record<string, unknown>;
+                      const statut_real = tv.statut_realisation as string | undefined;
+                      const charge_vendeur = tv.charge_vendeur as boolean | undefined;
+                      const statutColor = statut_real === 'réalisé' ? '#16a34a' : statut_real === 'en cours' ? '#d97706' : statut_real === 'non réalisé' ? '#dc2626' : '#94a3b8';
+                      return (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0', flexWrap: 'wrap', gap: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <CheckCircle size={14} style={{ color: '#16a34a', flexShrink: 0 }}/>
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: '#166534' }}>{t.label}</div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, flexWrap: 'wrap' }}>
+                                {t.annee && <span style={{ fontSize: 11, color: '#94a3b8' }}>Prévu en {t.annee}</span>}
+                                {statut_real && statut_real !== 'non précisé' && (
+                                  <span style={{ fontSize: 10, fontWeight: 700, color: statutColor, background: `${statutColor}12`, border: `1px solid ${statutColor}30`, padding: '1px 7px', borderRadius: 100 }}>
+                                    {statut_real}
+                                  </span>
+                                )}
+                                {charge_vendeur && (
+                                  <span style={{ fontSize: 10, fontWeight: 700, color: '#2a7d9c', background: '#e0f2fe', border: '1px solid #bae6fd', padding: '1px 7px', borderRadius: 100 }}>
+                                    Charge vendeur
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
+                          {t.montant_estime && <span style={{ fontSize: 14, fontWeight: 800, color: '#16a34a' }}>~{(t.montant_estime as number).toLocaleString()}€</span>}
                         </div>
-                        {t.montant_estime && <span style={{ fontSize: 14, fontWeight: 800, color: '#16a34a' }}>~{(t.montant_estime as number).toLocaleString()}€</span>}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </>
               ) : (
@@ -612,6 +644,37 @@ export default function RapportPage() {
                 <p style={{ fontSize: 13, color: '#94a3b8', marginTop: 4 }}>La situation financière de la copropriété semble saine selon les documents analysés.</p>
               </div>
             )}
+
+            {/* Type de chauffage + honoraires syndic */}
+            {(() => {
+              const r2 = rapport as unknown as Record<string, unknown>;
+              const finances = r2.finances as Record<string, unknown> | undefined;
+              const vie2 = r2.vie_copropriete as Record<string, unknown> | undefined;
+              const chauffage = finances?.type_chauffage as string | undefined;
+              const honoraires = vie2?.honoraires_syndic_evolution as string | undefined;
+              if (!chauffage && !honoraires) return null;
+              return (
+                <SectionCard title="Informations complémentaires" icon={<Info size={16}/>} color="#2a7d9c">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {chauffage && (
+                      <div style={{ padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 2 }}>Type de chauffage</div>
+                        <div style={{ fontSize: 13, color: '#64748b' }}>{chauffage}</div>
+                        {chauffage.toLowerCase().includes('collectif') && (
+                          <div style={{ fontSize: 11, color: '#d97706', marginTop: 4 }}>⚠ Chauffage collectif : charges potentiellement plus élevées, moins de maîtrise individuelle.</div>
+                        )}
+                      </div>
+                    )}
+                    {honoraires && (
+                      <div style={{ padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 2 }}>Honoraires du syndic</div>
+                        <div style={{ fontSize: 13, color: '#64748b' }}>{honoraires}</div>
+                      </div>
+                    )}
+                  </div>
+                </SectionCard>
+              );
+            })()}
           </div>
         )}
 
