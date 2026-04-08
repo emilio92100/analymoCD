@@ -653,15 +653,20 @@ export default function RapportPage() {
         {/* ══ COPROPRIÉTÉ ══ */}
         {activeTab === 'copropriete' && isComplete && (() => {
           const r = rapport as unknown as Record<string, unknown>;
-          const vie = r.vie_copropriete as Record<string, unknown> | undefined;
-          const lot = r.lot_achete as Record<string, unknown> | undefined;
-          const syndic = vie?.syndic as Record<string, unknown> | undefined;
-          const participation = vie?.participation_ag as Array<Record<string, unknown>> | undefined;
-          const tendance = vie?.tendance_participation as string | undefined;
-          const analyse = vie?.analyse_participation as string | undefined;
-          const travaux_nr = vie?.travaux_votes_non_realises as string[] | undefined;
-          const questions = vie?.questions_diverses_notables as string[] | undefined;
-          const appels = vie?.appels_fonds_exceptionnels as string[] | undefined;
+          type SyndicType = { nom?: string; fin_mandat?: string; tensions_detectees?: boolean; tensions_detail?: string; changement_recent?: boolean };
+          type ParticipationType = { annee?: string; copropietaires_presents_representes?: string; tantiemes_representes?: string; taux_tantiemes_pct?: string; quorum_note?: string; resolutions_refusees?: string[] };
+          type LotType = { quote_part_tantiemes?: string; fonds_travaux_alur?: string; parties_privatives?: string[]; restrictions_usage?: string[]; travaux_votes_charge_vendeur?: string[]; impayes_detectes?: string; points_specifiques?: string[] };
+          type VieType = { syndic?: SyndicType; participation_ag?: ParticipationType[]; tendance_participation?: string; analyse_participation?: string; travaux_votes_non_realises?: string[]; questions_diverses_notables?: string[]; appels_fonds_exceptionnels?: string[]; honoraires_syndic_evolution?: string };
+
+          const vie = r.vie_copropriete as VieType | undefined;
+          const lot = r.lot_achete as LotType | undefined;
+          const syndic = vie?.syndic;
+          const participation = vie?.participation_ag;
+          const tendance = vie?.tendance_participation;
+          const analyse = vie?.analyse_participation;
+          const travaux_nr = vie?.travaux_votes_non_realises;
+          const questions = vie?.questions_diverses_notables;
+          const appels = vie?.appels_fonds_exceptionnels;
 
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -673,10 +678,10 @@ export default function RapportPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>
                       <Building2 size={14} style={{ color: '#7c3aed', flexShrink: 0 }}/>
                       <div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{String(syndic.nom)}</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{syndic.nom}</div>
                         {syndic.fin_mandat && (
                           <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
-                            Mandat jusqu'au {String(syndic.fin_mandat)} — renouvellement habituel en AG
+                            Mandat jusqu'au {syndic.fin_mandat} — renouvellement habituel en AG
                           </div>
                         )}
                       </div>
@@ -686,7 +691,7 @@ export default function RapportPage() {
                         <AlertTriangle size={13} style={{ color: '#dc2626', flexShrink: 0, marginTop: 2 }}/>
                         <div>
                           <div style={{ fontSize: 12, fontWeight: 700, color: '#991b1b', marginBottom: 2 }}>Tensions détectées sur le syndic</div>
-                          <div style={{ fontSize: 12, color: '#991b1b' }}>{String(syndic.tensions_detail)}</div>
+                          <div style={{ fontSize: 12, color: '#991b1b' }}>{syndic.tensions_detail}</div>
                         </div>
                       </div>
                     )}
@@ -726,16 +731,16 @@ export default function RapportPage() {
                         <tbody>
                           {participation.map((p, i) => (
                             <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                              <td style={{ padding: '10px 12px', fontWeight: 700, color: '#0f172a' }}>{String(p.annee)}</td>
-                              <td style={{ padding: '10px 12px', color: '#374151' }}>{String(p.copropietaires_presents_representes ?? '—')}</td>
+                              <td style={{ padding: '10px 12px', fontWeight: 700, color: '#0f172a' }}>{p.annee}</td>
+                              <td style={{ padding: '10px 12px', color: '#374151' }}>{p.copropietaires_presents_representes ?? '—'}</td>
                               <td style={{ padding: '10px 12px', color: '#374151' }}>
-                                {String(p.tantiemes_representes ?? '—')}
-                                {p.taux_tantiemes_pct && <span style={{ marginLeft: 6, fontSize: 11, color: '#94a3b8' }}>({String(p.taux_tantiemes_pct)})</span>}
+                                {p.tantiemes_representes ?? '—'}
+                                {p.taux_tantiemes_pct && <span style={{ marginLeft: 6, fontSize: 11, color: '#94a3b8' }}>({p.taux_tantiemes_pct})</span>}
                               </td>
                               <td style={{ padding: '10px 12px' }}>
                                 {p.quorum_note && (
                                   <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fffbeb', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 100 }}>
-                                    {String(p.quorum_note)}
+                                    {p.quorum_note}
                                   </span>
                                 )}
                               </td>
@@ -752,7 +757,7 @@ export default function RapportPage() {
                         {participation.map((p, i) =>
                           (p.resolutions_refusees as string[])?.map((r, j) => (
                             <div key={`${i}-${j}`} style={{ fontSize: 12, color: '#991b1b', padding: '6px 10px', background: '#fef2f2', borderRadius: 8, marginBottom: 4 }}>
-                              {String(p.annee)} — {r}
+                              {p.annee} — {r}
                             </div>
                           ))
                         )}
@@ -769,13 +774,13 @@ export default function RapportPage() {
                     {lot.quote_part_tantiemes && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>
                         <span style={{ fontSize: 13, color: '#64748b' }}>Quote-part en tantièmes</span>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{String(lot.quote_part_tantiemes)}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{lot.quote_part_tantiemes}</span>
                       </div>
                     )}
                     {lot.fonds_travaux_alur && (
                       <div style={{ padding: '10px 14px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0' }}>
                         <div style={{ fontSize: 12, fontWeight: 700, color: '#166534', marginBottom: 2 }}>Fonds travaux ALUR récupérable</div>
-                        <div style={{ fontSize: 12, color: '#166534' }}>{String(lot.fonds_travaux_alur)} — cette somme vous revient à la signature de l'acte authentique.</div>
+                        <div style={{ fontSize: 12, color: '#166534' }}>{lot.fonds_travaux_alur} — cette somme vous revient à la signature de l'acte authentique.</div>
                       </div>
                     )}
                     {(lot.parties_privatives as string[])?.length > 0 && (
