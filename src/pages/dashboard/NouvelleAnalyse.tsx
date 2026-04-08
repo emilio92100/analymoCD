@@ -456,7 +456,7 @@ export default function NouvelleAnalyse() {
         if (!freePreviewUsed && creditType === 0) {
           lancerApercu();
 } else {
-  alert('DEBUG - type=' + type + ' files=' + files.length + ' credits_complete=' + credits.complete + ' profil=' + profil);
+  alert('DEBUG type=' + type + ' files=' + files.length + ' credits=' + credits.complete + ' profil=' + profil);
   lancer();
 }
         }
