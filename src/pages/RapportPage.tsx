@@ -218,14 +218,15 @@ function DetailNote({ categories }: { categories: typeof MOCK_RAPPORT.categories
 /* ══════════════════════════════════════════
    ONGLETS
 ══════════════════════════════════════════ */
-type TabId = 'overview' | 'travaux' | 'finances' | 'procedures' | 'documents';
+type TabId = 'overview' | 'copropriete' | 'travaux' | 'finances' | 'procedures' | 'documents';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode; color: string }[] = [
-  { id: 'overview',    label: 'Synthèse',      icon: <BarChart2 size={15}/>,    color: '#2a7d9c' },
-  { id: 'travaux',     label: 'Travaux',        icon: <HardHat size={15}/>,      color: '#d97706' },
-  { id: 'finances',    label: 'Finances',       icon: <Euro size={15}/>,         color: '#16a34a' },
-  { id: 'procedures',  label: 'Procédures',     icon: <Gavel size={15}/>,        color: '#dc2626' },
-  { id: 'documents',   label: 'Documents',      icon: <FileText size={15}/>,     color: '#7c3aed' },
+  { id: 'overview',     label: 'Synthèse',      icon: <BarChart2 size={15}/>,    color: '#2a7d9c' },
+  { id: 'copropriete',  label: 'Copropriété',   icon: <Building2 size={15}/>,    color: '#7c3aed' },
+  { id: 'travaux',      label: 'Travaux',        icon: <HardHat size={15}/>,      color: '#d97706' },
+  { id: 'finances',     label: 'Finances',       icon: <Euro size={15}/>,         color: '#16a34a' },
+  { id: 'procedures',   label: 'Procédures',     icon: <Gavel size={15}/>,        color: '#dc2626' },
+  { id: 'documents',    label: 'Documents',      icon: <FileText size={15}/>,     color: '#475569' },
 ];
 
 /* ══════════════════════════════════════════
@@ -257,8 +258,8 @@ export default function RapportPage() {
         type_bien: (r.type_bien as string) || 'appartement',
         profil: (data.profil as string) || 'rp',
         resume: (r.resume as string) || '',
-        synthese_points_positifs: (r.synthese_points_positifs as string[]) || [],
-        synthese_points_vigilance: (r.synthese_points_vigilance as string[]) || [],
+        synthese_points_positifs: (r.points_forts as string[]) || (r.synthese_points_positifs as string[]) || [],
+        synthese_points_vigilance: (r.points_vigilance as string[]) || (r.synthese_points_vigilance as string[]) || [],
         avis_verimo: (r.avis_verimo as string) || '',
         categories: (r.categories as typeof MOCK_RAPPORT.categories) || MOCK_RAPPORT.categories,
         charges_mensuelles: (r.charges_mensuelles as number) || 0,
