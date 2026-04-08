@@ -318,6 +318,121 @@ export default function ExemplePage() {
               </div>
             )}
 
+            {/* ── COPROPRIÉTÉ ── */}
+            {active === 1 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+                {/* Syndic */}
+                <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+                  <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 10, background: '#7c3aed06' }}>
+                    <Building2 size={16} style={{ color: '#7c3aed' }} />
+                    <span style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Syndic</span>
+                  </div>
+                  <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', flexWrap: 'wrap', gap: 8 }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{rapport.copropriete.syndic.nom}</div>
+                        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Mandat jusqu'en {rapport.copropriete.syndic.fin_mandat} — renouvellement habituel en AG</div>
+                      </div>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '2px 10px', borderRadius: 100 }}>Aucune tension</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>
+                      <span style={{ fontSize: 12, color: '#64748b' }}>Honoraires annuels</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{rapport.copropriete.honoraires_syndic}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Participation AG */}
+                <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+                  <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 10, background: '#7c3aed06' }}>
+                    <Info size={16} style={{ color: '#7c3aed' }} />
+                    <span style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Participation aux assemblées générales</span>
+                  </div>
+                  <div style={{ padding: '18px 20px' }}>
+                    <div style={{ padding: '10px 14px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0', marginBottom: 14, fontSize: 12, color: '#166534' }}>
+                      Tendance : <strong>{rapport.copropriete.tendance}</strong> — {rapport.copropriete.analyse}
+                    </div>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ background: '#f8fafc' }}>
+                            {['Année', 'Présents / représentés', 'Tantièmes', 'Taux'].map(h => (
+                              <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7' }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rapport.copropriete.participation_ag.map((p, i) => (
+                            <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                              <td style={{ padding: '10px 12px', fontWeight: 700, color: '#0f172a' }}>{p.annee}</td>
+                              <td style={{ padding: '10px 12px', color: '#374151' }}>{p.presents_representes}</td>
+                              <td style={{ padding: '10px 12px', color: '#374151' }}>{p.tantiemes}</td>
+                              <td style={{ padding: '10px 12px' }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#e0f2fe', border: '1px solid #bae6fd', padding: '2px 8px', borderRadius: 100 }}>{p.taux}</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Votre lot */}
+                <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+                  <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 10, background: '#2a7d9c06' }}>
+                    <Info size={16} style={{ color: '#2a7d9c' }} />
+                    <span style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Votre lot</span>
+                  </div>
+                  <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>
+                      <span style={{ fontSize: 12, color: '#64748b' }}>Quote-part</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{rapport.lot.quote_part}</span>
+                    </div>
+                    <div style={{ padding: '10px 14px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#166534', marginBottom: 2 }}>Fonds travaux ALUR récupérable</div>
+                      <div style={{ fontSize: 12, color: '#166534' }}>{rapport.lot.fonds_travaux_alur} — cette somme vous revient à la signature de l'acte authentique.</div>
+                    </div>
+                    <div style={{ padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 6 }}>Parties privatives</div>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+                        {rapport.lot.parties_privatives.map((p, i) => (
+                          <span key={i} style={{ fontSize: 11, fontWeight: 600, color: '#2a7d9c', background: '#e0f2fe', border: '1px solid #bae6fd', padding: '2px 10px', borderRadius: 100 }}>{p}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#92400e', marginBottom: 6 }}>Restrictions d'usage</div>
+                      {rapport.lot.restrictions.map((r, i) => (
+                        <div key={i} style={{ fontSize: 12, color: '#92400e', marginBottom: 3 }}>• {r}</div>
+                      ))}
+                    </div>
+                    <div style={{ padding: '10px 14px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#166534', marginBottom: 6 }}>Travaux votés — charge vendeur</div>
+                      {rapport.lot.travaux_charge_vendeur.map((t, i) => (
+                        <div key={i} style={{ fontSize: 12, color: '#166534' }}>• {t}</div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Questions diverses */}
+                <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+                  <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Info size={16} style={{ color: '#94a3b8' }} />
+                    <span style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Questions diverses notables</span>
+                  </div>
+                  <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {rapport.copropriete.questions_diverses.map((q, i) => (
+                      <div key={i} style={{ fontSize: 13, color: '#374151', padding: '8px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #edf2f7' }}>• {q}</div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            )}
+
             {/* ── FINANCES ── */}
             {active === 2 && (
               <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
