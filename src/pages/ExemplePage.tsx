@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import {
   ArrowRight, CheckCircle, AlertTriangle, FileText,
-  Euro, Wrench, Gavel, Building2, BarChart2,
+  Euro, Wrench, Gavel, Building2,
   Download, ChevronDown, Shield, Star, Info,
 } from 'lucide-react';
 
