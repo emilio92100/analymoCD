@@ -94,11 +94,12 @@ function CheckoutModal({ plan, onClose }: {
 
       // Enregistrer dans l'historique payments
       const creditTypeLabel = creditCol === 'credits_document' ? 'simple' : 'complet';
+      const creditTypeLabelPlural = creditCol === 'credits_document' ? 'simples' : 'complets';
       await supabase.from('payments').insert({
         user_id: user.id,
         amount: 0,
         currency: 'eur',
-        description: `${toAdd} crédit${toAdd > 1 ? 's' : ''} ${creditTypeLabel}${toAdd > 1 ? 's' : ''} offert${toAdd > 1 ? 's' : ''} · Code ${promoResult.code}`,
+        description: `${toAdd} crédit${toAdd > 1 ? 's' : ''} ${toAdd > 1 ? creditTypeLabelPlural : creditTypeLabel} offert${toAdd > 1 ? 's' : ''} · Code ${promoResult.code}`,
         promo_code: promoResult.code,
         credits_added: toAdd,
         credit_type: creditCol === 'credits_document' ? 'document' : 'complete',
@@ -360,7 +361,7 @@ export default function Tarifs() {
         setCheckoutPlan(null);
         if (type === 'credits_applied' && count) {
           fetchCredits();
-          setCreditsToast(`🎉 ${count} crédit${count > 1 ? 's' : ''} ${creditType} ajouté${count > 1 ? 's' : ''} à votre compte ! Vous pouvez les utiliser dès maintenant depuis "Nouvelle analyse".`);
+          setCreditsToast(`🎉 ${count} crédit${count > 1 ? 's' : ''} ${count > 1 ? (creditType === 'simple' ? 'simples' : 'complets') : creditType} ajouté${count > 1 ? 's' : ''} à votre compte ! Vous pouvez les utiliser dès maintenant depuis "Nouvelle analyse".`);
         }
       }} />}
     </div>
