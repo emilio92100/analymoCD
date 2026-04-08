@@ -69,6 +69,16 @@ export async function lancerAnalyseEdge(params: {
       filesB64.push({ name: files[i].name, data: b64 });
     }
 
+    // Vérifier la taille totale avant envoi (limite Supabase ~6 MB par requête)
+    const totalSizeMB = filesB64.reduce((acc, f) => acc + f.data.length * 0.75 / 1024 / 1024, 0);
+    if (totalSizeMB > 5.5) {
+      return {
+        success: false,
+        error: 'unknown',
+        errorMessage: `Vos documents totalisent ${totalSizeMB.toFixed(1)} Mo, ce qui dépasse la limite de traitement (5,5 Mo). Réduisez le nombre de fichiers ou utilisez des PDFs plus légers.`,
+      };
+    }
+
     onProgress?.({
       step: 'analysing',
       current: 0,
