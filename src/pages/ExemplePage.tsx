@@ -86,8 +86,8 @@ const rapport = {
       { annee: '2022', presents_representes: '30 sur 42', tantiemes: '710/1000', taux: '71%', quorum: null },
     ],
     tendance: 'Stable',
-    analyse: 'La participation est stable autour de 65-70% des tantièmes sur 3 ans. Bon indicateur d'implication des copropriétaires.',
-    questions_diverses: ['Demande d'amélioration de l'éclairage du parking — en cours d'étude', 'Proposition d'installer des bornes de recharge électrique — renvoyé à l'AG 2025'],
+    analyse: "La participation est stable autour de 65-70% des tantièmes sur 3 ans. Bon indicateur d'implication des copropriétaires.",
+    questions_diverses: ["Demande d'amélioration de l'éclairage du parking — en cours d'étude", "Proposition d'installer des bornes de recharge électrique — renvoyé à l'AG 2025"],
     honoraires_syndic: '8 400 €/an',
   },
 
@@ -95,7 +95,7 @@ const rapport = {
     quote_part: '312/10 000 tantièmes',
     parties_privatives: ['Cave n°12', 'Parking n°8'],
     fonds_travaux_alur: '3 200 €',
-    restrictions: ['Location de courte durée (Airbnb) soumise à autorisation de l'AG', 'Animaux autorisés — chiens de catégorie 1 et 2 interdits'],
+    restrictions: ["Location de courte durée (Airbnb) soumise à autorisation de l'AG", "Animaux autorisés — chiens de catégorie 1 et 2 interdits"],
     travaux_charge_vendeur: ['Ascenseur mise aux normes — voté en 2023, à charge du vendeur'],
   },
 
