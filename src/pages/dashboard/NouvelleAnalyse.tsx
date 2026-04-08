@@ -650,6 +650,7 @@ export default function NouvelleAnalyse() {
   if (step === 'apercu' && apercu) {
     const isComplete = type === 'complete';
     return (
+      <>
       <style>{`.apercu-grid { display: flex; flex-direction: column; gap: 20px; } @media (min-width: 900px) { .apercu-grid { display: grid; grid-template-columns: 1fr 340px; gap: 28px; align-items: start; } }`}</style>
       <div style={{ animation: 'fadeUp 0.35s ease both' }}>
         <div style={{ marginBottom: 20 }}>
@@ -737,6 +738,7 @@ export default function NouvelleAnalyse() {
           </div>
         </div>
       </div>
+      </>
     );
   }
 
