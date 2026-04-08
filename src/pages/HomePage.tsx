@@ -65,12 +65,12 @@ export default function HomePage() {
     <div className="bg-white text-[#0f172a] antialiased overflow-x-hidden" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <HeroSection />
       <ProblemSolutionSection />
-      <HowItWorksSection />
       <ApercuRapportSection />
       <AvantApresSection />
-      <AvisSection />
       <ForWhoSection />
       <ScoreSection />
+      <HowItWorksSection />
+      <AvisSection />
       <SecuriteSection />
       <FaqSection />
     </div>
@@ -752,14 +752,14 @@ function AvantApresSection() {
             </div>
 
             {/* Colonne SANS VERIMO — à droite */}
-            <div className="rounded-2xl overflow-hidden border border-red-100 shadow-sm opacity-75">
-              <div className="bg-slate-200 px-5 py-4 flex items-center gap-3">
-                <div className="w-7 h-7 rounded-full bg-red-400 flex items-center justify-center shrink-0">
+            <div className="rounded-2xl overflow-hidden border border-red-200 shadow-sm">
+              <div className="bg-red-50 px-5 py-4 flex items-center gap-3 border-b border-red-100">
+                <div className="w-7 h-7 rounded-full bg-red-500 flex items-center justify-center shrink-0">
                   <X size={14} className="text-white" strokeWidth={3} />
                 </div>
-                <span className="text-slate-600 font-black text-base">Sans Verimo</span>
+                <span className="text-red-700 font-black text-base">Sans Verimo</span>
               </div>
-              <div className="bg-[#fef2f2] p-4 flex flex-col gap-2.5">
+              <div className="bg-[#fff5f5] p-4 flex flex-col gap-2.5">
                 {items.map((item, i) => (
                   <motion.div key={i}
                     initial={{ opacity: 0, x: 16 }}
@@ -767,13 +767,13 @@ function AvantApresSection() {
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.07, duration: 0.35 }}
                     className="flex items-start gap-3 p-3.5 rounded-xl bg-white border border-red-100">
-                    <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0 bg-red-50 border border-red-100 opacity-60">
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0 bg-red-50 border border-red-100">
                       {item.icon}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-slate-400 leading-snug line-through decoration-red-300">{item.before}</p>
+                      <p className="text-sm text-red-500 font-medium leading-snug line-through decoration-red-400">{item.before}</p>
                     </div>
-                    <div className="w-5 h-5 rounded-full bg-red-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center shrink-0 mt-0.5">
                       <X size={11} className="text-white" strokeWidth={3} />
                     </div>
                   </motion.div>
