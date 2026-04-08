@@ -705,7 +705,7 @@ function PhaseResultMini() {
 function AvantApresSection() {
 
   const items = [
-    { icon: '📄', before: "40 pages de PV illisibles à parcourir seul", after: "Rapport structuré et clair en 2 minutes" },
+    { icon: '📄', before: "40 pages de PV illisibles à parcourir seul", after: "Rapport structuré et clair en 30 secondes*" },
     { icon: '⚖️', before: "Jargon juridique incompréhensible", after: "Informations clés expliquées simplement" },
     { icon: '🏗️', before: "Travaux découverts après la signature", after: "Risques et travaux détectés en amont" },
     { icon: '💰', before: "Mauvaises surprises financières", after: "Charges, fonds travaux et impayés chiffrés" },
@@ -973,7 +973,7 @@ function ForWhoSection() {
       label: 'Investisseur',
       emoji: '📈',
       headline: 'Chaque bien est une opportunité. Ou un piège.',
-      sub: 'Les charges, les impayés, les travaux votés — tout impacte votre rentabilité. Verimo les lit et les chiffre en moins de 2 minutes.',
+      sub: 'Les charges, les impayés, les travaux votés — tout impacte votre rentabilité. Verimo les lit et les chiffre en moins de 30 secondes*.',
       points: [
         'Calculez l\'impact des charges sur votre rendement',
         'Détectez les travaux qui grèveront votre ROI',
@@ -1345,7 +1345,7 @@ function AvisSection() {
       nom: 'Camille D.',
       ville: 'Bordeaux',
       note: 5,
-      texte: "En 2 minutes j'avais un rapport complet sur la copropriété. La participation aux AG, le syndic, les travaux votés, les charges… tout était là. J'ai partagé le rapport avec mon notaire qui a été bluffé.",
+      texte: "En 30 secondes j'avais un rapport complet sur la copropriété. La participation aux AG, le syndic, les travaux votés, les charges… tout était là. J'ai partagé le rapport avec mon notaire qui a été bluffé.",
       profil: 'Acheteuse — investissement locatif',
       initiale: 'C',
       color: '#16a34a',
@@ -1486,7 +1486,7 @@ function FaqSection() {
     {
       q: "Ça fonctionne avec tous les types de documents ?",
       emoji: "📄",
-      a: "Verimo traite les PDF nativement numériques (fichiers texte exportés depuis Word, Adobe, etc.) en moins de 2 minutes. Les documents scannés ou photographiés peuvent nécessiter un délai supplémentaire selon la qualité. Les formats Word, JPEG ou PNG ne sont pas pris en charge — convertissez-les d'abord en PDF.",
+      a: "Verimo traite les PDF nativement numériques (fichiers texte exportés depuis Word, Adobe, etc.) en moins de 30 secondes*. Les documents scannés ou photographiés peuvent nécessiter un délai supplémentaire selon la qualité. Les formats Word, JPEG ou PNG ne sont pas pris en charge — convertissez-les d'abord en PDF.",
     },
     {
       q: "Et si je n'ai qu'un seul document ?",
