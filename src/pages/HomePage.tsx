@@ -92,7 +92,7 @@ function HeroSection() {
         <div className="flex flex-col items-center lg:hidden pt-14 pb-4">
           <motion.h1 variants={up} initial="hidden" animate="show" custom={0.5}
             className="font-black leading-[1.08] tracking-[-0.03em] text-[#0f172a] mb-4 text-center w-full px-2"
-            style={{ fontSize: "clamp(22px, 5.5vw, 30px)" }}>
+            style={{ fontSize: "clamp(26px, 6.5vw, 34px)" }}>
             Comprenez l'essentiel<br />de votre achat immobilier<br />
             <span className="relative inline-block whitespace-nowrap">
               <span className="text-[#2a7d9c]">avant de signer.</span>
@@ -103,7 +103,7 @@ function HeroSection() {
           </motion.h1>
 
           <motion.p variants={up} initial="hidden" animate="show" custom={0.8}
-            className="text-[15px] text-slate-500 leading-relaxed text-center w-full px-4 mb-7">
+            className="text-[17px] text-slate-500 leading-relaxed text-center w-full px-4 mb-7">
             PV d'AG, règlement de copropriété, diagnostics, appels de charges…<br />
             <span className="font-semibold text-[#0f172a]">Comprenez l'essentiel en 30 secondes*</span><br />
             avant de faire une offre.
