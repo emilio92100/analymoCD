@@ -567,7 +567,7 @@ export default function ExemplePage() {
           <div style={{ marginTop: 36, borderRadius: 20, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', padding: '36px 32px', textAlign: 'center' }}>
             <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 8, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Prêt à analyser votre bien ?</div>
             <h3 style={{ fontSize: 'clamp(20px,3vw,28px)', fontWeight: 900, color: '#fff', marginBottom: 10, letterSpacing: '-0.02em' }}>Obtenez un rapport comme celui-ci.</h3>
-            <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.6)', marginBottom: 28, lineHeight: 1.65 }}>Uploadez vos documents et recevez votre score /20 avec rapport complet en moins de 2 minutes.</p>
+            <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.6)', marginBottom: 28, lineHeight: 1.65 }}>Uploadez vos documents et recevez votre score /20 avec rapport complet en moins de 30 secondes*.</p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               <Link to="/start" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '13px 28px', borderRadius: 13, background: '#fff', color: '#0f2d3d', fontSize: 15, fontWeight: 700, textDecoration: 'none' }}>
                 Analyser mon bien <ArrowRight size={16} />
