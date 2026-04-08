@@ -703,7 +703,6 @@ function PhaseResultMini() {
 
 /* ═══ AVANT / APRÈS ════════════════════════════════════════ */
 function AvantApresSection() {
-  const [showVerimo, setShowVerimo] = useState(true);
 
   const items = [
     { icon: '📄', before: "40 pages de PV illisibles à parcourir seul", after: "Rapport structuré et clair en 2 minutes" },
