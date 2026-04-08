@@ -41,7 +41,7 @@ const { data, error } = await supabase.auth.signUp({ email, password, options: {
         <Link to="/"><img src="/logo.png" alt="Verimo" style={{ height: 90, objectFit: 'contain', filter: 'brightness(0) invert(1)', marginBottom: 48, display: 'block' }} /></Link>
         <h2 style={{ fontSize: 32, fontWeight: 800, color: '#fff', marginBottom: 16 }}>Votre premier achat immobilier mérite la meilleure analyse.</h2>
         <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, marginBottom: 48 }}>Créez votre compte en 30 secondes et analysez vos premiers documents dès aujourd'hui.</p>
-        {[['⚡','Résultats en moins de 2 minutes'],['🔒','Données chiffrées et sécurisées'],['📄','Rapports PDF téléchargeables'],['💬','Support client réactif']].map(([icon, text]) => (
+        {[['⚡','Résultats en moins de 30 secondes*'],['🔒','Données chiffrées et sécurisées'],['📄','Rapports PDF téléchargeables'],['💬','Support client réactif']].map(([icon, text]) => (
           <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}><span style={{ fontSize: 20 }}>{icon}</span><span style={{ fontSize: 15, color: 'rgba(255,255,255,0.8)' }}>{text}</span></div>
         ))}
       </div>
