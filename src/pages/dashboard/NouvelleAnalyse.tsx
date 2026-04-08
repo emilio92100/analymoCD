@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { FileText, ShieldCheck, Upload, CheckCircle, AlertTriangle, ChevronLeft, Sparkles, ArrowRight, Lock, Download } from 'lucide-react';
 import { lancerAnalyseEdge, type AnalyseProgress } from '../../lib/analyse-client';
 import { createAnalyse, createApercu, markAnalyseFailed, markFreePreviewUsed, unmarkFreePreviewUsed, checkFreePreviewUsedSync } from '../../lib/analyses';
@@ -58,6 +58,7 @@ async function isPdfPasswordProtected(file: File): Promise<boolean> {
 
 export default function NouvelleAnalyse() {
   const { credits, deductCredit } = useCredits();
+  const [searchParams] = useSearchParams();
   const [step, setStep] = useState<'choice' | 'profil' | 'upload' | 'analyse' | 'apercu' | 'result'>('choice');
   const [type, setType] = useState<'document' | 'complete' | null>(null);
   const [files, setFiles] = useState<File[]>([]);
@@ -136,6 +137,22 @@ export default function NouvelleAnalyse() {
   };
 
   // ─── Animation barre de progression ─────────────────────
+  // ─── Charger aperçu depuis URL (depuis Mes analyses) ──────
+  useEffect(() => {
+    const apercuIdParam = searchParams.get('apercu_id');
+    if (!apercuIdParam) return;
+    const chargerApercu = async () => {
+      const { data } = await supabase.from('analyses').select('apercu, type, title').eq('id', apercuIdParam).single();
+      if (data?.apercu) {
+        setApercu(data.apercu as ApercuResult);
+        setApercuId(apercuIdParam);
+        setType(data.type as 'document' | 'complete');
+        setStep('apercu');
+      }
+    };
+    chargerApercu();
+  }, []);
+
   useEffect(() => {
     if (step !== 'analyse') { setAnimatedProgress(0); return; }
     // La barre ne dépasse jamais le vrai progress mais avance toujours doucement
