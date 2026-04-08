@@ -210,6 +210,17 @@ export async function markFreePreviewUsed(): Promise<void> {
     .eq('id', user.id);
 }
 
+/* ─── Annuler le marquage en cas d'échec ──── */
+export async function unmarkFreePreviewUsed(): Promise<void> {
+  localStorage.removeItem('verimo_free_preview_used');
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase
+    .from('profiles')
+    .update({ free_preview_used: false })
+    .eq('id', user.id);
+}
+
 /* ─── Vérifier si l'aperçu gratuit a été utilisé (instantané) ── */
 export function checkFreePreviewUsedSync(): boolean {
   return localStorage.getItem('verimo_free_preview_used') === 'true';
