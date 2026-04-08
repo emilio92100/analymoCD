@@ -450,7 +450,15 @@ export default function NouvelleAnalyse() {
         </div>
       )}
 
-      <button onClick={!freePreviewUsed ? lancerApercu : lancer} disabled={files.length === 0 || isAnalysing}
+      <button onClick={() => {
+        // Aperçu gratuit seulement si offre dispo ET 0 crédit du bon type
+        const creditType = type === 'document' ? credits.document : credits.complete;
+        if (!freePreviewUsed && creditType === 0) {
+          lancerApercu();
+        } else {
+          lancer();
+        }
+      }} disabled={files.length === 0 || isAnalysing}
         style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: files.length > 0 ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#e2e8f0', color: files.length > 0 ? '#fff' : '#94a3b8', fontSize: 15, fontWeight: 800, cursor: files.length > 0 ? 'pointer' : 'default', boxShadow: files.length > 0 ? '0 4px 18px rgba(15,45,61,0.2)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.15s' }}>
         <Sparkles size={16} /> {!freePreviewUsed ? 'Générer mon aperçu gratuit' : 'Analyser'} {files.length > 0 ? `(${files.length} fichier${files.length > 1 ? 's' : ''})` : ''}
       </button>
