@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, ShieldCheck, Upload, CheckCircle, AlertTriangle, ChevronLeft, Sparkles, ArrowRight, Lock, Download } from 'lucide-react';
 import { lancerAnalyseEdge, type AnalyseProgress } from '../../lib/analyse-client';
-import { createAnalyse, createApercu, markAnalyseFailed, markFreePreviewUsed, checkFreePreviewUsedSync } from '../../lib/analyses';
+import { createAnalyse, createApercu, markAnalyseFailed, markFreePreviewUsed, unmarkFreePreviewUsed, checkFreePreviewUsedSync } from '../../lib/analyses';
 import { supabase } from '../../lib/supabase';
 import { useCredits, type Credits } from '../../hooks/useCredits';
 
@@ -195,18 +195,21 @@ export default function NouvelleAnalyse() {
       setError("Impossible de créer l'analyse. Veuillez réessayer.");
       setStep('upload'); resetUpload(); setIsAnalysing(false); return;
     }
+    // Marquer l'offre gratuite utilisée dès le lancement (pas après) pour que le badge disparaisse immédiatement
+    await markFreePreviewUsed();
+    setFreePreviewUsed(true);
     const mode = type === 'complete' ? 'apercu_complete' : 'apercu_document';
     const result = await lancerAnalyseEdge({ files, mode, analyseId, profil: profil || 'rp', onProgress: handleProgress });
     if (!result.success) {
       await markAnalyseFailed(analyseId);
+      await unmarkFreePreviewUsed(); // Rendre l'offre gratuite si l'analyse échoue
+      setFreePreviewUsed(false);
       setError(result.errorMessage || "Une erreur est survenue. Veuillez réessayer.");
       setStep('upload'); resetUpload(); setIsAnalysing(false); return;
     }
     // Lire le résultat depuis Supabase
     const { data: analyseData } = await supabase.from('analyses').select('apercu, title').eq('id', analyseId).single();
     if (analyseData?.apercu) {
-      await markFreePreviewUsed();
-      setFreePreviewUsed(true);
       setApercu(analyseData.apercu as ApercuResult);
       setApercuId(analyseId);
       setStep('apercu');
