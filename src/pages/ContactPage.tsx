@@ -30,9 +30,14 @@ export default function ContactPage() {
       {/* Hero */}
       <section style={{ padding: '56px 28px 48px', background: 'linear-gradient(150deg,#eef7fb 0%,#e4f2f8 50%,#f8fafc 100%)', textAlign: 'center' }}>
         <motion.h1 initial={{ opacity: 0, y: isLowPerf() ? 6 : 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: isLowPerf() ? 0.18 : 0.4 }} style={{ fontSize: 'clamp(28px,4.5vw,50px)', fontWeight: 900, color: '#0f2d3d', marginBottom: 14, letterSpacing: '-0.025em' }}>
-          On est là <span style={{ color: '#2a7d9c' }}>pour vous.</span>
+          On est là{' '}
+          <span style={{ position: 'relative', display: 'inline-block', color: '#2a7d9c' }}>
+            pour vous.
+            <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.6, duration: 1.2 }}
+              style={{ position: 'absolute', bottom: -3, left: 0, right: 0, height: 4, background: 'rgba(42,125,156,0.25)', borderRadius: 4, transformOrigin: 'left', display: 'block' }} />
+          </span>
         </motion.h1>
-        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: isLowPerf() ? 0.06 : 0.2 }} style={{ fontSize: 17, color: '#6b8a96', maxWidth: 480, margin: '0 auto', lineHeight: 1.7 }}>
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: isLowPerf() ? 0.06 : 0.2 }} style={{ fontSize: 17, color: '#6b8a96', maxWidth: 700, margin: '0 auto', lineHeight: 1.7, whiteSpace: 'nowrap' }}>
           Une question, une demande pro, ou simplement envie d'en savoir plus — écrivez-nous.
         </motion.p>
       </section>
