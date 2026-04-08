@@ -251,7 +251,7 @@ export default function HomeView() {
           <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '18px' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 8 }}>ANALYSES TOTALES</div>
             <div style={{ fontSize: 34, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em', lineHeight: 1, marginBottom: 4 }}>{totalAnalyses}</div>
-            {avgScore ? <div style={{ fontSize: 12, color: '#16a34a', fontWeight: 700 }}>Note moyenne : {avgScore}/20</div> : <div style={{ fontSize: 12, color: '#94a3b8' }}>Aucune analyse complète</div>}
+            {avgScore && <div style={{ fontSize: 12, color: '#16a34a', fontWeight: 700 }}>Note moyenne : {avgScore}/20</div>}
           </div>
           <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '18px' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 8 }}>DERNIÈRE ANALYSE</div>
