@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Plus, FileText, GitCompare, User, LifeBuoy,
   LogOut, Menu, X, ChevronDown, Bell, Shield, CreditCard,
+  AlertTriangle, Lock, Sparkles, CheckCircle,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useCredits } from '../hooks/useCredits';
@@ -188,6 +189,154 @@ function DashboardBanner() {
   );
 }
 
+function RapportDashboard() {
+  const [searchParams] = useSearchParams();
+  const id = searchParams.get('id') || '';
+  const action = searchParams.get('action') || '';
+  const [apercuData, setApercuData] = useState<{ apercu: Record<string, unknown>; type: string; id: string } | null>(null);
+  const [showReupload, setShowReupload] = useState(action === 'reupload');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) { setLoading(false); return; }
+    supabase.from('analyses').select('*').eq('id', id).single().then(({ data }) => {
+      if (data?.is_preview && data?.apercu && !data?.result) {
+        setApercuData({ apercu: data.apercu as Record<string, unknown>, type: data.type, id: data.id });
+      } else if (data?.result) {
+        // Rapport complet → rediriger vers RapportPage standalone
+        window.location.href = `/dashboard/rapport-complet?id=${id}${action ? '&action=' + action : ''}`;
+      }
+      setLoading(false);
+    });
+  }, [id]);
+
+  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 300 }}><div style={{ width: 40, height: 40, borderRadius: '50%', border: '3px solid #edf2f7', borderTopColor: '#2a7d9c', animation: 'spin 0.9s linear infinite' }}/></div>;
+
+  if (showReupload) return (
+    <div style={{ maxWidth: 600, margin: '0 auto' }}>
+      <div style={{ background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', borderRadius: 18, padding: '28px', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: -30, right: -30, width: 150, height: 150, borderRadius: '50%', background: 'rgba(42,125,156,0.2)', pointerEvents: 'none' }} />
+        <div style={{ position: 'relative' }}>
+          <div style={{ fontSize: 28, marginBottom: 10 }}>🎉</div>
+          <div style={{ fontSize: 18, fontWeight: 900, color: '#fff', marginBottom: 8 }}>Paiement confirmé !</div>
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', lineHeight: 1.7, marginBottom: 20 }}>
+            Bonne nouvelle ! Conformément au RGPD, vos documents ont été supprimés 🔒<br />
+            Re-uploadez vos documents pour générer votre rapport complet...<br />
+            <span style={{ color: 'rgba(255,255,255,0.55)' }}>et profitez-en pour ajouter ceux que vous aviez oubliés ! 😉</span>
+          </p>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const }}>
+            <Link to="/dashboard/nouvelle-analyse" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 22px', borderRadius: 12, background: '#fff', color: '#0f2d3d', fontSize: 14, fontWeight: 800, textDecoration: 'none' }}>
+              Re-uploader mes documents →
+            </Link>
+            <button onClick={() => setShowReupload(false)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '12px 18px', borderRadius: 12, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              Voir l'aperçu d'abord
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (!apercuData) return <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Rapport introuvable.</div>;
+
+  const ap = apercuData.apercu;
+  const isComplete = apercuData.type === 'complete' || apercuData.type === 'apercu_complete';
+
+  const lancerPaiement = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { window.location.href = '/connexion'; return; }
+    const priceId = isComplete ? 'price_1TIb3XBO4ekMbwz0a7m7E7gD' : 'price_1TIb1LBO4ekMbwz0020eqcR0';
+    const successUrl = `https://verimo.fr/dashboard/rapport?id=${apercuData.id}&action=reupload`;
+    const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlc3pyYXlyb21sZGZnZXRxYXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MzI5NTUsImV4cCI6MjA2MTAwODk1NX0.XsqzBPDMfHRFKgMhJxoLhgVWZMdV5YnFKM3VCBe9hOk' },
+      body: JSON.stringify({ priceId, userId: session.user.id, successUrl }),
+    });
+    const data = await res.json();
+    if (data.url) window.location.href = data.url;
+  };
+
+  return (
+    <div>
+      <style>{`.apercu-dash-grid { display: flex; flex-direction: column; gap: 16px; } @media (min-width: 860px) { .apercu-dash-grid { display: grid; grid-template-columns: 1fr 300px; gap: 24px; align-items: start; } }`}</style>
+      <div style={{ marginBottom: 20 }}>
+        <span style={{ fontSize: 10, fontWeight: 800, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '3px 10px', borderRadius: 100 }}>APERÇU GRATUIT</span>
+        <h1 style={{ fontSize: 'clamp(18px,2.5vw,24px)', fontWeight: 900, color: '#0f172a', marginTop: 8, marginBottom: 4 }}>{ap.titre as string}</h1>
+        <p style={{ fontSize: 13, color: '#94a3b8' }}>Débloquez le rapport complet pour accéder à tous les détails.</p>
+      </div>
+      <div className="apercu-dash-grid">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 22px' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 8 }}>RÉSUMÉ</div>
+            <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.75 }}>{ap.recommandation_courte as string}</p>
+          </div>
+          {(ap.points_vigilance as string[])?.length > 0 && (
+            <div style={{ background: '#fffbeb', borderRadius: 16, border: '1px solid #fde68a', padding: '20px 22px' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#d97706', letterSpacing: '0.1em', marginBottom: 12 }}>⚠ POINTS DE VIGILANCE</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {(ap.points_vigilance as string[]).map((p, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <AlertTriangle size={13} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>{p}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {isComplete && (
+            <div style={{ background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0', padding: '20px 22px', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ filter: 'blur(6px)', pointerEvents: 'none', userSelect: 'none' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 8 }}>SCORE GLOBAL</div>
+                <div style={{ fontSize: 52, fontWeight: 900, color: '#94a3b8' }}>?.?</div>
+                <div style={{ fontSize: 14, color: '#94a3b8' }}>/20</div>
+              </div>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8 }}>
+                <Lock size={22} style={{ color: '#64748b' }}/><span style={{ fontSize: 13, fontWeight: 700, color: '#64748b' }}>Score disponible après paiement</span>
+              </div>
+            </div>
+          )}
+          <div style={{ background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0', padding: '20px 22px', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ filter: 'blur(4px)', pointerEvents: 'none', userSelect: 'none' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 12 }}>ANALYSE DÉTAILLÉE</div>
+              {['Rapport financier détaillé', 'Travaux votés et à prévoir', 'Charges et fonds travaux', 'Procédures en cours', 'Avis Verimo personnalisé'].map((item, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#cbd5e1', flexShrink: 0, marginTop: 5 }} />
+                  <span style={{ fontSize: 13, color: '#cbd5e1' }}>{item}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 6 }}>
+              <Lock size={20} style={{ color: '#64748b' }}/><span style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>Contenu réservé aux analyses payantes</span>
+            </div>
+          </div>
+        </div>
+
+        {/* CTA sticky */}
+        <div style={{ position: 'sticky', top: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', borderRadius: 18, padding: '22px', overflow: 'hidden' }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em', marginBottom: 6 }}>DÉBLOQUER</div>
+            <h2 style={{ fontSize: 16, fontWeight: 900, color: '#fff', marginBottom: 6 }}>{isComplete ? 'Rapport complet' : 'Analyse du document'}</h2>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, marginBottom: 16 }}>{isComplete ? 'Score /20, travaux, charges, procédures, avis Verimo.' : 'Analyse approfondie et recommandations.'} PDF inclus.</p>
+            <button onClick={lancerPaiement} style={{ width: '100%', padding: '13px', borderRadius: 12, background: '#fff', color: '#0f2d3d', fontSize: 14, fontWeight: 800, border: 'none', cursor: 'pointer', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <Sparkles size={14}/> Débloquer — {isComplete ? '19,90€' : '4,90€'}
+            </button>
+            <Link to="/dashboard/analyses" style={{ display: 'block', textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}>← Mes analyses</Link>
+          </div>
+          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '16px' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 10 }}>CE QUI VOUS ATTEND</div>
+            {(isComplete ? ['Score global /20', 'Analyse travaux détaillée', 'Finances copropriété', 'Onglet Copropriété', 'Avis Verimo', 'Rapport PDF'] : ['Analyse approfondie', 'Points clés détaillés', 'Recommandations', 'Rapport PDF']).map((item, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+                <CheckCircle size={12} color="#16a34a" style={{ flexShrink: 0 }}/>
+                <span style={{ fontSize: 12, color: '#374151' }}>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DashboardContent({ path }: { path:string }) {
   if (path === '/dashboard/nouvelle-analyse') return <NouvelleAnalyse/>;
   if (path === '/dashboard/tarifs')           return <Tarifs/>;
@@ -195,6 +344,7 @@ function DashboardContent({ path }: { path:string }) {
   if (path === '/dashboard/compare')          return <Compare/>;
   if (path === '/dashboard/compte')           return <Compte/>;
   if (path === '/dashboard/support')          return <Support/>;
+  if (path === '/dashboard/rapport')          return <RapportDashboard/>;
   return <HomeView/>;
 }
 
