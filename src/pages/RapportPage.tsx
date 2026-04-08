@@ -246,6 +246,11 @@ export default function RapportPage() {
       setLoading(true);
       if (!id) { setRapport(MOCK_RAPPORT); setLoading(false); return; }
       const data = await fetchAnalyseById(id);
+      // Si c'est un aperçu gratuit → rediriger vers la page d'aperçu
+      if (data?.is_preview && data?.apercu && !data?.result) {
+        window.location.href = `/dashboard/nouvelle-analyse?apercu_id=${id}`;
+        return;
+      }
       if (!data || !data.result) { setRapport(MOCK_RAPPORT); setLoading(false); return; }
       const r = data.result as Record<string, unknown>;
       const mappedType = (data.type === 'pack2' || data.type === 'pack3' ? 'complete' : data.type) as 'document' | 'complete';
