@@ -264,7 +264,7 @@ export default function NouvelleAnalyse() {
     }
     setProgress(100); setProgressMsg('Rapport prêt !');
     await new Promise(r => setTimeout(r, 500));
-    window.location.href = `/dashboard/rapport?id=${analyseId}`;
+    window.location.href = `/rapport?id=${analyseId}`;
   };
 
   /* ── CHOICE */
