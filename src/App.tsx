@@ -231,7 +231,8 @@ export default function App() {
           <Route path="/dashboard/compte" element={<DashboardPage />} />
           <Route path="/dashboard/support" element={<DashboardPage />} />
           <Route path="/dashboard/tarifs" element={<DashboardPage />} />
-          <Route path="/dashboard/rapport" element={<RapportPage />} />
+          <Route path="/dashboard/rapport" element={<DashboardPage />} />
+          <Route path="/rapport" element={<RapportPage />} />
           <Route path="*" element={
             <PublicLayout>
               <div style={{ minHeight:'60vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', paddingTop:80 }}>
