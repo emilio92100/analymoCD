@@ -1199,11 +1199,13 @@ function HowItWorksSection() {
 function ApercuRapportSection() {
   const points = [
     { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50", border: "border-green-100", label: "Finances saines", detail: "Fonds travaux bien dotés — 85 000€" },
-    { icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-50", border: "border-amber-100", label: "Toiture à prévoir (2026)", detail: "Estimé ~4 200€ / lot" },
-    { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50", border: "border-green-100", label: "Aucun impayé en cours", detail: "Copropriété bien gérée" },
-    { icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-50", border: "border-amber-100", label: "Ravalement voté 2025", detail: "Quote-part : 2 800€ / lot" },
-    { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50", border: "border-green-100", label: "Diagnostics conformes", detail: "DPE, amiante, plomb — OK" },
+    { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50", border: "border-green-100", label: "Syndic réactif — mandat renouvelé", detail: "Aucune tension détectée sur 3 ans" },
+    { icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-50", border: "border-amber-100", label: "Ravalement voté 2025 — charge vendeur", detail: "Voté avant le compromis → à la charge du vendeur" },
+    { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50", border: "border-green-100", label: "Participation AG : 68% des tantièmes", detail: "Tendance stable sur 3 ans" },
+    { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50", border: "border-green-100", label: "DPE classé C — valide depuis 2022", detail: "Chauffage individuel gaz — maîtrise des charges" },
     { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50", border: "border-green-100", label: "Aucune procédure judiciaire", detail: "Situation juridique nette" },
+    { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50", border: "border-green-100", label: "Fonds travaux ALUR : 3 200€ récupérables", detail: "Cette somme vous revient à l'acte authentique" },
+    { icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-50", border: "border-amber-100", label: "Location Airbnb interdite", detail: "Restriction détectée dans le règlement de copropriété" },
   ];
 
   return (
@@ -1274,9 +1276,11 @@ function ApercuRapportSection() {
                   <div className="grid grid-cols-2 gap-3">
                     {[
                       { label: "Charges mensuelles", val: "180 €/mois" },
-                      { label: "Fonds travaux", val: "85 000 €" },
+                      { label: "Fonds travaux ALUR", val: "85 000 €" },
                       { label: "Travaux votés", val: "~7 000 €/lot" },
-                      { label: "Impayés copro", val: "Aucun" },
+                      { label: "Honoraires syndic", val: "8 400 €/an" },
+                      { label: "Type chauffage", val: "Individuel gaz" },
+                      { label: "Quote-part lot", val: "312/10 000" },
                     ].map((d, i) => (
                       <div key={i} className="p-3.5 rounded-xl bg-[#f4f7f9] border border-slate-100">
                         <p className="text-[11px] text-slate-400 font-medium mb-1">{d.label}</p>
