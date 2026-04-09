@@ -296,16 +296,21 @@ export default function RapportPage() {
             if (typeof t === 'string') {
               return { label: t, annee: '', montant_estime: null, statut: '', justificatif: false };
             }
+            if (typeof t !== 'object' || t === null) {
+              return { label: String(t), annee: '', montant_estime: null, statut: '', justificatif: false };
+            }
             const obj = t as Record<string, unknown>;
-            const montant = obj.montant ?? obj.montant_estime;
+            const montant = obj.montant ?? obj.montant_estime ?? obj.montant_total;
+            const label = (obj.label as string) || (obj.description as string) || (obj.libelle as string) || '';
+            if (!label) return null; // ignorer les entrées sans label
             return {
-              label: (obj.label as string) || (obj.description as string) || String(t),
-              annee: (obj.annee as string) || (obj.annee_vote as string) || (obj.echeance as string) || (obj.date_vote as string) || '',
-              montant_estime: typeof montant === 'number' ? montant : null,
+              label,
+              annee: (obj.annee as string) || (obj.annee_vote as string) || (obj.echeance as string) || (obj.date_vote as string)?.slice(0, 4) || '',
+              montant_estime: typeof montant === 'number' ? montant : (typeof montant === 'string' ? parseFloat(montant) || null : null),
               statut: (obj.statut as string) || (obj.statut_realisation as string) || '',
               justificatif: (obj.justificatif as boolean) ?? false,
             };
-          });
+          }).filter(Boolean);
 
           // Convertir negociation.elements (objets ou strings) → strings
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -686,7 +691,35 @@ export default function RapportPage() {
                   <Shield size={16} style={{ color: '#5bb8d4' }}/>
                   <span style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em' }}>AVIS VERIMO</span>
                 </div>
-                <p style={{ fontSize: 14.5, color: 'rgba(255,255,255,0.88)', lineHeight: 1.8, fontWeight: 500 }}>{rapport.avis_verimo}</p>
+                {(() => {
+                  const txt = rapport.avis_verimo || '';
+                  // Détecter si le texte contient des étapes numérotées 1) 2) 3)
+                  const hasSteps = /[1-9]\)/.test(txt);
+                  if (!hasSteps) {
+                    return <p style={{ fontSize: 14.5, color: 'rgba(255,255,255,0.88)', lineHeight: 1.8, fontWeight: 500, margin: 0 }}>{txt}</p>;
+                  }
+                  // Séparer l'intro des étapes
+                  const parts = txt.split(/(?=[1-9]\))/);
+                  const intro = parts[0].trim();
+                  const steps = parts.slice(1);
+                  return (
+                    <div>
+                      {intro && <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.88)', lineHeight: 1.7, fontWeight: 500, marginBottom: 14, margin: '0 0 14px 0' }}>{intro}</p>}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {steps.map((s, i) => {
+                          const num = s.match(/^([1-9]\))/)?.[1] || '';
+                          const texte = s.replace(/^[1-9]\)\s*/, '').trim();
+                          return (
+                            <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 14px', background: 'rgba(255,255,255,0.07)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)' }}>
+                              <span style={{ fontSize: 12, fontWeight: 800, color: '#5bb8d4', background: 'rgba(91,184,212,0.15)', width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
+                              <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 1.6 }}>{texte}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
@@ -697,13 +730,43 @@ export default function RapportPage() {
                   <TrendingDown size={16} style={{ color: '#d97706' }}/>
                   <span style={{ fontSize: 14, fontWeight: 800, color: '#92400e' }}>Pistes de négociation</span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {rapport.negociation.elements.map((el, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#d97706', flexShrink: 0, marginTop: 7 }}/>
-                      <span style={{ fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>{el}</span>
-                    </div>
-                  ))}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {rapport.negociation.elements.map((el, i) => {
+                    // el peut être une string ou un objet {motif, impact, levier, estimation}
+                    const isStr = typeof el === 'string';
+                    const obj = isStr ? null : el as unknown as Record<string, string>;
+                    return (
+                      <div key={i} style={{ background: '#fff', borderRadius: 12, border: '1px solid #fde68a', padding: '12px 16px' }}>
+                        {isStr ? (
+                          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                            <span style={{ fontSize: 18, flexShrink: 0 }}>💡</span>
+                            <span style={{ fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>{el}</span>
+                          </div>
+                        ) : (
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 6, display: 'flex', gap: 8, alignItems: 'center' }}>
+                              <span>💡</span> {obj?.motif || obj?.argument || String(el)}
+                            </div>
+                            {(obj?.impact || obj?.impact_estime) && (
+                              <div style={{ fontSize: 12, color: '#b45309', marginBottom: 4 }}>
+                                <span style={{ fontWeight: 600 }}>Impact : </span>{obj.impact || obj.impact_estime}
+                              </div>
+                            )}
+                            {obj?.estimation && (
+                              <div style={{ fontSize: 12, color: '#b45309', marginBottom: 4 }}>
+                                <span style={{ fontWeight: 600 }}>Estimation : </span>{obj.estimation}
+                              </div>
+                            )}
+                            {obj?.levier && (
+                              <div style={{ display: 'inline-flex', marginTop: 4, fontSize: 11, fontWeight: 700, color: '#d97706', background: '#fef3c7', border: '1px solid #fde68a', padding: '2px 10px', borderRadius: 100 }}>
+                                Levier : {obj.levier}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -727,14 +790,19 @@ export default function RapportPage() {
 
             {/* Documents manquants */}
             {rapport.documents_manquants && rapport.documents_manquants.length > 0 && (
-              <div style={{ padding: '14px 18px', background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <Info size={14} style={{ color: '#94a3b8', flexShrink: 0, marginTop: 2 }}/>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 4 }}>Documents non fournis — note basée sur les documents disponibles</div>
-                  <div style={{ fontSize: 12, color: '#94a3b8' }}>
-                    {rapport.documents_manquants.join(', ')} — Nous vous recommandons de demander ces documents au vendeur ou à votre agent immobilier pour affiner l'analyse.
-                  </div>
+              <div style={{ padding: '16px 18px', background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+                  <Info size={14} style={{ color: '#94a3b8', flexShrink: 0 }}/>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>Documents non fournis — analyse basée sur les documents disponibles</div>
                 </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                  {rapport.documents_manquants.map((doc, i) => (
+                    <span key={i} style={{ fontSize: 11, fontWeight: 600, color: '#64748b', background: '#fff', border: '1px solid #e2e8f0', padding: '3px 10px', borderRadius: 100 }}>
+                      {doc}
+                    </span>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: '#94a3b8' }}>Demandez ces documents au vendeur ou à votre agent immobilier pour affiner l'analyse.</div>
               </div>
             )}
           </div>
@@ -865,8 +933,21 @@ export default function RapportPage() {
             {(rapport.type_bien === 'appartement' || rapport.type_bien === 'maison_copro' || !rapport.type_bien) && (
             <SectionCard title="Budget de la copropriété" icon={<Euro size={16}/>} color="#16a34a">
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
-                {rapport.charges_mensuelles > 0 && <StatBox label="Budget annuel copro" value={`${(rapport.charges_mensuelles * 12).toLocaleString('fr-FR')}€`} sub="Total copropriété" color="#0f172a"/>}
-                {rapport.fonds_travaux > 0 && <StatBox label="Fonds travaux" value={`${rapport.fonds_travaux.toLocaleString('fr-FR')}€`} sub="Total copropriété" color="#2a7d9c"/>}
+                {(() => {
+                  const rr = rapport as unknown as Record<string, unknown>;
+                  const financesObj = (rr.finances as Record<string, unknown>) || {};
+                  // Détecter si on a un PV d'AG (budget copro) ou juste des appels de charges (budget lot)
+                  const hasAG = (rr.vie_copropriete as Record<string, unknown> | null)?.participation_ag;
+                  const budgetLabel = hasAG ? "Budget annuel copro" : "Charges annuelles";
+                  const budgetSub = hasAG ? "Total copropriété" : "Estimation du lot";
+                  const fondsLabel = hasAG ? "Fonds travaux" : "Provision travaux";
+                  const fondsSub = hasAG ? "Total copropriété" : "Montant détecté";
+                  const statut = financesObj.fonds_travaux_statut as string || '';
+                  return (<>
+                    {rapport.charges_mensuelles > 0 && <StatBox label={budgetLabel} value={`${(rapport.charges_mensuelles * 12).toLocaleString('fr-FR')}€`} sub={budgetSub} color="#0f172a"/>}
+                    {rapport.fonds_travaux > 0 && <StatBox label={fondsLabel} value={`${rapport.fonds_travaux.toLocaleString('fr-FR')}€`} sub={fondsSub} color="#2a7d9c"/>}
+                  </>);
+                })()}
               </div>
 
               {/* Statut fonds travaux */}
@@ -874,9 +955,14 @@ export default function RapportPage() {
                 <div style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid', marginTop: 8,
                   background: rapport.fonds_travaux_statut === 'conforme' || rapport.fonds_travaux_statut === 'au_dessus' ? '#f0fdf4' : '#fef2f2',
                   borderColor: rapport.fonds_travaux_statut === 'conforme' || rapport.fonds_travaux_statut === 'au_dessus' ? '#bbf7d0' : '#fecaca' }}>
-                  <span style={{ fontSize: 12, color: rapport.fonds_travaux_statut === 'conforme' || rapport.fonds_travaux_statut === 'au_dessus' ? '#166534' : '#991b1b', fontWeight: 600 }}>
-                    Fonds travaux : {rapport.fonds_travaux_statut === 'conforme' ? 'conforme au minimum légal' : rapport.fonds_travaux_statut === 'insuffisant' ? 'insuffisant' : 'absent'}
-                  </span>
+                  <div>
+                    <span style={{ fontSize: 12, color: rapport.fonds_travaux_statut === 'conforme' || rapport.fonds_travaux_statut === 'au_dessus' ? '#166534' : '#991b1b', fontWeight: 600 }}>
+                      Fonds travaux : {rapport.fonds_travaux_statut === 'conforme' ? '✓ conforme au minimum légal (5% du budget)' : rapport.fonds_travaux_statut === 'insuffisant' ? '⚠️ insuffisant (< 5% du budget annuel)' : '⚠️ absent ou non mentionné'}
+                    </span>
+                    {rapport.fonds_travaux_statut === 'insuffisant' && (
+                      <div style={{ fontSize: 11, color: '#b91c1c', marginTop: 4 }}>La loi ALUR impose un fonds travaux d'au minimum 5% du budget prévisionnel annuel. Un fonds insuffisant peut signifier des appels de fonds exceptionnels futurs.</div>
+                    )}
+                  </div>
                 </div>
               )}
             </SectionCard>
