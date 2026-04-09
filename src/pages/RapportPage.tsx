@@ -287,13 +287,13 @@ export default function RapportPage() {
           // Convertir travaux (strings ou objets) → format attendu par RapportPage
           const toTravaux = (arr: unknown[]) => arr.map(t => {
             if (typeof t === 'string') {
-              return { label: t, annee: null as string | null, montant_estime: null as number | null, statut: '' };
+              return { label: t, annee: '', montant_estime: 0, statut: '' };
             }
             const obj = t as Record<string, unknown>;
             return {
               label: (obj.label as string) || (obj.description as string) || String(t),
-              annee: (obj.annee as string) || (obj.annee_vote as string) || null,
-              montant_estime: typeof obj.montant_estime === 'number' ? obj.montant_estime : null,
+              annee: (obj.annee as string) || (obj.annee_vote as string) || '',
+              montant_estime: typeof obj.montant_estime === 'number' ? obj.montant_estime : 0,
               statut: (obj.statut as string) || (obj.statut_realisation as string) || '',
               justificatif: (obj.justificatif as boolean) || false,
             };
