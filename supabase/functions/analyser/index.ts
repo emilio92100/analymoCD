@@ -569,22 +569,84 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { analyseId, mode, profil, files } = await req.json() as {
+    const body = await req.json() as {
       analyseId: string;
       mode: string;
       profil: 'rp' | 'invest';
-      files: FileInput[];
+      files?: FileInput[];
+      storagePaths?: string[];
+      fileNames?: string[];
     };
 
-    if (!analyseId || !mode || !files?.length) {
+    const { analyseId, mode, profil } = body;
+
+    if (!analyseId || !mode) {
       return new Response(JSON.stringify({ error: 'missing_params' }), {
         status: 400, headers: { ...CORS, 'Content-Type': 'application/json' }
       });
     }
 
+    // ── Résolution des fichiers : Storage (nouveau flux) ou base64 direct (legacy) ──
+    let files: FileInput[] = [];
+    const STORAGE_BUCKET = 'analyse-temp';
+
+    if (body.storagePaths?.length) {
+      // Nouveau flux : télécharger les PDFs depuis Supabase Storage
+      console.log(`[Verimo] Téléchargement de ${body.storagePaths.length} fichier(s) depuis Storage…`);
+
+      const downloadResults = await Promise.all(
+        body.storagePaths.map(async (path, i) => {
+          const { data, error } = await supabaseAdmin.storage
+            .from(STORAGE_BUCKET)
+            .download(path);
+
+          if (error || !data) {
+            console.error(`[Verimo] Erreur téléchargement Storage pour ${path}:`, error);
+            return null;
+          }
+
+          // Convertir le Blob en base64
+          const arrayBuffer = await data.arrayBuffer();
+          const uint8Array = new Uint8Array(arrayBuffer);
+          let binary = '';
+          for (let j = 0; j < uint8Array.length; j++) {
+            binary += String.fromCharCode(uint8Array[j]);
+          }
+          const base64 = btoa(binary);
+
+          const fileName = body.fileNames?.[i] || path.split('/').pop() || `document_${i + 1}.pdf`;
+          return { name: fileName, data: base64 };
+        })
+      );
+
+      files = downloadResults.filter(Boolean) as FileInput[];
+
+      if (files.length === 0) {
+        return new Response(JSON.stringify({ error: 'storage_error', message: 'Impossible de récupérer les fichiers depuis le Storage. Réessayez.' }), {
+          status: 500, headers: { ...CORS, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Supprimer les fichiers du Storage maintenant qu'on les a en mémoire
+      console.log(`[Verimo] Suppression des ${body.storagePaths.length} fichier(s) du Storage…`);
+      await supabaseAdmin.storage.from(STORAGE_BUCKET).remove(body.storagePaths);
+
+    } else if (body.files?.length) {
+      // Ancien flux legacy : fichiers base64 directement dans le body
+      files = body.files;
+    }
+
+    if (!files.length) {
+      return new Response(JSON.stringify({ error: 'missing_params', message: 'Aucun fichier reçu.' }), {
+        status: 400, headers: { ...CORS, 'Content-Type': 'application/json' }
+      });
+    }
+
+    console.log(`[Verimo] ${files.length} fichier(s) prêts pour analyse.`);
+
     // Marquer comme processing
     await supabaseAdmin.from('analyses').update({ status: 'processing' }).eq('id', analyseId);
-    await updateProgress(supabaseAdmin, analyseId, 0, files.length, 'Démarrage de l\'analyse…');
+    await updateProgress(supabaseAdmin, analyseId, 0, files.length, 'Démarrage de l'analyse…');
 
     // ── Choix de stratégie : Smart Stuffing ou Map-Reduce ────
     const estimatedTokens = estimateTokens(files);
