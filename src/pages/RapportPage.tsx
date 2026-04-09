@@ -284,12 +284,20 @@ export default function RapportPage() {
           const travauxObj = (r.travaux as Record<string, unknown>) || {};
           const financesObj = (r.finances as Record<string, unknown>) || {};
 
-          // Convertir travaux.votes (strings) → format { label, impact, message }
-          const toTravaux = (arr: unknown[]) => arr.map(t =>
-            typeof t === 'string'
-              ? { label: t, impact: 'neutre' as const, message: t }
-              : t as { label: string; impact: string; message: string }
-          );
+          // Convertir travaux (strings ou objets) → format attendu par RapportPage
+          const toTravaux = (arr: unknown[]) => arr.map(t => {
+            if (typeof t === 'string') {
+              return { label: t, annee: null as string | null, montant_estime: null as number | null, statut: '' };
+            }
+            const obj = t as Record<string, unknown>;
+            return {
+              label: (obj.label as string) || (obj.description as string) || String(t),
+              annee: (obj.annee as string) || (obj.annee_vote as string) || null,
+              montant_estime: typeof obj.montant_estime === 'number' ? obj.montant_estime : null,
+              statut: (obj.statut as string) || (obj.statut_realisation as string) || '',
+              justificatif: (obj.justificatif as boolean) || false,
+            };
+          });
 
           // Convertir procedures (strings) → format { label, type, gravite, message }
           const rawProcedures = (r.procedures as unknown[]) || [];
