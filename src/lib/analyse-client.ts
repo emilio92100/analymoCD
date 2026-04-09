@@ -1,19 +1,3 @@
-/* ══════════════════════════════════════════════════════════════
-   ANALYSE CLIENT — Upload Storage + Appel Edge Function
-   
-   ARCHITECTURE :
-   1. Les PDFs sont uploadés dans un bucket Storage privé Supabase
-   2. L'Edge Function récupère les PDFs directement depuis Storage
-      et les envoie à Claude en natif (comme dans le chat Claude.ai)
-   3. Les fichiers sont supprimés du Storage dès l'analyse terminée
-   
-   AVANTAGES vs base64-dans-JSON :
-   - Aucune limite de taille (vs 5.5 Mo avant)
-   - Les PDFs arrivent à Claude sans transformation → même qualité
-     que lorsqu'on colle les docs directement dans le chat
-   - RGPD : suppression automatique après analyse
-   ══════════════════════════════════════════════════════════════ */
-
 import { supabase } from './supabase';
 
 const EDGE_FUNCTION_URL = 'https://veszrayromldfgetqaxb.supabase.co/functions/v1/analyser';
@@ -50,9 +34,7 @@ export async function lancerAnalyseEdge(params: {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return { success: false, error: 'unknown', errorMessage: 'Session expirée' };
 
-    onProgress?.({ step: 'extracting', current: 0, total: files.length, percent: 5, message: 'Préparation des documents…' });
-
-    // ── Upload PDFs dans Storage ──────────────────────────────
+    // ── 1. Upload PDFs dans Storage ───────────────────────────
     const storagePaths: string[] = [];
 
     for (let i = 0; i < files.length; i++) {
@@ -73,58 +55,78 @@ export async function lancerAnalyseEdge(params: {
 
       if (uploadError) {
         console.error('[Verimo] Erreur upload Storage:', uploadError);
-        return {
-          success: false,
-          error: 'unknown',
-          errorMessage: `Impossible d'envoyer "${files[i].name}". Vérifiez votre connexion et réessayez.`,
-        };
+        return { success: false, error: 'unknown', errorMessage: `Impossible d'envoyer "${files[i].name}". Vérifiez votre connexion et réessayez.` };
       }
 
       storagePaths.push(storagePath);
     }
 
-    onProgress?.({ step: 'analysing', current: 0, total: files.length, percent: 32, message: 'Envoi au moteur d\'analyse…' });
+    onProgress?.({ step: 'analysing', current: 0, total: files.length, percent: 30, message: 'Lancement de l\'analyse…' });
 
-    // ── Appel Edge Function avec chemins Storage ──────────────
-    const res = await fetch(EDGE_FUNCTION_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-        'apikey': SUPABASE_ANON_KEY,
-      },
-      body: JSON.stringify({ analyseId, mode, profil, storagePaths, fileNames: files.map(f => f.name) }),
+    // ── 2. Déclencher l'Edge Function (fire & forget — pas d'await sur la réponse longue) ──
+    // On utilise fetch avec un timeout court juste pour vérifier que la fonction démarre.
+    // L'Edge Function travaille en arrière-plan, on poll Supabase pour le résultat.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10_000); // 10s max pour démarrer
+
+    try {
+      const res = await fetch(EDGE_FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ analyseId, mode, profil, storagePaths, fileNames: files.map(f => f.name) }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      // Si la fonction répond rapidement avec une erreur (ex: 400, 401, 500 immédiat)
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        console.error('[Verimo] Erreur Edge Function HTTP', res.status, errText);
+        if (res.status === 429 || errText.includes('rate_limit')) {
+          return { success: false, error: 'rate_limit', errorMessage: 'Notre moteur est momentanément surchargé. Votre crédit a été remboursé automatiquement. Réessayez dans 2 à 3 minutes.' };
+        }
+        if (res.status === 529 || res.status === 503) {
+          return { success: false, error: 'overload', errorMessage: 'Notre moteur est temporairement indisponible. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.' };
+        }
+        // Pour les autres erreurs HTTP, on continue quand même le polling
+        // car Supabase peut couper la connexion même si la fonction tourne encore
+        console.warn('[Verimo] HTTP error mais on poll quand même:', res.status);
+      }
+    } catch (fetchErr) {
+      clearTimeout(timeoutId);
+      // AbortError = timeout ou coupure réseau — l'Edge Function tourne probablement encore
+      // On continue vers le polling
+      console.warn('[Verimo] Fetch interrompu (timeout ou réseau), on poll Supabase:', fetchErr);
+    }
+
+    // ── 3. Polling jusqu'au résultat ──────────────────────────
+    onProgress?.({ step: 'analysing', current: 1, total: files.length, percent: 40, message: 'Analyse en cours…' });
+
+    const pollResult = await pollAnalyseStatus({
+      analyseId,
+      onProgress: (p) => onProgress?.(p),
+      timeoutMs: 240_000, // 4 minutes max
     });
 
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error('[Verimo] Erreur Edge Function HTTP', res.status, errText);
-
-      if (res.status === 429 || errText.includes('rate_limit')) {
-        return { success: false, error: 'rate_limit', errorMessage: 'Notre moteur est momentanément surchargé. Votre crédit a été remboursé automatiquement. Réessayez dans 2 à 3 minutes.' };
-      }
-      if (res.status === 529 || res.status === 503) {
-        return { success: false, error: 'overload', errorMessage: 'Notre moteur est temporairement indisponible. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.' };
-      }
-      return { success: false, error: 'unknown', errorMessage: 'Une erreur est survenue. Votre crédit a été remboursé automatiquement.' };
+    if (pollResult.status === 'completed') {
+      onProgress?.({ step: 'done', current: files.length, total: files.length, percent: 100, message: 'Rapport prêt !' });
+      return { success: true, analyseId };
     }
 
-    const data = await res.json();
-
-    if (data.error) {
-      return {
-        success: false,
-        error: data.error === 'rate_limit' ? 'rate_limit' : 'unknown',
-        errorMessage: data.message || 'Une erreur est survenue. Votre crédit a été remboursé automatiquement.',
-      };
+    if (pollResult.status === 'failed') {
+      return { success: false, error: 'unknown', errorMessage: 'Une erreur est survenue lors de l\'analyse. Votre crédit a été remboursé automatiquement.' };
     }
 
-    onProgress?.({ step: 'done', current: files.length, total: files.length, percent: 100, message: 'Rapport prêt !' });
-    return { success: true, analyseId };
+    // timeout
+    return { success: false, error: 'unknown', errorMessage: 'L\'analyse a pris trop de temps. Votre crédit a été remboursé automatiquement. Réessayez avec moins de documents.' };
 
   } catch (err) {
-    console.error('[Verimo] Erreur réseau:', err);
-    return { success: false, error: 'network', errorMessage: 'Problème de connexion. Votre crédit a été remboursé automatiquement. Vérifiez votre connexion internet et réessayez.' };
+    console.error('[Verimo] Erreur inattendue:', err);
+    return { success: false, error: 'network', errorMessage: 'Problème de connexion. Votre crédit a été remboursé automatiquement.' };
   }
 }
 
@@ -133,7 +135,7 @@ export async function pollAnalyseStatus(params: {
   onProgress?: (p: AnalyseProgress) => void;
   timeoutMs?: number;
 }): Promise<{ status: 'completed' | 'failed' | 'timeout' }> {
-  const { analyseId, onProgress, timeoutMs = 180_000 } = params;
+  const { analyseId, onProgress, timeoutMs = 240_000 } = params;
   const start = Date.now();
 
   while (Date.now() - start < timeoutMs) {
@@ -149,9 +151,15 @@ export async function pollAnalyseStatus(params: {
 
     if (onProgress && data.progress_total) {
       const percent = data.progress_current
-        ? Math.min(90, 30 + Math.floor((data.progress_current / data.progress_total) * 60))
-        : 50;
-      onProgress({ step: 'analysing', current: data.progress_current || 0, total: data.progress_total || 1, percent, message: data.progress_message || 'Analyse en cours…' });
+        ? Math.min(90, 40 + Math.floor((data.progress_current / data.progress_total) * 50))
+        : 55;
+      onProgress({
+        step: 'analysing',
+        current: data.progress_current || 0,
+        total: data.progress_total || 1,
+        percent,
+        message: data.progress_message || 'Analyse en cours…',
+      });
     }
 
     if (data.status === 'completed') return { status: 'completed' };
