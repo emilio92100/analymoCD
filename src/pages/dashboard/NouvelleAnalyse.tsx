@@ -65,7 +65,7 @@ export default function NouvelleAnalyse() {
 
   const [progress, setProgress] = useState(0);
 
-  const [fileWarnings, setFileWarnings] = useState<string[]>([]); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [_fileWarnings, setFileWarnings] = useState<string[]>([]);
   const [progressMsg, setProgressMsg] = useState('');
   const [progressDoc, setProgressDoc] = useState({ current: 0, total: 0 });
   const [result, setResult] = useState<AnalyseResult | null>(null);
