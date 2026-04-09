@@ -408,7 +408,7 @@ export default function RapportPage() {
             finances: financesObj ?? null,
             diagnostics_resume: (r.diagnostics_resume as string) || '',
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            diagnostics: (r.diagnostics as any[]) || [],
+            diagnostics: (r.diagnostics as any[]) || (r.diagnostics_detectes as any[]) || [],
           });
           setLoading(false);
           return; // résultat trouvé → sortir du polling
@@ -691,25 +691,38 @@ export default function RapportPage() {
                 </div>
                 {(() => {
                   const txt = rapport.avis_verimo || '';
-                  // Détecter si le texte contient des étapes numérotées 1) 2) 3)
-                  const hasSteps = /[1-9]\)/.test(txt);
+                  // Séparer en paragraphes sur les points et les étapes numérotées
+                  const hasSteps = /[1-9][).]/.test(txt);
                   if (!hasSteps) {
-                    return <p style={{ fontSize: 14.5, color: 'rgba(255,255,255,0.88)', lineHeight: 1.8, fontWeight: 500, margin: 0 }}>{txt}</p>;
+                    // Séparer en phrases pour meilleure lisibilité
+                    const sentences = txt.split(/(?<=\.) /).filter(Boolean);
+                    if (sentences.length <= 2) {
+                      return <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.88)', lineHeight: 1.8, fontWeight: 400, margin: 0 }}>{txt}</p>;
+                    }
+                    // Grouper en 2-3 paragraphes
+                    const mid = Math.ceil(sentences.length / 2);
+                    const para1 = sentences.slice(0, mid).join(' ');
+                    const para2 = sentences.slice(mid).join(' ');
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.88)', lineHeight: 1.8, fontWeight: 400, margin: 0 }}>{para1}</p>
+                        <p style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.75)', lineHeight: 1.8, fontWeight: 400, margin: 0, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.08)' }}>{para2}</p>
+                      </div>
+                    );
                   }
-                  // Séparer l'intro des étapes
-                  const parts = txt.split(/(?=[1-9]\))/);
+                  const parts = txt.split(/(?=[1-9][).]\s)/);
                   const intro = parts[0].trim();
                   const steps = parts.slice(1);
                   return (
                     <div>
-                      {intro && <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.88)', lineHeight: 1.7, fontWeight: 500, marginBottom: 14, margin: '0 0 14px 0' }}>{intro}</p>}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {intro && <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.88)', lineHeight: 1.7, fontWeight: 400, margin: '0 0 16px 0' }}>{intro}</p>}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {steps.map((s, i) => {
-                          const texte = s.replace(/^[1-9]\)\s*/, '').trim();
+                          const texte = s.replace(/^[1-9][).]\s*/, '').trim();
                           return (
-                            <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 14px', background: 'rgba(255,255,255,0.07)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)' }}>
-                              <span style={{ fontSize: 12, fontWeight: 800, color: '#5bb8d4', background: 'rgba(91,184,212,0.15)', width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
-                              <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 1.6 }}>{texte}</span>
+                            <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 14px', background: 'rgba(255,255,255,0.06)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)' }}>
+                              <span style={{ fontSize: 11, fontWeight: 800, color: '#5bb8d4', background: 'rgba(91,184,212,0.15)', width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>{i + 1}</span>
+                              <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.82)', lineHeight: 1.6 }}>{texte}</span>
                             </div>
                           );
                         })}
@@ -759,12 +772,18 @@ export default function RapportPage() {
                             </div>
                             {(obj?.impact || obj?.impact_estime) && (
                               <div style={{ fontSize: 12, color: '#b45309', marginBottom: 4 }}>
-                                <span style={{ fontWeight: 600 }}>Impact : </span>{obj.impact || obj.impact_estime}
+                                <span style={{ fontWeight: 600 }}>Impact estimé : </span>
+                                {typeof (obj.impact || obj.impact_estime) === 'number'
+                                  ? `${(obj.impact || obj.impact_estime as number).toLocaleString('fr-FR')}€`
+                                  : `${obj.impact || obj.impact_estime}`}
                               </div>
                             )}
                             {obj?.estimation && (
                               <div style={{ fontSize: 12, color: '#b45309', marginBottom: 4 }}>
-                                <span style={{ fontWeight: 600 }}>Estimation : </span>{obj.estimation}
+                                <span style={{ fontWeight: 600 }}>Estimation : </span>
+                                {typeof obj.estimation === 'number'
+                                  ? `${(obj.estimation as number).toLocaleString('fr-FR')}€`
+                                  : `${obj.estimation}`}
                               </div>
                             )}
                             {obj?.levier && (
@@ -1226,17 +1245,26 @@ export default function RapportPage() {
                     {rapport.procedures.length} procédure{rapport.procedures.length > 1 ? 's' : ''} détectée{rapport.procedures.length > 1 ? 's' : ''} dans les documents.
                   </span>
                 </div>
-                {rapport.procedures.map((proc, i) => (
-                  <SectionCard key={i} title={proc.type} icon={<Gavel size={16}/>} color="#dc2626">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                      <SeveriteBadge sev={proc.gravite}/>
-                    </div>
-                    {proc.message && <p style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.7 }}>{proc.message}</p>}
-                    <div style={{ padding: '12px 16px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a', marginTop: 12 }}>
-                      <p style={{ fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>Nous vous recommandons de demander des précisions au vendeur ou à votre agent immobilier sur cette procédure avant de vous engager.</p>
-                    </div>
-                  </SectionCard>
-                ))}
+                {rapport.procedures.map((proc, i) => {
+                  const procObj = proc as unknown as Record<string, unknown>;
+                  const titre = (procObj.label as string) || (procObj.type as string) || 'Procédure détectée';
+                  const detail = (procObj.message as string) || (procObj.detail as string) || '';
+                  const sousType = (procObj.type as string) || '';
+                  return (
+                    <SectionCard key={i} title={titre} icon={<Gavel size={16}/>} color="#dc2626">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                        <SeveriteBadge sev={proc.gravite}/>
+                        {sousType && sousType !== titre && (
+                          <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', background: '#f1f5f9', padding: '2px 8px', borderRadius: 100 }}>{sousType}</span>
+                        )}
+                      </div>
+                      {detail && <p style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.7, marginBottom: 12 }}>{detail}</p>}
+                      <div style={{ padding: '12px 16px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a' }}>
+                        <p style={{ fontSize: 13, color: '#92400e', lineHeight: 1.6, margin: 0 }}>⚠️ Demandez des précisions au vendeur ou à votre notaire sur cette procédure avant de vous engager.</p>
+                      </div>
+                    </SectionCard>
+                  );
+                })}
               </>
             ) : (
               <div style={{ background: '#fff', borderRadius: 18, border: '1px solid #edf2f7', padding: '48px 32px', textAlign: 'center' }}>
