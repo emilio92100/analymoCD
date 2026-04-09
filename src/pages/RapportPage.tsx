@@ -252,51 +252,78 @@ export default function RapportPage() {
     const load = async () => {
       setLoading(true);
       if (!id) { setRapport(MOCK_RAPPORT); setLoading(false); return; }
-      const data = await fetchAnalyseById(id);
-      // Si c'est un aperçu gratuit → stocker l'aperçu pour affichage inline
-      if (data?.is_preview && data?.apercu && !data?.result) {
-        setApercuData({ apercu: data.apercu as Record<string, unknown>, type: data.type, id: data.id });
-        setLoading(false);
-        return;
+
+      // Polling : on attend jusqu'à 3 minutes que le résultat soit écrit en base
+      // (l'Edge Function peut répondre success avant d'avoir fini l'écriture Supabase)
+      const MAX_ATTEMPTS = 36; // 36 × 5s = 3 minutes
+      const POLL_INTERVAL = 5000;
+
+      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        const data = await fetchAnalyseById(id);
+
+        // Analyse échouée → sortir immédiatement
+        if (data?.status === 'failed') {
+          setLoading(false);
+          return;
+        }
+
+        // Aperçu gratuit → afficher l'aperçu
+        if (data?.is_preview && data?.apercu && !data?.result) {
+          setApercuData({ apercu: data.apercu as Record<string, unknown>, type: data.type, id: data.id });
+          setLoading(false);
+          return;
+        }
+
+        // Résultat disponible → afficher le rapport
+        if (data?.result) {
+          const r = data.result as Record<string, unknown>;
+          const mappedType = (data.type === 'pack2' || data.type === 'pack3' ? 'complete' : data.type) as 'document' | 'complete';
+          setRapport({
+            id: data.id,
+            type: mappedType as 'complete',
+            adresse: (r.titre as string) || data.title,
+            date: new Date(data.created_at).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' }),
+            score: typeof r.score === 'number' ? r.score : 0,
+            score_couleur: (r.score_couleur as string) || 'jaune',
+            score_niveau: (r.score_niveau as string) || '',
+            type_bien: (r.type_bien as string) || 'appartement',
+            profil: (data.profil as string) || 'rp',
+            resume: (r.resume as string) || '',
+            synthese_points_positifs: (r.points_forts as string[]) || (r.synthese_points_positifs as string[]) || [],
+            synthese_points_vigilance: (r.points_vigilance as string[]) || (r.synthese_points_vigilance as string[]) || [],
+            avis_verimo: (r.avis_verimo as string) || '',
+            categories: (r.categories as typeof MOCK_RAPPORT.categories) || MOCK_RAPPORT.categories,
+            charges_mensuelles: (r.charges_mensuelles as number) || 0,
+            fonds_travaux: (r.fonds_travaux as number) || 0,
+            fonds_travaux_statut: (r.fonds_travaux_statut as string) || 'non_mentionne',
+            travaux_realises: (r.travaux_realises as typeof MOCK_RAPPORT.travaux_realises) || [],
+            travaux_votes: (r.travaux_votes as typeof MOCK_RAPPORT.travaux_votes) || [],
+            travaux_a_prevoir: (r.travaux_a_prevoir as typeof MOCK_RAPPORT.travaux_a_prevoir) || [],
+            quote_part_travaux: (r.quote_part_travaux as string) || '',
+            procedures_en_cours: (r.procedures_en_cours as boolean) || false,
+            procedures: (r.procedures as typeof MOCK_RAPPORT.procedures) || [],
+            documents_detectes: (r.documents_detectes as typeof MOCK_RAPPORT.documents_detectes) || [],
+            documents_manquants: (r.documents_manquants as string[]) || [],
+            negociation: (r.negociation as typeof MOCK_RAPPORT.negociation) || { applicable: false, elements: [] },
+            document_names: (data.document_names as string[]) || [],
+            regeneration_deadline: data.regeneration_deadline || null,
+            is_preview: data.is_preview ?? false,
+            vie_copropriete: (r.vie_copropriete as Record<string, unknown>) ?? null,
+            lot_achete: (r.lot_achete as Record<string, unknown>) ?? null,
+            finances: (r.finances as Record<string, unknown>) ?? null,
+            diagnostics_resume: (r.diagnostics_resume as string) || '',
+          });
+          setLoading(false);
+          return; // résultat trouvé → sortir du polling
+        }
+
+        // Résultat pas encore disponible → attendre avant de réessayer
+        if (attempt < MAX_ATTEMPTS - 1) {
+          await new Promise(r => setTimeout(r, POLL_INTERVAL));
+        }
       }
-      if (!data || !data.result) { setRapport(MOCK_RAPPORT); setLoading(false); return; }
-      const r = data.result as Record<string, unknown>;
-      const mappedType = (data.type === 'pack2' || data.type === 'pack3' ? 'complete' : data.type) as 'document' | 'complete';
-      setRapport({
-        id: data.id,
-        type: mappedType as 'complete',
-        adresse: (r.titre as string) || data.title,
-        date: new Date(data.created_at).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' }),
-        score: typeof r.score === 'number' ? r.score : 0,
-        score_couleur: (r.score_couleur as string) || 'jaune',
-        score_niveau: (r.score_niveau as string) || '',
-        type_bien: (r.type_bien as string) || 'appartement',
-        profil: (data.profil as string) || 'rp',
-        resume: (r.resume as string) || '',
-        synthese_points_positifs: (r.points_forts as string[]) || (r.synthese_points_positifs as string[]) || [],
-        synthese_points_vigilance: (r.points_vigilance as string[]) || (r.synthese_points_vigilance as string[]) || [],
-        avis_verimo: (r.avis_verimo as string) || '',
-        categories: (r.categories as typeof MOCK_RAPPORT.categories) || MOCK_RAPPORT.categories,
-        charges_mensuelles: (r.charges_mensuelles as number) || 0,
-        fonds_travaux: (r.fonds_travaux as number) || 0,
-        fonds_travaux_statut: (r.fonds_travaux_statut as string) || 'non_mentionne',
-        travaux_realises: (r.travaux_realises as typeof MOCK_RAPPORT.travaux_realises) || [],
-        travaux_votes: (r.travaux_votes as typeof MOCK_RAPPORT.travaux_votes) || [],
-        travaux_a_prevoir: (r.travaux_a_prevoir as typeof MOCK_RAPPORT.travaux_a_prevoir) || [],
-        quote_part_travaux: (r.quote_part_travaux as string) || '',
-        procedures_en_cours: (r.procedures_en_cours as boolean) || false,
-        procedures: (r.procedures as typeof MOCK_RAPPORT.procedures) || [],
-        documents_detectes: (r.documents_detectes as typeof MOCK_RAPPORT.documents_detectes) || [],
-        documents_manquants: (r.documents_manquants as string[]) || [],
-        negociation: (r.negociation as typeof MOCK_RAPPORT.negociation) || { applicable: false, elements: [] },
-        document_names: (data.document_names as string[]) || [],
-        regeneration_deadline: data.regeneration_deadline || null,
-        is_preview: data.is_preview ?? false,
-        vie_copropriete: (r.vie_copropriete as Record<string, unknown>) ?? null,
-        lot_achete: (r.lot_achete as Record<string, unknown>) ?? null,
-        finances: (r.finances as Record<string, unknown>) ?? null,
-        diagnostics_resume: (r.diagnostics_resume as string) || '',
-      });
+
+      // Timeout dépassé sans résultat → afficher "introuvable"
       setLoading(false);
     };
     load();
@@ -304,9 +331,10 @@ export default function RapportPage() {
 
   if (loading) return (
     <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#f5f9fb', fontFamily:"'DM Sans', system-ui, sans-serif" }}>
-      <div style={{ textAlign:'center' }}>
+      <div style={{ textAlign:'center', maxWidth: 340, padding: '0 24px' }}>
         <div style={{ width:56, height:56, borderRadius:'50%', border:'3px solid #edf2f7', borderTopColor:'#2a7d9c', animation:'spin 0.9s linear infinite', margin:'0 auto 16px' }}/>
-        <p style={{ fontSize:14, color:'#94a3b8', fontWeight:600 }}>Chargement du rapport…</p>
+        <p style={{ fontSize:15, fontWeight: 700, color:'#0f172a', marginBottom: 8 }}>Génération du rapport en cours…</p>
+        <p style={{ fontSize:13, color:'#94a3b8', lineHeight: 1.6 }}>Votre rapport est en cours de finalisation. Cette page se mettra à jour automatiquement, ne la quittez pas.</p>
       </div>
       <style>{'@keyframes spin { to { transform: rotate(360deg); } }'}</style>
     </div>
