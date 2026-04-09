@@ -476,7 +476,7 @@ export default function NouvelleAnalyse() {
     const etapes = [
       { id: 'upload',    label: 'Envoi des documents',         detail: 'Transfert sécurisé vers nos serveurs',          seuil: 0,  fin: 30,  couleur: '#2a7d9c', icon: '📤' },
       { id: 'lecture',   label: 'Lecture des documents',        detail: 'Extraction du contenu de chaque fichier',       seuil: 30, fin: 45,  couleur: '#7c3aed', icon: '📖' },
-      { id: 'analyse',   label: "Analyse par l'IA",            detail: 'Identification des points clés et anomalies',   seuil: 45, fin: 80,  couleur: '#d97706', icon: '🔍' },
+      { id: 'analyse',   label: 'Analyse approfondie',            detail: 'Identification des points clés et alertes',   seuil: 45, fin: 80,  couleur: '#d97706', icon: '🔍' },
       { id: 'synthese',  label: 'Synthèse croisée',             detail: 'Recoupement des informations entre documents',  seuil: 80, fin: 93,  couleur: '#0891b2', icon: '⚡' },
       { id: 'rapport',   label: 'Génération du rapport',        detail: 'Mise en forme de votre rapport personnalisé',   seuil: 93, fin: 100, couleur: '#16a34a', icon: '✅' },
     ];
