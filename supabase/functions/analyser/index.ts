@@ -322,27 +322,111 @@ Deno.serve(async (req) => {
     await supabaseAdmin.from('analyses').update({ status: 'processing' }).eq('id', analyseId);
     await updateProgress(supabaseAdmin, analyseId, 0, files.length, `Analyse de ${files.length} document(s)...`);
 
-    const userContent: unknown[] = [];
-    for (let i = 0; i < files.length; i++) {
-      userContent.push({
-        type: 'document',
-        source: { type: 'base64', media_type: 'application/pdf', data: files[i].data },
-      });
-      userContent.push({ type: 'text', text: `[Document ${i + 1}/${files.length} : ${files[i].name}]` });
-    }
-    userContent.push({
-      type: 'text',
-      text: files.length === 1
-        ? 'Analyse ce document immobilier et produis le rapport demande.'
-        : `Voici les ${files.length} documents du dossier. Analyse-les ensemble en croisant les informations.`,
-    });
-
-    await updateProgress(supabaseAdmin, analyseId, 1, files.length, 'Analyse en cours...');
-
     const maxTokens = mode === 'complete' ? 4000 : 1500;
-    console.log(`[Verimo] Appel Claude — ${files.length} doc(s), max_tokens:${maxTokens}`);
 
-    const { text, error: aiError } = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens, apiKey });
+    // ── Stratégie : Single call ou Map-Reduce selon nombre de pages estimées ──
+    // L'API Anthropic limite à 100 pages PDF par appel.
+    // On estime ~1 page pour 50ko base64. Si > 4 docs ou > 80 pages estimées → Map-Reduce
+    const estimatedPages = files.reduce((acc, f) => acc + Math.ceil(f.data.length / 50000), 0);
+    const useMapReduce = files.length > 4 || estimatedPages > 80;
+    console.log(`[Verimo] Stratégie: ${useMapReduce ? 'Map-Reduce' : 'Single-call'} | ${files.length} docs | ~${estimatedPages} pages estimées`);
+
+    let report: Record<string, unknown> | null = null;
+    let aiError: string | undefined;
+
+    if (!useMapReduce) {
+      // ── Single call : tous les docs en un seul message ──
+      const userContent: unknown[] = [];
+      for (let i = 0; i < files.length; i++) {
+        userContent.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: files[i].data } });
+        userContent.push({ type: 'text', text: `[Document ${i + 1}/${files.length} : ${files[i].name}]` });
+      }
+      userContent.push({ type: 'text', text: files.length === 1 ? 'Analyse ce document.' : `Voici les ${files.length} documents. Analyse-les ensemble en croisant les informations.` });
+
+      await updateProgress(supabaseAdmin, analyseId, 1, files.length, 'Analyse en cours...');
+      console.log(`[Verimo] Appel Claude single — ${files.length} doc(s)`);
+      const result = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens, apiKey });
+      aiError = result.error;
+      if (!aiError) report = parseJson<Record<string, unknown>>(result.text);
+
+    } else {
+      // ── Map-Reduce : analyser chaque doc puis synthétiser ──
+      console.log(`[Verimo] Map-Reduce — ${files.length} docs en séquence`);
+
+      // Prompt MAP intelligent par type de document
+      const PROMPT_MAP_INTELLIGENT = `Tu es le moteur d extraction de documents immobiliers de Verimo.
+Tu lis un document immobilier et tu en extrais les informations cles de facon structuree.
+Extrais TOUTES les informations disponibles, y compris les details en bas de page, notes de bas de tableau, annexes et mentions secondaires.
+
+Detecte d abord le type de document :
+PV_AG | REGLEMENT_COPRO | APPEL_CHARGES | DPE | DIAGNOSTIC | DDT | COMPROMIS | ETAT_DATE | TAXE_FONCIERE | AUTRE
+
+Selon le type detecte, extrais en priorite :
+- PV_AG : participation (presents/representes/tantiemes), travaux votes avec montants et statut realisation, appels fonds exceptionnels, honoraires syndic, questions diverses, resolutions refusees, tensions syndic
+- REGLEMENT_COPRO : tantiemes du lot, restrictions usage (location courte duree, animaux, activite pro), parties privatives du lot (cave, parking), clauses travaux
+- APPEL_CHARGES : quote-part lot en tantiemes, charges courantes vs exceptionnelles, budget previsionnel vs realise, fonds travaux ALUR, imputes
+- DPE : etiquette energie et GES, type chauffage (individuel/collectif), date diagnostic (ALERTE si avant 01/07/2021 car invalide depuis 01/01/2025), conso kWh/m2/an, preconisations travaux avec couts
+- APPEL_CHARGES : montant total appel, repartition par poste, fonds travaux, quote-part lot
+- TAXE_FONCIERE : montant annuel, annee, adresse du bien si presente
+- DIAGNOSTIC : type, resultat (conforme/non conforme/presence/absence), date, validite, travaux preconises
+- COMPROMIS : conditions suspensives, date jouissance, repartition travaux votes vendeur/acheteur
+- ETAT_DATE : impayes lot, provisions non soldees, quote-part fonds travaux ALUR
+
+Reponds UNIQUEMENT en JSON strict, sans texte avant ou apres :
+{
+  "type_document": "PV_AG",
+  "annee_document": "2024 ou null",
+  "resume": "resume factuel en 3-5 phrases avec les chiffres cles",
+  "points_positifs": ["point positif detecte"],
+  "points_vigilance": ["point de vigilance detecte"],
+  "travaux_votes": [{"description": "desc", "montant": 45000, "statut": "vote | realise | en cours", "date_vote": "2024-01-15", "charge_vendeur": null}],
+  "travaux_evoques": ["travaux mentionnes sans vote"],
+  "appels_fonds_exceptionnels": [{"description": "desc", "montant_total": 80000, "date_vote": "2024"}],
+  "procedures": ["procedures judiciaires ou contentieux"],
+  "infos_financieres": "resume charges, fonds travaux, impayes, budget avec chiffres precis",
+  "diagnostics_detectes": [{"type": "DPE", "resultat": "Classe D", "date": "2023-06-15", "alerte": null}],
+  "lot_info": {"tantiemes": "45/1000 ou null", "parties_privatives": [], "impayes": null, "fonds_travaux_alur": null},
+  "syndic": {"nom": "nom ou null", "fin_mandat": "2026 ou null", "tensions": false},
+  "participation_ag": {"taux": "72% ou null", "presents_representes": "732/1016 ou null"},
+  "montants_cles": ["tout montant important avec contexte"],
+  "alertes_critiques": ["alerte urgente si detectee : DPE invalide, amiante, impaye important, etc."]
+}`;
+
+      const summaries: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        await updateProgress(supabaseAdmin, analyseId, i, files.length, `Lecture document ${i + 1}/${files.length}...`);
+        console.log(`[Verimo] MAP ${i + 1}/${files.length}: ${files[i].name}`);
+        const result = await callAI({
+          system: PROMPT_MAP_INTELLIGENT,
+          userContent: [
+            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: files[i].data } },
+            { type: 'text', text: `Extrais TOUTES les informations cles de ce document immobilier, sans rien omettre : ${files[i].name}` }
+          ],
+          maxTokens: 2500, // plus de tokens pour capturer plus d infos
+          apiKey,
+        });
+        if (result.error === 'rate_limit' || result.error === 'overload') { aiError = result.error; break; }
+        summaries.push(`=== Document ${i + 1} : ${files[i].name} ===
+${result.text || '(lecture echouee)'}`);
+        if (i < files.length - 1) await sleep(1500); // espacer pour eviter rate limit
+      }
+
+      if (!aiError) {
+        await updateProgress(supabaseAdmin, analyseId, files.length, files.length, 'Synthese croisee en cours...');
+        console.log(`[Verimo] REDUCE — synthese de ${summaries.length} extractions`);
+        const reduceContent = [{
+          type: 'text',
+          text: `Voici les extractions structurees de ${files.length} documents immobiliers. Synthetise-les en croisant les informations pour produire le rapport final complet et precis :
+
+${summaries.join('
+
+')}`
+        }];
+        const result = await callAI({ system: buildSystemPrompt(mode, profil), userContent: reduceContent, maxTokens, apiKey });
+        aiError = result.error;
+        if (!aiError) report = parseJson<Record<string, unknown>>(result.text);
+      }
+    }
 
     if (aiError) {
       console.error('[Verimo] Erreur Claude:', aiError);
@@ -355,9 +439,8 @@ Deno.serve(async (req) => {
       }), { status: aiError === 'rate_limit' ? 429 : 500, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    const report = parseJson<Record<string, unknown>>(text);
     if (!report) {
-      console.error('[Verimo] JSON non parseable. Debut de la reponse:', text.slice(0, 300));
+      console.error('[Verimo] JSON non parseable (report null).');
       await supabaseAdmin.from('analyses').update({ status: 'failed' }).eq('id', analyseId);
       return new Response(JSON.stringify({ error: 'parse_error', message: 'Erreur de traitement. Votre credit a ete rembourse.' }), {
         status: 500, headers: { ...CORS, 'Content-Type': 'application/json' }
