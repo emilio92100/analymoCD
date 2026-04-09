@@ -963,10 +963,11 @@ export default function RapportPage() {
           };
 
           // Séparer privatives et communes
-          const diagsPriv = diags?.filter((d: Record<string, unknown>) => d.perimetre === 'lot_privatif') || [];
-          const diagsComm = diags?.filter((d: Record<string, unknown>) => d.perimetre === 'parties_communes' || d.perimetre === 'immeuble') || [];
-          const diagsAutres = diags?.filter((d: Record<string, unknown>) => !d.perimetre || (d.perimetre !== 'lot_privatif' && d.perimetre !== 'parties_communes' && d.perimetre !== 'immeuble')) || [];
-          const hasAlerte = diags?.some((d: Record<string, unknown>) => d.alerte) || false;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const diagsPriv = (diags as any[])?.filter((d: any) => d.perimetre === 'lot_privatif') || [];
+          const diagsComm = (diags as any[])?.filter((d: any) => d.perimetre === 'parties_communes' || d.perimetre === 'immeuble') || [];
+          const diagsAutres = (diags as any[])?.filter((d: any) => !d.perimetre || (d.perimetre !== 'lot_privatif' && d.perimetre !== 'parties_communes' && d.perimetre !== 'immeuble')) || [];
+          const hasAlerte = (diags as any[])?.some((d: any) => d.alerte) || false;
 
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -977,7 +978,8 @@ export default function RapportPage() {
                   <AlertTriangle size={16} style={{ color: '#dc2626', flexShrink: 0, marginTop: 1 }}/>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: '#991b1b', marginBottom: 4 }}>Points d'attention détectés</div>
-                    {diags?.filter((d: Record<string, unknown>) => d.alerte).map((d: Record<string, unknown>, i: number) => (
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {(diags as any[])?.filter((d: any) => d.alerte).map((d: any, i: number) => (
                       <div key={i} style={{ fontSize: 12, color: '#991b1b', marginBottom: 2 }}>• {String(d.label || '')} : {String(d.alerte || '')}</div>
                     ))}
                   </div>
@@ -998,7 +1000,8 @@ export default function RapportPage() {
               {diagsPriv.length > 0 && (
                 <SectionCard title="Diagnostics — Parties privatives (votre lot)" icon={<Shield size={16}/>} color="#0891b2">
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {diagsPriv.map((d: Record<string, unknown>, i: number) => {
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {(diagsPriv as any[]).map((d: any, i: number) => {
                       const color = diagColor(String(d.type || ''));
                       const icon = diagIcon(String(d.type || ''));
                       return (
@@ -1048,7 +1051,8 @@ export default function RapportPage() {
               {(diagsComm.length > 0 || diagsAutres.length > 0) && (
                 <SectionCard title="Diagnostics — Parties communes / Immeuble" icon={<Building2 size={16}/>} color="#7c3aed">
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {[...diagsComm, ...diagsAutres].map((d: Record<string, unknown>, i: number) => {
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {([...diagsComm, ...diagsAutres] as any[]).map((d: any, i: number) => {
                       const color = diagColor(String(d.type || ''));
                       const icon = diagIcon(String(d.type || ''));
                       return (
