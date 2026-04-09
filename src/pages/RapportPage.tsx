@@ -66,6 +66,10 @@ const MOCK_RAPPORT = {
   document_names: [] as string[],
   regeneration_deadline: null as string | null,
   is_preview: false,
+  vie_copropriete: null as Record<string, unknown> | null,
+  lot_achete: null as Record<string, unknown> | null,
+  finances: null as Record<string, unknown> | null,
+  diagnostics_resume: '' as string,
 };
 
 /* ══════════════════════════════════════════
@@ -288,6 +292,10 @@ export default function RapportPage() {
         document_names: (data.document_names as string[]) || [],
         regeneration_deadline: data.regeneration_deadline || null,
         is_preview: data.is_preview ?? false,
+        vie_copropriete: r.vie_copropriete || null,
+        lot_achete: r.lot_achete || null,
+        finances: r.finances || null,
+        diagnostics_resume: (r.diagnostics_resume as string) || '',
       });
       setLoading(false);
     };
