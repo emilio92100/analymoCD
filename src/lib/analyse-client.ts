@@ -73,7 +73,6 @@ export async function lancerAnalyseEdge(params: {
 
       if (uploadError) {
         console.error('[Verimo] Erreur upload Storage:', uploadError);
-        await nettoyerStorage(analyseId);
         return {
           success: false,
           error: 'unknown',
@@ -100,7 +99,6 @@ export async function lancerAnalyseEdge(params: {
     if (!res.ok) {
       const errText = await res.text();
       console.error('[Verimo] Erreur Edge Function HTTP', res.status, errText);
-      await nettoyerStorage(analyseId);
 
       if (res.status === 429 || errText.includes('rate_limit')) {
         return { success: false, error: 'rate_limit', errorMessage: 'Notre moteur est momentanément surchargé. Votre crédit a été remboursé automatiquement. Réessayez dans 2 à 3 minutes.' };
@@ -114,7 +112,6 @@ export async function lancerAnalyseEdge(params: {
     const data = await res.json();
 
     if (data.error) {
-      await nettoyerStorage(analyseId);
       return {
         success: false,
         error: data.error === 'rate_limit' ? 'rate_limit' : 'unknown',
@@ -127,7 +124,6 @@ export async function lancerAnalyseEdge(params: {
 
   } catch (err) {
     console.error('[Verimo] Erreur réseau:', err);
-    try { await nettoyerStorage(analyseId); } catch { /* silencieux */ }
     return { success: false, error: 'network', errorMessage: 'Problème de connexion. Votre crédit a été remboursé automatiquement. Vérifiez votre connexion internet et réessayez.' };
   }
 }
