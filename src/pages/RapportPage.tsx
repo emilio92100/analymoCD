@@ -312,13 +312,10 @@ export default function RapportPage() {
             };
           }).filter(Boolean);
 
-          // Convertir negociation.elements (objets ou strings) → strings
+          // Garder les éléments de négociation tels quels (string ou objet)
+          // Le rendu gère les deux cas
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const toNegociationElements = (arr: unknown[]): string[] => arr.map(e => {
-            if (typeof e === 'string') return e;
-            const obj = e as Record<string, unknown>;
-            return (obj.argument as string) || (obj.label as string) || JSON.stringify(e);
-          });
+          const toNegociationElements = (arr: unknown[]): any[] => arr;
 
           // Convertir procedures (strings) → format { label, type, gravite, message }
           const rawProcedures = (r.procedures as unknown[]) || [];
@@ -383,9 +380,10 @@ export default function RapportPage() {
             procedures: proceduresFormatted,
             documents_detectes: (r.documents_detectes as typeof MOCK_RAPPORT.documents_detectes) || [],
             documents_manquants: (r.documents_manquants as string[]) || [],
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             negociation: {
               applicable: ((r.negociation as Record<string, unknown>)?.applicable as boolean) ?? false,
-              elements: toNegociationElements(((r.negociation as Record<string, unknown>)?.elements as unknown[]) || []),
+              elements: toNegociationElements(((r.negociation as Record<string, unknown>)?.elements as unknown[]) || []) as any[],
             },
             document_names: (data.document_names as string[]) || [],
             regeneration_deadline: data.regeneration_deadline || null,
@@ -789,19 +787,31 @@ export default function RapportPage() {
 
             {/* Documents manquants */}
             {rapport.documents_manquants && rapport.documents_manquants.length > 0 && (
-              <div style={{ padding: '16px 18px', background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
-                  <Info size={14} style={{ color: '#94a3b8', flexShrink: 0 }}/>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>Documents non fournis — analyse basée sur les documents disponibles</div>
+              <div style={{ padding: '18px 20px', background: '#fff9f0', borderRadius: 14, border: '1.5px solid #fed7aa' }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 14 }}>
+                  <span style={{ fontSize: 20 }}>📋</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>Documents manquants détectés</div>
+                    <div style={{ fontSize: 11, color: '#b45309', marginTop: 2 }}>Demandez ces documents au vendeur pour une analyse complète</div>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-                  {rapport.documents_manquants.map((doc, i) => (
-                    <span key={i} style={{ fontSize: 11, fontWeight: 600, color: '#64748b', background: '#fff', border: '1px solid #e2e8f0', padding: '3px 10px', borderRadius: 100 }}>
-                      {doc}
-                    </span>
-                  ))}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {rapport.documents_manquants.map((doc, i) => {
+                    const isObligatoire = doc.toUpperCase().includes('OBLIGATOIRE');
+                    const docName = doc.replace(/\s*[-–]\s*OBLIGATOIRE(\s+si applicable)?/gi, '').trim();
+                    return (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#fff', borderRadius: 10, border: `1px solid ${isObligatoire ? '#fed7aa' : '#e2e8f0'}` }}>
+                        <span style={{ fontSize: 14, flexShrink: 0 }}>{isObligatoire ? '⚠️' : '📄'}</span>
+                        <span style={{ fontSize: 12, color: '#374151', flex: 1 }}>{docName}</span>
+                        {isObligatoire && (
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fef3c7', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 100, whiteSpace: 'nowrap' }}>
+                            Obligatoire
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-                <div style={{ fontSize: 11, color: '#94a3b8' }}>Demandez ces documents au vendeur ou à votre agent immobilier pour affiner l'analyse.</div>
               </div>
             )}
           </div>
@@ -936,10 +946,10 @@ export default function RapportPage() {
                   const rr = rapport as unknown as Record<string, unknown>;
                   // Détecter si on a un PV d'AG (budget copro) ou juste des appels de charges (budget lot)
                   const hasAG = (rr.vie_copropriete as Record<string, unknown> | null)?.participation_ag;
-                  const budgetLabel = hasAG ? "Budget annuel copro" : "Charges annuelles";
-                  const budgetSub = hasAG ? "Total copropriété" : "Estimation du lot";
-                  const fondsLabel = hasAG ? "Fonds travaux" : "Provision travaux";
-                  const fondsSub = hasAG ? "Total copropriété" : "Montant détecté";
+                  const budgetLabel = hasAG ? "Budget annuel copropriété" : "Charges annuelles du lot";
+                  const budgetSub = hasAG ? "Total copropriété (PV AG)" : "Détecté sur appel de charges";
+                  const fondsLabel = hasAG ? "Fonds travaux" : "Fonds travaux";
+                  const fondsSub = hasAG ? "Total copropriété" : "Détecté sur appel de charges";
                   return (<>
                     {rapport.charges_mensuelles > 0 && <StatBox label={budgetLabel} value={`${(rapport.charges_mensuelles * 12).toLocaleString('fr-FR')}€`} sub={budgetSub} color="#0f172a"/>}
                     {rapport.fonds_travaux > 0 && <StatBox label={fondsLabel} value={`${rapport.fonds_travaux.toLocaleString('fr-FR')}€`} sub={fondsSub} color="#2a7d9c"/>}
