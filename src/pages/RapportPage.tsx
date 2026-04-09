@@ -292,9 +292,9 @@ export default function RapportPage() {
         document_names: (data.document_names as string[]) || [],
         regeneration_deadline: data.regeneration_deadline || null,
         is_preview: data.is_preview ?? false,
-        vie_copropriete: r.vie_copropriete || null,
-        lot_achete: r.lot_achete || null,
-        finances: r.finances || null,
+        vie_copropriete: (r.vie_copropriete as Record<string, unknown>) ?? null,
+        lot_achete: (r.lot_achete as Record<string, unknown>) ?? null,
+        finances: (r.finances as Record<string, unknown>) ?? null,
         diagnostics_resume: (r.diagnostics_resume as string) || '',
       });
       setLoading(false);
