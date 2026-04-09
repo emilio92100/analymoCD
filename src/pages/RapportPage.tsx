@@ -354,7 +354,7 @@ export default function RapportPage() {
             resume: (r.resume as string) || '',
             synthese_points_positifs: (r.points_forts as string[]) || (r.synthese_points_positifs as string[]) || [],
             synthese_points_vigilance: (r.points_vigilance as string[]) || (r.synthese_points_vigilance as string[]) || [],
-            avis_verimo: (r.avis_verimo as string) || '',
+            avis_verimo: (r.avis_verimo as string) || (r.conclusion as string) || '',
             categories: (r.categories as typeof MOCK_RAPPORT.categories) || MOCK_RAPPORT.categories,
             charges_mensuelles: chargesMensuelles,
             fonds_travaux: fondsTrvauxNum,
@@ -718,6 +718,19 @@ export default function RapportPage() {
                   );
                 })()}
               </div>
+
+              {/* Message invitation analyse complète si mode document */}
+              {rapport.type !== 'complete' && (
+                <div style={{ marginTop: 16, padding: '12px 16px', background: 'rgba(255,255,255,0.07)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.12)', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: 18, flexShrink: 0 }}>💡</span>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.7)', marginBottom: 4 }}>Analyse d'un seul document</div>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>
+                      Cette analyse porte uniquement sur ce document. Pour une évaluation complète du bien (score /20, travaux, finances, copropriété, diagnostics), lancez une <span style={{ color: '#5bb8d4', fontWeight: 600 }}>Analyse Complète</span> avec l'ensemble des documents du dossier.
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Pistes de négociation */}
