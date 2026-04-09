@@ -291,13 +291,22 @@ export default function RapportPage() {
               return { label: t, annee: '', montant_estime: null, statut: '', justificatif: false };
             }
             const obj = t as Record<string, unknown>;
+            const montant = obj.montant ?? obj.montant_estime;
             return {
               label: (obj.label as string) || (obj.description as string) || String(t),
-              annee: (obj.annee as string) || (obj.annee_vote as string) || '',
-              montant_estime: typeof obj.montant_estime === 'number' ? obj.montant_estime : null,
+              annee: (obj.annee as string) || (obj.annee_vote as string) || (obj.echeance as string) || (obj.date_vote as string) || '',
+              montant_estime: typeof montant === 'number' ? montant : null,
               statut: (obj.statut as string) || (obj.statut_realisation as string) || '',
               justificatif: (obj.justificatif as boolean) ?? false,
             };
+          });
+
+          // Convertir negociation.elements (objets ou strings) → strings
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const toNegociationElements = (arr: unknown[]): string[] => arr.map(e => {
+            if (typeof e === 'string') return e;
+            const obj = e as Record<string, unknown>;
+            return (obj.argument as string) || (obj.label as string) || JSON.stringify(e);
           });
 
           // Convertir procedures (strings) → format { label, type, gravite, message }
@@ -350,7 +359,10 @@ export default function RapportPage() {
             procedures: proceduresFormatted,
             documents_detectes: (r.documents_detectes as typeof MOCK_RAPPORT.documents_detectes) || [],
             documents_manquants: (r.documents_manquants as string[]) || [],
-            negociation: (r.negociation as typeof MOCK_RAPPORT.negociation) || { applicable: false, elements: [] },
+            negociation: {
+              applicable: ((r.negociation as Record<string, unknown>)?.applicable as boolean) ?? false,
+              elements: toNegociationElements(((r.negociation as Record<string, unknown>)?.elements as unknown[]) || []),
+            },
             document_names: (data.document_names as string[]) || [],
             regeneration_deadline: data.regeneration_deadline || null,
             is_preview: data.is_preview ?? false,
