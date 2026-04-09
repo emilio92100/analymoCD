@@ -66,8 +66,8 @@ export default function NouvelleAnalyse() {
   const [progress, setProgress] = useState(0);
 
   const [_fileWarnings, setFileWarnings] = useState<string[]>([]);
-  const [progressMsg, setProgressMsg] = useState('');
-  const [progressDoc, setProgressDoc] = useState({ current: 0, total: 0 });
+  const [_progressMsg, setProgressMsg] = useState('');
+  const [_progressDoc, setProgressDoc] = useState({ current: 0, total: 0 });
   const [result, setResult] = useState<AnalyseResult | null>(null);
   const [apercu, setApercu] = useState<ApercuResult | null>(null);
   const [apercuId, setApercuId] = useState<string | null>(null);
