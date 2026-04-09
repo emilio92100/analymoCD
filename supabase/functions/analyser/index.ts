@@ -23,9 +23,19 @@ function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 function parseJson<T>(raw: string): T | null {
   try {
-    const clean = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    // Nettoyer les backticks et espaces
+    let clean = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+    // Trouver le premier { et le dernier } pour extraire le JSON
+    const start = clean.indexOf('{');
+    const end = clean.lastIndexOf('}');
+    if (start !== -1 && end !== -1 && end > start) {
+      clean = clean.slice(start, end + 1);
+    }
     return JSON.parse(clean) as T;
-  } catch { return null; }
+  } catch (e) {
+    console.error('[Verimo] parseJson error:', e, 'raw debut:', raw.slice(0, 100));
+    return null;
+  }
 }
 
 async function updateProgress(db: SupabaseClient, analyseId: string, current: number, total: number, message: string) {
@@ -68,6 +78,68 @@ async function callAI(params: {
   return { text: '', error: 'max_retries' };
 }
 
+
+
+// ── Prompt MAP intelligent par type de document ──────────────
+const PROMPT_MAP_INTELLIGENT = `Tu es le moteur d extraction de documents immobiliers de Verimo.
+Tu lis un document immobilier et tu en extrais les informations cles de facon structuree.
+Extrais TOUTES les informations disponibles, y compris les details en bas de page, annexes et mentions secondaires.
+
+Detecte d abord le type : PV_AG | REGLEMENT_COPRO | APPEL_CHARGES | DPE | DIAGNOSTIC | DDT | COMPROMIS | ETAT_DATE | TAXE_FONCIERE | AUTRE
+
+Selon le type detecte, extrais en priorite :
+- PV_AG : participation (presents/representes/tantiemes), travaux votes avec montants et statut, appels fonds exceptionnels, honoraires syndic, questions diverses, resolutions refusees, tensions syndic
+- REGLEMENT_COPRO : tantiemes du lot, restrictions usage, parties privatives du lot (cave, parking)
+- APPEL_CHARGES : quote-part lot en tantiemes, charges courantes vs exceptionnelles, budget previsionnel vs realise, fonds travaux ALUR
+- DPE : etiquette energie et GES, type chauffage, date diagnostic (ALERTE si avant 01/07/2021), conso kWh/m2/an, preconisations travaux
+- TAXE_FONCIERE : montant annuel, annee, adresse
+- DIAGNOSTIC : type, resultat, date, validite, travaux preconises
+- COMPROMIS : conditions suspensives, date jouissance, repartition travaux vendeur/acheteur
+- ETAT_DATE : impayes lot, provisions non soldees, quote-part fonds travaux ALUR
+
+Reponds UNIQUEMENT en JSON strict, sans texte avant ou apres :
+{
+  "type_document": "PV_AG",
+  "annee_document": "2024 ou null",
+  "resume": "resume factuel en 3-5 phrases avec les chiffres cles",
+  "points_positifs": ["point positif detecte"],
+  "points_vigilance": ["point de vigilance detecte"],
+  "travaux_votes": [{"description": "desc", "montant": 45000, "statut": "vote", "date_vote": "2024-01-15"}],
+  "travaux_evoques": ["travaux mentionnes sans vote"],
+  "appels_fonds_exceptionnels": [{"description": "desc", "montant_total": 80000, "date_vote": "2024"}],
+  "procedures": ["procedures judiciaires"],
+  "infos_financieres": "resume charges, fonds travaux, impayes avec chiffres precis",
+  "diagnostics_detectes": [{"type": "DPE", "resultat": "Classe D", "date": "2023-06-15", "alerte": null}],
+  "lot_info": {"tantiemes": "45/1000 ou null", "parties_privatives": [], "impayes": null, "fonds_travaux_alur": null},
+  "syndic": {"nom": "nom ou null", "fin_mandat": "2026 ou null", "tensions": false},
+  "participation_ag": {"taux": "72% ou null", "presents_representes": "732/1016 ou null"},
+  "montants_cles": ["tout montant important avec contexte"],
+  "alertes_critiques": ["alerte urgente si detectee"]
+}`;
+
+// ── Prompt REDUCE : rapport final ────────────────────────────
+function buildSystemPrompt(mode: string, profil: string): string {
+  const p = profil === 'invest' ? 'investissement locatif' : 'residence principale';
+  if (mode === 'apercu_complete' || mode === 'apercu_document') {
+    return `Tu es le moteur d analyse de documents immobiliers de Verimo. Profil : ${p}. Tu n utilises jamais les mots Claude, Anthropic ou IA.
+Reponds UNIQUEMENT en JSON strict : {"titre": "adresse ou Votre bien", "recommandation_courte": "2-3 phrases", "points_vigilance": ["max 3"]}`;
+  }
+  if (mode === 'document') {
+    return `Tu es le moteur d analyse de documents immobiliers de Verimo. Profil : ${p}. Tu n utilises jamais les mots Claude, Anthropic ou IA.
+Reponds UNIQUEMENT en JSON strict : {"titre": "nom du document", "resume": "3-4 phrases", "points_forts": [], "points_vigilance": [], "conclusion": "avis en 2-3 phrases. Ce rapport est etabli uniquement a partir des documents analyses et ne remplace pas l avis d un professionnel de l immobilier."}`;
+  }
+  return `Tu es le moteur d analyse de documents immobiliers de Verimo. Profil acheteur : ${p}.
+Tu informes, tu n orientes jamais la decision finale. Tu n utilises jamais les mots Claude, Anthropic ou IA.
+Si une information est absente, tu le signales clairement.
+
+REGLES DE NOTATION /20 (profil ${p}) :
+- Base : 12/20. Travaux urgents non anticipes : -3 a -4. Gros travaux evoques non votes : -2 a -3.
+- Fonds travaux nul : -2. DPE F (RP) : -2 / DPE G (RP) : -3. DPE F (invest) : -4 / DPE G (invest) : -6.
+- Procedures judiciaires : -2 a -4. Fonds travaux conforme legal : +0.5. DPE A : +1 / DPE B ou C : +0.5.
+
+Reponds UNIQUEMENT en JSON strict, sans texte avant ou apres :
+{"titre":"adresse ou Analyse complete","type_bien":"appartement","score":14.5,"score_niveau":"Bien sain","recommandation":"Acheter","resume":"4-5 phrases","points_forts":[],"points_vigilance":[],"travaux":{"votes":[],"evoques":[],"estimation_totale":null},"finances":{"charges_annuelles":null,"fonds_travaux":null,"fonds_travaux_statut":"non_mentionne","impayes":null},"procedures":[],"diagnostics_resume":"resume DPE et diagnostics","diagnostics":[],"documents_manquants":[],"negociation":{"applicable":false,"elements":[]},"risques_financiers":"estimation","vie_copropriete":{"syndic":{"nom":null,"fin_mandat":null,"tensions_detectees":false,"tensions_detail":null},"participation_ag":[],"tendance_participation":"Non determinable","analyse_participation":"analyse","travaux_votes_non_realises":[],"appels_fonds_exceptionnels":[],"questions_diverses_notables":[]},"lot_achete":{"quote_part_tantiemes":null,"parties_privatives":[],"impayes_detectes":null,"fonds_travaux_alur":null,"travaux_votes_charge_vendeur":[],"restrictions_usage":[],"points_specifiques":[]},"avis_verimo":"Avis final. Ce rapport est etabli uniquement a partir des documents analyses et ne remplace pas l avis d un professionnel de l immobilier."}`;
+}
 
 // ── Fonction principale d'analyse (tourne en background sans limite) ──
 async function runAnalyse(params: {
@@ -131,7 +203,11 @@ async function runAnalyse(params: {
           apiKey,
         });
         aiError = result.error;
-        if (!aiError) report = parseJson<Record<string, unknown>>(result.text);
+        if (!aiError) {
+          console.log('[Verimo] REDUCE reponse brute (500 chars):', result.text.slice(0, 500));
+          report = parseJson<Record<string, unknown>>(result.text);
+          if (!report) console.error('[Verimo] JSON invalide. Debut:', result.text.slice(0, 200));
+        }
       }
     }
 
