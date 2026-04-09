@@ -278,6 +278,43 @@ export default function RapportPage() {
         if (data?.result) {
           const r = data.result as Record<string, unknown>;
           const mappedType = (data.type === 'pack2' || data.type === 'pack3' ? 'complete' : data.type) as 'document' | 'complete';
+
+          // Adapter le JSON de Claude vers la structure attendue par RapportPage
+          // Claude retourne travaux.votes/evoques, finances.charges_annuelles, procedures en strings
+          const travauxObj = (r.travaux as Record<string, unknown>) || {};
+          const financesObj = (r.finances as Record<string, unknown>) || {};
+
+          // Convertir travaux.votes (strings) → format { label, impact, message }
+          const toTravaux = (arr: unknown[]) => arr.map(t =>
+            typeof t === 'string'
+              ? { label: t, impact: 'neutre' as const, message: t }
+              : t as { label: string; impact: string; message: string }
+          );
+
+          // Convertir procedures (strings) → format { label, type, gravite, message }
+          const rawProcedures = (r.procedures as unknown[]) || [];
+          const proceduresFormatted = rawProcedures.map(p =>
+            typeof p === 'string'
+              ? { label: p, type: 'autre', gravite: 'moderee' as const, message: p }
+              : p as { label: string; type: string; gravite: 'faible' | 'moderee' | 'elevee'; message?: string }
+          );
+
+          // Charges mensuelles depuis finances.charges_annuelles
+          const chargesAnnuelles = financesObj.charges_annuelles;
+          const chargesMensuelles = typeof chargesAnnuelles === 'number'
+            ? Math.round(chargesAnnuelles / 12)
+            : typeof chargesAnnuelles === 'string'
+              ? Math.round(parseFloat(chargesAnnuelles.replace(/[^0-9.]/g, '')) / 12) || 0
+              : 0;
+
+          // Fonds travaux
+          const fondsTravaux = financesObj.fonds_travaux;
+          const fondsTrvauxNum = typeof fondsTravaux === 'number'
+            ? fondsTravaux
+            : typeof fondsTravaux === 'string'
+              ? parseFloat(fondsTravaux.replace(/[^0-9.]/g, '')) || 0
+              : 0;
+
           setRapport({
             id: data.id,
             type: mappedType as 'complete',
@@ -293,15 +330,15 @@ export default function RapportPage() {
             synthese_points_vigilance: (r.points_vigilance as string[]) || (r.synthese_points_vigilance as string[]) || [],
             avis_verimo: (r.avis_verimo as string) || '',
             categories: (r.categories as typeof MOCK_RAPPORT.categories) || MOCK_RAPPORT.categories,
-            charges_mensuelles: (r.charges_mensuelles as number) || 0,
-            fonds_travaux: (r.fonds_travaux as number) || 0,
-            fonds_travaux_statut: (r.fonds_travaux_statut as string) || 'non_mentionne',
-            travaux_realises: (r.travaux_realises as typeof MOCK_RAPPORT.travaux_realises) || [],
-            travaux_votes: (r.travaux_votes as typeof MOCK_RAPPORT.travaux_votes) || [],
-            travaux_a_prevoir: (r.travaux_a_prevoir as typeof MOCK_RAPPORT.travaux_a_prevoir) || [],
-            quote_part_travaux: (r.quote_part_travaux as string) || '',
-            procedures_en_cours: (r.procedures_en_cours as boolean) || false,
-            procedures: (r.procedures as typeof MOCK_RAPPORT.procedures) || [],
+            charges_mensuelles: chargesMensuelles,
+            fonds_travaux: fondsTrvauxNum,
+            fonds_travaux_statut: (financesObj.fonds_travaux_statut as string) || (r.fonds_travaux_statut as string) || 'non_mentionne',
+            travaux_realises: toTravaux((travauxObj.realises as unknown[]) || (r.travaux_realises as unknown[]) || []),
+            travaux_votes: toTravaux((travauxObj.votes as unknown[]) || (r.travaux_votes as unknown[]) || []),
+            travaux_a_prevoir: toTravaux((travauxObj.evoques as unknown[]) || (r.travaux_a_prevoir as unknown[]) || []),
+            quote_part_travaux: (r.quote_part_travaux as string) || (travauxObj.estimation_totale as string) || '',
+            procedures_en_cours: proceduresFormatted.length > 0,
+            procedures: proceduresFormatted,
             documents_detectes: (r.documents_detectes as typeof MOCK_RAPPORT.documents_detectes) || [],
             documents_manquants: (r.documents_manquants as string[]) || [],
             negociation: (r.negociation as typeof MOCK_RAPPORT.negociation) || { applicable: false, elements: [] },
@@ -310,7 +347,7 @@ export default function RapportPage() {
             is_preview: data.is_preview ?? false,
             vie_copropriete: (r.vie_copropriete as Record<string, unknown>) ?? null,
             lot_achete: (r.lot_achete as Record<string, unknown>) ?? null,
-            finances: (r.finances as Record<string, unknown>) ?? null,
+            finances: financesObj ?? null,
             diagnostics_resume: (r.diagnostics_resume as string) || '',
           });
           setLoading(false);
