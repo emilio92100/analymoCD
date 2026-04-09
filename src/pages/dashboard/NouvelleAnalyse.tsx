@@ -260,7 +260,9 @@ export default function NouvelleAnalyse() {
       await refundCredit(creditType);
       await markAnalyseFailed(analyseId);
       setError(result.errorMessage || "Une erreur est survenue. Votre crédit a été remboursé automatiquement.");
-      setStep('upload'); resetUpload(); setIsAnalysing(false); return;
+      setStep('upload'); resetUpload(); setIsAnalysing(false);
+      console.error('[Verimo] Erreur analyse:', result.errorMessage);
+      return;
     }
     setProgress(100); setProgressMsg('Rapport prêt !');
     await new Promise(r => setTimeout(r, 500));
@@ -465,133 +467,120 @@ export default function NouvelleAnalyse() {
     </div>
   );
 
-  /* ── LOADING PREMIUM */
+  /* ── LOADING ── */
   if (step === 'analyse') {
     const pct = Math.round(animatedProgress);
-    const etapes = [
-      { min: 0,  max: 15, label: 'Réception des documents', icon: '📥', detail: 'Vos fichiers sont en cours de transfert sécurisé…' },
-      { min: 15, max: 35, label: 'Lecture des documents', icon: '📖', detail: progressMsg || (progressDoc.total > 1 ? `Document ${progressDoc.current + 1} sur ${progressDoc.total} en cours de lecture…` : 'Lecture et extraction du contenu…') },
-      { min: 35, max: 60, label: 'Analyse du contenu', icon: '🔍', detail: 'Identification des informations clés, travaux, procédures…' },
-      { min: 60, max: 80, label: 'Extraction des données', icon: '⚡', detail: 'Structuration des résultats et calcul des indicateurs…' },
-      { min: 80, max: 95, label: 'Génération du rapport', icon: '📊', detail: 'Rédaction de votre rapport personnalisé Verimo…' },
-      { min: 95, max: 100, label: 'Finalisation', icon: '✅', detail: 'Votre rapport est presque prêt…' },
-    ];
-    const etapeActive = etapes.find(e => pct >= e.min && pct < e.max) || etapes[etapes.length - 1];
-    const etapeIndex = etapes.indexOf(etapeActive);
+
+    // Phases reflétant le traitement séquentiel réel
+    // Upload (0→30) → Lecture doc par doc (30→75) → Synthèse (75→95) → Finalisation (95→100)
+    const phase =
+      pct < 30 ? { label: 'Envoi sécurisé', sub: 'Transfert de vos documents…', color: '#2a7d9c' } :
+      pct < 75 ? { label: progressMsg || `Lecture document ${progressDoc.current}/${progressDoc.total || files.length}`, sub: 'Extraction des informations clés…', color: '#7c3aed' } :
+      pct < 95 ? { label: 'Synthèse croisée', sub: 'Recoupement de toutes les données…', color: '#d97706' } :
+                 { label: 'Rapport prêt', sub: 'Finalisation en cours…', color: '#16a34a' };
+
+    const docsTotal = progressDoc.total || files.length;
+    const docsDone = progressDoc.current || 0;
 
     return (
-      <div style={{ maxWidth: 580, margin: '0 auto', padding: '40px 0' }}>
-        {/* Message Ne quittez pas — en haut */}
-        <div style={{ marginBottom: 24, padding: '12px 16px', borderRadius: 12, background: '#fffbeb', border: '1px solid #fde68a', textAlign: 'center' }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 2 }}>⚠ Ne quittez pas cette page</p>
-          <p style={{ fontSize: 12, color: '#b45309', lineHeight: 1.5, margin: 0 }}>
-            Si vous quittez, retrouvez votre analyse dans <strong>Mes analyses</strong> — elle continuera en arrière-plan.
+      <div style={{ maxWidth: 480, margin: '0 auto', padding: '32px 0' }}>
+        <style>{`
+          @keyframes vr-spin { to { transform: rotate(360deg); } }
+          @keyframes vr-pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+          @keyframes vr-slide { from { transform:translateX(-100%); } to { transform:translateX(400%); } }
+          @keyframes vr-pop { from { transform:scale(0.7); opacity:0; } to { transform:scale(1); opacity:1; } }
+        `}</style>
+
+        {/* Carte principale */}
+        <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #edf2f7', padding: '32px 28px', boxShadow: '0 4px 24px rgba(15,45,61,0.07)', marginBottom: 16 }}>
+
+          {/* Spinner + pourcentage */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+            <div style={{ position: 'relative', width: 56, height: 56 }}>
+              <svg width="56" height="56" style={{ transform: 'rotate(-90deg)' }}>
+                <circle cx="28" cy="28" r="22" fill="none" stroke="#edf2f7" strokeWidth="4"/>
+                <circle cx="28" cy="28" r="22" fill="none" stroke={phase.color} strokeWidth="4"
+                  strokeDasharray={`${2 * Math.PI * 22}`}
+                  strokeDashoffset={`${2 * Math.PI * 22 * (1 - pct / 100)}`}
+                  strokeLinecap="round"
+                  style={{ transition: 'stroke-dashoffset 0.4s ease, stroke 0.4s ease' }}
+                />
+              </svg>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: phase.color, animation: 'vr-pulse 1.5s ease-in-out infinite' }} />
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 36, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.04em', lineHeight: 1 }}>
+                {pct}<span style={{ fontSize: 16, color: '#94a3b8', fontWeight: 600 }}>%</span>
+              </div>
+              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, marginTop: 2 }}>EN COURS</div>
+            </div>
+          </div>
+
+          {/* Phase actuelle */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', marginBottom: 4, letterSpacing: '-0.01em' }}>{phase.label}</div>
+            <div style={{ fontSize: 13, color: '#64748b' }}>{phase.sub}</div>
+          </div>
+
+          {/* Barre de progression fine */}
+          <div style={{ height: 4, borderRadius: 99, background: '#f1f5f9', overflow: 'hidden', position: 'relative' }}>
+            <div style={{
+              height: '100%', borderRadius: 99,
+              background: `linear-gradient(90deg, ${phase.color}cc, ${phase.color})`,
+              width: `${animatedProgress}%`,
+              transition: 'width 0.3s ease',
+            }} />
+            <div style={{
+              position: 'absolute', top: 0, height: '100%', width: '30%',
+              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent)',
+              animation: 'vr-slide 1.8s ease-in-out infinite',
+            }} />
+          </div>
+        </div>
+
+        {/* Documents — progression par fichier */}
+        {docsTotal > 0 && (
+          <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 20px', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em' }}>DOCUMENTS</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: phase.color }}>{docsDone}/{docsTotal} analysés</span>
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {Array.from({ length: docsTotal }).map((_, i) => {
+                const done = i < docsDone;
+                const active = i === docsDone && pct >= 30 && pct < 75;
+                return (
+                  <div key={i} style={{
+                    flex: 1, height: 6, borderRadius: 99,
+                    background: done ? '#16a34a' : active ? phase.color : '#e2e8f0',
+                    transition: 'background 0.4s ease',
+                    position: 'relative', overflow: 'hidden',
+                  }} />
+                );
+              })}
+            </div>
+            {files.length > 0 && (
+              <div style={{ marginTop: 10, fontSize: 12, color: '#94a3b8' }}>
+                {docsDone < docsTotal && pct >= 30 && pct < 75
+                  ? `📄 ${files[docsDone]?.name || `Document ${docsDone + 1}`}`
+                  : docsDone >= docsTotal && pct >= 75
+                  ? '✓ Tous les documents lus'
+                  : `${docsTotal} document${docsTotal > 1 ? 's' : ''} en attente`
+                }
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Note discrète */}
+        <div style={{ textAlign: 'center', padding: '0 8px' }}>
+          <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6, margin: 0 }}>
+            L'analyse continue même si vous quittez —{' '}
+            <span style={{ color: '#2a7d9c', fontWeight: 600 }}>retrouvez-la dans Mes analyses</span>
           </p>
         </div>
-
-        {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg, #e0f2fe, #f0f9ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: 32, boxShadow: '0 8px 32px rgba(42,125,156,0.15)', animation: 'float 3s ease-in-out infinite' }}>
-            {etapeActive.icon}
-          </div>
-          <h2 style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', marginBottom: 8, letterSpacing: '-0.025em' }}>
-            {etapeActive.label}…
-          </h2>
-          <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6 }}>{etapeActive.detail}</p>
-        </div>
-
-        {/* Barre de progression principale */}
-        <div style={{ marginBottom: 32 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#2a7d9c' }}>Progression</span>
-            <span style={{ fontSize: 18, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em' }}>{pct}<span style={{ fontSize: 13, color: '#94a3b8', fontWeight: 600 }}>%</span></span>
-          </div>
-          <div style={{ height: 12, borderRadius: 99, background: '#e2e8f0', overflow: 'hidden', position: 'relative' }}>
-            <div style={{
-              position: 'absolute', inset: 0, borderRadius: 99,
-              background: 'linear-gradient(90deg, #2a7d9c, #1a5068)',
-              width: `${animatedProgress}%`,
-              transition: 'width 0.15s linear',
-            }} />
-            {/* Effet shimmer */}
-            <div style={{
-              position: 'absolute', top: 0, left: `${animatedProgress - 8}%`, width: '8%', height: '100%',
-              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
-              animation: 'shimmer 1.5s ease-in-out infinite',
-            }} />
-          </div>
-        </div>
-
-        {/* Étapes */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 32 }}>
-          {etapes.map((e, i) => {
-            const done = i < etapeIndex;
-            const active = i === etapeIndex;
-            return (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 12,
-                background: active ? '#f0f9ff' : done ? '#f0fdf4' : '#f8fafc',
-                border: `1.5px solid ${active ? '#bae6fd' : done ? '#bbf7d0' : '#f1f5f9'}`,
-                transition: 'all 0.3s',
-              }}>
-                <div style={{
-                  width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 13,
-                  background: active ? '#2a7d9c' : done ? '#16a34a' : '#e2e8f0',
-                  color: active || done ? '#fff' : '#94a3b8',
-                  fontWeight: 700,
-                }}>
-                  {done ? '✓' : active ? <div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.5)', borderTopColor: '#fff', animation: 'spin 0.8s linear infinite' }} /> : i + 1}
-                </div>
-                <span style={{ fontSize: 13, fontWeight: active ? 700 : done ? 600 : 400, color: active ? '#0f172a' : done ? '#16a34a' : '#94a3b8' }}>
-                  {e.label}
-                </span>
-                {done && <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#16a34a' }}>Terminé</span>}
-                {active && <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#2a7d9c' }}>En cours…</span>}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Indicateur documents si multiple */}
-        {progressDoc.total > 1 && (
-          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '16px 20px' }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              Documents ({progressDoc.current}/{progressDoc.total})
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {Array.from({ length: progressDoc.total }).map((_, i) => (
-                <div key={i} style={{
-                  width: 36, height: 36, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 700,
-                  background: i < progressDoc.current ? '#f0fdf4' : i === progressDoc.current ? 'rgba(42,125,156,0.1)' : '#f8fafc',
-                  border: `1.5px solid ${i < progressDoc.current ? '#86efac' : i === progressDoc.current ? '#2a7d9c' : '#e2e8f0'}`,
-                  color: i < progressDoc.current ? '#16a34a' : i === progressDoc.current ? '#2a7d9c' : '#94a3b8',
-                  transition: 'all 0.3s',
-                  boxShadow: i === progressDoc.current ? '0 0 0 3px rgba(42,125,156,0.15)' : 'none',
-                }}>
-                  {i < progressDoc.current ? '✓' : i + 1}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Warnings fichiers si présents */}
-        {fileWarnings.length > 0 && (
-          <div style={{ padding: '12px 16px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fde68a', marginTop: 16 }}>
-            {fileWarnings.map((w, i) => (
-              <div key={i} style={{ fontSize: 12, color: '#92400e', lineHeight: 1.5 }}>⚠ {w}</div>
-            ))}
-          </div>
-        )}
-        {/* Message rassurant */}
-
-
-        <style>{`
-          @keyframes shimmer { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
-          @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-          @keyframes spin { to { transform: rotate(360deg); } }
-        `}</style>
       </div>
     );
   }
