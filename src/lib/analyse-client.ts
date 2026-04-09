@@ -109,7 +109,7 @@ export async function lancerAnalyseEdge(params: {
     const pollResult = await pollAnalyseStatus({
       analyseId,
       onProgress: (p) => onProgress?.(p),
-      timeoutMs: 240_000, // 4 minutes max
+      timeoutMs: 720_000, // 12 minutes max (Map-Reduce 8 docs ~8 min)
     });
 
     if (pollResult.status === 'completed') {
@@ -135,7 +135,7 @@ export async function pollAnalyseStatus(params: {
   onProgress?: (p: AnalyseProgress) => void;
   timeoutMs?: number;
 }): Promise<{ status: 'completed' | 'failed' | 'timeout' }> {
-  const { analyseId, onProgress, timeoutMs = 240_000 } = params;
+  const { analyseId, onProgress, timeoutMs = 720_000 } = params;
   const start = Date.now();
 
   while (Date.now() - start < timeoutMs) {
