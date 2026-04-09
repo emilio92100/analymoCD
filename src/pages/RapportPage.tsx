@@ -350,7 +350,14 @@ export default function RapportPage() {
             categories: (r.categories as typeof MOCK_RAPPORT.categories) || MOCK_RAPPORT.categories,
             charges_mensuelles: chargesMensuelles,
             fonds_travaux: fondsTrvauxNum,
-            fonds_travaux_statut: (financesObj.fonds_travaux_statut as string) || (r.fonds_travaux_statut as string) || 'non_mentionne',
+            fonds_travaux_statut: (() => {
+              const raw = (financesObj.fonds_travaux_statut as string) || (r.fonds_travaux_statut as string) || 'non_mentionne';
+              // Normaliser les variantes retournées par Claude
+              if (raw.includes('conforme') || raw === 'au_dessus') return 'conforme';
+              if (raw === 'insuffisant') return 'insuffisant';
+              if (raw === 'absent') return 'absent';
+              return raw;
+            })(),
             travaux_realises: toTravaux((travauxObj.realises as unknown[]) || (r.travaux_realises as unknown[]) || []),
             travaux_votes: toTravaux((travauxObj.votes as unknown[]) || (r.travaux_votes as unknown[]) || []),
             travaux_a_prevoir: toTravaux((travauxObj.evoques as unknown[]) || (r.travaux_a_prevoir as unknown[]) || []),
