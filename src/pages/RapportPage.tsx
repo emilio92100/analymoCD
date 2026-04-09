@@ -707,7 +707,7 @@ export default function RapportPage() {
                       {intro && <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.88)', lineHeight: 1.7, fontWeight: 500, marginBottom: 14, margin: '0 0 14px 0' }}>{intro}</p>}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {steps.map((s, i) => {
-                          const num = s.match(/^([1-9]\))/)?.[1] || '';
+                          const _num = s.match(/^([1-9]\))/)?.[1] || '';
                           const texte = s.replace(/^[1-9]\)\s*/, '').trim();
                           return (
                             <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 14px', background: 'rgba(255,255,255,0.07)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -942,7 +942,7 @@ export default function RapportPage() {
                   const budgetSub = hasAG ? "Total copropriété" : "Estimation du lot";
                   const fondsLabel = hasAG ? "Fonds travaux" : "Provision travaux";
                   const fondsSub = hasAG ? "Total copropriété" : "Montant détecté";
-                  const statut = financesObj.fonds_travaux_statut as string || '';
+                  const _statut = financesObj.fonds_travaux_statut as string || '';
                   return (<>
                     {rapport.charges_mensuelles > 0 && <StatBox label={budgetLabel} value={`${(rapport.charges_mensuelles * 12).toLocaleString('fr-FR')}€`} sub={budgetSub} color="#0f172a"/>}
                     {rapport.fonds_travaux > 0 && <StatBox label={fondsLabel} value={`${rapport.fonds_travaux.toLocaleString('fr-FR')}€`} sub={fondsSub} color="#2a7d9c"/>}
