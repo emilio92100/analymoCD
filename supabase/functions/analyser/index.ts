@@ -145,6 +145,20 @@ Tu te bases UNIQUEMENT sur ce qui est ecrit dans les documents fournis.
 Tu n'utilises jamais les mots "Claude", "Anthropic" ou "IA".
 Si une information est absente, tu le signales clairement.
 
+REGLES DIAGNOSTICS :
+Pour chaque diagnostic detecte dans les documents (DPE, amiante, plomb, electricite, gaz, termites, etc.), extrais :
+- type : DPE | AMIANTE | PLOMB | ELECTRICITE | GAZ | TERMITES | ERPT | AUTRE
+- label : nom complet du diagnostic
+- perimetre : "lot_privatif" ou "parties_communes" ou "immeuble"
+- resultat : etiquette ou valeur principale (ex: "Classe D", "Absence", "Non conforme")
+- details : informations complementaires (consommation, GES, observations)
+- date_diagnostic : date au format YYYY-MM-DD ou null
+- date_validite : date de validite ou null
+- alerte : null si pas d'alerte, sinon description courte du probleme detecte
+  ALERTE OBLIGATOIRE si DPE avant 01/07/2021 (invalide depuis 01/01/2025)
+  ALERTE OBLIGATOIRE si presence amiante, plomb, ou installation non conforme
+- travaux_preconises : liste de travaux recommandes avec cout estime si mentionne
+
 REGLES DE NOTATION /20 (profil ${profilLabel}) :
 - Base : 12/20
 - Travaux urgents non anticipes : -3 a -4
@@ -184,7 +198,20 @@ Reponds UNIQUEMENT en JSON strict, sans texte avant ou apres :
     "impayes": null
   },
   "procedures": [],
-  "diagnostics_resume": "resume DPE et diagnostics",
+  "diagnostics_resume": "resume global DPE et diagnostics en 2-3 phrases",
+  "diagnostics": [
+    {
+      "type": "DPE",
+      "label": "Diagnostic de Performance Energetique",
+      "perimetre": "lot_privatif",
+      "resultat": "Etiquette D",
+      "details": "Consommation 180 kWh/m2/an, GES classe D",
+      "date_diagnostic": "2023-06-15",
+      "date_validite": "2033-06-15",
+      "alerte": null,
+      "travaux_preconises": []
+    }
+  ],
   "documents_manquants": [],
   "negociation": {
     "applicable": false,
@@ -357,8 +384,14 @@ Deno.serve(async (req) => {
       updateData.paid = true;
     }
 
-    await supabaseAdmin.from('analyses').update(updateData).eq('id', analyseId);
-    console.log(`[Verimo] Analyse ${analyseId} terminee avec succes.`);
+    console.log('[Verimo] updateData:', JSON.stringify(updateData).slice(0, 200));
+    const { error: updateError } = await supabaseAdmin.from('analyses').update(updateData).eq('id', analyseId);
+    if (updateError) {
+      console.error('[Verimo] ERREUR UPDATE FINAL:', updateError.message, updateError.code, updateError.details);
+      await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: 'Erreur sauvegarde: ' + updateError.message }).eq('id', analyseId);
+    } else {
+      console.log(`[Verimo] Analyse ${analyseId} terminee avec succes.`);
+    }
 
     return new Response(JSON.stringify({ success: true, analyseId }), {
       headers: { ...CORS, 'Content-Type': 'application/json' }
