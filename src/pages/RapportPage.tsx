@@ -366,7 +366,22 @@ export default function RapportPage() {
             document_names: (data.document_names as string[]) || [],
             regeneration_deadline: data.regeneration_deadline || null,
             is_preview: data.is_preview ?? false,
-            vie_copropriete: (r.vie_copropriete as Record<string, unknown>) ?? null,
+            vie_copropriete: (() => {
+              const vie = r.vie_copropriete as Record<string, unknown> | null;
+              if (!vie) return null;
+              // Normaliser participation_ag : Claude retourne {date, taux, presents_representes}
+              // mais la page attend {annee, taux_tantiemes_pct, copropietaires_presents_representes}
+              const rawParticipation = (vie.participation_ag as Record<string, unknown>[]) || [];
+              const normalizedParticipation = rawParticipation.map(p => ({
+                annee: (p.annee as string) || (p.date as string)?.slice(0, 4) || '',
+                copropietaires_presents_representes: (p.copropietaires_presents_representes as string) || (p.presents_representes as string) || '—',
+                tantiemes_representes: (p.tantiemes_representes as string) || '',
+                taux_tantiemes_pct: (p.taux_tantiemes_pct as string) || (p.taux as string) || '',
+                quorum_note: (p.quorum_note as string) || null,
+                resolutions_refusees: (p.resolutions_refusees as string[]) || [],
+              }));
+              return { ...vie, participation_ag: normalizedParticipation };
+            })(),
             lot_achete: (r.lot_achete as Record<string, unknown>) ?? null,
             finances: financesObj ?? null,
             diagnostics_resume: (r.diagnostics_resume as string) || '',
@@ -1107,9 +1122,16 @@ export default function RapportPage() {
                   <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a', marginBottom: 10, fontSize: 12, color: '#92400e' }}>
                     Ces travaux ont été votés mais leur réalisation n'est pas confirmée dans les PV suivants. Demandez une mise à jour au vendeur.
                   </div>
-                  {travaux_nr.map((t, i) => (
-                    <div key={i} style={{ fontSize: 13, color: '#92400e', padding: '8px 12px', background: '#fffbeb', borderRadius: 8, marginBottom: 6 }}>• {t}</div>
-                  ))}
+                  {travaux_nr.map((t, i) => {
+                    const label = typeof t === 'string' ? t : (t as Record<string,unknown>).description as string || JSON.stringify(t);
+                    const obs = typeof t !== 'string' ? (t as Record<string,unknown>).observations as string : null;
+                    return (
+                      <div key={i} style={{ fontSize: 13, color: '#92400e', padding: '8px 12px', background: '#fffbeb', borderRadius: 8, marginBottom: 6 }}>
+                        <div>• {label}</div>
+                        {obs && <div style={{ fontSize: 11, color: '#b45309', marginTop: 4, fontStyle: 'italic' }}>{obs}</div>}
+                      </div>
+                    );
+                  })}
                 </SectionCard>
               )}
 
@@ -1119,9 +1141,19 @@ export default function RapportPage() {
                   <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a', marginBottom: 10, fontSize: 12, color: '#92400e' }}>
                     Appels de fonds hors budget ordinaire votés en AG. Si votés avant le compromis, c'est la charge du vendeur.
                   </div>
-                  {appels.map((a, i) => (
-                    <div key={i} style={{ fontSize: 13, color: '#92400e', padding: '8px 12px', background: '#fffbeb', borderRadius: 8, marginBottom: 6 }}>• {a}</div>
-                  ))}
+                  {appels.map((a, i) => {
+                    if (typeof a === 'string') return <div key={i} style={{ fontSize: 13, color: '#92400e', padding: '8px 12px', background: '#fffbeb', borderRadius: 8, marginBottom: 6 }}>• {a}</div>;
+                    const obj = a as Record<string,unknown>;
+                    const montant = obj.montant as number;
+                    const motif = obj.motif as string || obj.description as string || '';
+                    const echelon = obj.echelonnement as string;
+                    return (
+                      <div key={i} style={{ fontSize: 13, color: '#92400e', padding: '8px 12px', background: '#fffbeb', borderRadius: 8, marginBottom: 6 }}>
+                        <div>• {motif}{montant ? ` — ${montant.toLocaleString('fr-FR')}€` : ''}</div>
+                        {echelon && <div style={{ fontSize: 11, color: '#b45309', marginTop: 4, fontStyle: 'italic' }}>{echelon}</div>}
+                      </div>
+                    );
+                  })}
                 </SectionCard>
               )}
 
