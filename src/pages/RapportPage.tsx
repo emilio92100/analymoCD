@@ -773,17 +773,19 @@ export default function RapportPage() {
                             {(obj?.impact || obj?.impact_estime) && (
                               <div style={{ fontSize: 12, color: '#b45309', marginBottom: 4 }}>
                                 <span style={{ fontWeight: 600 }}>Impact estimé : </span>
-                                {typeof (obj.impact || obj.impact_estime) === 'number'
-                                  ? `${(obj.impact || obj.impact_estime as number).toLocaleString('fr-FR')}€`
-                                  : `${obj.impact || obj.impact_estime}`}
+                                {(() => {
+                                  const val = obj.impact || obj.impact_estime;
+                                  return typeof val === 'number' ? `${(val as number).toLocaleString('fr-FR')}€` : `${val}`;
+                                })()}
                               </div>
                             )}
                             {obj?.estimation && (
                               <div style={{ fontSize: 12, color: '#b45309', marginBottom: 4 }}>
                                 <span style={{ fontWeight: 600 }}>Estimation : </span>
-                                {typeof obj.estimation === 'number'
-                                  ? `${(obj.estimation as number).toLocaleString('fr-FR')}€`
-                                  : `${obj.estimation}`}
+                                {(() => {
+                                  const val = obj.estimation;
+                                  return typeof val === 'number' ? `${(val as number).toLocaleString('fr-FR')}€` : `${val}`;
+                                })()}
                               </div>
                             )}
                             {obj?.levier && (
