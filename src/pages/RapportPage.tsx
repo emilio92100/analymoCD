@@ -934,7 +934,6 @@ export default function RapportPage() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
                 {(() => {
                   const rr = rapport as unknown as Record<string, unknown>;
-                  const financesObj = (rr.finances as Record<string, unknown>) || {};
                   // Détecter si on a un PV d'AG (budget copro) ou juste des appels de charges (budget lot)
                   const hasAG = (rr.vie_copropriete as Record<string, unknown> | null)?.participation_ag;
                   const budgetLabel = hasAG ? "Budget annuel copro" : "Charges annuelles";
