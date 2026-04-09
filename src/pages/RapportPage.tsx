@@ -361,7 +361,13 @@ export default function RapportPage() {
             travaux_realises: toTravaux((travauxObj.realises as unknown[]) || (r.travaux_realises as unknown[]) || []),
             travaux_votes: toTravaux((travauxObj.votes as unknown[]) || (r.travaux_votes as unknown[]) || []),
             travaux_a_prevoir: toTravaux((travauxObj.evoques as unknown[]) || (r.travaux_a_prevoir as unknown[]) || []),
-            quote_part_travaux: (r.quote_part_travaux as string) || (travauxObj.estimation_totale as string) || '',
+            quote_part_travaux: (() => {
+              if (r.quote_part_travaux) return r.quote_part_travaux as string;
+              const est = travauxObj.estimation_totale;
+              if (typeof est === 'number') return `Estimation totale des travaux votés : ${est.toLocaleString('fr-FR')}€ (total copropriété)`;
+              if (typeof est === 'string' && est) return `Estimation totale des travaux votés : ${est}`;
+              return '';
+            })(),
             procedures_en_cours: proceduresFormatted.length > 0,
             procedures: proceduresFormatted,
             documents_detectes: (r.documents_detectes as typeof MOCK_RAPPORT.documents_detectes) || [],
@@ -618,24 +624,6 @@ export default function RapportPage() {
           </div>
         )}
 
-        {/* ── Idées de négociation (si note < 14) */}
-        {isComplete && rapport.negociation?.applicable && rapport.negociation.elements.length > 0 && (
-          <div style={{ background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 16, padding: '18px 22px', marginBottom: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-              <TrendingDown size={16} style={{ color: '#d97706' }}/>
-              <span style={{ fontSize: 14, fontWeight: 800, color: '#92400e' }}>Pistes de négociation</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {rapport.negociation.elements.map((el, i) => (
-                <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#d97706', flexShrink: 0, marginTop: 7 }}/>
-                  <span style={{ fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>{el}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* ── Onglets */}
         {isComplete && (
           <div style={{ display: 'flex', gap: 6, marginBottom: 24, background: '#fff', padding: '6px', borderRadius: 14, border: '1px solid #edf2f7', flexWrap: 'wrap' }}>
@@ -693,6 +681,24 @@ export default function RapportPage() {
                 <p style={{ fontSize: 14.5, color: 'rgba(255,255,255,0.88)', lineHeight: 1.8, fontWeight: 500 }}>{rapport.avis_verimo}</p>
               </div>
             </div>
+
+            {/* Pistes de négociation */}
+            {rapport.negociation?.applicable && rapport.negociation.elements.length > 0 && (
+              <div style={{ background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: 16, padding: '18px 22px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <TrendingDown size={16} style={{ color: '#d97706' }}/>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: '#92400e' }}>Pistes de négociation</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {rapport.negociation.elements.map((el, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#d97706', flexShrink: 0, marginTop: 7 }}/>
+                      <span style={{ fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>{el}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Alerte DPE invalide */}
             {(() => {
@@ -849,7 +855,7 @@ export default function RapportPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
             {(rapport.type_bien === 'appartement' || rapport.type_bien === 'maison_copro' || !rapport.type_bien) && (
-            <SectionCard title="Charges de copropriété" icon={<Euro size={16}/>} color="#16a34a">
+            <SectionCard title="Budget de la copropriété" icon={<Euro size={16}/>} color="#16a34a">
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
                 {rapport.charges_mensuelles > 0 && <StatBox label="Budget annuel copro" value={`${(rapport.charges_mensuelles * 12).toLocaleString('fr-FR')}€`} sub="Total copropriété" color="#0f172a"/>}
                 {rapport.fonds_travaux > 0 && <StatBox label="Fonds travaux" value={`${rapport.fonds_travaux.toLocaleString('fr-FR')}€`} sub="Total copropriété" color="#2a7d9c"/>}
@@ -994,12 +1000,12 @@ export default function RapportPage() {
                         )}
                       </div>
                     </div>
-                    {syndic.tensions_detectees && (
-                      <div style={{ padding: '10px 14px', background: '#fef2f2', borderRadius: 10, border: '1px solid #fecaca', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                        <AlertTriangle size={13} style={{ color: '#dc2626', flexShrink: 0, marginTop: 2 }}/>
+                    {syndic.tensions_detectees && syndic.tensions_detail && (
+                      <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                        <Info size={13} style={{ color: '#d97706', flexShrink: 0, marginTop: 2 }}/>
                         <div>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: '#991b1b', marginBottom: 2 }}>Tensions détectées sur le syndic</div>
-                          <div style={{ fontSize: 12, color: '#991b1b' }}>{syndic.tensions_detail}</div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: '#92400e', marginBottom: 2 }}>Points notables en AG</div>
+                          <div style={{ fontSize: 12, color: '#92400e' }}>{syndic.tensions_detail}</div>
                         </div>
                       </div>
                     )}
@@ -1031,8 +1037,8 @@ export default function RapportPage() {
                         <thead>
                           <tr style={{ background: '#f8fafc' }}>
                             <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7' }}>Année</th>
-                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7' }}>Présents / représentés</th>
-                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7' }}>Tantièmes</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7' }}>Participation</th>
+                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7' }}>Taux</th>
                             <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7' }}>Note</th>
                           </tr>
                         </thead>
@@ -1042,8 +1048,8 @@ export default function RapportPage() {
                               <td style={{ padding: '10px 12px', fontWeight: 700, color: '#0f172a' }}>{p.annee}</td>
                               <td style={{ padding: '10px 12px', color: '#374151' }}>{p.copropietaires_presents_representes ?? '—'}</td>
                               <td style={{ padding: '10px 12px', color: '#374151' }}>
-                                {p.tantiemes_representes ?? '—'}
-                                {p.taux_tantiemes_pct && <span style={{ marginLeft: 6, fontSize: 11, color: '#94a3b8' }}>({p.taux_tantiemes_pct})</span>}
+                                {p.taux_tantiemes_pct ?? '—'}
+                                {p.tantiemes_representes && <span style={{ marginLeft: 6, fontSize: 11, color: '#94a3b8' }}>({p.tantiemes_representes})</span>}
                               </td>
                               <td style={{ padding: '10px 12px' }}>
                                 {p.quorum_note && (
