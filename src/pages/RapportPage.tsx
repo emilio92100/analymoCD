@@ -174,15 +174,16 @@ function SeveriteBadge({ sev }: { sev: 'faible' | 'moderee' | 'elevee' }) {
 }
 
 /* ── Détail de la note par catégorie ── */
-function DetailNote({ categories }: { categories: typeof MOCK_RAPPORT.categories }) {
+function DetailNote({ categories, typeBien }: { categories: typeof MOCK_RAPPORT.categories; typeBien?: string }) {
   const [open, setOpen] = useState(false);
+  const isCopro = !typeBien || typeBien === 'appartement' || typeBien === 'maison_copro';
   const cats = [
-    { key: 'travaux',       label: 'Travaux',                icon: '🔨' },
-    { key: 'procedures',    label: 'Procédures juridiques',  icon: '⚖️' },
-    { key: 'finances',      label: 'Finances copropriété',   icon: '💰' },
-    { key: 'diags_privatifs', label: 'Diagnostics privatifs', icon: '🏠' },
-    { key: 'diags_communs', label: 'Diagnostics communs',    icon: '🏢' },
-  ];
+    { key: 'travaux',         label: 'Travaux',                icon: '🔨', always: true },
+    { key: 'procedures',      label: 'Procédures juridiques',  icon: '⚖️', always: true },
+    { key: 'finances',        label: 'Finances copropriété',   icon: '💰', always: false },
+    { key: 'diags_privatifs', label: 'Diagnostics',            icon: '🏠', always: true },
+    { key: 'diags_communs',   label: 'Diagnostics communs',    icon: '🏢', always: false },
+  ].filter(c => c.always || isCopro);
 
   return (
     <div style={{ marginTop: 12 }}>
@@ -455,7 +456,7 @@ export default function RapportPage() {
                   </span>
                 </div>
                 <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', marginBottom: 12 }}>Analysé le {rapport.date}</div>
-                <DetailNote categories={rapport.categories}/>
+                <DetailNote categories={rapport.categories} typeBien={rapport.type_bien}/>
               </div>
             </div>
           </div>
@@ -731,6 +732,7 @@ export default function RapportPage() {
         {activeTab === 'finances' && isComplete && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
+            {(rapport.type_bien === 'appartement' || rapport.type_bien === 'maison_copro' || !rapport.type_bien) && (
             <SectionCard title="Charges de copropriété" icon={<Euro size={16}/>} color="#16a34a">
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
                 {rapport.charges_mensuelles > 0 && <StatBox label="Mensuel" value={`${rapport.charges_mensuelles}€`} color="#16a34a"/>}
@@ -749,6 +751,7 @@ export default function RapportPage() {
                 </div>
               )}
             </SectionCard>
+            )} {/* fin condition copro charges */}
 
             {/* Détail catégorie finances */}
             {rapport.categories.finances.details.length > 0 && (
