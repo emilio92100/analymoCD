@@ -128,18 +128,6 @@ export async function lancerAnalyseEdge(params: {
   }
 }
 
-async function nettoyerStorage(analyseId: string): Promise<void> {
-  try {
-    const { data: fichiers } = await supabase.storage.from(STORAGE_BUCKET).list(analyseId);
-    if (fichiers && fichiers.length > 0) {
-      const paths = fichiers.map(f => `${analyseId}/${f.name}`);
-      await supabase.storage.from(STORAGE_BUCKET).remove(paths);
-    }
-  } catch (err) {
-    console.warn('[Verimo] Nettoyage Storage échoué (non bloquant):', err);
-  }
-}
-
 export async function pollAnalyseStatus(params: {
   analyseId: string;
   onProgress?: (p: AnalyseProgress) => void;
