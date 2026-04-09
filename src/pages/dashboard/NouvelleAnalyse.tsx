@@ -470,116 +470,191 @@ export default function NouvelleAnalyse() {
   /* ── LOADING ── */
   if (step === 'analyse') {
     const pct = Math.round(animatedProgress);
+    const docsTotal = files.length;
 
-    // Phases reflétant le traitement séquentiel réel
-    // Upload (0→30) → Lecture doc par doc (30→75) → Synthèse (75→95) → Finalisation (95→100)
-    const phase =
-      pct < 30 ? { label: 'Envoi sécurisé', sub: 'Transfert de vos documents…', color: '#2a7d9c' } :
-      pct < 75 ? { label: progressMsg || `Lecture document ${progressDoc.current}/${progressDoc.total || files.length}`, sub: 'Extraction des informations clés…', color: '#7c3aed' } :
-      pct < 95 ? { label: 'Synthèse croisée', sub: 'Recoupement de toutes les données…', color: '#d97706' } :
-                 { label: 'Rapport prêt', sub: 'Finalisation en cours…', color: '#16a34a' };
+    // Étapes avec paliers réels du traitement
+    const etapes = [
+      { id: 'upload',    label: 'Envoi des documents',         detail: 'Transfert sécurisé vers nos serveurs',          seuil: 0,  fin: 30,  couleur: '#2a7d9c', icon: '📤' },
+      { id: 'lecture',   label: 'Lecture des documents',        detail: 'Extraction du contenu de chaque fichier',       seuil: 30, fin: 45,  couleur: '#7c3aed', icon: '📖' },
+      { id: 'analyse',   label: 'Analyse par l'IA',            detail: 'Identification des points clés et anomalies',   seuil: 45, fin: 80,  couleur: '#d97706', icon: '🔍' },
+      { id: 'synthese',  label: 'Synthèse croisée',             detail: 'Recoupement des informations entre documents',  seuil: 80, fin: 93,  couleur: '#0891b2', icon: '⚡' },
+      { id: 'rapport',   label: 'Génération du rapport',        detail: 'Mise en forme de votre rapport personnalisé',   seuil: 93, fin: 100, couleur: '#16a34a', icon: '✅' },
+    ];
 
-    const docsTotal = progressDoc.total || files.length;
-    const docsDone = progressDoc.current || 0;
+    const etapeActive = etapes.findLast(e => pct >= e.seuil) || etapes[0];
+    const couleurActive = etapeActive.couleur;
 
     return (
-      <div style={{ maxWidth: 480, margin: '0 auto', padding: '32px 0' }}>
+      <div style={{ width: '100%', padding: '24px 0' }}>
         <style>{`
-          @keyframes vr-spin { to { transform: rotate(360deg); } }
-          @keyframes vr-pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
-          @keyframes vr-slide { from { transform:translateX(-100%); } to { transform:translateX(400%); } }
-          @keyframes vr-pop { from { transform:scale(0.7); opacity:0; } to { transform:scale(1); opacity:1; } }
+          @keyframes vr-shimmer { from { transform:translateX(-100%); } to { transform:translateX(200%); } }
+          @keyframes vr-pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.6; transform:scale(0.9); } }
+          @keyframes vr-fadein { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+          @keyframes vr-bounce { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-3px); } }
         `}</style>
 
-        {/* Carte principale */}
-        <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #edf2f7', padding: '32px 28px', boxShadow: '0 4px 24px rgba(15,45,61,0.07)', marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 24, alignItems: 'start' }}>
 
-          {/* Spinner + pourcentage */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
-            <div style={{ position: 'relative', width: 56, height: 56 }}>
-              <svg width="56" height="56" style={{ transform: 'rotate(-90deg)' }}>
-                <circle cx="28" cy="28" r="22" fill="none" stroke="#edf2f7" strokeWidth="4"/>
-                <circle cx="28" cy="28" r="22" fill="none" stroke={phase.color} strokeWidth="4"
-                  strokeDasharray={`${2 * Math.PI * 22}`}
-                  strokeDashoffset={`${2 * Math.PI * 22 * (1 - pct / 100)}`}
-                  strokeLinecap="round"
-                  style={{ transition: 'stroke-dashoffset 0.4s ease, stroke 0.4s ease' }}
-                />
-              </svg>
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: phase.color, animation: 'vr-pulse 1.5s ease-in-out infinite' }} />
-              </div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 36, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.04em', lineHeight: 1 }}>
-                {pct}<span style={{ fontSize: 16, color: '#94a3b8', fontWeight: 600 }}>%</span>
-              </div>
-              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, marginTop: 2 }}>EN COURS</div>
-            </div>
-          </div>
+          {/* ── Colonne gauche : progression principale ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-          {/* Phase actuelle */}
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', marginBottom: 4, letterSpacing: '-0.01em' }}>{phase.label}</div>
-            <div style={{ fontSize: 13, color: '#64748b' }}>{phase.sub}</div>
-          </div>
+            {/* Header */}
+            <div style={{ background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', borderRadius: 20, padding: '28px 32px', color: '#fff', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: -30, right: -30, width: 160, height: 160, borderRadius: '50%', background: 'rgba(42,125,156,0.15)', pointerEvents: 'none' }} />
+              <div style={{ position: 'relative' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em', marginBottom: 6 }}>ANALYSE EN COURS</div>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+                      {etapeActive.icon} {etapeActive.label}
+                    </div>
+                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', marginTop: 6 }}>{etapeActive.detail}</div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: 48, fontWeight: 900, color: '#fff', letterSpacing: '-0.04em', lineHeight: 1 }}>
+                      {pct}<span style={{ fontSize: 20, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>%</span>
+                    </div>
+                  </div>
+                </div>
 
-          {/* Barre de progression fine */}
-          <div style={{ height: 4, borderRadius: 99, background: '#f1f5f9', overflow: 'hidden', position: 'relative' }}>
-            <div style={{
-              height: '100%', borderRadius: 99,
-              background: `linear-gradient(90deg, ${phase.color}cc, ${phase.color})`,
-              width: `${animatedProgress}%`,
-              transition: 'width 0.3s ease',
-            }} />
-            <div style={{
-              position: 'absolute', top: 0, height: '100%', width: '30%',
-              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent)',
-              animation: 'vr-slide 1.8s ease-in-out infinite',
-            }} />
-          </div>
-        </div>
-
-        {/* Documents — progression par fichier */}
-        {docsTotal > 0 && (
-          <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 20px', marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em' }}>DOCUMENTS</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: phase.color }}>{docsDone}/{docsTotal} analysés</span>
-            </div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {Array.from({ length: docsTotal }).map((_, i) => {
-                const done = i < docsDone;
-                const active = i === docsDone && pct >= 30 && pct < 75;
-                return (
-                  <div key={i} style={{
-                    flex: 1, height: 6, borderRadius: 99,
-                    background: done ? '#16a34a' : active ? phase.color : '#e2e8f0',
-                    transition: 'background 0.4s ease',
+                {/* Barre principale */}
+                <div style={{ height: 8, borderRadius: 99, background: 'rgba(255,255,255,0.12)', overflow: 'hidden', position: 'relative' }}>
+                  <div style={{
+                    height: '100%', borderRadius: 99,
+                    background: `linear-gradient(90deg, ${couleurActive}cc, ${couleurActive})`,
+                    width: `${animatedProgress}%`,
+                    transition: 'width 0.5s cubic-bezier(0.4,0,0.2,1)',
                     position: 'relative', overflow: 'hidden',
-                  }} />
-                );
-              })}
-            </div>
-            {files.length > 0 && (
-              <div style={{ marginTop: 10, fontSize: 12, color: '#94a3b8' }}>
-                {docsDone < docsTotal && pct >= 30 && pct < 75
-                  ? `📄 ${files[docsDone]?.name || `Document ${docsDone + 1}`}`
-                  : docsDone >= docsTotal && pct >= 75
-                  ? '✓ Tous les documents lus'
-                  : `${docsTotal} document${docsTotal > 1 ? 's' : ''} en attente`
-                }
+                  }}>
+                    <div style={{
+                      position: 'absolute', top: 0, left: 0, height: '100%', width: '60%',
+                      background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)',
+                      animation: 'vr-shimmer 1.6s ease-in-out infinite',
+                    }} />
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-        )}
+            </div>
 
-        {/* Note discrète */}
-        <div style={{ textAlign: 'center', padding: '0 8px' }}>
-          <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6, margin: 0 }}>
-            L'analyse continue même si vous quittez —{' '}
-            <span style={{ color: '#2a7d9c', fontWeight: 600 }}>retrouvez-la dans Mes analyses</span>
-          </p>
+            {/* Étapes */}
+            <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 24px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 16 }}>ÉTAPES DU TRAITEMENT</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {etapes.map((e, idx) => {
+                  const done = pct >= e.fin;
+                  const active = pct >= e.seuil && pct < e.fin;
+                  const waiting = pct < e.seuil;
+                  return (
+                    <div key={e.id} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                      {/* Ligne verticale + cercle */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, paddingTop: 2 }}>
+                        <div style={{
+                          width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: done ? '#16a34a' : active ? couleurActive : '#f1f5f9',
+                          border: `2px solid ${done ? '#16a34a' : active ? couleurActive : '#e2e8f0'}`,
+                          transition: 'all 0.4s ease',
+                          fontSize: 12,
+                          animation: active ? 'vr-pulse 1.5s ease-in-out infinite' : 'none',
+                        }}>
+                          {done ? <span style={{ color: '#fff', fontSize: 13 }}>✓</span>
+                                : active ? <span style={{ color: '#fff', fontSize: 10 }}>●</span>
+                                : <span style={{ color: '#cbd5e1', fontSize: 10 }}>○</span>}
+                        </div>
+                        {idx < etapes.length - 1 && (
+                          <div style={{
+                            width: 2, height: 28, marginTop: 2,
+                            background: done ? '#16a34a' : '#e2e8f0',
+                            transition: 'background 0.4s ease',
+                          }} />
+                        )}
+                      </div>
+                      {/* Contenu */}
+                      <div style={{ paddingBottom: idx < etapes.length - 1 ? 16 : 0, paddingTop: 4, flex: 1 }}>
+                        <div style={{
+                          fontSize: 13, fontWeight: done ? 700 : active ? 700 : 500,
+                          color: done ? '#16a34a' : active ? '#0f172a' : '#94a3b8',
+                          transition: 'color 0.4s ease',
+                        }}>
+                          {e.icon} {e.label}
+                          {active && <span style={{ fontSize: 11, color: couleurActive, marginLeft: 8, fontWeight: 600 }}>en cours…</span>}
+                          {done && <span style={{ fontSize: 11, color: '#16a34a', marginLeft: 8 }}>✓ terminé</span>}
+                        </div>
+                        {(active || done) && !waiting && (
+                          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{e.detail}</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Note */}
+            <div style={{ padding: '12px 16px', background: '#f8fafc', borderRadius: 12, border: '1px solid #edf2f7', fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
+              💡 L'analyse continue même si vous fermez cet onglet —{' '}
+              <span style={{ color: '#2a7d9c', fontWeight: 600 }}>retrouvez-la dans Mes analyses</span>
+            </div>
+          </div>
+
+          {/* ── Colonne droite : documents ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+            <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 20px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 14 }}>DOCUMENTS ANALYSÉS</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {files.map((file, i) => {
+                  const isUploaded = pct >= 30;
+                  const isReading = pct >= 30 && pct < 80;
+                  const isDone = pct >= 80;
+                  // Stagger : chaque doc est "lu" légèrement après le précédent
+                  const docPct = Math.max(0, Math.min(100, (pct - 30 - i * 8) * (100 / Math.max(1, 50 - docsTotal * 4))));
+                  const docDone = isDone || docPct >= 100;
+                  const docActive = isReading && !docDone;
+                  return (
+                    <div key={i} style={{
+                      padding: '10px 14px', borderRadius: 10,
+                      background: docDone ? '#f0fdf4' : docActive ? '#f0f9ff' : '#f8fafc',
+                      border: `1px solid ${docDone ? '#bbf7d0' : docActive ? '#bae6fd' : '#edf2f7'}`,
+                      transition: 'all 0.4s ease',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 16, flexShrink: 0 }}>
+                          {docDone ? '✅' : docActive ? '📖' : isUploaded ? '📤' : '⏳'}
+                        </span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {file.name}
+                          </div>
+                          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                            {docDone ? 'Analysé' : docActive ? 'Lecture en cours…' : isUploaded ? 'Envoyé' : 'En attente'}
+                          </div>
+                        </div>
+                        {docActive && (
+                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#2a7d9c', animation: 'vr-pulse 1.2s ease-in-out infinite', flexShrink: 0 }} />
+                        )}
+                      </div>
+                      {docActive && docPct > 0 && docPct < 100 && (
+                        <div style={{ marginTop: 8, height: 3, borderRadius: 99, background: '#e0f2fe', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', borderRadius: 99, background: '#2a7d9c', width: `${Math.min(docPct, 99)}%`, transition: 'width 0.4s ease' }} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Temps estimé */}
+            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '16px 18px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 10 }}>TEMPS ESTIMÉ</div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>
+                {pct < 30 ? '~2 min' : pct < 70 ? '~1 min 30' : pct < 90 ? '~45 sec' : 'Quelques secondes'}
+              </div>
+              <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
+                {docsTotal} document{docsTotal > 1 ? 's' : ''} · Analyse {type === 'complete' ? 'complète' : 'document'}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
