@@ -851,9 +851,8 @@ export default function RapportPage() {
             {(rapport.type_bien === 'appartement' || rapport.type_bien === 'maison_copro' || !rapport.type_bien) && (
             <SectionCard title="Charges de copropriété" icon={<Euro size={16}/>} color="#16a34a">
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
-                {rapport.charges_mensuelles > 0 && <StatBox label="Mensuel" value={`${rapport.charges_mensuelles}€`} color="#16a34a"/>}
-                {rapport.charges_mensuelles > 0 && <StatBox label="Annuel" value={`${(rapport.charges_mensuelles * 12).toLocaleString()}€`} color="#0f172a"/>}
-                {rapport.fonds_travaux > 0 && <StatBox label="Fonds travaux" value={`${(rapport.fonds_travaux/1000).toFixed(0)}k€`} sub="Disponibles" color="#2a7d9c"/>}
+                {rapport.charges_mensuelles > 0 && <StatBox label="Budget annuel copro" value={`${(rapport.charges_mensuelles * 12).toLocaleString('fr-FR')}€`} sub="Total copropriété" color="#0f172a"/>}
+                {rapport.fonds_travaux > 0 && <StatBox label="Fonds travaux" value={`${rapport.fonds_travaux.toLocaleString('fr-FR')}€`} sub="Total copropriété" color="#2a7d9c"/>}
               </div>
 
               {/* Statut fonds travaux */}
