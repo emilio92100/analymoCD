@@ -1015,7 +1015,7 @@ function TabDocuments({ rapport }: { rapport: RapportData }) {
         ] : [
           { label: 'DDT complet (Dossier Diagnostic Technique)', present: hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']), note: 'DPE, électricité, gaz, amiante, plomb, termites…' },
           { label: 'Taxe foncière', present: hasDoc(['TAXE_FONCIERE']), note: 'Pour estimer le coût annuel de détention' },
-          { label: 'Titre de propriété', present: false, note: 'Pour vérifier les servitudes et l\'historique du bien' },
+          { label: 'Déclaration de travaux ou permis de construire', present: false, note: 'Si des travaux ont été réalisés — pour vérifier leur conformité' },
         ];
 
         const docsManquants = docsRecommandes.filter(d => !d.present);
