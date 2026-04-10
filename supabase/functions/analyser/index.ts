@@ -66,8 +66,8 @@ async function callAI(params: {
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': AI_VERSION },
         body: JSON.stringify({ model: AI_MODEL, max_tokens: maxTokens, system, messages: [{ role: 'user', content: userContent }] }),
       });
-      if (res.status === 429) { if (attempt < 3) { await sleep(Math.pow(2, attempt) * 1000); continue; } return { text: '', error: 'rate_limit' }; }
-      if (res.status === 529 || res.status === 503) { if (attempt < 3) { await sleep(3000); continue; } return { text: '', error: 'overload' }; }
+      if (res.status === 429) { if (attempt < 3) { await sleep(Math.pow(2, attempt) * 5000); continue; } return { text: '', error: 'rate_limit' }; }
+      if (res.status === 529 || res.status === 503) { if (attempt < 3) { await sleep(10000); continue; } return { text: '', error: 'overload' }; }
       if (!res.ok) { const e = await res.text(); console.error(`[Verimo] Anthropic ${res.status}:`, e); return { text: '', error: `api_error_${res.status}` }; }
       const d = await res.json();
       const text = d.content?.find((b: { type: string }) => b.type === 'text')?.text ?? '';
@@ -137,15 +137,8 @@ REGLES DE NOTATION /20 (profil ${p}) :
 - Fonds travaux nul : -2. DPE F (RP) : -2 / DPE G (RP) : -3. DPE F (invest) : -4 / DPE G (invest) : -6.
 - Procedures judiciaires : -2 a -4. Fonds travaux conforme legal : +0.5. DPE A : +1 / DPE B ou C : +0.5.
 
-REGLES IMPORTANTES :
-- finances.budget_total_copro = budget annuel TOTAL de la copropriete (ex: 45000), PAS la quote-part du lot
-- finances.charges_annuelles_lot = charges annuelles du lot specifique (quote-part de l acheteur)
-- diagnostics : perimetre OBLIGATOIRE = "lot_privatif" (DPE, elec, gaz, amiante lot, plomb lot) ou "parties_communes" (amiante PC, termites immeuble, ERP)
-- procedures : message doit expliquer CLAIREMENT en langage simple ce qu est la procedure, son origine probable et ce que ca implique pour l acheteur
-- documents_analyses : lister TOUS les documents fournis avec leur type detecte
-
 Reponds UNIQUEMENT en JSON strict, sans texte avant ou apres :
-{"titre":"adresse complete du bien","type_bien":"appartement|maison|maison_copro","annee_construction":"1985 ou null","score":14.5,"score_niveau":"Bien sain","resume":"4-5 phrases","points_forts":[],"points_vigilance":[],"travaux":{"realises":[{"label":"desc","annee":"2021","montant_estime":35000,"justificatif":true}],"votes":[{"label":"desc","annee":"2027","montant_estime":4500,"statut":"Vote","charge_vendeur":false}],"evoques":[{"label":"desc","annee":null,"montant_estime":null,"statut":"Evoque non vote","precision":"contexte"}],"estimation_totale":null},"finances":{"budget_total_copro":null,"charges_annuelles_lot":null,"fonds_travaux":null,"fonds_travaux_statut":"non_mentionne|conforme|insuffisant|absent","impayes":null,"type_chauffage":null},"procedures":[{"label":"Type de procedure ex: Contentieux copropriétaire","type":"copro_vs_syndic|impayes|contentieux|autre","gravite":"faible|moderee|elevee","message":"Explication claire en 2-3 phrases simples : de quoi il s agit, pourquoi c est present, ce que ca implique pour l acheteur"}],"diagnostics_resume":"resume global","diagnostics":[{"type":"AMIANTE|PLOMB|ELECTRICITE|GAZ|DPE|TERMITES|ERP|RADON|AUTRE","label":"nom complet","perimetre":"lot_privatif|parties_communes","localisation":"localisation precise","resultat":"resultat","presence":"detectee|absence|non_realise","etat":"bon|degrade|non_applicable","date_diagnostic":"2023-06-15 ou null","date_validite":"2026-06-15 ou null","alerte":"message alerte ou null","travaux_preconises":[]}],"documents_analyses":[{"type":"PV_AG|REGLEMENT_COPRO|APPEL_CHARGES|DPE|DIAGNOSTIC|DDT|COMPROMIS|ETAT_DATE|TAXE_FONCIERE|CARNET_ENTRETIEN|AUTRE","annee":"2024 ou null","nom":"nom du fichier ou document"}],"documents_manquants":[],"negociation":{"applicable":false,"elements":[]},"vie_copropriete":{"syndic":{"nom":null,"fin_mandat":null,"tensions_detectees":false,"tensions_detail":null,"changement_recent":false},"participation_ag":[{"annee":"2024","copropietaires_presents_representes":"18/24","taux_tantiemes_pct":"72%","quorum_note":null,"resolutions_refusees":[]}],"tendance_participation":"Non determinable|En hausse|En baisse|Stable","analyse_participation":"analyse","travaux_votes_non_realises":[{"description":"desc","observations":"detail"}],"appels_fonds_exceptionnels":[],"questions_diverses_notables":[],"honoraires_syndic_evolution":null},"lot_achete":{"quote_part_tantiemes":null,"parties_privatives":[],"impayes_detectes":null,"fonds_travaux_alur":null,"travaux_votes_charge_vendeur":[],"restrictions_usage":[],"points_specifiques":[]},"categories":{"travaux":{"note":4,"note_max":5,"details":[]},"procedures":{"note":4,"note_max":4,"details":[]},"finances":{"note":3,"note_max":4,"details":[]},"diags_privatifs":{"note":2,"note_max":4,"details":[]},"diags_communs":{"note":1.5,"note_max":3,"details":[]}},"avis_verimo":"Avis final structure en 2-3 paragraphes distincts sans jargon. Ce rapport est etabli uniquement a partir des documents analyses et ne remplace pas l avis d un professionnel de l immobilier."}`;
+{"titre":"adresse ou Analyse complete","type_bien":"appartement","score":14.5,"score_niveau":"Bien sain","recommandation":"Acheter","resume":"4-5 phrases","points_forts":[],"points_vigilance":[],"travaux":{"votes":[],"evoques":[],"estimation_totale":null},"finances":{"charges_annuelles":null,"fonds_travaux":null,"fonds_travaux_statut":"non_mentionne","impayes":null},"procedures":[],"diagnostics_resume":"resume DPE et diagnostics","diagnostics":[],"documents_manquants":[],"negociation":{"applicable":false,"elements":[]},"risques_financiers":"estimation","vie_copropriete":{"syndic":{"nom":null,"fin_mandat":null,"tensions_detectees":false,"tensions_detail":null},"participation_ag":[],"tendance_participation":"Non determinable","analyse_participation":"analyse","travaux_votes_non_realises":[],"appels_fonds_exceptionnels":[],"questions_diverses_notables":[]},"lot_achete":{"quote_part_tantiemes":null,"parties_privatives":[],"impayes_detectes":null,"fonds_travaux_alur":null,"travaux_votes_charge_vendeur":[],"restrictions_usage":[],"points_specifiques":[]},"avis_verimo":"Avis final. Ce rapport est etabli uniquement a partir des documents analyses et ne remplace pas l avis d un professionnel de l immobilier."}`;
 }
 
 // ── Fonction principale d'analyse (tourne en background sans limite) ──
@@ -160,13 +153,17 @@ async function runAnalyse(params: {
   const { files, mode, profil, analyseId, apiKey, supabaseAdmin } = params;
 
   try {
-    const maxTokens = mode === 'complete' ? 4000 : 1500;
+    // maxTokens au maximum du modèle pour ne jamais tronquer le JSON
+    const maxTokens = 8192;
     const estimatedPages = files.reduce((acc, f) => acc + Math.ceil(f.data.length / 50000), 0);
-    const useMapReduce = files.length > 4 || estimatedPages > 80;
+    // Single-call privilégié : PDFs envoyés directement à Claude comme dans le chat
+    // Map-Reduce uniquement si vraiment trop gros (>8 docs ou >150 pages estimées)
+    const useMapReduce = files.length > 8 || estimatedPages > 150;
     console.log(`[Verimo] Strategie: ${useMapReduce ? 'Map-Reduce' : 'Single-call'} | ${files.length} docs | ~${estimatedPages} pages estimees`);
 
     let report: Record<string, unknown> | null = null;
     let aiError: string | undefined;
+    let documentsIgnores: string[] = [];
 
     if (!useMapReduce) {
       const userContent: unknown[] = [];
@@ -174,13 +171,38 @@ async function runAnalyse(params: {
         userContent.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: files[i].data } });
         userContent.push({ type: 'text', text: `[Document ${i + 1}/${files.length} : ${files[i].name}]` });
       }
-      userContent.push({ type: 'text', text: files.length === 1 ? 'Analyse ce document.' : `Voici les ${files.length} documents. Analyse-les ensemble.` });
-      await updateProgress(supabaseAdmin, analyseId, 1, files.length, 'Analyse en cours...');
+      userContent.push({
+        type: 'text',
+        text: files.length === 1
+          ? 'Analyse ce document en profondeur. Extrais TOUTES les informations disponibles. Reponds avec un JSON COMPLET et valide, sans troncature.'
+          : `Voici les ${files.length} documents du dossier immobilier. Analyse-les ensemble de facon exhaustive en croisant toutes les informations. Extrais TOUT ce qui est disponible dans chaque document. Le JSON de reponse doit etre COMPLET et valide, ne jamais etre tronque.`
+      });
+      await updateProgress(supabaseAdmin, analyseId, 1, files.length, 'Analyse approfondie en cours...');
       console.log(`[Verimo] Appel Claude single — ${files.length} doc(s)`);
       const result = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens, apiKey });
-      aiError = result.error;
-      if (!aiError) report = parseJson<Record<string, unknown>>(result.text);
-    } else {
+
+      if (result.error === 'rate_limit' || result.error === 'overload') {
+        // Rate limit sur single-call → attendre 30s puis basculer en Map-Reduce
+        console.warn('[Verimo] Rate limit single-call — attente 30s puis Map-Reduce');
+        await sleep(30000);
+        aiError = undefined; // reset pour laisser le Map-Reduce prendre le relais
+      } else {
+        aiError = result.error;
+        if (!aiError) {
+          report = parseJson<Record<string, unknown>>(result.text);
+          if (!report) {
+            console.warn('[Verimo] JSON invalide single-call — retry apres 5s');
+            await sleep(5000);
+            const retry = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens: 8192, apiKey });
+            if (!retry.error) report = parseJson<Record<string, unknown>>(retry.text);
+            else aiError = retry.error;
+          }
+        }
+      }
+    }
+
+    // Map-Reduce : lancé initialement ou en fallback après rate_limit single-call
+    if (!report && !aiError) {
       console.log(`[Verimo] Map-Reduce — ${files.length} docs en sequence`);
       const summaries: string[] = [];
       for (let i = 0; i < files.length; i++) {
@@ -190,30 +212,55 @@ async function runAnalyse(params: {
           system: PROMPT_MAP_INTELLIGENT,
           userContent: [
             { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: files[i].data } },
-            { type: 'text', text: `Extrais TOUTES les informations cles de ce document immobilier : ${files[i].name}` }
+            { type: 'text', text: `Extrais TOUTES les informations de ce document sans rien omettre. Sois exhaustif sur les montants, dates, noms, decisions, et details techniques : ${files[i].name}` }
           ],
-          maxTokens: 2500,
+          maxTokens: 4000,
           apiKey,
         });
         if (result.error === 'rate_limit' || result.error === 'overload') { aiError = result.error; break; }
-        summaries.push(`=== Document ${i + 1} : ${files[i].name} ===\n${result.text || '(lecture echouee)'}`);
+        if (result.error) {
+          console.warn(`[Verimo] MAP ${i + 1} echec (${result.error}) — document ignore: ${files[i].name}`);
+          documentsIgnores.push(files[i].name);
+          summaries.push(`=== Document ${i + 1} : ${files[i].name} ===\n(Document non lisible — ignoré)`);
+        } else {
+          summaries.push(`=== Document ${i + 1} : ${files[i].name} ===\n${result.text}`);
+        }
         if (i < files.length - 1) await sleep(1500);
       }
 
-      if (!aiError) {
-        await updateProgress(supabaseAdmin, analyseId, files.length, files.length, 'Synthese croisee en cours...');
+      if (!aiError && summaries.length > 0) {
+        await updateProgress(supabaseAdmin, analyseId, files.length, files.length, 'Synthèse croisée en cours...');
         console.log(`[Verimo] REDUCE — synthese de ${summaries.length} extractions`);
+        const reducePrompt = `Voici les extractions detaillees de ${files.length} documents immobiliers fournis par l acheteur.\nSynthetise-les en croisant TOUTES les informations pour produire le rapport final le plus complet et precis possible.\nNe perds aucune information importante. Le JSON doit etre COMPLET et valide, sans troncature.\n\n${summaries.join('\n\n')}`;
         const result = await callAI({
           system: buildSystemPrompt(mode, profil),
-          userContent: [{ type: 'text', text: `Voici les extractions structurees de ${files.length} documents immobiliers. Synthetise-les en croisant les informations pour produire le rapport final complet et precis :\n\n${summaries.join('\n\n')}` }],
-          maxTokens,
+          userContent: [{ type: 'text', text: reducePrompt }],
+          maxTokens: 8192,
           apiKey,
         });
         aiError = result.error;
         if (!aiError) {
           console.log('[Verimo] REDUCE reponse brute (500 chars):', result.text.slice(0, 500));
           report = parseJson<Record<string, unknown>>(result.text);
-          if (!report) console.error('[Verimo] JSON invalide. Debut:', result.text.slice(0, 200));
+          if (!report) {
+            console.warn('[Verimo] JSON invalide — retry REDUCE');
+            const retry = await callAI({
+              system: buildSystemPrompt(mode, profil),
+              userContent: [{ type: 'text', text: reducePrompt + '\n\nIMPORTANT: Reponds UNIQUEMENT avec un JSON valide et COMPLET. Ne tronque pas le JSON.' }],
+              maxTokens: 8192,
+              apiKey,
+            });
+            if (!retry.error) {
+              report = parseJson<Record<string, unknown>>(retry.text);
+              if (!report) console.error('[Verimo] JSON invalide apres retry. Debut:', retry.text.slice(0, 300));
+            }
+          }
+        }
+
+        // Injecter les docs ignorés dans le rapport
+        if (report && documentsIgnores.length > 0) {
+          report.documents_ignores = documentsIgnores;
+          report.avertissement_docs = `${documentsIgnores.length} document(s) n'ont pas pu être lus et ont été ignorés : ${documentsIgnores.join(', ')}. Vérifiez qu'ils sont en format PDF non protégé.`;
         }
       }
     }
@@ -229,7 +276,9 @@ async function runAnalyse(params: {
       status: 'completed',
       progress_current: files.length,
       progress_total: files.length,
-      progress_message: 'Rapport pret !',
+      progress_message: documentsIgnores.length > 0
+        ? `Rapport prêt — ${documentsIgnores.length} doc(s) non lisible(s) ignoré(s)`
+        : 'Rapport prêt !',
       title: (report.titre as string) || 'Analyse immobiliere',
       score: (report.score as number) ?? null,
       avis_verimo: (report.avis_verimo as string) || null,
