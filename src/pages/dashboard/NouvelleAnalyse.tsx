@@ -155,16 +155,24 @@ export default function NouvelleAnalyse() {
 
   useEffect(() => {
     if (step !== 'analyse') { setAnimatedProgress(0); return; }
-    // La barre ne dépasse jamais le vrai progress mais avance toujours doucement
     if (animRef.current) clearInterval(animRef.current);
+
+    // Vitesse d'avance selon la zone :
+    // 0-90% : suit le vrai progress rapidement
+    // 90-98% : avance très lentement pour simuler l'attente Claude
     animRef.current = setInterval(() => {
       setAnimatedProgress(prev => {
         const target = progress;
-        const maxFake = Math.min(target + 2, 98); // avance max 2% au-delà du réel
-        if (prev >= maxFake) return prev;
-        return prev + 0.3;
+        if (prev < target) {
+          // Rattraper le vrai progress
+          return Math.min(prev + 0.5, target);
+        }
+        // Au-delà du vrai progress → avance très lentement jusqu'à 98%
+        if (prev >= 98) return 98;
+        const speed = prev < 93 ? 0.3 : prev < 96 ? 0.1 : 0.03;
+        return prev + speed;
       });
-    }, 120);
+    }, 100);
     return () => { if (animRef.current) clearInterval(animRef.current); };
   }, [step, progress]);
 
@@ -476,9 +484,9 @@ export default function NouvelleAnalyse() {
     const etapes = [
       { id: 'upload',    label: 'Envoi des documents',         detail: 'Transfert sécurisé vers nos serveurs',          seuil: 0,  fin: 30,  couleur: '#2a7d9c', icon: '📤' },
       { id: 'lecture',   label: 'Lecture des documents',        detail: 'Extraction du contenu de chaque fichier',       seuil: 30, fin: 45,  couleur: '#7c3aed', icon: '📖' },
-      { id: 'analyse',   label: 'Analyse approfondie',            detail: 'Identification des points clés et alertes',   seuil: 45, fin: 80,  couleur: '#d97706', icon: '🔍' },
+      { id: 'analyse',   label: 'Analyse approfondie',          detail: 'Identification des points clés et alertes',     seuil: 45, fin: 80,  couleur: '#d97706', icon: '🔍' },
       { id: 'synthese',  label: 'Synthèse croisée',             detail: 'Recoupement des informations entre documents',  seuil: 80, fin: 93,  couleur: '#0891b2', icon: '⚡' },
-      { id: 'rapport',   label: 'Génération du rapport',        detail: 'Mise en forme de votre rapport personnalisé',   seuil: 93, fin: 100, couleur: '#16a34a', icon: '✅' },
+      { id: 'rapport',   label: 'Génération du rapport',        detail: 'Rédaction de votre rapport personnalisé…',      seuil: 93, fin: 100, couleur: '#16a34a', icon: '✅' },
     ];
 
     const etapeActive = etapes.findLast(e => pct >= e.seuil) || etapes[0];
