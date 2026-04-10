@@ -4,9 +4,9 @@ import { fetchAnalyseById, fetchAnalyseByShareToken, getOrCreateShareToken } fro
 import { supabase } from '../lib/supabase';
 import {
   ChevronLeft, Download, Building2, AlertTriangle, CheckCircle,
-  Shield, FileText, Euro, HardHat, Gavel, Info, Star, Paperclip,
-  RefreshCw, Lock, ChevronDown, ChevronUp, Share2, Copy, Check,
-  Home, TrendingDown, Wrench,
+  Shield, FileText, Gavel, Info, Star, Paperclip,
+  RefreshCw, Lock, ChevronDown, ChevronUp, Copy, Check,
+  Home, TrendingDown,
 } from 'lucide-react';
 
 /* ══════════════════════════════════
@@ -214,7 +214,7 @@ function ShareButton({ analyseId }: { analyseId: string }) {
   return (
     <button onClick={handleShare} disabled={loading}
       style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 10, border: '1px solid #e2e8f0', background: copied ? '#f0fdf4' : '#f8fafc', color: copied ? '#16a34a' : '#64748b', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}>
-      {copied ? <Check size={14} /> : loading ? <Share2 size={14} /> : <Copy size={14} />}
+      {copied ? <Check size={14} /> : <Copy size={14} />}
       {copied ? 'Lien copié !' : 'Partager'}
     </button>
   );
@@ -441,8 +441,12 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
 ══════════════════════════════════ */
 function TabCopropriete({ rapport }: { rapport: RapportData }) {
   const [allOpen, setAllOpen] = useState(false);
-  const vie = rapport.vie_copropriete as Record<string, unknown> | null;
-  const lot = rapport.lot_achete as Record<string, unknown> | null;
+  type SyndicT = { nom?: string; fin_mandat?: string; tensions_detectees?: boolean; tensions_detail?: string };
+  type LotT = { quote_part_tantiemes?: string; fonds_travaux_alur?: string; parties_privatives?: string[]; restrictions_usage?: string[]; travaux_votes_charge_vendeur?: string[]; impayes_detectes?: string };
+  type ParticT = { annee?: string; copropietaires_presents_representes?: string; taux_tantiemes_pct?: string; quorum_note?: string; resolutions_refusees?: string[] };
+  type VieT = { syndic?: SyndicT; participation_ag?: ParticT[]; tendance_participation?: string; analyse_participation?: string; travaux_votes_non_realises?: unknown[]; appels_fonds_exceptionnels?: unknown[]; questions_diverses_notables?: string[]; honoraires_syndic_evolution?: string };
+  const vie = rapport.vie_copropriete as VieT | null;
+  const lot = rapport.lot_achete as LotT | null;
 
   const travaux_realises = rapport.travaux_realises;
   const travaux_votes = rapport.travaux_votes;
@@ -457,8 +461,8 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
   const anneeNum = anneeConstruction ? parseInt(anneeConstruction) : null;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const participation = (vie?.participation_ag as any[]) || [];
-  const syndic = vie?.syndic as Record<string, unknown> | null;
+  const participation = (vie?.participation_ag as ParticT[]) || [];
+  const syndic = vie?.syndic as SyndicT | null;
 
   const toggleAll = () => {
     setAllOpen(!allOpen);
@@ -565,14 +569,14 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
           </div>
         )}
         {/* Appels de fonds exceptionnels */}
-        {(vie?.appels_fonds_exceptionnels as unknown[])?.length > 0 && (
+        {(vie?.appels_fonds_exceptionnels?.length ?? 0) > 0 && (
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#d97706', marginBottom: 6 }}>Appels de fonds exceptionnels :</div>
-            {(vie?.appels_fonds_exceptionnels as unknown[]).map((a, i) => {
+            {vie!.appels_fonds_exceptionnels!.map((a, i) => {
               const obj = typeof a === 'string' ? { motif: a } : a as Record<string, unknown>;
               return (
                 <div key={i} style={{ fontSize: 12, color: '#92400e', padding: '7px 10px', background: '#fffbeb', borderRadius: 8, marginBottom: 4 }}>
-                  • {obj.motif as string || obj.description as string}{typeof obj.montant_total === 'number' ? ` — ${(obj.montant_total as number).toLocaleString('fr-FR')}€` : ''}
+                  • {String(obj.motif ?? obj.description ?? '')}{typeof obj.montant_total === 'number' ? ` — ${(obj.montant_total as number).toLocaleString('fr-FR')}€` : ''}
                 </div>
               );
             })}
@@ -591,10 +595,10 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>
             <Building2 size={14} style={{ color: '#7c3aed', flexShrink: 0, marginTop: 1 }} />
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{syndic.nom as string}</div>
-              {syndic.fin_mandat && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Mandat jusqu'en {syndic.fin_mandat as string}</div>}
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{syndic.nom}</div>
+              {syndic.fin_mandat && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Mandat jusqu'en {syndic.fin_mandat}</div>}
               {syndic.tensions_detectees && syndic.tensions_detail && (
-                <div style={{ fontSize: 12, color: '#92400e', marginTop: 6, padding: '6px 10px', background: '#fffbeb', borderRadius: 7 }}>{syndic.tensions_detail as string}</div>
+                <div style={{ fontSize: 12, color: '#92400e', marginTop: 6, padding: '6px 10px', background: '#fffbeb', borderRadius: 7 }}>{syndic.tensions_detail}</div>
               )}
             </div>
           </div>
@@ -611,13 +615,13 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
                 </tr>
               </thead>
               <tbody>
-                {participation.map((p: Record<string, unknown>, i: number) => (
+                {participation.map((p: ParticT, i: number) => (
                   <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '9px 12px', fontWeight: 700, color: '#0f172a' }}>{p.annee as string}</td>
-                    <td style={{ padding: '9px 12px', color: '#374151' }}>{(p.copropietaires_presents_representes as string) || '—'}</td>
-                    <td style={{ padding: '9px 12px', color: '#374151' }}>{(p.taux_tantiemes_pct as string) || '—'}</td>
+                    <td style={{ padding: '9px 12px', fontWeight: 700, color: '#0f172a' }}>{p.annee ?? ''}</td>
+                    <td style={{ padding: '9px 12px', color: '#374151' }}>{p.copropietaires_presents_representes ?? '—'}</td>
+                    <td style={{ padding: '9px 12px', color: '#374151' }}>{p.taux_tantiemes_pct ?? '—'}</td>
                     <td style={{ padding: '9px 12px' }}>
-                      {p.quorum_note && <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fffbeb', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 100 }}>{p.quorum_note as string}</span>}
+                      {p.quorum_note && <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fffbeb', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 100 }}>{p.quorum_note}</span>}
                     </td>
                   </tr>
                 ))}
@@ -627,10 +631,10 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         )}
 
         {/* Questions diverses */}
-        {(vie?.questions_diverses_notables as string[])?.length > 0 && (
+        {(vie?.questions_diverses_notables ?? []).length > 0 && (
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>Questions diverses notables :</div>
-            {(vie?.questions_diverses_notables as string[]).map((q, i) => (
+            {(vie?.questions_diverses_notables ?? []).map((q, i) => (
               <div key={i} style={{ fontSize: 12, color: '#374151', padding: '6px 10px', background: '#f8fafc', borderRadius: 7, marginBottom: 4, border: '1px solid #edf2f7' }}>• {q}</div>
             ))}
           </div>
@@ -676,12 +680,12 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
             <div style={{ fontSize: 11, fontWeight: 700, color: '#0369a1', marginBottom: 8 }}>VOTRE LOT DANS LA COPROPRIÉTÉ</div>
             {lot.quote_part_tantiemes && (
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#374151', marginBottom: 4 }}>
-                <span>Quote-part tantièmes</span><span style={{ fontWeight: 600 }}>{lot.quote_part_tantiemes as string}</span>
+                <span>Quote-part tantièmes</span><span style={{ fontWeight: 600 }}>{lot.quote_part_tantiemes}</span>
               </div>
             )}
             {lot.fonds_travaux_alur && (
               <div style={{ fontSize: 12, color: '#0369a1', padding: '6px 0', borderTop: '1px solid #bae6fd', marginTop: 4 }}>
-                💰 Fonds travaux ALUR récupérable : {lot.fonds_travaux_alur as string} — cette somme vous revient à la signature.
+                💰 Fonds travaux ALUR récupérable : {lot.fonds_travaux_alur} — cette somme vous revient à la signature.
               </div>
             )}
             {(lot.parties_privatives as string[])?.length > 0 && (
@@ -703,8 +707,10 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
 ══════════════════════════════════ */
 function TabLogement({ rapport }: { rapport: RapportData }) {
   const [allOpen, setAllOpen] = useState(false);
-  const lot = rapport.lot_achete as Record<string, unknown> | null;
-  const finances = rapport.finances as Record<string, unknown> | null;
+  type LotT2 = { quote_part_tantiemes?: string; fonds_travaux_alur?: string; parties_privatives?: string[]; restrictions_usage?: string[]; travaux_votes_charge_vendeur?: string[]; impayes_detectes?: string; points_specifiques?: string[] };
+  type FinancesT = { taxe_fonciere?: string; type_chauffage?: string; charges_annuelles?: number | string; fonds_travaux?: number | string; fonds_travaux_statut?: string };
+  const lot = rapport.lot_achete as LotT2 | null;
+  const finances = rapport.finances as FinancesT | null;
 
   const diagsPriv = rapport.diagnostics.filter((d: Record<string, unknown>) => d.perimetre === 'lot_privatif');
   const dpe = diagsPriv.find((d: Record<string, unknown>) => d.type === 'DPE');
@@ -760,7 +766,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
             {lot.quote_part_tantiemes && (
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 12px', background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7', fontSize: 13 }}>
                 <span style={{ color: '#64748b' }}>Quote-part tantièmes</span>
-                <span style={{ fontWeight: 600, color: '#0f172a' }}>{lot.quote_part_tantiemes as string}</span>
+                <span style={{ fontWeight: 600, color: '#0f172a' }}>{lot.quote_part_tantiemes}</span>
               </div>
             )}
             {(lot.parties_privatives as string[])?.length > 0 && (
@@ -801,12 +807,12 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
           {finances?.taxe_fonciere && (
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 12px', background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7', fontSize: 13 }}>
               <span style={{ color: '#64748b' }}>Taxe foncière</span>
-              <span style={{ fontWeight: 600, color: '#0f172a' }}>{finances.taxe_fonciere as string}</span>
+              <span style={{ fontWeight: 600, color: '#0f172a' }}>{finances.taxe_fonciere}</span>
             </div>
           )}
           {lot?.impayes_detectes && (
             <div style={{ padding: '9px 12px', background: '#fef2f2', borderRadius: 9, border: '1px solid #fecaca', fontSize: 12, color: '#991b1b' }}>
-              ⚠️ Impayés détectés sur ce lot : {lot.impayes_detectes as string}
+              ⚠️ Impayés détectés sur ce lot : {lot.impayes_detectes}
             </div>
           )}
           {!rapport.charges_mensuelles && !finances?.taxe_fonciere && !lot?.impayes_detectes && (
