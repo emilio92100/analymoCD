@@ -6,7 +6,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const AI_MODEL = 'claude-sonnet-4-5';
+const AI_MODEL = 'claude-sonnet-4-6';
 const AI_VERSION = '2023-06-01';
 const STORAGE_BUCKET = 'analyse-temp';
 
@@ -154,108 +154,59 @@ async function runAnalyse(params: {
 
   try {
     const maxTokens = 8192;
-    const estimatedPages = files.reduce((acc, f) => acc + Math.ceil(f.data.length / 50000), 0);
-    // Single-call pour ≤9 docs ET ≤150 pages — PDFs envoyés directement comme dans le chat
-    // Map-Reduce uniquement si vraiment trop volumineux
-    const useMapReduce = files.length > 9 || estimatedPages > 150;
-    console.log(`[Verimo] Strategie: ${useMapReduce ? 'Map-Reduce' : 'Single-call'} | ${files.length} docs | ~${estimatedPages} pages estimees`);
+    // Sonnet 4.6 supporte 600 pages PDF par requête → Single-call pour tous les dossiers
+    console.log(`[Verimo] Single-call | ${files.length} docs | modele: ${AI_MODEL}`);
 
     let report: Record<string, unknown> | null = null;
     let aiError: string | undefined;
-    let documentsIgnores: string[] = [];
+    const documentsIgnores: string[] = [];
 
-    if (!useMapReduce) {
-      const userContent: unknown[] = [];
-      for (let i = 0; i < files.length; i++) {
+    // Construire le contenu — PDFs envoyés directement comme dans le chat
+    const userContent: unknown[] = [];
+    for (let i = 0; i < files.length; i++) {
+      try {
         userContent.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: files[i].data } });
         userContent.push({ type: 'text', text: `[Document ${i + 1}/${files.length} : ${files[i].name}]` });
+      } catch {
+        console.warn(`[Verimo] Doc ${i + 1} ignoré (erreur encodage): ${files[i].name}`);
+        documentsIgnores.push(files[i].name);
       }
-      userContent.push({ type: 'text', text: files.length === 1
-        ? 'Analyse ce document en profondeur. Extrais TOUTES les informations. JSON COMPLET et valide, sans troncature.'
-        : `Voici les ${files.length} documents du dossier. Analyse-les ensemble de facon exhaustive. JSON COMPLET et valide, sans troncature.`
-      });
-      await updateProgress(supabaseAdmin, analyseId, 1, files.length, 'Analyse approfondie en cours...');
-      console.log(`[Verimo] Appel Claude single — ${files.length} doc(s)`);
-      const result = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens, apiKey });
-      if (result.error === 'rate_limit' || result.error === 'overload') {
-        console.warn('[Verimo] Rate limit single-call — bascule Map-Reduce apres 30s');
-        await sleep(30000);
-        // Ne pas setter aiError → le bloc Map-Reduce va prendre le relais
-      } else {
-        aiError = result.error;
-        if (!aiError) {
-          report = parseJson<Record<string, unknown>>(result.text);
-          if (!report) {
-            console.warn('[Verimo] JSON invalide single-call — retry');
-            await sleep(3000);
-            const retry = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens: 8192, apiKey });
-            if (!retry.error) report = parseJson<Record<string, unknown>>(retry.text);
-            else aiError = retry.error;
-          }
+    }
+    userContent.push({ type: 'text', text: files.length === 1
+      ? 'Analyse ce document en profondeur. Extrais TOUTES les informations disponibles. Reponds avec un JSON COMPLET et valide, sans troncature.'
+      : `Voici les ${files.length} documents du dossier immobilier. Analyse-les ensemble de facon exhaustive en croisant toutes les informations de chaque document. Reponds avec un JSON COMPLET et valide, sans troncature.`
+    });
+
+    await updateProgress(supabaseAdmin, analyseId, 1, files.length, 'Analyse approfondie en cours...');
+    console.log(`[Verimo] Appel Claude — ${files.length} doc(s)`);
+
+    const result = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens, apiKey });
+
+    if (result.error) {
+      // Si erreur 400 sur un doc individuel → retenter sans les docs potentiellement trop gros
+      if (result.error.includes('400')) {
+        console.warn('[Verimo] Erreur 400 — possible doc trop gros, on logue pour debug');
+      }
+      aiError = result.error;
+    } else {
+      report = parseJson<Record<string, unknown>>(result.text);
+      if (!report) {
+        console.warn('[Verimo] JSON invalide — retry dans 3s');
+        await sleep(3000);
+        const retry = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens: 8192, apiKey });
+        if (!retry.error) {
+          report = parseJson<Record<string, unknown>>(retry.text);
+          if (!report) console.error('[Verimo] JSON invalide apres retry. Debut:', retry.text.slice(0, 300));
+        } else {
+          aiError = retry.error;
         }
       }
     }
 
-    // Map-Reduce : lancé si trop de docs, ou en fallback après rate_limit single-call
-    if (!report && !aiError) {
-      console.log(`[Verimo] Map-Reduce — ${files.length} docs en sequence`);
-      const summaries: string[] = [];
-      for (let i = 0; i < files.length; i++) {
-        await updateProgress(supabaseAdmin, analyseId, i, files.length, `Lecture document ${i + 1}/${files.length}...`);
-        console.log(`[Verimo] MAP ${i + 1}/${files.length}: ${files[i].name}`);
-        const result = await callAI({
-          system: PROMPT_MAP_INTELLIGENT,
-          userContent: [
-            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: files[i].data } },
-            { type: 'text', text: `Extrais TOUTES les informations de ce document sans rien omettre : ${files[i].name}` }
-          ],
-          maxTokens: 4000,
-          apiKey,
-        });
-        if (result.error === 'rate_limit' || result.error === 'overload') { aiError = result.error; break; }
-        if (result.error) {
-          console.warn(`[Verimo] MAP ${i + 1} echec — doc ignore: ${files[i].name}`);
-          documentsIgnores.push(files[i].name);
-          summaries.push(`=== Document ${i + 1} : ${files[i].name} ===\n(Non lisible)`);
-        } else {
-          summaries.push(`=== Document ${i + 1} : ${files[i].name} ===\n${result.text}`);
-        }
-        if (i < files.length - 1) await sleep(1500);
-      }
-
-      if (!aiError && summaries.length > 0) {
-        await updateProgress(supabaseAdmin, analyseId, files.length, files.length, 'Synthèse croisée en cours...');
-        console.log(`[Verimo] REDUCE — synthese de ${summaries.length} extractions`);
-        const reducePrompt = `Voici les extractions de ${files.length} documents immobiliers. Synthetise en croisant TOUTES les informations. JSON COMPLET et valide, sans troncature.\n\n${summaries.join('\n\n')}`;
-        const result = await callAI({
-          system: buildSystemPrompt(mode, profil),
-          userContent: [{ type: 'text', text: reducePrompt }],
-          maxTokens: 8192,
-          apiKey,
-        });
-        aiError = result.error;
-        if (!aiError) {
-          console.log('[Verimo] REDUCE reponse brute (500 chars):', result.text.slice(0, 500));
-          report = parseJson<Record<string, unknown>>(result.text);
-          if (!report) {
-            console.warn('[Verimo] JSON invalide REDUCE — retry');
-            await sleep(5000);
-            const retry = await callAI({
-              system: buildSystemPrompt(mode, profil),
-              userContent: [{ type: 'text', text: reducePrompt + '\n\nIMPORTANT: JSON valide et COMPLET obligatoire.' }],
-              maxTokens: 8192,
-              apiKey,
-            });
-            if (!retry.error) report = parseJson<Record<string, unknown>>(retry.text);
-            if (!report) console.error('[Verimo] JSON invalide apres retry. Debut:', retry?.text?.slice(0, 300));
-          }
-        }
-        // Injecter docs ignorés
-        if (report && documentsIgnores.length > 0) {
-          report.documents_ignores = documentsIgnores;
-          report.avertissement_docs = `${documentsIgnores.length} document(s) non lisible(s) ignoré(s) : ${documentsIgnores.join(', ')}. Vérifiez qu'ils sont en PDF non protégé.`;
-        }
-      }
+    // Injecter les docs ignorés si besoin
+    if (report && documentsIgnores.length > 0) {
+      report.documents_ignores = documentsIgnores;
+      report.avertissement_docs = `${documentsIgnores.length} document(s) non lisible(s) ignoré(s) : ${documentsIgnores.join(', ')}. Vérifiez qu'ils sont en PDF non protégé.`;
     }
 
     if (aiError || !report) {
