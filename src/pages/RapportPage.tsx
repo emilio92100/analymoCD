@@ -306,8 +306,11 @@ function DetailNote({ rapport }: { rapport: RapportData }) {
       </button>
       {open && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>
-          {Object.entries(rapport.categories).map(([key, cat]) => {
+          {Object.keys(rapport.categories).length === 0 ? (
+            <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>Le détail par catégorie sera disponible sur les prochaines analyses. Le score global reste valide.</p>
+          ) : Object.entries(rapport.categories).map(([key, cat]) => {
             const c = cat as { note: number; note_max: number };
+            if (!c.note_max) return null;
             const pct = (c.note / c.note_max) * 100;
             const color = pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626';
             const labels: Record<string, string> = { travaux: 'Travaux', procedures: 'Procédures', finances: 'Finances copro', diags_privatifs: 'Diagnostics privatifs', diags_communs: 'Diagnostics communs' };
@@ -662,19 +665,38 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         badge={rapport.fonds_travaux_statut === 'conforme' ? 'Sain' : rapport.fonds_travaux_statut === 'insuffisant' ? 'Vigilance' : rapport.fonds_travaux_statut === 'absent' ? 'Absent' : 'Détecté'}>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 10 }}>
-          {rapport.charges_mensuelles > 0 && (
+          {rapport.budget_total_copro > 0 && (
             <div style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', textAlign: 'center' }}>
-              <div style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>{(rapport.charges_mensuelles * 12).toLocaleString('fr-FR')}€</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Budget annuel copro</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>{rapport.budget_total_copro.toLocaleString('fr-FR')}€</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Budget annuel copropriété</div>
+              <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Total immeuble</div>
             </div>
           )}
           {rapport.fonds_travaux > 0 && (
             <div style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', textAlign: 'center' }}>
               <div style={{ fontSize: 20, fontWeight: 700, color: '#2a7d9c', marginBottom: 3 }}>{rapport.fonds_travaux.toLocaleString('fr-FR')}€</div>
               <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Fonds travaux</div>
+              <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Total immeuble</div>
             </div>
           )}
         </div>
+        {/* Quote-part lot si disponible */}
+        {rapport.charges_lot_annuelles > 0 && (
+          <div style={{ padding: '10px 14px', background: '#f0f9ff', borderRadius: 10, border: '1px solid #bae6fd', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#0369a1' }}>Votre quote-part annuelle</div>
+              <div style={{ fontSize: 11, color: '#0284c7', marginTop: 1 }}>Charges correspondant à votre lot</div>
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#0369a1' }}>{rapport.charges_lot_annuelles.toLocaleString('fr-FR')}€/an</div>
+          </div>
+        )}
+        {/* Charges mensuelles estimées si pas de lot précis */}
+        {rapport.charges_mensuelles > 0 && rapport.charges_lot_annuelles === 0 && rapport.budget_total_copro === 0 && (
+          <div style={{ padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 12, color: '#64748b' }}>Charges mensuelles estimées</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{rapport.charges_mensuelles}€/mois</span>
+          </div>
+        )}
         {rapport.fonds_travaux_statut && rapport.fonds_travaux_statut !== 'non_mentionne' && (
           <div style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid', background: rapport.fonds_travaux_statut === 'conforme' ? '#f0fdf4' : '#fef2f2', borderColor: rapport.fonds_travaux_statut === 'conforme' ? '#bbf7d0' : '#fecaca' }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: rapport.fonds_travaux_statut === 'conforme' ? '#166534' : '#991b1b' }}>
@@ -741,7 +763,12 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
   const lot = rapport.lot_achete as LotT2 | null;
   const finances = rapport.finances as FinancesT | null;
 
-  const diagsPriv = rapport.diagnostics.filter((d: Record<string, unknown>) => d.perimetre === 'lot_privatif');
+  // Diags explicitement taguées lot_privatif
+  const diagsPrivTagged = rapport.diagnostics.filter((d: Record<string, unknown>) => d.perimetre === 'lot_privatif');
+  // Diags sans périmètre (Claude n'a pas tagué) — on les inclut dans votre logement si DDT uploadé
+  const diagsSansPerimetre = rapport.diagnostics.filter((d: Record<string, unknown>) => !d.perimetre || d.perimetre === '');
+  const hasDDTUploaded = (rapport.document_names || []).some((n: string) => n.toLowerCase().includes('ddt') || n.toLowerCase().includes('dpe') || n.toLowerCase().includes('diagnostic'));
+  const diagsPriv = diagsPrivTagged.length > 0 ? diagsPrivTagged : (hasDDTUploaded ? diagsSansPerimetre : []);
   const dpe = diagsPriv.find((d: Record<string, unknown>) => d.type === 'DPE');
   const autresDiags = diagsPriv.filter((d: Record<string, unknown>) => d.type !== 'DPE');
 
@@ -878,6 +905,30 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
    ONGLET PROCÉDURES
 ══════════════════════════════════ */
 function TabProcedures({ rapport }: { rapport: RapportData }) {
+  // Explications pédagogiques par type de procédure
+  const getExplication = (label: string, type: string): string => {
+    const l = (label + ' ' + type).toLowerCase();
+    if (l.includes('copropriéta') || l.includes('copropietaire') || l.includes('impayé') || l.includes('impaye')) {
+      return "Un ou plusieurs copropriétaires n'ont pas payé leurs charges. La copropriété peut engager une procédure pour récupérer les sommes dues. Pour l'acheteur, cela peut signifier que les finances de la copropriété sont fragilisées si les impayés sont importants.";
+    }
+    if (l.includes('syndic')) {
+      return "Un litige oppose la copropriété à son syndic (gestionnaire). Cela peut porter sur des honoraires contestés, une mauvaise gestion ou une résiliation de contrat. À vérifier avec votre notaire pour comprendre l'état de la relation syndic/copropriété.";
+    }
+    if (l.includes('voisinage') || l.includes('voisin')) {
+      return "Un litige entre la copropriété ou un copropriétaire et un voisin (immeuble ou particulier adjacent). Peut porter sur des nuisances, des servitudes ou des limites de propriété. Généralement de portée limitée si soldé.";
+    }
+    if (l.includes('prescription acquisitive')) {
+      return "Une personne revendique la propriété d'une partie du bien ou du terrain par usage prolongé (prescription acquisitive = occupation continue pendant 30 ans sans opposition). C'est une procédure sérieuse qui peut remettre en cause les limites de la propriété.";
+    }
+    if (l.includes('difficulté') || l.includes('article 29') || l.includes('29-1')) {
+      return "La copropriété est en situation de difficultés financières graves. Un administrateur judiciaire ou provisoire peut être nommé. C'est un signal très sérieux qui peut impacter la valeur du bien et les charges futures.";
+    }
+    if (l.includes('tribunal') || l.includes('judiciaire') || l.includes('contentieux')) {
+      return "Une procédure judiciaire est en cours impliquant la copropriété. Cela peut générer des frais importants (avocat, expertise) qui seront répartis entre les copropriétaires. Demandez le détail au vendeur.";
+    }
+    return "Une procédure a été détectée dans les documents. Demandez au vendeur ou à votre notaire des précisions sur son origine, son état d'avancement et son impact financier potentiel.";
+  };
+
   if (!rapport.procedures_en_cours || rapport.procedures.length === 0) {
     return (
       <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '48px 32px', textAlign: 'center' }}>
@@ -908,6 +959,9 @@ function TabProcedures({ rapport }: { rapport: RapportData }) {
       </div>
       {rapport.procedures.map((proc, i) => {
         const g = graviteStyle(proc.gravite);
+        const explication = proc.message && proc.message.length > 30
+          ? proc.message
+          : getExplication(proc.label || '', proc.type || '');
         return (
           <div key={i} style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
             <div style={{ padding: '14px 18px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -916,9 +970,12 @@ function TabProcedures({ rapport }: { rapport: RapportData }) {
               <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100, background: g.bg, border: `1px solid ${g.border}`, color: g.color }}>Gravité : {g.label}</span>
             </div>
             <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {proc.message && <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.7 }}>{proc.message}</p>}
+              <div style={{ padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 6, letterSpacing: '0.06em' }}>CE QUE ÇA SIGNIFIE</div>
+                <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.7, margin: 0 }}>{explication}</p>
+              </div>
               <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a', fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>
-                ⚠️ Demandez des précisions au vendeur ou à votre notaire sur cette procédure avant de vous engager.
+                ⚠️ Demandez au vendeur ou à votre notaire l'état d'avancement exact et l'impact financier estimé de cette procédure.
               </div>
             </div>
           </div>
@@ -1002,20 +1059,31 @@ function TabDocuments({ rapport }: { rapport: RapportData }) {
       {(() => {
         const isCopro = rapport.type_bien === 'appartement' || rapport.type_bien === 'maison_copro';
         const docsAnalysesTypes = ((rapport as Record<string, unknown>).documents_analyses as Array<Record<string, unknown>> || []).map(d => d.type as string);
-        const hasDoc = (types: string[]) => types.some(t => docsAnalysesTypes.includes(t));
+        // Types détectés par Claude
+        const hasDoc = (types: string[], keywords?: string[]) => {
+          const byType = types.some(t => docsAnalysesTypes.map(x => x?.toUpperCase()).includes(t.toUpperCase()));
+          const byName = keywords ? keywords.some(k => (rapport.document_names || []).some((f: string) => f.toLowerCase().includes(k.toLowerCase()))) : false;
+          return byType || byName;
+        };
+
+        // Diagnostics privatifs détectés
+        const hasDiagPrivatif = (rapport.diagnostics || []).some((d: Record<string, unknown>) => d.perimetre === 'lot_privatif')
+          || hasDoc(['DDT', 'DPE', 'DIAGNOSTIC'], ['ddt', 'dpe', 'diagnostic_technique', 'diag']);
+
+        const hasPVAG = hasDoc(['PV_AG'], ['pv_ag', 'pv ag', 'pv-ag', 'assemblee', 'assemblée', '_ag_', 'age_', 'pv_age']);
 
         const docsRecommandes = isCopro ? [
-          { label: '3 derniers PV d\'Assemblée Générale', present: hasDoc(['PV_AG']), note: 'Indispensable pour analyser les travaux votés, les procédures et la vie de la copropriété' },
-          { label: 'Règlement de copropriété (et ses modificatifs)', present: hasDoc(['REGLEMENT_COPRO']), note: 'Définit les règles d\'usage, les charges et vos droits' },
-          { label: 'Carnet d\'entretien de l\'immeuble', present: false, note: 'Historique des travaux et contrats d\'entretien' },
-          { label: 'DTG (Diagnostic Technique Global)', present: false, note: 'Si l\'immeuble en a fait réaliser un' },
-          { label: 'PPT (Plan Pluriannuel de Travaux)', present: false, note: 'Si l\'immeuble en a établi un (> 200 lots ou > 15 ans)' },
-          { label: 'Diagnostics parties communes (DTA, plomb, ERP)', present: docsAnalysesTypes.some(t => t === 'DIAGNOSTIC' || t === 'DDT'), note: 'Amiante, plomb et risques sur les parties communes' },
-          { label: 'DDT complet du logement', present: hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']), note: 'DPE, électricité, gaz, amiante, plomb privatifs' },
+          { label: '3 derniers PV d\'Assemblée Générale', present: hasPVAG, note: 'Indispensable pour analyser les travaux votés, les procédures et la vie de la copropriété' },
+          { label: 'Règlement de copropriété (et ses modificatifs)', present: hasDoc(['REGLEMENT_COPRO'], ['reglement', 'règlement']), note: 'Définit les règles d\'usage, les charges et vos droits' },
+          { label: 'Carnet d\'entretien de l\'immeuble', present: hasDoc(['CARNET_ENTRETIEN'], ['carnet', 'entretien']), note: 'Historique des travaux et contrats d\'entretien' },
+          { label: 'DTG (Diagnostic Technique Global)', present: hasDoc([], ['dtg']), note: 'Si l\'immeuble en a fait réaliser un' },
+          { label: 'PPT (Plan Pluriannuel de Travaux)', present: hasDoc([], ['ppt', 'pluriannuel']), note: 'Si l\'immeuble en a établi un (> 200 lots ou > 15 ans)' },
+          { label: 'Diagnostics parties communes (DTA, plomb, ERP)', present: (rapport.diagnostics || []).some((d: Record<string, unknown>) => d.perimetre === 'parties_communes') || hasDoc([], ['dta', 'erp']), note: 'Amiante, plomb et risques sur les parties communes' },
+          { label: 'DDT complet du logement', present: hasDiagPrivatif, note: 'DPE, électricité, gaz, amiante, plomb privatifs' },
         ] : [
-          { label: 'DDT complet (Dossier Diagnostic Technique)', present: hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']), note: 'DPE, électricité, gaz, amiante, plomb, termites…' },
-          { label: 'Taxe foncière', present: hasDoc(['TAXE_FONCIERE']), note: 'Pour estimer le coût annuel de détention' },
-          { label: 'Déclaration de travaux ou permis de construire', present: false, note: 'Si des travaux ont été réalisés — pour vérifier leur conformité' },
+          { label: 'DDT complet (Dossier Diagnostic Technique)', present: hasDiagPrivatif, note: 'DPE, électricité, gaz, amiante, plomb, termites…' },
+          { label: 'Taxe foncière', present: hasDoc(['TAXE_FONCIERE'], ['taxe', 'foncier']), note: 'Pour estimer le coût annuel de détention' },
+          { label: 'Déclaration de travaux ou permis de construire', present: hasDoc([], ['permis', 'declaration_travaux', 'déclaration']), note: 'Si des travaux ont été réalisés — pour vérifier leur conformité' },
         ];
 
         const docsManquants = docsRecommandes.filter(d => !d.present);
@@ -1071,11 +1139,20 @@ function buildRapport(data: Record<string, unknown>, dbData: { id: string; type:
   const r = data;
   const travauxObj = (r.travaux as Record<string, unknown>) || {};
   const financesObj = (r.finances as Record<string, unknown>) || {};
-  const chargesAnnuelles = financesObj.charges_annuelles;
-  const chargesMensuelles = typeof chargesAnnuelles === 'number'
-    ? Math.round(chargesAnnuelles / 12)
-    : typeof chargesAnnuelles === 'string'
-      ? Math.round(parseFloat(chargesAnnuelles.replace(/[^0-9.]/g, '')) / 12) || 0 : 0;
+
+  // Budget total copro (priorité à budget_total_copro, fallback charges_annuelles)
+  const budgetTotalCopro = financesObj.budget_total_copro ?? financesObj.charges_annuelles;
+  const budgetCoproNum = typeof budgetTotalCopro === 'number' ? budgetTotalCopro
+    : typeof budgetTotalCopro === 'string' ? parseFloat(budgetTotalCopro.replace(/[^0-9.]/g, '')) || 0 : 0;
+
+  // Charges annuelles du lot (quote-part de l'acheteur)
+  const chargesLot = financesObj.charges_annuelles_lot;
+  const chargesLotNum = typeof chargesLot === 'number' ? chargesLot
+    : typeof chargesLot === 'string' ? parseFloat(chargesLot.replace(/[^0-9.]/g, '')) || 0 : 0;
+
+  const chargesMensuelles = chargesLotNum > 0
+    ? Math.round(chargesLotNum / 12)
+    : budgetCoproNum > 0 ? Math.round(budgetCoproNum / 12) : 0;
 
   const fondsTravaux = financesObj.fonds_travaux;
   const fondsTrvauxNum = typeof fondsTravaux === 'number' ? fondsTravaux
@@ -1112,6 +1189,8 @@ function buildRapport(data: Record<string, unknown>, dbData: { id: string; type:
     points_vigilance: (r.points_vigilance as string[]) || (r.synthese_points_vigilance as string[]) || [],
     avis_verimo: (r.avis_verimo as string) || (r.conclusion as string) || '',
     categories: (r.categories as Record<string, { note: number; note_max: number; details: unknown[] }>) || {},
+    budget_total_copro: budgetCoproNum,
+    charges_lot_annuelles: chargesLotNum,
     charges_mensuelles: chargesMensuelles,
     fonds_travaux: fondsTrvauxNum,
     fonds_travaux_statut: (() => {
