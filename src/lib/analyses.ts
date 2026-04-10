@@ -22,8 +22,43 @@ export type AnalyseDB = {
   document_names: string[] | null;
   regeneration_deadline: string | null;
   avis_verimo: string | null;
+  share_token: string | null;
   created_at: string;
 };
+
+/* ─── Générer ou récupérer le token de partage ── */
+export async function getOrCreateShareToken(id: string): Promise<string | null> {
+  const { data: existing } = await supabase
+    .from('analyses')
+    .select('share_token')
+    .eq('id', id)
+    .single();
+
+  if (existing?.share_token) return existing.share_token;
+
+  const token = Array.from(crypto.getRandomValues(new Uint8Array(18)))
+    .map(b => b.toString(36).padStart(2, '0')).join('').slice(0, 24);
+
+  const { error } = await supabase
+    .from('analyses')
+    .update({ share_token: token })
+    .eq('id', id);
+
+  if (error) return null;
+  return token;
+}
+
+/* ─── Lire un rapport via share_token (sans auth) ── */
+export async function fetchAnalyseByShareToken(token: string): Promise<AnalyseDB | null> {
+  const { data, error } = await supabase
+    .from('analyses')
+    .select('*')
+    .eq('share_token', token)
+    .single();
+
+  if (error) return null;
+  return data;
+}
 
 /* ─── Lire toutes les analyses de l'utilisateur ── */
 export async function fetchAnalyses(): Promise<AnalyseDB[]> {
