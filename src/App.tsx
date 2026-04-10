@@ -16,6 +16,7 @@ const ExemplePage = lazy(() => import('./pages/ExemplePage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const RapportPage = lazy(() => import('./pages/RapportPage'));
 const RapportPartagePage = lazy(() => import('./pages/RapportPartagePage'));
+const RapportPrintPage = lazy(() => import('./pages/RapportPrintPage'));
 const AuthCallbackPage = lazy(() => import('./pages/AuthCallbackPage'));
 const StartPage = lazy(() => import('./pages/StartPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
@@ -235,6 +236,7 @@ export default function App() {
           <Route path="/dashboard/rapport" element={<DashboardPage />} />
           <Route path="/rapport" element={<RapportPage />} />
           <Route path="/rapport/partage/:token" element={<RapportPartagePage />} />
+          <Route path="/rapport/print" element={<RapportPrintPage />} />
           <Route path="*" element={
             <PublicLayout>
               <div style={{ minHeight:'60vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', paddingTop:80 }}>
