@@ -294,8 +294,45 @@ function ShareButton({ analyseId }: { analyseId: string }) {
    HEADER RAPPORT
 ══════════════════════════════════ */
 type RapportData = ReturnType<typeof buildRapport>;
+
+function DetailNote({ rapport }: { rapport: RapportData }) {
+  const [open, setOpen] = useState(false);
+  const scoreColor = getScoreColor(rapport.score);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <button onClick={() => setOpen(o => !o)}
+        style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b', background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', width: 'fit-content' }}>
+        {open ? <ChevronUp size={13} /> : <ChevronDown size={13} />} Détail de la note
+      </button>
+      {open && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>
+          {Object.entries(rapport.categories).map(([key, cat]) => {
+            const c = cat as { note: number; note_max: number };
+            const pct = (c.note / c.note_max) * 100;
+            const color = pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626';
+            const labels: Record<string, string> = { travaux: 'Travaux', procedures: 'Procédures', finances: 'Finances copro', diags_privatifs: 'Diagnostics privatifs', diags_communs: 'Diagnostics communs' };
+            return (
+              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 12, color: '#64748b', width: 160, flexShrink: 0 }}>{labels[key] || key}</span>
+                <div style={{ flex: 1, height: 6, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 3 }} />
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 700, color, width: 36, textAlign: 'right', flexShrink: 0 }}>{c.note}/{c.note_max}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 100, background: '#f8fafc', border: '1px solid #edf2f7', color: '#64748b' }}>{getTypeBienLabel(rapport.type_bien)}</span>
+        <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 100, background: '#f8fafc', border: '1px solid #edf2f7', color: '#64748b' }}>{getProfilLabel(rapport.profil)}</span>
+        <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 100, background: '#f8fafc', border: '1px solid #edf2f7', color: '#94a3b8' }}>Analysé le {rapport.date}</span>
+      </div>
+      {!open && <div style={{ fontSize: 11, color: scoreColor, fontWeight: 600 }}>{getScoreLabel(rapport.score)}</div>}
+    </div>
+  );
+}
 function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: boolean }) {
-  const [detailOpen, setDetailOpen] = useState(false);
   const scoreColor = getScoreColor(rapport.score);
   const isComplete = rapport.type === 'complete';
 
@@ -318,7 +355,7 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
         <div style={{ flex: 1, fontSize: 12, fontWeight: 500, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rapport.adresse}</div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
           {!isShared && <ShareButton analyseId={rapport.id} />}
-          <button onClick={() => window.print()}
+          <button onClick={() => { const params = new URLSearchParams(window.location.search); window.open(`/rapport/print?id=${params.get('id') || ''}`, '_blank'); }}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: 'none', background: '#0f2d3d', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
             <Download size={13} /> PDF
           </button>
@@ -340,33 +377,7 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
                 <h1 style={{ fontSize: 'clamp(16px,2.5vw,22px)', fontWeight: 800, color: '#0f172a', lineHeight: 1.3, marginBottom: 4 }}>{rapport.adresse}</h1>
                 <div style={{ fontSize: 12, color: '#94a3b8' }}>{rapport.adresseSub}</div>
               </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 100, background: '#f8fafc', border: '1px solid #edf2f7', color: '#64748b' }}>{getTypeBienLabel(rapport.type_bien)}</span>
-                <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 100, background: '#f8fafc', border: '1px solid #edf2f7', color: '#64748b' }}>{getProfilLabel(rapport.profil)}</span>
-                <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 100, background: '#f8fafc', border: '1px solid #edf2f7', color: '#94a3b8' }}>Analysé le {rapport.date}</span>
-              </div>
-              <button onClick={(e) => { e.stopPropagation(); setDetailOpen(d => !d); }}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b', background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', width: 'fit-content' }}>
-                {detailOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />} Détail de la note
-              </button>
-              {detailOpen && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {Object.entries(rapport.categories).map(([key, cat]) => {
-                    const pct = ((cat as { note: number; note_max: number }).note / (cat as { note: number; note_max: number }).note_max) * 100;
-                    const color = pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626';
-                    const labels: Record<string, string> = { travaux: 'Travaux', procedures: 'Procédures', finances: 'Finances copro', diags_privatifs: 'Diagnostics privatifs', diags_communs: 'Diagnostics communs' };
-                    return (
-                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 12, color: '#64748b', width: 160, flexShrink: 0 }}>{labels[key] || key}</span>
-                        <div style={{ flex: 1, height: 6, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 3, transition: 'width 0.5s ease' }} />
-                        </div>
-                        <span style={{ fontSize: 12, fontWeight: 700, color, width: 36, textAlign: 'right', flexShrink: 0 }}>{(cat as { note: number; note_max: number }).note}/{(cat as { note: number; note_max: number }).note_max}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              <DetailNote rapport={rapport} />
             </div>
           </div>
         </div>
@@ -490,31 +501,6 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
         </div>
       )}
 
-      {/* Documents manquants */}
-      {rapport.documents_manquants.length > 0 && (
-        <div style={{ padding: '16px 18px', background: '#fff9f0', borderRadius: 13, border: '1px solid #fed7aa' }}>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
-            <span style={{ fontSize: 18 }}>📋</span>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>Documents manquants détectés</div>
-              <div style={{ fontSize: 11, color: '#b45309' }}>Demandez-les au vendeur pour une analyse plus complète</div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {rapport.documents_manquants.map((doc, i) => {
-              const isObligatoire = doc.toUpperCase().includes('OBLIGATOIRE');
-              const docName = doc.replace(/\s*[-–]\s*OBLIGATOIRE(\s+si applicable)?/gi, '').trim();
-              return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', background: '#fff', borderRadius: 8, border: `1px solid ${isObligatoire ? '#fed7aa' : '#e2e8f0'}` }}>
-                  <span style={{ fontSize: 13 }}>{isObligatoire ? '⚠️' : '📄'}</span>
-                  <span style={{ fontSize: 12, color: '#374151', flex: 1 }}>{docName}</span>
-                  {isObligatoire && <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fef3c7', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 100 }}>Obligatoire</span>}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -749,7 +735,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
    ONGLET VOTRE LOGEMENT
 ══════════════════════════════════ */
 function TabLogement({ rapport }: { rapport: RapportData }) {
-  const [allOpen, setAllOpen] = useState(false);
+  const [allOpen, setAllOpen] = useState(true);
   type LotT2 = { quote_part_tantiemes?: string; fonds_travaux_alur?: string; parties_privatives?: string[]; restrictions_usage?: string[]; travaux_votes_charge_vendeur?: string[]; impayes_detectes?: string; points_specifiques?: string[] };
   type FinancesT = { taxe_fonciere?: string; type_chauffage?: string; charges_annuelles?: number | string; fonds_travaux?: number | string; fonds_travaux_statut?: string };
   const lot = rapport.lot_achete as LotT2 | null;
@@ -777,7 +763,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
           title="DPE — Performance énergétique" sub={dpeClasse ? `Classe ${dpeClasse}` : ''} icon="⚡"
           status={dpeBad ? 'alert' : dpeClasse && ['A', 'B', 'C'].includes(dpeClasse) ? 'ok' : 'warning'}
           badge={dpeClasse ? `Classe ${dpeClasse}` : 'Détecté'}
-          defaultOpen={dpeBad || allOpen}>
+          defaultOpen={true}>
           <DiagRow d={dpe} />
           {dpeBad && (
             <div style={{ padding: '10px 14px', background: '#fef2f2', borderRadius: 10, border: '1px solid #fecaca', fontSize: 12, color: '#991b1b', lineHeight: 1.6 }}>
@@ -793,7 +779,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
           title="Diagnostics privatifs" sub="Électricité · gaz · amiante · plomb · termites" icon="🔍"
           status={hasDiagAlert ? 'alert' : 'ok'}
           badge={hasDiagAlert ? 'Points d\'attention' : `${autresDiags.length} diagnostic${autresDiags.length > 1 ? 's' : ''}`}
-          defaultOpen={hasDiagAlert || allOpen}>
+          defaultOpen={true}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {autresDiags.map((d: Record<string, unknown>, i: number) => <DiagRow key={i} d={d} />)}
           </div>
@@ -801,29 +787,42 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
       )}
 
       {/* Infos lot */}
-      {lot && (
+      {lot && (lot.quote_part_tantiemes || lot.fonds_travaux_alur || (lot.restrictions_usage as string[])?.length > 0) && (
         <AccordionSection
-          title="Informations sur votre lot" sub="Tantièmes · restrictions · parties privatives" icon="🏠"
-          status="neutral" badge="Informatif" defaultOpen={allOpen}>
+          title="Informations sur votre lot" sub="Tantièmes · fonds ALUR · restrictions" icon="🏠"
+          status="neutral" badge="Informatif" defaultOpen={true}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {lot.quote_part_tantiemes && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 12px', background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7', fontSize: 13 }}>
-                <span style={{ color: '#64748b' }}>Quote-part tantièmes</span>
-                <span style={{ fontWeight: 600, color: '#0f172a' }}>{lot.quote_part_tantiemes}</span>
-              </div>
-            )}
-            {(lot.parties_privatives as string[])?.length > 0 && (
-              <div style={{ padding: '9px 12px', background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>Parties privatives</div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {(lot.parties_privatives as string[]).map((p, i) => (
-                    <span key={i} style={{ fontSize: 11, fontWeight: 600, color: '#2a7d9c', background: '#e0f2fe', border: '1px solid #bae6fd', padding: '2px 9px', borderRadius: 100 }}>{p}</span>
-                  ))}
+            {/* Tableau simple */}
+            <div style={{ background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+              {lot.quote_part_tantiemes && (
+                <div style={{ display: 'flex', padding: '10px 14px', borderBottom: '1px solid #f1f5f9' }}>
+                  <span style={{ fontSize: 12, color: '#64748b', width: 160, flexShrink: 0 }}>Quote-part tantièmes</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', flex: 1 }}>{lot.quote_part_tantiemes}</span>
                 </div>
-              </div>
-            )}
-            {(lot.restrictions_usage as string[])?.length > 0 && (
-              <div style={{ padding: '9px 12px', background: '#fffbeb', borderRadius: 9, border: '1px solid #fde68a' }}>
+              )}
+              {lot.fonds_travaux_alur && (
+                <div style={{ display: 'flex', padding: '10px 14px', borderBottom: (lot.restrictions_usage as string[])?.length > 0 ? '1px solid #f1f5f9' : 'none' }}>
+                  <span style={{ fontSize: 12, color: '#64748b', width: 160, flexShrink: 0 }}>Fonds travaux ALUR</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#16a34a', flex: 1 }}>
+                    {lot.fonds_travaux_alur} — récupérable à la signature
+                  </span>
+                </div>
+              )}
+              {(lot.travaux_votes_charge_vendeur as string[])?.length > 0 && (
+                <div style={{ display: 'flex', padding: '10px 14px', borderBottom: (lot.restrictions_usage as string[])?.length > 0 ? '1px solid #f1f5f9' : 'none' }}>
+                  <span style={{ fontSize: 12, color: '#64748b', width: 160, flexShrink: 0 }}>Charge vendeur</span>
+                  <div style={{ flex: 1 }}>
+                    {(lot.travaux_votes_charge_vendeur as string[]).map((t, i) => (
+                      <div key={i} style={{ fontSize: 12, color: '#1d4ed8', marginBottom: 2 }}>• {t}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* Restrictions seulement si réelles (pas le message générique "aucune restriction") */}
+            {(lot.restrictions_usage as string[])?.length > 0 &&
+              !(lot.restrictions_usage as string[]).some(r => r.toLowerCase().includes('aucune restriction') || r.toLowerCase().includes('règlement copropriété complet non fourni')) && (
+              <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', marginBottom: 6 }}>Restrictions d'usage</div>
                 {(lot.restrictions_usage as string[]).map((r, i) => (
                   <div key={i} style={{ fontSize: 12, color: '#92400e', marginBottom: 3 }}>• {r}</div>
@@ -839,7 +838,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
         title="Finances de votre lot" sub="Charges · taxe foncière · impayés" icon="💶"
         status={(lot?.impayes_detectes) ? 'alert' : 'neutral'}
         badge={(lot?.impayes_detectes) ? 'Impayés détectés' : 'Informatif'}
-        defaultOpen={!!(lot?.impayes_detectes) || allOpen}>
+        defaultOpen={true}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {rapport.charges_mensuelles > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 12px', background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7', fontSize: 13 }}>
@@ -999,28 +998,49 @@ function TabDocuments({ rapport }: { rapport: RapportData }) {
         </div>
       )}
 
-      {/* Documents manquants suggérés */}
-      {rapport.documents_manquants.length > 0 && (
-        <div style={{ background: '#fff9f0', borderRadius: 14, border: '1px solid #fed7aa', overflow: 'hidden' }}>
-          <div style={{ padding: '14px 18px', borderBottom: '1px solid #fed7aa', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <AlertTriangle size={14} style={{ color: '#d97706' }} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#92400e', letterSpacing: '0.06em' }}>DOCUMENTS MANQUANTS</span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {rapport.documents_manquants.map((doc, i) => {
-              const isObligatoire = doc.toUpperCase().includes('OBLIGATOIRE');
-              const docName = doc.replace(/\s*[-–]\s*OBLIGATOIRE(\s+si applicable)?/gi, '').trim();
-              return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 18px', borderBottom: i < rapport.documents_manquants.length - 1 ? '1px solid #fde68a' : 'none' }}>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: isObligatoire ? '#ef4444' : '#f97316', flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, color: '#92400e', flex: 1 }}>{docName}</span>
-                  {isObligatoire && <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fef3c7', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 100 }}>Obligatoire</span>}
+      {/* Recommandations documents */}
+      {(() => {
+        const isCopro = rapport.type_bien === 'appartement' || rapport.type_bien === 'maison_copro';
+        const docsAnalysesTypes = ((rapport as Record<string, unknown>).documents_analyses as Array<Record<string, unknown>> || []).map(d => d.type as string);
+        const hasDoc = (types: string[]) => types.some(t => docsAnalysesTypes.includes(t));
+
+        const docsRecommandes = isCopro ? [
+          { label: '3 derniers PV d\'Assemblée Générale', present: hasDoc(['PV_AG']), note: 'Indispensable pour analyser les travaux votés, les procédures et la vie de la copropriété' },
+          { label: 'Règlement de copropriété (et ses modificatifs)', present: hasDoc(['REGLEMENT_COPRO']), note: 'Définit les règles d\'usage, les charges et vos droits' },
+          { label: 'Carnet d\'entretien de l\'immeuble', present: false, note: 'Historique des travaux et contrats d\'entretien' },
+          { label: 'DTG (Diagnostic Technique Global)', present: false, note: 'Si l\'immeuble en a fait réaliser un' },
+          { label: 'PPT (Plan Pluriannuel de Travaux)', present: false, note: 'Si l\'immeuble en a établi un (> 200 lots ou > 15 ans)' },
+          { label: 'Diagnostics parties communes (DTA, plomb, ERP)', present: docsAnalysesTypes.some(t => t === 'DIAGNOSTIC' || t === 'DDT'), note: 'Amiante, plomb et risques sur les parties communes' },
+          { label: 'DDT complet du logement', present: hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']), note: 'DPE, électricité, gaz, amiante, plomb privatifs' },
+        ] : [
+          { label: 'DDT complet (Dossier Diagnostic Technique)', present: hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']), note: 'DPE, électricité, gaz, amiante, plomb, termites…' },
+          { label: 'Taxe foncière', present: hasDoc(['TAXE_FONCIERE']), note: 'Pour estimer le coût annuel de détention' },
+          { label: 'Titre de propriété', present: false, note: 'Pour vérifier les servitudes et l\'historique du bien' },
+        ];
+
+        const docsManquants = docsRecommandes.filter(d => !d.present);
+        if (docsManquants.length === 0) return null;
+
+        return (
+          <div style={{ background: '#f0f9ff', borderRadius: 14, border: '1px solid #bae6fd', overflow: 'hidden' }}>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid #bae6fd' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#0369a1', marginBottom: 4 }}>Pour une analyse complète et fiable</div>
+              <div style={{ fontSize: 12, color: '#0284c7' }}>Nous vous recommandons de demander les documents suivants à votre agent immobilier ou vendeur :</div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {docsManquants.map((doc, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 18px', borderBottom: i < docsManquants.length - 1 ? '1px solid #e0f2fe' : 'none' }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#0284c7', flexShrink: 0, marginTop: 5 }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0c4a6e' }}>{doc.label}</div>
+                    <div style={{ fontSize: 11, color: '#0369a1', marginTop: 2 }}>{doc.note}</div>
+                  </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
@@ -1390,8 +1410,13 @@ export default function RapportPage() {
           .rapport-tabs button { font-size: 11px !important; padding: 8px 6px !important; }
         }
         @media print {
-          header, button { display: none !important; }
-          body { background: white !important; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          body { background: white !important; font-size: 11px !important; }
+          .no-print, header, .topbar-print-hide { display: none !important; }
+          .print-show-all > div { display: flex !important; }
+          .rapport-tabs { display: none !important; }
+          .print-section { break-inside: avoid; margin-bottom: 16px; }
+          @page { margin: 1.5cm; size: A4; }
         }
         @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
       `}</style>
