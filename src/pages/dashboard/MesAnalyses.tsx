@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, FileText, Building2, ExternalLink, Trash2 } from 'lucide-react';
+import { Plus, Search, FileText, Building2, ExternalLink, Trash2, Copy, Check } from 'lucide-react';
+import { getOrCreateShareToken } from '../../lib/analyses';
 import { supabase } from '../../lib/supabase';
 import { useAnalyses, type Analyse } from '../../hooks/useAnalyses';
 
@@ -14,6 +15,32 @@ function ScoreBadge({ score, size = 'md' }: { score: number; size?: 'sm' | 'md' 
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 2, padding: pad, borderRadius: 10, background: bg, border: `1.5px solid ${bord}`, fontSize: fs, fontWeight: 900, color, letterSpacing: '-0.01em', flexShrink: 0 }}>
       {score.toFixed(1)}<span style={{ fontSize: fs * 0.55, fontWeight: 600, opacity: 0.65 }}>/20</span>
     </span>
+  );
+}
+
+function ShareBadge({ analyseId }: { analyseId: string }) {
+  const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setLoading(true);
+    const token = await getOrCreateShareToken(analyseId);
+    setLoading(false);
+    if (!token) return;
+    const url = `${window.location.origin}/rapport/partage/${token}`;
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  return (
+    <button onClick={handleShare} disabled={loading}
+      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 8, background: copied ? '#f0fdf4' : '#f8fafc', border: `1px solid ${copied ? '#bbf7d0' : '#edf2f7'}`, fontSize: 11, fontWeight: 700, color: copied ? '#16a34a' : '#64748b', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap', flexShrink: 0 }}>
+      {copied ? <Check size={11} /> : <Copy size={11} />}
+      {copied ? 'Copié !' : 'Partager'}
+    </button>
   );
 }
 
@@ -60,6 +87,8 @@ function AnalyseRow({ a, onDelete }: { a: Analyse; onDelete: (id: string) => voi
               onMouseOut={e => (e.currentTarget as HTMLElement).style.background = '#f8fafc'}>
               <ExternalLink size={11} /> Rapport
             </Link>
+
+            {!a.is_preview && a.status === 'completed' && <ShareBadge analyseId={a.id} />}
           </>
         )}
         {/* Bouton supprimer */}
