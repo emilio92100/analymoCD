@@ -164,44 +164,101 @@ function TravauxRow({ t, variant }: { t: any; variant: 'realise' | 'vote' | 'evo
    DIAGNOSTIC ROW
 ══════════════════════════════════ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function DpeGauge({ classe }: { classe: string }) {
+  const classes = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+  const colors: Record<string, string> = { A: '#16a34a', B: '#22c55e', C: '#84cc16', D: '#eab308', E: '#f97316', F: '#ef4444', G: '#991b1b' };
+  return (
+    <div style={{ display: 'flex', gap: 4, alignItems: 'center', margin: '8px 0' }}>
+      {classes.map(c => (
+        <div key={c} style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{
+            height: c === classe ? 36 : 24,
+            borderRadius: 6,
+            background: c === classe ? colors[c] : `${colors[c]}30`,
+            border: c === classe ? `2px solid ${colors[c]}` : 'none',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all 0.2s',
+          }}>
+            <span style={{ fontSize: c === classe ? 13 : 11, fontWeight: c === classe ? 800 : 500, color: c === classe ? '#fff' : colors[c] }}>{c}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function DiagRow({ d }: { d: any }) {
-  const typeIcons: Record<string, string> = { DPE: '⚡', AMIANTE: '⚠️', PLOMB: '🔩', ELECTRICITE: '🔌', GAZ: '🔥', TERMITES: '🐛', ERP: '📋', RADON: '☢️', AUTRE: '📄' };
+  const typeIcons: Record<string, string> = {
+    DPE: '⚡', AMIANTE: '🏗', PLOMB: '🔩', ELECTRICITE: '🔌', GAZ: '🔥',
+    TERMITES: '🐛', ERP: '📋', RADON: '☢️', AUTRE: '📄'
+  };
+  const typeColors: Record<string, string> = {
+    DPE: '#0891b2', AMIANTE: '#dc2626', PLOMB: '#7c3aed', ELECTRICITE: '#d97706',
+    GAZ: '#ea580c', TERMITES: '#92400e', ERP: '#475569', RADON: '#6d28d9', AUTRE: '#64748b'
+  };
   const icon = typeIcons[d.type] || '📄';
+  const color = typeColors[d.type] || '#64748b';
   const hasAlert = !!d.alerte;
-  const borderColor = hasAlert ? '#fecaca' : '#edf2f7';
-  const headerBg = hasAlert ? '#fef2f2' : `${d.type === 'DPE' ? '#0891b2' : '#475569'}08`;
+
+  // Présence : absence = vert, non réalisé = gris, détectée = orange/rouge selon alerte
+  const presenceStyle = d.presence === 'absence'
+    ? { bg: '#f0fdf4', text: '#16a34a', label: 'Non détecté' }
+    : d.presence === 'non_realise'
+    ? { bg: '#f8fafc', text: '#94a3b8', label: 'Non réalisé' }
+    : hasAlert
+    ? { bg: '#fef2f2', text: '#dc2626', label: 'Attention' }
+    : { bg: '#fff7ed', text: '#d97706', label: 'Détecté' };
+
+  // Extraire classe DPE
+  const dpeClasse = d.type === 'DPE' ? (d.resultat as string)?.match(/Classe ([A-G])/i)?.[1]?.toUpperCase() : null;
 
   return (
-    <div style={{ borderRadius: 12, border: `1px solid ${borderColor}`, overflow: 'hidden' }}>
-      <div style={{ padding: '11px 14px', background: headerBg, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+    <div style={{ borderRadius: 12, border: `1.5px solid ${hasAlert ? '#fecaca' : '#edf2f7'}`, overflow: 'hidden', background: '#fff' }}>
+      {/* Header */}
+      <div style={{ padding: '12px 16px', background: hasAlert ? '#fef2f2' : `${color}08`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 18 }}>{icon}</span>
+          <div style={{ width: 34, height: 34, borderRadius: 9, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+            {icon}
+          </div>
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{d.label || d.type}</div>
             {d.localisation && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>📍 {d.localisation}</div>}
           </div>
         </div>
-        <span style={{ fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 100, background: hasAlert ? '#fef2f2' : '#f8fafc', color: hasAlert ? '#dc2626' : '#374151', border: `1px solid ${hasAlert ? '#fecaca' : '#e2e8f0'}` }}>
-          {d.resultat}
+        <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 100, background: presenceStyle.bg, color: presenceStyle.text, flexShrink: 0 }}>
+          {d.presence === 'absence' ? '✓ Non détecté' : d.resultat || presenceStyle.label}
         </span>
       </div>
-      {(d.details || d.date_diagnostic || d.alerte || (d.travaux_preconises?.length > 0)) && (
-        <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {d.details && <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.6 }}>{d.details}</div>}
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            {d.date_diagnostic && <span style={{ fontSize: 11, color: '#94a3b8' }}>📅 {d.date_diagnostic}</span>}
-            {d.date_validite && <span style={{ fontSize: 11, color: '#94a3b8' }}>✅ Valide jusqu'au {d.date_validite}</span>}
-          </div>
+
+      {/* Contenu */}
+      {(dpeClasse || d.date_diagnostic || d.alerte || (d.travaux_preconises?.length > 0)) && (
+        <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* Gauge DPE */}
+          {dpeClasse && <DpeGauge classe={dpeClasse} />}
+
+          {/* Dates */}
+          {(d.date_diagnostic || d.date_validite) && (
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              {d.date_diagnostic && <span style={{ fontSize: 11, color: '#94a3b8' }}>📅 Réalisé le {d.date_diagnostic}</span>}
+              {d.date_validite && <span style={{ fontSize: 11, color: '#94a3b8' }}>✅ Valide jusqu'au {d.date_validite}</span>}
+            </div>
+          )}
+
+          {/* Alerte */}
           {d.alerte && (
-            <div style={{ padding: '8px 12px', background: '#fef2f2', borderRadius: 8, border: '1px solid #fecaca', fontSize: 12, color: '#991b1b', fontWeight: 600 }}>
+            <div style={{ padding: '8px 12px', background: '#fef2f2', borderRadius: 8, border: '1px solid #fecaca', fontSize: 12, color: '#991b1b', lineHeight: 1.6 }}>
               ⚠️ {d.alerte}
             </div>
           )}
-          {d.travaux_preconises?.length > 0 && (
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 4 }}>Travaux préconisés :</div>
+
+          {/* Travaux préconisés — affiché seulement pour les diags privatifs, pas dans copro */}
+          {d.travaux_preconises?.length > 0 && d.perimetre === 'lot_privatif' && (
+            <div style={{ padding: '8px 12px', background: '#fffbeb', borderRadius: 8, border: '1px solid #fde68a' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', marginBottom: 5 }}>Travaux recommandés</div>
               {d.travaux_preconises.map((t: string, i: number) => (
-                <div key={i} style={{ fontSize: 12, color: '#374151', marginBottom: 2 }}>• {t}</div>
+                <div key={i} style={{ fontSize: 12, color: '#92400e', marginBottom: 3 }}>• {t}</div>
               ))}
             </div>
           )}
@@ -306,11 +363,8 @@ function DetailNote({ rapport }: { rapport: RapportData }) {
       </button>
       {open && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>
-          {Object.keys(rapport.categories).length === 0 ? (
-            <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>Le détail par catégorie sera disponible sur les prochaines analyses. Le score global reste valide.</p>
-          ) : Object.entries(rapport.categories).map(([key, cat]) => {
+          {Object.entries(rapport.categories).map(([key, cat]) => {
             const c = cat as { note: number; note_max: number };
-            if (!c.note_max) return null;
             const pct = (c.note / c.note_max) * 100;
             const color = pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626';
             const labels: Record<string, string> = { travaux: 'Travaux', procedures: 'Procédures', finances: 'Finances copro', diags_privatifs: 'Diagnostics privatifs', diags_communs: 'Diagnostics communs' };
@@ -408,6 +462,7 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
 function TabSynthese({ rapport }: { rapport: RapportData }) {
   const docsIgnores = (rapport as Record<string, unknown>).documents_ignores as string[] | undefined;
   const avertissement = (rapport as Record<string, unknown>).avertissement_docs as string | undefined;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
@@ -420,48 +475,57 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
               {docsIgnores.length} document{docsIgnores.length > 1 ? 's' : ''} non lisible{docsIgnores.length > 1 ? 's' : ''} — ignoré{docsIgnores.length > 1 ? 's' : ''}
             </div>
             <div style={{ fontSize: 12, color: '#92400e', lineHeight: 1.5 }}>
-              {avertissement || `Les fichiers suivants n'ont pas pu être lus : ${docsIgnores.join(', ')}. Vérifiez qu'ils sont bien au format PDF non protégé.`}
-            </div>
-            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
-              {docsIgnores.map((d, i) => (
-                <span key={i} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, background: '#fef3c7', border: '1px solid #fde68a', color: '#92400e' }}>{d}</span>
-              ))}
+              {avertissement || `Vérifiez que ces fichiers sont en format PDF non protégé : ${docsIgnores.join(', ')}`}
             </div>
           </div>
         </div>
       )}
+
       {/* Résumé */}
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '20px 22px' }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 10 }}>RÉSUMÉ</div>
-        <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.8 }}>{rapport.resume}</p>
+        <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.9 }}>{rapport.resume}</p>
       </div>
 
-      {/* Points positifs + vigilance */}
+      {/* Points positifs + vigilance — affichage compact si beaucoup de points */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 14 }}>
+        {/* Points positifs */}
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '18px 20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <CheckCircle size={15} style={{ color: '#16a34a' }} />
             <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Points positifs</span>
+            {rapport.points_forts.length > 0 && (
+              <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, background: '#f0fdf4', color: '#16a34a', marginLeft: 'auto' }}>
+                {rapport.points_forts.length}
+              </span>
+            )}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {rapport.points_forts.length > 0 ? rapport.points_forts.map((p, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '6px 10px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0' }}>
                 <CheckCircle size={12} color="#16a34a" style={{ flexShrink: 0, marginTop: 2 }} />
-                <span style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>{p}</span>
+                <span style={{ fontSize: 12, color: '#166534', lineHeight: 1.5 }}>{p}</span>
               </div>
             )) : <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun point positif identifié.</p>}
           </div>
         </div>
+
+        {/* Points de vigilance */}
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '18px 20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <AlertTriangle size={15} style={{ color: '#d97706' }} />
             <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Points de vigilance</span>
+            {rapport.points_vigilance.length > 0 && (
+              <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, background: '#fffbeb', color: '#d97706', marginLeft: 'auto' }}>
+                {rapport.points_vigilance.length}
+              </span>
+            )}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {rapport.points_vigilance.length > 0 ? rapport.points_vigilance.map((p, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '6px 10px', background: '#fffbeb', borderRadius: 8, border: '1px solid #fde68a' }}>
                 <AlertTriangle size={12} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
-                <span style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>{p}</span>
+                <span style={{ fontSize: 12, color: '#92400e', lineHeight: 1.5 }}>{p}</span>
               </div>
             )) : <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun point de vigilance identifié.</p>}
           </div>
@@ -544,7 +608,15 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
 
   const travaux_realises = rapport.travaux_realises;
   const travaux_votes = rapport.travaux_votes;
-  const travaux_evoques = rapport.travaux_a_prevoir;
+  const travaux_evoques_raw = rapport.travaux_a_prevoir;
+  // Filtrer les travaux issus des diags privatifs (DPE, isolation, électricité perso...)
+  // Ces travaux appartiennent à l'onglet "Votre logement", pas à la copropriété
+  const MOTS_DIAGS_PRIVATIFS = ['dpe', 'diagnostic', 'isolation mur', 'isolation plafond', 'double vitrage', 'fenêtre', 'electricit', 'gaz intérieur', 'amiante lot', 'plomb lot', 'pack 1', 'pack 2', 'rénovation énergétique'];
+  const travaux_evoques = travaux_evoques_raw.filter(t => {
+    const label = ((t.label as string) || '').toLowerCase();
+    const precision = ((t.precision as string) || '').toLowerCase();
+    return !MOTS_DIAGS_PRIVATIFS.some(m => label.includes(m) || precision.includes(m));
+  });
   const hasTravauxAlert = travaux_evoques.length > 0;
   const hasTravauxWarning = travaux_votes.length > 0;
 
@@ -687,38 +759,19 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         badge={rapport.fonds_travaux_statut === 'conforme' ? 'Sain' : rapport.fonds_travaux_statut === 'insuffisant' ? 'Vigilance' : rapport.fonds_travaux_statut === 'absent' ? 'Absent' : 'Détecté'}>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 10 }}>
-          {rapport.budget_total_copro > 0 && (
+          {rapport.charges_mensuelles > 0 && (
             <div style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', textAlign: 'center' }}>
-              <div style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>{rapport.budget_total_copro.toLocaleString('fr-FR')}€</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Budget annuel copropriété</div>
-              <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Total immeuble</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>{(rapport.charges_mensuelles * 12).toLocaleString('fr-FR')}€</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Budget annuel copro</div>
             </div>
           )}
           {rapport.fonds_travaux > 0 && (
             <div style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', textAlign: 'center' }}>
               <div style={{ fontSize: 20, fontWeight: 700, color: '#2a7d9c', marginBottom: 3 }}>{rapport.fonds_travaux.toLocaleString('fr-FR')}€</div>
               <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Fonds travaux</div>
-              <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 2 }}>Total immeuble</div>
             </div>
           )}
         </div>
-        {/* Quote-part lot si disponible */}
-        {rapport.charges_lot_annuelles > 0 && (
-          <div style={{ padding: '10px 14px', background: '#f0f9ff', borderRadius: 10, border: '1px solid #bae6fd', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#0369a1' }}>Votre quote-part annuelle</div>
-              <div style={{ fontSize: 11, color: '#0284c7', marginTop: 1 }}>Charges correspondant à votre lot</div>
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#0369a1' }}>{rapport.charges_lot_annuelles.toLocaleString('fr-FR')}€/an</div>
-          </div>
-        )}
-        {/* Charges mensuelles estimées si pas de lot précis */}
-        {rapport.charges_mensuelles > 0 && rapport.charges_lot_annuelles === 0 && rapport.budget_total_copro === 0 && (
-          <div style={{ padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 12, color: '#64748b' }}>Charges mensuelles estimées</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{rapport.charges_mensuelles}€/mois</span>
-          </div>
-        )}
         {rapport.fonds_travaux_statut && rapport.fonds_travaux_statut !== 'non_mentionne' && (
           <div style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid', background: rapport.fonds_travaux_statut === 'conforme' ? '#f0fdf4' : '#fef2f2', borderColor: rapport.fonds_travaux_statut === 'conforme' ? '#bbf7d0' : '#fecaca' }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: rapport.fonds_travaux_statut === 'conforme' ? '#166534' : '#991b1b' }}>
@@ -785,12 +838,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
   const lot = rapport.lot_achete as LotT2 | null;
   const finances = rapport.finances as FinancesT | null;
 
-  // Diags explicitement taguées lot_privatif
-  const diagsPrivTagged = rapport.diagnostics.filter((d: Record<string, unknown>) => d.perimetre === 'lot_privatif');
-  // Diags sans périmètre (Claude n'a pas tagué) — on les inclut dans votre logement si DDT uploadé
-  const diagsSansPerimetre = rapport.diagnostics.filter((d: Record<string, unknown>) => !d.perimetre || d.perimetre === '');
-  const hasDDTUploaded = (rapport.document_names || []).some((n: string) => n.toLowerCase().includes('ddt') || n.toLowerCase().includes('dpe') || n.toLowerCase().includes('diagnostic'));
-  const diagsPriv = diagsPrivTagged.length > 0 ? diagsPrivTagged : (hasDDTUploaded ? diagsSansPerimetre : []);
+  const diagsPriv = rapport.diagnostics.filter((d: Record<string, unknown>) => d.perimetre === 'lot_privatif');
   const dpe = diagsPriv.find((d: Record<string, unknown>) => d.type === 'DPE');
   const autresDiags = diagsPriv.filter((d: Record<string, unknown>) => d.type !== 'DPE');
 
@@ -927,30 +975,6 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
    ONGLET PROCÉDURES
 ══════════════════════════════════ */
 function TabProcedures({ rapport }: { rapport: RapportData }) {
-  // Explications pédagogiques par type de procédure
-  const getExplication = (label: string, type: string): string => {
-    const l = (label + ' ' + type).toLowerCase();
-    if (l.includes('copropriéta') || l.includes('copropietaire') || l.includes('impayé') || l.includes('impaye')) {
-      return "Un ou plusieurs copropriétaires n'ont pas payé leurs charges. La copropriété peut engager une procédure pour récupérer les sommes dues. Pour l'acheteur, cela peut signifier que les finances de la copropriété sont fragilisées si les impayés sont importants.";
-    }
-    if (l.includes('syndic')) {
-      return "Un litige oppose la copropriété à son syndic (gestionnaire). Cela peut porter sur des honoraires contestés, une mauvaise gestion ou une résiliation de contrat. À vérifier avec votre notaire pour comprendre l'état de la relation syndic/copropriété.";
-    }
-    if (l.includes('voisinage') || l.includes('voisin')) {
-      return "Un litige entre la copropriété ou un copropriétaire et un voisin (immeuble ou particulier adjacent). Peut porter sur des nuisances, des servitudes ou des limites de propriété. Généralement de portée limitée si soldé.";
-    }
-    if (l.includes('prescription acquisitive')) {
-      return "Une personne revendique la propriété d'une partie du bien ou du terrain par usage prolongé (prescription acquisitive = occupation continue pendant 30 ans sans opposition). C'est une procédure sérieuse qui peut remettre en cause les limites de la propriété.";
-    }
-    if (l.includes('difficulté') || l.includes('article 29') || l.includes('29-1')) {
-      return "La copropriété est en situation de difficultés financières graves. Un administrateur judiciaire ou provisoire peut être nommé. C'est un signal très sérieux qui peut impacter la valeur du bien et les charges futures.";
-    }
-    if (l.includes('tribunal') || l.includes('judiciaire') || l.includes('contentieux')) {
-      return "Une procédure judiciaire est en cours impliquant la copropriété. Cela peut générer des frais importants (avocat, expertise) qui seront répartis entre les copropriétaires. Demandez le détail au vendeur.";
-    }
-    return "Une procédure a été détectée dans les documents. Demandez au vendeur ou à votre notaire des précisions sur son origine, son état d'avancement et son impact financier potentiel.";
-  };
-
   if (!rapport.procedures_en_cours || rapport.procedures.length === 0) {
     return (
       <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '48px 32px', textAlign: 'center' }}>
@@ -981,9 +1005,6 @@ function TabProcedures({ rapport }: { rapport: RapportData }) {
       </div>
       {rapport.procedures.map((proc, i) => {
         const g = graviteStyle(proc.gravite);
-        const explication = proc.message && proc.message.length > 30
-          ? proc.message
-          : getExplication(proc.label || '', proc.type || '');
         return (
           <div key={i} style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
             <div style={{ padding: '14px 18px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -992,12 +1013,9 @@ function TabProcedures({ rapport }: { rapport: RapportData }) {
               <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100, background: g.bg, border: `1px solid ${g.border}`, color: g.color }}>Gravité : {g.label}</span>
             </div>
             <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 6, letterSpacing: '0.06em' }}>CE QUE ÇA SIGNIFIE</div>
-                <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.7, margin: 0 }}>{explication}</p>
-              </div>
+              {proc.message && <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.7 }}>{proc.message}</p>}
               <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a', fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>
-                ⚠️ Demandez au vendeur ou à votre notaire l'état d'avancement exact et l'impact financier estimé de cette procédure.
+                ⚠️ Demandez des précisions au vendeur ou à votre notaire sur cette procédure avant de vous engager.
               </div>
             </div>
           </div>
@@ -1055,25 +1073,11 @@ function TabDocuments({ rapport }: { rapport: RapportData }) {
         </div>
       )}
 
-      {/* Fichiers uploadés */}
-      {rapport.document_names.length > 0 && (
-        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
-          <div style={{ padding: '14px 18px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <FileText size={14} style={{ color: '#94a3b8' }} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b', letterSpacing: '0.06em' }}>FICHIERS UPLOADÉS</span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 14px' }}>
-            {rapport.document_names.map((name: string, i: number) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: '#f8fafc', borderRadius: 8, border: '1px solid #edf2f7' }}>
-                <FileText size={12} style={{ color: '#2a7d9c', flexShrink: 0 }} />
-                <span style={{ fontSize: 12, color: '#374151' }}>{name}</span>
-              </div>
-            ))}
-          </div>
-          <div style={{ padding: '10px 18px', borderTop: '1px solid #f8fafc', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Shield size={11} style={{ color: '#94a3b8' }} />
-            <span style={{ fontSize: 11, color: '#94a3b8' }}>Documents supprimés de nos serveurs après traitement — conformément au RGPD.</span>
-          </div>
+      {/* Fichiers uploadés — supprimé car redondant avec Documents analysés */}
+      {rapport.document_names.length > 0 && docsAnalyses.length === 0 && (
+        <div style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Shield size={11} style={{ color: '#94a3b8' }} />
+          <span style={{ fontSize: 11, color: '#94a3b8' }}>Documents supprimés de nos serveurs après traitement — conformément au RGPD.</span>
         </div>
       )}
 
@@ -1081,31 +1085,20 @@ function TabDocuments({ rapport }: { rapport: RapportData }) {
       {(() => {
         const isCopro = rapport.type_bien === 'appartement' || rapport.type_bien === 'maison_copro';
         const docsAnalysesTypes = ((rapport as Record<string, unknown>).documents_analyses as Array<Record<string, unknown>> || []).map(d => d.type as string);
-        // Types détectés par Claude
-        const hasDoc = (types: string[], keywords?: string[]) => {
-          const byType = types.some(t => docsAnalysesTypes.map(x => x?.toUpperCase()).includes(t.toUpperCase()));
-          const byName = keywords ? keywords.some(k => (rapport.document_names || []).some((f: string) => f.toLowerCase().includes(k.toLowerCase()))) : false;
-          return byType || byName;
-        };
-
-        // Diagnostics privatifs détectés
-        const hasDiagPrivatif = (rapport.diagnostics || []).some((d: Record<string, unknown>) => d.perimetre === 'lot_privatif')
-          || hasDoc(['DDT', 'DPE', 'DIAGNOSTIC'], ['ddt', 'dpe', 'diagnostic_technique', 'diag']);
-
-        const hasPVAG = hasDoc(['PV_AG'], ['pv_ag', 'pv ag', 'pv-ag', 'assemblee', 'assemblée', '_ag_', 'age_', 'pv_age']);
+        const hasDoc = (types: string[]) => types.some(t => docsAnalysesTypes.includes(t));
 
         const docsRecommandes = isCopro ? [
-          { label: '3 derniers PV d\'Assemblée Générale', present: hasPVAG, note: 'Indispensable pour analyser les travaux votés, les procédures et la vie de la copropriété' },
-          { label: 'Règlement de copropriété (et ses modificatifs)', present: hasDoc(['REGLEMENT_COPRO'], ['reglement', 'règlement']), note: 'Définit les règles d\'usage, les charges et vos droits' },
-          { label: 'Carnet d\'entretien de l\'immeuble', present: hasDoc(['CARNET_ENTRETIEN'], ['carnet', 'entretien']), note: 'Historique des travaux et contrats d\'entretien' },
-          { label: 'DTG (Diagnostic Technique Global)', present: hasDoc([], ['dtg']), note: 'Si l\'immeuble en a fait réaliser un' },
-          { label: 'PPT (Plan Pluriannuel de Travaux)', present: hasDoc([], ['ppt', 'pluriannuel']), note: 'Si l\'immeuble en a établi un (> 200 lots ou > 15 ans)' },
-          { label: 'Diagnostics parties communes (DTA, plomb, ERP)', present: (rapport.diagnostics || []).some((d: Record<string, unknown>) => d.perimetre === 'parties_communes') || hasDoc([], ['dta', 'erp']), note: 'Amiante, plomb et risques sur les parties communes' },
-          { label: 'DDT complet du logement', present: hasDiagPrivatif, note: 'DPE, électricité, gaz, amiante, plomb privatifs' },
+          { label: '3 derniers PV d\'Assemblée Générale', present: hasDoc(['PV_AG']), note: 'Indispensable pour analyser les travaux votés, les procédures et la vie de la copropriété' },
+          { label: 'Règlement de copropriété (et ses modificatifs)', present: hasDoc(['REGLEMENT_COPRO']), note: 'Définit les règles d\'usage, les charges et vos droits' },
+          { label: 'Carnet d\'entretien de l\'immeuble', present: false, note: 'Historique des travaux et contrats d\'entretien' },
+          { label: 'DTG (Diagnostic Technique Global)', present: false, note: 'Si l\'immeuble en a fait réaliser un' },
+          { label: 'PPT (Plan Pluriannuel de Travaux)', present: false, note: 'Si l\'immeuble en a établi un (> 200 lots ou > 15 ans)' },
+          { label: 'Diagnostics parties communes (DTA, plomb, ERP)', present: docsAnalysesTypes.some(t => t === 'DIAGNOSTIC' || t === 'DDT'), note: 'Amiante, plomb et risques sur les parties communes' },
+          { label: 'DDT complet du logement', present: hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']), note: 'DPE, électricité, gaz, amiante, plomb privatifs' },
         ] : [
-          { label: 'DDT complet (Dossier Diagnostic Technique)', present: hasDiagPrivatif, note: 'DPE, électricité, gaz, amiante, plomb, termites…' },
-          { label: 'Taxe foncière', present: hasDoc(['TAXE_FONCIERE'], ['taxe', 'foncier']), note: 'Pour estimer le coût annuel de détention' },
-          { label: 'Déclaration de travaux ou permis de construire', present: hasDoc([], ['permis', 'declaration_travaux', 'déclaration']), note: 'Si des travaux ont été réalisés — pour vérifier leur conformité' },
+          { label: 'DDT complet (Dossier Diagnostic Technique)', present: hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']), note: 'DPE, électricité, gaz, amiante, plomb, termites…' },
+          { label: 'Taxe foncière', present: hasDoc(['TAXE_FONCIERE']), note: 'Pour estimer le coût annuel de détention' },
+          { label: 'Titre de propriété', present: false, note: 'Pour vérifier les servitudes et l\'historique du bien' },
         ];
 
         const docsManquants = docsRecommandes.filter(d => !d.present);
@@ -1161,20 +1154,11 @@ function buildRapport(data: Record<string, unknown>, dbData: { id: string; type:
   const r = data;
   const travauxObj = (r.travaux as Record<string, unknown>) || {};
   const financesObj = (r.finances as Record<string, unknown>) || {};
-
-  // Budget total copro (priorité à budget_total_copro, fallback charges_annuelles)
-  const budgetTotalCopro = financesObj.budget_total_copro ?? financesObj.charges_annuelles;
-  const budgetCoproNum = typeof budgetTotalCopro === 'number' ? budgetTotalCopro
-    : typeof budgetTotalCopro === 'string' ? parseFloat(budgetTotalCopro.replace(/[^0-9.]/g, '')) || 0 : 0;
-
-  // Charges annuelles du lot (quote-part de l'acheteur)
-  const chargesLot = financesObj.charges_annuelles_lot;
-  const chargesLotNum = typeof chargesLot === 'number' ? chargesLot
-    : typeof chargesLot === 'string' ? parseFloat(chargesLot.replace(/[^0-9.]/g, '')) || 0 : 0;
-
-  const chargesMensuelles = chargesLotNum > 0
-    ? Math.round(chargesLotNum / 12)
-    : budgetCoproNum > 0 ? Math.round(budgetCoproNum / 12) : 0;
+  const chargesAnnuelles = financesObj.charges_annuelles;
+  const chargesMensuelles = typeof chargesAnnuelles === 'number'
+    ? Math.round(chargesAnnuelles / 12)
+    : typeof chargesAnnuelles === 'string'
+      ? Math.round(parseFloat(chargesAnnuelles.replace(/[^0-9.]/g, '')) / 12) || 0 : 0;
 
   const fondsTravaux = financesObj.fonds_travaux;
   const fondsTrvauxNum = typeof fondsTravaux === 'number' ? fondsTravaux
@@ -1211,8 +1195,6 @@ function buildRapport(data: Record<string, unknown>, dbData: { id: string; type:
     points_vigilance: (r.points_vigilance as string[]) || (r.synthese_points_vigilance as string[]) || [],
     avis_verimo: (r.avis_verimo as string) || (r.conclusion as string) || '',
     categories: (r.categories as Record<string, { note: number; note_max: number; details: unknown[] }>) || {},
-    budget_total_copro: budgetCoproNum,
-    charges_lot_annuelles: chargesLotNum,
     charges_mensuelles: chargesMensuelles,
     fonds_travaux: fondsTrvauxNum,
     fonds_travaux_statut: (() => {
@@ -1266,7 +1248,6 @@ export default function RapportPage() {
   const isShared = !!shareToken;
 
   const [showReupload, setShowReupload] = useState(action === 'reupload');
-  const [showComplement, setShowComplement] = useState(action === 'complement');
   const [activeTab, setActiveTab] = useState<TabId>('synthese');
   const [loading, setLoading] = useState(true);
   const [rapport, setRapport] = useState<RapportData | null>(null);
@@ -1470,55 +1451,32 @@ export default function RapportPage() {
         {activeTab === 'procedures' && isComplete && <TabProcedures rapport={rapport} />}
         {activeTab === 'documents' && isComplete && <TabDocuments rapport={rapport} />}
 
-        {/* Bannière 7 jours - en haut, bien visible */}
+        {/* Bannière 7 jours */}
         {isComplete && !rapport.is_preview && rapport.regeneration_deadline && (() => {
           const deadline = new Date(rapport.regeneration_deadline);
           const diffDays = Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
           const expired = diffDays <= 0;
           const urgent = diffDays <= 2 && !expired;
-          if (expired) return null; // On n'affiche plus rien si expiré (pas utile d'encombrer)
           return (
-            <div style={{ padding: '14px 18px', borderRadius: 12, background: urgent ? '#fffbeb' : '#f0fdf4', border: `1.5px solid ${urgent ? '#fde68a' : '#bbf7d0'}`, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <RefreshCw size={15} style={{ color: urgent ? '#d97706' : '#16a34a', flexShrink: 0 }} />
+            <div style={{ marginTop: 6, padding: '14px 18px', borderRadius: 12, background: expired ? '#f8fafc' : urgent ? '#fffbeb' : '#f0fdf4', border: `1px solid ${expired ? '#e2e8f0' : urgent ? '#fde68a' : '#bbf7d0'}`, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <RefreshCw size={15} style={{ color: expired ? '#94a3b8' : urgent ? '#d97706' : '#16a34a', flexShrink: 0 }} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: urgent ? '#92400e' : '#166534', marginBottom: 2 }}>
-                  Vous avez encore {diffDays} jour{diffDays > 1 ? 's' : ''} pour compléter ce dossier gratuitement
+                <div style={{ fontSize: 13, fontWeight: 700, color: expired ? '#94a3b8' : urgent ? '#92400e' : '#166534', marginBottom: 2 }}>
+                  {expired ? 'Délai de complétion expiré' : `Vous pouvez compléter ce dossier — encore ${diffDays} jour${diffDays > 1 ? 's' : ''}`}
                 </div>
-                <div style={{ fontSize: 12, color: '#64748b' }}>
-                  Ajoutez des documents manquants (DDT, règlement de copropriété, appels de charges…) et obtenez un rapport mis à jour.
+                <div style={{ fontSize: 12, color: expired ? '#cbd5e1' : '#64748b' }}>
+                  {expired ? 'Le délai de 7 jours pour ajouter des documents est dépassé.' : 'Ajoutez des documents oubliés et obtenez un rapport mis à jour gratuitement.'}
                 </div>
               </div>
-              <button onClick={() => setShowComplement(true)}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 9, border: 'none', background: urgent ? '#d97706' : '#16a34a', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
-                <RefreshCw size={13} /> Compléter le dossier
-              </button>
+              {!expired && (
+                <button onClick={() => window.location.href = `/dashboard/rapport?id=${id}&action=complement`}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 9, border: 'none', background: urgent ? '#d97706' : '#16a34a', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                  <RefreshCw size={12} /> Compléter
+                </button>
+              )}
             </div>
           );
         })()}
-
-        {/* Modal complétion dossier */}
-        {showComplement && (
-          <div style={{ background: '#fff', borderRadius: 16, border: '2px solid #2a7d9c', padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Compléter votre dossier</div>
-                <div style={{ fontSize: 13, color: '#64748b' }}>Uploadez de nouveaux documents — le rapport sera régénéré automatiquement.</div>
-              </div>
-              <button onClick={() => setShowComplement(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 18 }}>✕</button>
-            </div>
-            <div style={{ padding: '12px 14px', background: '#f0f9ff', borderRadius: 10, border: '1px solid #bae6fd', fontSize: 12, color: '#0369a1', lineHeight: 1.6 }}>
-              ℹ️ Pour ajouter des documents : allez dans <strong>Nouvelle analyse</strong>, uploadez les documents supplémentaires et sélectionnez le même bien. La mise à jour sera gratuite dans les 7 jours suivant l'analyse initiale.
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <Link to="/dashboard/nouvelle-analyse" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 20px', borderRadius: 10, background: '#0f2d3d', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
-                Aller à Nouvelle analyse →
-              </Link>
-              <button onClick={() => setShowComplement(false)} style={{ padding: '11px 16px', borderRadius: 10, border: '1px solid #edf2f7', background: '#f8fafc', color: '#64748b', fontSize: 13, cursor: 'pointer' }}>
-                Annuler
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Footer */}
         <div style={{ padding: '14px 18px', background: '#fff', borderRadius: 12, border: '1px solid #edf2f7', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
