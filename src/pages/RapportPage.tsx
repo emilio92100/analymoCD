@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { fetchAnalyseById, fetchAnalyseByShareToken, getOrCreateShareToken } from '../lib/analyses';
 import { supabase } from '../lib/supabase';
@@ -66,12 +66,13 @@ function ScoreGauge({ score }: { score: number }) {
 ══════════════════════════════════ */
 type AccordionStatus = 'ok' | 'warning' | 'alert' | 'neutral';
 function AccordionSection({
-  title, sub, icon, status, badge, defaultOpen, children,
+  title, sub, icon, status, badge, defaultOpen, tooltip, children,
 }: {
   title: string; sub?: string; icon: string; status: AccordionStatus;
-  badge?: string; defaultOpen?: boolean; children: React.ReactNode;
+  badge?: string; defaultOpen?: boolean; tooltip?: string; children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen ?? false);
+  const [open, setOpen] = useState(defaultOpen ?? true);
+  const [showTooltip, setShowTooltip] = useState(false);
   const dotColor = status === 'alert' ? '#ef4444' : status === 'warning' ? '#f97316' : status === 'ok' ? '#22c55e' : '#94a3b8';
   const iconBg = status === 'alert' ? '#fef2f2' : status === 'warning' ? '#fff7ed' : status === 'ok' ? '#f0fdf4' : '#f8fafc';
   const badgeStyle = status === 'alert'
@@ -89,7 +90,24 @@ function AccordionSection({
         onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'none'}>
         <div style={{ width: 34, height: 34, borderRadius: 9, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>{icon}</div>
         <div style={{ flex: 1, textAlign: 'left' }}>
-          <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a' }}>{title}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a' }}>{title}</span>
+            {tooltip && (
+              <div style={{ position: 'relative', display: 'inline-flex' }}
+                onMouseEnter={() => setShowTooltip(true)}
+                onMouseLeave={() => setShowTooltip(false)}
+                onClick={e => e.stopPropagation()}>
+                <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#f1f5f9', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>i</div>
+                {showTooltip && (
+                  <div style={{ position: 'absolute', left: 22, top: -4, width: 300, background: '#0f172a', borderRadius: 10, padding: '12px 14px', fontSize: 12, color: '#fff', lineHeight: 1.7, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
+                    {tooltip.split('|').map((part, i) => (
+                      <div key={i} style={{ marginBottom: i < tooltip.split('|').length - 1 ? 8 : 0, paddingBottom: i < tooltip.split('|').length - 1 ? 8 : 0, borderBottom: i < tooltip.split('|').length - 1 ? '1px solid rgba(255,255,255,0.1)' : 'none' }}>{part.trim()}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
           {sub && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{sub}</div>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
@@ -199,24 +217,76 @@ function DiagRow({ d }: { d: any }) {
 function ShareButton({ analyseId }: { analyseId: string }) {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  const handleShare = async () => {
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowMenu(false);
+    };
+    if (showMenu) document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showMenu]);
+
+  const getShareUrl = async (): Promise<string | null> => {
     setLoading(true);
     const token = await getOrCreateShareToken(analyseId);
     setLoading(false);
-    if (!token) return;
-    const url = `${window.location.origin}/rapport/partage/${token}`;
+    if (!token) return null;
+    return `${window.location.origin}/rapport/partage/${token}`;
+  };
+
+  const handleCopy = async () => {
+    const url = await getShareUrl();
+    if (!url) return;
     await navigator.clipboard.writeText(url);
     setCopied(true);
+    setShowMenu(false);
     setTimeout(() => setCopied(false), 2500);
   };
 
+  const handleEmail = async () => {
+    const url = await getShareUrl();
+    if (!url) return;
+    setShowMenu(false);
+    const subject = encodeURIComponent('Rapport Verimo partagé avec vous');
+    const body = encodeURIComponent(`Bonjour,\n\nJe vous partage un rapport d'analyse immobilière généré par Verimo.\n\nVous pouvez le consulter ici :\n${url}\n\nBonne lecture,`);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  };
+
   return (
-    <button onClick={handleShare} disabled={loading}
-      style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 10, border: '1px solid #e2e8f0', background: copied ? '#f0fdf4' : '#f8fafc', color: copied ? '#16a34a' : '#64748b', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}>
-      {copied ? <Check size={14} /> : <Copy size={14} />}
-      {copied ? 'Lien copié !' : 'Partager'}
-    </button>
+    <div style={{ position: 'relative' }} ref={menuRef}>
+      <button onClick={() => setShowMenu(!showMenu)} disabled={loading}
+        style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 10, border: '1px solid #e2e8f0', background: copied ? '#f0fdf4' : '#f8fafc', color: copied ? '#16a34a' : '#64748b', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}>
+        {copied ? <Check size={14} /> : <Copy size={14} />}
+        {copied ? 'Lien copié !' : loading ? 'Chargement…' : 'Partager'}
+      </button>
+      {showMenu && (
+        <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.10)', zIndex: 100, overflow: 'hidden', minWidth: 200 }}>
+          <button onClick={handleCopy}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#0f172a', textAlign: 'left' as const }}
+            onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#f8fafc'}
+            onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'none'}>
+            <Copy size={14} style={{ color: '#64748b', flexShrink: 0 }} />
+            <div>
+              <div style={{ fontWeight: 600 }}>Copier le lien</div>
+              <div style={{ fontSize: 11, color: '#94a3b8' }}>Lien partageable sans compte</div>
+            </div>
+          </button>
+          <div style={{ height: 1, background: '#f1f5f9' }} />
+          <button onClick={handleEmail}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#0f172a', textAlign: 'left' as const }}
+            onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#f8fafc'}
+            onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'none'}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+            <div>
+              <div style={{ fontWeight: 600 }}>Envoyer par e-mail</div>
+              <div style={{ fontSize: 11, color: '#94a3b8' }}>Ouvre votre client mail</div>
+            </div>
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -275,7 +345,7 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
                 <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 100, background: '#f8fafc', border: '1px solid #edf2f7', color: '#64748b' }}>{getProfilLabel(rapport.profil)}</span>
                 <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 100, background: '#f8fafc', border: '1px solid #edf2f7', color: '#94a3b8' }}>Analysé le {rapport.date}</span>
               </div>
-              <button onClick={() => setDetailOpen(!detailOpen)}
+              <button onClick={(e) => { e.stopPropagation(); setDetailOpen(d => !d); }}
                 style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b', background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', width: 'fit-content' }}>
                 {detailOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />} Détail de la note
               </button>
@@ -368,9 +438,22 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
           <Star size={15} style={{ color: '#5bb8d4' }} />
           <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.12em' }}>AVIS VERIMO</span>
         </div>
-        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.88)', lineHeight: 1.85, margin: 0, fontFamily: 'Georgia, serif' }}>
-          {rapport.avis_verimo}
-        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {(rapport.avis_verimo || '')
+            .split(/\.\s+/)
+            .filter(s => s.trim().length > 20)
+            .reduce<string[][]>((acc, sentence, i, arr) => {
+              const groupIdx = Math.floor(i / Math.ceil(arr.length / 3));
+              if (!acc[groupIdx]) acc[groupIdx] = [];
+              acc[groupIdx].push(sentence.trim());
+              return acc;
+            }, [])
+            .map((group, i) => (
+              <p key={i} style={{ fontSize: 14, color: i === 0 ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.75)', lineHeight: 1.8, margin: 0, paddingTop: i > 0 ? 12 : 0, borderTop: i > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
+                {group.join('. ').replace(/\.+$/, '')}.
+              </p>
+            ))}
+        </div>
         {rapport.type !== 'complete' && (
           <div style={{ marginTop: 16, padding: '12px 14px', background: 'rgba(255,255,255,0.07)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', fontSize: 12, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6 }}>
             💡 Cette analyse porte sur un seul document. Pour un score /20 et un rapport complet du bien, lancez une <span style={{ color: '#5bb8d4', fontWeight: 600 }}>Analyse Complète</span>.
@@ -446,7 +529,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
   type ParticT = { annee?: string; copropietaires_presents_representes?: string; taux_tantiemes_pct?: string; quorum_note?: string; resolutions_refusees?: string[] };
   type VieT = { syndic?: SyndicT; participation_ag?: ParticT[]; tendance_participation?: string; analyse_participation?: string; travaux_votes_non_realises?: unknown[]; appels_fonds_exceptionnels?: unknown[]; questions_diverses_notables?: string[]; honoraires_syndic_evolution?: string };
   const vie = rapport.vie_copropriete as VieT | null;
-  const lot = rapport.lot_achete as LotT | null;
+  void (rapport.lot_achete as LotT | null); // lot utilisé uniquement dans TabLogement
 
   const travaux_realises = rapport.travaux_realises;
   const travaux_votes = rapport.travaux_votes;
@@ -476,22 +559,71 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         </button>
       </div>
 
+      {/* VIE DE LA COPRO - en premier */}
+      <AccordionSection
+        title="Vie de la copropriété" sub="Syndic · participation AG · résolutions" icon="🏢"
+        status={syndic?.tensions_detectees ? 'warning' : 'neutral'}
+        badge={participation.length > 0 ? `${participation.length} AG analysée${participation.length > 1 ? 's' : ''}` : 'Non disponible'}>
+
+        {syndic?.nom && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>
+            <Building2 size={14} style={{ color: '#7c3aed', flexShrink: 0, marginTop: 1 }} />
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{syndic.nom}</div>
+              {syndic.fin_mandat && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Mandat jusqu'en {syndic.fin_mandat}</div>}
+              {syndic.tensions_detectees && syndic.tensions_detail && (
+                <div style={{ fontSize: 12, color: '#92400e', marginTop: 6, padding: '6px 10px', background: '#fffbeb', borderRadius: 7 }}>{syndic.tensions_detail}</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {participation.length > 0 && (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr style={{ background: '#f8fafc' }}>
+                  {['Année', 'Participation', 'Taux', 'Note'].map(h => (
+                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {participation.map((p: ParticT, i: number) => (
+                  <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '9px 12px', fontWeight: 700, color: '#0f172a' }}>{p.annee ?? ''}</td>
+                    <td style={{ padding: '9px 12px', color: '#374151' }}>{p.copropietaires_presents_representes ?? '—'}</td>
+                    <td style={{ padding: '9px 12px', color: '#374151' }}>{p.taux_tantiemes_pct ?? '—'}</td>
+                    <td style={{ padding: '9px 12px' }}>
+                      {p.quorum_note && <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fffbeb', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 100 }}>{p.quorum_note}</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {(vie?.questions_diverses_notables ?? []).length > 0 && (
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>Questions diverses notables :</div>
+            {(vie?.questions_diverses_notables ?? []).map((q, i) => (
+              <div key={i} style={{ fontSize: 12, color: '#374151', padding: '6px 10px', background: '#f8fafc', borderRadius: 7, marginBottom: 4, border: '1px solid #edf2f7' }}>• {q}</div>
+            ))}
+          </div>
+        )}
+
+        {!syndic?.nom && participation.length === 0 && (
+          <p style={{ fontSize: 13, color: '#94a3b8' }}>Uploadez des PV d'AG pour obtenir ces informations.</p>
+        )}
+      </AccordionSection>
+
       {/* TRAVAUX */}
       <AccordionSection
         title="Travaux" sub="Réalisés · votés · évoqués" icon="🏗"
         status={hasTravauxAlert ? 'warning' : hasTravauxWarning ? 'ok' : 'ok'}
         badge={hasTravauxAlert ? `${travaux_evoques.length} vigilance${travaux_evoques.length > 1 ? 's' : ''}` : `${travaux_realises.length + travaux_votes.length} détectés`}
-        defaultOpen={hasTravauxAlert || allOpen}>
-
-        {/* Info-bulle */}
-        <div style={{ padding: '10px 14px', background: '#f0f9ff', borderRadius: 10, border: '1px solid #bae6fd', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-          <Info size={13} style={{ color: '#0284c7', flexShrink: 0, marginTop: 1 }} />
-          <div style={{ fontSize: 12, color: '#0369a1', lineHeight: 1.6 }}>
-            <strong>Réalisés</strong> — déjà effectués, intégrés à l'immeuble.{' '}
-            <strong>Votés</strong> — décidés en AG. S'ils l'ont été avant le compromis, c'est la charge du vendeur.{' '}
-            <strong>Évoqués non votés</strong> — mentionnés mais pas décidés. Si le vote a lieu après votre achat, vous en paierez une part.
-          </div>
-        </div>
+        tooltip="✅ Réalisés — déjà effectués, intégrés à l'immeuble.|🗳 Votés — décidés en AG. S'ils l'ont été avant le compromis, c'est la charge du vendeur.|⚠️ Évoqués non votés — mentionnés mais pas décidés. Si le vote a lieu après votre achat, vous en paierez une part.">
 
         {travaux_realises.length > 0 && (
           <div>
@@ -541,8 +673,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
       <AccordionSection
         title="Finances" sub="Budget · fonds travaux · charges" icon="💰"
         status={rapport.fonds_travaux_statut === 'insuffisant' || rapport.fonds_travaux_statut === 'absent' ? 'warning' : 'ok'}
-        badge={rapport.fonds_travaux_statut === 'conforme' ? 'Sain' : rapport.fonds_travaux_statut === 'insuffisant' ? 'Vigilance' : rapport.fonds_travaux_statut === 'absent' ? 'Absent' : 'Détecté'}
-        defaultOpen={rapport.fonds_travaux_statut === 'insuffisant' || rapport.fonds_travaux_statut === 'absent' || allOpen}>
+        badge={rapport.fonds_travaux_statut === 'conforme' ? 'Sain' : rapport.fonds_travaux_statut === 'insuffisant' ? 'Vigilance' : rapport.fonds_travaux_statut === 'absent' ? 'Absent' : 'Détecté'}>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: 10 }}>
           {rapport.charges_mensuelles > 0 && (
@@ -568,7 +699,6 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
             )}
           </div>
         )}
-        {/* Appels de fonds exceptionnels */}
         {(vie?.appels_fonds_exceptionnels?.length ?? 0) > 0 && (
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#d97706', marginBottom: 6 }}>Appels de fonds exceptionnels :</div>
@@ -576,7 +706,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
               const obj = typeof a === 'string' ? { motif: a } : a as Record<string, unknown>;
               return (
                 <div key={i} style={{ fontSize: 12, color: '#92400e', padding: '7px 10px', background: '#fffbeb', borderRadius: 8, marginBottom: 4 }}>
-                  • {String(obj.motif ?? obj.description ?? '')}{typeof obj.montant_total === 'number' ? ` — ${(obj.montant_total as number).toLocaleString('fr-FR')}€` : ''}
+                  • {String(obj.motif ?? obj.description ?? obj.libelle ?? 'Appel de fonds exceptionnel')}{typeof obj.montant_total === 'number' ? ` — ${(obj.montant_total as number).toLocaleString('fr-FR')}€` : typeof obj.montant === 'number' ? ` — ${(obj.montant as number).toLocaleString('fr-FR')}€` : ''}
                 </div>
               );
             })}
@@ -584,73 +714,11 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         )}
       </AccordionSection>
 
-      {/* VIE DE LA COPRO */}
-      <AccordionSection
-        title="Vie de la copropriété" sub="Syndic · participation AG · résolutions" icon="🏢"
-        status={syndic?.tensions_detectees ? 'warning' : 'neutral'}
-        badge={participation.length > 0 ? `${participation.length} AG analysée${participation.length > 1 ? 's' : ''}` : 'Non disponible'}
-        defaultOpen={allOpen}>
-
-        {syndic?.nom && (
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>
-            <Building2 size={14} style={{ color: '#7c3aed', flexShrink: 0, marginTop: 1 }} />
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{syndic.nom}</div>
-              {syndic.fin_mandat && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Mandat jusqu'en {syndic.fin_mandat}</div>}
-              {syndic.tensions_detectees && syndic.tensions_detail && (
-                <div style={{ fontSize: 12, color: '#92400e', marginTop: 6, padding: '6px 10px', background: '#fffbeb', borderRadius: 7 }}>{syndic.tensions_detail}</div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {participation.length > 0 && (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-              <thead>
-                <tr style={{ background: '#f8fafc' }}>
-                  {['Année', 'Participation', 'Taux', 'Note'].map(h => (
-                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {participation.map((p: ParticT, i: number) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '9px 12px', fontWeight: 700, color: '#0f172a' }}>{p.annee ?? ''}</td>
-                    <td style={{ padding: '9px 12px', color: '#374151' }}>{p.copropietaires_presents_representes ?? '—'}</td>
-                    <td style={{ padding: '9px 12px', color: '#374151' }}>{p.taux_tantiemes_pct ?? '—'}</td>
-                    <td style={{ padding: '9px 12px' }}>
-                      {p.quorum_note && <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fffbeb', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 100 }}>{p.quorum_note}</span>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Questions diverses */}
-        {(vie?.questions_diverses_notables ?? []).length > 0 && (
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>Questions diverses notables :</div>
-            {(vie?.questions_diverses_notables ?? []).map((q, i) => (
-              <div key={i} style={{ fontSize: 12, color: '#374151', padding: '6px 10px', background: '#f8fafc', borderRadius: 7, marginBottom: 4, border: '1px solid #edf2f7' }}>• {q}</div>
-            ))}
-          </div>
-        )}
-
-        {!syndic?.nom && participation.length === 0 && (
-          <p style={{ fontSize: 13, color: '#94a3b8' }}>Uploadez des PV d'AG pour obtenir ces informations.</p>
-        )}
-      </AccordionSection>
-
       {/* DIAGNOSTICS PARTIES COMMUNES */}
       <AccordionSection
         title="Diagnostics parties communes" sub="Amiante · plomb · termites · ERP" icon="📋"
         status={hasDiagAlert ? 'alert' : diagsCommuns.length > 0 ? 'ok' : 'neutral'}
-        badge={hasDiagAlert ? 'Alerte' : diagsCommuns.length > 0 ? `${diagsCommuns.length} détecté${diagsCommuns.length > 1 ? 's' : ''}` : 'Non détectés'}
-        defaultOpen={hasDiagAlert || allOpen}>
+        badge={hasDiagAlert ? 'Alerte' : diagsCommuns.length > 0 ? `${diagsCommuns.length} détecté${diagsCommuns.length > 1 ? 's' : ''}` : 'Non détectés'}>
 
         {diagsCommuns.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -658,7 +726,6 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
           </div>
         )}
 
-        {/* Message proactif */}
         <div style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <Info size={13} style={{ color: '#64748b', flexShrink: 0, marginTop: 1 }} />
           <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>
@@ -673,30 +740,6 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
             </div>
           </div>
         </div>
-
-        {/* Votre lot */}
-        {lot && (lot.quote_part_tantiemes || lot.fonds_travaux_alur || (lot.parties_privatives as string[])?.length > 0) && (
-          <div style={{ padding: '12px 14px', background: '#f0f9ff', borderRadius: 10, border: '1px solid #bae6fd' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#0369a1', marginBottom: 8 }}>VOTRE LOT DANS LA COPROPRIÉTÉ</div>
-            {lot.quote_part_tantiemes && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#374151', marginBottom: 4 }}>
-                <span>Quote-part tantièmes</span><span style={{ fontWeight: 600 }}>{lot.quote_part_tantiemes}</span>
-              </div>
-            )}
-            {lot.fonds_travaux_alur && (
-              <div style={{ fontSize: 12, color: '#0369a1', padding: '6px 0', borderTop: '1px solid #bae6fd', marginTop: 4 }}>
-                💰 Fonds travaux ALUR récupérable : {lot.fonds_travaux_alur} — cette somme vous revient à la signature.
-              </div>
-            )}
-            {(lot.parties_privatives as string[])?.length > 0 && (
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-                {(lot.parties_privatives as string[]).map((p, i) => (
-                  <span key={i} style={{ fontSize: 11, fontWeight: 600, color: '#2a7d9c', background: '#e0f2fe', border: '1px solid #bae6fd', padding: '2px 9px', borderRadius: 100 }}>{p}</span>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </AccordionSection>
     </div>
   );
@@ -870,7 +913,7 @@ function TabProcedures({ rapport }: { rapport: RapportData }) {
           <div key={i} style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
             <div style={{ padding: '14px 18px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 10 }}>
               <Gavel size={15} style={{ color: '#dc2626', flexShrink: 0 }} />
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', flex: 1 }}>{proc.label}</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', flex: 1 }}>{proc.label || proc.type || 'Procédure détectée'}</span>
               <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100, background: g.bg, border: `1px solid ${g.border}`, color: g.color }}>Gravité : {g.label}</span>
             </div>
             <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
