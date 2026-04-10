@@ -153,12 +153,11 @@ async function runAnalyse(params: {
   const { files, mode, profil, analyseId, apiKey, supabaseAdmin } = params;
 
   try {
-    // maxTokens au maximum du modèle pour ne jamais tronquer le JSON
     const maxTokens = 8192;
     const estimatedPages = files.reduce((acc, f) => acc + Math.ceil(f.data.length / 50000), 0);
-    // Single-call privilégié : PDFs envoyés directement à Claude comme dans le chat
-    // Map-Reduce uniquement si vraiment trop gros (>8 docs ou >150 pages estimées)
-    const useMapReduce = files.length > 8 || estimatedPages > 150;
+    // Single-call pour ≤9 docs ET ≤150 pages — PDFs envoyés directement comme dans le chat
+    // Map-Reduce uniquement si vraiment trop volumineux
+    const useMapReduce = files.length > 9 || estimatedPages > 150;
     console.log(`[Verimo] Strategie: ${useMapReduce ? 'Map-Reduce' : 'Single-call'} | ${files.length} docs | ~${estimatedPages} pages estimees`);
 
     let report: Record<string, unknown> | null = null;
@@ -171,28 +170,24 @@ async function runAnalyse(params: {
         userContent.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: files[i].data } });
         userContent.push({ type: 'text', text: `[Document ${i + 1}/${files.length} : ${files[i].name}]` });
       }
-      userContent.push({
-        type: 'text',
-        text: files.length === 1
-          ? 'Analyse ce document en profondeur. Extrais TOUTES les informations disponibles. Reponds avec un JSON COMPLET et valide, sans troncature.'
-          : `Voici les ${files.length} documents du dossier immobilier. Analyse-les ensemble de facon exhaustive en croisant toutes les informations. Extrais TOUT ce qui est disponible dans chaque document. Le JSON de reponse doit etre COMPLET et valide, ne jamais etre tronque.`
+      userContent.push({ type: 'text', text: files.length === 1
+        ? 'Analyse ce document en profondeur. Extrais TOUTES les informations. JSON COMPLET et valide, sans troncature.'
+        : `Voici les ${files.length} documents du dossier. Analyse-les ensemble de facon exhaustive. JSON COMPLET et valide, sans troncature.`
       });
       await updateProgress(supabaseAdmin, analyseId, 1, files.length, 'Analyse approfondie en cours...');
       console.log(`[Verimo] Appel Claude single — ${files.length} doc(s)`);
       const result = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens, apiKey });
-
       if (result.error === 'rate_limit' || result.error === 'overload') {
-        // Rate limit sur single-call → attendre 30s puis basculer en Map-Reduce
-        console.warn('[Verimo] Rate limit single-call — attente 30s puis Map-Reduce');
+        console.warn('[Verimo] Rate limit single-call — bascule Map-Reduce apres 30s');
         await sleep(30000);
-        aiError = undefined; // reset pour laisser le Map-Reduce prendre le relais
+        // Ne pas setter aiError → le bloc Map-Reduce va prendre le relais
       } else {
         aiError = result.error;
         if (!aiError) {
           report = parseJson<Record<string, unknown>>(result.text);
           if (!report) {
-            console.warn('[Verimo] JSON invalide single-call — retry apres 5s');
-            await sleep(5000);
+            console.warn('[Verimo] JSON invalide single-call — retry');
+            await sleep(3000);
             const retry = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens: 8192, apiKey });
             if (!retry.error) report = parseJson<Record<string, unknown>>(retry.text);
             else aiError = retry.error;
@@ -201,7 +196,7 @@ async function runAnalyse(params: {
       }
     }
 
-    // Map-Reduce : lancé initialement ou en fallback après rate_limit single-call
+    // Map-Reduce : lancé si trop de docs, ou en fallback après rate_limit single-call
     if (!report && !aiError) {
       console.log(`[Verimo] Map-Reduce — ${files.length} docs en sequence`);
       const summaries: string[] = [];
@@ -212,16 +207,16 @@ async function runAnalyse(params: {
           system: PROMPT_MAP_INTELLIGENT,
           userContent: [
             { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: files[i].data } },
-            { type: 'text', text: `Extrais TOUTES les informations de ce document sans rien omettre. Sois exhaustif sur les montants, dates, noms, decisions, et details techniques : ${files[i].name}` }
+            { type: 'text', text: `Extrais TOUTES les informations de ce document sans rien omettre : ${files[i].name}` }
           ],
           maxTokens: 4000,
           apiKey,
         });
         if (result.error === 'rate_limit' || result.error === 'overload') { aiError = result.error; break; }
         if (result.error) {
-          console.warn(`[Verimo] MAP ${i + 1} echec (${result.error}) — document ignore: ${files[i].name}`);
+          console.warn(`[Verimo] MAP ${i + 1} echec — doc ignore: ${files[i].name}`);
           documentsIgnores.push(files[i].name);
-          summaries.push(`=== Document ${i + 1} : ${files[i].name} ===\n(Document non lisible — ignoré)`);
+          summaries.push(`=== Document ${i + 1} : ${files[i].name} ===\n(Non lisible)`);
         } else {
           summaries.push(`=== Document ${i + 1} : ${files[i].name} ===\n${result.text}`);
         }
@@ -231,7 +226,7 @@ async function runAnalyse(params: {
       if (!aiError && summaries.length > 0) {
         await updateProgress(supabaseAdmin, analyseId, files.length, files.length, 'Synthèse croisée en cours...');
         console.log(`[Verimo] REDUCE — synthese de ${summaries.length} extractions`);
-        const reducePrompt = `Voici les extractions detaillees de ${files.length} documents immobiliers fournis par l acheteur.\nSynthetise-les en croisant TOUTES les informations pour produire le rapport final le plus complet et precis possible.\nNe perds aucune information importante. Le JSON doit etre COMPLET et valide, sans troncature.\n\n${summaries.join('\n\n')}`;
+        const reducePrompt = `Voici les extractions de ${files.length} documents immobiliers. Synthetise en croisant TOUTES les informations. JSON COMPLET et valide, sans troncature.\n\n${summaries.join('\n\n')}`;
         const result = await callAI({
           system: buildSystemPrompt(mode, profil),
           userContent: [{ type: 'text', text: reducePrompt }],
@@ -243,24 +238,22 @@ async function runAnalyse(params: {
           console.log('[Verimo] REDUCE reponse brute (500 chars):', result.text.slice(0, 500));
           report = parseJson<Record<string, unknown>>(result.text);
           if (!report) {
-            console.warn('[Verimo] JSON invalide — retry REDUCE');
+            console.warn('[Verimo] JSON invalide REDUCE — retry');
+            await sleep(5000);
             const retry = await callAI({
               system: buildSystemPrompt(mode, profil),
-              userContent: [{ type: 'text', text: reducePrompt + '\n\nIMPORTANT: Reponds UNIQUEMENT avec un JSON valide et COMPLET. Ne tronque pas le JSON.' }],
+              userContent: [{ type: 'text', text: reducePrompt + '\n\nIMPORTANT: JSON valide et COMPLET obligatoire.' }],
               maxTokens: 8192,
               apiKey,
             });
-            if (!retry.error) {
-              report = parseJson<Record<string, unknown>>(retry.text);
-              if (!report) console.error('[Verimo] JSON invalide apres retry. Debut:', retry.text.slice(0, 300));
-            }
+            if (!retry.error) report = parseJson<Record<string, unknown>>(retry.text);
+            if (!report) console.error('[Verimo] JSON invalide apres retry. Debut:', retry?.text?.slice(0, 300));
           }
         }
-
-        // Injecter les docs ignorés dans le rapport
+        // Injecter docs ignorés
         if (report && documentsIgnores.length > 0) {
           report.documents_ignores = documentsIgnores;
-          report.avertissement_docs = `${documentsIgnores.length} document(s) n'ont pas pu être lus et ont été ignorés : ${documentsIgnores.join(', ')}. Vérifiez qu'ils sont en format PDF non protégé.`;
+          report.avertissement_docs = `${documentsIgnores.length} document(s) non lisible(s) ignoré(s) : ${documentsIgnores.join(', ')}. Vérifiez qu'ils sont en PDF non protégé.`;
         }
       }
     }
