@@ -1,14 +1,21 @@
 // ══════════════════════════════════════════════════════════════
-// EDGE FUNCTION — analyser (v3 — EdgeRuntime.waitUntil)
-// Répond immédiatement au frontend, traite en arrière-plan
+// EDGE FUNCTION — analyser (v4 — Files API + Single-call)
+// - Upload chaque PDF via Files API Anthropic → file_id
+// - Single-call Claude avec tous les file_ids (requête légère)
+// - Suppression immédiate après analyse (RGPD)
+// - Gestion token limit + docs ignorés
 // ══════════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
+const ANTHROPIC_FILES_URL = 'https://api.anthropic.com/v1/files';
 const AI_MODEL = 'claude-sonnet-4-6';
 const AI_VERSION = '2023-06-01';
+const FILES_BETA = 'files-api-2025-04-14';
 const STORAGE_BUCKET = 'analyse-temp';
+const MAX_TOKENS_OUTPUT = 8192;
+const WARN_TOTAL_MB = 150;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -23,14 +30,10 @@ function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 function parseJson<T>(raw: string): T | null {
   try {
-    // Nettoyer les backticks et espaces
     let clean = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-    // Trouver le premier { et le dernier } pour extraire le JSON
     const start = clean.indexOf('{');
     const end = clean.lastIndexOf('}');
-    if (start !== -1 && end !== -1 && end > start) {
-      clean = clean.slice(start, end + 1);
-    }
+    if (start !== -1 && end !== -1 && end > start) clean = clean.slice(start, end + 1);
     return JSON.parse(clean) as T;
   } catch (e) {
     console.error('[Verimo] parseJson error:', e, 'raw debut:', raw.slice(0, 100));
@@ -52,22 +55,55 @@ async function blobToBase64(blob: Blob): Promise<string> {
   return btoa(chunks.join(''));
 }
 
-async function callAI(params: {
-  system: string;
-  userContent: unknown[];
-  maxTokens: number;
-  apiKey: string;
-}): Promise<{ text: string; error?: string }> {
+async function uploadToFilesAPI(file: FileInput, apiKey: string): Promise<string | null> {
+  try {
+    const binaryStr = atob(file.data);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    const formData = new FormData();
+    formData.append('file', blob, file.name);
+    const res = await fetch(ANTHROPIC_FILES_URL, {
+      method: 'POST',
+      headers: { 'x-api-key': apiKey, 'anthropic-version': AI_VERSION, 'anthropic-beta': FILES_BETA },
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      console.error(`[Verimo] Files API upload ${res.status} "${file.name}":`, err);
+      return null;
+    }
+    const data = await res.json() as { id: string };
+    console.log(`[Verimo] Uploadé "${file.name}" → ${data.id}`);
+    return data.id;
+  } catch (err) {
+    console.error(`[Verimo] Erreur upload "${file.name}":`, err);
+    return null;
+  }
+}
+
+async function deleteFromFilesAPI(fileId: string, apiKey: string): Promise<void> {
+  try {
+    await fetch(`${ANTHROPIC_FILES_URL}/${fileId}`, {
+      method: 'DELETE',
+      headers: { 'x-api-key': apiKey, 'anthropic-version': AI_VERSION, 'anthropic-beta': FILES_BETA },
+    });
+    console.log(`[Verimo] Supprimé: ${fileId}`);
+  } catch { console.warn(`[Verimo] Echec suppression ${fileId}`); }
+}
+
+async function callAI(params: { system: string; userContent: unknown[]; maxTokens: number; apiKey: string }): Promise<{ text: string; error?: string }> {
   const { system, userContent, maxTokens, apiKey } = params;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const res = await fetch(ANTHROPIC_API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': AI_VERSION },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': AI_VERSION, 'anthropic-beta': FILES_BETA },
         body: JSON.stringify({ model: AI_MODEL, max_tokens: maxTokens, system, messages: [{ role: 'user', content: userContent }] }),
       });
       if (res.status === 429) { if (attempt < 3) { await sleep(Math.pow(2, attempt) * 5000); continue; } return { text: '', error: 'rate_limit' }; }
       if (res.status === 529 || res.status === 503) { if (attempt < 3) { await sleep(10000); continue; } return { text: '', error: 'overload' }; }
+      if (res.status === 413) return { text: '', error: 'request_too_large' };
       if (!res.ok) { const e = await res.text(); console.error(`[Verimo] Anthropic ${res.status}:`, e); return { text: '', error: `api_error_${res.status}` }; }
       const d = await res.json();
       const text = d.content?.find((b: { type: string }) => b.type === 'text')?.text ?? '';
@@ -78,46 +114,6 @@ async function callAI(params: {
   return { text: '', error: 'max_retries' };
 }
 
-
-
-// ── Prompt MAP intelligent par type de document ──────────────
-const PROMPT_MAP_INTELLIGENT = `Tu es le moteur d extraction de documents immobiliers de Verimo.
-Tu lis un document immobilier et tu en extrais les informations cles de facon structuree.
-Extrais TOUTES les informations disponibles, y compris les details en bas de page, annexes et mentions secondaires.
-
-Detecte d abord le type : PV_AG | REGLEMENT_COPRO | APPEL_CHARGES | DPE | DIAGNOSTIC | DDT | COMPROMIS | ETAT_DATE | TAXE_FONCIERE | AUTRE
-
-Selon le type detecte, extrais en priorite :
-- PV_AG : participation (presents/representes/tantiemes), travaux votes avec montants et statut, appels fonds exceptionnels, honoraires syndic, questions diverses, resolutions refusees, tensions syndic
-- REGLEMENT_COPRO : tantiemes du lot, restrictions usage, parties privatives du lot (cave, parking)
-- APPEL_CHARGES : quote-part lot en tantiemes, charges courantes vs exceptionnelles, budget previsionnel vs realise, fonds travaux ALUR
-- DPE : etiquette energie et GES, type chauffage, date diagnostic (ALERTE si avant 01/07/2021), conso kWh/m2/an, preconisations travaux
-- TAXE_FONCIERE : montant annuel, annee, adresse
-- DIAGNOSTIC : type, resultat, date, validite, travaux preconises
-- COMPROMIS : conditions suspensives, date jouissance, repartition travaux vendeur/acheteur
-- ETAT_DATE : impayes lot, provisions non soldees, quote-part fonds travaux ALUR
-
-Reponds UNIQUEMENT en JSON strict, sans texte avant ou apres :
-{
-  "type_document": "PV_AG",
-  "annee_document": "2024 ou null",
-  "resume": "resume factuel en 3-5 phrases avec les chiffres cles",
-  "points_positifs": ["point positif detecte"],
-  "points_vigilance": ["point de vigilance detecte"],
-  "travaux_votes": [{"description": "desc", "montant": 45000, "statut": "vote", "date_vote": "2024-01-15"}],
-  "travaux_evoques": ["travaux mentionnes sans vote"],
-  "appels_fonds_exceptionnels": [{"description": "desc", "montant_total": 80000, "date_vote": "2024"}],
-  "procedures": ["procedures judiciaires"],
-  "infos_financieres": "resume charges, fonds travaux, impayes avec chiffres precis",
-  "diagnostics_detectes": [{"type": "DPE", "resultat": "Classe D", "date": "2023-06-15", "alerte": null}],
-  "lot_info": {"tantiemes": "45/1000 ou null", "parties_privatives": [], "impayes": null, "fonds_travaux_alur": null},
-  "syndic": {"nom": "nom ou null", "fin_mandat": "2026 ou null", "tensions": false},
-  "participation_ag": {"taux": "72% ou null", "presents_representes": "732/1016 ou null"},
-  "montants_cles": ["tout montant important avec contexte"],
-  "alertes_critiques": ["alerte urgente si detectee"]
-}`;
-
-// ── Prompt REDUCE : rapport final ────────────────────────────
 function buildSystemPrompt(mode: string, profil: string): string {
   const p = profil === 'invest' ? 'investissement locatif' : 'residence principale';
   if (mode === 'apercu_complete' || mode === 'apercu_document') {
@@ -137,114 +133,133 @@ REGLES DE NOTATION /20 (profil ${p}) :
 - Fonds travaux nul : -2. DPE F (RP) : -2 / DPE G (RP) : -3. DPE F (invest) : -4 / DPE G (invest) : -6.
 - Procedures judiciaires : -2 a -4. Fonds travaux conforme legal : +0.5. DPE A : +1 / DPE B ou C : +0.5.
 
+REGLES IMPORTANTES :
+- finances.budget_total_copro = budget annuel TOTAL copropriete, PAS la quote-part du lot
+- finances.charges_annuelles_lot = charges annuelles du lot (quote-part acheteur)
+- diagnostics : perimetre OBLIGATOIRE = "lot_privatif" ou "parties_communes"
+- procedures : message doit expliquer clairement en langage simple l origine et les implications
+- documents_analyses : lister TOUS les documents avec leur type detecte
+- En cas de contexte tres long, priorise : PV AG > DDT > diagnostics > appels charges > RCP articles 1-30
+
 Reponds UNIQUEMENT en JSON strict, sans texte avant ou apres :
-{"titre":"adresse ou Analyse complete","type_bien":"appartement","score":14.5,"score_niveau":"Bien sain","recommandation":"Acheter","resume":"4-5 phrases","points_forts":[],"points_vigilance":[],"travaux":{"votes":[],"evoques":[],"estimation_totale":null},"finances":{"charges_annuelles":null,"fonds_travaux":null,"fonds_travaux_statut":"non_mentionne","impayes":null},"procedures":[],"diagnostics_resume":"resume DPE et diagnostics","diagnostics":[],"documents_manquants":[],"negociation":{"applicable":false,"elements":[]},"risques_financiers":"estimation","vie_copropriete":{"syndic":{"nom":null,"fin_mandat":null,"tensions_detectees":false,"tensions_detail":null},"participation_ag":[],"tendance_participation":"Non determinable","analyse_participation":"analyse","travaux_votes_non_realises":[],"appels_fonds_exceptionnels":[],"questions_diverses_notables":[]},"lot_achete":{"quote_part_tantiemes":null,"parties_privatives":[],"impayes_detectes":null,"fonds_travaux_alur":null,"travaux_votes_charge_vendeur":[],"restrictions_usage":[],"points_specifiques":[]},"avis_verimo":"Avis final. Ce rapport est etabli uniquement a partir des documents analyses et ne remplace pas l avis d un professionnel de l immobilier."}`;
+{"titre":"adresse complete","type_bien":"appartement|maison|maison_copro","annee_construction":null,"score":14.5,"score_niveau":"Bien sain","resume":"4-5 phrases","points_forts":[],"points_vigilance":[],"travaux":{"realises":[{"label":"desc","annee":"2021","montant_estime":35000,"justificatif":true}],"votes":[{"label":"desc","annee":"2027","montant_estime":4500,"charge_vendeur":false}],"evoques":[{"label":"desc","annee":null,"montant_estime":null,"precision":"contexte"}],"estimation_totale":null},"finances":{"budget_total_copro":null,"charges_annuelles_lot":null,"fonds_travaux":null,"fonds_travaux_statut":"non_mentionne|conforme|insuffisant|absent","impayes":null,"type_chauffage":null},"procedures":[{"label":"Type de procedure","type":"copro_vs_syndic|impayes|contentieux|autre","gravite":"faible|moderee|elevee","message":"Explication claire 2-3 phrases"}],"diagnostics_resume":"resume global","diagnostics":[{"type":"DPE|ELECTRICITE|GAZ|AMIANTE|PLOMB|TERMITES|ERP|AUTRE","label":"nom complet","perimetre":"lot_privatif|parties_communes","localisation":"localisation","resultat":"resultat","presence":"detectee|absence|non_realise","alerte":null}],"documents_analyses":[{"type":"PV_AG|REGLEMENT_COPRO|APPEL_CHARGES|DPE|DDT|DIAGNOSTIC|COMPROMIS|ETAT_DATE|TAXE_FONCIERE|CARNET_ENTRETIEN|AUTRE","annee":null,"nom":"nom fichier"}],"documents_manquants":[],"negociation":{"applicable":false,"elements":[]},"vie_copropriete":{"syndic":{"nom":null,"fin_mandat":null,"tensions_detectees":false,"tensions_detail":null},"participation_ag":[{"annee":"2024","copropietaires_presents_representes":"18/24","taux_tantiemes_pct":"72%","quorum_note":null}],"tendance_participation":"Non determinable","analyse_participation":"analyse","travaux_votes_non_realises":[],"appels_fonds_exceptionnels":[],"questions_diverses_notables":[]},"lot_achete":{"quote_part_tantiemes":null,"parties_privatives":[],"impayes_detectes":null,"fonds_travaux_alur":null,"travaux_votes_charge_vendeur":[],"restrictions_usage":[],"points_specifiques":[]},"categories":{"travaux":{"note":4,"note_max":5},"procedures":{"note":4,"note_max":4},"finances":{"note":3,"note_max":4},"diags_privatifs":{"note":2,"note_max":4},"diags_communs":{"note":1.5,"note_max":3}},"avis_verimo":"Avis structure en 2-3 paragraphes distincts. Ce rapport est etabli uniquement a partir des documents analyses et ne remplace pas l avis d un professionnel de l immobilier."}`;
 }
 
-// ── Fonction principale d'analyse (tourne en background sans limite) ──
 async function runAnalyse(params: {
-  files: FileInput[];
-  mode: string;
-  profil: string;
-  analyseId: string;
-  apiKey: string;
-  supabaseAdmin: SupabaseClient;
+  files: FileInput[]; mode: string; profil: string;
+  analyseId: string; apiKey: string; supabaseAdmin: SupabaseClient;
 }): Promise<void> {
   const { files, mode, profil, analyseId, apiKey, supabaseAdmin } = params;
+  const uploadedFileIds: string[] = [];
 
   try {
-    const maxTokens = 8192;
-    // Sonnet 4.6 supporte 600 pages PDF par requête → Single-call pour tous les dossiers
-    console.log(`[Verimo] Single-call | ${files.length} docs | modele: ${AI_MODEL}`);
+    console.log(`[Verimo] Debut — ${files.length} doc(s) | mode: ${mode} | modele: ${AI_MODEL}`);
 
-    let report: Record<string, unknown> | null = null;
-    let aiError: string | undefined;
-    const documentsIgnores: string[] = [];
-
-    // Construire le contenu — PDFs envoyés directement comme dans le chat
-    const userContent: unknown[] = [];
-    for (let i = 0; i < files.length; i++) {
-      try {
-        userContent.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: files[i].data } });
-        userContent.push({ type: 'text', text: `[Document ${i + 1}/${files.length} : ${files[i].name}]` });
-      } catch {
-        console.warn(`[Verimo] Doc ${i + 1} ignoré (erreur encodage): ${files[i].name}`);
-        documentsIgnores.push(files[i].name);
-      }
+    const totalMB = files.reduce((acc, f) => acc + (f.data.length * 3 / 4 / 1024 / 1024), 0);
+    if (totalMB > WARN_TOTAL_MB) {
+      console.warn(`[Verimo] Dossier volumineux: ~${Math.round(totalMB)}MB`);
     }
-    userContent.push({ type: 'text', text: files.length === 1
-      ? 'Analyse ce document en profondeur. Extrais TOUTES les informations disponibles. Reponds avec un JSON COMPLET et valide, sans troncature.'
-      : `Voici les ${files.length} documents du dossier immobilier. Analyse-les ensemble de facon exhaustive en croisant toutes les informations de chaque document. Reponds avec un JSON COMPLET et valide, sans troncature.`
+
+    // ── Upload chaque PDF vers Files API ─────────────────────
+    const documentsIgnores: string[] = [];
+    const userContent: unknown[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      await updateProgress(supabaseAdmin, analyseId, i, files.length, `Envoi document ${i + 1}/${files.length}...`);
+
+      const fileId = await uploadToFilesAPI(files[i], apiKey);
+      if (!fileId) {
+        console.warn(`[Verimo] Doc ignoré: ${files[i].name}`);
+        documentsIgnores.push(files[i].name);
+        continue;
+      }
+
+      uploadedFileIds.push(fileId);
+      userContent.push({ type: 'document', source: { type: 'file', file_id: fileId } });
+      userContent.push({ type: 'text', text: `[Document ${i + 1}/${files.length} : ${files[i].name}]` });
+    }
+
+    if (userContent.length === 0) throw new Error('Aucun document uploadé');
+
+    const nbDocs = uploadedFileIds.length;
+    userContent.push({
+      type: 'text',
+      text: nbDocs === 1
+        ? 'Analyse ce document en profondeur. Extrais TOUTES les informations. JSON COMPLET et valide, sans troncature.'
+        : `Voici les ${nbDocs} documents du dossier. Analyse-les ensemble de facon exhaustive. JSON COMPLET et valide, sans troncature.`,
     });
 
-    await updateProgress(supabaseAdmin, analyseId, 1, files.length, 'Analyse approfondie en cours...');
-    console.log(`[Verimo] Appel Claude — ${files.length} doc(s)`);
+    // ── Single-call Claude ───────────────────────────────────
+    await updateProgress(supabaseAdmin, analyseId, files.length, files.length, 'Analyse approfondie en cours...');
+    console.log(`[Verimo] Single-call — ${nbDocs} doc(s) via Files API`);
 
-    const result = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens, apiKey });
+    let result = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
+    let report = result.error ? null : parseJson<Record<string, unknown>>(result.text);
 
-    if (result.error) {
-      // Si erreur 400 sur un doc individuel → retenter sans les docs potentiellement trop gros
-      if (result.error.includes('400')) {
-        console.warn('[Verimo] Erreur 400 — possible doc trop gros, on logue pour debug');
-      }
-      aiError = result.error;
-    } else {
-      report = parseJson<Record<string, unknown>>(result.text);
-      if (!report) {
-        console.warn('[Verimo] JSON invalide — retry dans 3s');
-        await sleep(3000);
-        const retry = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens: 8192, apiKey });
-        if (!retry.error) {
-          report = parseJson<Record<string, unknown>>(retry.text);
-          if (!report) console.error('[Verimo] JSON invalide apres retry. Debut:', retry.text.slice(0, 300));
-        } else {
-          aiError = retry.error;
-        }
-      }
+    if (!result.error && !report) {
+      console.warn('[Verimo] JSON invalide — retry 3s');
+      await sleep(3000);
+      result = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
+      report = result.error ? null : parseJson<Record<string, unknown>>(result.text);
     }
 
-    // Injecter les docs ignorés si besoin
-    if (report && documentsIgnores.length > 0) {
-      report.documents_ignores = documentsIgnores;
-      report.avertissement_docs = `${documentsIgnores.length} document(s) non lisible(s) ignoré(s) : ${documentsIgnores.join(', ')}. Vérifiez qu'ils sont en PDF non protégé.`;
-    }
+    // ── Suppression immédiate RGPD ───────────────────────────
+    console.log(`[Verimo] Suppression RGPD de ${uploadedFileIds.length} fichier(s)`);
+    await Promise.all(uploadedFileIds.map(id => deleteFromFilesAPI(id, apiKey)));
 
-    if (aiError || !report) {
-      console.error('[Verimo] Echec analyse:', aiError || 'report null');
-      await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: aiError || 'parse_error' }).eq('id', analyseId);
+    // ── Gestion erreurs ──────────────────────────────────────
+    if (result.error || !report) {
+      const msg = result.error === 'rate_limit' ? 'Service surchargé. Réessayez dans quelques minutes.'
+        : result.error === 'overload' ? 'Service indisponible. Réessayez dans quelques minutes.'
+        : !report ? 'Erreur de génération du rapport. Réessayez ou contactez le support.'
+        : `Erreur inattendue (${result.error}). Contactez le support.`;
+      console.error('[Verimo] Echec:', result.error || 'report null');
+      await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: msg }).eq('id', analyseId);
       return;
     }
 
+    if (documentsIgnores.length > 0) {
+      report.documents_ignores = documentsIgnores;
+      report.avertissement_docs = `${documentsIgnores.length} document(s) ignoré(s) : ${documentsIgnores.join(', ')}. Vérifiez qu'ils sont en PDF non protégé.`;
+    }
+
+    // ── Sauvegarde ───────────────────────────────────────────
     const isApercu = mode.startsWith('apercu');
     const updateData: Record<string, unknown> = {
       status: 'completed',
       progress_current: files.length,
       progress_total: files.length,
-      progress_message: documentsIgnores.length > 0
-        ? `Rapport prêt — ${documentsIgnores.length} doc(s) non lisible(s) ignoré(s)`
-        : 'Rapport prêt !',
-      title: (report.titre as string) || 'Analyse immobiliere',
+      progress_message: documentsIgnores.length > 0 ? `Rapport prêt — ${documentsIgnores.length} doc(s) ignoré(s)` : 'Rapport prêt !',
+      title: (report.titre as string) || 'Analyse immobilière',
       score: (report.score as number) ?? null,
       avis_verimo: (report.avis_verimo as string) || null,
       profil,
     };
+
     if (isApercu) { updateData.apercu = report; updateData.is_preview = true; }
     else { updateData.result = report; updateData.paid = true; }
 
     const { error: updateError } = await supabaseAdmin.from('analyses').update(updateData).eq('id', analyseId);
     if (updateError) {
       console.error('[Verimo] ERREUR UPDATE FINAL:', updateError.message);
-      await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: 'Erreur sauvegarde: ' + updateError.message }).eq('id', analyseId);
+      await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: 'Erreur sauvegarde. Contactez le support.' }).eq('id', analyseId);
     } else {
-      console.log(`[Verimo] Analyse ${analyseId} terminee avec succes.`);
+      console.log(`[Verimo] Analyse ${analyseId} terminée avec succès.`);
     }
+
   } catch (err) {
     console.error('[Verimo] Erreur background:', err);
-    await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: 'Erreur inattendue' }).eq('id', analyseId);
+    if (uploadedFileIds.length > 0) {
+      console.log('[Verimo] Nettoyage RGPD après erreur...');
+      await Promise.all(uploadedFileIds.map(id => deleteFromFilesAPI(id, apiKey)));
+    }
+    await supabaseAdmin.from('analyses').update({
+      status: 'failed',
+      progress_message: 'Erreur inattendue. Contactez le support si le problème persiste.',
+    }).eq('id', analyseId);
   }
 }
 
-// ── Handler HTTP : reçoit la requête, lance le background job, répond immédiatement ──
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
@@ -268,12 +283,11 @@ Deno.serve(async (req) => {
     const { analyseId, mode, profil } = body;
     if (!analyseId || !mode) return new Response(JSON.stringify({ error: 'missing_params' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
-    console.log(`[Verimo] Reception requete — id:${analyseId} mode:${mode}`);
+    console.log(`[Verimo] Requête reçue — id:${analyseId} mode:${mode}`);
 
-    // Télécharger les fichiers depuis Storage
     let files: FileInput[] = [];
     if (body.storagePaths?.length) {
-      console.log(`[Verimo] Download de ${body.storagePaths.length} fichier(s)...`);
+      console.log(`[Verimo] Download ${body.storagePaths.length} fichier(s) depuis Storage...`);
       for (let i = 0; i < body.storagePaths.length; i++) {
         const { data, error } = await supabaseAdmin.storage.from(STORAGE_BUCKET).download(body.storagePaths[i]);
         if (error || !data) { console.error(`[Verimo] Echec download: ${body.storagePaths[i]}`); continue; }
@@ -289,18 +303,13 @@ Deno.serve(async (req) => {
 
     if (files.length === 0) return new Response(JSON.stringify({ error: 'no_files' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
-    // Marquer en cours
     await supabaseAdmin.from('analyses').update({ status: 'processing' }).eq('id', analyseId);
-    await updateProgress(supabaseAdmin, analyseId, 0, files.length, `Analyse de ${files.length} document(s)...`);
+    await updateProgress(supabaseAdmin, analyseId, 0, files.length, `Préparation de ${files.length} document(s)...`);
 
-    // Lancer le traitement en arrière-plan (sans limite de temps)
     EdgeRuntime.waitUntil(runAnalyse({ files, mode, profil, analyseId, apiKey, supabaseAdmin }));
 
-    // Répondre immédiatement au frontend
-    console.log(`[Verimo] Background job lance pour ${analyseId} — reponse immediate`);
-    return new Response(JSON.stringify({ success: true, analyseId, async: true }), {
-      headers: { ...CORS, 'Content-Type': 'application/json' }
-    });
+    console.log(`[Verimo] Background job lancé pour ${analyseId}`);
+    return new Response(JSON.stringify({ success: true, analyseId, async: true }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
 
   } catch (err) {
     console.error('[Verimo] Erreur handler:', err);
