@@ -406,8 +406,30 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
    ONGLET SYNTHÈSE
 ══════════════════════════════════ */
 function TabSynthese({ rapport }: { rapport: RapportData }) {
+  const docsIgnores = (rapport as Record<string, unknown>).documents_ignores as string[] | undefined;
+  const avertissement = (rapport as Record<string, unknown>).avertissement_docs as string | undefined;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      {/* Avertissement docs ignorés */}
+      {docsIgnores && docsIgnores.length > 0 && (
+        <div style={{ padding: '12px 16px', background: '#fffbeb', borderRadius: 12, border: '1px solid #fde68a', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <AlertTriangle size={15} style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }} />
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 3 }}>
+              {docsIgnores.length} document{docsIgnores.length > 1 ? 's' : ''} non lisible{docsIgnores.length > 1 ? 's' : ''} — ignoré{docsIgnores.length > 1 ? 's' : ''}
+            </div>
+            <div style={{ fontSize: 12, color: '#92400e', lineHeight: 1.5 }}>
+              {avertissement || `Les fichiers suivants n'ont pas pu être lus : ${docsIgnores.join(', ')}. Vérifiez qu'ils sont bien au format PDF non protégé.`}
+            </div>
+            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
+              {docsIgnores.map((d, i) => (
+                <span key={i} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, background: '#fef3c7', border: '1px solid #fde68a', color: '#92400e' }}>{d}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       {/* Résumé */}
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '20px 22px' }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 10 }}>RÉSUMÉ</div>
@@ -1244,6 +1266,7 @@ export default function RapportPage() {
   const isShared = !!shareToken;
 
   const [showReupload, setShowReupload] = useState(action === 'reupload');
+  const [showComplement, setShowComplement] = useState(action === 'complement');
   const [activeTab, setActiveTab] = useState<TabId>('synthese');
   const [loading, setLoading] = useState(true);
   const [rapport, setRapport] = useState<RapportData | null>(null);
@@ -1447,32 +1470,55 @@ export default function RapportPage() {
         {activeTab === 'procedures' && isComplete && <TabProcedures rapport={rapport} />}
         {activeTab === 'documents' && isComplete && <TabDocuments rapport={rapport} />}
 
-        {/* Bannière 7 jours */}
+        {/* Bannière 7 jours - en haut, bien visible */}
         {isComplete && !rapport.is_preview && rapport.regeneration_deadline && (() => {
           const deadline = new Date(rapport.regeneration_deadline);
           const diffDays = Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
           const expired = diffDays <= 0;
           const urgent = diffDays <= 2 && !expired;
+          if (expired) return null; // On n'affiche plus rien si expiré (pas utile d'encombrer)
           return (
-            <div style={{ marginTop: 6, padding: '14px 18px', borderRadius: 12, background: expired ? '#f8fafc' : urgent ? '#fffbeb' : '#f0fdf4', border: `1px solid ${expired ? '#e2e8f0' : urgent ? '#fde68a' : '#bbf7d0'}`, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <RefreshCw size={15} style={{ color: expired ? '#94a3b8' : urgent ? '#d97706' : '#16a34a', flexShrink: 0 }} />
+            <div style={{ padding: '14px 18px', borderRadius: 12, background: urgent ? '#fffbeb' : '#f0fdf4', border: `1.5px solid ${urgent ? '#fde68a' : '#bbf7d0'}`, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <RefreshCw size={15} style={{ color: urgent ? '#d97706' : '#16a34a', flexShrink: 0 }} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: expired ? '#94a3b8' : urgent ? '#92400e' : '#166534', marginBottom: 2 }}>
-                  {expired ? 'Délai de complétion expiré' : `Vous pouvez compléter ce dossier — encore ${diffDays} jour${diffDays > 1 ? 's' : ''}`}
+                <div style={{ fontSize: 13, fontWeight: 700, color: urgent ? '#92400e' : '#166534', marginBottom: 2 }}>
+                  Vous avez encore {diffDays} jour{diffDays > 1 ? 's' : ''} pour compléter ce dossier gratuitement
                 </div>
-                <div style={{ fontSize: 12, color: expired ? '#cbd5e1' : '#64748b' }}>
-                  {expired ? 'Le délai de 7 jours pour ajouter des documents est dépassé.' : 'Ajoutez des documents oubliés et obtenez un rapport mis à jour gratuitement.'}
+                <div style={{ fontSize: 12, color: '#64748b' }}>
+                  Ajoutez des documents manquants (DDT, règlement de copropriété, appels de charges…) et obtenez un rapport mis à jour.
                 </div>
               </div>
-              {!expired && (
-                <button onClick={() => window.location.href = `/dashboard/rapport?id=${id}&action=complement`}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 9, border: 'none', background: urgent ? '#d97706' : '#16a34a', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
-                  <RefreshCw size={12} /> Compléter
-                </button>
-              )}
+              <button onClick={() => setShowComplement(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 9, border: 'none', background: urgent ? '#d97706' : '#16a34a', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                <RefreshCw size={13} /> Compléter le dossier
+              </button>
             </div>
           );
         })()}
+
+        {/* Modal complétion dossier */}
+        {showComplement && (
+          <div style={{ background: '#fff', borderRadius: 16, border: '2px solid #2a7d9c', padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Compléter votre dossier</div>
+                <div style={{ fontSize: 13, color: '#64748b' }}>Uploadez de nouveaux documents — le rapport sera régénéré automatiquement.</div>
+              </div>
+              <button onClick={() => setShowComplement(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 18 }}>✕</button>
+            </div>
+            <div style={{ padding: '12px 14px', background: '#f0f9ff', borderRadius: 10, border: '1px solid #bae6fd', fontSize: 12, color: '#0369a1', lineHeight: 1.6 }}>
+              ℹ️ Pour ajouter des documents : allez dans <strong>Nouvelle analyse</strong>, uploadez les documents supplémentaires et sélectionnez le même bien. La mise à jour sera gratuite dans les 7 jours suivant l'analyse initiale.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <Link to="/dashboard/nouvelle-analyse" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 20px', borderRadius: 10, background: '#0f2d3d', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
+                Aller à Nouvelle analyse →
+              </Link>
+              <button onClick={() => setShowComplement(false)} style={{ padding: '11px 16px', borderRadius: 10, border: '1px solid #edf2f7', background: '#f8fafc', color: '#64748b', fontSize: 13, cursor: 'pointer' }}>
+                Annuler
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div style={{ padding: '14px 18px', background: '#fff', borderRadius: 12, border: '1px solid #edf2f7', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
