@@ -11,7 +11,7 @@ const ANTHROPIC_FILES_URL = 'https://api.anthropic.com/v1/files';
 const AI_MODEL = 'claude-sonnet-4-6';
 const AI_VERSION = '2023-06-01';
 const FILES_BETA = 'files-api-2025-04-14';
-const MAX_TOKENS_OUTPUT = 8192;
+const MAX_TOKENS_OUTPUT = 64000;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
