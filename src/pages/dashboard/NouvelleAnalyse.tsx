@@ -156,23 +156,20 @@ export default function NouvelleAnalyse() {
   useEffect(() => {
     if (step !== 'analyse') { setAnimatedProgress(0); return; }
     if (animRef.current) clearInterval(animRef.current);
-
-    // Vitesse d'avance selon la zone :
-    // 0-90% : suit le vrai progress rapidement
-    // 90-98% : avance très lentement pour simuler l'attente Claude
     animRef.current = setInterval(() => {
       setAnimatedProgress(prev => {
         const target = progress;
-        if (prev < target) {
-          // Rattraper le vrai progress
-          return Math.min(prev + 0.5, target);
-        }
-        // Au-delà du vrai progress → avance très lentement jusqu'à 98%
-        if (prev >= 98) return 98;
-        const speed = prev < 93 ? 0.3 : prev < 96 ? 0.1 : 0.03;
-        return prev + speed;
+        // Rattraper le vrai progress rapidement
+        if (prev < target - 1) return Math.min(prev + 1, target);
+        if (prev < target) return target;
+        // Continuer lentement pour simuler l'activité pendant l'attente Claude
+        if (prev < 44)  return prev + 0.4;   // Phase upload : rapide
+        if (prev < 84)  return prev + 0.08;  // Phase analyse : lente
+        if (prev < 94)  return prev + 0.04;  // Phase synthèse : très lente
+        if (prev < 98)  return prev + 0.015; // Phase rapport : ultra lente
+        return 98; // Jamais 100% avant confirmation serveur
       });
-    }, 100);
+    }, 150);
     return () => { if (animRef.current) clearInterval(animRef.current); };
   }, [step, progress]);
 
@@ -480,13 +477,12 @@ export default function NouvelleAnalyse() {
     const pct = Math.round(animatedProgress);
     const docsTotal = files.length;
 
-    // Étapes avec paliers réels du traitement
+    // Étapes alignées sur la nouvelle architecture 2 Edge Functions
     const etapes = [
-      { id: 'upload',    label: 'Envoi des documents',         detail: 'Transfert sécurisé vers nos serveurs',          seuil: 0,  fin: 30,  couleur: '#2a7d9c', icon: '📤' },
-      { id: 'lecture',   label: 'Lecture des documents',        detail: 'Extraction du contenu de chaque fichier',       seuil: 30, fin: 45,  couleur: '#7c3aed', icon: '📖' },
-      { id: 'analyse',   label: 'Analyse approfondie',          detail: 'Identification des points clés et alertes',     seuil: 45, fin: 80,  couleur: '#d97706', icon: '🔍' },
-      { id: 'synthese',  label: 'Synthèse croisée',             detail: 'Recoupement des informations entre documents',  seuil: 80, fin: 93,  couleur: '#0891b2', icon: '⚡' },
-      { id: 'rapport',   label: 'Génération du rapport',        detail: 'Rédaction de votre rapport personnalisé…',      seuil: 93, fin: 100, couleur: '#16a34a', icon: '✅' },
+      { id: 'upload',   label: 'Envoi des documents',      detail: 'Transfert sécurisé de vos fichiers',          seuil: 0,  fin: 45,  couleur: '#2a7d9c', icon: '📤' },
+      { id: 'analyse',  label: 'Analyse en cours',         detail: 'Claude lit et analyse tous vos documents',     seuil: 45, fin: 85,  couleur: '#d97706', icon: '🔍' },
+      { id: 'synthese', label: 'Synthèse croisée',         detail: 'Croisement des informations entre documents',  seuil: 85, fin: 95,  couleur: '#0891b2', icon: '⚡' },
+      { id: 'rapport',  label: 'Génération du rapport',    detail: 'Rédaction de votre rapport personnalisé…',     seuil: 95, fin: 100, couleur: '#16a34a', icon: '✅' },
     ];
 
     const etapeActive = etapes.findLast(e => pct >= e.seuil) || etapes[0];
