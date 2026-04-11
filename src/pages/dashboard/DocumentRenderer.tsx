@@ -93,36 +93,36 @@ function TableHeader({ cols }: { cols: { label: string; align?: 'left' | 'right'
   );
 }
 
-function PointsForts({ items }: { items: string[] }) {
-  if (!items?.length) return null;
+function PointsFortsVigilances({ forts, vigilances }: { forts: string[]; vigilances: string[] }) {
+  if (!forts?.length && !vigilances?.length) return null;
   return (
-    <div style={{ background: C.green.bg, border: `0.5px solid ${C.green.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
-      <div style={{ padding: '12px 20px', borderBottom: `0.5px solid ${C.green.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.green.dot }} />
-        <div style={{ fontSize: 12, fontWeight: 600, color: C.textSec, letterSpacing: '0.05em' }}>POINTS POSITIFS</div>
-      </div>
-      {items.map((p, i) => (
-        <div key={i} style={{ padding: '12px 20px', borderBottom: i < items.length - 1 ? `0.5px solid ${C.green.border}` : 'none', background: i % 2 === 0 ? C.green.bg : '#f7fef9', fontSize: 14, color: C.text }}>
-          {p}
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+      {forts?.length > 0 && (
+        <div style={{ background: '#f0fdf4', border: `0.5px solid #bbf7d0`, borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ padding: '12px 20px', borderBottom: `0.5px solid #bbf7d0`, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#16a34a' }} />
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.textSec, letterSpacing: '0.05em' }}>POINTS POSITIFS</div>
+          </div>
+          {forts.map((p, i) => (
+            <div key={i} style={{ padding: '12px 20px', borderBottom: i < forts.length - 1 ? `0.5px solid #bbf7d0` : 'none', background: i % 2 === 0 ? '#f0fdf4' : '#f7fef9', fontSize: 14, color: C.text }}>
+              {p}
+            </div>
+          ))}
         </div>
-      ))}
-    </div>
-  );
-}
-
-function PointsVigilance({ items }: { items: string[] }) {
-  if (!items?.length) return null;
-  return (
-    <div style={{ background: C.red.bg, border: `0.5px solid ${C.red.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
-      <div style={{ padding: '12px 20px', borderBottom: `0.5px solid ${C.red.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.red.dot }} />
-        <div style={{ fontSize: 12, fontWeight: 600, color: C.textSec, letterSpacing: '0.05em' }}>POINTS DE VIGILANCE</div>
-      </div>
-      {items.map((p, i) => (
-        <div key={i} style={{ padding: '12px 20px', borderBottom: i < items.length - 1 ? `0.5px solid ${C.red.border}` : 'none', background: i % 2 === 0 ? C.red.bg : '#fff5f5', fontSize: 14, color: C.text }}>
-          {p}
+      )}
+      {vigilances?.length > 0 && (
+        <div style={{ background: '#fef2f2', border: `0.5px solid #fecaca`, borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ padding: '12px 20px', borderBottom: `0.5px solid #fecaca`, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#dc2626' }} />
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.textSec, letterSpacing: '0.05em' }}>POINTS DE VIGILANCE</div>
+          </div>
+          {vigilances.map((p, i) => (
+            <div key={i} style={{ padding: '12px 20px', borderBottom: i < vigilances.length - 1 ? `0.5px solid #fecaca` : 'none', background: i % 2 === 0 ? '#fef2f2' : '#fff5f5', fontSize: 14, color: C.text }}>
+              {p}
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -253,8 +253,7 @@ function RendererDDT({ r }: { r: any }) {
         </Card>
       )}
 
-      <PointsForts items={r.points_forts} />
-      <PointsVigilance items={r.points_vigilance} />
+      <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
   );
@@ -327,8 +326,7 @@ function RendererPVAG({ r }: { r: any }) {
         </div>
       )}
 
-      <PointsForts items={r.points_forts} />
-      <PointsVigilance items={r.points_vigilance} />
+      <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
   );
@@ -371,8 +369,7 @@ function RendererAppelCharges({ r }: { r: any }) {
         {r.solde_precedent !== null && r.solde_precedent !== undefined && <InfoRow label="Solde précédent" value={`${Number(r.solde_precedent).toLocaleString('fr-FR')} €`} valueColor={Number(r.solde_precedent) === 0 ? '#16a34a' : '#dc2626'} />}
         <InfoRow label="Impayés détectés" value={r.impayes ? 'Oui' : 'Aucun'} alt valueColor={r.impayes ? '#dc2626' : '#16a34a'} />
       </Card>
-      <PointsForts items={r.points_forts} />
-      <PointsVigilance items={r.points_vigilance} />
+      <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
   );
@@ -416,8 +413,7 @@ function RendererRCP({ r }: { r: any }) {
           ))}
         </div>
       )}
-      <PointsForts items={r.points_forts} />
-      <PointsVigilance items={r.points_vigilance} />
+      <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
   );
@@ -473,8 +469,7 @@ function RendererDTGPPT({ r }: { r: any }) {
           })}
         </Card>
       )}
-      <PointsForts items={r.points_forts} />
-      <PointsVigilance items={r.points_vigilance} />
+      <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
   );
@@ -523,8 +518,7 @@ function RendererCarnetEntretien({ r }: { r: any }) {
           </table>
         </Card>
       )}
-      <PointsForts items={r.points_forts} />
-      <PointsVigilance items={r.points_vigilance} />
+      <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
   );
@@ -570,8 +564,7 @@ function RendererPreEtatDate({ r }: { r: any }) {
           ))}
         </div>
       )}
-      <PointsForts items={r.points_forts} />
-      <PointsVigilance items={r.points_vigilance} />
+      <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
   );
@@ -611,8 +604,7 @@ function RendererEtatDate({ r }: { r: any }) {
           </table>
         </Card>
       )}
-      <PointsForts items={r.points_forts} />
-      <PointsVigilance items={r.points_vigilance} />
+      <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
   );
@@ -653,8 +645,7 @@ function RendererTaxeFonciere({ r }: { r: any }) {
         {r.reference_cadastrale && <InfoRow label="Référence cadastrale" value={r.reference_cadastrale} />}
         {r.surface_cadastrale && <InfoRow label="Surface pondérée" value={`${r.surface_cadastrale} m² (base cadastrale)`} alt />}
       </Card>
-      <PointsForts items={r.points_forts} />
-      <PointsVigilance items={r.points_vigilance} />
+      <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
   );
@@ -742,8 +733,7 @@ function RendererCompromis({ r }: { r: any }) {
           ))}
         </div>
       )}
-      <PointsForts items={r.points_forts} />
-      <PointsVigilance items={r.points_vigilance} />
+      <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
   );
@@ -795,8 +785,7 @@ function RendererDiagCommunes({ r }: { r: any }) {
           </div>
         </div>
       )}
-      <PointsForts items={r.points_forts} />
-      <PointsVigilance items={r.points_vigilance} />
+      <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
   );
@@ -827,8 +816,7 @@ function RendererAutre({ r }: { r: any }) {
           ))}
         </Card>
       )}
-      <PointsForts items={r.points_forts} />
-      <PointsVigilance items={r.points_vigilance} />
+      <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
   );
