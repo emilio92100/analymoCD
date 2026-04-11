@@ -1587,7 +1587,7 @@ export default function RapportPage() {
       <div style={{ minHeight: '100vh', background: '#f5f9fb', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '20px 24px' }}>
           <div style={{ marginBottom: 20 }}>
-            <Link to="/dashboard/mes-analyses" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#64748b', textDecoration: 'none', fontWeight: 500 }}>
+            <Link to="/dashboard/analyses" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#64748b', textDecoration: 'none', fontWeight: 500 }}>
               ← Mes analyses
             </Link>
           </div>
