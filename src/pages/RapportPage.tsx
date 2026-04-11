@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { fetchAnalyseById, fetchAnalyseByShareToken, getOrCreateShareToken } from '../lib/analyses';
 import { supabase } from '../lib/supabase';
+import DocumentRenderer from './dashboard/DocumentRenderer';
 import {
   ChevronLeft, Download, Building2, AlertTriangle, CheckCircle,
   Shield, FileText, Gavel, Info, Star, Paperclip,
@@ -1446,6 +1447,7 @@ export default function RapportPage() {
   const [loading, setLoading] = useState(true);
   const [rapport, setRapport] = useState<RapportData | null>(null);
   const [apercuData, setApercuData] = useState<{ apercu: Record<string, unknown>; type: string; id: string } | null>(null);
+  const [documentResult, setDocumentResult] = useState<Record<string, unknown> | null>(null);
 
   const loadRapport = useCallback(async () => {
     setLoading(true);
@@ -1475,7 +1477,13 @@ export default function RapportPage() {
         setLoading(false); return;
       }
       if (data?.result) {
-        setRapport(buildRapport(data.result as Record<string, unknown>, {
+        const result = data.result as Record<string, unknown>;
+        // Analyse simple document → DocumentRenderer
+        if (data.type === 'document' && result.document_type) {
+          setDocumentResult(result);
+          setLoading(false); return;
+        }
+        setRapport(buildRapport(result, {
           id: data.id, type: data.type, profil: data.profil,
           created_at: data.created_at, document_names: data.document_names,
           regeneration_deadline: data.regeneration_deadline, is_preview: data.is_preview ?? false,
@@ -1568,6 +1576,22 @@ export default function RapportPage() {
               <Link to="/dashboard/analyses" style={{ display: 'block', textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}>← Mes analyses</Link>
             </div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── ANALYSE SIMPLE DOCUMENT ──
+  if (documentResult) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#f5f9fb', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+        <div style={{ maxWidth: 860, margin: '0 auto', padding: '20px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+            <Link to="/dashboard/mes-analyses" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#64748b', textDecoration: 'none', fontWeight: 500 }}>
+              ← Mes analyses
+            </Link>
+          </div>
+          <DocumentRenderer result={documentResult} />
         </div>
       </div>
     );
