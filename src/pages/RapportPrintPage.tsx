@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { fetchAnalyseById } from '../lib/analyses';
 
@@ -62,7 +62,7 @@ function buildRapportPrint(data: Record<string, unknown>, dbData: { id: string; 
   const mappedType = (dbData.type === 'pack2' || dbData.type === 'pack3' ? 'complete' : dbData.type) as 'document' | 'complete';
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const toTravaux = (arr: unknown[]): any[] => (arr || []).map(t => {
+  const toTravaux = (arr: unknown[]): Array<Record<string, any>> => (arr || []).map(t => {
     if (typeof t === 'string') return { label: t };
     if (typeof t !== 'object' || t === null) return null;
     const obj = t as Record<string, unknown>;
@@ -343,7 +343,7 @@ export default function RapportPrintPage() {
                     <div style={{ fontSize: 10, fontWeight: 700, color: '#d97706', marginBottom: 5 }}>APPELS DE FONDS EXCEPTIONNELS (votés en AG)</div>
                     {appelsExceptionnels.map((a, i) => {
                       const motif = String(a.motif ?? a.description ?? a.libelle ?? 'Appel de fonds exceptionnel');
-                      const montant = typeof a.montant_total === 'number' ? a.montant_total : typeof a.montant === 'number' ? a.montant : null;
+                      const montant: number | null = typeof a.montant_total === 'number' ? a.montant_total : typeof a.montant === 'number' ? a.montant : null;
                       return (
                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, padding: '5px 10px', background: '#fffbeb', borderBottom: '1px solid #fde68a', color: '#92400e' }}>
                           <span>• {motif}</span>
@@ -428,7 +428,7 @@ export default function RapportPrintPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {participation.map((p, i) => (
+                        {participation.map((p: Record<string, string>, i: number) => (
                           <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
                             <td style={{ padding: '6px 10px', fontWeight: 700 }}>{p.annee}</td>
                             <td style={{ padding: '6px 10px', color: '#374151' }}>{p.copropietaires_presents_representes || '—'}</td>
