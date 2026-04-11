@@ -167,15 +167,18 @@ function TravauxRow({ t, variant }: { t: any; variant: 'realise' | 'vote' | 'evo
 function DiagRow({ d }: { d: any }) {
   const typeIcons: Record<string, string> = {
     DPE: '⚡', AMIANTE: '🏗', PLOMB: '🔩', ELECTRICITE: '🔌', GAZ: '🔥',
-    TERMITES: '🐛', ERP: '📋', RADON: '☢️', AUTRE: '📄'
+    TERMITES: '🐛', ERP: '📋', RADON: '☢️', CARREZ: '📐', AUTRE: '📄'
   };
   const typeColors: Record<string, string> = {
     DPE: '#0891b2', AMIANTE: '#dc2626', PLOMB: '#7c3aed', ELECTRICITE: '#d97706',
-    GAZ: '#ea580c', TERMITES: '#92400e', ERP: '#475569', RADON: '#6d28d9', AUTRE: '#64748b'
+    GAZ: '#ea580c', TERMITES: '#92400e', ERP: '#475569', RADON: '#6d28d9', CARREZ: '#0891b2', AUTRE: '#64748b'
   };
   const icon = typeIcons[d.type] || '📄';
   const color = typeColors[d.type] || '#64748b';
-  const hasAlert = !!d.alerte;
+
+  // ERP = toujours informatif (règles communales, pas actionnable)
+  const isERP = d.type === 'ERP';
+  const hasAlert = !!d.alerte && !isERP;
   const isAbsence = d.presence === 'absence';
   const isNonRealise = d.presence === 'non_realise';
 
@@ -183,20 +186,40 @@ function DiagRow({ d }: { d: any }) {
     ? { bg: '#f0fdf4', border: '#bbf7d0', text: '#16a34a', label: '✓ Non détecté' }
     : isNonRealise
     ? { bg: '#f8fafc', border: '#e2e8f0', text: '#94a3b8', label: 'Non réalisé' }
+    : isERP
+    ? { bg: '#f8fafc', border: '#e2e8f0', text: '#64748b', label: 'Informatif' }
     : hasAlert
     ? { bg: '#fef2f2', border: '#fecaca', text: '#dc2626', label: 'Anomalies' }
     : { bg: '#fff7ed', border: '#fed7aa', text: '#d97706', label: 'Détecté' };
 
   const dpeClasse = d.type === 'DPE' ? (d.resultat as string)?.match(/Classe ([A-G])/i)?.[1]?.toUpperCase() : null;
+  const gesClasse = d.type === 'DPE' ? (d.resultat as string)?.match(/GES[:\s]+Classe\s+([A-G])/i)?.[1]?.toUpperCase() : null;
 
-  // Nettoyer et formatter le résultat brut pour l'afficher joliment
+  // Parser les anomalies numérotées "(1) texte (2) texte" en liste
+  const parseAnomalies = (text: string): string[] => {
+    if (!text) return [];
+    const numbered = text.match(/\(\d+\)[^(]+/g);
+    if (numbered && numbered.length > 1) {
+      return numbered.map(s => s.replace(/^\(\d+\)\s*/, '').trim()).filter(Boolean);
+    }
+    // Essayer séparation par point-virgule ou point suivi de majuscule
+    const bySemicolon = text.split(/[;]/).map(s => s.trim()).filter(s => s.length > 10);
+    if (bySemicolon.length > 1) return bySemicolon;
+    return [text];
+  };
+
+  // Détecter si c'est un Carrez avec détails par pièce
+  const isCarrez = d.type === 'CARREZ' || d.label?.toLowerCase().includes('carrez') || d.label?.toLowerCase().includes('mesurage');
+  const carrezPieces = d.pieces_detail as Array<{ piece: string; surface: number }> | undefined;
+
   const resultatBrut = (d.resultat as string) || '';
-  const resultatFragments = resultatBrut.split(/[.;]/).map((s: string) => s.trim()).filter((s: string) => s.length > 5);
+  const anomalies = hasAlert ? parseAnomalies(resultatBrut) : [];
+  const hasMultipleAnomalies = anomalies.length > 1;
 
   return (
-    <div style={{ borderRadius: 12, border: `1.5px solid ${hasAlert ? '#fecaca' : isAbsence ? '#bbf7d0' : '#edf2f7'}`, overflow: 'hidden', background: '#fff' }}>
+    <div style={{ borderRadius: 12, border: `1.5px solid ${hasAlert ? '#fecaca' : isAbsence ? '#bbf7d0' : isERP ? '#e2e8f0' : '#edf2f7'}`, overflow: 'hidden', background: '#fff' }}>
       {/* Header */}
-      <div style={{ padding: '12px 16px', background: hasAlert ? '#fef2f2' : isAbsence ? '#f0fdf4' : `${color}08`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+      <div style={{ padding: '12px 16px', background: hasAlert ? '#fef2f2' : isAbsence ? '#f0fdf4' : isERP ? '#f8fafc' : `${color}08`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 36, height: 36, borderRadius: 10, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
             {icon}
@@ -212,25 +235,63 @@ function DiagRow({ d }: { d: any }) {
       </div>
 
       {/* Contenu */}
-      {!isAbsence && (dpeClasse || resultatFragments.length > 0 || d.alerte) && (
+      {!isAbsence && (
         <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
 
-          {/* Gauge DPE */}
-          {dpeClasse && <DpeGauge classe={dpeClasse} />}
+          {/* Gauge DPE + GES */}
+          {dpeClasse && (
+            <div>
+              <DpeGauge classe={dpeClasse} />
+              {gesClasse && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 4 }}>🌿 GES — Émissions de gaz à effet de serre</div>
+                  <DpeGauge classe={gesClasse} />
+                </div>
+              )}
+            </div>
+          )}
 
-          {/* Résultat formaté (uniquement si pas DPE avec gauge) */}
-          {!dpeClasse && resultatFragments.length > 0 && (
-            <div style={{ background: hasAlert ? '#fef2f2' : '#f8fafc', borderRadius: 9, padding: '10px 14px', border: `1px solid ${hasAlert ? '#fecaca' : '#edf2f7'}` }}>
-              {resultatFragments.map((frag: string, fi: number) => (
-                <div key={fi} style={{ fontSize: 12, color: hasAlert ? '#991b1b' : '#374151', lineHeight: 1.65, marginBottom: fi < resultatFragments.length - 1 ? 6 : 0, paddingBottom: fi < resultatFragments.length - 1 ? 6 : 0, borderBottom: fi < resultatFragments.length - 1 ? `1px solid ${hasAlert ? '#fecaca' : '#f1f5f9'}` : 'none' }}>
-                  {frag.endsWith('.') ? frag : `${frag}.`}
+          {/* ERP : affichage informatif neutre */}
+          {isERP && resultatBrut && (
+            <div style={{ background: '#f8fafc', borderRadius: 9, padding: '10px 14px', border: '1px solid #edf2f7' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>ℹ️ Informations réglementaires de la commune</div>
+              <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.65 }}>{resultatBrut}</div>
+            </div>
+          )}
+
+          {/* Carrez : tableau par pièce si disponible */}
+          {isCarrez && carrezPieces && carrezPieces.length > 0 && (
+            <div style={{ background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+              <div style={{ padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7' }}>Détail des surfaces</div>
+              {carrezPieces.map((p, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 12px', borderBottom: i < carrezPieces.length - 1 ? '1px solid #f1f5f9' : 'none', fontSize: 12 }}>
+                  <span style={{ color: '#374151' }}>{p.piece}</span>
+                  <span style={{ fontWeight: 700, color: '#0f172a' }}>{p.surface} m²</span>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Alerte */}
-          {d.alerte && (
+          {/* Résultat non-ERP, non-Carrez avec pièces */}
+          {!isERP && !dpeClasse && !(isCarrez && carrezPieces?.length) && resultatBrut && (
+            hasMultipleAnomalies ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {anomalies.map((anomalie, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 8, padding: '8px 12px', background: hasAlert ? '#fef2f2' : '#f8fafc', borderRadius: 8, border: `1px solid ${hasAlert ? '#fecaca' : '#edf2f7'}`, alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>{hasAlert ? '⚠️' : 'ℹ️'}</span>
+                    <span style={{ fontSize: 12, color: hasAlert ? '#991b1b' : '#374151', lineHeight: 1.6 }}>{anomalie}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ background: hasAlert ? '#fef2f2' : '#f8fafc', borderRadius: 9, padding: '10px 14px', border: `1px solid ${hasAlert ? '#fecaca' : '#edf2f7'}` }}>
+                <div style={{ fontSize: 12, color: hasAlert ? '#991b1b' : '#374151', lineHeight: 1.65 }}>{resultatBrut}</div>
+              </div>
+            )
+          )}
+
+          {/* Alerte spécifique */}
+          {d.alerte && !isERP && (
             <div style={{ padding: '10px 14px', background: '#fef2f2', borderRadius: 9, border: '1px solid #fecaca', fontSize: 12, color: '#991b1b', lineHeight: 1.65, fontWeight: 500 }}>
               ⚠️ {d.alerte}
             </div>
@@ -379,7 +440,6 @@ type RapportData = ReturnType<typeof buildRapport>;
 
 function DetailNote({ rapport }: { rapport: RapportData }) {
   const [open, setOpen] = useState(false);
-  const scoreColor = getScoreColor(rapport.score);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <button onClick={() => setOpen(o => !o)}
@@ -410,7 +470,6 @@ function DetailNote({ rapport }: { rapport: RapportData }) {
         <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 100, background: '#f8fafc', border: '1px solid #edf2f7', color: '#64748b' }}>{getProfilLabel(rapport.profil)}</span>
         <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 100, background: '#f8fafc', border: '1px solid #edf2f7', color: '#94a3b8' }}>Analysé le {rapport.date}</span>
       </div>
-      {!open && <div style={{ fontSize: 11, color: scoreColor, fontWeight: 600 }}>{getScoreLabel(rapport.score)}</div>}
     </div>
   );
 }
@@ -421,24 +480,24 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {/* Topbar */}
-      <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ background: 'linear-gradient(135deg, #0f2d3d 0%, #1a4a5e 100%)', borderRadius: 14, padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
         {!isShared ? (
-          <Link to="/dashboard/analyses" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: '#64748b', textDecoration: 'none', flexShrink: 0 }}
-            onMouseOver={e => (e.currentTarget as HTMLElement).style.color = '#0f172a'}
-            onMouseOut={e => (e.currentTarget as HTMLElement).style.color = '#64748b'}>
+          <Link to="/dashboard/analyses" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.6)', textDecoration: 'none', flexShrink: 0 }}
+            onMouseOver={e => (e.currentTarget as HTMLElement).style.color = '#fff'}
+            onMouseOut={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)'}>
             <ChevronLeft size={14} /> Mes analyses
           </Link>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#94a3b8' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
             <Shield size={13} /> Rapport partagé — Verimo
           </div>
         )}
-        <div style={{ width: 1, height: 18, background: '#edf2f7', flexShrink: 0 }} />
-        <div style={{ flex: 1, fontSize: 12, fontWeight: 500, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rapport.adresse}</div>
+        <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.15)', flexShrink: 0 }} />
+        <div style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.85)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rapport.adresse}</div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
           {!isShared && <ShareButton analyseId={rapport.id} />}
           <button onClick={() => { const params = new URLSearchParams(window.location.search); window.open(`/rapport/print?id=${params.get('id') || ''}`, '_blank'); }}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: 'none', background: '#0f2d3d', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
             <Download size={13} /> PDF
           </button>
         </div>
@@ -896,7 +955,14 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
 
   const diagsPriv = rapport.diagnostics.filter((d: Record<string, unknown>) => d.perimetre === 'lot_privatif');
   const dpe = diagsPriv.find((d: Record<string, unknown>) => d.type === 'DPE');
-  const autresDiags = diagsPriv.filter((d: Record<string, unknown>) => d.type !== 'DPE');
+  // Tri : absence (vert) en premier, alertes (rouge) en dernier
+  const autresDiags = diagsPriv
+    .filter((d: Record<string, unknown>) => d.type !== 'DPE')
+    .sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
+      const scoreA = a.presence === 'absence' ? 0 : a.alerte ? 2 : 1;
+      const scoreB = b.presence === 'absence' ? 0 : b.alerte ? 2 : 1;
+      return scoreA - scoreB;
+    });
 
   const dpeClasse = dpe ? (dpe.resultat as string)?.match(/Classe ([A-G])/i)?.[1]?.toUpperCase() || (dpe.resultat as string) : null;
   const dpeBad = dpeClasse && ['F', 'G'].includes(dpeClasse);
