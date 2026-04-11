@@ -840,11 +840,11 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
             <div style={{ fontSize: 11, color: '#b45309', marginBottom: 8, fontStyle: 'italic' }}>Informations issues des PV d'assemblée générale fournis</div>
             {vie!.appels_fonds_exceptionnels!.map((a, i) => {
               const obj = typeof a === 'string' ? { motif: a } : a as Record<string, unknown>;
-              const montant = typeof obj.montant_total === 'number' ? obj.montant_total : typeof obj.montant === 'number' ? obj.montant : null;
+              const montant: number | null = typeof obj.montant_total === 'number' ? obj.montant_total : typeof obj.montant === 'number' ? obj.montant : null;
               return (
                 <div key={i} style={{ fontSize: 12, color: '#92400e', padding: '9px 12px', background: '#fffbeb', borderRadius: 8, marginBottom: 6, border: '1px solid #fde68a', lineHeight: 1.5 }}>
                   <div style={{ fontWeight: 600, marginBottom: 2 }}>• {String(obj.motif ?? obj.description ?? obj.libelle ?? 'Appel de fonds exceptionnel')}</div>
-                  {montant !== null && <div style={{ fontSize: 11, color: '#d97706' }}>Montant total copro : {(montant as number).toLocaleString('fr-FR')}€</div>}
+                  {montant !== null && <div style={{ fontSize: 11, color: '#d97706' }}>Montant total copro : {montant.toLocaleString('fr-FR')}€</div>}
                   {obj.date && <div style={{ fontSize: 11, color: '#b45309' }}>Date : {String(obj.date)}</div>}
                 </div>
               );
