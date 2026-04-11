@@ -562,12 +562,15 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
       </div>
 
       {/* Négociation */}
-      {rapport.negociation?.applicable && rapport.negociation.elements.length > 0 && (
+      {rapport.negociation?.applicable && rapport.negociation.elements.length > 0 && rapport.score < 14 && (
         <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 14, padding: '18px 20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <TrendingDown size={15} style={{ color: '#d97706' }} />
             <span style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>Pistes de négociation</span>
           </div>
+          <p style={{ fontSize: 12, color: '#92400e', margin: '0 0 12px 0', lineHeight: 1.6, opacity: 0.85 }}>
+            Voici les arguments concrets sur lesquels vous appuyer pour défendre votre négociation auprès du vendeur.
+          </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {rapport.negociation.elements.map((el: any, i: number) => {
