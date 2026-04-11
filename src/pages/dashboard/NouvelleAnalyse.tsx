@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { FileText, ShieldCheck, Upload, CheckCircle, AlertTriangle, ChevronLeft, Sparkles, ArrowRight, Lock, Download } from 'lucide-react';
 import { lancerAnalyseEdge, type AnalyseProgress } from '../../lib/analyse-client';
+import DocumentRenderer from './DocumentRenderer';
 import { createAnalyse, createApercu, markAnalyseFailed, markFreePreviewUsed, unmarkFreePreviewUsed, checkFreePreviewUsedSync } from '../../lib/analyses';
 import { supabase } from '../../lib/supabase';
 import { useCredits, type Credits } from '../../hooks/useCredits';
@@ -613,9 +614,24 @@ export default function NouvelleAnalyse() {
     );
   }
 
-  /* ── RESULT */
+  /* ── RESULT ANALYSE SIMPLE (DOCUMENT) */
+  if (step === 'result' && result && type === 'document') {
+    return (
+      <div style={{ maxWidth: 760, margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 14 }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.14em' }}>ANALYSE DOCUMENT — VERIMO</div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => { setStep('choice'); setType(null); setFiles([]); setResult(null); }} style={{ padding: '9px 18px', borderRadius: 10, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 13, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Nouvelle analyse</button>
+            <button style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}><Download size={13} /> PDF</button>
+          </div>
+        </div>
+        <DocumentRenderer result={result} />
+      </div>
+    );
+  }
+
+  /* ── RESULT ANALYSE COMPLÈTE */
   if (step === 'result' && result) {
-    const isComplete = type === 'complete';
     const sc = result.score ?? 0;
     const scoreColor = sc >= 7.5 ? '#16a34a' : sc >= 5 ? '#d97706' : '#dc2626';
     const recColor = result.recommandation === 'Acheter' ? '#16a34a' : result.recommandation === 'Négocier' ? '#d97706' : '#dc2626';
@@ -631,7 +647,7 @@ export default function NouvelleAnalyse() {
             <button style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}><Download size={13} /> PDF</button>
           </div>
         </div>
-        {isComplete && result.score != null && (
+        {result.score != null && (
           <div className="result-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
             <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '24px', textAlign: 'center' }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 12 }}>SCORE GLOBAL</div>
@@ -652,13 +668,13 @@ export default function NouvelleAnalyse() {
         <div className="result-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
           <div style={{ background: '#f0fdf4', borderRadius: 16, border: '1px solid #d1fae5', padding: '18px 20px' }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', letterSpacing: '0.1em', marginBottom: 12 }}>✓ POINTS FORTS</div>
-            {result.points_forts.map((p, i) => (
+            {result.points_forts.map((p: string, i: number) => (
               <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}><CheckCircle size={13} color="#16a34a" style={{ flexShrink: 0, marginTop: 2 }} /><span style={{ fontSize: 13, color: '#166534', lineHeight: 1.5 }}>{p}</span></div>
             ))}
           </div>
           <div style={{ background: '#fffbeb', borderRadius: 16, border: '1px solid #fde68a', padding: '18px 20px' }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#d97706', letterSpacing: '0.1em', marginBottom: 12 }}>⚠ POINTS DE VIGILANCE</div>
-            {result.points_vigilance.map((p, i) => (
+            {result.points_vigilance.map((p: string, i: number) => (
               <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}><AlertTriangle size={13} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} /><span style={{ fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>{p}</span></div>
             ))}
           </div>
