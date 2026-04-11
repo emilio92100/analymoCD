@@ -109,7 +109,7 @@ export async function lancerAnalyseEdge(params: {
     const pollResult = await pollAnalyseStatus({
       analyseId,
       onProgress: (p) => onProgress?.(p),
-      timeoutMs: 720_000, // 12 minutes max (Map-Reduce 8 docs ~8 min)
+      timeoutMs: 600_000, // 10 minutes max
     });
 
     if (pollResult.status === 'completed') {
@@ -118,15 +118,26 @@ export async function lancerAnalyseEdge(params: {
     }
 
     if (pollResult.status === 'failed') {
-      return { success: false, error: 'unknown', errorMessage: 'Une erreur est survenue lors de l\'analyse. Votre crédit a été remboursé automatiquement.' };
+      const msg = pollResult.errorMessage || 'Une erreur est survenue lors de l\'analyse. Votre crédit a été remboursé automatiquement.';
+      return { success: false, error: 'unknown', errorMessage: msg };
     }
 
-    // timeout
-    return { success: false, error: 'unknown', errorMessage: 'L\'analyse a pris trop de temps. Votre crédit a été remboursé automatiquement. Réessayez avec moins de documents.' };
+    // timeout — l'analyse a duré trop longtemps
+    return {
+      success: false,
+      error: 'unknown',
+      errorMessage: files.length > 8
+        ? `L'analyse de ${files.length} documents a pris trop de temps. Réessayez avec 8 documents maximum pour de meilleurs résultats. Votre crédit a été remboursé.`
+        : 'L\'analyse a pris trop de temps. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.',
+    };
 
   } catch (err) {
     console.error('[Verimo] Erreur inattendue:', err);
-    return { success: false, error: 'network', errorMessage: 'Problème de connexion. Votre crédit a été remboursé automatiquement.' };
+    return {
+      success: false,
+      error: 'network',
+      errorMessage: 'Connexion interrompue pendant l\'analyse. Vérifiez votre connexion internet et réessayez. Votre crédit a été remboursé automatiquement.',
+    };
   }
 }
 
@@ -134,9 +145,11 @@ export async function pollAnalyseStatus(params: {
   analyseId: string;
   onProgress?: (p: AnalyseProgress) => void;
   timeoutMs?: number;
-}): Promise<{ status: 'completed' | 'failed' | 'timeout' }> {
-  const { analyseId, onProgress, timeoutMs = 720_000 } = params;
+}): Promise<{ status: 'completed' | 'failed' | 'timeout'; errorMessage?: string }> {
+  const { analyseId, onProgress, timeoutMs = 600_000 } = params;
   const start = Date.now();
+  let lastMessage = '';
+  let lastMessageTime = Date.now();
 
   while (Date.now() - start < timeoutMs) {
     await new Promise(r => setTimeout(r, 3000));
@@ -148,6 +161,18 @@ export async function pollAnalyseStatus(params: {
       .single();
 
     if (!data) continue;
+
+    // Détecter stagnation : même message depuis >3min = Edge Function morte
+    if (data.progress_message && data.progress_message !== lastMessage) {
+      lastMessage = data.progress_message;
+      lastMessageTime = Date.now();
+    }
+    const stagnationMs = Date.now() - lastMessageTime;
+    if (stagnationMs > 180_000 && (data.status === 'processing' || data.status === 'files_ready')) {
+      const msg = 'L\'analyse a été interrompue. Votre crédit a été remboursé. Réessayez avec moins de documents si le problème persiste.';
+      await supabase.from('analyses').update({ status: 'failed', progress_message: msg }).eq('id', analyseId);
+      return { status: 'failed', errorMessage: msg };
+    }
 
     if (onProgress && data.progress_total) {
       const percent = data.progress_current
@@ -163,7 +188,11 @@ export async function pollAnalyseStatus(params: {
     }
 
     if (data.status === 'completed') return { status: 'completed' };
-    if (data.status === 'failed') return { status: 'failed' };
+    if (data.status === 'failed') return { status: 'failed', errorMessage: data.progress_message || undefined };
+    // files_ready = fichiers uploadés, webhook en route → afficher progression spécifique
+    if (data.status === 'files_ready') {
+      onProgress?.({ step: 'analysing', current: data.progress_current || 0, total: data.progress_total || 1, percent: 60, message: 'Documents prêts — analyse en cours...' });
+    }
   }
 
   return { status: 'timeout' };
