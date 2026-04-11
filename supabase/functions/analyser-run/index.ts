@@ -126,6 +126,100 @@ async function waitAndRun(analyseId: string, supabaseAdmin: SupabaseClient, apiK
   console.warn(`[analyser-run] Timeout 120s sans files_ready — abandon`);
 }
 
+// Version directe avec fileIds passés en paramètre (pas de lecture Supabase)
+async function runAnalyseWithData(
+  analyseId: string,
+  files: Array<{ id: string; name: string }>,
+  mode: string,
+  profil: string,
+  supabaseAdmin: SupabaseClient,
+  apiKey: string
+): Promise<void> {
+  const fileIds = files.map(f => f.id);
+  try {
+    console.log(`[analyser-run] Analyse ${analyseId} — ${files.length} docs | mode:${mode}`);
+
+    const userContent: unknown[] = [];
+    for (let i = 0; i < files.length; i++) {
+      userContent.push({ type: 'document', source: { type: 'file', file_id: files[i].id } });
+      userContent.push({ type: 'text', text: `[Document ${i + 1}/${files.length} : ${files[i].name}]` });
+    }
+    userContent.push({
+      type: 'text',
+      text: files.length === 1
+        ? 'Analyse ce document en profondeur. JSON COMPLET et valide, sans troncature.'
+        : `Voici les ${files.length} documents du dossier. Analyse-les ensemble de facon exhaustive. JSON COMPLET et valide, sans troncature.`,
+    });
+
+    await supabaseAdmin.from('analyses').update({ progress_message: 'Analyse approfondie en cours...' }).eq('id', analyseId);
+    console.log(`[analyser-run] Appel Claude — ${files.length} doc(s)`);
+
+    // Mettre à jour le message toutes les 2 minutes pour rassurer le frontend
+    let msgCount = 0;
+    const progressMessages = [
+      'Lecture des documents en cours...',
+      'Analyse des diagnostics et travaux...',
+      'Vérification des procédures et finances...',
+      'Synthèse des informations...',
+      'Rédaction du rapport en cours...',
+    ];
+    const progressInterval = setInterval(async () => {
+      const msg = progressMessages[msgCount % progressMessages.length];
+      msgCount++;
+      await supabaseAdmin.from('analyses').update({ progress_message: msg }).eq('id', analyseId);
+    }, 60_000); // toutes les 60s
+
+    let result = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
+    clearInterval(progressInterval);
+    let report = result.error ? null : parseJson<Record<string, unknown>>(result.text);
+
+    if (!result.error && !report) {
+      console.warn('[analyser-run] JSON invalide — retry 5s');
+      await sleep(5000);
+      result = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
+      report = result.error ? null : parseJson<Record<string, unknown>>(result.text);
+    }
+
+    // Suppression RGPD
+    console.log(`[analyser-run] Suppression RGPD de ${fileIds.length} fichier(s)`);
+    await Promise.all(fileIds.map(id => deleteFromFilesAPI(id, apiKey)));
+
+    if (result.error || !report) {
+      const msg = result.error === 'rate_limit' ? 'Service surchargé. Réessayez dans quelques minutes.'
+        : result.error === 'overload' ? 'Service indisponible. Réessayez dans quelques minutes.'
+        : !report ? 'Erreur de génération. Réessayez ou contactez le support.'
+        : `Erreur inattendue. Contactez le support.`;
+      await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: msg }).eq('id', analyseId);
+      return;
+    }
+
+    const isApercu = mode.startsWith('apercu');
+    const updateData: Record<string, unknown> = {
+      status: 'completed',
+      progress_current: files.length,
+      progress_total: files.length,
+      progress_message: 'Rapport prêt !',
+      file_ids: [],
+      title: (report.titre as string) || 'Analyse immobilière',
+      score: (report.score as number) ?? null,
+      avis_verimo: (report.avis_verimo as string) || null,
+    };
+    if (isApercu) { updateData.apercu = report; updateData.is_preview = true; }
+    else { updateData.result = report; updateData.paid = true; }
+
+    const { error: updateError } = await supabaseAdmin.from('analyses').update(updateData).eq('id', analyseId);
+    if (updateError) {
+      await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: 'Erreur sauvegarde. Contactez le support.' }).eq('id', analyseId);
+    } else {
+      console.log(`[analyser-run] ${analyseId} terminée avec succès.`);
+    }
+  } catch (err) {
+    console.error('[analyser-run] Erreur:', err);
+    await Promise.all(fileIds.map(id => deleteFromFilesAPI(id, apiKey)));
+    await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: 'Erreur inattendue. Contactez le support.' }).eq('id', analyseId);
+  }
+}
+
 async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiKey: string): Promise<void> {
   const fileIds: string[] = [];
   try {
@@ -165,7 +259,23 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
     await supabaseAdmin.from('analyses').update({ progress_message: 'Analyse approfondie en cours...' }).eq('id', analyseId);
     console.log(`[analyser-run] Appel Claude — ${files.length} doc(s)`);
 
+    // Mettre à jour le message toutes les 2 minutes pour rassurer le frontend
+    let msgCount = 0;
+    const progressMessages = [
+      'Lecture des documents en cours...',
+      'Analyse des diagnostics et travaux...',
+      'Vérification des procédures et finances...',
+      'Synthèse des informations...',
+      'Rédaction du rapport en cours...',
+    ];
+    const progressInterval = setInterval(async () => {
+      const msg = progressMessages[msgCount % progressMessages.length];
+      msgCount++;
+      await supabaseAdmin.from('analyses').update({ progress_message: msg }).eq('id', analyseId);
+    }, 60_000); // toutes les 60s
+
     let result = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
+    clearInterval(progressInterval);
     let report = result.error ? null : parseJson<Record<string, unknown>>(result.text);
 
     if (!result.error && !report) {
@@ -243,21 +353,18 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ skipped: 'webhook' }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    // Appel direct depuis analyser → attendre que files_ready soit propagé
-    console.log(`[analyser-run] Appel direct reçu pour ${analyseId} — attente propagation...`);
-    await new Promise(r => setTimeout(r, 3000));
+    // Lancement direct avec les données du payload — pas de lecture Supabase
+    const fileIds = body?.fileIds as Array<{ id: string; name: string }> || [];
+    const mode = body?.mode as string || 'complete';
+    const profil = body?.profil as string || 'rp';
 
-    const { data: check } = await supabaseAdmin.from('analyses').select('status').eq('id', analyseId).single();
-    const status = check?.status;
-    console.log(`[analyser-run] Status après attente: ${status}`);
-
-    if (status !== 'files_ready') {
-      console.log(`[analyser-run] Ignoré — status=${status}`);
-      return new Response(JSON.stringify({ skipped: true }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
+    if (!fileIds.length) {
+      console.error(`[analyser-run] Pas de fileIds dans le payload`);
+      return new Response(JSON.stringify({ error: 'no_file_ids' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    console.log(`[analyser-run] Lancement analyse pour ${analyseId}`);
-    EdgeRuntime.waitUntil(runAnalyse(analyseId, supabaseAdmin, apiKey));
+    console.log(`[analyser-run] Lancement — ${fileIds.length} docs | mode:${mode}`);
+    EdgeRuntime.waitUntil(runAnalyseWithData(analyseId, fileIds, mode, profil, supabaseAdmin, apiKey));
 
     return new Response(JSON.stringify({ success: true, analyseId }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
   } catch (err) {
