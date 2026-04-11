@@ -39,29 +39,6 @@ function isCoproType(type: string) {
 }
 
 /* ══════════════════════════════════
-   SCORE GAUGE
-══════════════════════════════════ */
-function ScoreGauge({ score }: { score: number }) {
-  const color = getScoreColor(score);
-  const r = 46, circ = 2 * Math.PI * r;
-  const dash = (score / 20) * circ;
-  return (
-    <div style={{ position: 'relative', width: 110, height: 110, flexShrink: 0 }}>
-      <svg width="110" height="110" style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx="55" cy="55" r={r} fill="none" stroke="#f1f5f9" strokeWidth="9" />
-        <circle cx="55" cy="55" r={r} fill="none" stroke={color} strokeWidth="9"
-          strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
-          style={{ transition: 'stroke-dasharray 1s ease' }} />
-      </svg>
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ fontSize: 30, fontWeight: 700, color, lineHeight: 1 }}>{score.toFixed(1)}</span>
-        <span style={{ fontSize: 12, color: '#94a3b8' }}>/20</span>
-      </div>
-    </div>
-  );
-}
-
-/* ══════════════════════════════════
    ACCORDÉON
 ══════════════════════════════════ */
 type AccordionStatus = 'ok' | 'warning' | 'alert' | 'neutral';
@@ -453,34 +430,34 @@ type RapportData = ReturnType<typeof buildRapport>;
 function DetailNote({ rapport }: { rapport: RapportData }) {
   const [open, setOpen] = useState(false);
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <button onClick={() => setOpen(o => !o)}
-        style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b', background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 8, padding: '7px 12px', cursor: 'pointer', width: 'fit-content' }}>
-        {open ? <ChevronUp size={13} /> : <ChevronDown size={13} />} Détail de la note
+        style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '5px 12px', cursor: 'pointer', width: 'fit-content' }}>
+        {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />} Détail de la note
       </button>
       {open && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, padding: '12px 14px', background: 'rgba(255,255,255,0.06)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)' }}>
           {Object.entries(rapport.categories).map(([key, cat]) => {
             const c = cat as { note: number; note_max: number };
             const pct = (c.note / c.note_max) * 100;
-            const color = pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626';
+            const color = pct >= 80 ? '#4ade80' : pct >= 60 ? '#fbbf24' : '#f87171';
             const labels: Record<string, string> = { travaux: 'Travaux', procedures: 'Procédures', finances: 'Finances copro', diags_privatifs: 'Diagnostics privatifs', diags_communs: 'Diagnostics communs' };
             return (
               <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 12, color: '#64748b', width: 160, flexShrink: 0 }}>{labels[key] || key}</span>
-                <div style={{ flex: 1, height: 6, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', width: 150, flexShrink: 0 }}>{labels[key] || key}</span>
+                <div style={{ flex: 1, height: 5, background: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 3 }} />
                 </div>
-                <span style={{ fontSize: 12, fontWeight: 700, color, width: 36, textAlign: 'right', flexShrink: 0 }}>{c.note}/{c.note_max}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color, width: 36, textAlign: 'right', flexShrink: 0 }}>{c.note}/{c.note_max}</span>
               </div>
             );
           })}
         </div>
       )}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 100, background: '#f8fafc', border: '1px solid #edf2f7', color: '#64748b' }}>{getTypeBienLabel(rapport.type_bien)}</span>
-        <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 100, background: '#f8fafc', border: '1px solid #edf2f7', color: '#64748b' }}>{getProfilLabel(rapport.profil)}</span>
-        <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 100, background: '#f8fafc', border: '1px solid #edf2f7', color: '#94a3b8' }}>Analysé le {rapport.date}</span>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 10, padding: '3px 9px', borderRadius: 100, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.55)' }}>{getTypeBienLabel(rapport.type_bien)}</span>
+        <span style={{ fontSize: 10, padding: '3px 9px', borderRadius: 100, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.55)' }}>{getProfilLabel(rapport.profil)}</span>
+        <span style={{ fontSize: 10, padding: '3px 9px', borderRadius: 100, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.4)' }}>Analysé le {rapport.date}</span>
       </div>
     </div>
   );
@@ -491,67 +468,80 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {/* Topbar */}
-      <div style={{ background: 'linear-gradient(135deg, #0f2d3d 0%, #1a4a5e 100%)', borderRadius: 14, padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        {!isShared ? (
-          <Link to="/dashboard/analyses" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.6)', textDecoration: 'none', flexShrink: 0 }}
-            onMouseOver={e => (e.currentTarget as HTMLElement).style.color = '#fff'}
-            onMouseOut={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)'}>
-            <ChevronLeft size={14} /> Mes analyses
-          </Link>
-        ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
-            <Shield size={13} /> Rapport partagé — Verimo
+      {/* Hero header — full dark */}
+      <div style={{ background: 'linear-gradient(135deg, #0f2d3d 0%, #1a4a5e 100%)', borderRadius: 16, overflow: 'hidden' }}>
+        {/* Topbar nav */}
+        <div style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          {!isShared ? (
+            <Link to="/dashboard/analyses" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textDecoration: 'none', flexShrink: 0 }}
+              onMouseOver={e => (e.currentTarget as HTMLElement).style.color = '#fff'}
+              onMouseOut={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.5)'}>
+              <ChevronLeft size={14} /> Mes analyses
+            </Link>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
+              <Shield size={13} /> Rapport partagé — Verimo
+            </div>
+          )}
+          <div style={{ flex: 1 }} />
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+            {!isShared && <ShareButton analyseId={rapport.id} />}
+            <button onClick={() => { const params = new URLSearchParams(window.location.search); window.open(`/rapport/print?id=${params.get('id') || ''}`, '_blank'); }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+              <Download size={13} /> PDF
+            </button>
           </div>
-        )}
-        <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.15)', flexShrink: 0 }} />
-        <div style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.85)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{rapport.adresse}</div>
-        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-          {!isShared && <ShareButton analyseId={rapport.id} />}
-          <button onClick={() => { const params = new URLSearchParams(window.location.search); window.open(`/rapport/print?id=${params.get('id') || ''}`, '_blank'); }}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-            <Download size={13} /> PDF
-          </button>
         </div>
-      </div>
 
-      {/* Hero */}
-      {isComplete && (
-        <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 16, padding: '24px 28px' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 28, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-              <ScoreGauge score={rapport.score} />
-              <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 14px', borderRadius: 100, background: `${scoreColor}10`, border: `1px solid ${scoreColor}25`, color: scoreColor }}>
+        {/* Hero content */}
+        {isComplete && (
+          <div style={{ padding: '22px 24px 24px', display: 'flex', alignItems: 'center', gap: 22, flexWrap: 'wrap' }}>
+            {/* Score cercle */}
+            <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <div style={{ position: 'relative', width: 88, height: 88 }}>
+                <svg width="88" height="88" style={{ transform: 'rotate(-90deg)' }}>
+                  <circle cx="44" cy="44" r="36" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="7" />
+                  <circle cx="44" cy="44" r="36" fill="none" stroke={scoreColor} strokeWidth="7"
+                    strokeDasharray={`${(rapport.score / 20) * 2 * Math.PI * 36} ${2 * Math.PI * 36}`} strokeLinecap="round" />
+                </svg>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: 24, fontWeight: 900, color: '#fff', lineHeight: 1 }}>{rapport.score.toFixed(1)}</span>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>/20</span>
+                </div>
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 12px', borderRadius: 100, background: `${scoreColor}30`, border: `1px solid ${scoreColor}60`, color: '#fff' }}>
                 {getScoreLabel(rapport.score)}
               </span>
             </div>
-            <div style={{ flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div>
-                <h1 style={{ fontSize: 'clamp(16px,2.5vw,22px)', fontWeight: 800, color: '#0f172a', lineHeight: 1.3, marginBottom: 4 }}>{rapport.adresse}</h1>
-                <div style={{ fontSize: 12, color: '#94a3b8' }}>{rapport.adresseSub}</div>
+
+            {/* Adresse + infos */}
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', marginBottom: 6 }}>
+                {rapport.type_bien === 'maison' ? 'MAISON INDIVIDUELLE' : 'APPARTEMENT EN COPROPRIÉTÉ'} · {rapport.profil === 'invest' ? 'INVESTISSEMENT LOCATIF' : 'RÉSIDENCE PRINCIPALE'}
               </div>
+              <h1 style={{ fontSize: 'clamp(15px,2.2vw,20px)', fontWeight: 800, color: '#fff', lineHeight: 1.3, marginBottom: 4 }}>{rapport.adresse}</h1>
+              {rapport.adresseSub && <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginBottom: 12 }}>{rapport.adresseSub}</div>}
               <DetailNote rapport={rapport} />
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {!isComplete && (
-        <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 13, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <FileText size={22} style={{ color: '#2a7d9c' }} />
+        {!isComplete && (
+          <div style={{ padding: '18px 24px', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <FileText size={20} style={{ color: 'rgba(255,255,255,0.7)' }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', marginBottom: 4 }}>ANALYSE DOCUMENT</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: '#fff' }}>{rapport.adresse}</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>Analysé le {rapport.date}</div>
+            </div>
           </div>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 4 }}>ANALYSE DOCUMENT</div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>{rapport.adresse}</div>
-            <div style={{ fontSize: 12, color: '#94a3b8' }}>Analysé le {rapport.date}</div>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
-
 /* ══════════════════════════════════
    ONGLET SYNTHÈSE
 ══════════════════════════════════ */
