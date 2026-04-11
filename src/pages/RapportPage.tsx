@@ -569,7 +569,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
             <span style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>Pistes de négociation</span>
           </div>
           <p style={{ fontSize: 12, color: '#92400e', margin: '0 0 12px 0', lineHeight: 1.6, opacity: 0.85 }}>
-            Voici les arguments concrets sur lesquels vous appuyer pour défendre votre négociation auprès du vendeur.
+            Voici les arguments concrets sur lesquels vous appuyer pour défendre votre négociation.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
