@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitCompare, ShieldCheck, Building2, CheckCircle, FileText, Shield } from 'lucide-react';
+import { GitCompare, ShieldCheck, Building2, CheckCircle, FileText, Shield, ArrowRight, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { useAnalyses, type Analyse } from '../../hooks/useAnalyses';
 
 function ScoreBadge({ score, size = 'sm' }: { score: number; size?: 'sm' | 'md' }) {
@@ -38,24 +38,70 @@ function buildVerdict(analyses: Analyse[]) {
   const raisons: string[] = [];
   const bestScore = best.score ?? 0;
   const worstScore = worst.score ?? 0;
-  if (bestScore >= 14) raisons.push('score solide (bien sain ou irréprochable)');
-  if (diff >= 3) raisons.push(`écart significatif de ${diff.toFixed(1)} points avec le bien le moins bien noté`);
-  if (bestScore >= 14 && worstScore < 10) raisons.push("l'autre bien présente des risques financiers ou juridiques identifiés");
-  if (raisons.length === 0) raisons.push('meilleure note globale sur les 5 catégories analysées');
+  if (bestScore >= 14) raisons.push('Score solide — bien globalement sain selon les documents analysés');
+  if (diff >= 3) raisons.push(`Écart significatif de ${diff.toFixed(1)} points avec le bien le moins bien noté`);
+  if (bestScore >= 14 && worstScore < 10) raisons.push("L'autre bien présente des risques financiers ou juridiques identifiés");
+  if (raisons.length === 0) raisons.push('Meilleure note globale sur les 5 catégories analysées');
   return { best, raisons };
+}
+
+// Données enrichies depuis le résultat JSON de Claude (stocké dans result)
+function getResultData(a: Analyse) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = (a as any).result as Record<string, unknown> | null;
+  if (!r) return null;
+  return {
+    travaux_votes: ((r.travaux as Record<string, unknown>)?.votes as unknown[] || []).length,
+    travaux_evoques: ((r.travaux as Record<string, unknown>)?.evoques as unknown[] || []).length,
+    procedures: (r.procedures as unknown[] || []).length,
+    dpe: (() => {
+      const diags = r.diagnostics as Array<Record<string, unknown>> || [];
+      const dpe = diags.find(d => d.type === 'DPE' && d.perimetre === 'lot_privatif');
+      if (!dpe) return null;
+      return (dpe.resultat as string)?.match(/Classe ([A-G])/i)?.[1]?.toUpperCase() || null;
+    })(),
+    fonds_travaux_statut: (r.finances as Record<string, unknown>)?.fonds_travaux_statut as string || 'non_mentionne',
+    charges_annuelles: (() => {
+      const c = (r.finances as Record<string, unknown>)?.charges_annuelles_lot;
+      if (typeof c === 'number') return c;
+      if (typeof c === 'string') return parseFloat(c.replace(/[^0-9.]/g, '')) || null;
+      return null;
+    })(),
+    impayes: !!((r.lot_achete as Record<string, unknown>)?.impayes_detectes),
+    points_forts: (r.points_forts as string[] || []).slice(0, 2),
+    points_vigilance: (r.points_vigilance as string[] || []).slice(0, 2),
+  };
+}
+
+function DpeCell({ classe }: { classe: string | null }) {
+  if (!classe) return <span style={{ fontSize: 12, color: '#94a3b8' }}>—</span>;
+  const colors: Record<string, string> = { A: '#16a34a', B: '#22c55e', C: '#84cc16', D: '#eab308', E: '#f97316', F: '#ef4444', G: '#991b1b' };
+  const c = colors[classe] || '#94a3b8';
+  return <span style={{ fontSize: 12, fontWeight: 800, padding: '2px 10px', borderRadius: 6, background: `${c}18`, color: c, border: `1px solid ${c}40` }}>Classe {classe}</span>;
+}
+
+function TendanceIcon({ val, best }: { val: number; best: number }) {
+  if (val === best) return <TrendingUp size={13} color="#16a34a" />;
+  if (val < best * 0.7) return <TrendingDown size={13} color="#dc2626" />;
+  return <Minus size={13} color="#d97706" />;
 }
 
 export default function Compare() {
   const { analyses } = useAnalyses();
   const completedAnalyses = analyses.filter((a: Analyse) => a.type === 'complete' && a.status === 'completed');
   const [selected, setSelected] = useState<string[]>([]);
+  const [launched, setLaunched] = useState(false);
 
   const toggleSelect = (id: string) => {
+    if (launched) return;
     setSelected(prev => prev.includes(id) ? prev.filter(s => s !== id) : prev.length < 3 ? [...prev, id] : prev);
   };
 
   const selectedAnalyses = completedAnalyses.filter(a => selected.includes(a.id));
-  const canCompare = selected.length >= 2;
+  const canLaunch = selected.length >= 2;
+
+  const handleReset = () => { setSelected([]); setLaunched(false); };
+  const handleLaunch = () => { if (canLaunch) setLaunched(true); };
 
   if (completedAnalyses.length === 0) return (
     <div>
@@ -64,12 +110,9 @@ export default function Compare() {
         <div style={{ width: 72, height: 72, borderRadius: 20, background: 'rgba(42,125,156,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}><GitCompare size={30} style={{ color: '#94a3b8' }} /></div>
         <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 10 }}>Il vous faut au minimum 2 analyses complètes</h2>
         <p style={{ fontSize: 13.5, color: '#64748b', lineHeight: 1.75, marginBottom: 28, maxWidth: 400, margin: '0 auto 28px' }}>La comparaison de biens s'active automatiquement dès que votre compte contient <strong style={{ color: '#0f172a' }}>2 analyses complètes ou plus</strong>.</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 320, margin: '0 auto' }}>
-          <Link to="/dashboard/nouvelle-analyse?type=complete" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '13px 24px', borderRadius: 12, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 16px rgba(15,45,61,0.2)' }}>
-            <ShieldCheck size={16} /> Lancer une analyse complète
-          </Link>
-
-        </div>
+        <Link to="/dashboard/nouvelle-analyse?type=complete" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '13px 24px', borderRadius: 12, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
+          <ShieldCheck size={16} /> Lancer une analyse complète
+        </Link>
       </div>
     </div>
   );
@@ -80,7 +123,7 @@ export default function Compare() {
       <div style={{ background: '#fff', borderRadius: 20, border: '1.5px solid #edf2f7', padding: '40px 32px', textAlign: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.04)' }}>
         <div style={{ fontSize: 32, marginBottom: 16 }}>🏠 + ?</div>
         <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 10 }}>Plus qu'une analyse pour comparer</h2>
-        <p style={{ fontSize: 13.5, color: '#64748b', lineHeight: 1.75, marginBottom: 8, maxWidth: 380, margin: '0 auto 8px' }}>Vous avez 1 analyse complète. La comparaison se débloque automatiquement dès que vous en avez <strong style={{ color: '#0f172a' }}>une deuxième</strong>.</p>
+        <p style={{ fontSize: 13.5, color: '#64748b', lineHeight: 1.75, marginBottom: 8, maxWidth: 380, margin: '0 auto 8px' }}>Vous avez 1 analyse complète. La comparaison se débloque dès que vous en avez <strong style={{ color: '#0f172a' }}>une deuxième</strong>.</p>
         <div style={{ margin: '20px auto', maxWidth: 360, padding: '14px 18px', borderRadius: 13, background: '#f8fafc', border: '1px solid #edf2f7', display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
           <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(42,125,156,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><CheckCircle size={17} color="#2a7d9c" /></div>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -100,65 +143,90 @@ export default function Compare() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 4 }}>Comparer mes biens</h1>
-          <p style={{ fontSize: 13, color: '#64748b' }}>
-            {canCompare ? `${selectedAnalyses.length} bien${selectedAnalyses.length > 1 ? 's' : ''} sélectionné${selectedAnalyses.length > 1 ? 's' : ''} — rapport de comparaison ci-dessous` : `Sélectionnez 2${maxSelect === 3 ? ' ou 3' : ''} biens à comparer`}
+          <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 6 }}>Comparer mes biens</h1>
+          <p style={{ fontSize: 14, color: '#64748b' }}>
+            {launched
+              ? `Comparaison de ${selectedAnalyses.length} bien${selectedAnalyses.length > 1 ? 's' : ''}`
+              : `Sélectionnez 2${maxSelect === 3 ? ' ou 3' : ''} biens à comparer, puis lancez la comparaison`}
           </p>
         </div>
-        {canCompare && (
-          <button onClick={() => setSelected([])} style={{ fontSize: 13, fontWeight: 600, color: '#94a3b8', background: '#f4f7f9', border: '1px solid #edf2f7', borderRadius: 9, padding: '7px 14px', cursor: 'pointer' }}>← Changer la sélection</button>
+        {launched && (
+          <button onClick={handleReset} style={{ fontSize: 13, fontWeight: 600, color: '#64748b', background: '#f4f7f9', border: '1px solid #edf2f7', borderRadius: 9, padding: '8px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+            ← Nouvelle sélection
+          </button>
         )}
       </div>
 
-      {!canCompare && (
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>
-            {completedAnalyses.length} analyse{completedAnalyses.length > 1 ? 's' : ''} disponible{completedAnalyses.length > 1 ? 's' : ''}
+      {/* Sélection */}
+      {!launched && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Instruction */}
+          <div style={{ padding: '14px 18px', background: 'rgba(42,125,156,0.05)', borderRadius: 12, border: '1px solid rgba(42,125,156,0.15)', fontSize: 13, color: '#2a7d9c', fontWeight: 500 }}>
+            <strong>{completedAnalyses.length} analyse{completedAnalyses.length > 1 ? 's' : ''} disponible{completedAnalyses.length > 1 ? 's' : ''}</strong> — Cliquez sur les biens à comparer ci-dessous
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {completedAnalyses.map((a, idx) => {
-              const isSel = selected.includes(a.id);
-              const selIdx = selected.indexOf(a.id);
-              const score = a.score ?? 0;
-              const sc = getScoreColor(score);
-              return (
-                <motion.div key={a.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
-                  onClick={() => toggleSelect(a.id)}
-                  style={{ background: '#fff', borderRadius: 14, border: `1.5px solid ${isSel ? '#2a7d9c' : '#edf2f7'}`, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer', transition: 'all 0.18s', boxShadow: isSel ? '0 0 0 3px rgba(42,125,156,0.1)' : '0 1px 4px rgba(0,0,0,0.04)' }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSel ? '#2a7d9c' : '#f4f7f9', border: `1px solid ${isSel ? '#2a7d9c' : '#edf2f7'}`, transition: 'all 0.18s' }}>
-                    {isSel ? <span style={{ fontSize: 13, fontWeight: 900, color: '#fff' }}>{selIdx + 1}</span> : <Building2 size={15} style={{ color: '#94a3b8' }} />}
+
+          {completedAnalyses.map((a, idx) => {
+            const isSel = selected.includes(a.id);
+            const selIdx = selected.indexOf(a.id);
+            const score = a.score ?? 0;
+            const sc = getScoreColor(score);
+            return (
+              <motion.div key={a.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
+                onClick={() => toggleSelect(a.id)}
+                style={{ background: '#fff', borderRadius: 14, border: `2px solid ${isSel ? '#2a7d9c' : '#edf2f7'}`, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer', transition: 'all 0.18s', boxShadow: isSel ? '0 0 0 3px rgba(42,125,156,0.1)' : '0 1px 4px rgba(0,0,0,0.04)' }}>
+                <div style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSel ? '#2a7d9c' : '#f4f7f9', border: `1px solid ${isSel ? '#2a7d9c' : '#edf2f7'}`, transition: 'all 0.18s' }}>
+                  {isSel ? <span style={{ fontSize: 14, fontWeight: 900, color: '#fff' }}>{selIdx + 1}</span> : <Building2 size={15} style={{ color: '#94a3b8' }} />}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.adresse_bien}</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>Analysé le {a.date}</div>
+                </div>
+                {a.score != null && (
+                  <div style={{ padding: '4px 10px', borderRadius: 8, background: getScoreBg(score), border: `1px solid ${getScoreBorder(score)}` }}>
+                    <span style={{ fontSize: 15, fontWeight: 900, color: sc }}>{score.toFixed(1)}</span>
+                    <span style={{ fontSize: 10, color: sc, opacity: 0.7 }}>/20</span>
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.adresse_bien}</div>
-                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>Analysé le {a.date}</div>
-                  </div>
-                  {a.score != null && (
-                    <div style={{ padding: '4px 10px', borderRadius: 8, background: getScoreBg(score), border: `1px solid ${getScoreBorder(score)}` }}>
-                      <span style={{ fontSize: 15, fontWeight: 900, color: sc }}>{score.toFixed(1)}</span>
-                      <span style={{ fontSize: 10, color: sc, opacity: 0.7 }}>/20</span>
-                    </div>
-                  )}
-                </motion.div>
-              );
-            })}
-          </div>
+                )}
+              </motion.div>
+            );
+          })}
+
+          {/* Message sélection partielle */}
           {selected.length === 1 && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ marginTop: 12, padding: '11px 16px', borderRadius: 11, background: 'rgba(42,125,156,0.05)', border: '1px solid rgba(42,125,156,0.15)', fontSize: 13, color: '#2a7d9c', fontWeight: 600 }}>
-              ✓ 1 bien sélectionné — choisissez {maxSelect === 3 ? 'un 2e ou un 3e bien' : 'un 2e bien'} pour comparer
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: '11px 16px', borderRadius: 11, background: 'rgba(42,125,156,0.05)', border: '1px solid rgba(42,125,156,0.15)', fontSize: 13, color: '#2a7d9c', fontWeight: 600 }}>
+              ✓ 1 bien sélectionné — choisissez {maxSelect === 3 ? 'un 2e ou un 3e bien' : 'un 2e bien'} pour continuer
+            </motion.div>
+          )}
+
+          {/* Bouton Lancer */}
+          {canLaunch && (
+            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+              <button onClick={handleLaunch}
+                style={{ width: '100%', padding: '15px', borderRadius: 13, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 800, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, boxShadow: '0 4px 16px rgba(15,45,61,0.2)' }}>
+                <GitCompare size={18} />
+                Lancer la comparaison — {selected.length} bien{selected.length > 1 ? 's' : ''} sélectionné{selected.length > 1 ? 's' : ''}
+                <ArrowRight size={16} />
+              </button>
             </motion.div>
           )}
         </div>
       )}
 
-      {canCompare && selectedAnalyses.length >= 2 && (() => {
+      {/* Résultat comparaison */}
+      {launched && selectedAnalyses.length >= 2 && (() => {
         const { best, raisons } = buildVerdict(selectedAnalyses);
         const cols = selectedAnalyses.length;
         const gridCols = cols === 2 ? '1fr 1fr' : '1fr 1fr 1fr';
+        const resultsData = selectedAnalyses.map(a => getResultData(a));
+
         return (
           <AnimatePresence mode="wait">
             <motion.div key="rapport" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+              {/* Cartes scores */}
               <div className="compare-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 12 }}>
                 {selectedAnalyses.map((a, i) => {
                   const score = a.score ?? 0;
@@ -193,49 +261,123 @@ export default function Compare() {
                 })}
               </div>
 
-              {/* Tableau comparatif */}
-              {[{ label: 'Score par catégorie', icon: '📊', rows: [{ label: 'Travaux', key: 'travaux', max: 5 }, { label: 'Procédures', key: 'procedures', max: 4 }, { label: 'Finances copropriété', key: 'finances', max: 4 }, { label: 'Diagnostics privatifs', key: 'diags_privatifs', max: 4 }, { label: 'Diagnostics communs', key: 'diags_communs', max: 3 }] }].map((section) => (
-                <div key={section.label} style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-                  <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ fontSize: 16 }}>{section.icon}</span><span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{section.label}</span></div>
-                  {section.rows.map((row, ri) => (
-                    <div key={ri} style={{ display: 'grid', gridTemplateColumns: `200px repeat(${cols}, 1fr)`, borderBottom: ri < section.rows.length - 1 ? '1px solid #f8fafc' : 'none', background: ri % 2 === 0 ? '#fff' : '#fafbfc' }}>
-                      <div style={{ padding: '12px 20px', fontSize: 13, color: '#374151', fontWeight: 500, display: 'flex', alignItems: 'center' }}>{row.label}</div>
-                      {selectedAnalyses.map((a, j) => {
-                        const catScore = Math.round(((a.score ?? 10) / 20) * row.max * 10) / 10;
-                        const catColor = catScore >= row.max * 0.8 ? '#16a34a' : catScore >= row.max * 0.5 ? '#d97706' : '#dc2626';
-                        return (
-                          <div key={j} style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: '1px solid #f1f5f9', background: a.id === best.id ? 'rgba(42,125,156,0.03)' : 'transparent' }}>
-                            <div style={{ textAlign: 'center' }}>
-                              <div style={{ fontSize: 15, fontWeight: 900, color: catColor }}>{catScore}</div>
-                              <div style={{ fontSize: 10, color: '#cbd5e1' }}>/{row.max}</div>
-                            </div>
-                          </div>
-                        );
-                      })}
+              {/* Tableau comparatif enrichi */}
+              <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+                <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 16 }}>📊</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Comparaison détaillée</span>
+                </div>
+
+                {/* En-têtes biens */}
+                <div style={{ display: 'grid', gridTemplateColumns: `180px repeat(${cols}, 1fr)`, borderBottom: '2px solid #f1f5f9', background: '#fafbfc' }}>
+                  <div style={{ padding: '10px 16px', fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Critère</div>
+                  {selectedAnalyses.map((a, i) => (
+                    <div key={i} style={{ padding: '10px 16px', borderLeft: '1px solid #f1f5f9', fontSize: 12, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      Bien {i + 1} {a.id === best.id ? '⭐' : ''}
                     </div>
                   ))}
                 </div>
-              ))}
 
-              {/* Points clés */}
-              <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-                <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ fontSize: 16 }}>🔍</span><span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Points clés par bien</span></div>
-                <div className="compare-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 0 }}>
-                  {selectedAnalyses.map((a, i) => (
-                    <div key={a.id} style={{ padding: '16px 18px', borderLeft: i > 0 ? '1px solid #f1f5f9' : 'none' }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 10 }}>BIEN {i + 1}</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>✓ Points forts</div>
-                        {[a.score != null && a.score >= 14 ? 'Score solide — bien globalement sain' : null, a.recommandation ? `${a.recommandation}` : null, 'Voir le rapport complet pour le détail'].filter(Boolean).map((p, pi) => (
-                          <div key={pi} style={{ fontSize: 12, color: '#374151', padding: '6px 10px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #d1fae5' }}>{p}</div>
-                        ))}
-                        <div style={{ fontSize: 11, fontWeight: 700, color: '#f0a500', marginTop: 8, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>⚠ Vigilances</div>
-                        {[a.score != null && a.score < 14 ? 'Score inférieur à 14/20 — points à vérifier' : null, a.score != null && a.score < 10 ? 'Risques identifiés — rapport complet conseillé' : null, 'Consultez le rapport pour le détail complet'].filter(Boolean).map((p, pi) => (
-                          <div key={pi} style={{ fontSize: 12, color: '#374151', padding: '6px 10px', borderRadius: 8, background: '#fffbeb', border: '1px solid #fde68a' }}>{p}</div>
-                        ))}
+                {/* Score global */}
+                {[
+                  {
+                    label: 'Score global', render: (a: Analyse) => {
+                      const s = a.score ?? 0; const sc = getScoreColor(s);
+                      return <span style={{ fontSize: 15, fontWeight: 900, color: sc }}>{s.toFixed(1)}<span style={{ fontSize: 10, opacity: 0.6 }}>/20</span></span>;
+                    }
+                  },
+                  { label: 'Niveau', render: (a: Analyse) => <span style={{ fontSize: 12, color: getScoreColor(a.score ?? 0), fontWeight: 700 }}>{getScoreLabel(a.score ?? 0)}</span> },
+                  {
+                    label: 'DPE', render: (_a: Analyse, i: number) => {
+                      const d = resultsData[i]; return d ? <DpeCell classe={d.dpe} /> : <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>;
+                    }
+                  },
+                  {
+                    label: 'Travaux votés', render: (_a: Analyse, i: number) => {
+                      const d = resultsData[i]; if (!d) return <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>;
+                      const bestVal = Math.min(...resultsData.filter(Boolean).map(r => r!.travaux_votes));
+                      return <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><TendanceIcon val={d.travaux_votes} best={bestVal} /><span style={{ fontSize: 13, fontWeight: 600, color: d.travaux_votes === 0 ? '#16a34a' : '#d97706' }}>{d.travaux_votes} travaux</span></div>;
+                    }
+                  },
+                  {
+                    label: 'Travaux évoqués', render: (_a: Analyse, i: number) => {
+                      const d = resultsData[i]; if (!d) return <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>;
+                      const bestVal = Math.min(...resultsData.filter(Boolean).map(r => r!.travaux_evoques));
+                      return <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><TendanceIcon val={d.travaux_evoques} best={bestVal} /><span style={{ fontSize: 13, fontWeight: 600, color: d.travaux_evoques === 0 ? '#16a34a' : '#f97316' }}>{d.travaux_evoques} évoqués</span></div>;
+                    }
+                  },
+                  {
+                    label: 'Procédures', render: (_a: Analyse, i: number) => {
+                      const d = resultsData[i]; if (!d) return <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>;
+                      return <span style={{ fontSize: 13, fontWeight: 600, color: d.procedures === 0 ? '#16a34a' : '#dc2626' }}>{d.procedures === 0 ? '✓ Aucune' : `⚠ ${d.procedures} détectée${d.procedures > 1 ? 's' : ''}`}</span>;
+                    }
+                  },
+                  {
+                    label: 'Fonds travaux', render: (_a: Analyse, i: number) => {
+                      const d = resultsData[i]; if (!d) return <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>;
+                      const s = d.fonds_travaux_statut;
+                      return <span style={{ fontSize: 12, fontWeight: 600, color: s === 'conforme' ? '#16a34a' : s === 'insuffisant' ? '#dc2626' : '#94a3b8' }}>
+                        {s === 'conforme' ? '✓ Conforme' : s === 'insuffisant' ? '⚠ Insuffisant' : s === 'absent' ? '✗ Absent' : '—'}
+                      </span>;
+                    }
+                  },
+                  {
+                    label: 'Impayés vendeur', render: (_a: Analyse, i: number) => {
+                      const d = resultsData[i]; if (!d) return <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>;
+                      return <span style={{ fontSize: 12, fontWeight: 600, color: d.impayes ? '#dc2626' : '#16a34a' }}>{d.impayes ? '⚠ Détectés' : '✓ Aucun'}</span>;
+                    }
+                  },
+                  {
+                    label: 'Charges/an lot', render: (_a: Analyse, i: number) => {
+                      const d = resultsData[i]; if (!d || !d.charges_annuelles) return <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>;
+                      const bestVal = Math.min(...resultsData.filter(r => r?.charges_annuelles).map(r => r!.charges_annuelles!));
+                      return <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><TendanceIcon val={d.charges_annuelles} best={bestVal} /><span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{d.charges_annuelles.toLocaleString('fr-FR')}€</span></div>;
+                    }
+                  },
+                ].map((row, ri) => (
+                  <div key={ri} style={{ display: 'grid', gridTemplateColumns: `180px repeat(${cols}, 1fr)`, borderBottom: ri < 8 ? '1px solid #f8fafc' : 'none', background: ri % 2 === 0 ? '#fff' : '#fafbfc' }}>
+                    <div style={{ padding: '12px 16px', fontSize: 12, color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center' }}>{row.label}</div>
+                    {selectedAnalyses.map((a, j) => (
+                      <div key={j} style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', borderLeft: '1px solid #f1f5f9', background: a.id === best.id ? 'rgba(42,125,156,0.02)' : 'transparent' }}>
+                        {row.render(a, j)}
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                ))}
+              </div>
+
+              {/* Points forts / vigilances par bien */}
+              <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
+                <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 16 }}>🔍</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Points clés par bien</span>
+                </div>
+                <div className="compare-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 0 }}>
+                  {selectedAnalyses.map((a, i) => {
+                    const d = resultsData[i];
+                    return (
+                      <div key={a.id} style={{ padding: '16px 18px', borderLeft: i > 0 ? '1px solid #f1f5f9' : 'none' }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 12 }}>BIEN {i + 1}{a.id === best.id ? ' ⭐' : ''}</div>
+                        {d?.points_forts && d.points_forts.length > 0 && (
+                          <div style={{ marginBottom: 10 }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>✓ Points forts</div>
+                            {d.points_forts.map((p, pi) => (
+                              <div key={pi} style={{ fontSize: 12, color: '#166534', padding: '6px 10px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #d1fae5', marginBottom: 4, lineHeight: 1.4 }}>{p}</div>
+                            ))}
+                          </div>
+                        )}
+                        {d?.points_vigilance && d.points_vigilance.length > 0 && (
+                          <div>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>⚠ Vigilances</div>
+                            {d.points_vigilance.map((p, pi) => (
+                              <div key={pi} style={{ fontSize: 12, color: '#92400e', padding: '6px 10px', borderRadius: 8, background: '#fffbeb', border: '1px solid #fde68a', marginBottom: 4, lineHeight: 1.4 }}>{p}</div>
+                            ))}
+                          </div>
+                        )}
+                        {!d && <p style={{ fontSize: 12, color: '#94a3b8' }}>Données détaillées non disponibles.</p>}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -253,7 +395,7 @@ export default function Compare() {
                   {raisons.map((r, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                       <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'rgba(42,125,156,0.12)', border: '1px solid rgba(42,125,156,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}><CheckCircle size={10} color="#2a7d9c" /></div>
-                      <span style={{ fontSize: 13, color: '#374151', lineHeight: 1.5, textTransform: 'capitalize' }}>{r}</span>
+                      <span style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>{r}</span>
                     </div>
                   ))}
                 </div>
@@ -274,10 +416,15 @@ export default function Compare() {
                   ))}
                 </div>
               </div>
+
             </motion.div>
           </AnimatePresence>
         );
       })()}
+
+      <style>{`
+        @media (max-width: 640px) { .compare-grid { grid-template-columns: 1fr !important; } }
+      `}</style>
     </div>
   );
 }
