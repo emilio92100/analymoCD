@@ -845,7 +845,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
                 <div key={i} style={{ fontSize: 12, color: '#92400e', padding: '9px 12px', background: '#fffbeb', borderRadius: 8, marginBottom: 6, border: '1px solid #fde68a', lineHeight: 1.5 }}>
                   <div style={{ fontWeight: 600, marginBottom: 2 }}>• {String(obj.motif ?? obj.description ?? obj.libelle ?? 'Appel de fonds exceptionnel')}</div>
                   {montant !== null && <div style={{ fontSize: 11, color: '#d97706' }}>Montant total copro : {montant.toLocaleString('fr-FR')}€</div>}
-                  {obj.date && <div style={{ fontSize: 11, color: '#b45309' }}>Date : {String(obj.date)}</div>}
+                  {obj.date != null && <div style={{ fontSize: 11, color: '#b45309' }}>Date : {String(obj.date)}</div>}
                 </div>
               );
             })}
