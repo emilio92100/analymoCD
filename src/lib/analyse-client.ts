@@ -168,11 +168,11 @@ export async function pollAnalyseStatus(params: {
       lastMessageTime = Date.now();
     }
     const stagnationMs = Date.now() - lastMessageTime;
-    // files_ready = analyse en cours côté serveur, laisser plus de temps (10 min)
-    // processing = upload en cours, laisser 5 min
-    const stagnationLimit = data.status === 'files_ready' ? 600_000 : 300_000;
+    // Ne jamais forcer failed si Claude est en train de répondre
+    // Laisser 15 minutes pour les gros dossiers (analyser-run tourne en background)
+    const stagnationLimit = 900_000; // 15 minutes
     if (stagnationMs > stagnationLimit && data.status !== 'completed') {
-      const msg = 'L\'analyse a été interrompue. Votre crédit a été remboursé. Réessayez si le problème persiste.';
+      const msg = 'L\'analyse a pris trop de temps. Votre crédit a été remboursé. Réessayez si le problème persiste.';
       await supabase.from('analyses').update({ status: 'failed', progress_message: msg }).eq('id', analyseId);
       return { status: 'failed', errorMessage: msg };
     }
