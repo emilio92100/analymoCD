@@ -161,6 +161,34 @@ function TravauxRow({ t, variant }: { t: any; variant: 'realise' | 'vote' | 'evo
 }
 
 /* ══════════════════════════════════
+   DPE GAUGE
+══════════════════════════════════ */
+function DpeGauge({ classe }: { classe: string }) {
+  const classes = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+  const colors: Record<string, string> = { A: '#16a34a', B: '#22c55e', C: '#84cc16', D: '#eab308', E: '#f97316', F: '#ef4444', G: '#991b1b' };
+  return (
+    <div style={{ margin: '4px 0' }}>
+      <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 48 }}>
+        {classes.map((c, i) => {
+          const isActive = c === classe;
+          const h = 24 + i * 3;
+          return (
+            <div key={c} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ width: '100%', height: isActive ? 44 : h, borderRadius: 6, background: isActive ? colors[c] : `${colors[c]}28`, border: isActive ? `2px solid ${colors[c]}` : `1px solid ${colors[c]}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: isActive ? `0 4px 12px ${colors[c]}40` : 'none' }}>
+                <span style={{ fontSize: isActive ? 13 : 11, fontWeight: isActive ? 900 : 600, color: isActive ? '#fff' : colors[c] }}>{c}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ marginTop: 5, fontSize: 11, color: '#94a3b8', textAlign: 'center' as const }}>
+        Classe <strong style={{ color: colors[classe] || '#64748b' }}>{classe}</strong>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════
    DIAGNOSTIC ROW
 ══════════════════════════════════ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -176,110 +204,136 @@ function DiagRow({ d }: { d: any }) {
   const icon = typeIcons[d.type] || '📄';
   const color = typeColors[d.type] || '#64748b';
 
-  // ERP = toujours informatif (règles communales, pas actionnable)
   const isERP = d.type === 'ERP';
+  const isCarrez = d.type === 'CARREZ' || (d.label as string)?.toLowerCase().includes('carrez') || (d.label as string)?.toLowerCase().includes('mesurage') || (d.label as string)?.toLowerCase().includes('superficie');
   const hasAlert = !!d.alerte && !isERP;
   const isAbsence = d.presence === 'absence';
   const isNonRealise = d.presence === 'non_realise';
 
   const presenceStyle = isAbsence
-    ? { bg: '#f0fdf4', border: '#bbf7d0', text: '#16a34a', label: '✓ Non détecté' }
-    : isNonRealise
-    ? { bg: '#f8fafc', border: '#e2e8f0', text: '#94a3b8', label: 'Non réalisé' }
-    : isERP
-    ? { bg: '#f8fafc', border: '#e2e8f0', text: '#64748b', label: 'Informatif' }
-    : hasAlert
-    ? { bg: '#fef2f2', border: '#fecaca', text: '#dc2626', label: 'Anomalies' }
-    : { bg: '#fff7ed', border: '#fed7aa', text: '#d97706', label: 'Détecté' };
+    ? { bg: '#f0fdf4', border: '#bbf7d0', text: '#16a34a' }
+    : isNonRealise ? { bg: '#f8fafc', border: '#e2e8f0', text: '#94a3b8' }
+    : isERP ? { bg: '#f8fafc', border: '#e2e8f0', text: '#64748b' }
+    : hasAlert ? { bg: '#fef2f2', border: '#fecaca', text: '#dc2626' }
+    : { bg: '#fff7ed', border: '#fed7aa', text: '#d97706' };
+  const presenceLabel = isAbsence ? '✓ Non détecté' : isNonRealise ? 'Non réalisé' : isERP ? 'Informatif' : hasAlert ? 'Anomalies' : 'Détecté';
 
-  const dpeClasse = d.type === 'DPE' ? (d.resultat as string)?.match(/Classe ([A-G])/i)?.[1]?.toUpperCase() : null;
-  const gesClasse = d.type === 'DPE' ? (d.resultat as string)?.match(/GES[:\s]+Classe\s+([A-G])/i)?.[1]?.toUpperCase() : null;
+  const dpeClasse = d.type === 'DPE' ? (d.resultat as string)?.match(/Classe\s+([A-G])\b/i)?.[1]?.toUpperCase() : null;
+  const gesClasse = d.type === 'DPE' ? (d.resultat as string)?.match(/GES[:\s]+Classe\s+([A-G])\b/i)?.[1]?.toUpperCase() : null;
+  const resultatBrut = String(d.resultat || '');
 
-  // Parser les anomalies numérotées "(1) texte (2) texte" en liste
   const parseAnomalies = (text: string): string[] => {
     if (!text) return [];
     const numbered = text.match(/\(\d+\)[^(]+/g);
-    if (numbered && numbered.length > 1) {
-      return numbered.map(s => s.replace(/^\(\d+\)\s*/, '').trim()).filter(Boolean);
-    }
-    // Essayer séparation par point-virgule ou point suivi de majuscule
-    const bySemicolon = text.split(/[;]/).map(s => s.trim()).filter(s => s.length > 10);
+    if (numbered && numbered.length > 1) return numbered.map(s => s.replace(/^\(\d+\)\s*/, '').trim()).filter((s: string) => s.length > 3);
+    const bySemicolon = text.split(/[;]/).map(s => s.trim()).filter((s: string) => s.length > 10);
     if (bySemicolon.length > 1) return bySemicolon;
     return [text];
   };
 
-  // Détecter si c'est un Carrez avec détails par pièce
-  const isCarrez = d.type === 'CARREZ' || d.label?.toLowerCase().includes('carrez') || d.label?.toLowerCase().includes('mesurage');
-  const carrezPieces = d.pieces_detail as Array<{ piece: string; surface: number }> | undefined;
+  const parseCarrez = (text: string): Array<{ piece: string; surface: string }> => {
+    if (d.pieces_detail && Array.isArray(d.pieces_detail) && d.pieces_detail.length > 0) {
+      return d.pieces_detail.map((p: { piece: string; surface: number }) => ({ piece: p.piece, surface: `${p.surface} m²` }));
+    }
+    const pieces: Array<{ piece: string; surface: string }> = [];
+    const matches = [...text.matchAll(/([a-zA-Zéèêàùôûîï][a-zA-Zéèêàùôûîï\s]+?)\s+(\d+[,.]\d+)\s*m²/gi)];
+    for (const m of matches) {
+      const piece = m[1].trim();
+      if (piece.length > 1 && !['surface', 'total', 'sol', 'carrez', 'balcon'].some(w => piece.toLowerCase().includes(w))) {
+        pieces.push({ piece: piece.charAt(0).toUpperCase() + piece.slice(1), surface: `${m[2].replace(',', '.')} m²` });
+      }
+    }
+    return pieces;
+  };
 
-  const resultatBrut = (d.resultat as string) || '';
-  const anomalies = hasAlert ? parseAnomalies(resultatBrut) : [];
-  const hasMultipleAnomalies = anomalies.length > 1;
+  const parseERP = (text: string): string[] =>
+    text.split(/\.\s+/).map(s => s.trim().replace(/\.$/, '')).filter(s => s.length > 5);
+
+  const anomalies = !isERP && !isCarrez && !dpeClasse ? parseAnomalies(resultatBrut) : [];
+  const carrezPieces = isCarrez ? parseCarrez(resultatBrut) : [];
+  const erpPoints = isERP ? parseERP(resultatBrut) : [];
+  const carrezTotal = resultatBrut.match(/(?:loi\s+carrez|carrez)\s*(?:totale?)?\s*:?\s*([\d,\.]+)\s*m²/i);
+  const carrezSolTotal = resultatBrut.match(/(?:surface\s+au\s+sol|sol)\s*(?:totale?)?\s*:?\s*([\d,\.]+)\s*m²/i);
 
   return (
     <div style={{ borderRadius: 12, border: `1.5px solid ${hasAlert ? '#fecaca' : isAbsence ? '#bbf7d0' : isERP ? '#e2e8f0' : '#edf2f7'}`, overflow: 'hidden', background: '#fff' }}>
-      {/* Header */}
       <div style={{ padding: '12px 16px', background: hasAlert ? '#fef2f2' : isAbsence ? '#f0fdf4' : isERP ? '#f8fafc' : `${color}08`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
-            {icon}
-          </div>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{icon}</div>
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{d.label || d.type}</div>
             {d.localisation && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>📍 {d.localisation}</div>}
           </div>
         </div>
-        <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 100, background: presenceStyle.bg, border: `1px solid ${presenceStyle.border}`, color: presenceStyle.text, flexShrink: 0, whiteSpace: 'nowrap' }}>
-          {isAbsence ? '✓ Non détecté' : presenceStyle.label}
-        </span>
+        <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 100, background: presenceStyle.bg, border: `1px solid ${presenceStyle.border}`, color: presenceStyle.text, flexShrink: 0, whiteSpace: 'nowrap' }}>{presenceLabel}</span>
       </div>
-
-      {/* Contenu */}
       {!isAbsence && (
         <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-
-          {/* Gauge DPE + GES */}
           {dpeClasse && (
-            <div>
-              <DpeGauge classe={dpeClasse} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>⚡ Énergie primaire (DPE)</div>
+                <DpeGauge classe={dpeClasse} />
+              </div>
               {gesClasse && (
-                <div style={{ marginTop: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 4 }}>🌿 GES — Émissions de gaz à effet de serre</div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>🌿 Émissions GES</div>
                   <DpeGauge classe={gesClasse} />
                 </div>
               )}
             </div>
           )}
-
-          {/* ERP : affichage informatif neutre */}
-          {isERP && resultatBrut && (
-            <div style={{ background: '#f8fafc', borderRadius: 9, padding: '10px 14px', border: '1px solid #edf2f7' }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>ℹ️ Informations réglementaires de la commune</div>
-              <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.65 }}>{resultatBrut}</div>
-            </div>
-          )}
-
-          {/* Carrez : tableau par pièce si disponible */}
-          {isCarrez && carrezPieces && carrezPieces.length > 0 && (
+          {isERP && (
             <div style={{ background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7', overflow: 'hidden' }}>
-              <div style={{ padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7' }}>Détail des surfaces</div>
-              {carrezPieces.map((p, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 12px', borderBottom: i < carrezPieces.length - 1 ? '1px solid #f1f5f9' : 'none', fontSize: 12 }}>
-                  <span style={{ color: '#374151' }}>{p.piece}</span>
-                  <span style={{ fontWeight: 700, color: '#0f172a' }}>{p.surface} m²</span>
+              <div style={{ padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7' }}>ℹ️ Informations réglementaires de la commune</div>
+              {erpPoints.length > 1 ? erpPoints.map((point, i) => (
+                <div key={i} style={{ display: 'flex', gap: 10, padding: '8px 12px', borderBottom: i < erpPoints.length - 1 ? '1px solid #f1f5f9' : 'none', fontSize: 12, color: '#475569', lineHeight: 1.5 }}>
+                  <span style={{ color: '#94a3b8', flexShrink: 0 }}>•</span><span>{point}</span>
                 </div>
-              ))}
+              )) : <div style={{ padding: '10px 12px', fontSize: 12, color: '#475569', lineHeight: 1.65 }}>{resultatBrut}</div>}
             </div>
           )}
-
-          {/* Résultat non-ERP, non-Carrez avec pièces */}
-          {!isERP && !dpeClasse && !(isCarrez && carrezPieces?.length) && resultatBrut && (
-            hasMultipleAnomalies ? (
+          {isCarrez && !isAbsence && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {(carrezTotal || carrezSolTotal) && (
+                <div style={{ display: 'grid', gridTemplateColumns: carrezTotal && carrezSolTotal ? '1fr 1fr' : '1fr', gap: 8 }}>
+                  {carrezTotal && (
+                    <div style={{ padding: '12px 14px', background: '#f0f9ff', borderRadius: 9, border: '1px solid #bae6fd', textAlign: 'center' as const }}>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: '#0284c7' }}>{carrezTotal[1].replace(',', '.')} m²</div>
+                      <div style={{ fontSize: 11, color: '#0369a1', marginTop: 2 }}>Surface loi Carrez</div>
+                    </div>
+                  )}
+                  {carrezSolTotal && (
+                    <div style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7', textAlign: 'center' as const }}>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{carrezSolTotal[1].replace(',', '.')} m²</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Surface au sol</div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {carrezPieces.length > 0 && (
+                <div style={{ background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+                  <div style={{ padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7' }}>Détail par pièce</div>
+                  {carrezPieces.map((p, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 12px', borderBottom: i < carrezPieces.length - 1 ? '1px solid #f1f5f9' : 'none', fontSize: 12 }}>
+                      <span style={{ color: '#374151' }}>{p.piece}</span>
+                      <span style={{ fontWeight: 700, color: '#0f172a' }}>{p.surface}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {carrezPieces.length === 0 && !carrezTotal && (
+                <div style={{ background: '#f8fafc', borderRadius: 9, padding: '10px 14px', border: '1px solid #edf2f7', fontSize: 12, color: '#374151', lineHeight: 1.65 }}>{resultatBrut}</div>
+              )}
+            </div>
+          )}
+          {!isERP && !isCarrez && !dpeClasse && resultatBrut && (
+            anomalies.length > 1 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {anomalies.map((anomalie, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 8, padding: '8px 12px', background: hasAlert ? '#fef2f2' : '#f8fafc', borderRadius: 8, border: `1px solid ${hasAlert ? '#fecaca' : '#edf2f7'}`, alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>{hasAlert ? '⚠️' : 'ℹ️'}</span>
-                    <span style={{ fontSize: 12, color: hasAlert ? '#991b1b' : '#374151', lineHeight: 1.6 }}>{anomalie}</span>
+                  <div key={i} style={{ display: 'flex', gap: 10, padding: '9px 12px', background: hasAlert ? '#fef2f2' : '#f8fafc', borderRadius: 9, border: `1px solid ${hasAlert ? '#fecaca' : '#edf2f7'}`, alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 16, flexShrink: 0 }}>{hasAlert ? '⚠️' : 'ℹ️'}</span>
+                    <span style={{ fontSize: 12, color: hasAlert ? '#991b1b' : '#374151', lineHeight: 1.65 }}>{anomalie}</span>
                   </div>
                 ))}
               </div>
@@ -289,23 +343,15 @@ function DiagRow({ d }: { d: any }) {
               </div>
             )
           )}
-
-          {/* Alerte spécifique */}
           {d.alerte && !isERP && (
-            <div style={{ padding: '10px 14px', background: '#fef2f2', borderRadius: 9, border: '1px solid #fecaca', fontSize: 12, color: '#991b1b', lineHeight: 1.65, fontWeight: 500 }}>
-              ⚠️ {d.alerte}
-            </div>
+            <div style={{ padding: '10px 14px', background: '#fef2f2', borderRadius: 9, border: '1px solid #fecaca', fontSize: 12, color: '#991b1b', lineHeight: 1.65, fontWeight: 500 }}>⚠️ {d.alerte}</div>
           )}
-
-          {/* Dates */}
           {(d.date_diagnostic || d.date_validite) && (
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
               {d.date_diagnostic && <span style={{ fontSize: 11, color: '#94a3b8' }}>📅 Réalisé le {d.date_diagnostic}</span>}
               {d.date_validite && <span style={{ fontSize: 11, color: '#94a3b8' }}>✅ Valide jusqu'au {d.date_validite}</span>}
             </div>
           )}
-
-          {/* Travaux préconisés */}
           {d.travaux_preconises?.length > 0 && d.perimetre === 'lot_privatif' && (
             <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 9, border: '1px solid #fde68a' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', marginBottom: 6 }}>🔧 Travaux recommandés</div>
@@ -316,40 +362,6 @@ function DiagRow({ d }: { d: any }) {
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-function DpeGauge({ classe }: { classe: string }) {
-  const classes = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
-  const colors: Record<string, string> = { A: '#16a34a', B: '#22c55e', C: '#84cc16', D: '#eab308', E: '#f97316', F: '#ef4444', G: '#991b1b' };
-  return (
-    <div style={{ margin: '10px 0' }}>
-      <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 48 }}>
-        {classes.map((c, i) => {
-          const isActive = c === classe;
-          const h = 24 + i * 3; // progression des hauteurs A→G
-          return (
-            <div key={c} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-              <div style={{
-                width: '100%',
-                height: isActive ? 44 : h,
-                borderRadius: 6,
-                background: isActive ? colors[c] : `${colors[c]}28`,
-                border: isActive ? `2px solid ${colors[c]}` : `1px solid ${colors[c]}40`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.2s',
-                boxShadow: isActive ? `0 4px 12px ${colors[c]}40` : 'none',
-              }}>
-                <span style={{ fontSize: isActive ? 13 : 11, fontWeight: isActive ? 900 : 600, color: isActive ? '#fff' : colors[c] }}>{c}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div style={{ marginTop: 6, fontSize: 11, color: '#94a3b8', textAlign: 'center' }}>
-        Classe <strong style={{ color: colors[classe] || '#64748b' }}>{classe}</strong> — Performance énergétique (DPE)
-      </div>
     </div>
   );
 }
@@ -849,25 +861,17 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         status={rapport.fonds_travaux_statut === 'insuffisant' || rapport.fonds_travaux_statut === 'absent' ? 'warning' : 'ok'}
         badge={rapport.fonds_travaux_statut === 'conforme' ? 'Sain' : rapport.fonds_travaux_statut === 'insuffisant' ? 'Vigilance' : rapport.fonds_travaux_statut === 'absent' ? 'Absent' : 'Détecté'}>
 
-        {/* Grille chiffres clés */}
+        {/* Grille chiffres clés — uniquement données COPRO globales */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 10 }}>
           {(() => {
             const fin = rapport.finances as Record<string, unknown> | null;
             const budgetTotal = fin?.budget_total_copro;
             const budgetNum = typeof budgetTotal === 'number' ? budgetTotal : typeof budgetTotal === 'string' ? parseFloat(String(budgetTotal).replace(/[^0-9.]/g, '')) || 0 : 0;
-            const chargesLot = fin?.charges_annuelles_lot;
-            const chargesLotNum = typeof chargesLot === 'number' ? chargesLot : typeof chargesLot === 'string' ? parseFloat(String(chargesLot).replace(/[^0-9.]/g, '')) || 0 : 0;
             return (<>
               {budgetNum > 0 && (
                 <div style={{ padding: '14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', textAlign: 'center' }}>
                   <div style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>{budgetNum.toLocaleString('fr-FR')}€</div>
                   <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Budget annuel copropriété</div>
-                </div>
-              )}
-              {chargesLotNum > 0 && (
-                <div style={{ padding: '14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', textAlign: 'center' }}>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: '#2a7d9c', marginBottom: 3 }}>{chargesLotNum.toLocaleString('fr-FR')}€</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Charges annuelles votre lot</div>
                 </div>
               )}
               {rapport.fonds_travaux > 0 && (
@@ -879,6 +883,52 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
             </>);
           })()}
         </div>
+
+        {/* Tableau évolution budgets par année */}
+        {(() => {
+          const fin = rapport.finances as Record<string, unknown> | null;
+          const hist = fin?.budgets_historique as Array<{ annee: string; budget_total: number; fonds_travaux?: number; charges_lot?: number }> | null;
+          if (!hist || hist.length < 2) return null;
+          const sorted = [...hist].sort((a, b) => String(a.annee).localeCompare(String(b.annee)));
+          return (
+            <div style={{ background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+              <div style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7', letterSpacing: '0.06em' }}>
+                📊 ÉVOLUTION DES BUDGETS (source : PV d'AG)
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: '#f1f5f9' }}>
+                      {['Année', 'Budget copro', 'Fonds travaux', 'Évolution'].map(h => (
+                        <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7', fontSize: 11 }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sorted.map((row, i) => {
+                      const prev = i > 0 ? sorted[i - 1] : null;
+                      const evol = prev && prev.budget_total > 0 ? ((row.budget_total - prev.budget_total) / prev.budget_total * 100) : null;
+                      return (
+                        <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
+                          <td style={{ padding: '9px 12px', fontWeight: 700, color: '#0f172a' }}>{row.annee}</td>
+                          <td style={{ padding: '9px 12px', color: '#374151' }}>{row.budget_total?.toLocaleString('fr-FR')}€</td>
+                          <td style={{ padding: '9px 12px', color: '#7c3aed' }}>{row.fonds_travaux ? `${row.fonds_travaux.toLocaleString('fr-FR')}€` : '—'}</td>
+                          <td style={{ padding: '9px 12px' }}>
+                            {evol !== null ? (
+                              <span style={{ fontSize: 11, fontWeight: 700, color: evol > 5 ? '#dc2626' : evol > 0 ? '#d97706' : '#16a34a' }}>
+                                {evol > 0 ? '+' : ''}{evol.toFixed(1)}%
+                              </span>
+                            ) : <span style={{ color: '#94a3b8' }}>—</span>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Statut fonds travaux */}
         {rapport.fonds_travaux_statut && rapport.fonds_travaux_statut !== 'non_mentionne' && (
@@ -976,6 +1026,106 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
         </button>
       </div>
 
+      {/* INFOS LOT EN PREMIER */}
+      {lot && (lot.quote_part_tantiemes || lot.fonds_travaux_alur || (lot.restrictions_usage as string[])?.length > 0) && (
+        <AccordionSection
+          title="Informations sur votre lot" sub="Tantièmes · fonds ALUR · restrictions" icon="🏠"
+          status="neutral" badge="Informatif" defaultOpen={true}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+              {lot.quote_part_tantiemes && (
+                <div style={{ display: 'flex', padding: '10px 14px', borderBottom: '1px solid #f1f5f9' }}>
+                  <span style={{ fontSize: 12, color: '#64748b', width: 160, flexShrink: 0 }}>Quote-part tantièmes</span>
+                  <div style={{ flex: 1 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{lot.quote_part_tantiemes}</span>
+                    {(lot.parties_privatives as string[])?.length > 0 && (
+                      <div style={{ marginTop: 4 }}>
+                        {(lot.parties_privatives as string[]).map((p, i) => (
+                          <div key={i} style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>• {p}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              {lot.fonds_travaux_alur && (
+                <div style={{ display: 'flex', padding: '10px 14px', borderBottom: (lot.travaux_votes_charge_vendeur as string[])?.length > 0 || (lot.restrictions_usage as string[])?.length > 0 ? '1px solid #f1f5f9' : 'none' }}>
+                  <span style={{ fontSize: 12, color: '#64748b', width: 160, flexShrink: 0 }}>Fonds travaux ALUR</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#16a34a', flex: 1 }}>
+                    {isNaN(Number(String(lot.fonds_travaux_alur).replace(/[^0-9.]/g, ''))) ? lot.fonds_travaux_alur : `${Number(String(lot.fonds_travaux_alur).replace(/[^0-9.]/g, '')).toLocaleString('fr-FR')}€`} — récupérable à la signature
+                  </span>
+                </div>
+              )}
+              {(lot.travaux_votes_charge_vendeur as string[])?.length > 0 && (
+                <div style={{ display: 'flex', padding: '10px 14px', borderBottom: (lot.restrictions_usage as string[])?.length > 0 ? '1px solid #f1f5f9' : 'none' }}>
+                  <span style={{ fontSize: 12, color: '#64748b', width: 160, flexShrink: 0 }}>Charge vendeur</span>
+                  <div style={{ flex: 1 }}>
+                    {(lot.travaux_votes_charge_vendeur as string[]).map((t, i) => (
+                      <div key={i} style={{ fontSize: 12, color: '#1d4ed8', marginBottom: 2 }}>• {t}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            {(lot.restrictions_usage as string[])?.length > 0 &&
+              !(lot.restrictions_usage as string[]).some(r => r.toLowerCase().includes('aucune restriction') || r.toLowerCase().includes('règlement copropriété complet non fourni')) && (
+              <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', marginBottom: 2 }}>Restrictions d'usage</div>
+                <div style={{ fontSize: 11, color: '#b45309', marginBottom: 8, fontStyle: 'italic' }}>Issues du règlement de copropriété fourni</div>
+                {(lot.restrictions_usage as string[]).map((r, i) => (
+                  <div key={i} style={{ fontSize: 12, color: '#92400e', marginBottom: 3 }}>• {r}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        </AccordionSection>
+      )}
+
+      {/* FINANCES DU LOT */}
+      <AccordionSection
+        title="Finances de votre lot" sub="Charges annuelles · taxe foncière · impayés" icon="💶"
+        status={(lot?.impayes_detectes) ? 'alert' : 'neutral'}
+        badge={(lot?.impayes_detectes) ? 'Impayés détectés' : 'Informatif'}
+        defaultOpen={true}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {(() => {
+            const fin = rapport.finances as Record<string, unknown> | null;
+            const chargesLot = fin?.charges_annuelles_lot;
+            const chargesLotNum = typeof chargesLot === 'number' ? chargesLot : typeof chargesLot === 'string' ? parseFloat(String(chargesLot).replace(/[^0-9.]/g, '')) || 0 : 0;
+            if (chargesLotNum > 0) return (
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 12px', background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7', fontSize: 13 }}>
+                <span style={{ color: '#64748b' }}>Charges annuelles votre lot</span>
+                <span style={{ fontWeight: 600, color: '#0f172a' }}>{chargesLotNum.toLocaleString('fr-FR')}€/an</span>
+              </div>
+            );
+            if (rapport.charges_mensuelles > 0) return (
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 12px', background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7', fontSize: 13 }}>
+                <span style={{ color: '#64748b' }}>Charges mensuelles estimées</span>
+                <span style={{ fontWeight: 600, color: '#0f172a' }}>{rapport.charges_mensuelles}€/mois</span>
+              </div>
+            );
+            return null;
+          })()}
+          {finances?.taxe_fonciere && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 12px', background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7', fontSize: 13 }}>
+              <span style={{ color: '#64748b' }}>Taxe foncière</span>
+              <span style={{ fontWeight: 600, color: '#0f172a' }}>{finances.taxe_fonciere}</span>
+            </div>
+          )}
+          {lot?.impayes_detectes && (
+            <div style={{ padding: '9px 12px', background: '#fef2f2', borderRadius: 9, border: '1px solid #fecaca', fontSize: 12, color: '#991b1b' }}>
+              ⚠️ Impayés détectés sur ce lot : {lot.impayes_detectes}
+            </div>
+          )}
+          {!rapport.charges_mensuelles && !finances?.taxe_fonciere && !lot?.impayes_detectes && (() => {
+            const fin = rapport.finances as Record<string, unknown> | null;
+            const c = fin?.charges_annuelles_lot;
+            const n = typeof c === 'number' ? c : 0;
+            return n === 0 ? <p style={{ fontSize: 13, color: '#94a3b8' }}>Uploadez un appel de charges ou une taxe foncière pour obtenir ces informations.</p> : null;
+          })()}
+        </div>
+      </AccordionSection>
+
       {/* DPE */}
       {dpe && (
         <AccordionSection
@@ -995,102 +1145,15 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
       {/* Autres diagnostics privatifs */}
       {(autresDiags.length > 0 || hasDiagAlert) && (
         <AccordionSection
-          title="Diagnostics privatifs" sub="Électricité · gaz · amiante · plomb · termites" icon="🔍"
+          title="Diagnostics privatifs" sub="Électricité · gaz · amiante · plomb · termites · Carrez" icon="🔍"
           status={hasDiagAlert ? 'alert' : 'ok'}
-          badge={hasDiagAlert ? 'Points d\'attention' : `${autresDiags.length} diagnostic${autresDiags.length > 1 ? 's' : ''}`}
+          badge={hasDiagAlert ? "Points d'attention" : `${autresDiags.length} diagnostic${autresDiags.length > 1 ? 's' : ''}`}
           defaultOpen={true}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {autresDiags.map((d: Record<string, unknown>, i: number) => <DiagRow key={i} d={d} />)}
           </div>
         </AccordionSection>
       )}
-
-      {/* Infos lot */}
-      {lot && (lot.quote_part_tantiemes || lot.fonds_travaux_alur || (lot.restrictions_usage as string[])?.length > 0) && (
-        <AccordionSection
-          title="Informations sur votre lot" sub="Tantièmes · fonds ALUR · restrictions" icon="🏠"
-          status="neutral" badge="Informatif" defaultOpen={true}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {/* Tableau simple */}
-            <div style={{ background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', overflow: 'hidden' }}>
-              {lot.quote_part_tantiemes && (
-                <div style={{ display: 'flex', padding: '10px 14px', borderBottom: '1px solid #f1f5f9' }}>
-                  <span style={{ fontSize: 12, color: '#64748b', width: 160, flexShrink: 0 }}>Quote-part tantièmes</span>
-                  <div style={{ flex: 1 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{lot.quote_part_tantiemes}</span>
-                    {(lot.parties_privatives as string[])?.length > 0 && (
-                      <div style={{ marginTop: 4 }}>
-                        {(lot.parties_privatives as string[]).map((p, i) => (
-                          <div key={i} style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>• {p}</div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-              {lot.fonds_travaux_alur && (
-                <div style={{ display: 'flex', padding: '10px 14px', borderBottom: (lot.restrictions_usage as string[])?.length > 0 ? '1px solid #f1f5f9' : 'none' }}>
-                  <span style={{ fontSize: 12, color: '#64748b', width: 160, flexShrink: 0 }}>Fonds travaux ALUR</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#16a34a', flex: 1 }}>
-                    {isNaN(Number(String(lot.fonds_travaux_alur).replace(/[^0-9.]/g, ''))) ? lot.fonds_travaux_alur : `${Number(String(lot.fonds_travaux_alur).replace(/[^0-9.]/g, '')).toLocaleString('fr-FR')}€`} — récupérable à la signature
-                  </span>
-                </div>
-              )}
-              {(lot.travaux_votes_charge_vendeur as string[])?.length > 0 && (
-                <div style={{ display: 'flex', padding: '10px 14px', borderBottom: (lot.restrictions_usage as string[])?.length > 0 ? '1px solid #f1f5f9' : 'none' }}>
-                  <span style={{ fontSize: 12, color: '#64748b', width: 160, flexShrink: 0 }}>Charge vendeur</span>
-                  <div style={{ flex: 1 }}>
-                    {(lot.travaux_votes_charge_vendeur as string[]).map((t, i) => (
-                      <div key={i} style={{ fontSize: 12, color: '#1d4ed8', marginBottom: 2 }}>• {t}</div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            {/* Restrictions seulement si réelles (pas le message générique "aucune restriction") */}
-            {(lot.restrictions_usage as string[])?.length > 0 &&
-              !(lot.restrictions_usage as string[]).some(r => r.toLowerCase().includes('aucune restriction') || r.toLowerCase().includes('règlement copropriété complet non fourni')) && (
-              <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', marginBottom: 2 }}>Restrictions d'usage</div>
-                <div style={{ fontSize: 11, color: '#b45309', marginBottom: 8, fontStyle: 'italic' }}>Issues du règlement de copropriété fourni</div>
-                {(lot.restrictions_usage as string[]).map((r, i) => (
-                  <div key={i} style={{ fontSize: 12, color: '#92400e', marginBottom: 3 }}>• {r}</div>
-                ))}
-              </div>
-            )}
-          </div>
-        </AccordionSection>
-      )}
-
-      {/* Finances du lot */}
-      <AccordionSection
-        title="Finances de votre lot" sub="Charges · taxe foncière · impayés" icon="💶"
-        status={(lot?.impayes_detectes) ? 'alert' : 'neutral'}
-        badge={(lot?.impayes_detectes) ? 'Impayés détectés' : 'Informatif'}
-        defaultOpen={true}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {rapport.charges_mensuelles > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 12px', background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7', fontSize: 13 }}>
-              <span style={{ color: '#64748b' }}>Charges mensuelles estimées</span>
-              <span style={{ fontWeight: 600, color: '#0f172a' }}>{rapport.charges_mensuelles}€/mois</span>
-            </div>
-          )}
-          {finances?.taxe_fonciere && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 12px', background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7', fontSize: 13 }}>
-              <span style={{ color: '#64748b' }}>Taxe foncière</span>
-              <span style={{ fontWeight: 600, color: '#0f172a' }}>{finances.taxe_fonciere}</span>
-            </div>
-          )}
-          {lot?.impayes_detectes && (
-            <div style={{ padding: '9px 12px', background: '#fef2f2', borderRadius: 9, border: '1px solid #fecaca', fontSize: 12, color: '#991b1b' }}>
-              ⚠️ Impayés détectés sur ce lot : {lot.impayes_detectes}
-            </div>
-          )}
-          {!rapport.charges_mensuelles && !finances?.taxe_fonciere && !lot?.impayes_detectes && (
-            <p style={{ fontSize: 13, color: '#94a3b8' }}>Uploadez un appel de charges ou une taxe foncière pour obtenir ces informations.</p>
-          )}
-        </div>
-      </AccordionSection>
 
       {diagsPriv.length === 0 && (
         <div style={{ padding: '20px', background: '#fff', borderRadius: 13, border: '1px solid #edf2f7', textAlign: 'center' }}>
