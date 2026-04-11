@@ -534,7 +534,7 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         supabase.from('profiles').select('*', { count: 'exact', head: true }),
         supabase.from('analyses').select('*', { count: 'exact', head: true }),
         supabase.from('contact_messages').select('*', { count: 'exact', head: true }).eq('read', false),
-        supabase.from('analyses').select('type').eq('status', 'completed'),
+        supabase.from('analyses').select('type').eq('paid', true).not('stripe_payment_id', 'is', null),
       ]);
       const ca = (anal || []).reduce((s, a) => s + (PLAN_PRICES[a.type] || 0), 0);
       setKpis({ users: u || 0, analyses: a || 0, messages: m || 0, ca });
@@ -641,8 +641,9 @@ function StatsTab() {
         const wEnd = new Date(); wEnd.setDate(wEnd.getDate() - i * 7);
         const wStart = new Date(wEnd); wStart.setDate(wEnd.getDate() - 7);
         const label = wStart.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
-        const weekAnal = (analyses || []).filter(a => { const d = new Date(a.created_at); return d >= wStart && d < wEnd && a.status === 'completed'; });
-        const weekCa = weekAnal.reduce((s, a) => s + (PLAN_PRICES[a.type] || 0), 0);
+        const weekAnal = (analyses || []).filter(a => { const d = new Date(a.created_at); return d >= wStart && d < wEnd; });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const weekCa = weekAnal.filter((a: any) => a.paid === true && a.stripe_payment_id != null).reduce((s: number, a: any) => s + (PLAN_PRICES[a.type] || 0), 0);
         const { count: weekUsers } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', wStart.toISOString()).lt('created_at', wEnd.toISOString());
         weeks.push({ week: label, ca: weekCa, users: weekUsers || 0 });
       }
