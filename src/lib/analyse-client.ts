@@ -168,8 +168,11 @@ export async function pollAnalyseStatus(params: {
       lastMessageTime = Date.now();
     }
     const stagnationMs = Date.now() - lastMessageTime;
-    if (stagnationMs > 180_000 && (data.status === 'processing' || data.status === 'files_ready')) {
-      const msg = 'L\'analyse a été interrompue. Votre crédit a été remboursé. Réessayez avec moins de documents si le problème persiste.';
+    // files_ready = analyse en cours côté serveur, laisser plus de temps (10 min)
+    // processing = upload en cours, laisser 5 min
+    const stagnationLimit = data.status === 'files_ready' ? 600_000 : 300_000;
+    if (stagnationMs > stagnationLimit && data.status !== 'completed') {
+      const msg = 'L\'analyse a été interrompue. Votre crédit a été remboursé. Réessayez si le problème persiste.';
       await supabase.from('analyses').update({ status: 'failed', progress_message: msg }).eq('id', analyseId);
       return { status: 'failed', errorMessage: msg };
     }
