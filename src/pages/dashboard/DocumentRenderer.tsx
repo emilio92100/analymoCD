@@ -168,7 +168,41 @@ function DpeJauge({ classe, label, valeur }: { classe: string; label: string; va
   );
 }
 
-// ── Renderers par type ──────────────────────────────────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function CarrezAccordeon({ pieces, surfaceSol }: { pieces: any[]; surfaceSol?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ borderTop: `0.5px solid ${C.border}` }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{ width: '100%', background: 'none', border: 'none', padding: '12px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.textSec, fontFamily: 'inherit', textAlign: 'left' as const }}
+      >
+        <span style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', fontSize: 10 }}>▶</span>
+        {open ? 'Masquer le détail par pièce' : 'Voir le détail par pièce'}
+      </button>
+      {open && (
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <tbody>
+            {pieces.map((p: any, i: number) => (
+              <tr key={i} style={{ borderBottom: i < pieces.length - 1 || surfaceSol ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+                <td style={{ padding: '10px 20px', fontSize: 14, color: C.text }}>{p.piece}</td>
+                <td style={{ padding: '10px 20px', fontSize: 14, fontWeight: 500, color: C.text, textAlign: 'right' }}>{p.surface} m²</td>
+              </tr>
+            ))}
+            {surfaceSol && (
+              <tr style={{ background: C.bgSecondary, borderTop: `0.5px solid ${C.border}` }}>
+                <td style={{ padding: '10px 20px', fontSize: 14, color: C.textSec, fontStyle: 'italic' }}>Surface au sol (hors Carrez)</td>
+                <td style={{ padding: '10px 20px', fontSize: 14, color: C.textSec, textAlign: 'right', fontStyle: 'italic' }}>{surfaceSol} m²</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererDDT({ r }: { r: any }) {
@@ -189,43 +223,37 @@ function RendererDDT({ r }: { r: any }) {
         </div>
       )}
 
-      {/* Carrez */}
+      {/* Carrez — surface totale visible, détail en accordéon */}
       {r.carrez?.surface_totale && (
         <Card>
-          <div style={{ padding: '14px 20px', borderBottom: `0.5px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: C.textSec }}>Surface loi Carrez</span>
             <span style={{ fontSize: 24, fontWeight: 600, color: C.text }}>{r.carrez.surface_totale} m²</span>
           </div>
           {r.carrez.pieces?.length > 0 && (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <tbody>
-                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                {r.carrez.pieces.map((p: any, i: number) => (
-                  <tr key={i} style={{ borderBottom: i < r.carrez.pieces.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
-                    <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{p.piece}</td>
-                    <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: C.text, textAlign: 'right' }}>{p.surface} m²</td>
-                  </tr>
-                ))}
-                {r.carrez.surface_sol && (
-                  <tr style={{ background: C.bgSecondary, borderTop: `0.5px solid ${C.border}` }}>
-                    <td style={{ padding: '11px 20px', fontSize: 14, color: C.textSec, fontStyle: 'italic' }}>Surface au sol (hors Carrez)</td>
-                    <td style={{ padding: '11px 20px', fontSize: 14, color: C.textSec, textAlign: 'right', fontStyle: 'italic' }}>{r.carrez.surface_sol} m²</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+            <CarrezAccordeon pieces={r.carrez.pieces} surfaceSol={r.carrez.surface_sol} />
           )}
         </Card>
       )}
 
-      {/* Diagnostics avec accordéon par type */}
-      {diags.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-          {diags.map((d: any, i: number) => (
-            <DiagnosticCard key={i} d={d} />
-          ))}
-        </div>
-      )}
+      {/* Diagnostics — verts d'abord, rouges ensuite, informatifs en dernier */}
+      {diags.length > 0 && (() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ok = diags.filter((d: any) => d.presence === 'conforme' || d.presence === 'non_detecte' || d.presence === 'non_applicable');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const bad = diags.filter((d: any) => d.presence === 'anomalie');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const info = diags.filter((d: any) => d.presence === 'informatif' || (!['conforme','non_detecte','non_applicable','anomalie'].includes(d.presence)));
+        const sorted = [...ok, ...bad, ...info];
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {sorted.map((d: any, i: number) => (
+              <DiagnosticCard key={i} d={d} />
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Travaux préconisés */}
       {r.travaux_preconises?.length > 0 && (
@@ -252,6 +280,13 @@ function RendererDDT({ r }: { r: any }) {
           )}
         </Card>
       )}
+
+      {/* Séparateur avant synthèse */}
+      <div style={{ margin: '24px 0 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ flex: 1, height: 1, background: C.border }} />
+        <span style={{ fontSize: 12, fontWeight: 600, color: C.textSec, letterSpacing: '0.1em', whiteSpace: 'nowrap' as const }}>SYNTHÈSE</span>
+        <div style={{ flex: 1, height: 1, background: C.border }} />
+      </div>
 
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
