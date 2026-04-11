@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, FileText, Building2, ExternalLink, Trash2, Copy, Check } from 'lucide-react';
+import { Plus, Search, FileText, Building2, ExternalLink, Trash2, Copy, Check, Mail, Share2 } from 'lucide-react';
 import { getOrCreateShareToken } from '../../lib/analyses';
 import { supabase } from '../../lib/supabase';
 import { useAnalyses, type Analyse } from '../../hooks/useAnalyses';
@@ -18,29 +18,89 @@ function ScoreBadge({ score, size = 'md' }: { score: number; size?: 'sm' | 'md' 
   );
 }
 
-function ShareBadge({ analyseId }: { analyseId: string }) {
+function ShareBadge({ analyseId, titre }: { analyseId: string; titre: string }) {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  const handleShare = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowMenu(false);
+    };
+    if (showMenu) document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showMenu]);
+
+  const getUrl = async (): Promise<string | null> => {
     setLoading(true);
     const token = await getOrCreateShareToken(analyseId);
     setLoading(false);
-    if (!token) return;
-    const url = `${window.location.origin}/rapport/partage/${token}`;
+    if (!token) return null;
+    return `${window.location.origin}/rapport/partage/${token}`;
+  };
+
+  const handleToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowMenu(v => !v);
+  };
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = await getUrl();
+    if (!url) return;
     await navigator.clipboard.writeText(url);
     setCopied(true);
+    setShowMenu(false);
     setTimeout(() => setCopied(false), 2500);
   };
 
+  const handleEmail = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = await getUrl();
+    if (!url) return;
+    setShowMenu(false);
+    const subject = encodeURIComponent('Rapport Verimo partagé avec vous');
+    const body = encodeURIComponent(`Bonjour,\n\nJe vous partage un rapport d'analyse immobilière Verimo pour le bien : ${titre}.\n\nConsultez-le ici :\n${url}\n\nBonne lecture,`);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  };
+
   return (
-    <button onClick={handleShare} disabled={loading}
-      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 8, background: copied ? '#f0fdf4' : '#f8fafc', border: `1px solid ${copied ? '#bbf7d0' : '#edf2f7'}`, fontSize: 11, fontWeight: 700, color: copied ? '#16a34a' : '#64748b', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap', flexShrink: 0 }}>
-      {copied ? <Check size={11} /> : <Copy size={11} />}
-      {copied ? 'Copié !' : 'Partager'}
-    </button>
+    <div style={{ position: 'relative' }} ref={menuRef}>
+      <button onClick={handleToggle} disabled={loading}
+        style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 8, background: copied ? '#f0fdf4' : showMenu ? '#edf2f7' : '#f8fafc', border: `1px solid ${copied ? '#bbf7d0' : '#edf2f7'}`, fontSize: 11, fontWeight: 700, color: copied ? '#16a34a' : '#64748b', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap', flexShrink: 0 }}>
+        {copied ? <Check size={11} /> : <Share2 size={11} />}
+        {copied ? 'Copié !' : loading ? '…' : 'Partager'}
+      </button>
+      {showMenu && (
+        <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.10)', zIndex: 200, overflow: 'hidden', minWidth: 210 }}>
+          <button onClick={handleCopy}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#0f172a', textAlign: 'left' as const }}
+            onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#f8fafc'}
+            onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'none'}>
+            <Copy size={13} style={{ color: '#64748b', flexShrink: 0 }} />
+            <div>
+              <div style={{ fontWeight: 700 }}>Copier le lien</div>
+              <div style={{ fontSize: 10, color: '#94a3b8' }}>Accessible sans compte</div>
+            </div>
+          </button>
+          <div style={{ height: 1, background: '#f1f5f9' }} />
+          <button onClick={handleEmail}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#0f172a', textAlign: 'left' as const }}
+            onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#f8fafc'}
+            onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'none'}>
+            <Mail size={13} style={{ color: '#64748b', flexShrink: 0 }} />
+            <div>
+              <div style={{ fontWeight: 700 }}>Envoyer par e-mail</div>
+              <div style={{ fontSize: 10, color: '#94a3b8' }}>Ouvre votre messagerie</div>
+            </div>
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -80,37 +140,30 @@ function AnalyseRow({ a, onDelete }: { a: Analyse; onDelete: (id: string) => voi
         ) : (
           <>
             {isComplete && a.score != null && <ScoreBadge score={a.score} size="sm" />}
-
             <Link to={`/dashboard/rapport?id=${a.id}`}
               style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', fontSize: 12, fontWeight: 700, color: '#2a7d9c', cursor: 'pointer', textDecoration: 'none', whiteSpace: 'nowrap', transition: 'background 0.15s' }}
               onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#e8f4f8'}
               onMouseOut={e => (e.currentTarget as HTMLElement).style.background = '#f8fafc'}>
               <ExternalLink size={11} /> Rapport
             </Link>
-
-            {!a.is_preview && a.status === 'completed' && <ShareBadge analyseId={a.id} />}
+            {!a.is_preview && a.status === 'completed' && <ShareBadge analyseId={a.id} titre={displayTitle} />}
           </>
         )}
-        {/* Bouton supprimer */}
         {!confirmDelete ? (
           <button onClick={() => setConfirmDelete(true)}
-            style={{ width: 30, height: 30, borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s' }}
-            onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#fee2e2'; }}
-            onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = '#fef2f2'; }}
+            style={{ width: 30, height: 30, borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
             title="Supprimer cette analyse">
             <Trash2 size={12} color="#dc2626" />
           </button>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca' }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: '#dc2626' }}>Supprimer ?</span>
-            <button onClick={() => onDelete(a.id)}
-              style={{ padding: '3px 10px', borderRadius: 6, background: '#dc2626', border: 'none', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Oui</button>
-            <button onClick={() => setConfirmDelete(false)}
-              style={{ padding: '3px 8px', borderRadius: 6, background: 'none', border: 'none', color: '#94a3b8', fontSize: 11, cursor: 'pointer' }}>Non</button>
+            <button onClick={() => onDelete(a.id)} style={{ padding: '3px 10px', borderRadius: 6, background: '#dc2626', border: 'none', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Oui</button>
+            <button onClick={() => setConfirmDelete(false)} style={{ padding: '3px 8px', borderRadius: 6, background: 'none', border: 'none', color: '#94a3b8', fontSize: 11, cursor: 'pointer' }}>Non</button>
           </div>
         )}
       </div>
-      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }`}</style>
+      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} } @keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
@@ -119,14 +172,13 @@ export default function MesAnalyses() {
   const { analyses, loading, refetch } = useAnalyses();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'complete' | 'document'>('all');
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const deleteAnalyse = async (id: string) => {
     await supabase.from('analyses').delete().eq('id', id);
     refetch();
   };
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Polling automatique si une analyse est en cours
   useEffect(() => {
     const hasProcessing = analyses.some(a => a.status === 'processing');
     if (hasProcessing) {
@@ -164,7 +216,7 @@ export default function MesAnalyses() {
         <div style={{ display: 'flex', gap: 6 }}>
           {([['all', 'Tout'], ['complete', 'Complètes'], ['document', 'Documents']] as const).map(([val, label]) => (
             <button key={val} onClick={() => setFilter(val)}
-              style={{ padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${filter === val ? '#2a7d9c' : '#edf2f7'}`, background: filter === val ? 'rgba(42,125,156,0.07)' : '#fff', fontSize: 12, fontWeight: 700, color: filter === val ? '#2a7d9c' : '#64748b', cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap' }}>
+              style={{ padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${filter === val ? '#2a7d9c' : '#edf2f7'}`, background: filter === val ? 'rgba(42,125,156,0.07)' : '#fff', fontSize: 12, fontWeight: 700, color: filter === val ? '#2a7d9c' : '#64748b', cursor: 'pointer', whiteSpace: 'nowrap' }}>
               {label}
             </button>
           ))}
