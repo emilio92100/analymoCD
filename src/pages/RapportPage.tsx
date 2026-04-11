@@ -258,6 +258,8 @@ function DiagRow({ d }: { d: any }) {
     </div>
   );
 }
+
+function DpeGauge({ classe }: { classe: string }) {
   const classes = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
   const colors: Record<string, string> = { A: '#16a34a', B: '#22c55e', C: '#84cc16', D: '#eab308', E: '#f97316', F: '#ef4444', G: '#991b1b' };
   return (
