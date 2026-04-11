@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'no_files_uploaded' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    // Stocker les file_ids + passer à "files_ready" → déclenche le webhook
+    // Stocker les file_ids + passer à "files_ready"
     await supabaseAdmin.from('analyses').update({
       status: 'files_ready',
       file_ids: fileIds,
@@ -128,6 +128,24 @@ Deno.serve(async (req) => {
     }).eq('id', analyseId);
 
     console.log(`[analyser] ${fileIds.length} fichiers uploadés → status=files_ready`);
+
+    // Appel direct vers analyser-run — EdgeRuntime.waitUntil garantit que le fetch
+    // survit après que analyser ait répondu au client
+    const runUrl = `${supabaseUrl}/functions/v1/analyser-run`;
+    EdgeRuntime.waitUntil(
+      fetch(runUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseServiceKey}`,
+        },
+        body: JSON.stringify({ analyseId, fileIds, mode, profil }),
+      })
+        .then(r => console.log(`[analyser] analyser-run réponse HTTP: ${r.status}`))
+        .catch(err => console.error('[analyser] Erreur appel analyser-run:', err))
+    );
+
+    console.log(`[analyser] analyser-run déclenché pour ${analyseId}`);
 
     return new Response(JSON.stringify({ success: true, analyseId, filesUploaded: fileIds.length }), {
       headers: { ...CORS, 'Content-Type': 'application/json' },
