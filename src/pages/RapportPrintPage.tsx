@@ -62,15 +62,20 @@ function buildRapportPrint(data: Record<string, unknown>, dbData: { id: string; 
   const mappedType = (dbData.type === 'pack2' || dbData.type === 'pack3' ? 'complete' : dbData.type) as 'document' | 'complete';
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const toTravaux = (arr: unknown[]): Array<Record<string, any>> => (arr || []).map(t => {
-    if (typeof t === 'string') return { label: t };
-    if (typeof t !== 'object' || t === null) return null;
-    const obj = t as Record<string, unknown>;
-    const label = (obj.label as string) || (obj.description as string) || '';
-    if (!label) return null;
-    const montant = obj.montant ?? obj.montant_estime ?? obj.montant_total;
-    return { label, annee: obj.annee || obj.annee_vote || '', montant_estime: typeof montant === 'number' ? montant : null, charge_vendeur: obj.charge_vendeur, precision: obj.precision };
-  }).filter(Boolean);
+  const toTravaux = (arr: unknown[]): any[] => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result: any[] = [];
+    for (const t of (arr || [])) {
+      if (typeof t === 'string') { result.push({ label: t, annee: '', montant_estime: null, charge_vendeur: false, precision: '' }); continue; }
+      if (typeof t !== 'object' || t === null) continue;
+      const obj = t as Record<string, unknown>;
+      const label = (obj.label as string) || (obj.description as string) || '';
+      if (!label) continue;
+      const montant = obj.montant ?? obj.montant_estime ?? obj.montant_total;
+      result.push({ label, annee: String(obj.annee || obj.annee_vote || ''), montant_estime: typeof montant === 'number' ? montant : null, charge_vendeur: !!obj.charge_vendeur, precision: String(obj.precision || '') });
+    }
+    return result;
+  };
 
   const rawProcedures = (r.procedures as unknown[]) || [];
   const procedures = rawProcedures.map(p =>
@@ -156,9 +161,9 @@ export default function RapportPrintPage() {
   const diagsPriv = rapport.diagnostics.filter(d => d.perimetre === 'lot_privatif') as Array<Record<string, string>>;
   const diagsComm = rapport.diagnostics.filter(d => d.perimetre === 'parties_communes' || d.perimetre === 'immeuble') as Array<Record<string, string>>;
   const vie = rapport.vie_copropriete;
-  const lot = rapport.lot_achete as Record<string, unknown> | null;
-  const syndicObj = vie?.syndic as Record<string, unknown> | undefined;
-  const participation = (vie?.participation_ag as Array<Record<string, string>>) || [];
+  const lot = rapport.lot_achete as { quote_part_tantiemes?: string; fonds_travaux_alur?: string; parties_privatives?: string[]; travaux_votes_charge_vendeur?: string[] } | null;
+  const syndicObj = vie?.syndic as { nom?: string; fin_mandat?: string; tensions_detectees?: boolean; tensions_detail?: string } | undefined;
+  const participation = (vie?.participation_ag as Array<{ annee?: string; copropietaires_presents_representes?: string; taux_tantiemes_pct?: string; quorum_note?: string }>) || [];
   const appelsExceptionnels = (vie?.appels_fonds_exceptionnels as Array<Record<string, unknown>>) || [];
   const circ = 2 * Math.PI * 28;
   const dash = (rapport.score / 20) * circ;
@@ -428,7 +433,7 @@ export default function RapportPrintPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {participation.map((p: Record<string, string>, i: number) => (
+                        {participation.map((p, i) => (
                           <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
                             <td style={{ padding: '6px 10px', fontWeight: 700 }}>{p.annee}</td>
                             <td style={{ padding: '6px 10px', color: '#374151' }}>{p.copropietaires_presents_representes || '—'}</td>
