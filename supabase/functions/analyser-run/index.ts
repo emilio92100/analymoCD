@@ -207,14 +207,21 @@ Deno.serve(async (req) => {
   const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
-    const body = await req.json() as { record?: { id: string; status: string }; analyseId?: string };
-    const analyseId = body.record?.id || body.analyseId;
-    const status = body.record?.status || 'files_ready';
+    const body = await req.json();
+    console.log('[analyser-run] Payload:', JSON.stringify(body).slice(0, 300));
 
+    const analyseId = body?.record?.id || body?.analyseId;
     if (!analyseId) return new Response(JSON.stringify({ error: 'missing_id' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
-    if (status !== 'files_ready') return new Response(JSON.stringify({ skipped: true }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
 
+    // Lire le vrai status depuis Supabase
+    const { data: analyseCheck } = await supabaseAdmin.from('analyses').select('status').eq('id', analyseId).single();
+    const status = analyseCheck?.status;
     console.log(`[analyser-run] Webhook reçu — ${analyseId} status:${status}`);
+
+    if (status !== 'files_ready') {
+      console.log(`[analyser-run] Ignoré — status=${status}`);
+      return new Response(JSON.stringify({ skipped: true, status }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
+    }
 
     EdgeRuntime.waitUntil(runAnalyse(analyseId, supabaseAdmin, apiKey));
 
