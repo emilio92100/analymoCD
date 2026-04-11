@@ -162,12 +162,12 @@ export default function NouvelleAnalyse() {
         // Rattraper le vrai progress rapidement
         if (prev < target - 1) return Math.min(prev + 1, target);
         if (prev < target) return target;
-        // Continuer lentement pour simuler l'activité pendant l'attente Claude
-        if (prev < 44)  return prev + 0.4;   // Phase upload : rapide
-        if (prev < 84)  return prev + 0.08;  // Phase analyse : lente
-        if (prev < 94)  return prev + 0.04;  // Phase synthèse : très lente
-        if (prev < 98)  return prev + 0.015; // Phase rapport : ultra lente
-        return 98; // Jamais 100% avant confirmation serveur
+        // Progression simulée très lente — calibrée pour 5-15 min d'analyse
+        if (prev < 44)  return prev + 0.3;    // Phase upload : modéré
+        if (prev < 84)  return prev + 0.02;   // Phase analyse Claude : très lente
+        if (prev < 93)  return prev + 0.008;  // Phase synthèse : ultra lente
+        if (prev < 97)  return prev + 0.003;  // Phase rapport : quasi immobile
+        return 97; // Jamais 100% avant confirmation serveur
       });
     }, 150);
     return () => { if (animRef.current) clearInterval(animRef.current); };
@@ -477,14 +477,22 @@ export default function NouvelleAnalyse() {
     const pct = Math.round(animatedProgress);
     const docsTotal = files.length;
 
-    // Étapes alignées sur la nouvelle architecture 2 Edge Functions
-    const etapes = [
-      { id: 'upload',   label: 'Envoi des documents',      detail: 'Transfert sécurisé de vos fichiers',          seuil: 0,  fin: 45,  couleur: '#2a7d9c', icon: '📤' },
-      { id: 'analyse',  label: 'Analyse en cours',         detail: 'Claude lit et analyse tous vos documents',     seuil: 45, fin: 85,  couleur: '#d97706', icon: '🔍' },
-      { id: 'synthese', label: 'Synthèse croisée',         detail: 'Croisement des informations entre documents',  seuil: 85, fin: 95,  couleur: '#0891b2', icon: '⚡' },
-      { id: 'rapport',  label: 'Génération du rapport',    detail: 'Rédaction de votre rapport personnalisé…',     seuil: 95, fin: 100, couleur: '#16a34a', icon: '✅' },
-    ];
+    const tempsRestant = pct < 20
+      ? (docsTotal <= 3 ? '~2 min' : docsTotal <= 8 ? '~4 min' : docsTotal <= 12 ? '~7 min' : '~10-15 min')
+      : pct < 50
+      ? (docsTotal <= 3 ? '~1 min 30' : docsTotal <= 8 ? '~3 min' : docsTotal <= 12 ? '~5 min' : '~8 min')
+      : pct < 75
+      ? (docsTotal <= 3 ? '~45 sec' : docsTotal <= 8 ? '~1 min 30' : '~3 min')
+      : pct < 90
+      ? (docsTotal <= 3 ? '~20 sec' : '~1 min')
+      : 'Bientôt prêt…';
 
+    const etapes = [
+      { id: 'upload',   label: 'Envoi des documents',   detail: 'Transfert sécurisé de vos fichiers',         seuil: 0,  fin: 45,  couleur: '#2a7d9c', icon: '📤' },
+      { id: 'analyse',  label: 'Analyse en cours',      detail: 'Claude lit et analyse tous vos documents',   seuil: 45, fin: 85,  couleur: '#d97706', icon: '🔍' },
+      { id: 'synthese', label: 'Synthèse croisée',      detail: 'Croisement des informations entre documents', seuil: 85, fin: 95,  couleur: '#0891b2', icon: '⚡' },
+      { id: 'rapport',  label: 'Génération du rapport', detail: 'Rédaction de votre rapport personnalisé…',   seuil: 95, fin: 100, couleur: '#16a34a', icon: '✅' },
+    ];
     const etapeActive = etapes.findLast(e => pct >= e.seuil) || etapes[0];
     const couleurActive = etapeActive.couleur;
 
@@ -493,25 +501,20 @@ export default function NouvelleAnalyse() {
         <style>{`
           @keyframes vr-shimmer { from { transform:translateX(-100%); } to { transform:translateX(200%); } }
           @keyframes vr-pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.6; transform:scale(0.9); } }
-          @keyframes vr-fadein { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
-          @keyframes vr-bounce { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-3px); } }
         `}</style>
-
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 24, alignItems: 'start' }}>
 
-          {/* ── Colonne gauche : progression principale ── */}
+          {/* Colonne gauche */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-            {/* Header */}
+            {/* Header avec temps estimé */}
             <div style={{ background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', borderRadius: 20, padding: '28px 32px', color: '#fff', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: -30, right: -30, width: 160, height: 160, borderRadius: '50%', background: 'rgba(42,125,156,0.15)', pointerEvents: 'none' }} />
               <div style={{ position: 'relative' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em', marginBottom: 6 }}>ANALYSE EN COURS</div>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-                      {etapeActive.icon} {etapeActive.label}
-                    </div>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: '#fff', lineHeight: 1.2 }}>{etapeActive.icon} {etapeActive.label}</div>
                     <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', marginTop: 6 }}>{etapeActive.detail}</div>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -520,21 +523,18 @@ export default function NouvelleAnalyse() {
                     </div>
                   </div>
                 </div>
-
-                {/* Barre principale */}
-                <div style={{ height: 8, borderRadius: 99, background: 'rgba(255,255,255,0.12)', overflow: 'hidden', position: 'relative' }}>
-                  <div style={{
-                    height: '100%', borderRadius: 99,
-                    background: `linear-gradient(90deg, ${couleurActive}cc, ${couleurActive})`,
-                    width: `${animatedProgress}%`,
-                    transition: 'width 0.5s cubic-bezier(0.4,0,0.2,1)',
-                    position: 'relative', overflow: 'hidden',
-                  }}>
-                    <div style={{
-                      position: 'absolute', top: 0, left: 0, height: '100%', width: '60%',
-                      background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)',
-                      animation: 'vr-shimmer 1.6s ease-in-out infinite',
-                    }} />
+                <div style={{ height: 8, borderRadius: 99, background: 'rgba(255,255,255,0.12)', overflow: 'hidden', marginBottom: 16 }}>
+                  <div style={{ height: '100%', borderRadius: 99, background: `linear-gradient(90deg, ${couleurActive}cc, ${couleurActive})`, width: `${animatedProgress}%`, transition: 'width 0.5s cubic-bezier(0.4,0,0.2,1)', position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: '60%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)', animation: 'vr-shimmer 1.6s ease-in-out infinite' }} />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
+                    {docsTotal} document{docsTotal > 1 ? 's' : ''} · Analyse {type === 'complete' ? 'complète' : 'document'}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 8, padding: '5px 12px' }}>
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>⏱</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{tempsRestant}</span>
                   </div>
                 </div>
               </div>
@@ -547,45 +547,21 @@ export default function NouvelleAnalyse() {
                 {etapes.map((e, idx) => {
                   const done = pct >= e.fin;
                   const active = pct >= e.seuil && pct < e.fin;
-                  const waiting = pct < e.seuil;
                   return (
                     <div key={e.id} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                      {/* Ligne verticale + cercle */}
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, paddingTop: 2 }}>
-                        <div style={{
-                          width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          background: done ? '#16a34a' : active ? couleurActive : '#f1f5f9',
-                          border: `2px solid ${done ? '#16a34a' : active ? couleurActive : '#e2e8f0'}`,
-                          transition: 'all 0.4s ease',
-                          fontSize: 12,
-                          animation: active ? 'vr-pulse 1.5s ease-in-out infinite' : 'none',
-                        }}>
-                          {done ? <span style={{ color: '#fff', fontSize: 13 }}>✓</span>
-                                : active ? <span style={{ color: '#fff', fontSize: 10 }}>●</span>
-                                : <span style={{ color: '#cbd5e1', fontSize: 10 }}>○</span>}
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: done ? '#16a34a' : active ? couleurActive : '#f1f5f9', border: `2px solid ${done ? '#16a34a' : active ? couleurActive : '#e2e8f0'}`, animation: active ? 'vr-pulse 1.5s ease-in-out infinite' : 'none' }}>
+                          {done ? <span style={{ color: '#fff', fontSize: 13 }}>✓</span> : active ? <span style={{ color: '#fff', fontSize: 10 }}>●</span> : <span style={{ color: '#cbd5e1', fontSize: 10 }}>○</span>}
                         </div>
-                        {idx < etapes.length - 1 && (
-                          <div style={{
-                            width: 2, height: 28, marginTop: 2,
-                            background: done ? '#16a34a' : '#e2e8f0',
-                            transition: 'background 0.4s ease',
-                          }} />
-                        )}
+                        {idx < etapes.length - 1 && <div style={{ width: 2, height: 28, marginTop: 2, background: done ? '#16a34a' : '#e2e8f0' }} />}
                       </div>
-                      {/* Contenu */}
                       <div style={{ paddingBottom: idx < etapes.length - 1 ? 16 : 0, paddingTop: 4, flex: 1 }}>
-                        <div style={{
-                          fontSize: 13, fontWeight: done ? 700 : active ? 700 : 500,
-                          color: done ? '#16a34a' : active ? '#0f172a' : '#94a3b8',
-                          transition: 'color 0.4s ease',
-                        }}>
+                        <div style={{ fontSize: 13, fontWeight: done || active ? 700 : 500, color: done ? '#16a34a' : active ? '#0f172a' : '#94a3b8' }}>
                           {e.icon} {e.label}
                           {active && <span style={{ fontSize: 11, color: couleurActive, marginLeft: 8, fontWeight: 600 }}>en cours…</span>}
                           {done && <span style={{ fontSize: 11, color: '#16a34a', marginLeft: 8 }}>✓ terminé</span>}
                         </div>
-                        {(active || done) && !waiting && (
-                          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{e.detail}</div>
-                        )}
+                        {(active || done) && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{e.detail}</div>}
                       </div>
                     </div>
                   );
@@ -600,65 +576,38 @@ export default function NouvelleAnalyse() {
             </div>
           </div>
 
-          {/* ── Colonne droite : documents ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-
-            <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 20px' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 14 }}>DOCUMENTS ANALYSÉS</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {files.map((file, i) => {
-                  const isUploaded = pct >= 30;
-                  const isReading = pct >= 30 && pct < 80;
-                  const isDone = pct >= 80;
-                  // Stagger : chaque doc est "lu" légèrement après le précédent
-                  const docPct = Math.max(0, Math.min(100, (pct - 30 - i * 8) * (100 / Math.max(1, 50 - docsTotal * 4))));
-                  const docDone = isDone || docPct >= 100;
-                  const docActive = isReading && !docDone;
-                  return (
-                    <div key={i} style={{
-                      padding: '10px 14px', borderRadius: 10,
-                      background: docDone ? '#f0fdf4' : docActive ? '#f0f9ff' : '#f8fafc',
-                      border: `1px solid ${docDone ? '#bbf7d0' : docActive ? '#bae6fd' : '#edf2f7'}`,
-                      transition: 'all 0.4s ease',
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 16, flexShrink: 0 }}>
-                          {docDone ? '✅' : docActive ? '📖' : isUploaded ? '📤' : '⏳'}
-                        </span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {file.name}
-                          </div>
-                          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-                            {docDone ? 'Analysé' : docActive ? 'Lecture en cours…' : isUploaded ? 'Envoyé' : 'En attente'}
-                          </div>
-                        </div>
-                        {docActive && (
-                          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#2a7d9c', animation: 'vr-pulse 1.2s ease-in-out infinite', flexShrink: 0 }} />
-                        )}
+          {/* Colonne droite : documents */}
+          <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 20px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 14 }}>DOCUMENTS ANALYSÉS</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {files.map((file, i) => {
+                const isUploaded = pct >= 30;
+                const isReading = pct >= 30 && pct < 80;
+                const isDone = pct >= 80;
+                const docPct = Math.max(0, Math.min(100, (pct - 30 - i * 8) * (100 / Math.max(1, 50 - docsTotal * 4))));
+                const docDone = isDone || docPct >= 100;
+                const docActive = isReading && !docDone;
+                return (
+                  <div key={i} style={{ padding: '10px 14px', borderRadius: 10, background: docDone ? '#f0fdf4' : docActive ? '#f0f9ff' : '#f8fafc', border: `1px solid ${docDone ? '#bbf7d0' : docActive ? '#bae6fd' : '#edf2f7'}`, transition: 'all 0.4s ease' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 16, flexShrink: 0 }}>{docDone ? '✅' : docActive ? '📖' : isUploaded ? '📤' : '⏳'}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</div>
+                        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{docDone ? 'Analysé' : docActive ? 'Lecture en cours…' : isUploaded ? 'Envoyé' : 'En attente'}</div>
                       </div>
-                      {docActive && docPct > 0 && docPct < 100 && (
-                        <div style={{ marginTop: 8, height: 3, borderRadius: 99, background: '#e0f2fe', overflow: 'hidden' }}>
-                          <div style={{ height: '100%', borderRadius: 99, background: '#2a7d9c', width: `${Math.min(docPct, 99)}%`, transition: 'width 0.4s ease' }} />
-                        </div>
-                      )}
+                      {docActive && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#2a7d9c', animation: 'vr-pulse 1.2s ease-in-out infinite', flexShrink: 0 }} />}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Temps estimé */}
-            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '16px 18px' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 10 }}>TEMPS ESTIMÉ</div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>
-                {pct < 30 ? '~2 min' : pct < 70 ? '~1 min 30' : pct < 90 ? '~45 sec' : 'Quelques secondes'}
-              </div>
-              <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
-                {docsTotal} document{docsTotal > 1 ? 's' : ''} · Analyse {type === 'complete' ? 'complète' : 'document'}
-              </div>
+                    {docActive && docPct > 0 && docPct < 100 && (
+                      <div style={{ marginTop: 8, height: 3, borderRadius: 99, background: '#e0f2fe', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', borderRadius: 99, background: '#2a7d9c', width: `${Math.min(docPct, 99)}%`, transition: 'width 0.4s ease' }} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
+
         </div>
       </div>
     );
