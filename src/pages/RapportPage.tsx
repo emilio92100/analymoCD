@@ -436,7 +436,7 @@ function DetailNote({ rapport }: { rapport: RapportData }) {
         {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />} Détail de la note
       </button>
       {open && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, padding: '12px 14px', background: 'rgba(255,255,255,0.06)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, padding: '14px 16px', background: 'rgba(255,255,255,0.06)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)' }}>
           {Object.entries(rapport.categories).map(([key, cat]) => {
             const c = cat as { note: number; note_max: number };
             const pct = (c.note / c.note_max) * 100;
@@ -445,13 +445,17 @@ function DetailNote({ rapport }: { rapport: RapportData }) {
             return (
               <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', width: 150, flexShrink: 0 }}>{labels[key] || key}</span>
-                <div style={{ flex: 1, height: 5, background: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 3 }} />
+                <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 3, transition: 'width 0.5s ease' }} />
                 </div>
-                <span style={{ fontSize: 11, fontWeight: 700, color, width: 36, textAlign: 'right', flexShrink: 0 }}>{c.note}/{c.note_max}</span>
+                <span style={{ fontSize: 12, fontWeight: 800, color, width: 40, textAlign: 'right', flexShrink: 0 }}>{c.note}/{c.note_max}</span>
               </div>
             );
           })}
+          <div style={{ marginTop: 4, padding: '8px 10px', background: 'rgba(255,255,255,0.05)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginBottom: 4 }}>Note globale</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: getScoreColor(rapport.score) }}>{rapport.score.toFixed(1)}<span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.3)' }}>/20</span></div>
+          </div>
         </div>
       )}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -857,17 +861,22 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
             const fin = rapport.finances as Record<string, unknown> | null;
             const budgetTotal = fin?.budget_total_copro;
             const budgetNum = typeof budgetTotal === 'number' ? budgetTotal : typeof budgetTotal === 'string' ? parseFloat(String(budgetTotal).replace(/[^0-9.]/g, '')) || 0 : 0;
+            const hist = fin?.budgets_historique as Array<{ annee: string; budget_total: number; fonds_travaux?: number }> | null;
+            const lastYear = hist && hist.length > 0 ? [...hist].sort((a, b) => String(b.annee).localeCompare(String(a.annee)))[0].annee : null;
+            const fondsNum = rapport.fonds_travaux > 0 ? rapport.fonds_travaux : 0;
+            const fondsPct = budgetNum > 0 && fondsNum > 0 ? ((fondsNum / budgetNum) * 100).toFixed(1) : null;
             return (<>
               {budgetNum > 0 && (
                 <div style={{ padding: '14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', textAlign: 'center' }}>
                   <div style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>{budgetNum.toLocaleString('fr-FR')}€</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Budget annuel copropriété</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Budget annuel copropriété{lastYear ? ` (${lastYear})` : ''}</div>
                 </div>
               )}
-              {rapport.fonds_travaux > 0 && (
+              {fondsNum > 0 && (
                 <div style={{ padding: '14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', textAlign: 'center' }}>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: '#7c3aed', marginBottom: 3 }}>{rapport.fonds_travaux.toLocaleString('fr-FR')}€</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Fonds travaux copro</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: '#7c3aed', marginBottom: 3 }}>{fondsNum.toLocaleString('fr-FR')}€</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Fonds travaux copro{lastYear ? ` (${lastYear})` : ''}</div>
+                  {fondsPct && <div style={{ fontSize: 10, color: '#7c3aed', marginTop: 3 }}>≈ {fondsPct}% du budget voté</div>}
                 </div>
               )}
             </>);
@@ -1073,7 +1082,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
 
       {/* FINANCES DU LOT */}
       <AccordionSection
-        title="Finances de votre lot" sub="Charges annuelles · taxe foncière · impayés" icon="💶"
+        title="Finances de votre lot" sub="Charges annuelles · impayés" icon="💶"
         status={(lot?.impayes_detectes) ? 'alert' : 'neutral'}
         badge={(lot?.impayes_detectes) ? 'Impayés détectés' : 'Informatif'}
         defaultOpen={true}>
@@ -1111,7 +1120,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
             const fin = rapport.finances as Record<string, unknown> | null;
             const c = fin?.charges_annuelles_lot;
             const n = typeof c === 'number' ? c : 0;
-            return n === 0 ? <p style={{ fontSize: 13, color: '#94a3b8' }}>Uploadez un appel de charges ou une taxe foncière pour obtenir ces informations.</p> : null;
+            return n === 0 ? <p style={{ fontSize: 13, color: '#94a3b8' }}>Uploadez un appel de charges pour obtenir ces informations.</p> : null;
           })()}
         </div>
       </AccordionSection>
