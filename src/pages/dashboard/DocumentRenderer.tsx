@@ -1,51 +1,108 @@
 import { Link } from 'react-router-dom';
 
-// ═══════════════════════════════════════
-// COMPOSANTS COMMUNS
-// ═══════════════════════════════════════
-
-const S = {
-  card: { background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, overflow: 'hidden' as const, marginBottom: 12 },
-  cardHeader: () => ({ padding: '12px 18px', borderBottom: '0.5px solid var(--color-border-tertiary)', display: 'flex', alignItems: 'center', gap: 8 }),
-  dot: (color: string) => ({ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }),
-  label: { fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)' },
-  row: (alt: boolean) => ({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 18px', borderBottom: '0.5px solid var(--color-border-tertiary)', background: alt ? 'var(--color-background-secondary)' : 'var(--color-background-primary)' }),
-  th: { padding: '9px 18px', textAlign: 'left' as const, fontSize: 11, fontWeight: 500, color: 'var(--color-text-secondary)', borderBottom: '0.5px solid var(--color-border-tertiary)' },
-  td: (alt: boolean) => ({ padding: '9px 18px', borderBottom: '0.5px solid var(--color-border-tertiary)', background: alt ? 'var(--color-background-secondary)' : 'transparent' }),
+// Couleurs hardcodées (pas de CSS vars — compatibilité RapportPage)
+const C = {
+  bg: '#ffffff',
+  bgSecondary: '#f8fafc',
+  border: '#e2e8f0',
+  text: '#0f172a',
+  textSec: '#64748b',
+  green: { bg: '#f0fdf4', border: '#bbf7d0', text: '#166534', dot: '#16a34a' },
+  red: { bg: '#fef2f2', border: '#fecaca', text: '#991b1b', dot: '#dc2626' },
+  orange: { bg: '#fff7ed', border: '#fed7aa', text: '#92400e', dot: '#f97316' },
+  blue: { bg: '#eff6ff', border: '#bfdbfe', text: '#1e40af', dot: '#3b82f6' },
+  gray: { bg: '#f8fafc', border: '#e2e8f0', text: '#64748b', dot: '#94a3b8' },
+  dark: '#0f2d3d',
 };
 
-function Header({ type, titre, sub }: { type: string; titre: string; sub: string }) {
+const DPE_COLORS: Record<string, string> = {
+  A: '#16a34a', B: '#22c55e', C: '#84cc16', D: '#eab308', E: '#f97316', F: '#ef4444', G: '#991b1b'
+};
+
+// ── Composants communs ──────────────────────────────────────
+
+function Header({ type, titre, sub }: { type: string; titre: string; sub?: string }) {
   return (
-    <div style={{ background: '#0f2d3d', borderRadius: 14, padding: '22px 26px', marginBottom: 14 }}>
-      <div style={{ fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', marginBottom: 6 }}>{type}</div>
-      <div style={{ fontSize: 17, fontWeight: 500, color: '#fff', marginBottom: 4 }}>{titre}</div>
-      {sub && <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>{sub}</div>}
+    <div style={{ background: C.dark, borderRadius: 14, padding: '22px 28px', marginBottom: 16 }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', marginBottom: 8, textTransform: 'uppercase' as const }}>{type}</div>
+      <div style={{ fontSize: 20, fontWeight: 600, color: '#fff', marginBottom: sub ? 6 : 0, lineHeight: 1.3 }}>{titre}</div>
+      {sub && <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>{sub}</div>}
+    </div>
+  );
+}
+
+function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14, ...style }}>
+      {children}
+    </div>
+  );
+}
+
+function CardHeader({ label, color }: { label: string; color: string }) {
+  return (
+    <div style={{ padding: '12px 20px', borderBottom: `0.5px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+      <div style={{ fontSize: 12, fontWeight: 600, color: C.textSec, letterSpacing: '0.05em' }}>{label}</div>
     </div>
   );
 }
 
 function Resume({ text }: { text: string }) {
   return (
-    <div style={{ ...S.card, overflow: 'visible' }}>
+    <Card>
       <div style={{ padding: '18px 20px' }}>
-        <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text-secondary)', letterSpacing: '0.08em', marginBottom: 10 }}>RÉSUMÉ</div>
-        <div style={{ fontSize: 14, color: 'var(--color-text-primary)', lineHeight: 1.75 }}>{text}</div>
+        <div style={{ fontSize: 11, fontWeight: 600, color: C.textSec, letterSpacing: '0.1em', marginBottom: 10, textTransform: 'uppercase' as const }}>Résumé</div>
+        <div style={{ fontSize: 15, color: C.text, lineHeight: 1.8 }}>{text}</div>
       </div>
+    </Card>
+  );
+}
+
+function KpiGrid({ children }: { children: React.ReactNode }) {
+  return <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>{children}</div>;
+}
+
+function Kpi({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
+  return (
+    <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, padding: '18px 20px' }}>
+      <div style={{ fontSize: 12, color: C.textSec, marginBottom: 8 }}>{label}</div>
+      <div style={{ fontSize: 22, fontWeight: 600, color: color || C.text, lineHeight: 1.2 }}>{value}</div>
+      {sub && <div style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>{sub}</div>}
     </div>
+  );
+}
+
+function InfoRow({ label, value, alt, valueColor }: { label: string; value: string; alt?: boolean; valueColor?: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: `0.5px solid ${C.border}`, background: alt ? C.bgSecondary : C.bg }}>
+      <span style={{ fontSize: 14, color: C.textSec }}>{label}</span>
+      <span style={{ fontSize: 14, fontWeight: 500, color: valueColor || C.text }}>{value}</span>
+    </div>
+  );
+}
+
+function TableHeader({ cols }: { cols: { label: string; align?: 'left' | 'right' | 'center' }[] }) {
+  return (
+    <tr style={{ background: C.bgSecondary }}>
+      {cols.map((c, i) => (
+        <th key={i} style={{ padding: '10px 20px', textAlign: c.align || 'left', fontSize: 12, fontWeight: 600, color: C.textSec, borderBottom: `0.5px solid ${C.border}` }}>{c.label}</th>
+      ))}
+    </tr>
   );
 }
 
 function PointsForts({ items }: { items: string[] }) {
   if (!items?.length) return null;
   return (
-    <div style={{ background: '#f0fdf4', border: '0.5px solid #bbf7d0', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
-      <div style={{ padding: '12px 18px', borderBottom: '0.5px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#16a34a', flexShrink: 0 }} />
-        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)' }}>POINTS POSITIFS</div>
+    <div style={{ background: C.green.bg, border: `0.5px solid ${C.green.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+      <div style={{ padding: '12px 20px', borderBottom: `0.5px solid ${C.green.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.green.dot }} />
+        <div style={{ fontSize: 12, fontWeight: 600, color: C.textSec, letterSpacing: '0.05em' }}>POINTS POSITIFS</div>
       </div>
       {items.map((p, i) => (
-        <div key={i} style={{ padding: '11px 18px', borderBottom: i < items.length - 1 ? '0.5px solid #bbf7d0' : 'none', background: i % 2 === 0 ? 'transparent' : 'rgba(240,253,244,0.5)' }}>
-          <div style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>{p}</div>
+        <div key={i} style={{ padding: '12px 20px', borderBottom: i < items.length - 1 ? `0.5px solid ${C.green.border}` : 'none', background: i % 2 === 0 ? C.green.bg : '#f7fef9', fontSize: 14, color: C.text }}>
+          {p}
         </div>
       ))}
     </div>
@@ -55,14 +112,14 @@ function PointsForts({ items }: { items: string[] }) {
 function PointsVigilance({ items }: { items: string[] }) {
   if (!items?.length) return null;
   return (
-    <div style={{ background: '#fef2f2', border: '0.5px solid #fecaca', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
-      <div style={{ padding: '12px 18px', borderBottom: '0.5px solid #fecaca', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#dc2626', flexShrink: 0 }} />
-        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)' }}>POINTS DE VIGILANCE</div>
+    <div style={{ background: C.red.bg, border: `0.5px solid ${C.red.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+      <div style={{ padding: '12px 20px', borderBottom: `0.5px solid ${C.red.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.red.dot }} />
+        <div style={{ fontSize: 12, fontWeight: 600, color: C.textSec, letterSpacing: '0.05em' }}>POINTS DE VIGILANCE</div>
       </div>
       {items.map((p, i) => (
-        <div key={i} style={{ padding: '11px 18px', borderBottom: i < items.length - 1 ? '0.5px solid #fecaca' : 'none', background: i % 2 === 0 ? 'transparent' : 'rgba(254,242,242,0.5)' }}>
-          <div style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>{p}</div>
+        <div key={i} style={{ padding: '12px 20px', borderBottom: i < items.length - 1 ? `0.5px solid ${C.red.border}` : 'none', background: i % 2 === 0 ? C.red.bg : '#fff5f5', fontSize: 14, color: C.text }}>
+          {p}
         </div>
       ))}
     </div>
@@ -71,152 +128,117 @@ function PointsVigilance({ items }: { items: string[] }) {
 
 function AvisVerimo({ text }: { text: string }) {
   return (
-    <div style={{ background: '#0f2d3d', borderRadius: 12, padding: '20px 24px' }}>
-      <div style={{ fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', marginBottom: 10 }}>AVIS VERIMO</div>
-      <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', lineHeight: 1.7 }}>{text}</div>
-      <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(255,255,255,0.06)', borderRadius: 8, fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
-        Cette analyse porte sur un seul document. Pour une vision complète de votre futur bien, lancez une{' '}
-        <Link to="/dashboard/nouvelle-analyse" style={{ color: '#7dd3fc', textDecoration: 'none', fontWeight: 500 }}>Analyse Complète</Link>.
+    <div style={{ background: C.dark, borderRadius: 12, padding: '22px 28px' }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', marginBottom: 12, textTransform: 'uppercase' as const }}>Avis Verimo</div>
+      <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.88)', lineHeight: 1.8 }}>{text}</div>
+      <div style={{ marginTop: 16, padding: '12px 16px', background: 'rgba(255,255,255,0.06)', borderRadius: 8, fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
+        Pour une vision complète de votre futur bien, lancez une{' '}
+        <Link to="/dashboard/nouvelle-analyse" style={{ color: '#7dd3fc', textDecoration: 'none', fontWeight: 600 }}>Analyse Complète</Link>.
       </div>
     </div>
   );
 }
 
-function DpeGauge({ classe, label }: { classe: string; label: string }) {
+function DpeJauge({ classe, label, valeur }: { classe: string; label: string; valeur?: string }) {
   const classes = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
-  const colors: Record<string, string> = { A: '#16a34a', B: '#22c55e', C: '#84cc16', D: '#eab308', E: '#f97316', F: '#ef4444', G: '#991b1b' };
   return (
-    <div>
-      <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 12, fontWeight: 500 }}>{label}</div>
-      <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 52, marginBottom: 10 }}>
+    <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, padding: '20px', flex: 1 }}>
+      <div style={{ fontSize: 13, color: C.textSec, marginBottom: 16, fontWeight: 500 }}>{label}</div>
+      <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end', height: 56, marginBottom: 12 }}>
         {classes.map((c, i) => {
           const active = c === classe;
-          const h = 26 + i * 4;
+          const h = 28 + i * 4;
           return (
-            <div key={c} style={{ flex: 1, height: active ? 52 : h, borderRadius: 4, background: active ? colors[c] : `${colors[c]}25`, border: active ? `2px solid ${colors[c]}` : `1px solid ${colors[c]}40`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontSize: active ? 13 : 11, fontWeight: 500, color: active ? '#fff' : colors[c] }}>{c}</span>
+            <div key={c} style={{ flex: 1, height: active ? 56 : h, borderRadius: 5, background: active ? DPE_COLORS[c] : `${DPE_COLORS[c]}28`, border: active ? `2px solid ${DPE_COLORS[c]}` : `1px solid ${DPE_COLORS[c]}44`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: active ? 14 : 11, fontWeight: 600, color: active ? '#fff' : DPE_COLORS[c] }}>{c}</span>
             </div>
           );
         })}
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{label.includes('GES') ? 'kg CO₂/m²/an' : 'kWh/m²/an'}</div>
-        {classe && <div style={{ fontSize: 12, fontWeight: 500, color: colors[classe], background: `${colors[classe]}15`, padding: '2px 10px', borderRadius: 100, border: `0.5px solid ${colors[classe]}40` }}>Classe {classe}</div>}
+        <span style={{ fontSize: 13, color: C.textSec }}>{valeur}</span>
+        {classe && (
+          <span style={{ fontSize: 13, fontWeight: 600, color: DPE_COLORS[classe], background: `${DPE_COLORS[classe]}18`, padding: '3px 12px', borderRadius: 100, border: `1px solid ${DPE_COLORS[classe]}44` }}>
+            Classe {classe}
+          </span>
+        )}
       </div>
     </div>
   );
 }
 
-function Kpi({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
-  return (
-    <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, padding: '16px 18px' }}>
-      <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 500, color: color || 'var(--color-text-primary)' }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 3 }}>{sub}</div>}
-    </div>
-  );
-}
+// ── Renderers par type ──────────────────────────────────────
 
-function SectionHeader({ label, color }: { label: string; color: string }) {
-  return (
-    <div style={{ padding: '12px 18px', borderBottom: '0.5px solid var(--color-border-tertiary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-      <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)' }}>{label}</div>
-    </div>
-  );
-}
-
-function InfoRow({ label, value, alt, valueColor }: { label: string; value: string; alt?: boolean; valueColor?: string }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 18px', borderBottom: '0.5px solid var(--color-border-tertiary)', background: alt ? 'var(--color-background-secondary)' : 'transparent' }}>
-      <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{label}</span>
-      <span style={{ fontSize: 13, fontWeight: 500, color: valueColor || 'var(--color-text-primary)' }}>{value}</span>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════
-// RENDERER DDT
-// ═══════════════════════════════════════
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererDDT({ r }: { r: any }) {
   const diags = r.diagnostics || [];
-  const alertes = diags.filter((d: any) => d.presence === 'anomalie');
-  const conformes = diags.filter((d: any) => d.presence === 'conforme' || d.presence === 'non_detecte' || d.presence === 'non_applicable');
-  const infos = diags.filter((d: any) => d.presence === 'informatif');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getStyle = (presence: string) => {
+    if (presence === 'anomalie') return { bg: C.red.bg, border: C.red.border, badgeColor: C.red.dot, badge: 'Anomalie' };
+    if (presence === 'conforme') return { bg: C.green.bg, border: C.green.border, badgeColor: C.green.dot, badge: '✓ Conforme' };
+    if (presence === 'non_detecte') return { bg: C.green.bg, border: C.green.border, badgeColor: C.green.dot, badge: '✓ Non détecté' };
+    if (presence === 'non_applicable') return { bg: C.gray.bg, border: C.gray.border, badgeColor: C.gray.dot, badge: 'Non applicable' };
+    return { bg: C.gray.bg, border: C.gray.border, badgeColor: C.gray.dot, badge: 'Informatif' };
+  };
 
-  const diagColor = (p: string) => p === 'anomalie' ? { bg: '#fef2f2', border: '#fecaca', text: '#dc2626', badge: 'Anomalies' }
-    : p === 'non_detecte' ? { bg: '#f0fdf4', border: '#bbf7d0', text: '#16a34a', badge: '✓ Non détecté' }
-    : p === 'conforme' ? { bg: '#f0fdf4', border: '#bbf7d0', text: '#16a34a', badge: '✓ Conforme' }
-    : p === 'non_applicable' ? { bg: 'var(--color-background-secondary)', border: 'var(--color-border-tertiary)', text: 'var(--color-text-secondary)', badge: 'Non applicable' }
-    : { bg: 'var(--color-background-secondary)', border: 'var(--color-border-tertiary)', text: 'var(--color-text-secondary)', badge: 'Informatif' };
-
-  const sub = [
-    r.diagnostiqueur?.nom,
-    r.diagnostiqueur?.date ? `le ${r.diagnostiqueur.date}` : null,
-    r.diagnostiqueur?.certification,
-  ].filter(Boolean).join(' · ');
+  const sub = [r.diagnostiqueur?.nom, r.diagnostiqueur?.date ? `le ${r.diagnostiqueur.date}` : null, r.diagnostiqueur?.certification].filter(Boolean).join(' · ');
 
   return (
     <div>
-      <Header type="DOSSIER DE DIAGNOSTIC TECHNIQUE" titre={r.titre} sub={sub} />
+      <Header type="Dossier de Diagnostic Technique" titre={r.titre} sub={sub} />
       <Resume text={r.resume} />
 
       {/* DPE + GES */}
       {r.dpe?.classe && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-          <div style={{ ...S.card, overflow: 'visible', marginBottom: 0, padding: 18 }}>
-            <DpeGauge classe={r.dpe.classe} label={`Énergie primaire (DPE)${r.dpe.kwh_m2 ? ` — ${r.dpe.kwh_m2} kWh/m²/an` : ''}`} />
-          </div>
-          {r.dpe.ges_classe && (
-            <div style={{ ...S.card, overflow: 'visible', marginBottom: 0, padding: 18 }}>
-              <DpeGauge classe={r.dpe.ges_classe} label={`Émissions GES${r.dpe.ges_kg_m2 ? ` — ${r.dpe.ges_kg_m2} kg CO₂/m²/an` : ''}`} />
-            </div>
-          )}
+        <div style={{ display: 'flex', gap: 14, marginBottom: 14 }}>
+          <DpeJauge classe={r.dpe.classe} label="Énergie primaire (DPE)" valeur={r.dpe.kwh_m2 ? `${r.dpe.kwh_m2} kWh/m²/an` : ''} />
+          {r.dpe.ges_classe && <DpeJauge classe={r.dpe.ges_classe} label="Émissions GES" valeur={r.dpe.ges_kg_m2 ? `${r.dpe.ges_kg_m2} kg CO₂/m²/an` : ''} />}
         </div>
       )}
 
       {/* Carrez */}
       {r.carrez?.surface_totale && (
-        <div style={{ ...S.card }}>
-          <div style={{ padding: '14px 18px', borderBottom: '0.5px solid var(--color-border-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)' }}>Surface loi Carrez</div>
-            <div style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>{r.carrez.surface_totale} m²</div>
+        <Card>
+          <div style={{ padding: '14px 20px', borderBottom: `0.5px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: C.textSec }}>Surface loi Carrez</span>
+            <span style={{ fontSize: 24, fontWeight: 600, color: C.text }}>{r.carrez.surface_totale} m²</span>
           </div>
           {r.carrez.pieces?.length > 0 && (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <tbody>
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {r.carrez.pieces.map((p: any, i: number) => (
-                  <tr key={i} style={{ borderBottom: i < r.carrez.pieces.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none', background: i % 2 === 0 ? 'transparent' : 'var(--color-background-secondary)' }}>
-                    <td style={{ padding: '9px 18px', color: 'var(--color-text-primary)' }}>{p.piece}</td>
-                    <td style={{ padding: '9px 18px', textAlign: 'right', fontWeight: 500, color: 'var(--color-text-primary)' }}>{p.surface} m²</td>
+                  <tr key={i} style={{ borderBottom: i < r.carrez.pieces.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+                    <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{p.piece}</td>
+                    <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: C.text, textAlign: 'right' }}>{p.surface} m²</td>
                   </tr>
                 ))}
                 {r.carrez.surface_sol && (
-                  <tr style={{ background: 'var(--color-background-secondary)', borderTop: '0.5px solid var(--color-border-tertiary)' }}>
-                    <td style={{ padding: '9px 18px', color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>Surface au sol (hors Carrez)</td>
-                    <td style={{ padding: '9px 18px', textAlign: 'right', color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>{r.carrez.surface_sol} m²</td>
+                  <tr style={{ background: C.bgSecondary, borderTop: `0.5px solid ${C.border}` }}>
+                    <td style={{ padding: '11px 20px', fontSize: 14, color: C.textSec, fontStyle: 'italic' }}>Surface au sol (hors Carrez)</td>
+                    <td style={{ padding: '11px 20px', fontSize: 14, color: C.textSec, textAlign: 'right', fontStyle: 'italic' }}>{r.carrez.surface_sol} m²</td>
                   </tr>
                 )}
               </tbody>
             </table>
           )}
-        </div>
+        </Card>
       )}
 
       {/* Diagnostics */}
       {diags.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-          {[...alertes, ...conformes, ...infos].map((d: any, i: number) => {
-            const c = diagColor(d.presence);
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {diags.map((d: any, i: number) => {
+            const s = getStyle(d.presence);
             return (
-              <div key={i} style={{ background: c.bg, border: `0.5px solid ${c.border}`, borderRadius: 12, padding: '14px 16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)' }}>{d.label}</span>
-                  <span style={{ fontSize: 11, fontWeight: 500, color: c.text, background: 'white', border: `0.5px solid ${c.border}`, padding: '2px 8px', borderRadius: 100, whiteSpace: 'nowrap', marginLeft: 8 }}>{c.badge}</span>
+              <div key={i} style={{ background: s.bg, border: `0.5px solid ${s.border}`, borderRadius: 12, padding: '16px 18px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{d.label}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: s.badgeColor, background: C.bg, border: `0.5px solid ${s.border}`, padding: '3px 10px', borderRadius: 100, whiteSpace: 'nowrap' as const, marginLeft: 8 }}>{s.badge}</span>
                 </div>
-                {d.detail && <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>{d.detail}</div>}
-                {d.alerte && <div style={{ fontSize: 12, color: '#dc2626', marginTop: 6, fontWeight: 500 }}>⚠ {d.alerte}</div>}
+                {d.detail && <div style={{ fontSize: 13, color: C.textSec, lineHeight: 1.6 }}>{d.detail}</div>}
+                {d.alerte && <div style={{ fontSize: 13, color: C.red.dot, marginTop: 8, fontWeight: 500 }}>⚠ {d.alerte}</div>}
               </div>
             );
           })}
@@ -225,27 +247,28 @@ function RendererDDT({ r }: { r: any }) {
 
       {/* Travaux préconisés */}
       {r.travaux_preconises?.length > 0 && (
-        <div style={{ ...S.card }}>
-          <SectionHeader label="TRAVAUX RECOMMANDÉS PAR LE DPE" color="#d97706" />
+        <Card>
+          <CardHeader label="TRAVAUX RECOMMANDÉS PAR LE DPE" color="#d97706" />
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {r.travaux_preconises.map((t: any, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 18px', borderBottom: i < r.travaux_preconises.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none', background: i % 2 === 0 ? 'transparent' : 'var(--color-background-secondary)' }}>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: i < r.travaux_preconises.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
               <div>
-                <div style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>{t.label}</div>
-                <div style={{ fontSize: 11, color: t.priorite === 'prioritaire' ? '#dc2626' : '#d97706', marginTop: 3 }}>{t.priorite === 'prioritaire' ? 'Prioritaire' : 'Recommandé'}</div>
+                <div style={{ fontSize: 14, color: C.text }}>{t.label}</div>
+                <div style={{ fontSize: 12, color: t.priorite === 'prioritaire' ? '#dc2626' : '#d97706', marginTop: 4 }}>{t.priorite === 'prioritaire' ? 'Prioritaire' : 'Recommandé'}</div>
               </div>
               {(t.cout_min || t.cout_max) && (
-                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)', whiteSpace: 'nowrap', marginLeft: 16 }}>
-                  {t.cout_min && t.cout_max ? `${t.cout_min.toLocaleString('fr-FR')} – ${t.cout_max.toLocaleString('fr-FR')} €` : `${(t.cout_min || t.cout_max)?.toLocaleString('fr-FR')} €`}
+                <div style={{ fontSize: 14, fontWeight: 600, color: C.text, whiteSpace: 'nowrap' as const, marginLeft: 20 }}>
+                  {t.cout_min && t.cout_max ? `${Number(t.cout_min).toLocaleString('fr-FR')} – ${Number(t.cout_max).toLocaleString('fr-FR')} €` : `${Number(t.cout_min || t.cout_max).toLocaleString('fr-FR')} €`}
                 </div>
               )}
             </div>
           ))}
           {r.gain_energetique && (
-            <div style={{ padding: '12px 18px', background: '#f0f9ff', borderTop: '0.5px solid #bae6fd', fontSize: 12, color: '#0369a1' }}>
+            <div style={{ padding: '12px 20px', background: '#f0f9ff', borderTop: `0.5px solid #bae6fd`, fontSize: 13, color: '#0369a1' }}>
               {r.gain_energetique}
             </div>
           )}
-        </div>
+        </Card>
       )}
 
       <PointsForts items={r.points_forts} />
@@ -255,75 +278,69 @@ function RendererDDT({ r }: { r: any }) {
   );
 }
 
-// ═══════════════════════════════════════
-// RENDERER PV AG
-// ═══════════════════════════════════════
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererPVAG({ r }: { r: any }) {
   const sub = [r.date_ag, r.syndic ? `Syndic : ${r.syndic}` : null, r.quorum?.presents && r.quorum?.total ? `${r.quorum.presents}/${r.quorum.total} copropriétaires · ${r.quorum.tantiemes_pct}` : null].filter(Boolean).join(' · ');
   return (
     <div>
-      <Header type="PROCÈS-VERBAL D'ASSEMBLÉE GÉNÉRALE" titre={r.titre} sub={sub} />
+      <Header type="Procès-Verbal d'Assemblée Générale" titre={r.titre} sub={sub} />
       <Resume text={r.resume} />
 
-      {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
+      <KpiGrid>
         {r.budget_vote?.montant && <Kpi label={`Budget voté ${r.budget_vote.annee || ''}`} value={`${Number(r.budget_vote.montant).toLocaleString('fr-FR')} €`} />}
         {r.budget_vote?.fonds_travaux && <Kpi label="Fonds travaux" value={`${Number(r.budget_vote.fonds_travaux).toLocaleString('fr-FR')} €`} color="#7c3aed" sub="Loi ALUR" />}
         {r.quorum?.tantiemes_pct && <Kpi label="Quorum" value={r.quorum.tantiemes_pct} color="#16a34a" sub={r.quorum.presents && r.quorum.total ? `${r.quorum.presents}/${r.quorum.total} copropriétaires` : undefined} />}
-      </div>
+      </KpiGrid>
 
-      {/* Travaux votés */}
       {r.travaux_votes?.length > 0 && (
-        <div style={{ ...S.card }}>
-          <SectionHeader label="TRAVAUX VOTÉS" color="#3b82f6" />
-          <div style={{ padding: '10px 18px', background: '#eff6ff', borderBottom: '0.5px solid #bfdbfe', fontSize: 12, color: '#1d4ed8' }}>
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="TRAVAUX VOTÉS" color={C.blue.dot} />
+          <div style={{ padding: '10px 20px', background: C.blue.bg, borderBottom: `0.5px solid ${C.blue.border}`, fontSize: 13, color: C.blue.text }}>
             ℹ Votés avant compromis = à la charge du vendeur. À vérifier avec votre notaire.
           </div>
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {r.travaux_votes.map((t: any, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 18px', borderBottom: i < r.travaux_votes.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none', background: i % 2 === 0 ? 'transparent' : 'var(--color-background-secondary)' }}>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: i < r.travaux_votes.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
               <div>
-                <div style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>{t.label}</div>
-                {t.echeance && <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 3 }}>{t.echeance}</div>}
+                <div style={{ fontSize: 14, color: C.text }}>{t.label}</div>
+                {t.echeance && <div style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>{t.echeance}</div>}
               </div>
-              {t.montant && <div style={{ fontSize: 14, fontWeight: 500, color: '#1d4ed8', whiteSpace: 'nowrap', marginLeft: 16 }}>{Number(t.montant).toLocaleString('fr-FR')} €</div>}
+              {t.montant && <div style={{ fontSize: 15, fontWeight: 600, color: C.blue.dot, whiteSpace: 'nowrap' as const, marginLeft: 20 }}>{Number(t.montant).toLocaleString('fr-FR')} €</div>}
             </div>
           ))}
         </div>
       )}
 
-      {/* Travaux évoqués */}
       {r.travaux_evoques?.length > 0 && (
-        <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid #fed7aa', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
-          <SectionHeader label="TRAVAUX ÉVOQUÉS — NON ENCORE VOTÉS" color="#f97316" />
-          <div style={{ padding: '10px 18px', background: '#fff7ed', borderBottom: '0.5px solid #fed7aa', fontSize: 12, color: '#92400e' }}>
+        <div style={{ background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="TRAVAUX ÉVOQUÉS — NON ENCORE VOTÉS" color={C.orange.dot} />
+          <div style={{ padding: '10px 20px', background: '#fff7ed', borderBottom: `0.5px solid ${C.orange.border}`, fontSize: 13, color: C.orange.text }}>
             ⚠ Mentionnés sans vote. Si votés après votre achat, vous en supporterez la charge.
           </div>
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {r.travaux_evoques.map((t: any, i: number) => (
-            <div key={i} style={{ padding: '12px 18px', borderBottom: i < r.travaux_evoques.length - 1 ? '0.5px solid #fed7aa' : 'none', background: i % 2 === 0 ? 'transparent' : 'var(--color-background-secondary)' }}>
-              <div style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>{t.label}</div>
-              {t.precision && <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 3 }}>{t.precision}</div>}
+            <div key={i} style={{ padding: '14px 20px', borderBottom: i < r.travaux_evoques.length - 1 ? `0.5px solid ${C.orange.border}` : 'none', background: i % 2 === 0 ? C.orange.bg : '#fffbf5' }}>
+              <div style={{ fontSize: 14, color: C.text }}>{t.label}</div>
+              {t.precision && <div style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>{t.precision}</div>}
             </div>
           ))}
         </div>
       )}
 
-      {/* Questions diverses */}
       {r.questions_diverses?.length > 0 && (
-        <div style={{ ...S.card }}>
-          <SectionHeader label="QUESTIONS DIVERSES NOTABLES" color="#64748b" />
+        <Card>
+          <CardHeader label="QUESTIONS DIVERSES NOTABLES" color={C.gray.dot} />
           {r.questions_diverses.map((q: string, i: number) => (
-            <div key={i} style={{ padding: '12px 18px', borderBottom: i < r.questions_diverses.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none', fontSize: 13, color: 'var(--color-text-primary)', background: i % 2 === 0 ? 'transparent' : 'var(--color-background-secondary)' }}>{q}</div>
+            <div key={i} style={{ padding: '12px 20px', borderBottom: i < r.questions_diverses.length - 1 ? `0.5px solid ${C.border}` : 'none', fontSize: 14, color: C.text, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>{q}</div>
           ))}
-        </div>
+        </Card>
       )}
 
-      {/* Procédures */}
       {r.procedures?.length > 0 && (
-        <div style={{ background: '#fef2f2', border: '0.5px solid #fecaca', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
-          <SectionHeader label="PROCÉDURES / LITIGES MENTIONNÉS" color="#dc2626" />
+        <div style={{ background: C.red.bg, border: `0.5px solid ${C.red.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="PROCÉDURES / LITIGES MENTIONNÉS" color={C.red.dot} />
           {r.procedures.map((p: string, i: number) => (
-            <div key={i} style={{ padding: '12px 18px', borderBottom: i < r.procedures.length - 1 ? '0.5px solid #fecaca' : 'none', fontSize: 13, color: 'var(--color-text-primary)' }}>{p}</div>
+            <div key={i} style={{ padding: '12px 20px', fontSize: 14, color: C.text, borderBottom: i < r.procedures.length - 1 ? `0.5px solid ${C.red.border}` : 'none' }}>{p}</div>
           ))}
         </div>
       )}
@@ -335,53 +352,43 @@ function RendererPVAG({ r }: { r: any }) {
   );
 }
 
-// ═══════════════════════════════════════
-// RENDERER APPEL DE CHARGES
-// ═══════════════════════════════════════
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererAppelCharges({ r }: { r: any }) {
   const sub = [r.periode, r.lot ? `Lot ${r.lot}` : null, r.syndic ? `Syndic : ${r.syndic}` : null].filter(Boolean).join(' · ');
   return (
     <div>
-      <Header type="APPEL DE CHARGES / APPEL DE FONDS" titre={r.titre} sub={sub} />
+      <Header type="Appel de Charges / Appel de Fonds" titre={r.titre} sub={sub} />
       <Resume text={r.resume} />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
-        {r.montant_trimestre && <Kpi label="Appel ce trimestre" value={`${Number(r.montant_trimestre).toLocaleString('fr-FR')} €`} sub={r.lot || undefined} />}
-        {r.montant_annuel && <Kpi label="Charges annuelles estimées" value={`${Number(r.montant_annuel).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="× 4 trimestres" />}
+      <KpiGrid>
+        {r.montant_trimestre && <Kpi label="Appel ce trimestre" value={`${Number(r.montant_trimestre).toLocaleString('fr-FR')} €`} />}
+        {r.montant_annuel && <Kpi label="Charges annuelles" value={`${Number(r.montant_annuel).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="× 4 trimestres" />}
         {r.montant_mensuel && <Kpi label="Charges mensuelles" value={`${Number(r.montant_mensuel).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="/ mois" />}
-      </div>
-
+      </KpiGrid>
       {r.decomposition?.length > 0 && (
-        <div style={{ ...S.card }}>
-          <SectionHeader label="DÉCOMPOSITION DE L'APPEL" color="#2a7d9c" />
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: 'var(--color-background-secondary)' }}>
-                {['Poste', 'Trimestre', 'Annuel estimé'].map(h => <th key={h} style={{ ...S.th, textAlign: h === 'Poste' ? 'left' : 'right' as const }}>{h}</th>)}
-              </tr>
-            </thead>
+        <Card>
+          <CardHeader label="DÉCOMPOSITION DE L'APPEL" color="#2a7d9c" />
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><TableHeader cols={[{ label: 'Poste' }, { label: 'Trimestre', align: 'right' }, { label: 'Annuel estimé', align: 'right' }]} /></thead>
             <tbody>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {r.decomposition.map((d: any, i: number) => (
-                <tr key={i} style={{ borderBottom: '0.5px solid var(--color-border-tertiary)', background: i % 2 === 0 ? 'transparent' : 'var(--color-background-secondary)' }}>
-                  <td style={{ padding: '9px 18px', color: 'var(--color-text-primary)' }}>{d.poste}</td>
-                  <td style={{ padding: '9px 18px', textAlign: 'right', fontWeight: 500, color: 'var(--color-text-primary)' }}>{d.trimestre ? `${Number(d.trimestre).toLocaleString('fr-FR')} €` : '—'}</td>
-                  <td style={{ padding: '9px 18px', textAlign: 'right', color: 'var(--color-text-secondary)' }}>{d.annuel ? `${Number(d.annuel).toLocaleString('fr-FR')} €` : '—'}</td>
+                <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}`, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+                  <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{d.poste}</td>
+                  <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: C.text, textAlign: 'right' }}>{d.trimestre ? `${Number(d.trimestre).toLocaleString('fr-FR')} €` : '—'}</td>
+                  <td style={{ padding: '11px 20px', fontSize: 14, color: C.textSec, textAlign: 'right' }}>{d.annuel ? `${Number(d.annuel).toLocaleString('fr-FR')} €` : '—'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
-
-      <div style={{ ...S.card }}>
-        <SectionHeader label="INFORMATIONS LOT" color="#64748b" />
+      <Card>
+        <CardHeader label="INFORMATIONS LOT" color={C.gray.dot} />
         {r.lot && <InfoRow label="Lot concerné" value={r.lot} />}
         {r.echeance && <InfoRow label="Date d'échéance" value={r.echeance} alt />}
         {r.solde_precedent !== null && r.solde_precedent !== undefined && <InfoRow label="Solde précédent" value={`${Number(r.solde_precedent).toLocaleString('fr-FR')} €`} valueColor={Number(r.solde_precedent) === 0 ? '#16a34a' : '#dc2626'} />}
         <InfoRow label="Impayés détectés" value={r.impayes ? 'Oui' : 'Aucun'} alt valueColor={r.impayes ? '#dc2626' : '#16a34a'} />
-      </div>
-
+      </Card>
       <PointsForts items={r.points_forts} />
       <PointsVigilance items={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
@@ -389,52 +396,44 @@ function RendererAppelCharges({ r }: { r: any }) {
   );
 }
 
-// ═══════════════════════════════════════
-// RENDERER RCP
-// ═══════════════════════════════════════
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererRCP({ r }: { r: any }) {
   const sub = [r.date_reglement ? `Établi en ${r.date_reglement}` : null, r.modificatifs?.length ? `Modificatifs : ${r.modificatifs.join(', ')}` : null].filter(Boolean).join(' · ');
   return (
     <div>
-      <Header type="RÈGLEMENT DE COPROPRIÉTÉ" titre={r.titre} sub={sub} />
+      <Header type="Règlement de Copropriété" titre={r.titre} sub={sub} />
       <Resume text={r.resume} />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
+      <KpiGrid>
         {r.date_reglement && <Kpi label="Date du règlement" value={String(r.date_reglement)} />}
         {r.total_lots && <Kpi label="Total lots" value={`${r.total_lots} lots`} />}
-        {r.usage && <Kpi label="Usage" value={r.usage === 'habitation' ? 'Habitation exclusive' : r.usage === 'mixte' ? 'Mixte' : 'Commercial'} />}
-      </div>
-
+        {r.usage && <Kpi label="Usage" value={r.usage === 'habitation' ? 'Habitation' : r.usage === 'mixte' ? 'Mixte' : 'Commercial'} />}
+      </KpiGrid>
       {r.parties_communes?.length > 0 && (
-        <div style={{ ...S.card }}>
-          <SectionHeader label="PARTIES COMMUNES IDENTIFIÉES" color="#64748b" />
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '14px 18px' }}>
+        <Card>
+          <CardHeader label="PARTIES COMMUNES IDENTIFIÉES" color={C.gray.dot} />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '16px 20px' }}>
             {r.parties_communes.map((p: string, i: number) => (
-              <span key={i} style={{ fontSize: 12, padding: '4px 12px', borderRadius: 100, background: 'var(--color-background-secondary)', border: '0.5px solid var(--color-border-tertiary)', color: 'var(--color-text-primary)' }}>{p}</span>
+              <span key={i} style={{ fontSize: 13, padding: '5px 14px', borderRadius: 100, background: C.bgSecondary, border: `0.5px solid ${C.border}`, color: C.text }}>{p}</span>
             ))}
           </div>
-        </div>
+        </Card>
       )}
-
       {r.regles_usage?.length > 0 && (
-        <div style={{ ...S.card }}>
-          <SectionHeader label="RÈGLES D'USAGE" color="#64748b" />
+        <Card>
+          <CardHeader label="RÈGLES D'USAGE" color={C.gray.dot} />
           {r.regles_usage.map((rule: string, i: number) => (
-            <div key={i} style={{ padding: '12px 18px', borderBottom: i < r.regles_usage.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none', fontSize: 13, color: 'var(--color-text-primary)', background: i % 2 === 0 ? 'transparent' : 'var(--color-background-secondary)' }}>{rule}</div>
+            <div key={i} style={{ padding: '12px 20px', borderBottom: i < r.regles_usage.length - 1 ? `0.5px solid ${C.border}` : 'none', fontSize: 14, color: C.text, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>{rule}</div>
           ))}
-        </div>
+        </Card>
       )}
-
       {r.restrictions?.length > 0 && (
-        <div style={{ background: '#fff7ed', border: '0.5px solid #fed7aa', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
-          <SectionHeader label="RESTRICTIONS DÉTECTÉES" color="#f97316" />
+        <div style={{ background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="RESTRICTIONS DÉTECTÉES" color={C.orange.dot} />
           {r.restrictions.map((rest: string, i: number) => (
-            <div key={i} style={{ padding: '12px 18px', borderBottom: i < r.restrictions.length - 1 ? '0.5px solid #fed7aa' : 'none', fontSize: 13, color: 'var(--color-text-primary)' }}>{rest}</div>
+            <div key={i} style={{ padding: '12px 20px', borderBottom: i < r.restrictions.length - 1 ? `0.5px solid ${C.orange.border}` : 'none', fontSize: 14, color: C.text }}>{rest}</div>
           ))}
         </div>
       )}
-
       <PointsForts items={r.points_forts} />
       <PointsVigilance items={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
@@ -442,65 +441,56 @@ function RendererRCP({ r }: { r: any }) {
   );
 }
 
-// ═══════════════════════════════════════
-// RENDERER DTG/PPT
-// ═══════════════════════════════════════
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererDTGPPT({ r }: { r: any }) {
-  const etatColor = r.etat_general === 'bon' ? '#16a34a' : r.etat_general === 'moyen' ? '#d97706' : '#dc2626';
   const sub = [r.date ? `Réalisé en ${r.date}` : null, r.cabinet].filter(Boolean).join(' · ');
+  const etatColor = r.etat_general === 'bon' ? '#16a34a' : r.etat_general === 'moyen' ? '#d97706' : '#dc2626';
   return (
     <div>
-      <Header type="DIAGNOSTIC TECHNIQUE GLOBAL · PLAN PLURIANNUEL DE TRAVAUX" titre={r.titre} sub={sub} />
+      <Header type="Diagnostic Technique Global · Plan Pluriannuel de Travaux" titre={r.titre} sub={sub} />
       <Resume text={r.resume} />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
+      <KpiGrid>
         {r.budget_total_10ans && <Kpi label="Budget travaux 10 ans" value={`${Number(r.budget_total_10ans).toLocaleString('fr-FR')} €`} color="#dc2626" />}
         {r.budget_urgent_3ans && <Kpi label="Travaux urgents 0-3 ans" value={`${Number(r.budget_urgent_3ans).toLocaleString('fr-FR')} €`} color="#f97316" />}
         {r.etat_general && <Kpi label="État général" value={r.etat_general === 'bon' ? 'Bon' : r.etat_general === 'moyen' ? 'Moyen' : 'Dégradé'} color={etatColor} />}
-      </div>
-
+      </KpiGrid>
       {r.planning?.length > 0 && (
-        <div style={{ ...S.card }}>
-          <SectionHeader label="PLANNING DES TRAVAUX PRÉCONISÉS" color="#dc2626" />
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: 'var(--color-background-secondary)' }}>
-                {['Travaux', 'Horizon', 'Budget', 'Priorité'].map((h, i) => <th key={h} style={{ ...S.th, textAlign: i > 0 ? 'center' : 'left' as const }}>{h}</th>)}
-              </tr>
-            </thead>
+        <Card>
+          <CardHeader label="PLANNING DES TRAVAUX PRÉCONISÉS" color="#dc2626" />
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><TableHeader cols={[{ label: 'Travaux' }, { label: 'Horizon', align: 'center' }, { label: 'Budget', align: 'right' }, { label: 'Priorité', align: 'center' }]} /></thead>
             <tbody>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {r.planning.map((t: any, i: number) => {
-                const pColor = t.priorite === 'urgent' ? { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' } : t.priorite === 'prioritaire' ? { bg: '#fff7ed', text: '#c2410c', border: '#fed7aa' } : { bg: '#f0fdf4', text: '#166534', border: '#bbf7d0' };
+                const pc = t.priorite === 'urgent' ? { bg: C.red.bg, text: '#dc2626', border: C.red.border, label: 'Urgent' } : t.priorite === 'prioritaire' ? { bg: C.orange.bg, text: '#c2410c', border: C.orange.border, label: 'Prioritaire' } : { bg: C.green.bg, text: '#166534', border: C.green.border, label: 'Planifié' };
                 return (
-                  <tr key={i} style={{ borderBottom: '0.5px solid var(--color-border-tertiary)', background: i % 2 === 0 ? 'transparent' : 'var(--color-background-secondary)' }}>
-                    <td style={{ padding: '9px 18px', color: 'var(--color-text-primary)' }}>{t.label}</td>
-                    <td style={{ padding: '9px 18px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{t.horizon || '—'}</td>
-                    <td style={{ padding: '9px 18px', textAlign: 'center', fontWeight: 500, color: 'var(--color-text-primary)' }}>{t.montant ? `${Number(t.montant).toLocaleString('fr-FR')} €` : '—'}</td>
-                    <td style={{ padding: '9px 18px', textAlign: 'center' }}><span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, background: pColor.bg, color: pColor.text, border: `0.5px solid ${pColor.border}` }}>{t.priorite === 'urgent' ? 'Urgent' : t.priorite === 'prioritaire' ? 'Prioritaire' : 'Planifié'}</span></td>
+                  <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}`, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+                    <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{t.label}</td>
+                    <td style={{ padding: '11px 20px', fontSize: 13, color: C.textSec, textAlign: 'center' }}>{t.horizon || '—'}</td>
+                    <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: C.text, textAlign: 'right' }}>{t.montant ? `${Number(t.montant).toLocaleString('fr-FR')} €` : '—'}</td>
+                    <td style={{ padding: '11px 20px', textAlign: 'center' }}><span style={{ fontSize: 12, padding: '3px 10px', borderRadius: 100, background: pc.bg, color: pc.text, border: `0.5px solid ${pc.border}` }}>{pc.label}</span></td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
-
       {r.etat_elements?.length > 0 && (
-        <div style={{ ...S.card }}>
-          <SectionHeader label="ÉTAT PAR ÉLÉMENT" color="#64748b" />
+        <Card>
+          <CardHeader label="ÉTAT PAR ÉLÉMENT" color={C.gray.dot} />
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {r.etat_elements.map((e: any, i: number) => {
-            const ec = e.etat === 'bon' ? { color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', label: 'Bon état' } : e.etat === 'a_surveiller' ? { color: '#d97706', bg: '#fff7ed', border: '#fed7aa', label: 'À surveiller' } : e.etat === 'vieillissant' ? { color: '#d97706', bg: '#fff7ed', border: '#fed7aa', label: 'Vieillissant' } : { color: '#dc2626', bg: '#fef2f2', border: '#fecaca', label: 'Dégradé' };
+            const ec = e.etat === 'bon' ? { color: '#16a34a', bg: C.green.bg, border: C.green.border, label: 'Bon état' } : e.etat === 'a_surveiller' ? { color: '#d97706', bg: C.orange.bg, border: C.orange.border, label: 'À surveiller' } : e.etat === 'vieillissant' ? { color: '#d97706', bg: C.orange.bg, border: C.orange.border, label: 'Vieillissant' } : { color: '#dc2626', bg: C.red.bg, border: C.red.border, label: 'Dégradé' };
             return (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 18px', borderBottom: i < r.etat_elements.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none', background: i % 2 === 0 ? 'transparent' : 'var(--color-background-secondary)' }}>
-                <span style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>{e.element}</span>
-                <span style={{ fontSize: 12, fontWeight: 500, color: ec.color, background: ec.bg, padding: '2px 10px', borderRadius: 100, border: `0.5px solid ${ec.border}` }}>{ec.label}</span>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: i < r.etat_elements.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+                <span style={{ fontSize: 14, color: C.text }}>{e.element}</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: ec.color, background: ec.bg, padding: '3px 12px', borderRadius: 100, border: `0.5px solid ${ec.border}` }}>{ec.label}</span>
               </div>
             );
           })}
-        </div>
+        </Card>
       )}
-
       <PointsForts items={r.points_forts} />
       <PointsVigilance items={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
@@ -508,73 +498,49 @@ function RendererDTGPPT({ r }: { r: any }) {
   );
 }
 
-// ═══════════════════════════════════════
-// RENDERER CARNET D'ENTRETIEN
-// ═══════════════════════════════════════
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererCarnetEntretien({ r }: { r: any }) {
   const sub = [r.syndic, r.date_maj ? `Mis à jour le ${r.date_maj}` : null].filter(Boolean).join(' · ');
   return (
     <div>
-      <Header type="CARNET D'ENTRETIEN DE L'IMMEUBLE" titre={r.titre} sub={sub} />
+      <Header type="Carnet d'Entretien de l'Immeuble" titre={r.titre} sub={sub} />
       <Resume text={r.resume} />
-
       {r.contrats?.length > 0 && (
-        <div style={{ ...S.card }}>
-          <SectionHeader label="CONTRATS DE MAINTENANCE EN COURS" color="#16a34a" />
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: 'var(--color-background-secondary)' }}>
-                {['Équipement', 'Prestataire', 'Échéance'].map((h, i) => <th key={h} style={{ ...S.th, textAlign: i === 2 ? 'right' as const : 'left' as const }}>{h}</th>)}
-              </tr>
-            </thead>
+        <Card>
+          <CardHeader label="CONTRATS DE MAINTENANCE EN COURS" color="#16a34a" />
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><TableHeader cols={[{ label: 'Équipement' }, { label: 'Prestataire' }, { label: 'Échéance', align: 'right' }]} /></thead>
             <tbody>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {r.contrats.map((c: any, i: number) => (
-                <tr key={i} style={{ borderBottom: '0.5px solid var(--color-border-tertiary)', background: i % 2 === 0 ? 'transparent' : 'var(--color-background-secondary)' }}>
-                  <td style={{ padding: '9px 18px', color: 'var(--color-text-primary)' }}>{c.equipement}</td>
-                  <td style={{ padding: '9px 18px', color: 'var(--color-text-secondary)' }}>{c.prestataire || '—'}</td>
-                  <td style={{ padding: '9px 18px', textAlign: 'right', color: 'var(--color-text-primary)' }}>{c.echeance || '—'}</td>
+                <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}`, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+                  <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{c.equipement}</td>
+                  <td style={{ padding: '11px 20px', fontSize: 14, color: C.textSec }}>{c.prestataire || '—'}</td>
+                  <td style={{ padding: '11px 20px', fontSize: 14, color: C.text, textAlign: 'right' }}>{c.echeance || '—'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
-
       {r.travaux_realises?.length > 0 && (
-        <div style={{ ...S.card }}>
-          <SectionHeader label="HISTORIQUE DES TRAVAUX RÉALISÉS" color="#2a7d9c" />
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: 'var(--color-background-secondary)' }}>
-                {['Année', 'Travaux', 'Montant'].map((h, i) => <th key={h} style={{ ...S.th, textAlign: i === 2 ? 'right' as const : 'left' as const }}>{h}</th>)}
-              </tr>
-            </thead>
+        <Card>
+          <CardHeader label="HISTORIQUE DES TRAVAUX RÉALISÉS" color="#2a7d9c" />
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><TableHeader cols={[{ label: 'Année' }, { label: 'Travaux' }, { label: 'Montant', align: 'right' }]} /></thead>
             <tbody>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {r.travaux_realises.map((t: any, i: number) => (
-                <tr key={i} style={{ borderBottom: '0.5px solid var(--color-border-tertiary)', background: i % 2 === 0 ? 'transparent' : 'var(--color-background-secondary)' }}>
-                  <td style={{ padding: '9px 18px', fontWeight: 500, color: 'var(--color-text-primary)' }}>{t.annee}</td>
-                  <td style={{ padding: '9px 18px', color: 'var(--color-text-primary)' }}>{t.label}</td>
-                  <td style={{ padding: '9px 18px', textAlign: 'right', color: 'var(--color-text-primary)' }}>{t.montant ? `${Number(t.montant).toLocaleString('fr-FR')} €` : '—'}</td>
+                <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}`, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+                  <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: C.text }}>{t.annee}</td>
+                  <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{t.label}</td>
+                  <td style={{ padding: '11px 20px', fontSize: 14, color: C.text, textAlign: 'right' }}>{t.montant ? `${Number(t.montant).toLocaleString('fr-FR')} €` : '—'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
-
-      {r.diagnostics_mentionnes?.length > 0 && (
-        <div style={{ ...S.card }}>
-          <SectionHeader label="DIAGNOSTICS MENTIONNÉS" color="#64748b" />
-          {r.diagnostics_mentionnes.map((d: any, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 18px', borderBottom: i < r.diagnostics_mentionnes.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none', background: i % 2 === 0 ? 'transparent' : 'var(--color-background-secondary)' }}>
-              <span style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>{d.type}</span>
-              <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{[d.date, d.statut].filter(Boolean).join(' · ')}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
       <PointsForts items={r.points_forts} />
       <PointsVigilance items={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
@@ -582,56 +548,46 @@ function RendererCarnetEntretien({ r }: { r: any }) {
   );
 }
 
-// ═══════════════════════════════════════
-// RENDERER PRÉ-ÉTAT DATÉ
-// ═══════════════════════════════════════
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererPreEtatDate({ r }: { r: any }) {
   const sub = [r.date ? `Établi le ${r.date}` : null, r.lot ? `Lot ${r.lot}` : null, r.syndic ? `Syndic : ${r.syndic}` : null].filter(Boolean).join(' · ');
+  const totalCharge = r.travaux_charge_vendeur?.reduce((s: number, t: { montant?: number }) => s + (Number(t.montant) || 0), 0) || 0;
   return (
     <div>
-      <Header type="PRÉ-ÉTAT DATÉ" titre={r.titre} sub={sub} />
+      <Header type="Pré-État Daté" titre={r.titre} sub={sub} />
       <Resume text={r.resume} />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
-        <Kpi label="Impayés vendeur" value={r.impayes_vendeur !== undefined ? `${Number(r.impayes_vendeur).toLocaleString('fr-FR')} €` : '—'} color={Number(r.impayes_vendeur) === 0 ? '#16a34a' : '#dc2626'} sub={Number(r.impayes_vendeur) === 0 ? 'Vendeur à jour' : 'Attention'} />
-        {r.fonds_travaux_alur && <Kpi label="Fonds travaux ALUR récupérable" value={`${Number(r.fonds_travaux_alur).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="Versé à l'acheteur à la signature" />}
-        {r.travaux_charge_vendeur?.length > 0 && <Kpi label="Travaux charge vendeur" value={`${r.travaux_charge_vendeur.reduce((s: number, t: any) => s + (Number(t.montant) || 0), 0).toLocaleString('fr-FR')} €`} color="#f97316" sub="Votés avant compromis" />}
-      </div>
-
-      {r.situation_copro?.length > 0 && (
-        <div style={{ ...S.card }}>
-          <SectionHeader label="SITUATION COMPTABLE DU VENDEUR" color="#2a7d9c" />
-          {r.situation_copro.map((s: any, i: number) => (
-            <InfoRow key={i} label={s.label} value={s.valeur} alt={i % 2 !== 0} valueColor={s.couleur} />
-          ))}
+      <KpiGrid>
+        <div style={{ background: Number(r.impayes_vendeur) === 0 ? C.green.bg : C.red.bg, border: `0.5px solid ${Number(r.impayes_vendeur) === 0 ? C.green.border : C.red.border}`, borderRadius: 12, padding: '18px 20px' }}>
+          <div style={{ fontSize: 12, color: C.textSec, marginBottom: 8 }}>Impayés vendeur</div>
+          <div style={{ fontSize: 22, fontWeight: 600, color: Number(r.impayes_vendeur) === 0 ? '#16a34a' : '#dc2626' }}>{r.impayes_vendeur !== undefined ? `${Number(r.impayes_vendeur).toLocaleString('fr-FR')} €` : '—'}</div>
+          <div style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>{Number(r.impayes_vendeur) === 0 ? 'Vendeur à jour' : 'Attention'}</div>
         </div>
-      )}
-
+        {r.fonds_travaux_alur && <Kpi label="Fonds travaux ALUR récupérable" value={`${Number(r.fonds_travaux_alur).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="Versé à l'acheteur à la signature" />}
+        {totalCharge > 0 && <Kpi label="Travaux charge vendeur" value={`${totalCharge.toLocaleString('fr-FR')} €`} color="#f97316" sub="Votés avant compromis" />}
+      </KpiGrid>
       {r.travaux_charge_vendeur?.length > 0 && (
-        <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid #fed7aa', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
-          <SectionHeader label="TRAVAUX VOTÉS À LA CHARGE DU VENDEUR" color="#f97316" />
-          <div style={{ padding: '10px 18px', background: '#eff6ff', borderBottom: '0.5px solid #bfdbfe', fontSize: 12, color: '#1d4ed8' }}>
+        <div style={{ background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="TRAVAUX VOTÉS À LA CHARGE DU VENDEUR" color={C.orange.dot} />
+          <div style={{ padding: '10px 20px', background: C.blue.bg, borderBottom: `0.5px solid ${C.blue.border}`, fontSize: 13, color: C.blue.text }}>
             ℹ Ces travaux ont été votés avant le compromis — ils restent à la charge du vendeur.
           </div>
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {r.travaux_charge_vendeur.map((t: any, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 18px', borderBottom: i < r.travaux_charge_vendeur.length - 1 ? '0.5px solid #fed7aa' : 'none', background: i % 2 === 0 ? 'transparent' : 'var(--color-background-secondary)' }}>
-              <div style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>{t.label}</div>
-              {t.montant && <div style={{ fontSize: 14, fontWeight: 500, color: '#f97316', whiteSpace: 'nowrap', marginLeft: 16 }}>{Number(t.montant).toLocaleString('fr-FR')} €</div>}
+            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: i < r.travaux_charge_vendeur.length - 1 ? `0.5px solid ${C.orange.border}` : 'none', background: i % 2 === 0 ? C.orange.bg : '#fffbf5' }}>
+              <div style={{ fontSize: 14, color: C.text }}>{t.label}</div>
+              {t.montant && <div style={{ fontSize: 15, fontWeight: 600, color: '#f97316', whiteSpace: 'nowrap' as const, marginLeft: 20 }}>{Number(t.montant).toLocaleString('fr-FR')} €</div>}
             </div>
           ))}
         </div>
       )}
-
       {r.procedures_contre_vendeur?.length > 0 && (
-        <div style={{ background: '#fef2f2', border: '0.5px solid #fecaca', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
-          <SectionHeader label="PROCÉDURES CONTRE LE VENDEUR" color="#dc2626" />
+        <div style={{ background: C.red.bg, border: `0.5px solid ${C.red.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="PROCÉDURES CONTRE LE VENDEUR" color={C.red.dot} />
           {r.procedures_contre_vendeur.map((p: string, i: number) => (
-            <div key={i} style={{ padding: '12px 18px', fontSize: 13, color: 'var(--color-text-primary)' }}>{p}</div>
+            <div key={i} style={{ padding: '12px 20px', fontSize: 14, color: C.text }}>{p}</div>
           ))}
         </div>
       )}
-
       <PointsForts items={r.points_forts} />
       <PointsVigilance items={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
@@ -639,61 +595,40 @@ function RendererPreEtatDate({ r }: { r: any }) {
   );
 }
 
-// ═══════════════════════════════════════
-// RENDERER ÉTAT DATÉ
-// ═══════════════════════════════════════
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererEtatDate({ r }: { r: any }) {
-  const sub = [r.date ? `Établi le ${r.date}` : null, r.lot ? `Lot ${r.lot}` : null, r.syndic ? `Syndic : ${r.syndic}` : null].filter(Boolean).join(' · ');
+  const sub = [r.date ? `Établi le ${r.date}` : null, r.lot ? `Lot ${r.lot}` : null, r.syndic].filter(Boolean).join(' · ');
   const soldeColor = r.solde_sens === 'acheteur' ? '#16a34a' : '#dc2626';
   return (
     <div>
-      <Header type="ÉTAT DATÉ" titre={r.titre} sub={sub} />
+      <Header type="État Daté" titre={r.titre} sub={sub} />
       <Resume text={r.resume} />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
-        {r.solde_net !== undefined && <Kpi label="Solde net" value={`${r.solde_sens === 'acheteur' ? '+' : '-'} ${Number(Math.abs(r.solde_net)).toLocaleString('fr-FR')} €`} color={soldeColor} sub={r.solde_sens === 'acheteur' ? 'En faveur de l\'acheteur' : 'En faveur du vendeur'} />}
-        {r.fonds_travaux_alur && <Kpi label="Fonds travaux ALUR transféré" value={`${Number(r.fonds_travaux_alur).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="Versé à l'acheteur" />}
-        {r.travaux_consignes?.length > 0 && <Kpi label="Travaux consignés charge vendeur" value={`${r.travaux_consignes.reduce((s: number, t: any) => s + (Number(t.montant) || 0), 0).toLocaleString('fr-FR')} €`} color="#f97316" />}
-      </div>
-
+      <KpiGrid>
+        {r.solde_net !== undefined && <Kpi label="Solde net" value={`${r.solde_sens === 'acheteur' ? '+' : '-'} ${Number(Math.abs(r.solde_net)).toLocaleString('fr-FR')} €`} color={soldeColor} sub={r.solde_sens === 'acheteur' ? "En faveur de l'acheteur" : 'En faveur du vendeur'} />}
+        {r.fonds_travaux_alur && <Kpi label="Fonds travaux ALUR" value={`${Number(r.fonds_travaux_alur).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="Transféré à l'acheteur" />}
+        {r.travaux_consignes?.length > 0 && <Kpi label="Travaux consignés vendeur" value={`${r.travaux_consignes.reduce((s: number, t: { montant?: number }) => s + (Number(t.montant) || 0), 0).toLocaleString('fr-FR')} €`} color="#f97316" />}
+      </KpiGrid>
       {r.decomposition?.length > 0 && (
-        <div style={{ ...S.card }}>
-          <SectionHeader label="DÉCOMPTE DÉFINITIF" color="#2a7d9c" />
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: 'var(--color-background-secondary)' }}>
-                {['Poste', 'Montant', 'Sens'].map((h, i) => <th key={h} style={{ ...S.th, textAlign: i > 0 ? 'center' as const : 'left' as const }}>{h}</th>)}
-              </tr>
-            </thead>
+        <Card>
+          <CardHeader label="DÉCOMPTE DÉFINITIF" color="#2a7d9c" />
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><TableHeader cols={[{ label: 'Poste' }, { label: 'Montant', align: 'center' }, { label: 'Sens', align: 'center' }]} /></thead>
             <tbody>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {r.decomposition.map((d: any, i: number) => {
-                const dc = d.sens === 'acheteur_recoit' ? { bg: '#f0fdf4', text: '#16a34a', border: '#bbf7d0', label: 'Acheteur reçoit' } : { bg: '#fef2f2', text: '#dc2626', border: '#fecaca', label: 'Vendeur doit' };
+                const dc = d.sens === 'acheteur_recoit' ? { bg: C.green.bg, text: '#166534', border: C.green.border, label: 'Acheteur reçoit' } : { bg: C.red.bg, text: '#991b1b', border: C.red.border, label: 'Vendeur doit' };
                 return (
-                  <tr key={i} style={{ borderBottom: '0.5px solid var(--color-border-tertiary)', background: i % 2 === 0 ? 'transparent' : 'var(--color-background-secondary)' }}>
-                    <td style={{ padding: '9px 18px', color: 'var(--color-text-primary)' }}>{d.poste}</td>
-                    <td style={{ padding: '9px 18px', textAlign: 'center', fontWeight: 500, color: 'var(--color-text-primary)' }}>{d.montant ? `${Number(d.montant).toLocaleString('fr-FR')} €` : '—'}</td>
-                    <td style={{ padding: '9px 18px', textAlign: 'center' }}><span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, background: dc.bg, color: dc.text, border: `0.5px solid ${dc.border}` }}>{dc.label}</span></td>
+                  <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}`, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+                    <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{d.poste}</td>
+                    <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: C.text, textAlign: 'center' }}>{d.montant ? `${Number(d.montant).toLocaleString('fr-FR')} €` : '—'}</td>
+                    <td style={{ padding: '11px 20px', textAlign: 'center' }}><span style={{ fontSize: 12, padding: '3px 10px', borderRadius: 100, background: dc.bg, color: dc.text, border: `0.5px solid ${dc.border}` }}>{dc.label}</span></td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
-
-      {r.travaux_consignes?.length > 0 && (
-        <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid #fed7aa', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
-          <SectionHeader label="TRAVAUX CONSIGNÉS À LA CHARGE DU VENDEUR" color="#f97316" />
-          {r.travaux_consignes.map((t: any, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 18px', borderBottom: i < r.travaux_consignes.length - 1 ? '0.5px solid #fed7aa' : 'none' }}>
-              <div style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>{t.label}</div>
-              {t.montant && <div style={{ fontSize: 14, fontWeight: 500, color: '#f97316', whiteSpace: 'nowrap', marginLeft: 16 }}>{Number(t.montant).toLocaleString('fr-FR')} €</div>}
-            </div>
-          ))}
-        </div>
-      )}
-
       <PointsForts items={r.points_forts} />
       <PointsVigilance items={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
@@ -701,51 +636,41 @@ function RendererEtatDate({ r }: { r: any }) {
   );
 }
 
-// ═══════════════════════════════════════
-// RENDERER TAXE FONCIÈRE
-// ═══════════════════════════════════════
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererTaxeFonciere({ r }: { r: any }) {
   const sub = [r.annee ? `Année ${r.annee}` : null, r.reference_cadastrale].filter(Boolean).join(' · ');
   return (
     <div>
-      <Header type="AVIS DE TAXE FONCIÈRE" titre={r.titre} sub={sub} />
+      <Header type="Avis de Taxe Foncière" titre={r.titre} sub={sub} />
       <Resume text={r.resume} />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
+      <KpiGrid>
         {r.montant_total && <Kpi label={`Taxe foncière ${r.annee || ''}`} value={`${Number(r.montant_total).toLocaleString('fr-FR')} €`} sub={r.montant_mensuel ? `${Number(r.montant_mensuel).toLocaleString('fr-FR')} €/mois` : undefined} />}
-        {r.evolution_pct !== null && r.evolution_pct !== undefined && <Kpi label="Évolution" value={`${r.evolution_pct > 0 ? '+' : ''}${r.evolution_pct}%`} color={r.evolution_pct > 5 ? '#dc2626' : '#d97706'} sub={r.montant_precedent ? `vs ${Number(r.montant_precedent).toLocaleString('fr-FR')} €` : undefined} />}
+        {r.evolution_pct != null && <Kpi label="Évolution" value={`${r.evolution_pct > 0 ? '+' : ''}${r.evolution_pct}%`} color={r.evolution_pct > 5 ? '#dc2626' : '#d97706'} sub={r.montant_precedent ? `vs ${Number(r.montant_precedent).toLocaleString('fr-FR')} €` : undefined} />}
         {r.valeur_locative && <Kpi label="Valeur locative cadastrale" value={`${Number(r.valeur_locative).toLocaleString('fr-FR')} €`} sub="Base de calcul" />}
-      </div>
-
+      </KpiGrid>
       {r.decomposition?.length > 0 && (
-        <div style={{ ...S.card }}>
-          <SectionHeader label="DÉCOMPOSITION PAR COLLECTIVITÉ" color="#2a7d9c" />
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: 'var(--color-background-secondary)' }}>
-                {['Collectivité', 'Taux', 'Montant'].map((h, i) => <th key={h} style={{ ...S.th, textAlign: i === 0 ? 'left' as const : 'center' as const }}>{h}</th>)}
-              </tr>
-            </thead>
+        <Card>
+          <CardHeader label="DÉCOMPOSITION PAR COLLECTIVITÉ" color="#2a7d9c" />
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><TableHeader cols={[{ label: 'Collectivité' }, { label: 'Taux', align: 'center' }, { label: 'Montant', align: 'right' }]} /></thead>
             <tbody>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {r.decomposition.map((d: any, i: number) => (
-                <tr key={i} style={{ borderBottom: '0.5px solid var(--color-border-tertiary)', background: i % 2 === 0 ? 'transparent' : 'var(--color-background-secondary)' }}>
-                  <td style={{ padding: '9px 18px', color: 'var(--color-text-primary)' }}>{d.collectivite}</td>
-                  <td style={{ padding: '9px 18px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{d.taux ? `${d.taux}%` : '—'}</td>
-                  <td style={{ padding: '9px 18px', textAlign: 'center', fontWeight: 500, color: 'var(--color-text-primary)' }}>{d.montant ? `${Number(d.montant).toLocaleString('fr-FR')} €` : '—'}</td>
+                <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}`, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+                  <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{d.collectivite}</td>
+                  <td style={{ padding: '11px 20px', fontSize: 13, color: C.textSec, textAlign: 'center' }}>{d.taux ? `${d.taux}%` : '—'}</td>
+                  <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: C.text, textAlign: 'right' }}>{d.montant ? `${Number(d.montant).toLocaleString('fr-FR')} €` : '—'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
-
-      <div style={{ ...S.card }}>
-        <SectionHeader label="INFORMATIONS DU BIEN" color="#64748b" />
+      <Card>
+        <CardHeader label="INFORMATIONS DU BIEN" color={C.gray.dot} />
         {r.reference_cadastrale && <InfoRow label="Référence cadastrale" value={r.reference_cadastrale} />}
         {r.surface_cadastrale && <InfoRow label="Surface pondérée" value={`${r.surface_cadastrale} m² (base cadastrale)`} alt />}
-      </div>
-
+      </Card>
       <PointsForts items={r.points_forts} />
       <PointsVigilance items={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
@@ -753,110 +678,88 @@ function RendererTaxeFonciere({ r }: { r: any }) {
   );
 }
 
-// ═══════════════════════════════════════
-// RENDERER COMPROMIS
-// ═══════════════════════════════════════
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererCompromis({ r }: { r: any }) {
   const sub = [r.date_signature ? `Signé le ${r.date_signature}` : null, r.agence, r.notaire_acheteur ? `Notaire acheteur : ${r.notaire_acheteur}` : null].filter(Boolean).join(' · ');
-  const statutColor = (s: string) => s === 'levee' ? { bg: '#f0fdf4', text: '#16a34a', border: '#bbf7d0', label: 'Levée' } : s === 'purge' ? { bg: '#f0fdf4', text: '#16a34a', border: '#bbf7d0', label: 'Purgée' } : { bg: '#fff7ed', text: '#d97706', border: '#fed7aa', label: 'En cours' };
+  const statutStyle = (s: string) => s === 'levee' || s === 'purge' ? { bg: C.green.bg, text: '#166534', border: C.green.border, label: s === 'levee' ? 'Levée' : 'Purgée' } : { bg: C.orange.bg, text: '#92400e', border: C.orange.border, label: 'En cours' };
   return (
     <div>
-      <Header type="COMPROMIS DE VENTE" titre={r.titre} sub={sub} />
+      <Header type="Compromis de Vente" titre={r.titre} sub={sub} />
       <Resume text={r.resume} />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 14 }}>
         {r.prix_net_vendeur && <Kpi label="Prix net vendeur" value={`${Number(r.prix_net_vendeur).toLocaleString('fr-FR')} €`} />}
         {r.honoraires_agence && <Kpi label="Honoraires agence" value={`${Number(r.honoraires_agence).toLocaleString('fr-FR')} €`} sub={`Charge ${r.honoraires_charge === 'acheteur' ? 'acheteur' : 'vendeur'}`} />}
-        {r.depot_garantie && <Kpi label="Dépôt de garantie" value={`${Number(r.depot_garantie).toLocaleString('fr-FR')} €`} sub={r.depot_sequestre ? `Séquestré : ${r.depot_sequestre}` : undefined} />}
+        {r.depot_garantie && <Kpi label="Dépôt de garantie" value={`${Number(r.depot_garantie).toLocaleString('fr-FR')} €`} />}
         {r.prix_total && <Kpi label="Prix total acheteur" value={`${Number(r.prix_total).toLocaleString('fr-FR')} €`} sub="Hors frais notaire" />}
       </div>
-
       {r.bien && (
-        <div style={{ ...S.card }}>
-          <SectionHeader label="DÉSIGNATION DU BIEN" color="#2a7d9c" />
+        <Card>
+          <CardHeader label="DÉSIGNATION DU BIEN" color="#2a7d9c" />
           {r.bien.type && <InfoRow label="Nature" value={r.bien.type} />}
           {r.bien.lot_principal && <InfoRow label="Lot principal" value={r.bien.lot_principal} alt />}
           {r.bien.annexes?.map((a: string, i: number) => <InfoRow key={i} label="Annexe" value={a} />)}
           {r.bien.surface_carrez && <InfoRow label="Surface Carrez" value={`${r.bien.surface_carrez} m²`} alt />}
           {r.bien.tantiemes && <InfoRow label="Tantièmes" value={r.bien.tantiemes} />}
-        </div>
+        </Card>
       )}
-
       {r.conditions_suspensives?.length > 0 && (
-        <div style={{ ...S.card }}>
-          <SectionHeader label="CONDITIONS SUSPENSIVES" color="#d97706" />
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: 'var(--color-background-secondary)' }}>
-                {['Condition', 'Détail', 'Date limite', 'Statut'].map((h, i) => <th key={h} style={{ ...S.th, textAlign: i > 1 ? 'center' as const : 'left' as const }}>{h}</th>)}
-              </tr>
-            </thead>
+        <Card>
+          <CardHeader label="CONDITIONS SUSPENSIVES" color="#d97706" />
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><TableHeader cols={[{ label: 'Condition' }, { label: 'Détail' }, { label: 'Date limite', align: 'center' }, { label: 'Statut', align: 'center' }]} /></thead>
             <tbody>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {r.conditions_suspensives.map((c: any, i: number) => {
-                const sc = statutColor(c.statut);
+                const sc = statutStyle(c.statut);
                 return (
-                  <tr key={i} style={{ borderBottom: '0.5px solid var(--color-border-tertiary)', background: i % 2 === 0 ? 'transparent' : 'var(--color-background-secondary)' }}>
-                    <td style={{ padding: '9px 18px', color: 'var(--color-text-primary)' }}>{c.label}</td>
-                    <td style={{ padding: '9px 18px', color: 'var(--color-text-secondary)' }}>{c.detail || '—'}</td>
-                    <td style={{ padding: '9px 18px', textAlign: 'center', fontWeight: 500, color: '#dc2626' }}>{c.date_limite || '—'}</td>
-                    <td style={{ padding: '9px 18px', textAlign: 'center' }}><span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, background: sc.bg, color: sc.text, border: `0.5px solid ${sc.border}` }}>{sc.label}</span></td>
+                  <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}`, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+                    <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{c.label}</td>
+                    <td style={{ padding: '11px 20px', fontSize: 13, color: C.textSec }}>{c.detail || '—'}</td>
+                    <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: '#dc2626', textAlign: 'center' }}>{c.date_limite || '—'}</td>
+                    <td style={{ padding: '11px 20px', textAlign: 'center' }}><span style={{ fontSize: 12, padding: '3px 10px', borderRadius: 100, background: sc.bg, color: sc.text, border: `0.5px solid ${sc.border}` }}>{sc.label}</span></td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
-
       {r.financement && (r.financement.apport || r.financement.montant_pret) && (
-        <div style={{ ...S.card }}>
-          <SectionHeader label="PLAN DE FINANCEMENT DÉCLARÉ" color="#64748b" />
+        <Card>
+          <CardHeader label="PLAN DE FINANCEMENT DÉCLARÉ" color={C.gray.dot} />
           {r.financement.apport && <InfoRow label="Apport personnel" value={`${Number(r.financement.apport).toLocaleString('fr-FR')} €`} />}
           {r.financement.montant_pret && <InfoRow label="Montant emprunté" value={`${Number(r.financement.montant_pret).toLocaleString('fr-FR')} €`} alt />}
           {r.financement.etablissement && <InfoRow label="Établissement pressenti" value={r.financement.etablissement} />}
-        </div>
+        </Card>
       )}
-
       {r.dates_cles?.length > 0 && (
-        <div style={{ background: 'var(--color-background-primary)', border: '0.5px solid #fed7aa', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
-          <SectionHeader label="DATES CLÉS À RETENIR" color="#f97316" />
+        <div style={{ background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="DATES CLÉS À RETENIR" color={C.orange.dot} />
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {r.dates_cles.map((d: any, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 18px', borderBottom: i < r.dates_cles.length - 1 ? '0.5px solid #fed7aa' : 'none', background: i % 2 === 0 ? 'transparent' : 'var(--color-background-secondary)' }}>
-              <span style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>{d.label}</span>
-              <span style={{ fontSize: 13, fontWeight: 500, color: d.important ? '#dc2626' : '#d97706' }}>{d.date}</span>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: i < r.dates_cles.length - 1 ? `0.5px solid ${C.orange.border}` : 'none', background: i % 2 === 0 ? C.orange.bg : '#fffbf5' }}>
+              <span style={{ fontSize: 14, color: C.text }}>{d.label}</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: d.important ? '#dc2626' : '#d97706' }}>{d.date}</span>
             </div>
           ))}
         </div>
       )}
-
       {r.clauses_particulieres?.length > 0 && (
-        <div style={{ ...S.card }}>
-          <SectionHeader label="CLAUSES PARTICULIÈRES" color="#64748b" />
+        <Card>
+          <CardHeader label="CLAUSES PARTICULIÈRES" color={C.gray.dot} />
           {r.clauses_particulieres.map((c: string, i: number) => (
-            <div key={i} style={{ padding: '12px 18px', borderBottom: i < r.clauses_particulieres.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none', fontSize: 13, color: 'var(--color-text-primary)', background: i % 2 === 0 ? 'transparent' : 'var(--color-background-secondary)' }}>{c}</div>
+            <div key={i} style={{ padding: '12px 20px', fontSize: 14, color: C.text, borderBottom: i < r.clauses_particulieres.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>{c}</div>
           ))}
-        </div>
+        </Card>
       )}
-
       {r.servitudes?.length > 0 && (
-        <div style={{ background: '#fff7ed', border: '0.5px solid #fed7aa', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
-          <SectionHeader label="SERVITUDES DÉTECTÉES" color="#f97316" />
+        <div style={{ background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="SERVITUDES DÉTECTÉES" color={C.orange.dot} />
           {r.servitudes.map((s: string, i: number) => (
-            <div key={i} style={{ padding: '12px 18px', fontSize: 13, color: 'var(--color-text-primary)' }}>{s}</div>
+            <div key={i} style={{ padding: '12px 20px', fontSize: 14, color: C.text }}>{s}</div>
           ))}
         </div>
       )}
-
-      {(r.situation_locative || r.bien_libre_a || r.mobilier_inclus?.length > 0) && (
-        <div style={{ ...S.card }}>
-          <SectionHeader label="CONDITIONS D'OCCUPATION" color="#64748b" />
-          {r.situation_locative && <InfoRow label="Situation locative" value={r.situation_locative} />}
-          {r.bien_libre_a && <InfoRow label="Bien libre à" value={r.bien_libre_a} alt />}
-          {r.mobilier_inclus?.length > 0 && <InfoRow label="Mobilier inclus" value={r.mobilier_inclus.join(', ')} />}
-        </div>
-      )}
-
       <PointsForts items={r.points_forts} />
       <PointsVigilance items={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
@@ -864,62 +767,52 @@ function RendererCompromis({ r }: { r: any }) {
   );
 }
 
-// ═══════════════════════════════════════
-// RENDERER DIAGNOSTIC PARTIES COMMUNES
-// ═══════════════════════════════════════
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererDiagCommunes({ r }: { r: any }) {
-  const typeLabel = r.type_diagnostic === 'DTA' ? 'DOSSIER TECHNIQUE AMIANTE' : r.type_diagnostic === 'PLOMB' ? 'CONSTAT DE RISQUE D\'EXPOSITION AU PLOMB' : r.type_diagnostic === 'TERMITES' ? 'ÉTAT PARASITAIRE — TERMITES' : 'DIAGNOSTIC PARTIES COMMUNES';
+  const typeLabel = r.type_diagnostic === 'DTA' ? 'Dossier Technique Amiante' : r.type_diagnostic === 'PLOMB' ? "Constat de Risque d'Exposition au Plomb" : r.type_diagnostic === 'TERMITES' ? 'État Parasitaire — Termites' : 'Diagnostic Parties Communes';
   const sub = [r.date ? `Réalisé le ${r.date}` : null, r.cabinet, r.certification].filter(Boolean).join(' · ');
-  const resultatColor = r.resultat_global === 'non_detecte' ? { bg: '#f0fdf4', border: '#bbf7d0', text: '#16a34a', label: 'Non détecté' } : r.resultat_global === 'surveillance' ? { bg: '#fff7ed', border: '#fed7aa', text: '#f97316', label: 'Surveillance requise' } : { bg: '#fef2f2', border: '#fecaca', text: '#dc2626', label: 'Détecté' };
+  const resStyle = r.resultat_global === 'non_detecte' ? { ...C.green, label: 'Non détecté' } : r.resultat_global === 'surveillance' ? { ...C.orange, label: 'Surveillance requise' } : { ...C.red, label: 'Détecté' };
   return (
     <div>
       <Header type={typeLabel} titre={r.titre} sub={sub} />
       <Resume text={r.resume} />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
-        <div style={{ background: resultatColor.bg, border: `0.5px solid ${resultatColor.border}`, borderRadius: 12, padding: '16px 18px' }}>
-          <div style={{ fontSize: 11, color: resultatColor.text, marginBottom: 6 }}>Résultat global</div>
-          <div style={{ fontSize: 18, fontWeight: 500, color: resultatColor.text }}>{resultatColor.label}</div>
+      <KpiGrid>
+        <div style={{ background: resStyle.bg, border: `0.5px solid ${resStyle.border}`, borderRadius: 12, padding: '18px 20px' }}>
+          <div style={{ fontSize: 12, color: C.textSec, marginBottom: 8 }}>Résultat global</div>
+          <div style={{ fontSize: 20, fontWeight: 600, color: resStyle.text }}>{resStyle.label}</div>
         </div>
         {r.action_requise && <Kpi label="Action requise" value={r.action_requise === 'retrait' ? 'Retrait obligatoire' : r.action_requise === 'surveillance' ? 'Surveillance périodique' : r.action_requise === 'conservation' ? 'Conservation en état' : 'Aucune'} color={r.action_requise === 'retrait' ? '#dc2626' : r.action_requise === 'surveillance' ? '#d97706' : '#16a34a'} />}
         {r.prochaine_visite && <Kpi label="Prochaine visite" value={r.prochaine_visite} />}
-      </div>
-
+      </KpiGrid>
       {r.zones_detectees?.length > 0 && (
-        <div style={{ ...S.card }}>
-          <SectionHeader label="ZONES / MATÉRIAUX CONCERNÉS" color="#f97316" />
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: 'var(--color-background-secondary)' }}>
-                {['Localisation', 'Matériau', 'Liste', 'Action'].map(h => <th key={h} style={{ ...S.th }}>{h}</th>)}
-              </tr>
-            </thead>
+        <Card>
+          <CardHeader label="ZONES / MATÉRIAUX CONCERNÉS" color={C.orange.dot} />
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead><TableHeader cols={[{ label: 'Localisation' }, { label: 'Matériau' }, { label: 'Liste' }, { label: 'Action' }]} /></thead>
             <tbody>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {r.zones_detectees.map((z: any, i: number) => (
-                <tr key={i} style={{ borderBottom: '0.5px solid var(--color-border-tertiary)', background: i % 2 === 0 ? 'transparent' : 'var(--color-background-secondary)' }}>
-                  <td style={{ padding: '9px 18px', color: 'var(--color-text-primary)' }}>{z.localisation}</td>
-                  <td style={{ padding: '9px 18px', color: 'var(--color-text-secondary)' }}>{z.materiau || '—'}</td>
-                  <td style={{ padding: '9px 18px', color: 'var(--color-text-secondary)' }}>{z.liste || '—'}</td>
-                  <td style={{ padding: '9px 18px', color: z.action === 'retrait' ? '#dc2626' : z.action === 'surveillance' ? '#d97706' : 'var(--color-text-secondary)' }}>{z.action || '—'}</td>
+                <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}`, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+                  <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{z.localisation}</td>
+                  <td style={{ padding: '11px 20px', fontSize: 13, color: C.textSec }}>{z.materiau || '—'}</td>
+                  <td style={{ padding: '11px 20px', fontSize: 13, color: C.textSec }}>{z.liste || '—'}</td>
+                  <td style={{ padding: '11px 20px', fontSize: 13, color: z.action === 'retrait' ? '#dc2626' : z.action === 'surveillance' ? '#d97706' : C.textSec }}>{z.action || '—'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
-
       {r.zones_saines?.length > 0 && (
-        <div style={{ background: '#f0fdf4', border: '0.5px solid #bbf7d0', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
-          <SectionHeader label="ZONES NON CONCERNÉES" color="#16a34a" />
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '14px 18px' }}>
+        <div style={{ background: C.green.bg, border: `0.5px solid ${C.green.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="ZONES NON CONCERNÉES" color={C.green.dot} />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '16px 20px' }}>
             {r.zones_saines.map((z: string, i: number) => (
-              <span key={i} style={{ fontSize: 12, padding: '4px 12px', borderRadius: 100, background: 'white', border: '0.5px solid #bbf7d0', color: '#166534' }}>{z}</span>
+              <span key={i} style={{ fontSize: 13, padding: '5px 14px', borderRadius: 100, background: C.bg, border: `0.5px solid ${C.green.border}`, color: '#166534' }}>{z}</span>
             ))}
           </div>
         </div>
       )}
-
       <PointsForts items={r.points_forts} />
       <PointsVigilance items={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
@@ -927,37 +820,31 @@ function RendererDiagCommunes({ r }: { r: any }) {
   );
 }
 
-// ═══════════════════════════════════════
-// RENDERER GÉNÉRIQUE
-// ═══════════════════════════════════════
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererAutre({ r }: { r: any }) {
   return (
     <div>
-      <Header type="ANALYSE DE DOCUMENT" titre={r.titre} sub="" />
+      <Header type="Analyse de Document" titre={r.titre} />
       <Resume text={r.resume} />
-
       {r.infos_cles?.length > 0 && (
-        <div style={{ ...S.card }}>
-          <SectionHeader label="INFORMATIONS CLÉS" color="#2a7d9c" />
-          {r.infos_cles.map((info: any, i: number) => (
-            <InfoRow key={i} label={info.label} value={info.valeur} alt={i % 2 !== 0} />
-          ))}
-        </div>
+        <Card>
+          <CardHeader label="INFORMATIONS CLÉS" color="#2a7d9c" />
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {r.infos_cles.map((info: any, i: number) => <InfoRow key={i} label={info.label} value={info.valeur} alt={i % 2 !== 0} />)}
+        </Card>
       )}
-
       {r.contenu?.length > 0 && (
-        <div style={{ ...S.card }}>
-          <SectionHeader label="ÉLÉMENTS EXTRAITS DU DOCUMENT" color="#64748b" />
+        <Card>
+          <CardHeader label="ÉLÉMENTS EXTRAITS DU DOCUMENT" color={C.gray.dot} />
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {r.contenu.map((c: any, i: number) => (
-            <div key={i} style={{ padding: '12px 18px', borderBottom: i < r.contenu.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none', background: i % 2 === 0 ? 'transparent' : 'var(--color-background-secondary)' }}>
-              {c.section && <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginBottom: 4 }}>{c.section}</div>}
-              <div style={{ fontSize: 13, color: 'var(--color-text-primary)' }}>{c.detail}</div>
+            <div key={i} style={{ padding: '14px 20px', borderBottom: i < r.contenu.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+              {c.section && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 4, fontWeight: 500 }}>{c.section}</div>}
+              <div style={{ fontSize: 14, color: C.text }}>{c.detail}</div>
             </div>
           ))}
-        </div>
+        </Card>
       )}
-
       <PointsForts items={r.points_forts} />
       <PointsVigilance items={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
@@ -965,9 +852,7 @@ function RendererAutre({ r }: { r: any }) {
   );
 }
 
-// ═══════════════════════════════════════
-// EXPORT PRINCIPAL
-// ═══════════════════════════════════════
+// ── Export principal ────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function DocumentRenderer({ result }: { result: any }) {
   const type = result?.document_type || 'AUTRE';
