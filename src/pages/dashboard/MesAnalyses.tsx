@@ -69,14 +69,14 @@ function ShareBadge({ analyseId, titre }: { analyseId: string; titre: string }) 
   };
 
   return (
-    <div style={{ position: 'relative' }} ref={menuRef}>
+    <div style={{ position: 'relative', zIndex: showMenu ? 1000 : 'auto' }} ref={menuRef}>
       <button onClick={handleToggle} disabled={loading}
         style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 8, background: copied ? '#f0fdf4' : showMenu ? '#edf2f7' : '#f8fafc', border: `1px solid ${copied ? '#bbf7d0' : '#edf2f7'}`, fontSize: 11, fontWeight: 700, color: copied ? '#16a34a' : '#64748b', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap', flexShrink: 0 }}>
         {copied ? <Check size={11} /> : <Share2 size={11} />}
         {copied ? 'Copié !' : loading ? '…' : 'Partager'}
       </button>
       {showMenu && (
-        <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.10)', zIndex: 200, overflow: 'hidden', minWidth: 210 }}>
+        <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', zIndex: 1000, overflow: 'hidden', minWidth: 210 }}>
           <button onClick={handleCopy}
             style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#0f172a', textAlign: 'left' as const }}
             onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#f8fafc'}
