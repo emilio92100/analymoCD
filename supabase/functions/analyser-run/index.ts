@@ -100,6 +100,8 @@ REGLES IMPORTANTES :
 - procedures : message doit expliquer clairement en langage simple l origine et les implications
 - documents_analyses : lister TOUS les documents avec leur type detecte
 - En cas de contexte tres long, priorise : PV AG > DDT > diagnostics > appels charges > RCP articles 1-30
+- lot_achete.parties_privatives : lister TOUS les elements privatifs du lot avec leur numero et tantiemes si mentionnes (appartement, cave, parking, cellier, grenier...). Ex : ["Appartement n19 - 120 tantiemes generaux", "Cave n45 - 51 tantiemes generaux", "Parking n3 - 30 tantiemes generaux"]. Ne pas se limiter au logement principal, inclure toutes les annexes detectees.
+- lot_achete.quote_part_tantiemes : tantiemes TOTAUX du lot (somme de tous les elements privatifs). Ex : "171/9865emes".
 - negociation : applicable=true UNIQUEMENT si score < 14. Les elements sont des arguments actionnables pour negocier le prix. Chaque element est une phrase complete expliquant LE FAIT et POURQUOI c est un levier de negociation, formulee pour que l acheteur puisse l utiliser directement face au vendeur. INCLURE : travaux urgents chiffres (electricite, toiture, ravalement...) / DPE F ou G avec estimation cout renovation / impayes du vendeur envers la copro / procedures judiciaires importantes pouvant impacter financierement la copro / travaux evoques en AG sur plusieurs annees sans etre votes (signal de depense future probable) / gros travaux votes dont le cout est connu et impacte l acheteur. EXCLURE : elements deja favorables a l acheteur (travaux charge vendeur deja actes, appels de fonds charge vendeur) / constats neutres sans impact financier (superficie, localisation) / informations generales non chiffrables sans impact direct sur le prix. Si aucun element ne justifie une negociation, applicable=false et elements=[].
 
 Reponds UNIQUEMENT en JSON strict, sans texte avant ou apres :
@@ -108,7 +110,6 @@ Reponds UNIQUEMENT en JSON strict, sans texte avant ou apres :
 
 // Attend que le status soit files_ready puis lance l'analyse
 async function waitAndRun(analyseId: string, supabaseAdmin: SupabaseClient, apiKey: string): Promise<void> {
-  // Retry pendant 120s max pour détecter files_ready
   for (let i = 0; i < 60; i++) {
     await new Promise(r => setTimeout(r, 2000));
     const { data } = await supabaseAdmin.from('analyses').select('status').eq('id', analyseId).single();
@@ -155,7 +156,6 @@ async function runAnalyseWithData(
     await supabaseAdmin.from('analyses').update({ progress_message: 'Analyse approfondie en cours...' }).eq('id', analyseId);
     console.log(`[analyser-run] Appel Claude — ${files.length} doc(s)`);
 
-    // Mettre à jour le message toutes les 60s pour rassurer le frontend
     let msgCount = 0;
     const progressMessages = [
       'Lecture des documents en cours...',
@@ -168,7 +168,7 @@ async function runAnalyseWithData(
       const msg = progressMessages[msgCount % progressMessages.length];
       msgCount++;
       await supabaseAdmin.from('analyses').update({ progress_message: msg }).eq('id', analyseId);
-    }, 60_000); // toutes les 60s
+    }, 60_000);
 
     let result = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
     clearInterval(progressInterval);
@@ -181,7 +181,6 @@ async function runAnalyseWithData(
       report = result.error ? null : parseJson<Record<string, unknown>>(result.text);
     }
 
-    // Suppression RGPD
     console.log(`[analyser-run] Suppression RGPD de ${fileIds.length} fichier(s)`);
     await Promise.all(fileIds.map(id => deleteFromFilesAPI(id, apiKey)));
 
@@ -244,7 +243,6 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
     console.log(`[analyser-run] Analyse ${analyseId} — ${files.length} docs | mode:${mode}`);
     files.forEach(f => fileIds.push(f.id));
 
-    // Construire contenu avec file_ids
     const userContent: unknown[] = [];
     for (let i = 0; i < files.length; i++) {
       userContent.push({ type: 'document', source: { type: 'file', file_id: files[i].id } });
@@ -260,7 +258,6 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
     await supabaseAdmin.from('analyses').update({ progress_message: 'Analyse approfondie en cours...' }).eq('id', analyseId);
     console.log(`[analyser-run] Appel Claude — ${files.length} doc(s)`);
 
-    // Mettre à jour le message toutes les 60s pour rassurer le frontend
     let msgCount = 0;
     const progressMessages = [
       'Lecture des documents en cours...',
@@ -273,7 +270,7 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
       const msg = progressMessages[msgCount % progressMessages.length];
       msgCount++;
       await supabaseAdmin.from('analyses').update({ progress_message: msg }).eq('id', analyseId);
-    }, 60_000); // toutes les 60s
+    }, 60_000);
 
     let result = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
     clearInterval(progressInterval);
@@ -286,7 +283,6 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
       report = result.error ? null : parseJson<Record<string, unknown>>(result.text);
     }
 
-    // Suppression RGPD immédiate
     console.log(`[analyser-run] Suppression RGPD de ${fileIds.length} fichier(s)`);
     await Promise.all(fileIds.map(id => deleteFromFilesAPI(id, apiKey)));
 
@@ -345,16 +341,14 @@ Deno.serve(async (req) => {
     const analyseId = body?.record?.id || body?.analyseId;
     if (!analyseId) return new Response(JSON.stringify({ error: 'missing_id' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
-    const isDirectCall = !body?.record; // Appel direct depuis analyser (pas webhook)
+    const isDirectCall = !body?.record;
     const isWebhook = !!body?.record;
 
     if (isWebhook) {
-      // Webhook → ignorer, l'appel direct s'en charge
       console.log(`[analyser-run] Webhook ignoré — l'appel direct gère l'analyse`);
       return new Response(JSON.stringify({ skipped: 'webhook' }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    // Lancement direct avec les données du payload — pas de lecture Supabase
     const fileIds = body?.fileIds as Array<{ id: string; name: string }> || [];
     const mode = body?.mode as string || 'complete';
     const profil = body?.profil as string || 'rp';
