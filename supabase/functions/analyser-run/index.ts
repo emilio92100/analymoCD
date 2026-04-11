@@ -1,7 +1,5 @@
 // ══════════════════════════════════════════════════════════════
-// EDGE FUNCTION — analyser-run (déclenchée par webhook Supabase)
-// Étape 2 : Appel Claude avec file_ids → rapport → suppression RGPD
-// Pas de limite HTTP → peut durer 10+ minutes
+// EDGE FUNCTION — analyser-run
 // ══════════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -95,17 +93,20 @@ REGLES DE NOTATION /20 (profil ${p}) :
 
 REGLES IMPORTANTES :
 - finances.budget_total_copro = budget annuel TOTAL copropriete, PAS la quote-part du lot
-- finances.charges_annuelles_lot = charges annuelles du lot (quote-part acheteur)
+- finances.charges_annuelles_lot = charges annuelles du lot (quote-part acheteur). Extraire depuis TOUT document mentionnant les charges du lot : appels de charges, appels de fonds provisionnels, releves de charges, decomptes. Un "appel de fonds" ou "appel de fonds provisionnel" est la MEME chose qu un "appel de charges" — extraire la quote-part du lot concerne.
 - finances.budgets_historique = tableau des budgets annuels extraits de CHAQUE PV d'AG disponible : [{annee: "2023", budget_total: 180000, fonds_travaux: 9000, charges_lot: 3200}]. Laisser null si aucun PV fourni.
 - diagnostics : perimetre OBLIGATOIRE = "lot_privatif" ou "parties_communes"
 - diagnostics DPE : le champ "resultat" doit contenir la classe energetique ET la classe GES sous la forme "Classe E - 281 kWh/m2/an. GES: Classe D - 61 kg CO2/m2/an." pour permettre l affichage des deux jauges.
 - diagnostics CARREZ/MESURAGE : si le document contient un detail des surfaces par piece, renseigner pieces_detail : [{"piece": "Sejour", "surface": 20.29}, {"piece": "Cuisine", "surface": 8.5}]. Sinon laisser null.
+- diagnostics PLOMB parties communes : NE PAS inclure si annee_construction >= 1949. Le plomb parties communes ne concerne QUE les immeubles construits AVANT 1949.
+- diagnostics AMIANTE parties communes : NE PAS inclure si annee_construction >= 1997. L amiante ne concerne QUE les immeubles construits AVANT 1997.
+- diagnostics TERMITES : mettre presence="absence" UNIQUEMENT si le document dit explicitement que l immeuble n est pas en zone termites ou n est pas concerne. Ne pas inventer une absence si le document ne mentionne pas les termites.
 - procedures : message doit expliquer clairement en langage simple l origine et les implications
 - documents_analyses : lister TOUS les documents avec leur type detecte
 - En cas de contexte tres long, priorise : PV AG > DDT > diagnostics > appels charges > RCP articles 1-30
-- lot_achete.parties_privatives : lister TOUS les elements privatifs du lot avec leur numero et tantiemes si mentionnes (appartement, cave, parking, cellier, grenier...). Ex : ["Appartement n19 - 120 tantiemes generaux", "Cave n45 - 51 tantiemes generaux", "Parking n3 - 30 tantiemes generaux"]. Ne pas se limiter au logement principal, inclure toutes les annexes detectees.
+- lot_achete.parties_privatives : lister TOUS les elements privatifs du lot avec leur numero et tantiemes si mentionnes (appartement, cave, parking, cellier, grenier...). Ex : ["Appartement n19 - 120 tantiemes generaux", "Cave n45 - 51 tantiemes generaux"]. Ne pas se limiter au logement principal.
 - lot_achete.quote_part_tantiemes : tantiemes TOTAUX du lot (somme de tous les elements privatifs). Ex : "171/9865emes".
-- negociation : applicable=true UNIQUEMENT si score < 14. Les elements sont des arguments actionnables pour negocier le prix. Chaque element est une phrase complete expliquant LE FAIT et POURQUOI c est un levier de negociation, formulee pour que l acheteur puisse l utiliser directement face au vendeur. INCLURE : travaux urgents chiffres (electricite, toiture, ravalement...) / DPE F ou G avec estimation cout renovation / impayes du vendeur envers la copro / procedures judiciaires importantes pouvant impacter financierement la copro / travaux evoques en AG sur plusieurs annees sans etre votes (signal de depense future probable) / gros travaux votes dont le cout est connu et impacte l acheteur. EXCLURE : elements deja favorables a l acheteur (travaux charge vendeur deja actes, appels de fonds charge vendeur) / constats neutres sans impact financier (superficie, localisation) / informations generales non chiffrables sans impact direct sur le prix. Si aucun element ne justifie une negociation, applicable=false et elements=[].
+- negociation : applicable=true UNIQUEMENT si score < 14. INCLURE : travaux urgents chiffres / DPE F ou G uniquement (pas D ou E) / impayes vendeur envers la copro / procedures judiciaires importantes / gros travaux votes impactant l acheteur / travaux evoques sans vote depuis plusieurs AG. EXCLURE absolument : DPE A/B/C/D (seuls F et G sont des leviers car imposent obligation de travaux ou interdiction de louer) / travaux charge vendeur / constats sans impact financier. Si aucun element ne justifie une negociation, applicable=false et elements=[].
 
 Reponds UNIQUEMENT en JSON strict, sans texte avant ou apres :
 {"titre":"adresse complete","type_bien":"appartement|maison|maison_copro","annee_construction":null,"score":14.5,"score_niveau":"Bien sain","resume":"4-5 phrases","points_forts":[],"points_vigilance":[],"travaux":{"realises":[{"label":"desc","annee":"2021","montant_estime":35000,"justificatif":true}],"votes":[{"label":"desc","annee":"2027","montant_estime":4500,"charge_vendeur":false}],"evoques":[{"label":"desc","annee":null,"montant_estime":null,"precision":"contexte"}],"estimation_totale":null},"finances":{"budget_total_copro":null,"charges_annuelles_lot":null,"fonds_travaux":null,"fonds_travaux_statut":"non_mentionne|conforme|insuffisant|absent","impayes":null,"type_chauffage":null,"budgets_historique":null},"procedures":[{"label":"Type","type":"copro_vs_syndic|impayes|contentieux|autre","gravite":"faible|moderee|elevee","message":"Explication claire 2-3 phrases"}],"diagnostics_resume":"resume global","diagnostics":[{"type":"DPE|ELECTRICITE|GAZ|AMIANTE|PLOMB|TERMITES|ERP|CARREZ|AUTRE","label":"nom complet","perimetre":"lot_privatif|parties_communes","localisation":"localisation","resultat":"resultat avec GES si DPE","presence":"detectee|absence|non_realise","alerte":null,"pieces_detail":null}],"documents_analyses":[{"type":"PV_AG|REGLEMENT_COPRO|APPEL_CHARGES|DPE|DDT|DIAGNOSTIC|COMPROMIS|ETAT_DATE|TAXE_FONCIERE|CARNET_ENTRETIEN|AUTRE","annee":null,"nom":"nom fichier"}],"documents_manquants":[],"negociation":{"applicable":false,"elements":[]},"vie_copropriete":{"syndic":{"nom":null,"fin_mandat":null,"tensions_detectees":false,"tensions_detail":null},"participation_ag":[{"annee":"2024","copropietaires_presents_representes":"18/24","taux_tantiemes_pct":"72%","quorum_note":null}],"tendance_participation":"Non determinable","analyse_participation":"analyse","travaux_votes_non_realises":[],"appels_fonds_exceptionnels":[],"questions_diverses_notables":[]},"lot_achete":{"quote_part_tantiemes":null,"parties_privatives":[],"impayes_detectes":null,"fonds_travaux_alur":null,"travaux_votes_charge_vendeur":[],"restrictions_usage":[],"points_specifiques":[]},"categories":{"travaux":{"note":4,"note_max":5},"procedures":{"note":4,"note_max":4},"finances":{"note":3,"note_max":4},"diags_privatifs":{"note":2,"note_max":4},"diags_communs":{"note":1.5,"note_max":3}},"avis_verimo":"Avis structure en 2-3 paragraphes. Ce rapport est etabli uniquement a partir des documents analyses et ne remplace pas l avis d un professionnel de l immobilier."}`;
@@ -131,7 +132,6 @@ async function waitAndRun(analyseId: string, supabaseAdmin: SupabaseClient, apiK
   console.warn(`[analyser-run] Timeout 120s sans files_ready — abandon`);
 }
 
-// Version directe avec fileIds passés en paramètre (pas de lecture Supabase)
 async function runAnalyseWithData(
   analyseId: string,
   files: Array<{ id: string; name: string }>,
@@ -143,34 +143,20 @@ async function runAnalyseWithData(
   const fileIds = files.map(f => f.id);
   try {
     console.log(`[analyser-run] Analyse ${analyseId} — ${files.length} docs | mode:${mode}`);
-
     const userContent: unknown[] = [];
     for (let i = 0; i < files.length; i++) {
       userContent.push({ type: 'document', source: { type: 'file', file_id: files[i].id } });
       userContent.push({ type: 'text', text: `[Document ${i + 1}/${files.length} : ${files[i].name}]` });
     }
-    userContent.push({
-      type: 'text',
-      text: files.length === 1
-        ? 'Analyse ce document en profondeur. JSON COMPLET et valide, sans troncature.'
-        : `Voici les ${files.length} documents du dossier. Analyse-les ensemble de facon exhaustive. JSON COMPLET et valide, sans troncature.`,
-    });
+    userContent.push({ type: 'text', text: files.length === 1 ? 'Analyse ce document en profondeur. JSON COMPLET et valide, sans troncature.' : `Voici les ${files.length} documents du dossier. Analyse-les ensemble de facon exhaustive. JSON COMPLET et valide, sans troncature.` });
 
     await supabaseAdmin.from('analyses').update({ progress_message: 'Analyse approfondie en cours...' }).eq('id', analyseId);
     console.log(`[analyser-run] Appel Claude — ${files.length} doc(s)`);
 
     let msgCount = 0;
-    const progressMessages = [
-      'Lecture des documents en cours...',
-      'Analyse des diagnostics et travaux...',
-      'Vérification des procédures et finances...',
-      'Synthèse des informations...',
-      'Rédaction du rapport en cours...',
-    ];
+    const progressMessages = ['Lecture des documents en cours...', 'Analyse des diagnostics et travaux...', 'Vérification des procédures et finances...', 'Synthèse des informations...', 'Rédaction du rapport en cours...'];
     const progressInterval = setInterval(async () => {
-      const msg = progressMessages[msgCount % progressMessages.length];
-      msgCount++;
-      await supabaseAdmin.from('analyses').update({ progress_message: msg }).eq('id', analyseId);
+      await supabaseAdmin.from('analyses').update({ progress_message: progressMessages[msgCount++ % progressMessages.length] }).eq('id', analyseId);
     }, 60_000);
 
     let result = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
@@ -188,25 +174,13 @@ async function runAnalyseWithData(
     await Promise.all(fileIds.map(id => deleteFromFilesAPI(id, apiKey)));
 
     if (result.error || !report) {
-      const msg = result.error === 'rate_limit' ? 'Service surchargé. Réessayez dans quelques minutes.'
-        : result.error === 'overload' ? 'Service indisponible. Réessayez dans quelques minutes.'
-        : !report ? 'Erreur de génération. Réessayez ou contactez le support.'
-        : `Erreur inattendue. Contactez le support.`;
+      const msg = result.error === 'rate_limit' ? 'Service surchargé. Réessayez dans quelques minutes.' : result.error === 'overload' ? 'Service indisponible. Réessayez dans quelques minutes.' : 'Erreur de génération. Réessayez ou contactez le support.';
       await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: msg }).eq('id', analyseId);
       return;
     }
 
     const isApercu = mode.startsWith('apercu');
-    const updateData: Record<string, unknown> = {
-      status: 'completed',
-      progress_current: files.length,
-      progress_total: files.length,
-      progress_message: 'Rapport prêt !',
-      file_ids: [],
-      title: (report.titre as string) || 'Analyse immobilière',
-      score: (report.score as number) ?? null,
-      avis_verimo: (report.avis_verimo as string) || null,
-    };
+    const updateData: Record<string, unknown> = { status: 'completed', progress_current: files.length, progress_total: files.length, progress_message: 'Rapport prêt !', file_ids: [], title: (report.titre as string) || 'Analyse immobilière', score: (report.score as number) ?? null, avis_verimo: (report.avis_verimo as string) || null };
     if (isApercu) { updateData.apercu = report; updateData.is_preview = true; }
     else { updateData.result = report; updateData.paid = true; }
 
@@ -226,22 +200,14 @@ async function runAnalyseWithData(
 async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiKey: string): Promise<void> {
   const fileIds: string[] = [];
   try {
-    const { data: analyse, error } = await supabaseAdmin
-      .from('analyses')
-      .select('file_ids, mode, profil')
-      .eq('id', analyseId)
-      .single();
-
+    const { data: analyse, error } = await supabaseAdmin.from('analyses').select('file_ids, mode, profil').eq('id', analyseId).single();
     if (error || !analyse) { console.error('[analyser-run] Analyse introuvable:', error); return; }
 
     const files = (analyse.file_ids as Array<{ id: string; name: string }>) || [];
     const mode = (analyse.mode as string) || 'complete';
     const profil = (analyse.profil as string) || 'rp';
 
-    if (files.length === 0) {
-      await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: 'Aucun fichier trouvé.' }).eq('id', analyseId);
-      return;
-    }
+    if (files.length === 0) { await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: 'Aucun fichier trouvé.' }).eq('id', analyseId); return; }
 
     console.log(`[analyser-run] Analyse ${analyseId} — ${files.length} docs | mode:${mode}`);
     files.forEach(f => fileIds.push(f.id));
@@ -251,28 +217,15 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
       userContent.push({ type: 'document', source: { type: 'file', file_id: files[i].id } });
       userContent.push({ type: 'text', text: `[Document ${i + 1}/${files.length} : ${files[i].name}]` });
     }
-    userContent.push({
-      type: 'text',
-      text: files.length === 1
-        ? 'Analyse ce document en profondeur. JSON COMPLET et valide, sans troncature.'
-        : `Voici les ${files.length} documents du dossier. Analyse-les ensemble de facon exhaustive. JSON COMPLET et valide, sans troncature.`,
-    });
+    userContent.push({ type: 'text', text: files.length === 1 ? 'Analyse ce document en profondeur. JSON COMPLET et valide, sans troncature.' : `Voici les ${files.length} documents du dossier. Analyse-les ensemble de facon exhaustive. JSON COMPLET et valide, sans troncature.` });
 
     await supabaseAdmin.from('analyses').update({ progress_message: 'Analyse approfondie en cours...' }).eq('id', analyseId);
     console.log(`[analyser-run] Appel Claude — ${files.length} doc(s)`);
 
     let msgCount = 0;
-    const progressMessages = [
-      'Lecture des documents en cours...',
-      'Analyse des diagnostics et travaux...',
-      'Vérification des procédures et finances...',
-      'Synthèse des informations...',
-      'Rédaction du rapport en cours...',
-    ];
+    const progressMessages = ['Lecture des documents en cours...', 'Analyse des diagnostics et travaux...', 'Vérification des procédures et finances...', 'Synthèse des informations...', 'Rédaction du rapport en cours...'];
     const progressInterval = setInterval(async () => {
-      const msg = progressMessages[msgCount % progressMessages.length];
-      msgCount++;
-      await supabaseAdmin.from('analyses').update({ progress_message: msg }).eq('id', analyseId);
+      await supabaseAdmin.from('analyses').update({ progress_message: progressMessages[msgCount++ % progressMessages.length] }).eq('id', analyseId);
     }, 60_000);
 
     let result = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
@@ -290,25 +243,13 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
     await Promise.all(fileIds.map(id => deleteFromFilesAPI(id, apiKey)));
 
     if (result.error || !report) {
-      const msg = result.error === 'rate_limit' ? 'Service surchargé. Réessayez dans quelques minutes.'
-        : result.error === 'overload' ? 'Service indisponible. Réessayez dans quelques minutes.'
-        : !report ? 'Erreur de génération. Réessayez ou contactez le support.'
-        : `Erreur inattendue. Contactez le support.`;
+      const msg = result.error === 'rate_limit' ? 'Service surchargé. Réessayez dans quelques minutes.' : result.error === 'overload' ? 'Service indisponible. Réessayez dans quelques minutes.' : 'Erreur de génération. Réessayez ou contactez le support.';
       await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: msg }).eq('id', analyseId);
       return;
     }
 
     const isApercu = mode.startsWith('apercu');
-    const updateData: Record<string, unknown> = {
-      status: 'completed',
-      progress_current: files.length,
-      progress_total: files.length,
-      progress_message: 'Rapport prêt !',
-      file_ids: [],
-      title: (report.titre as string) || 'Analyse immobilière',
-      score: (report.score as number) ?? null,
-      avis_verimo: (report.avis_verimo as string) || null,
-    };
+    const updateData: Record<string, unknown> = { status: 'completed', progress_current: files.length, progress_total: files.length, progress_message: 'Rapport prêt !', file_ids: [], title: (report.titre as string) || 'Analyse immobilière', score: (report.score as number) ?? null, avis_verimo: (report.avis_verimo as string) || null };
     if (isApercu) { updateData.apercu = report; updateData.is_preview = true; }
     else { updateData.result = report; updateData.paid = true; }
 
@@ -344,9 +285,7 @@ Deno.serve(async (req) => {
     const analyseId = body?.record?.id || body?.analyseId;
     if (!analyseId) return new Response(JSON.stringify({ error: 'missing_id' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
-    const isDirectCall = !body?.record;
     const isWebhook = !!body?.record;
-
     if (isWebhook) {
       console.log(`[analyser-run] Webhook ignoré — l'appel direct gère l'analyse`);
       return new Response(JSON.stringify({ skipped: 'webhook' }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
