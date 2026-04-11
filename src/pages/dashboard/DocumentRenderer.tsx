@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import DiagnosticCard from './DiagnosticCard';
 
 // Couleurs hardcodées (pas de CSS vars — compatibilité RapportPage)
 const C = {
@@ -172,14 +173,6 @@ function DpeJauge({ classe, label, valeur }: { classe: string; label: string; va
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererDDT({ r }: { r: any }) {
   const diags = r.diagnostics || [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getStyle = (presence: string) => {
-    if (presence === 'anomalie') return { bg: C.red.bg, border: C.red.border, badgeColor: C.red.dot, badge: 'Anomalie' };
-    if (presence === 'conforme') return { bg: C.green.bg, border: C.green.border, badgeColor: C.green.dot, badge: '✓ Conforme' };
-    if (presence === 'non_detecte') return { bg: C.green.bg, border: C.green.border, badgeColor: C.green.dot, badge: '✓ Non détecté' };
-    if (presence === 'non_applicable') return { bg: C.gray.bg, border: C.gray.border, badgeColor: C.gray.dot, badge: 'Non applicable' };
-    return { bg: C.gray.bg, border: C.gray.border, badgeColor: C.gray.dot, badge: 'Informatif' };
-  };
 
   const sub = [r.diagnostiqueur?.nom, r.diagnostiqueur?.date ? `le ${r.diagnostiqueur.date}` : null, r.diagnostiqueur?.certification].filter(Boolean).join(' · ');
 
@@ -225,23 +218,12 @@ function RendererDDT({ r }: { r: any }) {
         </Card>
       )}
 
-      {/* Diagnostics */}
+      {/* Diagnostics avec accordéon par type */}
       {diags.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          {diags.map((d: any, i: number) => {
-            const s = getStyle(d.presence);
-            return (
-              <div key={i} style={{ background: s.bg, border: `0.5px solid ${s.border}`, borderRadius: 12, padding: '16px 18px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{d.label}</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: s.badgeColor, background: C.bg, border: `0.5px solid ${s.border}`, padding: '3px 10px', borderRadius: 100, whiteSpace: 'nowrap' as const, marginLeft: 8 }}>{s.badge}</span>
-                </div>
-                {d.detail && <div style={{ fontSize: 13, color: C.textSec, lineHeight: 1.6 }}>{d.detail}</div>}
-                {d.alerte && <div style={{ fontSize: 13, color: C.red.dot, marginTop: 8, fontWeight: 500 }}>⚠ {d.alerte}</div>}
-              </div>
-            );
-          })}
+          {diags.map((d: any, i: number) => (
+            <DiagnosticCard key={i} d={d} />
+          ))}
         </div>
       )}
 
