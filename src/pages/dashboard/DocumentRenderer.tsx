@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 
 const S = {
   card: { background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, overflow: 'hidden' as const, marginBottom: 12 },
-  cardHeader: (color: string) => ({ padding: '12px 18px', borderBottom: '0.5px solid var(--color-border-tertiary)', display: 'flex', alignItems: 'center', gap: 8 }),
+  cardHeader: () => ({ padding: '12px 18px', borderBottom: '0.5px solid var(--color-border-tertiary)', display: 'flex', alignItems: 'center', gap: 8 }),
   dot: (color: string) => ({ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }),
   label: { fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)' },
   row: (alt: boolean) => ({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 18px', borderBottom: '0.5px solid var(--color-border-tertiary)', background: alt ? 'var(--color-background-secondary)' : 'var(--color-background-primary)' }),
