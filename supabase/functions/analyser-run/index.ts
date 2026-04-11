@@ -105,6 +105,27 @@ Reponds UNIQUEMENT en JSON strict, sans texte avant ou apres :
 {"titre":"adresse complete","type_bien":"appartement|maison|maison_copro","annee_construction":null,"score":14.5,"score_niveau":"Bien sain","resume":"4-5 phrases","points_forts":[],"points_vigilance":[],"travaux":{"realises":[{"label":"desc","annee":"2021","montant_estime":35000,"justificatif":true}],"votes":[{"label":"desc","annee":"2027","montant_estime":4500,"charge_vendeur":false}],"evoques":[{"label":"desc","annee":null,"montant_estime":null,"precision":"contexte"}],"estimation_totale":null},"finances":{"budget_total_copro":null,"charges_annuelles_lot":null,"fonds_travaux":null,"fonds_travaux_statut":"non_mentionne|conforme|insuffisant|absent","impayes":null,"type_chauffage":null},"procedures":[{"label":"Type","type":"copro_vs_syndic|impayes|contentieux|autre","gravite":"faible|moderee|elevee","message":"Explication claire 2-3 phrases"}],"diagnostics_resume":"resume global","diagnostics":[{"type":"DPE|ELECTRICITE|GAZ|AMIANTE|PLOMB|TERMITES|ERP|AUTRE","label":"nom complet","perimetre":"lot_privatif|parties_communes","localisation":"localisation","resultat":"resultat","presence":"detectee|absence|non_realise","alerte":null}],"documents_analyses":[{"type":"PV_AG|REGLEMENT_COPRO|APPEL_CHARGES|DPE|DDT|DIAGNOSTIC|COMPROMIS|ETAT_DATE|TAXE_FONCIERE|CARNET_ENTRETIEN|AUTRE","annee":null,"nom":"nom fichier"}],"documents_manquants":[],"negociation":{"applicable":false,"elements":[]},"vie_copropriete":{"syndic":{"nom":null,"fin_mandat":null,"tensions_detectees":false,"tensions_detail":null},"participation_ag":[{"annee":"2024","copropietaires_presents_representes":"18/24","taux_tantiemes_pct":"72%","quorum_note":null}],"tendance_participation":"Non determinable","analyse_participation":"analyse","travaux_votes_non_realises":[],"appels_fonds_exceptionnels":[],"questions_diverses_notables":[]},"lot_achete":{"quote_part_tantiemes":null,"parties_privatives":[],"impayes_detectes":null,"fonds_travaux_alur":null,"travaux_votes_charge_vendeur":[],"restrictions_usage":[],"points_specifiques":[]},"categories":{"travaux":{"note":4,"note_max":5},"procedures":{"note":4,"note_max":4},"finances":{"note":3,"note_max":4},"diags_privatifs":{"note":2,"note_max":4},"diags_communs":{"note":1.5,"note_max":3}},"avis_verimo":"Avis structure en 2-3 paragraphes. Ce rapport est etabli uniquement a partir des documents analyses et ne remplace pas l avis d un professionnel de l immobilier."}`;
 }
 
+// Attend que le status soit files_ready puis lance l'analyse
+async function waitAndRun(analyseId: string, supabaseAdmin: SupabaseClient, apiKey: string): Promise<void> {
+  // Retry pendant 60s max pour détecter files_ready
+  for (let i = 0; i < 30; i++) {
+    await new Promise(r => setTimeout(r, 2000));
+    const { data } = await supabaseAdmin.from('analyses').select('status').eq('id', analyseId).single();
+    const status = data?.status || '';
+    console.log(`[analyser-run] Check ${i+1}/30 — status:${status}`);
+    if (status === 'files_ready') {
+      console.log(`[analyser-run] files_ready confirmé — lancement analyse`);
+      await runAnalyse(analyseId, supabaseAdmin, apiKey);
+      return;
+    }
+    if (status === 'completed' || status === 'failed') {
+      console.log(`[analyser-run] Status final ${status} — abandon`);
+      return;
+    }
+  }
+  console.warn(`[analyser-run] Timeout 60s sans files_ready — abandon`);
+}
+
 async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiKey: string): Promise<void> {
   const fileIds: string[] = [];
   try {
@@ -213,17 +234,9 @@ Deno.serve(async (req) => {
     const analyseId = body?.record?.id || body?.analyseId;
     if (!analyseId) return new Response(JSON.stringify({ error: 'missing_id' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
-    // Lire le vrai status depuis Supabase
-    const { data: analyseCheck } = await supabaseAdmin.from('analyses').select('status').eq('id', analyseId).single();
-    const status = analyseCheck?.status;
-    console.log(`[analyser-run] Webhook reçu — ${analyseId} status:${status}`);
-
-    if (status !== 'files_ready') {
-      console.log(`[analyser-run] Ignoré — status=${status}`);
-      return new Response(JSON.stringify({ skipped: true, status }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
-    }
-
-    EdgeRuntime.waitUntil(runAnalyse(analyseId, supabaseAdmin, apiKey));
+    // Lancer en background avec waitUntil — répond immédiatement au webhook
+    // Le background va attendre files_ready avant de lancer l'analyse
+    EdgeRuntime.waitUntil(waitAndRun(analyseId, supabaseAdmin, apiKey));
 
     return new Response(JSON.stringify({ success: true, analyseId }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
   } catch (err) {
