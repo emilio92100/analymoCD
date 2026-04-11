@@ -107,8 +107,8 @@ Reponds UNIQUEMENT en JSON strict, sans texte avant ou apres :
 
 // Attend que le status soit files_ready puis lance l'analyse
 async function waitAndRun(analyseId: string, supabaseAdmin: SupabaseClient, apiKey: string): Promise<void> {
-  // Retry pendant 60s max pour détecter files_ready
-  for (let i = 0; i < 30; i++) {
+  // Retry pendant 120s max pour détecter files_ready
+  for (let i = 0; i < 60; i++) {
     await new Promise(r => setTimeout(r, 2000));
     const { data } = await supabaseAdmin.from('analyses').select('status').eq('id', analyseId).single();
     const status = data?.status || '';
@@ -123,7 +123,7 @@ async function waitAndRun(analyseId: string, supabaseAdmin: SupabaseClient, apiK
       return;
     }
   }
-  console.warn(`[analyser-run] Timeout 60s sans files_ready — abandon`);
+  console.warn(`[analyser-run] Timeout 120s sans files_ready — abandon`);
 }
 
 async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiKey: string): Promise<void> {
@@ -234,9 +234,16 @@ Deno.serve(async (req) => {
     const analyseId = body?.record?.id || body?.analyseId;
     if (!analyseId) return new Response(JSON.stringify({ error: 'missing_id' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
-    // Lancer en background avec waitUntil — répond immédiatement au webhook
-    // Le background va attendre files_ready avant de lancer l'analyse
-    EdgeRuntime.waitUntil(waitAndRun(analyseId, supabaseAdmin, apiKey));
+    // Vérifier le status directement dans le payload webhook
+    const payloadStatus = body?.record?.status;
+    console.log(`[analyser-run] Payload status: ${payloadStatus}`);
+
+    if (payloadStatus === 'files_ready') {
+      console.log(`[analyser-run] files_ready détecté — lancement analyse`);
+      EdgeRuntime.waitUntil(runAnalyse(analyseId, supabaseAdmin, apiKey));
+    } else {
+      console.log(`[analyser-run] Ignoré — payload status=${payloadStatus}`);
+    }
 
     return new Response(JSON.stringify({ success: true, analyseId }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
   } catch (err) {
