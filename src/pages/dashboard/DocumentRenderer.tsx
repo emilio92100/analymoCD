@@ -563,41 +563,120 @@ function RendererPVAG({ r }: { r: any }) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererAppelCharges({ r }: { r: any }) {
-  const sub = [r.periode, r.lot ? `Lot ${r.lot}` : null, r.syndic ? `Syndic : ${r.syndic}` : null].filter(Boolean).join(' · ');
+  const lots = r.lots || [];
+  const lotIcon = (type: string) => type === 'cave' ? '🔒' : type === 'parking' || type === 'garage' ? '🚗' : type === 'grenier' ? '📦' : '🏠';
+
   return (
     <div>
-      <Header type="Appel de Charges / Appel de Fonds" titre={r.titre} sub={sub} />
+      {/* Header avec lots en badges */}
+      <div style={{ background: C.dark, borderRadius: 14, padding: '22px 28px', marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', marginBottom: 8, textTransform: 'uppercase' as const }}>Appel de Charges / Appel de Fonds</div>
+        <div style={{ fontSize: 19, fontWeight: 600, color: '#fff', marginBottom: 6, lineHeight: 1.3 }}>{r.titre}</div>
+        {r.periode && <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: lots.length > 0 ? 10 : 0 }}>{r.periode}</div>}
+        {lots.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6, marginTop: 6 }}>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', alignSelf: 'center', marginRight: 2 }}>Lots concernés :</span>
+            {lots.map((lot: any, i: number) => (
+              <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(255,255,255,0.1)', border: '0.5px solid rgba(255,255,255,0.2)', borderRadius: 100, padding: '4px 12px', fontSize: 12, color: 'rgba(255,255,255,0.85)' }}>
+                {lotIcon(lot.type)} {lot.type.charAt(0).toUpperCase() + lot.type.slice(1)}{lot.numero ? ` n°${lot.numero}` : ''}{lot.etage ? ` · ${formatEtage(lot.etage)}` : ''}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
       <Resume text={r.resume} />
+
+      {/* Alerte impayé si présente */}
+      {r.alerte_impaye && (
+        <div style={{ background: C.red.bg, border: `0.5px solid ${C.red.border}`, borderRadius: 12, padding: '14px 18px', marginBottom: 14, fontSize: 13, color: C.red.text, lineHeight: 1.6 }}>
+          ⚠ {r.alerte_impaye}
+        </div>
+      )}
+
+      {/* Encart syndic */}
+      <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px', marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏢 Syndic</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 16 }}>
+          {r.syndic && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👤</span><span style={{ fontWeight: 600 }}>{r.syndic}</span></div>}
+          {r.syndic_adresse && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📍</span><span>{r.syndic_adresse}</span></div>}
+          {r.syndic_gestionnaire && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👩‍💼</span><span>Gestionnaire : {r.syndic_gestionnaire}</span></div>}
+          {r.reference_dossier && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📋</span><span>Réf. : {r.reference_dossier}</span></div>}
+          {r.echeance && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📅</span><span>Échéance : {r.echeance}</span></div>}
+        </div>
+      </div>
+
+      {/* KPIs */}
       <KpiGrid>
         {r.montant_trimestre && <Kpi label="Appel ce trimestre" value={`${Number(r.montant_trimestre).toLocaleString('fr-FR')} €`} />}
-        {r.montant_annuel && <Kpi label="Charges annuelles" value={`${Number(r.montant_annuel).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="× 4 trimestres" />}
+        {r.montant_annuel && <Kpi label="Charges annuelles estimées" value={`${Number(r.montant_annuel).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="× 4 trimestres" />}
         {r.montant_mensuel && <Kpi label="Charges mensuelles" value={`${Number(r.montant_mensuel).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="/ mois" />}
       </KpiGrid>
-      {r.decomposition?.length > 0 && (
+
+      {/* Décomposition par lot */}
+      {lots.length > 0 && (
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="DÉCOMPOSITION PAR LOT" color={C.blue.dot} />
+          {lots.map((lot: any, li: number) => (
+            <div key={li} style={{ borderBottom: li < lots.length - 1 ? `0.5px solid ${C.border}` : 'none' }}>
+              {/* En-tête du lot */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 20px', background: C.bgSecondary }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 20 }}>{lotIcon(lot.type)}</span>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>
+                      {lot.type.charAt(0).toUpperCase() + lot.type.slice(1)}{lot.numero ? ` n°${lot.numero}` : ''}
+                    </div>
+                    <div style={{ fontSize: 12, color: C.textSec }}>
+                      {[lot.escalier ? `Escalier ${lot.escalier}` : null, formatEtage(lot.etage)].filter(Boolean).join(' · ')}
+                    </div>
+                  </div>
+                </div>
+                {lot.total_trimestre && (
+                  <div style={{ fontSize: 16, fontWeight: 600, color: C.blue.dot, whiteSpace: 'nowrap' as const }}>
+                    {Number(lot.total_trimestre).toLocaleString('fr-FR')} €
+                  </div>
+                )}
+              </div>
+              {/* Postes du lot */}
+              {lot.postes?.map((p: any, pi: number) => (
+                <div key={pi} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px 10px 50px', borderTop: `0.5px solid ${C.border}` }}>
+                  <div>
+                    <div style={{ fontSize: 13, color: C.text }}>{p.label}</div>
+                    {p.tantiemes && p.base_tantiemes && (
+                      <div style={{ fontSize: 11, color: C.textSec, marginTop: 2 }}>{p.tantiemes} tantièmes / {p.base_tantiemes}</div>
+                    )}
+                  </div>
+                  <div style={{ textAlign: 'right' as const, flexShrink: 0, marginLeft: 12 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{p.trimestre ? `${Number(p.trimestre).toLocaleString('fr-FR')} €` : '—'}</div>
+                    {p.annuel && <div style={{ fontSize: 11, color: C.textSec, marginTop: 2 }}>{Number(p.annuel).toLocaleString('fr-FR')} € /an</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Fallback si pas de lots structurés — ancienne décomposition plate */}
+      {lots.length === 0 && r.decomposition?.length > 0 && (
         <Card>
-          <CardHeader label="DÉCOMPOSITION DE L'APPEL" color="#2a7d9c" />
+          <CardHeader label="DÉCOMPOSITION DE L'APPEL" color={C.blue.dot} />
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead><TableHeader cols={[{ label: 'Poste' }, { label: 'Trimestre', align: 'right' }, { label: 'Annuel estimé', align: 'right' }]} /></thead>
             <tbody>
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {r.decomposition.map((d: any, i: number) => (
-                <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}`, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+                <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}` }}>
                   <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{d.poste}</td>
-                  <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: C.text, textAlign: 'right' }}>{d.trimestre ? `${Number(d.trimestre).toLocaleString('fr-FR')} €` : '—'}</td>
-                  <td style={{ padding: '11px 20px', fontSize: 14, color: C.textSec, textAlign: 'right' }}>{d.annuel ? `${Number(d.annuel).toLocaleString('fr-FR')} €` : '—'}</td>
+                  <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: C.text, textAlign: 'right' as const }}>{d.trimestre ? `${Number(d.trimestre).toLocaleString('fr-FR')} €` : '—'}</td>
+                  <td style={{ padding: '11px 20px', fontSize: 14, color: C.textSec, textAlign: 'right' as const }}>{d.annuel ? `${Number(d.annuel).toLocaleString('fr-FR')} €` : '—'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </Card>
       )}
-      <Card>
-        <CardHeader label="INFORMATIONS LOT" color={C.gray.dot} />
-        {r.lot && <InfoRow label="Lot concerné" value={r.lot} />}
-        {r.echeance && <InfoRow label="Date d'échéance" value={r.echeance} alt />}
-        {r.solde_precedent !== null && r.solde_precedent !== undefined && <InfoRow label="Solde précédent" value={`${Number(r.solde_precedent).toLocaleString('fr-FR')} €`} valueColor={Number(r.solde_precedent) === 0 ? '#16a34a' : '#dc2626'} />}
-        <InfoRow label="Impayés détectés" value={r.impayes ? 'Oui' : 'Aucun'} alt valueColor={r.impayes ? '#dc2626' : '#16a34a'} />
-      </Card>
+
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
