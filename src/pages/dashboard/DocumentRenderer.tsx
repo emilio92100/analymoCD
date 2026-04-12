@@ -911,12 +911,14 @@ function RendererCarnetEntretien({ r }: { r: any }) {
           <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏗 Infos copropriété</div>
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
             {r.annee_construction && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📅</span><span>Construit en {r.annee_construction}</span></div>}
+            {r.nb_batiments && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏢</span><span>{r.nb_batiments} bâtiment{r.nb_batiments > 1 ? 's' : ''}</span></div>}
             {nbLotsTotal && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏘</span><span>{nbLotsTotal} lots au total{r.nb_lots_secondaires ? ` (${r.nb_lots_principaux} principaux · ${r.nb_lots_secondaires} secondaires)` : ''}</span></div>}
             {r.nb_lots_detail?.logements && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏠</span><span>{r.nb_lots_detail.logements} logements{r.nb_lots_detail.caves ? ` · ${r.nb_lots_detail.caves} caves` : ''}{r.nb_lots_detail.parkings ? ` · ${r.nb_lots_detail.parkings} parkings` : ''}</span></div>}
             {r.immatriculation_registre && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📋</span><span>Immat. : {r.immatriculation_registre}</span></div>}
             {r.chauffage_collectif && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🔥</span><span>Chauffage collectif {r.type_chauffage ? `au ${r.type_chauffage.toLowerCase()}` : ''}{r.eau_chaude_collective ? ' + eau chaude' : ''}</span></div>}
             {r.fibre_optique != null && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>💾</span><span>Fibre optique : {r.fibre_optique ? 'Oui' : 'Non'}</span></div>}
             {r.rcp_info?.date_origine && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📜</span><span>RCP de {r.rcp_info.date_origine}{r.rcp_info.modificatifs?.length > 0 ? ` · ${r.rcp_info.modificatifs.length} modificatif(s)` : ''}</span></div>}
+            {r.assurance?.compagnie && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🛡</span><span>Assurance : {r.assurance.compagnie}{r.assurance.police ? ` — Police n°${r.assurance.police}` : ''}{r.assurance.echeance ? ` · Éch. ${r.assurance.echeance}` : ''}</span></div>}
           </div>
         </div>
 
@@ -997,7 +999,7 @@ function RendererCarnetEntretien({ r }: { r: any }) {
         <div style={{ background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
           <CardHeader label="TRAVAUX VOTÉS EN COURS (NON ENCORE RÉALISÉS)" color={C.orange.dot} />
           <div style={{ padding: '10px 20px', background: '#fffbf5', borderBottom: `0.5px solid ${C.orange.border}`, fontSize: 13, color: C.orange.text }}>
-            ⚠ Ces travaux ont été votés en AG mais ne sont pas encore réalisés. En tant qu'acheteur, vous en supporterez la charge si elle n'est pas encore entièrement appelée à la signature.
+            ℹ Travaux votés en AG — leur charge revient en principe au vendeur si votés avant le compromis. À confirmer avec votre notaire.
           </div>
           {r.travaux_en_cours.map((t: any, i: number) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: i < r.travaux_en_cours.length - 1 ? `0.5px solid ${C.orange.border}` : 'none', background: i % 2 === 0 ? C.orange.bg : '#fffbf5' }}>
@@ -1045,19 +1047,13 @@ function RendererCarnetEntretien({ r }: { r: any }) {
       {/* Infos complémentaires */}
       {r.infos_complementaires?.length > 0 && (
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
-          <CardHeader label="INFORMATIONS COMPLÉMENTAIRES" color={C.blue.dot} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 0 }}>
-            {r.infos_complementaires.map((info: any, i: number) => {
-              const hasEmoji = /^[\p{Emoji}]/u.test(String(info.label));
-              const emoji = hasEmoji ? '' : '📌';
-              return (
-                <div key={i} style={{ padding: '14px 20px', borderBottom: `0.5px solid ${C.border}`, borderRight: i % 2 === 0 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary, display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
-                  <span style={{ fontSize: 12, color: C.textSec, fontWeight: 600, letterSpacing: '0.04em' }}>{emoji}{info.label}</span>
-                  <span style={{ fontSize: 14, fontWeight: 500, color: C.text }}>{info.valeur}</span>
-                </div>
-              );
-            })}
-          </div>
+          <CardHeader label="INFORMATIONS COMPLÉMENTAIRES" color={C.gray.dot} />
+          {r.infos_complementaires.map((info: any, i: number) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: i < r.infos_complementaires.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary, gap: 16 }}>
+              <span style={{ fontSize: 13, color: C.textSec }}>{info.label}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: C.text, textAlign: 'right' as const, flexShrink: 0, maxWidth: '55%' }}>{info.valeur}</span>
+            </div>
+          ))}
         </div>
       )}
 
