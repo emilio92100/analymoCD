@@ -497,30 +497,42 @@ function RendererRCP({ r }: { r: any }) {
         </Card>
       )}
 
-      {/* Règles d'usage — tableau autorisé/interdit */}
-      {r.regles_usage?.length > 0 && (
-        <Card>
-          <CardHeader label="RÈGLES CLÉS POUR L'ACHETEUR" color={C.blue.dot} />
-          <div style={{ padding: '8px 0' }}>
-            {r.regles_usage.map((rule: any, i: number) => {
-              const label = typeof rule === 'string' ? rule : rule.label;
-              const statut = typeof rule === 'string' ? 'sous_conditions' : rule.statut;
-              const isInvest = typeof rule !== 'string' && rule.impact_invest;
-              const isRP = typeof rule !== 'string' && rule.impact_rp;
-              return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: i < r.regles_usage.length - 1 ? `0.5px solid ${C.border}` : 'none', background: statutBg(statut), gap: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-                    <span style={{ fontSize: 14, color: C.text }}>{label}</span>
-                    {isInvest && <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 100, background: '#ede9fe', color: '#5b21b6', whiteSpace: 'nowrap' as const }}>Investissement</span>}
-                    {isRP && <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 100, background: '#dbeafe', color: '#1e40af', whiteSpace: 'nowrap' as const }}>Usage quotidien</span>}
+      {/* Règles d'usage — triées par statut : autorisé > sous_conditions > interdit, invest en tête si profil invest */}
+      {r.regles_usage?.length > 0 && (() => {
+        const ordre = (s: string) => s === 'autorise' ? 0 : s === 'sous_conditions' ? 1 : 2;
+        const isInvestProfil = r._profil === 'invest';
+        const sorted = [...r.regles_usage].sort((a: any, b: any) => {
+          const sa = typeof a === 'string' ? 'sous_conditions' : a.statut;
+          const sb = typeof b === 'string' ? 'sous_conditions' : b.statut;
+          if (isInvestProfil) {
+            const ia = typeof a !== 'string' && a.impact_invest ? -1 : 0;
+            const ib = typeof b !== 'string' && b.impact_invest ? -1 : 0;
+            if (ia !== ib) return ia - ib;
+          }
+          return ordre(sa) - ordre(sb);
+        });
+        return (
+          <Card>
+            <CardHeader label="RÈGLES CLÉS POUR L'ACHETEUR" color={C.blue.dot} />
+            <div style={{ padding: '8px 0' }}>
+              {sorted.map((rule: any, i: number) => {
+                const label = typeof rule === 'string' ? rule : rule.label;
+                const statut = typeof rule === 'string' ? 'sous_conditions' : rule.statut;
+                const showInvestBadge = isInvestProfil && typeof rule !== 'string' && rule.impact_invest;
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: i < sorted.length - 1 ? `0.5px solid ${C.border}` : 'none', background: statutBg(statut), gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, flexWrap: 'wrap' as const }}>
+                      <span style={{ fontSize: 14, color: C.text }}>{label}</span>
+                      {showInvestBadge && <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 100, background: '#ede9fe', color: '#5b21b6', whiteSpace: 'nowrap' as const }}>⚡ Clé investissement</span>}
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: statutColor(statut), whiteSpace: 'nowrap' as const }}>{statutLabel(statut)}</span>
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: statutColor(statut), whiteSpace: 'nowrap' as const }}>{statutLabel(statut)}</span>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      )}
+                );
+              })}
+            </div>
+          </Card>
+        );
+      })()}
 
       {/* Restrictions importantes */}
       {r.restrictions_importantes?.length > 0 && (
