@@ -203,6 +203,39 @@ function CarrezAccordeon({ pieces, surfaceSol }: { pieces: any[]; surfaceSol?: s
   );
 }
 
+// Formate le texte brut du détail en liste de phrases lisibles
+function DetailTexte({ text }: { text: string }) {
+  if (!text) return null;
+  // Découper en phrases/points
+  const phrases = text
+    .split(/\.\s+(?=[A-ZÀ-Ü])|;\s+/)
+    .map(s => s.trim().replace(/\.$/, ''))
+    .filter(s => s.length > 10);
+  if (phrases.length <= 1) {
+    return <p style={{ margin: 0, fontSize: 13, color: C.textSec, lineHeight: 1.65 }}>{text}</p>;
+  }
+  return (
+    <ul style={{ margin: 0, padding: '0 0 0 16px', listStyle: 'none' }}>
+      {phrases.map((p, i) => (
+        <li key={i} style={{ fontSize: 13, color: C.textSec, lineHeight: 1.65, marginBottom: 6, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+          <span style={{ color: C.border, marginTop: 6, flexShrink: 0, fontSize: 6 }}>●</span>
+          <span>{p}.</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function SeparateurSynthese() {
+  return (
+    <div style={{ margin: '24px 0 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div style={{ flex: 1, height: 1, background: C.border }} />
+      <span style={{ fontSize: 12, fontWeight: 600, color: C.textSec, letterSpacing: '0.1em', whiteSpace: 'nowrap' as const }}>SYNTHÈSE</span>
+      <div style={{ flex: 1, height: 1, background: C.border }} />
+    </div>
+  );
+}
+
 
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -224,18 +257,23 @@ function RendererDDT({ r }: { r: any }) {
         </div>
       )}
 
-      {/* Carrez — surface totale visible, détail en accordéon */}
-      {r.carrez?.surface_totale && (
-        <Card>
-          <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: C.textSec }}>Surface loi Carrez</span>
-            <span style={{ fontSize: 24, fontWeight: 600, color: C.text }}>{r.carrez.surface_totale} m²</span>
-          </div>
-          {r.carrez.pieces?.length > 0 && (
-            <CarrezAccordeon pieces={r.carrez.pieces} surfaceSol={r.carrez.surface_sol} />
-          )}
-        </Card>
-      )}
+      {/* Surface — label dynamique selon type détecté */}
+      {r.carrez?.surface_totale && (() => {
+        const label = r.carrez.surface_type === 'boutin' ? 'Surface habitable (Loi Boutin)'
+          : r.carrez.surface_type === 'autre' ? 'Surface mesurée'
+          : 'Surface loi Carrez';
+        return (
+          <Card>
+            <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: C.textSec }}>{label}</span>
+              <span style={{ fontSize: 24, fontWeight: 600, color: C.text }}>{r.carrez.surface_totale} m²</span>
+            </div>
+            {r.carrez.pieces?.length > 0 && (
+              <CarrezAccordeon pieces={r.carrez.pieces} surfaceSol={r.carrez.surface_sol} />
+            )}
+          </Card>
+        );
+      })()}
 
       {/* Diagnostics — verts d'abord, rouges ensuite, informatifs en dernier */}
       {diags.length > 0 && (() => {
@@ -283,12 +321,9 @@ function RendererDDT({ r }: { r: any }) {
       )}
 
       {/* Séparateur avant synthèse */}
-      <div style={{ margin: '24px 0 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
-        <div style={{ flex: 1, height: 1, background: C.border }} />
-        <span style={{ fontSize: 12, fontWeight: 600, color: C.textSec, letterSpacing: '0.1em', whiteSpace: 'nowrap' as const }}>SYNTHÈSE</span>
-        <div style={{ flex: 1, height: 1, background: C.border }} />
-      </div>
+      <SeparateurSynthese />
 
+      <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
@@ -362,6 +397,7 @@ function RendererPVAG({ r }: { r: any }) {
         </div>
       )}
 
+      <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
@@ -405,6 +441,7 @@ function RendererAppelCharges({ r }: { r: any }) {
         {r.solde_precedent !== null && r.solde_precedent !== undefined && <InfoRow label="Solde précédent" value={`${Number(r.solde_precedent).toLocaleString('fr-FR')} €`} valueColor={Number(r.solde_precedent) === 0 ? '#16a34a' : '#dc2626'} />}
         <InfoRow label="Impayés détectés" value={r.impayes ? 'Oui' : 'Aucun'} alt valueColor={r.impayes ? '#dc2626' : '#16a34a'} />
       </Card>
+      <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
@@ -449,6 +486,7 @@ function RendererRCP({ r }: { r: any }) {
           ))}
         </div>
       )}
+      <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
@@ -505,6 +543,7 @@ function RendererDTGPPT({ r }: { r: any }) {
           })}
         </Card>
       )}
+      <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
@@ -554,6 +593,7 @@ function RendererCarnetEntretien({ r }: { r: any }) {
           </table>
         </Card>
       )}
+      <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
@@ -600,6 +640,7 @@ function RendererPreEtatDate({ r }: { r: any }) {
           ))}
         </div>
       )}
+      <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
@@ -640,6 +681,7 @@ function RendererEtatDate({ r }: { r: any }) {
           </table>
         </Card>
       )}
+      <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
@@ -681,6 +723,7 @@ function RendererTaxeFonciere({ r }: { r: any }) {
         {r.reference_cadastrale && <InfoRow label="Référence cadastrale" value={r.reference_cadastrale} />}
         {r.surface_cadastrale && <InfoRow label="Surface pondérée" value={`${r.surface_cadastrale} m² (base cadastrale)`} alt />}
       </Card>
+      <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
@@ -769,6 +812,7 @@ function RendererCompromis({ r }: { r: any }) {
           ))}
         </div>
       )}
+      <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
@@ -821,6 +865,7 @@ function RendererDiagCommunes({ r }: { r: any }) {
           </div>
         </div>
       )}
+      <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
@@ -852,6 +897,7 @@ function RendererAutre({ r }: { r: any }) {
           ))}
         </Card>
       )}
+      <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
     </div>
