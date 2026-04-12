@@ -347,8 +347,8 @@ function RendererPVAG({ r }: { r: any }) {
       {r.questions_diverses?.length > 0 && (
         <Card>
           <CardHeader label="QUESTIONS DIVERSES NOTABLES" color={C.gray.dot} />
-          {r.questions_diverses.map((q: string, i: number) => (
-            <div key={i} style={{ padding: '12px 20px', borderBottom: i < r.questions_diverses.length - 1 ? `0.5px solid ${C.border}` : 'none', fontSize: 14, color: C.text, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>{q}</div>
+          {r.questions_diverses.map((q: any, i: number) => (
+            <div key={i} style={{ padding: '12px 20px', borderBottom: i < r.questions_diverses.length - 1 ? `0.5px solid ${C.border}` : 'none', fontSize: 14, color: C.text, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>{typeof q === 'string' ? q : q.label || q.detail || JSON.stringify(q)}</div>
           ))}
         </Card>
       )}
@@ -356,8 +356,8 @@ function RendererPVAG({ r }: { r: any }) {
       {r.procedures?.length > 0 && (
         <div style={{ background: C.red.bg, border: `0.5px solid ${C.red.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
           <CardHeader label="PROCÉDURES / LITIGES MENTIONNÉS" color={C.red.dot} />
-          {r.procedures.map((p: string, i: number) => (
-            <div key={i} style={{ padding: '12px 20px', fontSize: 14, color: C.text, borderBottom: i < r.procedures.length - 1 ? `0.5px solid ${C.red.border}` : 'none' }}>{p}</div>
+          {r.procedures.map((p: any, i: number) => (
+            <div key={i} style={{ padding: '12px 20px', fontSize: 14, color: C.text, borderBottom: i < r.procedures.length - 1 ? `0.5px solid ${C.red.border}` : 'none' }}>{typeof p === 'string' ? p : p.label || p.message || p.detail || JSON.stringify(p)}</div>
           ))}
         </div>
       )}
@@ -860,20 +860,29 @@ function RendererAutre({ r }: { r: any }) {
 
 // ── Export principal ────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default function DocumentRenderer({ result }: { result: any }) {
+function SafeRenderer({ result }: { result: any }) {
   const type = result?.document_type || 'AUTRE';
-  switch (type) {
-    case 'DDT': return <RendererDDT r={result} />;
-    case 'PV_AG': return <RendererPVAG r={result} />;
-    case 'APPEL_CHARGES': return <RendererAppelCharges r={result} />;
-    case 'RCP': return <RendererRCP r={result} />;
-    case 'DTG_PPT': return <RendererDTGPPT r={result} />;
-    case 'CARNET_ENTRETIEN': return <RendererCarnetEntretien r={result} />;
-    case 'PRE_ETAT_DATE': return <RendererPreEtatDate r={result} />;
-    case 'ETAT_DATE': return <RendererEtatDate r={result} />;
-    case 'TAXE_FONCIERE': return <RendererTaxeFonciere r={result} />;
-    case 'COMPROMIS': return <RendererCompromis r={result} />;
-    case 'DIAGNOSTIC_PARTIES_COMMUNES': return <RendererDiagCommunes r={result} />;
-    default: return <RendererAutre r={result} />;
+  try {
+    switch (type) {
+      case 'DDT': return <RendererDDT r={result} />;
+      case 'PV_AG': return <RendererPVAG r={result} />;
+      case 'APPEL_CHARGES': return <RendererAppelCharges r={result} />;
+      case 'RCP': return <RendererRCP r={result} />;
+      case 'DTG_PPT': return <RendererDTGPPT r={result} />;
+      case 'CARNET_ENTRETIEN': return <RendererCarnetEntretien r={result} />;
+      case 'PRE_ETAT_DATE': return <RendererPreEtatDate r={result} />;
+      case 'ETAT_DATE': return <RendererEtatDate r={result} />;
+      case 'TAXE_FONCIERE': return <RendererTaxeFonciere r={result} />;
+      case 'COMPROMIS': return <RendererCompromis r={result} />;
+      case 'DIAGNOSTIC_PARTIES_COMMUNES': return <RendererDiagCommunes r={result} />;
+      default: return <RendererAutre r={result} />;
+    }
+  } catch {
+    return <RendererAutre r={result} />;
   }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default function DocumentRenderer({ result }: { result: any }) {
+  return <SafeRenderer result={result} />;
 }
