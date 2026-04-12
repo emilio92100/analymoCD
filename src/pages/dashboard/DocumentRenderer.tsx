@@ -448,42 +448,101 @@ function RendererAppelCharges({ r }: { r: any }) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererRCP({ r }: { r: any }) {
-  const sub = [r.date_reglement ? `Établi en ${r.date_reglement}` : null, r.modificatifs?.length ? `Modificatifs : ${r.modificatifs.join(', ')}` : null].filter(Boolean).join(' · ');
+  const sub = [r.date_reglement ? `Établi en ${r.date_reglement}` : null, r.modificatifs?.length ? `${r.modificatifs.length} modificatif(s)` : null].filter(Boolean).join(' · ');
+  const usageLabel = r.usage === 'habitation' ? 'Habitation' : r.usage === 'mixte' ? 'Mixte' : r.usage === 'commercial' ? 'Commercial' : null;
+  const totalAnnexes = (r.lots_caves || 0) + (r.lots_parkings || 0) + (r.lots_commerces || 0);
+  const annexesDetail = [r.lots_caves ? `${r.lots_caves} cave${r.lots_caves > 1 ? 's' : ''}` : null, r.lots_parkings ? `${r.lots_parkings} parking${r.lots_parkings > 1 ? 's' : ''}` : null, r.lots_commerces ? `${r.lots_commerces} commerce${r.lots_commerces > 1 ? 's' : ''}` : null].filter(Boolean).join(', ');
+
+  const statutColor = (s: string) => s === 'autorise' ? '#16a34a' : s === 'interdit' ? '#dc2626' : '#d97706';
+  const statutLabel = (s: string) => s === 'autorise' ? '✓ Autorisé' : s === 'interdit' ? '✗ Interdit' : '◎ Sous conditions';
+  const statutBg = (s: string) => s === 'autorise' ? '#f0fdf4' : s === 'interdit' ? '#fef2f2' : '#fff7ed';
+
   return (
     <div>
       <Header type="Règlement de Copropriété" titre={r.titre} sub={sub} />
       <Resume text={r.resume} />
+
+      {/* KPIs */}
       <KpiGrid>
         {r.date_reglement && <Kpi label="Date du règlement" value={String(r.date_reglement)} />}
-        {r.total_lots && <Kpi label="Total lots" value={`${r.total_lots} lots`} />}
-        {r.usage && <Kpi label="Usage" value={r.usage === 'habitation' ? 'Habitation' : r.usage === 'mixte' ? 'Mixte' : 'Commercial'} />}
+        {r.total_lots != null && (
+          <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, padding: '18px 20px' }}>
+            <div style={{ fontSize: 12, color: C.textSec, marginBottom: 8 }}>Total lots</div>
+            <div style={{ fontSize: 22, fontWeight: 600, color: C.text, lineHeight: 1.2 }}>{r.total_lots} lots</div>
+            {totalAnnexes > 0 && <div style={{ fontSize: 11, color: C.textSec, marginTop: 4 }}>dont {annexesDetail}</div>}
+          </div>
+        )}
+        {usageLabel && <Kpi label="Usage" value={usageLabel} />}
       </KpiGrid>
-      {r.parties_communes?.length > 0 && (
+
+      {/* Parties communes par catégorie */}
+      {r.parties_communes_categories?.filter((cat: any) => cat.elements?.length > 0).length > 0 && (
         <Card>
-          <CardHeader label="PARTIES COMMUNES IDENTIFIÉES" color={C.gray.dot} />
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '16px 20px' }}>
-            {r.parties_communes.map((p: string, i: number) => (
-              <span key={i} style={{ fontSize: 13, padding: '5px 14px', borderRadius: 100, background: C.bgSecondary, border: `0.5px solid ${C.border}`, color: C.text }}>{p}</span>
+          <CardHeader label="PARTIES COMMUNES" color={C.gray.dot} />
+          <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column' as const, gap: 16 }}>
+            {r.parties_communes_categories.filter((cat: any) => cat.elements?.length > 0).map((cat: any, i: number) => (
+              <div key={i}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: C.textSec, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>{cat.icone}</span>
+                  <span style={{ textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>{cat.categorie}</span>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
+                  {cat.elements.map((el: string, j: number) => (
+                    <span key={j} style={{ fontSize: 13, padding: '4px 12px', borderRadius: 100, background: C.bgSecondary, border: `0.5px solid ${C.border}`, color: C.text }}>{el}</span>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </Card>
       )}
+
+      {/* Règles d'usage — tableau autorisé/interdit */}
       {r.regles_usage?.length > 0 && (
         <Card>
-          <CardHeader label="RÈGLES D'USAGE" color={C.gray.dot} />
-          {r.regles_usage.map((rule: string, i: number) => (
-            <div key={i} style={{ padding: '12px 20px', borderBottom: i < r.regles_usage.length - 1 ? `0.5px solid ${C.border}` : 'none', fontSize: 14, color: C.text, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>{rule}</div>
-          ))}
+          <CardHeader label="RÈGLES CLÉS POUR L'ACHETEUR" color={C.blue.dot} />
+          <div style={{ padding: '8px 0' }}>
+            {r.regles_usage.map((rule: any, i: number) => {
+              const label = typeof rule === 'string' ? rule : rule.label;
+              const statut = typeof rule === 'string' ? 'sous_conditions' : rule.statut;
+              const isInvest = typeof rule !== 'string' && rule.impact_invest;
+              const isRP = typeof rule !== 'string' && rule.impact_rp;
+              return (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: i < r.regles_usage.length - 1 ? `0.5px solid ${C.border}` : 'none', background: statutBg(statut), gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                    <span style={{ fontSize: 14, color: C.text }}>{label}</span>
+                    {isInvest && <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 100, background: '#ede9fe', color: '#5b21b6', whiteSpace: 'nowrap' as const }}>Investissement</span>}
+                    {isRP && <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 100, background: '#dbeafe', color: '#1e40af', whiteSpace: 'nowrap' as const }}>Usage quotidien</span>}
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: statutColor(statut), whiteSpace: 'nowrap' as const }}>{statutLabel(statut)}</span>
+                </div>
+              );
+            })}
+          </div>
         </Card>
       )}
-      {r.restrictions?.length > 0 && (
+
+      {/* Restrictions importantes */}
+      {r.restrictions_importantes?.length > 0 && (
         <div style={{ background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
-          <CardHeader label="RESTRICTIONS DÉTECTÉES" color={C.orange.dot} />
-          {r.restrictions.map((rest: string, i: number) => (
-            <div key={i} style={{ padding: '12px 20px', borderBottom: i < r.restrictions.length - 1 ? `0.5px solid ${C.orange.border}` : 'none', fontSize: 14, color: C.text }}>{rest}</div>
-          ))}
+          <CardHeader label="RESTRICTIONS À CONNAÎTRE" color={C.orange.dot} />
+          {r.restrictions_importantes.map((rest: any, i: number) => {
+            const label = typeof rest === 'string' ? rest : rest.label;
+            const detail = typeof rest !== 'string' ? rest.detail : null;
+            const bloquant = typeof rest !== 'string' && rest.bloquant;
+            return (
+              <div key={i} style={{ padding: '14px 20px', borderBottom: i < r.restrictions_importantes.length - 1 ? `0.5px solid ${C.orange.border}` : 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: detail ? 4 : 0 }}>
+                  {bloquant && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 100, background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', whiteSpace: 'nowrap' as const }}>⚠ Bloquant</span>}
+                  <span style={{ fontSize: 14, fontWeight: 500, color: C.text }}>{label}</span>
+                </div>
+                {detail && <div style={{ fontSize: 13, color: C.textSec, marginTop: 4 }}>{detail}</div>}
+              </div>
+            );
+          })}
         </div>
       )}
+
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
