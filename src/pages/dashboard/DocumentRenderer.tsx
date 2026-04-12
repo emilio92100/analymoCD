@@ -863,7 +863,7 @@ function RendererDTGPPT({ r }: { r: any }) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererCarnetEntretien({ r }: { r: any }) {
   const sub = [r.syndic, r.date_maj ? `Mis à jour le ${r.date_maj}` : null, r.annee_construction ? `Construit en ${r.annee_construction}` : null].filter(Boolean).join(' · ');
-  const nbLotsTotal = r.nb_lots_principaux || (r.nb_lots_detail ? Object.values(r.nb_lots_detail).reduce((a: number, b: any) => a + (Number(b) || 0), 0) : null);
+  const nbLotsTotal = r.nb_lots_total ?? r.nb_lots_principaux ?? (r.nb_lots_detail ? Object.values(r.nb_lots_detail).reduce((a: number, b: any) => a + (Number(b) || 0), 0) : null);
   const diagColor = (res: string) => res === 'negatif' ? C.green : res === 'positif' ? C.red : C.orange;
   const diagLabel = (res: string) => res === 'negatif' ? '✓ Négatif' : res === 'positif' ? '⚠ Positif' : '✗ Non effectué';
 
@@ -992,6 +992,33 @@ function RendererCarnetEntretien({ r }: { r: any }) {
         </Card>
       )}
 
+      {/* Travaux votés en cours */}
+      {r.travaux_en_cours?.length > 0 && (
+        <div style={{ background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="TRAVAUX VOTÉS EN COURS (NON ENCORE RÉALISÉS)" color={C.orange.dot} />
+          <div style={{ padding: '10px 20px', background: '#fffbf5', borderBottom: `0.5px solid ${C.orange.border}`, fontSize: 13, color: C.orange.text }}>
+            ⚠ Ces travaux ont été votés en AG mais ne sont pas encore réalisés. En tant qu'acheteur, vous en supporterez la charge si elle n'est pas encore entièrement appelée à la signature.
+          </div>
+          {r.travaux_en_cours.map((t: any, i: number) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: i < r.travaux_en_cours.length - 1 ? `0.5px solid ${C.orange.border}` : 'none', background: i % 2 === 0 ? C.orange.bg : '#fffbf5' }}>
+              <div>
+                <div style={{ fontSize: 14, color: C.text, fontWeight: 500 }}>{t.label}</div>
+                <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+                  {t.date_ag && <span style={{ fontSize: 12, color: C.textSec }}>📅 Voté le {t.date_ag}</span>}
+                  {t.entreprise && <span style={{ fontSize: 12, color: C.textSec }}>🏢 {t.entreprise}</span>}
+                </div>
+              </div>
+              {t.montant && (
+                <div style={{ textAlign: 'right' as const, flexShrink: 0, marginLeft: 20 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#f97316' }}>{Number(t.montant).toLocaleString('fr-FR')} €</div>
+                  <div style={{ fontSize: 11, color: C.textSec, marginTop: 2 }}>budget voté</div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Travaux réalisés */}
       {r.travaux_realises?.length > 0 && (
         <Card>
@@ -1017,15 +1044,21 @@ function RendererCarnetEntretien({ r }: { r: any }) {
 
       {/* Infos complémentaires */}
       {r.infos_complementaires?.length > 0 && (
-        <Card>
-          <CardHeader label="INFORMATIONS COMPLÉMENTAIRES" color={C.gray.dot} />
-          {r.infos_complementaires.map((info: any, i: number) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 20px', borderBottom: i < r.infos_complementaires.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
-              <span style={{ fontSize: 14, color: C.textSec }}>{info.label}</span>
-              <span style={{ fontSize: 14, fontWeight: 500, color: C.text }}>{info.valeur}</span>
-            </div>
-          ))}
-        </Card>
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="INFORMATIONS COMPLÉMENTAIRES" color={C.blue.dot} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 0 }}>
+            {r.infos_complementaires.map((info: any, i: number) => {
+              const hasEmoji = /^[\p{Emoji}]/u.test(String(info.label));
+              const emoji = hasEmoji ? '' : '📌';
+              return (
+                <div key={i} style={{ padding: '14px 20px', borderBottom: `0.5px solid ${C.border}`, borderRight: i % 2 === 0 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary, display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
+                  <span style={{ fontSize: 12, color: C.textSec, fontWeight: 600, letterSpacing: '0.04em' }}>{emoji}{info.label}</span>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: C.text }}>{info.valeur}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       <SeparateurSynthese />
