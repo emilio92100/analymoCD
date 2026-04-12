@@ -261,7 +261,7 @@ function DiagDPE({ d }: { d: any }) {
 
 function DiagDetailParser({ text, type }: { text: string; type: 'DPE' | 'AMIANTE' | 'TERMITES' | 'PLOMB' | 'ELECTRICITE' | 'GAZ' | 'ERP' | 'CARREZ' | 'AUTRE' }) {
   if (!text) return null;
-  const lines = text.split(/\.\s+(?=[A-ZÀ-Ü])|;\s+|\n/).map((s: string) => s.trim()).filter((s: string) => s.length > 8);
+  const lines = text.split(/\.\s+(?=[A-ZÀ-Üa-z])|;\s+|\n+/).map((s: string) => s.trim()).filter((s: string) => s.length > 5);
 
   const categorize = (line: string): string => {
     const l = line.toLowerCase();
