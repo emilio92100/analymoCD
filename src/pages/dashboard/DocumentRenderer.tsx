@@ -653,7 +653,6 @@ function RendererAppelCharges({ r }: { r: any }) {
                   </div>
                   <div style={{ textAlign: 'right' as const, flexShrink: 0, marginLeft: 12 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{p.trimestre ? `${Number(p.trimestre).toLocaleString('fr-FR')} €` : '—'}</div>
-                    {p.annuel && <div style={{ fontSize: 11, color: C.textSec, marginTop: 2 }}>{Number(p.annuel).toLocaleString('fr-FR')} € /an</div>}
                   </div>
                 </div>
               ))}
