@@ -82,7 +82,7 @@ function buildDocumentPrompt(p: string): string {
   parts.push('');
   parts.push('Reponds UNIQUEMENT en JSON strict selon le type detecte.');
   parts.push('');
-  parts.push('DDT : {"document_type":"DDT","titre":"...","resume":"3-4 phrases","diagnostiqueur":{"nom":null,"certification":null,"date":null},"dpe":{"classe":null,"kwh_m2":null,"ges_classe":null,"ges_kg_m2":null},"carrez":{"surface_totale":null,"surface_sol":null,"pieces":[{"piece":"...","surface":0}]},"diagnostics":[{"type":"AMIANTE|ELECTRICITE|GAZ|PLOMB|TERMITES|ERP|CARREZ|DPE|AUTRE","label":"...","presence":"conforme|anomalie|non_detecte|non_applicable|informatif","detail":"texte complet du diagnostic pour accordeon","alerte":"1 phrase courte si point critique sinon null"}],"travaux_preconises":[{"label":"...","priorite":"prioritaire|recommande","cout_min":null,"cout_max":null}],"gain_energetique":null,"points_forts":[],"points_vigilance":[],"avis_verimo":"..."}');
+  parts.push('DDT : {"document_type":"DDT","titre":"...","resume":"3-4 phrases","diagnostiqueur":{"nom":null,"certification":null,"date":null},"dpe":{"classe":null,"kwh_m2":null,"ges_classe":null,"ges_kg_m2":null},"carrez":{"surface_totale":null,"surface_type":"carrez|boutin|autre","surface_sol":null,"pieces":[{"piece":"...","surface":0}]},"diagnostics":[{"type":"AMIANTE|ELECTRICITE|GAZ|PLOMB|TERMITES|ERP|CARREZ|DPE|AUTRE","label":"...","presence":"conforme|anomalie|non_detecte|non_applicable|informatif","detail":"texte complet du diagnostic pour accordeon","alerte":"1 phrase courte si point critique sinon null"}],"travaux_preconises":[{"label":"...","priorite":"prioritaire|recommande","cout_min":null,"cout_max":null}],"gain_energetique":null,"points_forts":[],"points_vigilance":[],"avis_verimo":"..."}');
   parts.push('');
   parts.push('REGLE DPE vigilances DDT : NE JAMAIS inclure DPE classe A B C D E dans points_vigilance. Seuls F et G sont des points de vigilance. DPE D = bonne performance energetique, ne pas le signaler negativement.');
   parts.push('');
@@ -171,6 +171,7 @@ async function waitAndRun(analyseId: string, supabaseAdmin: SupabaseClient, apiK
   console.warn(`[analyser-run] Timeout 120s sans files_ready — abandon`);
 }
 
+// Version directe avec fileIds passés en paramètre (pas de lecture Supabase)
 async function runAnalyseWithData(
   analyseId: string,
   files: Array<{ id: string; name: string }>,
@@ -182,6 +183,7 @@ async function runAnalyseWithData(
   const fileIds = files.map(f => f.id);
   try {
     console.log(`[analyser-run] Analyse ${analyseId} — ${files.length} docs | mode:${mode}`);
+
     const userContent: unknown[] = [];
     for (let i = 0; i < files.length; i++) {
       userContent.push({ type: 'document', source: { type: 'file', file_id: files[i].id } });
@@ -382,7 +384,9 @@ Deno.serve(async (req) => {
     const analyseId = body?.record?.id || body?.analyseId;
     if (!analyseId) return new Response(JSON.stringify({ error: 'missing_id' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
+    const isDirectCall = !body?.record;
     const isWebhook = !!body?.record;
+
     if (isWebhook) {
       console.log(`[analyser-run] Webhook ignore`);
       return new Response(JSON.stringify({ skipped: 'webhook' }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
@@ -393,6 +397,7 @@ Deno.serve(async (req) => {
     const profil = body?.profil as string || 'rp';
 
     if (!fileIds.length) {
+      console.error(`[analyser-run] Pas de fileIds dans le payload`);
       return new Response(JSON.stringify({ error: 'no_file_ids' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
