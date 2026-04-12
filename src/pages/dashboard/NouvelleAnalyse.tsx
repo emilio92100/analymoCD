@@ -625,7 +625,7 @@ export default function NouvelleAnalyse() {
             <button style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}><Download size={13} /> PDF</button>
           </div>
         </div>
-        <DocumentRenderer result={result} />
+        <DocumentRenderer result={{ ...result, _profil: profil || 'rp' }} />
       </div>
     );
   }
