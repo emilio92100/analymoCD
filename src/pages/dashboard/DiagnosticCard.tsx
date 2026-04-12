@@ -3,6 +3,13 @@ import { useState } from 'react';
 const C = {
   bg: '#ffffff', bgSec: '#f8fafc', border: '#e2e8f0',
   text: '#0f172a', textSec: '#64748b',
+  green: { bg: '#f0fdf4', border: '#bbf7d0', text: '#166534', dot: '#16a34a' },
+  red: { bg: '#fef2f2', border: '#fecaca', text: '#991b1b', dot: '#dc2626' },
+  orange: { bg: '#fff7ed', border: '#fed7aa', text: '#92400e', dot: '#f97316' },
+  blue: { bg: '#eff6ff', border: '#bfdbfe', text: '#1e40af', dot: '#3b82f6' },
+  gray: { bg: '#f8fafc', border: '#e2e8f0', text: '#64748b', dot: '#94a3b8' },
+  yellow: { bg: '#fefce8', border: '#fde047', text: '#854d0e', dot: '#eab308' },
+};
 
 // Formate le texte brut en liste de phrases lisibles
 function DetailTexte({ text }: { text: string }) {
@@ -18,20 +25,13 @@ function DetailTexte({ text }: { text: string }) {
     <ul style={{ margin: 0, padding: '0 0 0 16px', listStyle: 'none' }}>
       {phrases.map((p: string, i: number) => (
         <li key={i} style={{ fontSize: 13, color: C.textSec, lineHeight: 1.65, marginBottom: 6, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-          <span style={{ color: C.border, marginTop: 6, flexShrink: 0, fontSize: 6 }}>●</span>
+          <span style={{ color: C.border, marginTop: 6, flexShrink: 0, fontSize: 6 }}>\u25CF</span>
           <span>{p}.</span>
         </li>
       ))}
     </ul>
   );
 }
-  green: { bg: '#f0fdf4', border: '#bbf7d0', text: '#166534', dot: '#16a34a' },
-  red: { bg: '#fef2f2', border: '#fecaca', text: '#991b1b', dot: '#dc2626' },
-  orange: { bg: '#fff7ed', border: '#fed7aa', text: '#92400e', dot: '#f97316' },
-  blue: { bg: '#eff6ff', border: '#bfdbfe', text: '#1e40af', dot: '#3b82f6' },
-  gray: { bg: '#f8fafc', border: '#e2e8f0', text: '#64748b', dot: '#94a3b8' },
-  yellow: { bg: '#fefce8', border: '#fde047', text: '#854d0e', dot: '#eab308' },
-};
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function Accordion({ label, children }: { label?: string; children: React.ReactNode }) {
