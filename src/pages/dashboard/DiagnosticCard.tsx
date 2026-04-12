@@ -37,16 +37,16 @@ function DetailTexte({ text }: { text: string }) {
 function Accordion({ label, children }: { label?: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
-    <div style={{ marginTop: 8 }}>
+    <div style={{ marginTop: 10, borderTop: `1px dashed ${C.border}`, paddingTop: 8 }}>
       <button
         onClick={() => setOpen(!open)}
-        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.textSec, fontFamily: 'inherit' }}
+        style={{ background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#2a7d9c', fontFamily: 'inherit', fontWeight: 500 }}
       >
-        <span style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', fontSize: 10 }}>▶</span>
+        <span style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', fontSize: 9 }}>▶</span>
         {label || (open ? 'Masquer le détail' : 'Voir le détail complet')}
       </button>
       {open && (
-        <div style={{ marginTop: 8, fontSize: 13, color: C.textSec, lineHeight: 1.65, paddingLeft: 16, borderLeft: `2px solid ${C.border}` }}>
+        <div style={{ marginTop: 10, fontSize: 13, color: C.textSec, lineHeight: 1.7, paddingLeft: 14, borderLeft: `3px solid #e2e8f0` }}>
           {children}
         </div>
       )}
@@ -252,7 +252,7 @@ function DiagDPE({ d }: { d: any }) {
       </div>
       {d.resultat && <div style={{ fontSize: 13, color: C.textSec, marginBottom: 6 }}>{d.resultat}</div>}
       {d.alerte && <div style={{ fontSize: 13, color: C.orange.dot, marginTop: 4, fontWeight: 500 }}>⚠ {d.alerte}</div>}
-      {d.detail && <Accordion>{ d.detail}</Accordion>}
+      {d.detail && <Accordion><DetailTexte text={d.detail} /></Accordion>}
     </CardShell>
   );
 }
