@@ -193,32 +193,45 @@ function DpeJauge({ classe, label, valeur }: { classe: string; label: string; va
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function CarrezAccordeon({ pieces, surfaceSol }: { pieces: any[]; surfaceSol?: string }) {
+function CarrezAccordeon({ pieces, piecesHorsCarrez, annexes }: { pieces: any[]; piecesHorsCarrez?: any[]; annexes?: any[] }) {
   const [open, setOpen] = useState(false);
+  const hasExtras = (piecesHorsCarrez?.length || 0) > 0 || (annexes?.length || 0) > 0;
+  const annexeIcon = (type: string) => type === 'balcon' ? '🌿' : type === 'terrasse' ? '☀️' : type === 'jardin' ? '🌳' : type === 'cave' ? '🔒' : type === 'parking' ? '🚗' : '📐';
   return (
-    <div style={{ borderTop: `0.5px solid ${C.border}` }}>
+    <div>
       <button
         onClick={() => setOpen(!open)}
         style={{ width: '100%', background: C.bgSecondary, border: 'none', padding: '12px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#2a7d9c', fontFamily: 'inherit', textAlign: 'left' as const, fontWeight: 500 }}
       >
         <span style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', fontSize: 10 }}>▶</span>
-        {open ? 'Masquer le détail par pièce' : 'Voir le détail par pièce'}
+        {open ? 'Masquer le détail' : 'Voir le détail par pièce'}
       </button>
       {open && (
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
             {pieces.map((p: any, i: number) => (
-              <tr key={i} style={{ borderBottom: i < pieces.length - 1 || surfaceSol ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+              <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}`, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
                 <td style={{ padding: '10px 20px', fontSize: 14, color: C.text }}>{p.piece}</td>
-                <td style={{ padding: '10px 20px', fontSize: 14, fontWeight: 500, color: C.text, textAlign: 'right' }}>{p.surface} m²</td>
+                <td style={{ padding: '10px 20px', fontSize: 14, fontWeight: 500, color: C.text, textAlign: 'right' as const }}>{p.surface} m²</td>
               </tr>
             ))}
-            {surfaceSol && (
-              <tr style={{ background: C.bgSecondary, borderTop: `0.5px solid ${C.border}` }}>
-                <td style={{ padding: '10px 20px', fontSize: 14, color: C.textSec, fontStyle: 'italic' }}>Surface au sol (hors Carrez)</td>
-                <td style={{ padding: '10px 20px', fontSize: 14, color: C.textSec, textAlign: 'right', fontStyle: 'italic' }}>{surfaceSol} m²</td>
+            {hasExtras && (
+              <tr style={{ background: C.bgSecondary }}>
+                <td colSpan={2} style={{ padding: '8px 20px', fontSize: 11, fontWeight: 600, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>Surfaces non comptabilisées dans la surface {pieces.length > 0 ? 'Carrez' : ''}</td>
               </tr>
             )}
+            {piecesHorsCarrez?.map((p: any, i: number) => (
+              <tr key={`hc-${i}`} style={{ borderBottom: `0.5px solid ${C.border}`, background: C.bgSecondary }}>
+                <td style={{ padding: '10px 20px', fontSize: 14, color: C.textSec, fontStyle: 'italic' as const }}>{p.piece} <span style={{ fontSize: 11 }}>(hors surface légale)</span></td>
+                <td style={{ padding: '10px 20px', fontSize: 14, color: C.textSec, textAlign: 'right' as const, fontStyle: 'italic' as const }}>{p.surface} m²</td>
+              </tr>
+            ))}
+            {annexes?.map((a: any, i: number) => (
+              <tr key={`ann-${i}`} style={{ borderBottom: i < (annexes.length - 1) ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bgSecondary : C.bg }}>
+                <td style={{ padding: '10px 20px', fontSize: 14, color: C.textSec }}>{annexeIcon(a.type)} {a.type.charAt(0).toUpperCase() + a.type.slice(1)}</td>
+                <td style={{ padding: '10px 20px', fontSize: 14, color: C.textSec, textAlign: 'right' as const }}>{a.surface ? `${a.surface} m²` : '—'}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       )}
@@ -242,7 +255,7 @@ function SeparateurSynthese() {
 function RendererDDT({ r }: { r: any }) {
   const diags = r.diagnostics || [];
 
-  const sub = [r.diagnostiqueur?.nom, r.diagnostiqueur?.date ? `le ${r.diagnostiqueur.date}` : null, r.diagnostiqueur?.certification].filter(Boolean).join(' · ');
+  const sub = [r.diagnostiqueur?.nom ? `Diagnostiqueur : ${r.diagnostiqueur.nom}` : null, r.diagnostiqueur?.date ? `le ${r.diagnostiqueur.date}` : null, r.diagnostiqueur?.certification].filter(Boolean).join(' · ');
 
   return (
     <div>
@@ -257,19 +270,34 @@ function RendererDDT({ r }: { r: any }) {
         </div>
       )}
 
-      {/* Surface — label dynamique selon type détecté */}
+      {/* Surface + Lots identifiés */}
       {r.carrez?.surface_totale && (() => {
         const label = r.carrez.surface_type === 'boutin' ? 'Surface habitable (Loi Boutin)'
           : r.carrez.surface_type === 'autre' ? 'Surface mesurée'
           : 'Surface loi Carrez';
+        const piecesCarrez = (r.carrez.pieces || []).filter((p: any) => !p.hors_carrez);
+        const piecesHorsCarrez = (r.carrez.pieces || []).filter((p: any) => p.hors_carrez);
+        const annexes = r.carrez.annexes || [];
+        const lotsIdf = r.lots_identifies || [];
         return (
           <Card>
-            <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: C.textSec }}>{label}</span>
-              <span style={{ fontSize: 24, fontWeight: 600, color: C.text }}>{r.carrez.surface_totale} m²</span>
+            <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `0.5px solid ${C.border}` }}>
+              <div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: C.textSec }}>{label}</span>
+                {lotsIdf.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6, marginTop: 8 }}>
+                    {lotsIdf.map((lot: any, i: number) => {
+                      const icon = lot.type === 'cave' ? '🔒' : lot.type === 'parking' || lot.type === 'garage' ? '🚗' : lot.type === 'grenier' ? '📦' : '🏠';
+                      const lotLabel = [icon, lot.type.charAt(0).toUpperCase() + lot.type.slice(1), lot.numero ? `n°${lot.numero}` : null, lot.etage ? `(${lot.etage})` : null].filter(Boolean).join(' ');
+                      return <span key={i} style={{ fontSize: 12, padding: '3px 10px', borderRadius: 100, background: C.bgSecondary, border: `0.5px solid ${C.border}`, color: C.textSec }}>{lotLabel}</span>;
+                    })}
+                  </div>
+                )}
+              </div>
+              <span style={{ fontSize: 24, fontWeight: 600, color: C.text, whiteSpace: 'nowrap' as const, marginLeft: 16 }}>{r.carrez.surface_totale} m²</span>
             </div>
-            {r.carrez.pieces?.length > 0 && (
-              <CarrezAccordeon pieces={r.carrez.pieces} surfaceSol={r.carrez.surface_sol} />
+            {(piecesCarrez.length > 0 || piecesHorsCarrez.length > 0 || annexes.length > 0) && (
+              <CarrezAccordeon pieces={piecesCarrez} piecesHorsCarrez={piecesHorsCarrez} annexes={annexes} />
             )}
           </Card>
         );
