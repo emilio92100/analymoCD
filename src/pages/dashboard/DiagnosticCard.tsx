@@ -99,7 +99,7 @@ function DiagAmiante({ d }: { d: any }) {
         {d.localisation && ` Zones visitées : ${d.localisation}.`}
       </div>
       {d.alerte && <div style={{ fontSize: 13, color: C.red.dot, marginTop: 8, fontWeight: 500 }}>⚠ {d.alerte}</div>}
-      {d.detail && <Accordion><DetailTexte text={d.detail} /></Accordion>}
+      {d.detail && <Accordion><DiagDetailParser text={d.detail} type="AMIANTE" /></Accordion>}
     </CardShell>
   );
 }
@@ -118,7 +118,7 @@ function DiagTermites({ d }: { d: any }) {
         {d.localisation && ` Zone : ${d.localisation}.`}
       </div>
       {d.alerte && <div style={{ fontSize: 13, color: C.red.dot, marginTop: 8, fontWeight: 500 }}>⚠ {d.alerte}</div>}
-      {d.detail && <Accordion><DetailTexte text={d.detail} /></Accordion>}
+      {d.detail && <Accordion><DiagDetailParser text={d.detail} type="TERMITES" /></Accordion>}
     </CardShell>
   );
 }
@@ -148,7 +148,7 @@ function DiagElectricite({ d }: { d: any }) {
           ))}
         </div>
       )}
-      {d.detail && <Accordion><DetailTexte text={d.detail} /></Accordion>}
+      {d.detail && <Accordion><DiagDetailParser text={d.detail} type="ELECTRICITE" /></Accordion>}
     </CardShell>
   );
 }
@@ -164,7 +164,7 @@ function DiagGaz({ d }: { d: any }) {
       </div>
       {d.localisation && <div style={{ fontSize: 13, color: C.textSec }}>{d.localisation}</div>}
       {d.alerte && <div style={{ fontSize: 13, color: C.red.dot, marginTop: 8, fontWeight: 500 }}>⚠ {d.alerte}</div>}
-      {d.detail && <Accordion><DetailTexte text={d.detail} /></Accordion>}
+      {d.detail && <Accordion><DiagDetailParser text={d.detail} type="GAZ" /></Accordion>}
     </CardShell>
   );
 }
@@ -183,7 +183,7 @@ function DiagPlomb({ d }: { d: any }) {
         {na ? 'Immeuble construit après 1949 — diagnostic non requis.' : ok ? 'Aucune concentration en plomb détectée.' : 'Présence de plomb détectée.'}
       </div>
       {d.alerte && <div style={{ fontSize: 13, color: C.red.dot, marginTop: 8, fontWeight: 500 }}>⚠ {d.alerte}</div>}
-      {d.detail && <Accordion><DetailTexte text={d.detail} /></Accordion>}
+      {d.detail && <Accordion><DiagDetailParser text={d.detail} type="PLOMB" /></Accordion>}
     </CardShell>
   );
 }
@@ -222,38 +222,153 @@ function DiagERP({ d }: { d: any }) {
         </div>
       )}
       {d.alerte && <div style={{ fontSize: 13, color: C.orange.dot, marginTop: 8, fontWeight: 500 }}>⚠ {d.alerte}</div>}
-      {d.detail && <Accordion><DetailTexte text={d.detail} /></Accordion>}
+      {d.detail && <Accordion><DiagDetailParser text={d.detail} type="ERP" /></Accordion>}
     </CardShell>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function DiagCarrez({ d }: { d: any }) {
+  // Les surfaces Carrez sont déjà affichées dans le bloc surface en haut — on affiche juste les infos complémentaires clés
   return (
     <CardShell presence="informatif">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
         <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{d.label}</span>
         <Badge label="Informatif" color={C.gray.text} bg={C.gray.bg} border={C.gray.border} />
       </div>
-      {d.resultat && <div style={{ fontSize: 13, color: C.textSec }}>{d.resultat}</div>}
-      {d.detail && <Accordion><DetailTexte text={d.detail} /></Accordion>}
+      {d.resultat && <div style={{ fontSize: 13, color: C.textSec, marginBottom: 4 }}>📐 {d.resultat}</div>}
+      {d.alerte && <div style={{ fontSize: 13, color: C.orange.dot, marginTop: 6, fontWeight: 500 }}>⚠ {d.alerte}</div>}
     </CardShell>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function DiagDPE({ d }: { d: any }) {
-  // Le DPE est déjà affiché via les jauges — on affiche juste les infos complémentaires
+  const [open, setOpen] = useState(false);
+  // Extraire coût annuel, validité, points isolation depuis le résultat si présents
+  const coutMatch = (d.detail || d.resultat || '').match(/(\d[\d\s]*)\s*€.*?(\d[\d\s]*)\s*€/);
+  const validiteMatch = (d.detail || '').match(/valid[eé].*?jusqu['\''].*?(\d{2}\/\d{2}\/\d{4}|\d{4})/i);
+
   return (
     <CardShell presence="informatif">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{d.label}</span>
         <Badge label="Informatif" color={C.gray.text} bg={C.gray.bg} border={C.gray.border} />
       </div>
-      {d.resultat && <div style={{ fontSize: 13, color: C.textSec, marginBottom: 6 }}>{d.resultat}</div>}
-      {d.alerte && <div style={{ fontSize: 13, color: C.orange.dot, marginTop: 4, fontWeight: 500 }}>⚠ {d.alerte}</div>}
-      {d.detail && <Accordion><DetailTexte text={d.detail} /></Accordion>}
+      {d.resultat && (
+        <div style={{ fontSize: 13, color: C.textSec, marginBottom: 8, lineHeight: 1.5 }}>
+          🏷 {d.resultat}
+        </div>
+      )}
+      {d.alerte && (
+        <div style={{ fontSize: 13, color: C.orange.dot, marginBottom: 8, fontWeight: 500 }}>⚠ {d.alerte}</div>
+      )}
+      {d.detail && (
+        <div style={{ marginTop: 6, borderTop: `1px dashed ${C.border}`, paddingTop: 8 }}>
+          <button
+            onClick={() => setOpen(!open)}
+            style={{ background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#2a7d9c', fontFamily: 'inherit', fontWeight: 500 }}
+          >
+            <span style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', fontSize: 9 }}>▶</span>
+            {open ? 'Masquer les détails' : 'Voir les détails du DPE'}
+          </button>
+          {open && (
+            <div style={{ marginTop: 10 }}>
+              <DiagDetailParser text={d.detail} type="DPE" />
+            </div>
+          )}
+        </div>
+      )}
     </CardShell>
+  );
+}
+
+function DiagDetailParser({ text, type }: { text: string; type: 'DPE' | 'AMIANTE' | 'TERMITES' | 'PLOMB' | 'ELECTRICITE' | 'GAZ' | 'ERP' | 'CARREZ' | 'AUTRE' }) {
+  if (!text) return null;
+  const lines = text.split(/\.\s+(?=[A-ZÀ-Ü])|;\s+|\n/).map((s: string) => s.trim()).filter((s: string) => s.length > 8);
+
+  const categorize = (line: string): string => {
+    const l = line.toLowerCase();
+    switch (type) {
+      case 'DPE':
+        if (/chauffage/.test(l)) return '🔥';
+        if (/eau chaude|ecs/.test(l)) return '🚿';
+        if (/éclairage|électriqu/.test(l)) return '💡';
+        if (/isolation|mur|plancher|toiture/.test(l)) return '🧱';
+        if (/fenêtre|vitrage|menuiserie/.test(l)) return '🪟';
+        if (/ventilation|vmc/.test(l)) return '💨';
+        if (/confort d.été|été/.test(l)) return '☀️';
+        if (/valid|ademe/.test(l)) return '📋';
+        if (/coût|€|euro/.test(l)) return '💰';
+        return '⚡';
+      case 'AMIANTE':
+        if (/liste a|flocage|calorifug|faux.plafond/.test(l)) return '🏗';
+        if (/liste b|ardoise|vinyl|colle/.test(l)) return '🧱';
+        if (/visite|inspecté|examiné|zone/.test(l)) return '🔍';
+        if (/recommand|préconise|travaux/.test(l)) return '🔧';
+        if (/valid|certif|date/.test(l)) return '📋';
+        if (/détecté|présence|trouvé/.test(l)) return '⚠️';
+        return '📄';
+      case 'TERMITES':
+        if (/zone|secteur|périmètre/.test(l)) return '📍';
+        if (/visite|inspecté|sondage/.test(l)) return '🔍';
+        if (/bois|charpente|parquet|plancher/.test(l)) return '🪵';
+        if (/détecté|présence|indice/.test(l)) return '⚠️';
+        if (/valid|date/.test(l)) return '📋';
+        if (/traitement|préconise/.test(l)) return '🔧';
+        return '🐛';
+      case 'PLOMB':
+        if (/peinture|revêtement|enduit/.test(l)) return '🎨';
+        if (/concentration|teneur|mg/.test(l)) return '📏';
+        if (/avant 1949|antérieur/.test(l)) return '🏛';
+        if (/détecté|présence|positif/.test(l)) return '⚠️';
+        if (/recommand|travaux/.test(l)) return '🔧';
+        if (/valid|date/.test(l)) return '📋';
+        return '🔬';
+      case 'ELECTRICITE':
+        if (/tableau|disjoncteur|différentiel/.test(l)) return '⚡';
+        if (/mise à la terre|terre/.test(l)) return '🔌';
+        if (/anomalie|non.conforme|défaut/.test(l)) return '⚠️';
+        if (/point.de.contrôle|vérifié/.test(l)) return '✅';
+        if (/recommand|travaux|remplac/.test(l)) return '🔧';
+        if (/valid|date/.test(l)) return '📋';
+        return '💡';
+      case 'GAZ':
+        if (/installation|tuyau|canalisation/.test(l)) return '🔧';
+        if (/chaudière|brûleur|appareil/.test(l)) return '🔥';
+        if (/fuite|anomalie|danger/.test(l)) return '⚠️';
+        if (/ventilation|aération/.test(l)) return '💨';
+        if (/valid|date/.test(l)) return '📋';
+        if (/conforme|correct/.test(l)) return '✅';
+        return '🏭';
+      case 'ERP':
+        if (/sismique|séisme/.test(l)) return '🏔';
+        if (/inondation|submersion|nappe/.test(l)) return '🌊';
+        if (/radon/.test(l)) return '☢️';
+        if (/argile|retrait|gonflement/.test(l)) return '🌍';
+        if (/industriel|basias|basol|icpe/.test(l)) return '🏭';
+        if (/PPR|plan de prévention/.test(l)) return '📑';
+        if (/bruit|sonore|aérien/.test(l)) return '🔊';
+        if (/non concern|faible/.test(l)) return '✅';
+        return '📋';
+      default:
+        if (/recommand|travaux/.test(l)) return '🔧';
+        if (/valid|date/.test(l)) return '📋';
+        if (/anomalie|défaut|problème/.test(l)) return '⚠️';
+        if (/conforme|correct|bon/.test(l)) return '✅';
+        return '•';
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
+      {lines.map((line: string, i: number) => (
+        <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, color: C.textSec, lineHeight: 1.6 }}>
+          <span style={{ flexShrink: 0, marginTop: 1, fontSize: 14 }}>{categorize(line)}</span>
+          <span>{line}{line.endsWith('.') ? '' : '.'}</span>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -272,7 +387,7 @@ function DiagGenerique({ d }: { d: any }) {
       </div>
       {d.resultat && <div style={{ fontSize: 13, color: C.textSec, marginBottom: 4 }}>{d.resultat}</div>}
       {d.alerte && <div style={{ fontSize: 13, color: C.red.dot, marginTop: 6, fontWeight: 500 }}>⚠ {d.alerte}</div>}
-      {d.detail && <Accordion><DetailTexte text={d.detail} /></Accordion>}
+      {d.detail && <Accordion><DiagDetailParser text={d.detail} type="AUTRE" /></Accordion>}
     </CardShell>
   );
 }
