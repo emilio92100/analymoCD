@@ -862,47 +862,172 @@ function RendererDTGPPT({ r }: { r: any }) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererCarnetEntretien({ r }: { r: any }) {
-  const sub = [r.syndic, r.date_maj ? `Mis à jour le ${r.date_maj}` : null].filter(Boolean).join(' · ');
+  const sub = [r.syndic, r.date_maj ? `Mis à jour le ${r.date_maj}` : null, r.annee_construction ? `Construit en ${r.annee_construction}` : null].filter(Boolean).join(' · ');
+  const nbLotsTotal = r.nb_lots_principaux || (r.nb_lots_detail ? Object.values(r.nb_lots_detail).reduce((a: number, b: any) => a + (Number(b) || 0), 0) : null);
+  const diagColor = (res: string) => res === 'negatif' ? C.green : res === 'positif' ? C.red : C.orange;
+  const diagLabel = (res: string) => res === 'negatif' ? '✓ Négatif' : res === 'positif' ? '⚠ Positif' : '✗ Non effectué';
+
   return (
     <div>
       <Header type="Carnet d'Entretien de l'Immeuble" titre={r.titre} sub={sub} />
       <Resume text={r.resume} />
+
+      {/* Procédures — affiché en rouge en priorité si présentes */}
+      {r.procedures?.length > 0 && (
+        <div style={{ background: C.red.bg, border: `0.5px solid ${C.red.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="⚠ PROCÉDURES JUDICIAIRES EN COURS" color={C.red.dot} />
+          {r.procedures.map((p: any, i: number) => (
+            <div key={i} style={{ padding: '14px 20px', borderBottom: i < r.procedures.length - 1 ? `0.5px solid ${C.red.border}` : 'none' }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: C.red.text, marginBottom: 4 }}>{p.label}</div>
+              {p.date_debut && <div style={{ fontSize: 12, color: C.red.text, marginBottom: 3 }}>Depuis le {p.date_debut}{p.date_fin ? ` → ${p.date_fin}` : ''}</div>}
+              {p.commentaire && <div style={{ fontSize: 13, color: C.red.text, marginTop: 4 }}>{p.commentaire}</div>}
+              <div style={{ fontSize: 12, color: C.red.text, marginTop: 6, fontStyle: 'italic' as const }}>⚠ Une procédure judiciaire active peut impacter la vente et générer des coûts collectifs futurs.</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 2 ou 3 encarts selon les données disponibles */}
+      <div style={{ display: 'grid', gridTemplateColumns: r.nb_lots_principaux || r.gardien?.nom || r.fonds_travaux_alur_global ? '1fr 1fr 1fr' : '1fr 1fr', gap: 12, marginBottom: 16 }}>
+
+        {/* Encart Syndic */}
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏢 Syndic</div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
+            {r.syndic && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👤</span><span style={{ fontWeight: 600 }}>{r.syndic}</span></div>}
+            {r.syndic_adresse && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📍</span><span>{r.syndic_adresse}</span></div>}
+            {r.syndic_responsable && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👨‍💼</span><span>Principal : {r.syndic_responsable}</span></div>}
+            {r.syndic_gestionnaire && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👩‍💼</span><span>Gestionnaire : {r.syndic_gestionnaire}</span></div>}
+            {r.syndic_comptable && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🧾</span><span>Comptable : {r.syndic_comptable}</span></div>}
+            {r.syndic_email && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>✉️</span><span>{r.syndic_email}</span></div>}
+            {r.syndic_date_designation && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📅</span><span>Désigné le {r.syndic_date_designation}</span></div>}
+            {r.syndic_garantie && <div style={{ display: 'flex', gap: 8, fontSize: 12, color: C.textSec }}><span>🛡</span><span>Garantie : {r.syndic_garantie}</span></div>}
+            {r.syndic_carte_pro && <div style={{ display: 'flex', gap: 8, fontSize: 12, color: C.textSec }}><span>🏛</span><span>Carte pro : {r.syndic_carte_pro}</span></div>}
+          </div>
+        </div>
+
+        {/* Encart Copropriété */}
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏗 Infos copropriété</div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
+            {r.annee_construction && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📅</span><span>Construit en {r.annee_construction}</span></div>}
+            {nbLotsTotal && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏘</span><span>{nbLotsTotal} lots au total{r.nb_lots_secondaires ? ` (${r.nb_lots_principaux} principaux · ${r.nb_lots_secondaires} secondaires)` : ''}</span></div>}
+            {r.nb_lots_detail?.logements && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏠</span><span>{r.nb_lots_detail.logements} logements{r.nb_lots_detail.caves ? ` · ${r.nb_lots_detail.caves} caves` : ''}{r.nb_lots_detail.parkings ? ` · ${r.nb_lots_detail.parkings} parkings` : ''}</span></div>}
+            {r.immatriculation_registre && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📋</span><span>Immat. : {r.immatriculation_registre}</span></div>}
+            {r.chauffage_collectif && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🔥</span><span>Chauffage collectif {r.type_chauffage ? `au ${r.type_chauffage.toLowerCase()}` : ''}{r.eau_chaude_collective ? ' + eau chaude' : ''}</span></div>}
+            {r.fibre_optique != null && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>💾</span><span>Fibre optique : {r.fibre_optique ? 'Oui' : 'Non'}</span></div>}
+            {r.rcp_info?.date_origine && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📜</span><span>RCP de {r.rcp_info.date_origine}{r.rcp_info.modificatifs?.length > 0 ? ` · ${r.rcp_info.modificatifs.length} modificatif(s)` : ''}</span></div>}
+          </div>
+        </div>
+
+        {/* Encart Gardien + Finances — uniquement si données présentes */}
+        {(r.gardien?.nom || r.fonds_travaux_alur_global || r.conseil_syndical?.date_nomination) && (
+          <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>📅 Agenda & personnel</div>
+            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
+              {r.gardien?.nom && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👷</span><span>Gardien(ne) : {r.gardien.nom}</span></div>}
+              {r.gardien?.horaires && <div style={{ display: 'flex', gap: 8, fontSize: 12, color: C.textSec }}><span>🕐</span><span>{r.gardien.horaires}</span></div>}
+              {r.conseil_syndical?.date_nomination && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👥</span><span>Conseil syndical nommé le {r.conseil_syndical.date_nomination}</span></div>}
+              {r.conseil_syndical?.echeance_mandat && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>⏳</span><span>Mandat jusqu'au {r.conseil_syndical.echeance_mandat}</span></div>}
+              {r.fonds_travaux_alur_global != null && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🔧</span><span>Fonds travaux ALUR : {Number(r.fonds_travaux_alur_global).toLocaleString('fr-FR')} €</span></div>}
+              {r.avance_tresorerie != null && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>💰</span><span>Avance trésorerie : {r.avance_tresorerie === 0 ? 'Néant' : `${Number(r.avance_tresorerie).toLocaleString('fr-FR')} €`}</span></div>}
+              {r.avance_travaux != null && r.avance_travaux > 0 && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏗</span><span>Avance travaux : {Number(r.avance_travaux).toLocaleString('fr-FR')} €</span></div>}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Diagnostics parties communes */}
+      {r.diagnostics_parties_communes?.length > 0 && (
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="🔬 DIAGNOSTICS PARTIES COMMUNES" color={C.orange.dot} />
+          {r.diagnostics_parties_communes.map((d: any, i: number) => {
+            const dc = diagColor(d.resultat || 'non_effectue');
+            return (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 20px', borderBottom: i < r.diagnostics_parties_communes.length - 1 ? `0.5px solid ${C.border}` : 'none' }}>
+                <div>
+                  <div style={{ fontSize: 14, color: C.text }}>{d.label || d.type}</div>
+                  {(d.entreprise || d.date) && <div style={{ fontSize: 12, color: C.textSec, marginTop: 3 }}>{[d.entreprise, d.date].filter(Boolean).join(' · ')}</div>}
+                  {d.commentaire && <div style={{ fontSize: 12, color: C.textSec, marginTop: 2, fontStyle: 'italic' as const }}>{d.commentaire}</div>}
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: dc.bg, color: dc.text, border: `0.5px solid ${dc.border}`, whiteSpace: 'nowrap' as const, marginLeft: 16 }}>
+                  {diagLabel(d.resultat || 'non_effectue')}
+                </span>
+              </div>
+            );
+          })}
+          {/* Mesures administratives */}
+          {r.mesures_administratives && (
+            <div style={{ padding: '12px 20px', borderTop: `0.5px solid ${C.border}`, background: C.bgSecondary, display: 'flex', flexWrap: 'wrap' as const, gap: 8 }}>
+              {!r.mesures_administratives.arrete_peril && !r.mesures_administratives.insalubrite && !r.mesures_administratives.injonction_travaux && !r.mesures_administratives.administration_provisoire && (
+                <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: C.green.bg, color: C.green.text, border: `0.5px solid ${C.green.border}` }}>✓ Aucune mesure administrative en cours</span>
+              )}
+              {(r.mesures_administratives.arrete_peril || r.mesures_administratives.insalubrite || r.mesures_administratives.injonction_travaux || r.mesures_administratives.administration_provisoire) && (
+                <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: C.red.bg, color: C.red.text, border: `0.5px solid ${C.red.border}` }}>⚠ Mesure(s) administrative(s) en cours</span>
+              )}
+              {!r.risques_sanitaires?.legionella && !r.risques_sanitaires?.radon && !r.risques_sanitaires?.merule && (
+                <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: C.green.bg, color: C.green.text, border: `0.5px solid ${C.green.border}` }}>✓ Aucun risque Légionella / Radon / Mérule</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Contrats */}
       {r.contrats?.length > 0 && (
         <Card>
           <CardHeader label="CONTRATS DE MAINTENANCE EN COURS" color="#16a34a" />
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><TableHeader cols={[{ label: 'Équipement' }, { label: 'Prestataire' }, { label: 'Échéance', align: 'right' }]} /></thead>
+            <thead><TableHeader cols={[{ label: 'Équipement' }, { label: 'Prestataire' }, { label: 'Référence' }]} /></thead>
             <tbody>
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {r.contrats.map((c: any, i: number) => (
-                <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}`, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+                <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}` }}>
                   <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{c.equipement}</td>
                   <td style={{ padding: '11px 20px', fontSize: 14, color: C.textSec }}>{c.prestataire || '—'}</td>
-                  <td style={{ padding: '11px 20px', fontSize: 14, color: C.text, textAlign: 'right' }}>{c.echeance || '—'}</td>
+                  <td style={{ padding: '11px 20px', fontSize: 13, color: C.textSec }}>{c.reference || '—'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </Card>
       )}
+
+      {/* Travaux réalisés */}
       {r.travaux_realises?.length > 0 && (
         <Card>
           <CardHeader label="HISTORIQUE DES TRAVAUX RÉALISÉS" color="#2a7d9c" />
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><TableHeader cols={[{ label: 'Année' }, { label: 'Travaux' }, { label: 'Montant', align: 'right' }]} /></thead>
+            <thead><TableHeader cols={[{ label: 'Année', align: 'left' }, { label: 'Travaux' }, { label: 'Montant', align: 'right' }]} /></thead>
             <tbody>
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {r.travaux_realises.map((t: any, i: number) => (
-                <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}`, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
-                  <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: C.text }}>{t.annee}</td>
-                  <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{t.label}</td>
-                  <td style={{ padding: '11px 20px', fontSize: 14, color: C.text, textAlign: 'right' }}>{t.montant ? `${Number(t.montant).toLocaleString('fr-FR')} €` : '—'}</td>
+                <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}` }}>
+                  <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 600, color: C.text, whiteSpace: 'nowrap' as const }}>{t.annee}</td>
+                  <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>
+                    <div>{t.label}</div>
+                    {t.entreprise && <div style={{ fontSize: 12, color: C.textSec, marginTop: 2 }}>{t.entreprise}{t.assurance_do ? ` · DO : ${t.assurance_do}` : ''}</div>}
+                    {t.financement && <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, padding: '2px 8px', borderRadius: 100, display: 'inline-block', background: t.financement === 'soldé' ? C.green.bg : C.orange.bg, color: t.financement === 'soldé' ? C.green.text : C.orange.text }}>{t.financement === 'soldé' ? '✓ Financement soldé' : '⏳ Financement en cours'}</div>}
+                  </td>
+                  <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: C.text, textAlign: 'right' as const, whiteSpace: 'nowrap' as const }}>{t.montant ? `${Number(t.montant).toLocaleString('fr-FR')} €` : '—'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </Card>
       )}
+
+      {/* Infos complémentaires */}
+      {r.infos_complementaires?.length > 0 && (
+        <Card>
+          <CardHeader label="INFORMATIONS COMPLÉMENTAIRES" color={C.gray.dot} />
+          {r.infos_complementaires.map((info: any, i: number) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 20px', borderBottom: i < r.infos_complementaires.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+              <span style={{ fontSize: 14, color: C.textSec }}>{info.label}</span>
+              <span style={{ fontSize: 14, fontWeight: 500, color: C.text }}>{info.valeur}</span>
+            </div>
+          ))}
+        </Card>
+      )}
+
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
