@@ -1005,7 +1005,7 @@ function RendererCarnetEntretien({ r }: { r: any }) {
                   <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>
                     <div>{t.label}</div>
                     {t.entreprise && <div style={{ fontSize: 12, color: C.textSec, marginTop: 2 }}>{t.entreprise}{t.assurance_do ? ` · DO : ${t.assurance_do}` : ''}</div>}
-                    {t.financement && <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, padding: '2px 8px', borderRadius: 100, display: 'inline-block', background: t.financement === 'soldé' ? C.green.bg : C.orange.bg, color: t.financement === 'soldé' ? C.green.text : C.orange.text }}>{t.financement === 'soldé' ? '✓ Financement soldé' : '⏳ Financement en cours'}</div>}
+                    {t.financement === 'en_cours' && <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, padding: '2px 8px', borderRadius: 100, display: 'inline-block', background: C.orange.bg, color: C.orange.text, border: `0.5px solid ${C.orange.border}` }}>⏳ Financement en cours</div>}
                   </td>
                   <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: C.text, textAlign: 'right' as const, whiteSpace: 'nowrap' as const }}>{t.montant ? `${Number(t.montant).toLocaleString('fr-FR')} €` : '—'}</td>
                 </tr>
