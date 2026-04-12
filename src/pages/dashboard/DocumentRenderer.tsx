@@ -65,14 +65,32 @@ function KpiGrid({ children }: { children: React.ReactNode }) {
   return <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>{children}</div>;
 }
 
+function TooltipIcon({ text }: { text: string }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex' }}>
+      <span
+        onMouseEnter={() => setVisible(true)}
+        onMouseLeave={() => setVisible(false)}
+        onClick={() => setVisible(v => !v)}
+        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: '#334155', fontSize: 10, fontWeight: 700, color: '#fff', cursor: 'help', flexShrink: 0, userSelect: 'none' as const }}
+      >ℹ</span>
+      {visible && (
+        <span style={{ position: 'absolute', bottom: '120%', left: '50%', transform: 'translateX(-50%)', background: '#0f172a', color: '#f1f5f9', fontSize: 12, lineHeight: 1.6, padding: '10px 14px', borderRadius: 10, width: 260, zIndex: 100, boxShadow: '0 4px 20px rgba(0,0,0,0.25)', whiteSpace: 'normal' as const, pointerEvents: 'none' as const }}>
+          {text}
+          <span style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', borderWidth: 6, borderStyle: 'solid', borderColor: '#0f172a transparent transparent transparent' }} />
+        </span>
+      )}
+    </span>
+  );
+}
+
 function Kpi({ label, value, sub, color, tooltip }: { label: string; value: string; sub?: string; color?: string; tooltip?: string }) {
   return (
     <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, padding: '18px 20px' }}>
       <div style={{ fontSize: 12, color: C.textSec, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
         {label}
-        {tooltip && (
-          <span title={tooltip} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', background: '#e2e8f0', fontSize: 9, fontWeight: 700, color: '#64748b', cursor: 'help', flexShrink: 0 }}>?</span>
-        )}
+        {tooltip && <TooltipIcon text={tooltip} />}
       </div>
       <div style={{ fontSize: 22, fontWeight: 600, color: color || C.text, lineHeight: 1.2 }}>{value}</div>
       {sub && <div style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>{sub}</div>}
