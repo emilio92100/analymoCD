@@ -29,6 +29,33 @@ function formatEtage(etage: string | null | undefined): string | null {
   return s;
 }
 
+
+function formatDate(val: string | null | undefined): string | null {
+  if (!val) return null;
+  const s = String(val).trim();
+  // YYYY-MM-DD
+  const full = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (full) {
+    const mois = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+    return `${parseInt(full[3])} ${mois[parseInt(full[2]) - 1]} ${full[1]}`;
+  }
+  // YYYY-MM
+  const partial = s.match(/^(\d{4})-(\d{2})$/);
+  if (partial) {
+    const mois = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+    return `${mois[parseInt(partial[2]) - 1]} ${partial[1]}`;
+  }
+  // DD/MM/YYYY ou DD/MM/YY
+  const dmy = s.match(/^(\d{1,2})\/(\d{2})\/(\d{2,4})$/);
+  if (dmy) {
+    const mois = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+    const year = dmy[3].length === 2 ? `20${dmy[3]}` : dmy[3];
+    return `${parseInt(dmy[1])} ${mois[parseInt(dmy[2]) - 1]} ${year}`;
+  }
+  // Déjà lisible — retourner tel quel
+  return s;
+}
+
 const DPE_COLORS: Record<string, string> = {
   A: '#16a34a', B: '#22c55e', C: '#84cc16', D: '#eab308', E: '#f97316', F: '#ef4444', G: '#991b1b'
 };
@@ -316,7 +343,7 @@ function DiagnosticCardDetail({ d }: { d: any }) {
 function RendererDDT({ r }: { r: any }) {
   const diags = r.diagnostics || [];
   const lotsIdf = r.lots_identifies || [];
-  const sub = [r.diagnostiqueur?.nom ? `Diagnostiqueur : ${r.diagnostiqueur.nom}` : null, r.diagnostiqueur?.date ? `le ${r.diagnostiqueur.date}` : null].filter(Boolean).join(' · ');
+  const sub = [r.diagnostiqueur?.nom ? `Diagnostiqueur : ${r.diagnostiqueur.nom}` : null, r.diagnostiqueur?.date ? `le ${formatDate(r.diagnostiqueur.date)}` : null].filter(Boolean).join(' · ');
 
   // Trier diagnostics
   const diagsOk = diags.filter((d: any) => d.presence === 'conforme' || d.presence === 'non_detecte' || d.presence === 'non_applicable');
@@ -345,7 +372,7 @@ function RendererDDT({ r }: { r: any }) {
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🔬 Diagnostiqueur</div>
           {r.diagnostiqueur?.nom && <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 4 }}>{r.diagnostiqueur.nom}</div>}
-          {r.diagnostiqueur?.date && <div style={{ fontSize: 13, color: C.textSec, marginBottom: 3 }}>📅 Réalisé le {r.diagnostiqueur.date}</div>}
+          {r.diagnostiqueur?.date && <div style={{ fontSize: 13, color: C.textSec, marginBottom: 3 }}>📅 Réalisé le {formatDate(r.diagnostiqueur.date)}</div>}
           {r.diagnostiqueur?.certification && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 3 }}>🎖 {r.diagnostiqueur.certification}</div>}
         </div>
 
@@ -862,7 +889,7 @@ function RendererDTGPPT({ r }: { r: any }) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererCarnetEntretien({ r }: { r: any }) {
-  const sub = [r.syndic, r.date_maj ? `Mis à jour le ${r.date_maj}` : null, r.annee_construction ? `Construit en ${r.annee_construction}` : null].filter(Boolean).join(' · ');
+  const sub = [r.syndic, r.date_maj ? `Mis à jour le ${formatDate(r.date_maj)}` : null, r.annee_construction ? `Construit en ${r.annee_construction}` : null].filter(Boolean).join(' · ');
   const nbLotsTotal = r.nb_lots_total ?? r.nb_lots_principaux ?? (r.nb_lots_detail ? Object.values(r.nb_lots_detail).reduce((a: number, b: any) => a + (Number(b) || 0), 0) : null);
   const diagColor = (res: string) => res === 'negatif' ? C.green : res === 'positif' ? C.red : C.orange;
   const diagLabel = (res: string) => res === 'negatif' ? '✓ Négatif' : res === 'positif' ? '⚠ Positif' : '✗ Non effectué';
@@ -879,7 +906,7 @@ function RendererCarnetEntretien({ r }: { r: any }) {
           {r.procedures.map((p: any, i: number) => (
             <div key={i} style={{ padding: '14px 20px', borderBottom: i < r.procedures.length - 1 ? `0.5px solid ${C.red.border}` : 'none' }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: C.red.text, marginBottom: 4 }}>{p.label}</div>
-              {p.date_debut && <div style={{ fontSize: 12, color: C.red.text, marginBottom: 3 }}>Depuis le {p.date_debut}{p.date_fin ? ` → ${p.date_fin}` : ''}</div>}
+              {p.date_debut && <div style={{ fontSize: 12, color: C.red.text, marginBottom: 3 }}>Depuis le {formatDate(p.date_debut)}{p.date_fin ? ` → ${formatDate(p.date_fin)}` : ''}</div>}
               {p.commentaire && <div style={{ fontSize: 13, color: C.red.text, marginTop: 4 }}>{p.commentaire}</div>}
               <div style={{ fontSize: 12, color: C.red.text, marginTop: 6, fontStyle: 'italic' as const }}>⚠ Une procédure judiciaire active peut impacter la vente et générer des coûts collectifs futurs.</div>
             </div>
@@ -900,7 +927,7 @@ function RendererCarnetEntretien({ r }: { r: any }) {
             {r.syndic_gestionnaire && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👩‍💼</span><span>Gestionnaire : {r.syndic_gestionnaire}</span></div>}
             {r.syndic_comptable && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🧾</span><span>Comptable : {r.syndic_comptable}</span></div>}
             {r.syndic_email && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>✉️</span><span>{r.syndic_email}</span></div>}
-            {r.syndic_date_designation && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📅</span><span>Désigné le {r.syndic_date_designation}</span></div>}
+            {r.syndic_date_designation && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📅</span><span>Désigné le {formatDate(r.syndic_date_designation)}</span></div>}
             {r.syndic_garantie && <div style={{ display: 'flex', gap: 8, fontSize: 12, color: C.textSec }}><span>🛡</span><span>Garantie : {r.syndic_garantie}</span></div>}
             {r.syndic_carte_pro && <div style={{ display: 'flex', gap: 8, fontSize: 12, color: C.textSec }}><span>🏛</span><span>Carte pro : {r.syndic_carte_pro}</span></div>}
           </div>
@@ -917,8 +944,8 @@ function RendererCarnetEntretien({ r }: { r: any }) {
             {r.immatriculation_registre && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📋</span><span>Immat. : {r.immatriculation_registre}</span></div>}
             {r.chauffage_collectif && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🔥</span><span>Chauffage collectif {r.type_chauffage ? `au ${r.type_chauffage.toLowerCase()}` : ''}{r.eau_chaude_collective ? ' + eau chaude' : ''}</span></div>}
             {r.fibre_optique != null && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>💾</span><span>Fibre optique : {r.fibre_optique ? 'Oui' : 'Non'}</span></div>}
-            {r.rcp_info?.date_origine && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📜</span><span>RCP de {r.rcp_info.date_origine}{r.rcp_info.modificatifs?.length > 0 ? ` · ${r.rcp_info.modificatifs.length} modificatif(s)` : ''}</span></div>}
-            {r.assurance?.compagnie && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🛡</span><span>Assurance : {r.assurance.compagnie}{r.assurance.police ? ` — Police n°${r.assurance.police}` : ''}{r.assurance.echeance ? ` · Éch. ${r.assurance.echeance}` : ''}</span></div>}
+            {r.rcp_info?.date_origine && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📜</span><span>RCP de {formatDate(r.rcp_info.date_origine)}{r.rcp_info.modificatifs?.length > 0 ? ` · ${r.rcp_info.modificatifs.length} modificatif(s)` : ''}</span></div>}
+            {r.assurance?.compagnie && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🛡</span><span>Assurance : {r.assurance.compagnie}{r.assurance.police ? ` — Police n°${r.assurance.police}` : ''}{r.assurance.echeance ? ` · Éch. ${formatDate(r.assurance.echeance)}` : ''}</span></div>}
           </div>
         </div>
 
@@ -929,8 +956,8 @@ function RendererCarnetEntretien({ r }: { r: any }) {
             <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
               {r.gardien?.nom && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👷</span><span>Gardien(ne) : {r.gardien.nom}</span></div>}
               {r.gardien?.horaires && <div style={{ display: 'flex', gap: 8, fontSize: 12, color: C.textSec }}><span>🕐</span><span>{r.gardien.horaires}</span></div>}
-              {r.conseil_syndical?.date_nomination && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👥</span><span>Conseil syndical nommé le {r.conseil_syndical.date_nomination}</span></div>}
-              {r.conseil_syndical?.echeance_mandat && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>⏳</span><span>Mandat jusqu'au {r.conseil_syndical.echeance_mandat}</span></div>}
+              {r.conseil_syndical?.date_nomination && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👥</span><span>Conseil syndical nommé le {formatDate(r.conseil_syndical.date_nomination)}</span></div>}
+              {r.conseil_syndical?.echeance_mandat && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>⏳</span><span>Mandat jusqu'au {formatDate(r.conseil_syndical.echeance_mandat)}</span></div>}
               {r.fonds_travaux_alur_global != null && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🔧</span><span>Fonds travaux ALUR : {Number(r.fonds_travaux_alur_global).toLocaleString('fr-FR')} €</span></div>}
               {r.avance_tresorerie != null && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>💰</span><span>Avance trésorerie : {r.avance_tresorerie === 0 ? 'Néant' : `${Number(r.avance_tresorerie).toLocaleString('fr-FR')} €`}</span></div>}
               {r.avance_travaux != null && r.avance_travaux > 0 && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏗</span><span>Avance travaux : {Number(r.avance_travaux).toLocaleString('fr-FR')} €</span></div>}
@@ -949,7 +976,7 @@ function RendererCarnetEntretien({ r }: { r: any }) {
               <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 20px', borderBottom: i < r.diagnostics_parties_communes.length - 1 ? `0.5px solid ${C.border}` : 'none' }}>
                 <div>
                   <div style={{ fontSize: 14, color: C.text }}>{d.label || d.type}</div>
-                  {(d.entreprise || d.date) && <div style={{ fontSize: 12, color: C.textSec, marginTop: 3 }}>{[d.entreprise, d.date].filter(Boolean).join(' · ')}</div>}
+                  {(d.entreprise || d.date) && <div style={{ fontSize: 12, color: C.textSec, marginTop: 3 }}>{[d.entreprise, formatDate(d.date)].filter(Boolean).join(' · ')}</div>}
                   {d.commentaire && <div style={{ fontSize: 12, color: C.textSec, marginTop: 2, fontStyle: 'italic' as const }}>{d.commentaire}</div>}
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: dc.bg, color: dc.text, border: `0.5px solid ${dc.border}`, whiteSpace: 'nowrap' as const, marginLeft: 16 }}>
@@ -1006,7 +1033,7 @@ function RendererCarnetEntretien({ r }: { r: any }) {
               <div>
                 <div style={{ fontSize: 14, color: C.text, fontWeight: 500 }}>{t.label}</div>
                 <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
-                  {t.date_ag && <span style={{ fontSize: 12, color: C.textSec }}>📅 Voté le {t.date_ag}</span>}
+                  {t.date_ag && <span style={{ fontSize: 12, color: C.textSec }}>📅 Voté le {formatDate(t.date_ag)}</span>}
                   {t.entreprise && <span style={{ fontSize: 12, color: C.textSec }}>🏢 {t.entreprise}</span>}
                 </div>
               </div>
@@ -1097,7 +1124,7 @@ function RendererPreEtatDate({ r }: { r: any }) {
           <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏢 Syndic</div>
           {r.syndic && <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>{r.syndic}</div>}
           {r.syndic_adresse && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 4 }}>📍 {r.syndic_adresse}</div>}
-          {r.date && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 4 }}>📅 Document établi le {r.date}</div>}
+          {r.date && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 4 }}>📅 Document établi le {formatDate(r.date)}</div>}
           {r.nb_lots_copro && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 4 }}>🏘 Copropriété de {r.nb_lots_copro} lots</div>}
           {r.immatriculation_registre && <div style={{ fontSize: 11, color: C.textSec, marginTop: 6, padding: '4px 8px', background: C.bgSecondary, borderRadius: 6 }}>Immat. {r.immatriculation_registre}</div>}
         </div>
@@ -1329,7 +1356,7 @@ function RendererEtatDate({ r }: { r: any }) {
           <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏢 Syndic</div>
           {r.syndic && <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>{r.syndic}</div>}
           {r.syndic_adresse && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 4 }}>📍 {r.syndic_adresse}</div>}
-          {r.date && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 4 }}>📅 Document établi le {r.date}</div>}
+          {r.date && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 4 }}>📅 Document établi le {formatDate(r.date)}</div>}
           {r.nb_lots_copro && <div style={{ fontSize: 12, color: C.textSec }}>🏘 {r.nb_lots_copro} lots dans la copropriété</div>}
           {r.immatriculation_registre && <div style={{ fontSize: 11, color: C.textSec, marginTop: 6, padding: '4px 8px', background: C.bgSecondary, borderRadius: 6 }}>Immat. {r.immatriculation_registre}</div>}
         </div>
@@ -1509,7 +1536,7 @@ function RendererTaxeFonciere({ r }: { r: any }) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererCompromis({ r }: { r: any }) {
-  const sub = [r.date_signature ? `Signé le ${r.date_signature}` : null, r.agence, r.notaire_acheteur ? `Notaire acheteur : ${r.notaire_acheteur}` : null].filter(Boolean).join(' · ');
+  const sub = [r.date_signature ? `Signé le ${formatDate(r.date_signature)}` : null, r.agence, r.notaire_acheteur ? `Notaire acheteur : ${r.notaire_acheteur}` : null].filter(Boolean).join(' · ');
   const statutStyle = (s: string) => s === 'levee' || s === 'purge' ? { bg: C.green.bg, text: '#166534', border: C.green.border, label: s === 'levee' ? 'Levée' : 'Purgée' } : { bg: C.orange.bg, text: '#92400e', border: C.orange.border, label: 'En cours' };
   return (
     <div>
@@ -1544,7 +1571,7 @@ function RendererCompromis({ r }: { r: any }) {
                   <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}`, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
                     <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{c.label}</td>
                     <td style={{ padding: '11px 20px', fontSize: 13, color: C.textSec }}>{c.detail || '—'}</td>
-                    <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: '#dc2626', textAlign: 'center' }}>{c.date_limite || '—'}</td>
+                    <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: '#dc2626', textAlign: 'center' }}>{formatDate(c.date_limite) || '—'}</td>
                     <td style={{ padding: '11px 20px', textAlign: 'center' }}><span style={{ fontSize: 12, padding: '3px 10px', borderRadius: 100, background: sc.bg, color: sc.text, border: `0.5px solid ${sc.border}` }}>{sc.label}</span></td>
                   </tr>
                 );
@@ -1568,7 +1595,7 @@ function RendererCompromis({ r }: { r: any }) {
           {r.dates_cles.map((d: any, i: number) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: i < r.dates_cles.length - 1 ? `0.5px solid ${C.orange.border}` : 'none', background: i % 2 === 0 ? C.orange.bg : '#fffbf5' }}>
               <span style={{ fontSize: 14, color: C.text }}>{d.label}</span>
-              <span style={{ fontSize: 14, fontWeight: 600, color: d.important ? '#dc2626' : '#d97706' }}>{d.date}</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: d.important ? '#dc2626' : '#d97706' }}>{formatDate(d.date)}</span>
             </div>
           ))}
         </div>
@@ -1692,7 +1719,7 @@ function RendererDiagCommunes({ r }: { r: any }) {
                   <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
                     {rap.cabinet && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏢</span><span style={{ fontWeight: 600 }}>{rap.cabinet}</span></div>}
                     {rap.operateur && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👤</span><span>{rap.operateur}</span></div>}
-                    {rap.date && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📅</span><span>{rap.date}</span></div>}
+                    {rap.date && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📅</span><span>{formatDate(rap.date)}</span></div>}
                     {rap.perimetre && <div style={{ display: 'flex', gap: 8, fontSize: 12, color: C.textSec }}><span>📍</span><span>{rap.perimetre}</span></div>}
                     {rap.certification && <div style={{ display: 'flex', gap: 8, fontSize: 12, color: C.textSec }}><span>🏅</span><span>{rap.certification}</span></div>}
                   </div>
@@ -1717,7 +1744,7 @@ function RendererDiagCommunes({ r }: { r: any }) {
               {(r.date || r.rapports?.[0]?.date) && (
                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                   <span style={{ fontSize: 16 }}>📅</span>
-                  <div><div style={{ fontSize: 11, color: C.textSec, marginBottom: 2 }}>Date de réalisation</div><div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.date || r.rapports?.[0]?.date}</div></div>
+                  <div><div style={{ fontSize: 11, color: C.textSec, marginBottom: 2 }}>Date de réalisation</div><div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{formatDate(r.date || r.rapports?.[0]?.date)}</div></div>
                 </div>
               )}
               {(r.certification || r.rapports?.[0]?.certification) && (
