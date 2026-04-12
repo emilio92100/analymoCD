@@ -498,7 +498,7 @@ function RendererPVAG({ r }: { r: any }) {
       <KpiGrid>
         {r.budget_vote?.montant && <Kpi label={r.budget_vote.annee ? `Budget voté pour ${r.budget_vote.annee}` : 'Budget voté'} value={`${Number(r.budget_vote.montant).toLocaleString('fr-FR')} €`} sub={r.budget_precedent?.montant && r.budget_precedent?.annee ? `vs ${Number(r.budget_precedent.montant).toLocaleString('fr-FR')} € en ${r.budget_precedent.annee}` : undefined} />}
         {r.syndic && <Kpi label="Syndic" value={r.syndic} />}
-        {r.quorum?.tantiemes_pct && <Kpi label="Quorum" value={r.quorum.tantiemes_pct} color="#16a34a" sub={r.quorum.presents && r.quorum.total ? `${r.quorum.presents}/${r.quorum.total} copropriétaires présents` : undefined} tooltip="Le quorum est le pourcentage de tantièmes représentés à l'assemblée générale. Il détermine si les décisions votées sont valides. Un quorum faible peut fragiliser certains votes." />}
+        {r.quorum?.tantiemes_pct && <Kpi label="Quorum (% tantièmes)" value={String(r.quorum.tantiemes_pct).replace('%','').trim() + ' %'} color="#16a34a" sub={r.quorum.presents && r.quorum.total ? `${r.quorum.presents}/${r.quorum.total} copropriétaires présents` : undefined} tooltip="Le quorum est le pourcentage de tantièmes représentés à l'assemblée générale. Il détermine si les décisions votées sont valides. Un quorum faible peut fragiliser certains votes." />}
       </KpiGrid>
 
       {r.travaux_votes?.length > 0 && (
