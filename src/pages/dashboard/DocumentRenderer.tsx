@@ -17,6 +17,18 @@ const C = {
   dark: '#0f2d3d',
 };
 
+function formatEtage(etage: string | null | undefined): string | null {
+  if (!etage) return null;
+  const s = String(etage).trim();
+  if (/^-?\d+$/.test(s)) {
+    const n = parseInt(s);
+    if (n === 0) return 'Rez-de-chaussée';
+    if (n < 0) return `${Math.abs(n)}${Math.abs(n) === 1 ? 'er' : 'ème'} sous-sol`;
+    return `${n}${n === 1 ? 'er' : 'ème'} étage`;
+  }
+  return s;
+}
+
 const DPE_COLORS: Record<string, string> = {
   A: '#16a34a', B: '#22c55e', C: '#84cc16', D: '#eab308', E: '#f97316', F: '#ef4444', G: '#991b1b'
 };
@@ -349,7 +361,7 @@ function RendererDDT({ r }: { r: any }) {
                     <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>
                       {lot.type.charAt(0).toUpperCase() + lot.type.slice(1)}{lot.numero ? ` n°${lot.numero}` : ''}
                     </div>
-                    {(lot.etage || lot.description) && <div style={{ fontSize: 12, color: C.textSec }}>{lot.etage || lot.description}</div>}
+                    {(lot.etage || lot.description) && <div style={{ fontSize: 12, color: C.textSec }}>{formatEtage(lot.etage) || lot.description}</div>}
                   </div>
                 </div>
               ))}
@@ -833,7 +845,7 @@ function RendererPreEtatDate({ r }: { r: any }) {
             <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', alignSelf: 'center', marginRight: 2 }}>Document portant sur :</span>
             {r.lots_vente.map((lot: any, i: number) => (
               <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.1)', border: '0.5px solid rgba(255,255,255,0.2)', borderRadius: 100, padding: '4px 12px', fontSize: 12, color: 'rgba(255,255,255,0.85)' }}>
-                {lotIcon(lot.type)} {lot.type.charAt(0).toUpperCase() + lot.type.slice(1)}{lot.numero ? ` n°${lot.numero}` : ''}{lot.batiment ? ` — Bât. ${lot.batiment}` : ''}
+                {lotIcon(lot.type)} {lot.type.charAt(0).toUpperCase() + lot.type.slice(1)}{lot.numero ? ` n°${lot.numero}` : ''}{lot.batiment ? ` — Bât. ${lot.batiment}` : ''}{lot.etage ? ` · ${formatEtage(lot.etage)}` : ''}
               </span>
             ))}
           </div>
@@ -1066,7 +1078,7 @@ function RendererEtatDate({ r }: { r: any }) {
             <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', alignSelf: 'center', marginRight: 2 }}>Document portant sur :</span>
             {r.lots_vente.map((lot: any, i: number) => (
               <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.1)', border: '0.5px solid rgba(255,255,255,0.2)', borderRadius: 100, padding: '4px 12px', fontSize: 12, color: 'rgba(255,255,255,0.85)' }}>
-                {lotIcon(lot.type)} {lot.type.charAt(0).toUpperCase() + lot.type.slice(1)}{lot.numero ? ` n°${lot.numero}` : ''}{lot.batiment ? ` — Bât. ${lot.batiment}` : ''}
+                {lotIcon(lot.type)} {lot.type.charAt(0).toUpperCase() + lot.type.slice(1)}{lot.numero ? ` n°${lot.numero}` : ''}{lot.batiment ? ` — Bât. ${lot.batiment}` : ''}{lot.etage ? ` · ${formatEtage(lot.etage)}` : ''}
               </span>
             ))}
           </div>
