@@ -331,7 +331,7 @@ function RendererDDT({ r }: { r: any }) {
     return { icon: 'ℹ️', color: C.gray.text };
   };
 
-  const lotIcon = (type: string) => type === 'cave' ? '🔒' : type === 'parking' || type === 'garage' ? '🚗' : type === 'grenier' ? '📦' : '🏠';
+  const lotIcon = (type: string) => type === 'cave' ? '🔒' : type === 'parking' || type === 'garage' ? '🚗' : type === 'grenier' || type === 'combles' ? '📦' : '🏠';
 
   return (
     <div>
@@ -564,7 +564,7 @@ function RendererPVAG({ r }: { r: any }) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererAppelCharges({ r }: { r: any }) {
   const lots = r.lots || [];
-  const lotIcon = (type: string) => type === 'cave' ? '🔒' : type === 'parking' || type === 'garage' ? '🚗' : type === 'grenier' ? '📦' : '🏠';
+  const lotIcon = (type: string) => type === 'cave' ? '🔒' : type === 'parking' || type === 'garage' ? '🚗' : type === 'grenier' || type === 'combles' ? '📦' : '🏠';
 
   return (
     <div>
@@ -608,16 +608,19 @@ function RendererAppelCharges({ r }: { r: any }) {
 
       {/* KPIs */}
       <KpiGrid>
-        {r.montant_trimestre && <Kpi label="Appel ce trimestre" value={`${Number(r.montant_trimestre).toLocaleString('fr-FR')} €`} />}
-        {r.montant_annuel && <Kpi label="Charges annuelles estimées" value={`${Number(r.montant_annuel).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="× 4 trimestres" />}
+        {r.montant_trimestre && <Kpi label="Appel pour ce trimestre" value={`${Number(r.montant_trimestre).toLocaleString('fr-FR')} €`} />}
         {r.montant_mensuel && <Kpi label="Charges mensuelles" value={`${Number(r.montant_mensuel).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="/ mois" />}
+        {r.montant_annuel && <Kpi label="Charges annuelles estimées" value={`${Number(r.montant_annuel).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="× 4 trimestres" />}
       </KpiGrid>
 
       {/* Décomposition par lot */}
       {lots.length > 0 && (
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
           <CardHeader label="DÉCOMPOSITION PAR LOT" color={C.blue.dot} />
-          {lots.map((lot: any, li: number) => (
+          {[...lots].sort((a: any, b: any) => {
+              const order = (t: string) => t === 'appartement' ? 0 : t === 'grenier' || t === 'combles' ? 1 : t === 'cave' ? 2 : t === 'parking' || t === 'garage' ? 3 : 4;
+              return order(a.type) - order(b.type);
+            }).map((lot: any, li: number) => (
             <div key={li} style={{ borderBottom: li < lots.length - 1 ? `0.5px solid ${C.border}` : 'none' }}>
               {/* En-tête du lot */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 20px', background: C.bgSecondary }}>
@@ -633,8 +636,9 @@ function RendererAppelCharges({ r }: { r: any }) {
                   </div>
                 </div>
                 {lot.total_trimestre && (
-                  <div style={{ fontSize: 16, fontWeight: 600, color: C.blue.dot, whiteSpace: 'nowrap' as const }}>
-                    {Number(lot.total_trimestre).toLocaleString('fr-FR')} €
+                  <div style={{ textAlign: 'right' as const }}>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: C.blue.dot, whiteSpace: 'nowrap' as const }}>{Number(lot.total_trimestre).toLocaleString('fr-FR')} €</div>
+                    <div style={{ fontSize: 11, color: C.textSec, marginTop: 2 }}>ce trimestre</div>
                   </div>
                 )}
               </div>
@@ -910,7 +914,7 @@ function RendererCarnetEntretien({ r }: { r: any }) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererPreEtatDate({ r }: { r: any }) {
   const sub = [r.date ? `Établi le ${r.date}` : null, r.syndic ? `Syndic : ${r.syndic}` : null].filter(Boolean).join(' · ');
-  const lotIcon = (type: string) => type === 'cave' ? '🔒' : type === 'parking' || type === 'garage' ? '🚗' : type === 'grenier' ? '📦' : '🏠';
+  const lotIcon = (type: string) => type === 'cave' ? '🔒' : type === 'parking' || type === 'garage' ? '🚗' : type === 'grenier' || type === 'combles' ? '📦' : '🏠';
   const totalAnnuel = r.charges_futures?.montant_annuel || ((Number(r.charges_futures?.montant_trimestriel || 0) + Number(r.charges_futures?.fonds_travaux_trimestriel || 0)) * 4);
 
   return (
