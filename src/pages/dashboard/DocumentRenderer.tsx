@@ -1033,8 +1033,9 @@ function RendererPreEtatDate({ r }: { r: any }) {
               })}
             </tbody>
           </table>
-          <div style={{ padding: '12px 20px', background: C.bgSecondary, borderTop: `0.5px solid ${C.border}`, fontSize: 12, color: C.textSec, lineHeight: 1.6 }}>
-            💡 Le budget appelé est ce que la copropriété a prévu de dépenser sur l'exercice. Les charges réelles sont ce qui a été effectivement dépensé après clôture de l'exercice. Un petit écart est tout à fait normal — personne ne peut prévoir les dépenses à l'euro près. C'est seulement un écart important et répété sur plusieurs exercices qui mérite attention.
+          <div style={{ padding: '16px 20px', background: C.bgSecondary, borderTop: `0.5px solid ${C.border}` }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.textSec, marginBottom: 6 }}>💡 Comment lire ce tableau ?</div>
+            <div style={{ fontSize: 13, color: C.textSec, lineHeight: 1.7 }}>Le <strong>budget appelé</strong> est ce que la copropriété a prévu de dépenser sur l'exercice. Les <strong>charges réelles</strong> sont ce qui a été effectivement dépensé après clôture de l'exercice. Un petit écart est tout à fait normal — personne ne peut prévoir les dépenses à l'euro près. C'est seulement un écart important et répété sur plusieurs exercices qui mérite attention.</div>
           </div>
         </div>
       )}
@@ -1202,8 +1203,9 @@ function RendererEtatDate({ r }: { r: any }) {
               })}
             </tbody>
           </table>
-          <div style={{ padding: '12px 20px', background: C.bgSecondary, borderTop: `0.5px solid ${C.border}`, fontSize: 12, color: C.textSec, lineHeight: 1.6 }}>
-            💡 Le budget appelé est ce que la copropriété a prévu de dépenser sur l'exercice. Les charges réelles sont ce qui a été effectivement dépensé après clôture de l'exercice. Un petit écart est tout à fait normal — personne ne peut prévoir les dépenses à l'euro près. C'est seulement un écart important et répété sur plusieurs exercices qui mérite attention.
+          <div style={{ padding: '16px 20px', background: C.bgSecondary, borderTop: `0.5px solid ${C.border}` }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.textSec, marginBottom: 6 }}>💡 Comment lire ce tableau ?</div>
+            <div style={{ fontSize: 13, color: C.textSec, lineHeight: 1.7 }}>Le <strong>budget appelé</strong> est ce que la copropriété a prévu de dépenser sur l'exercice. Les <strong>charges réelles</strong> sont ce qui a été effectivement dépensé après clôture de l'exercice. Un petit écart est tout à fait normal — personne ne peut prévoir les dépenses à l'euro près. C'est seulement un écart important et répété sur plusieurs exercices qui mérite attention.</div>
           </div>
         </div>
       )}
