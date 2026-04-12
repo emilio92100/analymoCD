@@ -368,6 +368,9 @@ function DiagGenerique({ d }: { d: any }) {
   );
 }
 
+// ── Exports ──────────────────────────────────────────
+export { DiagDetailParser as DiagDetailParserExport };
+
 // ── Export principal ──────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function DiagnosticCard({ d }: { d: any }) {
