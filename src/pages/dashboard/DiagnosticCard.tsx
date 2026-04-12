@@ -11,27 +11,7 @@ const C = {
   yellow: { bg: '#fefce8', border: '#fde047', text: '#854d0e', dot: '#eab308' },
 };
 
-// Formate le texte brut en liste de phrases lisibles
-function DetailTexte({ text }: { text: string }) {
-  if (!text) return null;
-  const phrases = text
-    .split(/\.\s+(?=[A-ZÀ-Ü])|;\s+/)
-    .map((s: string) => s.trim().replace(/\.$/, ''))
-    .filter((s: string) => s.length > 10);
-  if (phrases.length <= 1) {
-    return <p style={{ margin: 0, fontSize: 13, color: C.textSec, lineHeight: 1.65 }}>{text}</p>;
-  }
-  return (
-    <ul style={{ margin: 0, padding: '0 0 0 16px', listStyle: 'none' }}>
-      {phrases.map((p: string, i: number) => (
-        <li key={i} style={{ fontSize: 13, color: C.textSec, lineHeight: 1.65, marginBottom: 6, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-          <span style={{ color: C.border, marginTop: 6, flexShrink: 0, fontSize: 6 }}>\u25CF</span>
-          <span>{p}.</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
+
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function Accordion({ label, children }: { label?: string; children: React.ReactNode }) {
@@ -245,10 +225,6 @@ function DiagCarrez({ d }: { d: any }) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function DiagDPE({ d }: { d: any }) {
   const [open, setOpen] = useState(false);
-  // Extraire coût annuel, validité, points isolation depuis le résultat si présents
-  const coutMatch = (d.detail || d.resultat || '').match(/(\d[\d\s]*)\s*€.*?(\d[\d\s]*)\s*€/);
-  const validiteMatch = (d.detail || '').match(/valid[eé].*?jusqu['\''].*?(\d{2}\/\d{2}\/\d{4}|\d{4})/i);
-
   return (
     <CardShell presence="informatif">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
