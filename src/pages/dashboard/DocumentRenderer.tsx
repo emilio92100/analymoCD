@@ -1569,50 +1569,212 @@ function RendererCompromis({ r }: { r: any }) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererDiagCommunes({ r }: { r: any }) {
-  const typeLabel = r.type_diagnostic === 'DTA' ? 'Dossier Technique Amiante' : r.type_diagnostic === 'PLOMB' ? "Constat de Risque d'Exposition au Plomb" : r.type_diagnostic === 'TERMITES' ? 'État Parasitaire — Termites' : 'Diagnostic Parties Communes';
-  const sub = [r.date ? `Réalisé le ${r.date}` : null, r.cabinet, r.certification].filter(Boolean).join(' · ');
-  const resStyle = r.resultat_global === 'non_detecte' ? { ...C.green, label: 'Non détecté' } : r.resultat_global === 'surveillance' ? { ...C.orange, label: 'Surveillance requise' } : { ...C.red, label: 'Détecté' };
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const toggleSection = (key: string) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+  const isOpen = (key: string) => key in openSections ? openSections[key] : true;
+
+  const typeLabel = r.type_diagnostic === 'DTA' ? 'Dossier Technique Amiante'
+    : r.type_diagnostic === 'PLOMB' ? "Constat de Risque d'Exposition au Plomb"
+    : r.type_diagnostic === 'TERMITES' ? 'État Parasitaire — Termites'
+    : 'Diagnostic Parties Communes';
+
+  const nbRapports = r.rapports?.length || 1;
+  const nbDetectes = r.zones_par_localisation?.reduce((acc: number, g: any) => acc + (g.zones?.length || 0), 0) || 0;
+  const nbAC1 = r.zones_par_localisation?.reduce((acc: number, g: any) => acc + (g.zones?.filter((z: any) => z.action === 'AC1').length || 0), 0) || 0;
+  const nbEP = r.zones_par_localisation?.reduce((acc: number, g: any) => acc + (g.zones?.filter((z: any) => z.action === 'EP').length || 0), 0) || 0;
+  const nbSaines = r.zones_saines?.length || 0;
+  const nonDetecte = r.resultat_global === 'non_detecte';
+
+  const actionColor = (action: string) => action === 'AC1' ? C.red : action === 'EP' ? C.green : action === 'surveillance' ? C.blue : C.gray;
+  const actionLabel = (action: string) => action === 'AC1' ? 'AC1 — Action corrective' : action === 'EP' ? 'EP — Éval. périodique' : action === 'surveillance' ? 'Surveillance régulière' : action || '—';
+
+  // Badges header
+  const headerBadges: { label: string; color: string }[] = [];
+  if (nonDetecte) headerBadges.push({ label: 'Aucun amiante détecté', color: C.green.dot });
+  else headerBadges.push({ label: 'Amiante détecté', color: C.red.dot });
+  if (nbAC1 > 0) headerBadges.push({ label: `${nbAC1} action corrective requise`, color: C.orange.dot });
+  if (nbRapports > 1) headerBadges.push({ label: `${nbRapports} rapports`, color: C.gray.dot });
+
   return (
     <div>
-      <Header type={typeLabel} titre={r.titre} sub={sub} />
-      <Resume text={r.resume} />
-      <KpiGrid>
-        <div style={{ background: resStyle.bg, border: `0.5px solid ${resStyle.border}`, borderRadius: 12, padding: '18px 20px' }}>
-          <div style={{ fontSize: 12, color: C.textSec, marginBottom: 8 }}>Résultat global</div>
-          <div style={{ fontSize: 20, fontWeight: 600, color: resStyle.text }}>{resStyle.label}</div>
+      {/* ── HEADER ── */}
+      <div style={{ background: C.dark, borderRadius: 14, padding: '22px 28px', marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', marginBottom: 8, textTransform: 'uppercase' as const }}>{typeLabel}</div>
+        <div style={{ fontSize: 19, fontWeight: 600, color: '#fff', marginBottom: 6, lineHeight: 1.3 }}>{r.titre}</div>
+        {r.commanditaire && <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 4 }}>{r.commanditaire}</div>}
+        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6, marginTop: 10 }}>
+          {headerBadges.map((b, i) => (
+            <span key={i} style={{ fontSize: 11, fontWeight: 600, padding: '4px 12px', borderRadius: 100, background: 'rgba(255,255,255,0.1)', border: '0.5px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.85)' }}>{b.label}</span>
+          ))}
         </div>
-        {r.action_requise && <Kpi label="Action requise" value={r.action_requise === 'retrait' ? 'Retrait obligatoire' : r.action_requise === 'surveillance' ? 'Surveillance périodique' : r.action_requise === 'conservation' ? 'Conservation en état' : 'Aucune'} color={r.action_requise === 'retrait' ? '#dc2626' : r.action_requise === 'surveillance' ? '#d97706' : '#16a34a'} />}
-        {r.prochaine_visite && <Kpi label="Prochaine visite" value={r.prochaine_visite} />}
-      </KpiGrid>
-      {r.zones_detectees?.length > 0 && (
-        <Card>
-          <CardHeader label="ZONES / MATÉRIAUX CONCERNÉS" color={C.orange.dot} />
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><TableHeader cols={[{ label: 'Localisation' }, { label: 'Matériau' }, { label: 'Liste' }, { label: 'Action' }]} /></thead>
-            <tbody>
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              {r.zones_detectees.map((z: any, i: number) => (
-                <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}`, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
-                  <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{z.localisation}</td>
-                  <td style={{ padding: '11px 20px', fontSize: 13, color: C.textSec }}>{z.materiau || '—'}</td>
-                  <td style={{ padding: '11px 20px', fontSize: 13, color: C.textSec }}>{z.liste || '—'}</td>
-                  <td style={{ padding: '11px 20px', fontSize: 13, color: z.action === 'retrait' ? '#dc2626' : z.action === 'surveillance' ? '#d97706' : C.textSec }}>{z.action || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+      </div>
+
+      {/* ── KPIs ── */}
+      {!nonDetecte ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 14 }}>
+          <Kpi label="Matériaux amiantés" value={String(nbDetectes)} color={nbDetectes > 0 ? C.red.dot : C.green.dot} />
+          <Kpi label="Action corrective (AC1)" value={String(nbAC1)} color={nbAC1 > 0 ? '#d97706' : C.green.dot} />
+          <Kpi label="Surveillance périodique" value={String(nbEP)} color={C.blue.dot} />
+          <Kpi label="Zones sans amiante" value={String(nbSaines)} color={C.green.dot} />
+        </div>
+      ) : (
+        <div style={{ background: C.green.bg, border: `0.5px solid ${C.green.border}`, borderRadius: 12, padding: '16px 20px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: C.green.dot, flexShrink: 0 }} />
+          <div style={{ fontSize: 14, fontWeight: 600, color: C.green.text }}>Aucun matériau contenant de l'amiante n'a été détecté dans les parties communes visitées.</div>
+        </div>
       )}
+
+      {/* ── ZONES NON ACCESSIBLES ── */}
+      {r.zones_non_accessibles?.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {r.zones_non_accessibles.map((z: any, i: number) => {
+            const isReglementaire = z.niveau === 'reglementaire';
+            const col = isReglementaire ? C.orange : C.blue;
+            return (
+              <div key={i} style={{ background: col.bg, border: `0.5px solid ${col.border}`, borderRadius: 12, padding: '13px 18px', marginBottom: 8, fontSize: 13, color: col.text, lineHeight: 1.6 }}>
+                <div style={{ fontWeight: 600, marginBottom: 3 }}>{isReglementaire ? '⚠ Zone non inspectée — obligation réglementaire non remplie' : 'ℹ Zone non visitée lors de la visite'}</div>
+                <div>{z.detail}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── RÉSUMÉ ── */}
+      {r.resume && (
+        <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 14, padding: '18px 20px', marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: C.textSec, letterSpacing: '0.1em', marginBottom: 10, textTransform: 'uppercase' as const }}>Résumé</div>
+          <div style={{ fontSize: 15, color: C.text, lineHeight: 1.8 }}>{r.resume}</div>
+        </div>
+      )}
+
+      {/* ── DIAGNOSTIQUEUR ── */}
+      {(r.rapports?.length > 0 || r.cabinet || r.operateur || r.date) && (
+        <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 14, padding: '18px 20px', marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: C.textSec, letterSpacing: '0.1em', marginBottom: 14, textTransform: 'uppercase' as const }}>Informations du diagnostiqueur</div>
+          {r.rapports?.length > 1 ? (
+            // Plusieurs rapports — grille 2 colonnes
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {r.rapports.map((rap: any, i: number) => (
+                <div key={i} style={{ background: C.bgSecondary, border: `0.5px solid ${C.border}`, borderRadius: 12, padding: '14px 16px' }}>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8 }}>{i === 0 ? 'Rapport initial' : 'Rapport complémentaire'} · {rap.annee || ''}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+                    {rap.cabinet && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏢</span><span style={{ fontWeight: 600 }}>{rap.cabinet}</span></div>}
+                    {rap.operateur && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👤</span><span>{rap.operateur}</span></div>}
+                    {rap.date && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📅</span><span>{rap.date}</span></div>}
+                    {rap.perimetre && <div style={{ display: 'flex', gap: 8, fontSize: 12, color: C.textSec }}><span>📍</span><span>{rap.perimetre}</span></div>}
+                    {rap.certification && <div style={{ display: 'flex', gap: 8, fontSize: 12, color: C.textSec }}><span>🏅</span><span>{rap.certification}</span></div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            // Un seul rapport — grille 2x2
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {(r.cabinet || r.rapports?.[0]?.cabinet) && (
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: 16 }}>🏢</span>
+                  <div><div style={{ fontSize: 11, color: C.textSec, marginBottom: 2 }}>Entreprise</div><div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.cabinet || r.rapports?.[0]?.cabinet}</div></div>
+                </div>
+              )}
+              {(r.operateur || r.rapports?.[0]?.operateur) && (
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: 16 }}>👤</span>
+                  <div><div style={{ fontSize: 11, color: C.textSec, marginBottom: 2 }}>Opérateur</div><div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.operateur || r.rapports?.[0]?.operateur}</div></div>
+                </div>
+              )}
+              {(r.date || r.rapports?.[0]?.date) && (
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: 16 }}>📅</span>
+                  <div><div style={{ fontSize: 11, color: C.textSec, marginBottom: 2 }}>Date de réalisation</div><div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.date || r.rapports?.[0]?.date}</div></div>
+                </div>
+              )}
+              {(r.certification || r.rapports?.[0]?.certification) && (
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: 16 }}>🏅</span>
+                  <div><div style={{ fontSize: 11, color: C.textSec, marginBottom: 2 }}>Certification</div><div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.certification || r.rapports?.[0]?.certification}</div></div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── LOCALISATIONS DU RAPPORT ── */}
+      {r.zones_par_localisation?.length > 0 && (
+        <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
+          <div style={{ padding: '14px 20px', borderBottom: `0.5px solid ${C.border}`, background: C.bgSecondary, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 9, height: 9, borderRadius: '50%', background: nonDetecte ? C.green.dot : C.red.dot, flexShrink: 0 }} />
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.text, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>Localisations du rapport</div>
+            <div style={{ fontSize: 12, color: C.textSec }}>— {r.zones_par_localisation.length} zone{r.zones_par_localisation.length > 1 ? 's' : ''}</div>
+          </div>
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {r.zones_par_localisation.map((groupe: any, gi: number) => {
+            const key = `loc-${gi}`;
+            const open = isOpen(key);
+            const hasAC1 = groupe.zones?.some((z: any) => z.action === 'AC1');
+            return (
+              <div key={gi} style={{ borderBottom: gi < r.zones_par_localisation.length - 1 ? `0.5px solid ${C.border}` : 'none' }}>
+                {/* En-tête de groupe */}
+                <div
+                  onClick={() => toggleSection(key)}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', cursor: 'pointer', background: C.bg }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 15 }}>{groupe.emoji || '📍'}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{groupe.localisation}</span>
+                    <span style={{ fontSize: 12, color: C.textSec }}>{groupe.zones?.length || 0} matériau{(groupe.zones?.length || 0) > 1 ? 'x' : ''}</span>
+                    {groupe.rapport_annee && <span style={{ fontSize: 11, color: C.textSec }}>· {groupe.cabinet || ''} {groupe.rapport_annee}</span>}
+                    {hasAC1 && <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 100, background: C.red.bg, color: C.red.text, border: `0.5px solid ${C.red.border}` }}>AC1</span>}
+                  </div>
+                  <span style={{ fontSize: 11, color: C.textSec, transform: open ? 'none' : 'rotate(-90deg)', display: 'inline-block', transition: 'transform 0.2s' }}>▾</span>
+                </div>
+                {/* Lignes de zones */}
+                {open && groupe.zones?.length > 0 && (
+                  <div style={{ background: C.bgSecondary, borderTop: `0.5px solid ${C.border}` }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1.5fr', gap: 8, padding: '8px 20px', fontSize: 10, fontWeight: 700, color: C.textSec, letterSpacing: '0.07em', textTransform: 'uppercase' as const, borderBottom: `0.5px solid ${C.border}` }}>
+                      <span>Localisation précise</span><span>Matériau</span><span>Action</span>
+                    </div>
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {groupe.zones.map((z: any, zi: number) => {
+                      const ac = actionColor(z.action);
+                      const isAC1 = z.action === 'AC1';
+                      return (
+                        <div key={zi} style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1.5fr', gap: 8, padding: '10px 20px', borderBottom: zi < groupe.zones.length - 1 ? `0.5px solid ${C.border}` : 'none', alignItems: 'center', background: isAC1 ? C.red.bg : zi % 2 === 0 ? C.bg : C.bgSecondary }}>
+                          <span style={{ fontSize: 13, color: C.text }}>{z.localisation_detail || z.identifiant || '—'}</span>
+                          <span style={{ fontSize: 13, color: C.textSec }}>{z.materiau || '—'}</span>
+                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: ac.bg, color: ac.text, border: `0.5px solid ${ac.border}`, display: 'inline-block', whiteSpace: 'nowrap' as const }}>{actionLabel(z.action)}</span>
+                        </div>
+                      );
+                    })}
+                    {groupe.plus && (
+                      <div style={{ padding: '9px 20px', fontSize: 12, color: C.textSec, fontStyle: 'italic' as const }}>{groupe.plus}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── ZONES NON CONCERNÉES ── */}
       {r.zones_saines?.length > 0 && (
-        <div style={{ background: C.green.bg, border: `0.5px solid ${C.green.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
-          <CardHeader label="ZONES NON CONCERNÉES" color={C.green.dot} />
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '16px 20px' }}>
+        <div style={{ background: C.green.bg, border: `0.5px solid ${C.green.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
+          <div style={{ padding: '12px 20px', borderBottom: `0.5px solid ${C.green.border}`, background: C.green.bg, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.green.dot }} />
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.green.text, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>Zones non concernées</div>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, padding: '14px 20px' }}>
             {r.zones_saines.map((z: string, i: number) => (
-              <span key={i} style={{ fontSize: 13, padding: '5px 14px', borderRadius: 100, background: C.bg, border: `0.5px solid ${C.green.border}`, color: '#166534' }}>{z}</span>
+              <span key={i} style={{ fontSize: 12, fontWeight: 600, padding: '4px 12px', borderRadius: 100, background: C.bg, border: `0.5px solid ${C.green.border}`, color: C.green.text }}>{z}</span>
             ))}
           </div>
         </div>
       )}
+
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
