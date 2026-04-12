@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import DiagnosticCard, { DiagDetailParserExport } from './DiagnosticCard';
+import { DiagDetailParserExport } from './DiagnosticCard';
 
 // Couleurs hardcodées (pas de CSS vars — compatibilité RapportPage)
 const C = {
