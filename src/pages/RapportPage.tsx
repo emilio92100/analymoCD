@@ -1480,7 +1480,7 @@ export default function RapportPage() {
         const result = data.result as Record<string, unknown>;
         // Analyse simple document → DocumentRenderer
         if (data.type === 'document' && result.document_type) {
-          setDocumentResult(result);
+          setDocumentResult({ ...result, _profil: data.profil || 'rp' });
           setLoading(false); return;
         }
         setRapport(buildRapport(result, {
