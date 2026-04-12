@@ -818,12 +818,102 @@ function RendererCarnetEntretien({ r }: { r: any }) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererPreEtatDate({ r }: { r: any }) {
-  const sub = [r.date ? `Établi le ${r.date}` : null, r.lot ? `Lot ${r.lot}` : null, r.syndic ? `Syndic : ${r.syndic}` : null].filter(Boolean).join(' · ');
+  const sub = [r.date ? `Établi le ${r.date}` : null, r.syndic ? `Syndic : ${r.syndic}` : null].filter(Boolean).join(' · ');
   const totalCharge = r.travaux_charge_vendeur?.reduce((s: number, t: { montant?: number }) => s + (Number(t.montant) || 0), 0) || 0;
+  const lotIcon = (type: string) => type === 'cave' ? '🔒' : type === 'parking' || type === 'garage' ? '🚗' : type === 'grenier' ? '📦' : '🏠';
+  const totalAnnuel = r.charges_futures?.montant_annuel || ((Number(r.charges_futures?.montant_trimestriel || 0) + Number(r.charges_futures?.fonds_travaux_trimestriel || 0)) * 4);
+
   return (
     <div>
       <Header type="Pré-État Daté" titre={r.titre} sub={sub} />
+
+      {/* Lots en badges dans le header zone */}
+      {r.lots_vente?.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, marginBottom: 16 }}>
+          {r.lots_vente.map((lot: any, i: number) => (
+            <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, padding: '10px 16px' }}>
+              <span style={{ fontSize: 18 }}>{lotIcon(lot.type)}</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{lot.type.charAt(0).toUpperCase() + lot.type.slice(1)}{lot.numero ? ` n°${lot.numero}` : ''}</div>
+                {(lot.batiment || lot.etage) && <div style={{ fontSize: 12, color: C.textSec }}>{[lot.batiment ? `Bât. ${lot.batiment}` : null, lot.etage].filter(Boolean).join(' · ')}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <Resume text={r.resume} />
+
+      {/* 3 encarts */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+        {/* Syndic */}
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏢 Syndic</div>
+          {r.syndic && <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>{r.syndic}</div>}
+          {r.syndic_adresse && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 4 }}>📍 {r.syndic_adresse}</div>}
+          {r.date && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 4 }}>📅 Document établi le {r.date}</div>}
+          {r.nb_lots_copro && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 4 }}>🏘 Copropriété de {r.nb_lots_copro} lots</div>}
+          {r.immatriculation_registre && <div style={{ fontSize: 11, color: C.textSec, marginTop: 6, padding: '4px 8px', background: C.bgSecondary, borderRadius: 6 }}>Immat. {r.immatriculation_registre}</div>}
+        </div>
+
+        {/* Situation vendeur */}
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>👤 Situation vendeur</div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+              <span>{Number(r.impayes_vendeur) === 0 ? '✅' : '🔴'}</span>
+              <span style={{ color: C.text }}>{Number(r.impayes_vendeur) === 0 ? 'Aucun impayé de charges' : `${Number(r.impayes_vendeur).toLocaleString('fr-FR')} € impayés`}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+              <span>{r.procedures_contre_vendeur?.length === 0 || !r.procedures_contre_vendeur ? '✅' : '⚠️'}</span>
+              <span style={{ color: C.text }}>{r.procedures_contre_vendeur?.length === 0 || !r.procedures_contre_vendeur ? 'Aucune procédure judiciaire' : 'Procédures en cours'}</span>
+            </div>
+            {r.honoraires_syndic && (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13 }}>
+                <span>📄</span>
+                <span style={{ color: C.text }}>Frais d'établissement du document : {Number(r.honoraires_syndic).toLocaleString('fr-FR')} € à sa charge</span>
+              </div>
+            )}
+            {r.fonds_travaux_alur && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                <span>💚</span>
+                <span style={{ color: C.text }}>Fonds ALUR à restituer : {Number(r.fonds_travaux_alur).toLocaleString('fr-FR')} €</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Situation copro */}
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏢 Copropriété</div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+            {r.impayes_copro_global != null && (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13 }}>
+                <span>{Number(r.impayes_copro_global) > 0 ? '⚠️' : '✅'}</span>
+                <span style={{ color: C.text }}>Impayés globaux : {Number(r.impayes_copro_global).toLocaleString('fr-FR')} €</span>
+              </div>
+            )}
+            {r.dette_fournisseurs != null && (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13 }}>
+                <span>{Number(r.dette_fournisseurs) > 0 ? '⚠️' : '✅'}</span>
+                <span style={{ color: C.text }}>Dette fournisseurs : {Number(r.dette_fournisseurs).toLocaleString('fr-FR')} €</span>
+              </div>
+            )}
+            {r.fonds_travaux_copro_global != null && (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13 }}>
+                <span>🔧</span>
+                <span style={{ color: C.text }}>Fonds travaux copro : {Number(r.fonds_travaux_copro_global).toLocaleString('fr-FR')} €</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+              <span>{r.procedures_copro === 'neant' || !r.procedures_copro ? '✅' : '⚠️'}</span>
+              <span style={{ color: C.text }}>{r.procedures_copro === 'neant' || !r.procedures_copro ? 'Aucune procédure copro' : 'Procédures copro en cours'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* KPIs acheteur */}
       <KpiGrid>
         <div style={{ background: Number(r.impayes_vendeur) === 0 ? C.green.bg : C.red.bg, border: `0.5px solid ${Number(r.impayes_vendeur) === 0 ? C.green.border : C.red.border}`, borderRadius: 12, padding: '18px 20px' }}>
           <div style={{ fontSize: 12, color: C.textSec, marginBottom: 8 }}>Impayés vendeur</div>
@@ -831,15 +921,78 @@ function RendererPreEtatDate({ r }: { r: any }) {
           <div style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>{Number(r.impayes_vendeur) === 0 ? 'Vendeur à jour' : 'Attention'}</div>
         </div>
         {r.fonds_travaux_alur && <Kpi label="Fonds travaux ALUR récupérable" value={`${Number(r.fonds_travaux_alur).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="Versé à l'acheteur à la signature" />}
-        {totalCharge > 0 && <Kpi label="Travaux charge vendeur" value={`${totalCharge.toLocaleString('fr-FR')} €`} color="#f97316" sub="Votés avant compromis" />}
+        {r.fonds_roulement_acheteur && <Kpi label="Fonds de roulement à reconstituer" value={`${Number(r.fonds_roulement_acheteur).toLocaleString('fr-FR')} €`} color="#d97706" sub="À verser à la signature" />}
       </KpiGrid>
+
+      {/* Charges futures */}
+      {(r.charges_futures?.montant_trimestriel || r.charges_futures?.fonds_travaux_trimestriel) && (
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="💸 CHARGES FUTURES ACHETEUR" color={C.blue.dot} />
+          <div style={{ padding: '10px 20px', background: C.blue.bg, borderBottom: `0.5px solid ${C.blue.border}`, fontSize: 13, color: C.blue.text }}>
+            ℹ Ces montants seront à régler dès votre entrée dans la copropriété, chaque trimestre.
+          </div>
+          {r.charges_futures?.montant_trimestriel && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 20px', borderBottom: `0.5px solid ${C.border}` }}>
+              <span style={{ fontSize: 14, color: C.text }}>Charges courantes (budget prévisionnel)</span>
+              <span style={{ fontSize: 15, fontWeight: 600, color: C.blue.dot }}>{Number(r.charges_futures.montant_trimestriel).toLocaleString('fr-FR')} € / trimestre</span>
+            </div>
+          )}
+          {r.charges_futures?.fonds_travaux_trimestriel && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 20px', borderBottom: `0.5px solid ${C.border}` }}>
+              <span style={{ fontSize: 14, color: C.text }}>Cotisation fonds de travaux ALUR</span>
+              <span style={{ fontSize: 15, fontWeight: 600, color: C.blue.dot }}>{Number(r.charges_futures.fonds_travaux_trimestriel).toLocaleString('fr-FR')} € / trimestre</span>
+            </div>
+          )}
+          {totalAnnuel > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 20px', background: C.bgSecondary }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>Total annuel estimé</span>
+              <span style={{ fontSize: 17, fontWeight: 600, color: C.blue.dot }}>{Number(totalAnnuel).toLocaleString('fr-FR')} € / an</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Santé financière copro */}
+      {(r.impayes_copro_global != null || r.dette_fournisseurs != null) && (
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="🏢 SANTÉ FINANCIÈRE DE LA COPROPRIÉTÉ" color={C.orange.dot} />
+          {r.impayes_copro_global != null && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '13px 20px', borderBottom: `0.5px solid ${C.border}` }}>
+              <div>
+                <div style={{ fontSize: 14, color: C.text }}>Impayés globaux copropriété</div>
+                <div style={{ fontSize: 12, color: C.textSec, marginTop: 3 }}>Charges en attente de régularisation à la date d'édition</div>
+              </div>
+              <span style={{ fontSize: 15, fontWeight: 600, color: '#d97706', whiteSpace: 'nowrap' as const, marginLeft: 16 }}>{Number(r.impayes_copro_global).toLocaleString('fr-FR')} €</span>
+            </div>
+          )}
+          {r.dette_fournisseurs != null && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '13px 20px', borderBottom: `0.5px solid ${C.border}` }}>
+              <div>
+                <div style={{ fontSize: 14, color: C.text }}>Dette fournisseurs syndicat</div>
+                <div style={{ fontSize: 12, color: C.textSec, marginTop: 3 }}>Factures non réglées à la date du document</div>
+              </div>
+              <span style={{ fontSize: 15, fontWeight: 600, color: '#d97706', whiteSpace: 'nowrap' as const, marginLeft: 16 }}>{Number(r.dette_fournisseurs).toLocaleString('fr-FR')} €</span>
+            </div>
+          )}
+          {r.fonds_travaux_copro_global != null && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 20px', borderBottom: `0.5px solid ${C.border}` }}>
+              <span style={{ fontSize: 14, color: C.text }}>Fonds de travaux total copropriété</span>
+              <span style={{ fontSize: 15, fontWeight: 600, color: C.text, whiteSpace: 'nowrap' as const, marginLeft: 16 }}>{Number(r.fonds_travaux_copro_global).toLocaleString('fr-FR')} €</span>
+            </div>
+          )}
+          <div style={{ padding: '13px 20px', background: '#fff7ed', fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>
+            ⚠ Les impayés globaux sont normaux dans toute copropriété — chaque copropriétaire règle ses charges à des échéances différentes. Ils deviennent préoccupants s'ils dépassent significativement un trimestre de budget collectif. C'est seulement un montant important et répété qui mérite attention.
+          </div>
+        </div>
+      )}
+
+      {/* Travaux charge vendeur */}
       {r.travaux_charge_vendeur?.length > 0 && (
         <div style={{ background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
           <CardHeader label="TRAVAUX VOTÉS À LA CHARGE DU VENDEUR" color={C.orange.dot} />
           <div style={{ padding: '10px 20px', background: C.blue.bg, borderBottom: `0.5px solid ${C.blue.border}`, fontSize: 13, color: C.blue.text }}>
-            ℹ Ces travaux ont été votés avant le compromis — ils restent à la charge du vendeur.
+            ℹ Ces travaux ont été votés avant le compromis — ils restent à la charge du vendeur, sans impact pour l'acheteur.
           </div>
-          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {r.travaux_charge_vendeur.map((t: any, i: number) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: i < r.travaux_charge_vendeur.length - 1 ? `0.5px solid ${C.orange.border}` : 'none', background: i % 2 === 0 ? C.orange.bg : '#fffbf5' }}>
               <div style={{ fontSize: 14, color: C.text }}>{t.label}</div>
@@ -848,14 +1001,45 @@ function RendererPreEtatDate({ r }: { r: any }) {
           ))}
         </div>
       )}
-      {r.procedures_contre_vendeur?.length > 0 && (
-        <div style={{ background: C.red.bg, border: `0.5px solid ${C.red.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
-          <CardHeader label="PROCÉDURES CONTRE LE VENDEUR" color={C.red.dot} />
-          {r.procedures_contre_vendeur.map((p: string, i: number) => (
-            <div key={i} style={{ padding: '12px 20px', fontSize: 14, color: C.text }}>{p}</div>
-          ))}
+
+      {/* Historique charges */}
+      {r.historique_charges?.length > 0 && (
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="📊 HISTORIQUE DES CHARGES DU LOT" color={C.gray.dot} />
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: C.bgSecondary }}>
+                {['Exercice', 'Budget appelé', 'Charges réelles', 'Écart'].map((h, i) => (
+                  <th key={i} style={{ padding: '10px 20px', textAlign: i === 0 ? 'left' : 'right' as const, fontSize: 12, fontWeight: 600, color: C.textSec, borderBottom: `0.5px solid ${C.border}` }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {r.historique_charges.map((h: any, i: number) => {
+                const ecart = h.charges_reelles && h.budget_appele ? Number(h.charges_reelles) - Number(h.budget_appele) : null;
+                return (
+                  <tr key={i} style={{ borderBottom: i < r.historique_charges.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+                    <td style={{ padding: '12px 20px', fontSize: 14, color: C.text }}>{h.exercice}{h.annee ? ` (${h.annee})` : ''}</td>
+                    <td style={{ padding: '12px 20px', fontSize: 14, color: C.textSec, textAlign: 'right' as const }}>{h.budget_appele ? `${Number(h.budget_appele).toLocaleString('fr-FR')} €` : '—'}</td>
+                    <td style={{ padding: '12px 20px', fontSize: 14, fontWeight: 600, color: C.text, textAlign: 'right' as const }}>{h.charges_reelles ? `${Number(h.charges_reelles).toLocaleString('fr-FR')} €` : '—'}</td>
+                    <td style={{ padding: '12px 20px', textAlign: 'right' as const }}>
+                      {ecart !== null && (
+                        <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: ecart > 0 ? C.red.bg : C.green.bg, color: ecart > 0 ? C.red.text : C.green.text }}>
+                          {ecart > 0 ? '+' : ''}{ecart.toLocaleString('fr-FR')} €
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <div style={{ padding: '12px 20px', background: C.bgSecondary, borderTop: `0.5px solid ${C.border}`, fontSize: 12, color: C.textSec, lineHeight: 1.6 }}>
+            💡 Le budget appelé est ce que la copropriété a prévu de dépenser sur l'exercice. Les charges réelles sont ce qui a été effectivement dépensé après clôture de l'exercice. Un petit écart est tout à fait normal — personne ne peut prévoir les dépenses à l'euro près. C'est seulement un écart important et répété sur plusieurs exercices qui mérite attention.
+          </div>
         </div>
       )}
+
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
@@ -865,31 +1049,112 @@ function RendererPreEtatDate({ r }: { r: any }) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererEtatDate({ r }: { r: any }) {
-  const sub = [r.date ? `Établi le ${r.date}` : null, r.lot ? `Lot ${r.lot}` : null, r.syndic].filter(Boolean).join(' · ');
+  const sub = [r.date ? `Établi le ${r.date}` : null, r.syndic ? `Syndic : ${r.syndic}` : null].filter(Boolean).join(' · ');
   const soldeColor = r.solde_sens === 'acheteur' ? '#16a34a' : '#dc2626';
+  const soldeLabel = r.solde_sens === 'acheteur' ? "En faveur de l'acheteur" : 'En faveur du vendeur';
+  const lotIcon = (type: string) => type === 'cave' ? '🔒' : type === 'parking' || type === 'garage' ? '🚗' : '🏠';
+  const totalAnnuel = r.charges_futures?.montant_annuel || ((Number(r.charges_futures?.montant_trimestriel || 0) + Number(r.charges_futures?.fonds_travaux_trimestriel || 0)) * 4);
+
   return (
     <div>
       <Header type="État Daté" titre={r.titre} sub={sub} />
+
+      {/* Lots */}
+      {r.lots_vente?.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, marginBottom: 16 }}>
+          {r.lots_vente.map((lot: any, i: number) => (
+            <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, padding: '10px 16px' }}>
+              <span style={{ fontSize: 18 }}>{lotIcon(lot.type)}</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{lot.type.charAt(0).toUpperCase() + lot.type.slice(1)}{lot.numero ? ` n°${lot.numero}` : ''}</div>
+                {(lot.batiment || lot.etage) && <div style={{ fontSize: 12, color: C.textSec }}>{[lot.batiment ? `Bât. ${lot.batiment}` : null, lot.etage].filter(Boolean).join(' · ')}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <Resume text={r.resume} />
+
+      {/* 3 encarts */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏢 Syndic</div>
+          {r.syndic && <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>{r.syndic}</div>}
+          {r.syndic_adresse && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 4 }}>📍 {r.syndic_adresse}</div>}
+          {r.date && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 4 }}>📅 Document établi le {r.date}</div>}
+          {r.nb_lots_copro && <div style={{ fontSize: 12, color: C.textSec }}>🏘 {r.nb_lots_copro} lots dans la copropriété</div>}
+          {r.immatriculation_registre && <div style={{ fontSize: 11, color: C.textSec, marginTop: 6, padding: '4px 8px', background: C.bgSecondary, borderRadius: 6 }}>Immat. {r.immatriculation_registre}</div>}
+        </div>
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>👤 Situation vendeur</div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+              <span>{Number(r.impayes_vendeur) === 0 ? '✅' : '🔴'}</span>
+              <span style={{ color: C.text }}>{Number(r.impayes_vendeur) === 0 ? 'Aucun impayé' : `${Number(r.impayes_vendeur).toLocaleString('fr-FR')} € impayés`}</span>
+            </div>
+            {r.honoraires_syndic && (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13 }}>
+                <span>📄</span>
+                <span style={{ color: C.text }}>Frais d'établissement : {Number(r.honoraires_syndic).toLocaleString('fr-FR')} € à sa charge</span>
+              </div>
+            )}
+            {r.fonds_travaux_alur && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                <span>💚</span>
+                <span style={{ color: C.text }}>Fonds ALUR transféré : {Number(r.fonds_travaux_alur).toLocaleString('fr-FR')} €</span>
+              </div>
+            )}
+            {r.solde_net !== undefined && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                <span>{r.solde_sens === 'acheteur' ? '✅' : '⚠️'}</span>
+                <span style={{ color: C.text }}>Solde net : {r.solde_sens === 'acheteur' ? '+' : '-'}{Number(Math.abs(r.solde_net)).toLocaleString('fr-FR')} € ({soldeLabel})</span>
+              </div>
+            )}
+          </div>
+        </div>
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏢 Copropriété</div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+            {r.impayes_copro_global != null && <div style={{ display: 'flex', gap: 8, fontSize: 13 }}><span>{Number(r.impayes_copro_global) > 0 ? '⚠️' : '✅'}</span><span style={{ color: C.text }}>Impayés : {Number(r.impayes_copro_global).toLocaleString('fr-FR')} €</span></div>}
+            {r.dette_fournisseurs != null && <div style={{ display: 'flex', gap: 8, fontSize: 13 }}><span>{Number(r.dette_fournisseurs) > 0 ? '⚠️' : '✅'}</span><span style={{ color: C.text }}>Dette fournisseurs : {Number(r.dette_fournisseurs).toLocaleString('fr-FR')} €</span></div>}
+            <div style={{ display: 'flex', gap: 8, fontSize: 13 }}><span>{r.procedures_copro === 'neant' || !r.procedures_copro ? '✅' : '⚠️'}</span><span style={{ color: C.text }}>{r.procedures_copro === 'neant' || !r.procedures_copro ? 'Aucune procédure copro' : 'Procédures en cours'}</span></div>
+          </div>
+        </div>
+      </div>
+
+      {/* KPIs */}
       <KpiGrid>
-        {r.solde_net !== undefined && <Kpi label="Solde net" value={`${r.solde_sens === 'acheteur' ? '+' : '-'} ${Number(Math.abs(r.solde_net)).toLocaleString('fr-FR')} €`} color={soldeColor} sub={r.solde_sens === 'acheteur' ? "En faveur de l'acheteur" : 'En faveur du vendeur'} />}
+        {r.solde_net !== undefined && <Kpi label="Solde net définitif" value={`${r.solde_sens === 'acheteur' ? '+' : '-'} ${Number(Math.abs(r.solde_net)).toLocaleString('fr-FR')} €`} color={soldeColor} sub={soldeLabel} />}
         {r.fonds_travaux_alur && <Kpi label="Fonds travaux ALUR" value={`${Number(r.fonds_travaux_alur).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="Transféré à l'acheteur" />}
-        {r.travaux_consignes?.length > 0 && <Kpi label="Travaux consignés vendeur" value={`${r.travaux_consignes.reduce((s: number, t: { montant?: number }) => s + (Number(t.montant) || 0), 0).toLocaleString('fr-FR')} €`} color="#f97316" />}
+        {r.fonds_roulement && <Kpi label="Fonds de roulement" value={`${Number(r.fonds_roulement).toLocaleString('fr-FR')} €`} color="#d97706" sub="À reconstituer" />}
       </KpiGrid>
+
+      {/* Charges futures */}
+      {(r.charges_futures?.montant_trimestriel || r.charges_futures?.fonds_travaux_trimestriel) && (
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="💸 CHARGES FUTURES ACHETEUR" color={C.blue.dot} />
+          <div style={{ padding: '10px 20px', background: C.blue.bg, borderBottom: `0.5px solid ${C.blue.border}`, fontSize: 13, color: C.blue.text }}>ℹ Ces montants seront à régler dès votre entrée dans la copropriété, chaque trimestre.</div>
+          {r.charges_futures?.montant_trimestriel && <div style={{ display: 'flex', justifyContent: 'space-between', padding: '13px 20px', borderBottom: `0.5px solid ${C.border}` }}><span style={{ fontSize: 14, color: C.text }}>Charges courantes</span><span style={{ fontSize: 15, fontWeight: 600, color: C.blue.dot }}>{Number(r.charges_futures.montant_trimestriel).toLocaleString('fr-FR')} € / trimestre</span></div>}
+          {r.charges_futures?.fonds_travaux_trimestriel && <div style={{ display: 'flex', justifyContent: 'space-between', padding: '13px 20px', borderBottom: `0.5px solid ${C.border}` }}><span style={{ fontSize: 14, color: C.text }}>Fonds de travaux ALUR</span><span style={{ fontSize: 15, fontWeight: 600, color: C.blue.dot }}>{Number(r.charges_futures.fonds_travaux_trimestriel).toLocaleString('fr-FR')} € / trimestre</span></div>}
+          {totalAnnuel > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', padding: '13px 20px', background: C.bgSecondary }}><span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>Total annuel estimé</span><span style={{ fontSize: 17, fontWeight: 600, color: C.blue.dot }}>{Number(totalAnnuel).toLocaleString('fr-FR')} € / an</span></div>}
+        </div>
+      )}
+
+      {/* Décompte définitif */}
       {r.decomposition?.length > 0 && (
         <Card>
           <CardHeader label="DÉCOMPTE DÉFINITIF" color="#2a7d9c" />
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead><TableHeader cols={[{ label: 'Poste' }, { label: 'Montant', align: 'center' }, { label: 'Sens', align: 'center' }]} /></thead>
             <tbody>
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {r.decomposition.map((d: any, i: number) => {
                 const dc = d.sens === 'acheteur_recoit' ? { bg: C.green.bg, text: '#166534', border: C.green.border, label: 'Acheteur reçoit' } : { bg: C.red.bg, text: '#991b1b', border: C.red.border, label: 'Vendeur doit' };
                 return (
                   <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}`, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
                     <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{d.poste}</td>
-                    <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: C.text, textAlign: 'center' }}>{d.montant ? `${Number(d.montant).toLocaleString('fr-FR')} €` : '—'}</td>
-                    <td style={{ padding: '11px 20px', textAlign: 'center' }}><span style={{ fontSize: 12, padding: '3px 10px', borderRadius: 100, background: dc.bg, color: dc.text, border: `0.5px solid ${dc.border}` }}>{dc.label}</span></td>
+                    <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: C.text, textAlign: 'center' as const }}>{d.montant ? `${Number(d.montant).toLocaleString('fr-FR')} €` : '—'}</td>
+                    <td style={{ padding: '11px 20px', textAlign: 'center' as const }}><span style={{ fontSize: 12, padding: '3px 10px', borderRadius: 100, background: dc.bg, color: dc.text, border: `0.5px solid ${dc.border}` }}>{dc.label}</span></td>
                   </tr>
                 );
               })}
@@ -897,6 +1162,54 @@ function RendererEtatDate({ r }: { r: any }) {
           </table>
         </Card>
       )}
+
+      {/* Travaux consignés */}
+      {r.travaux_consignes?.length > 0 && (
+        <div style={{ background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="TRAVAUX CONSIGNÉS VENDEUR" color={C.orange.dot} />
+          {r.travaux_consignes.map((t: any, i: number) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '13px 20px', borderBottom: i < r.travaux_consignes.length - 1 ? `0.5px solid ${C.orange.border}` : 'none' }}>
+              <span style={{ fontSize: 14, color: C.text }}>{t.label}</span>
+              {t.montant && <span style={{ fontSize: 15, fontWeight: 600, color: '#f97316' }}>{Number(t.montant).toLocaleString('fr-FR')} €</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Historique charges */}
+      {r.historique_charges?.length > 0 && (
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="📊 HISTORIQUE DES CHARGES DU LOT" color={C.gray.dot} />
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: C.bgSecondary }}>
+                {['Exercice', 'Budget appelé', 'Charges réelles', 'Écart'].map((h, i) => (
+                  <th key={i} style={{ padding: '10px 20px', textAlign: i === 0 ? 'left' : 'right' as const, fontSize: 12, fontWeight: 600, color: C.textSec, borderBottom: `0.5px solid ${C.border}` }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {r.historique_charges.map((h: any, i: number) => {
+                const ecart = h.charges_reelles && h.budget_appele ? Number(h.charges_reelles) - Number(h.budget_appele) : null;
+                return (
+                  <tr key={i} style={{ borderBottom: i < r.historique_charges.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+                    <td style={{ padding: '12px 20px', fontSize: 14, color: C.text }}>{h.exercice}{h.annee ? ` (${h.annee})` : ''}</td>
+                    <td style={{ padding: '12px 20px', fontSize: 14, color: C.textSec, textAlign: 'right' as const }}>{h.budget_appele ? `${Number(h.budget_appele).toLocaleString('fr-FR')} €` : '—'}</td>
+                    <td style={{ padding: '12px 20px', fontSize: 14, fontWeight: 600, color: C.text, textAlign: 'right' as const }}>{h.charges_reelles ? `${Number(h.charges_reelles).toLocaleString('fr-FR')} €` : '—'}</td>
+                    <td style={{ padding: '12px 20px', textAlign: 'right' as const }}>
+                      {ecart !== null && <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: ecart > 0 ? C.red.bg : C.green.bg, color: ecart > 0 ? C.red.text : C.green.text }}>{ecart > 0 ? '+' : ''}{ecart.toLocaleString('fr-FR')} €</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <div style={{ padding: '12px 20px', background: C.bgSecondary, borderTop: `0.5px solid ${C.border}`, fontSize: 12, color: C.textSec, lineHeight: 1.6 }}>
+            💡 Le budget appelé est ce que la copropriété a prévu de dépenser sur l'exercice. Les charges réelles sont ce qui a été effectivement dépensé après clôture de l'exercice. Un petit écart est tout à fait normal — personne ne peut prévoir les dépenses à l'euro près. C'est seulement un écart important et répété sur plusieurs exercices qui mérite attention.
+          </div>
+        </div>
+      )}
+
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
