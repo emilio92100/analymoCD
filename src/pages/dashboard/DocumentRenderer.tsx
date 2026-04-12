@@ -65,10 +65,15 @@ function KpiGrid({ children }: { children: React.ReactNode }) {
   return <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>{children}</div>;
 }
 
-function Kpi({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
+function Kpi({ label, value, sub, color, tooltip }: { label: string; value: string; sub?: string; color?: string; tooltip?: string }) {
   return (
     <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, padding: '18px 20px' }}>
-      <div style={{ fontSize: 12, color: C.textSec, marginBottom: 8 }}>{label}</div>
+      <div style={{ fontSize: 12, color: C.textSec, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+        {label}
+        {tooltip && (
+          <span title={tooltip} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', background: '#e2e8f0', fontSize: 9, fontWeight: 700, color: '#64748b', cursor: 'help', flexShrink: 0 }}>?</span>
+        )}
+      </div>
       <div style={{ fontSize: 22, fontWeight: 600, color: color || C.text, lineHeight: 1.2 }}>{value}</div>
       {sub && <div style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>{sub}</div>}
     </div>
@@ -307,16 +312,16 @@ function RendererDDT({ r }: { r: any }) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererPVAG({ r }: { r: any }) {
-  const sub = [r.date_ag, r.syndic ? `Syndic : ${r.syndic}` : null, r.quorum?.presents && r.quorum?.total ? `${r.quorum.presents}/${r.quorum.total} copropriétaires · ${r.quorum.tantiemes_pct}` : null].filter(Boolean).join(' · ');
+  const sub = [r.date_ag, r.quorum?.presents && r.quorum?.total ? `${r.quorum.presents}/${r.quorum.total} copropriétaires · ${r.quorum.tantiemes_pct}` : null].filter(Boolean).join(' · ');
   return (
     <div>
       <Header type="Procès-Verbal d'Assemblée Générale" titre={r.titre} sub={sub} />
       <Resume text={r.resume} />
 
       <KpiGrid>
-        {r.budget_vote?.montant && <Kpi label={`Budget voté ${r.budget_vote.annee || ''}`} value={`${Number(r.budget_vote.montant).toLocaleString('fr-FR')} €`} />}
-        {r.budget_vote?.fonds_travaux && <Kpi label="Fonds travaux" value={`${Number(r.budget_vote.fonds_travaux).toLocaleString('fr-FR')} €`} color="#7c3aed" sub="Loi ALUR" />}
-        {r.quorum?.tantiemes_pct && <Kpi label="Quorum" value={r.quorum.tantiemes_pct} color="#16a34a" sub={r.quorum.presents && r.quorum.total ? `${r.quorum.presents}/${r.quorum.total} copropriétaires` : undefined} />}
+        {r.budget_vote?.montant && <Kpi label={r.budget_vote.annee ? `Budget voté pour ${r.budget_vote.annee}` : 'Budget voté'} value={`${Number(r.budget_vote.montant).toLocaleString('fr-FR')} €`} sub={r.budget_precedent?.montant && r.budget_precedent?.annee ? `vs ${Number(r.budget_precedent.montant).toLocaleString('fr-FR')} € en ${r.budget_precedent.annee}` : undefined} />}
+        {r.syndic && <Kpi label="Syndic" value={r.syndic} />}
+        {r.quorum?.tantiemes_pct && <Kpi label="Quorum" value={r.quorum.tantiemes_pct} color="#16a34a" sub={r.quorum.presents && r.quorum.total ? `${r.quorum.presents}/${r.quorum.total} copropriétaires présents` : undefined} tooltip="Le quorum est le pourcentage de tantièmes représentés à l'assemblée générale. Il détermine si les décisions votées sont valides. Un quorum faible peut fragiliser certains votes." />}
       </KpiGrid>
 
       {r.travaux_votes?.length > 0 && (
@@ -338,21 +343,21 @@ function RendererPVAG({ r }: { r: any }) {
         </div>
       )}
 
-      {r.travaux_evoques?.length > 0 && (
+      {(() => { const travCopro = (r.travaux_evoques || []).filter((t: any) => !t.concerne_lot_prive); return travCopro.length > 0 && (
         <div style={{ background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
           <CardHeader label="TRAVAUX ÉVOQUÉS — NON ENCORE VOTÉS" color={C.orange.dot} />
           <div style={{ padding: '10px 20px', background: '#fff7ed', borderBottom: `0.5px solid ${C.orange.border}`, fontSize: 13, color: C.orange.text }}>
-            ⚠ Mentionnés sans vote. Si votés après votre achat, vous en supporterez la charge.
+            ⚠ Mentionnés sans vote. S'ils sont votés après votre achat, vous en supporterez la charge en tant que nouveau copropriétaire.
           </div>
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          {r.travaux_evoques.map((t: any, i: number) => (
-            <div key={i} style={{ padding: '14px 20px', borderBottom: i < r.travaux_evoques.length - 1 ? `0.5px solid ${C.orange.border}` : 'none', background: i % 2 === 0 ? C.orange.bg : '#fffbf5' }}>
+          {travCopro.map((t: any, i: number) => (
+            <div key={i} style={{ padding: '14px 20px', borderBottom: i < travCopro.length - 1 ? `0.5px solid ${C.orange.border}` : 'none', background: i % 2 === 0 ? C.orange.bg : '#fffbf5' }}>
               <div style={{ fontSize: 14, color: C.text }}>{t.label}</div>
               {t.precision && <div style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>{t.precision}</div>}
             </div>
           ))}
         </div>
-      )}
+      ); })()}
 
       {r.questions_diverses?.length > 0 && (
         <Card>
