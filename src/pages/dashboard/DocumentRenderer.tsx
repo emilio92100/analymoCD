@@ -914,8 +914,8 @@ function RendererCarnetEntretien({ r }: { r: any }) {
         </div>
       )}
 
-      {/* 2 ou 3 encarts selon les données disponibles */}
-      <div style={{ display: 'grid', gridTemplateColumns: r.nb_lots_principaux || r.gardien?.nom || r.fonds_travaux_alur_global ? '1fr 1fr 1fr' : '1fr 1fr', gap: 12, marginBottom: 16 }}>
+      {/* 3 encarts fixes */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
 
         {/* Encart Syndic */}
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
@@ -942,28 +942,43 @@ function RendererCarnetEntretien({ r }: { r: any }) {
             {nbLotsTotal && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏘</span><span>{nbLotsTotal} lots au total{r.nb_lots_secondaires ? ` (${r.nb_lots_principaux} principaux · ${r.nb_lots_secondaires} secondaires)` : ''}</span></div>}
             {r.nb_lots_detail?.logements && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏠</span><span>{r.nb_lots_detail.logements} logements{r.nb_lots_detail.caves ? ` · ${r.nb_lots_detail.caves} caves` : ''}{r.nb_lots_detail.parkings ? ` · ${r.nb_lots_detail.parkings} parkings` : ''}</span></div>}
             {r.immatriculation_registre && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📋</span><span>Immat. : {r.immatriculation_registre}</span></div>}
-            {r.chauffage_collectif && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🔥</span><span>Chauffage collectif {r.type_chauffage ? `au ${r.type_chauffage.toLowerCase()}` : ''}{r.eau_chaude_collective ? ' + eau chaude' : ''}</span></div>}
+
             {r.fibre_optique != null && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>💾</span><span>Fibre optique : {r.fibre_optique ? 'Oui' : 'Non'}</span></div>}
             {r.rcp_info?.date_origine && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📜</span><span>RCP de {formatDate(r.rcp_info.date_origine)}{r.rcp_info.modificatifs?.length > 0 ? ` · ${r.rcp_info.modificatifs.length} modificatif(s)` : ''}</span></div>}
             {r.assurance?.compagnie && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🛡</span><span>Assurance : {r.assurance.compagnie}{r.assurance.police ? ` — Police n°${r.assurance.police}` : ''}{r.assurance.echeance ? ` · Éch. ${formatDate(r.assurance.echeance)}` : ''}</span></div>}
           </div>
         </div>
 
-        {/* Encart Gardien + Finances — uniquement si données présentes */}
-        {(r.gardien?.nom || r.fonds_travaux_alur_global || r.conseil_syndical?.date_nomination) && (
-          <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>📅 Agenda & personnel</div>
-            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
-              {r.gardien?.nom && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👷</span><span>Gardien(ne) : {r.gardien.nom}</span></div>}
-              {r.gardien?.horaires && <div style={{ display: 'flex', gap: 8, fontSize: 12, color: C.textSec }}><span>🕐</span><span>{r.gardien.horaires}</span></div>}
-              {r.conseil_syndical?.date_nomination && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👥</span><span>Conseil syndical nommé le {formatDate(r.conseil_syndical.date_nomination)}</span></div>}
-              {r.conseil_syndical?.echeance_mandat && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>⏳</span><span>Mandat jusqu'au {formatDate(r.conseil_syndical.echeance_mandat)}</span></div>}
-              {r.fonds_travaux_alur_global != null && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🔧</span><span>Fonds travaux ALUR : {Number(r.fonds_travaux_alur_global).toLocaleString('fr-FR')} €</span></div>}
-              {r.avance_tresorerie != null && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>💰</span><span>Avance trésorerie : {r.avance_tresorerie === 0 ? 'Néant' : `${Number(r.avance_tresorerie).toLocaleString('fr-FR')} €`}</span></div>}
-              {r.avance_travaux != null && r.avance_travaux > 0 && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏗</span><span>Avance travaux : {Number(r.avance_travaux).toLocaleString('fr-FR')} €</span></div>}
+        {/* Encart Energie & Eau */}
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>⚡ Énergie & Eau</div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
+            {/* Chauffage */}
+            <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text, alignItems: 'center' }}>
+              <span>🔥</span>
+              <span>Chauffage · {r.chauffage_collectif ? 'Collectif' : 'Individuel'}{r.type_chauffage ? ` ${r.type_chauffage.charAt(0).toUpperCase() + r.type_chauffage.slice(1).toLowerCase()}` : ''}</span>
+              {!r.chauffage_collectif && <TooltipIcon text="Non inclus dans les charges de copropriété. Demandez les dernières factures au vendeur pour estimer votre budget chauffage." />}
             </div>
+            {/* Eau chaude */}
+            <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text, alignItems: 'center' }}>
+              <span>🚿</span>
+              <span>Eau chaude · {r.eau_chaude_collective ? 'Collective' : 'Individuelle'}{r.type_chauffage && !r.eau_chaude_collective ? ` ${r.type_chauffage.charAt(0).toUpperCase() + r.type_chauffage.slice(1).toLowerCase()}` : ''}</span>
+              {!r.eau_chaude_collective && <TooltipIcon text="Non incluse dans les charges. Demandez les factures au vendeur pour estimer le coût annuel." />}
+            </div>
+            {/* Eau froide */}
+            <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text, alignItems: 'center' }}>
+              <span>💧</span>
+              <span>Eau froide · {r.eau_froide_collective === false ? 'Individuelle' : 'Collective'}</span>
+              {r.eau_froide_collective === false && <TooltipIcon text="Chaque lot a son propre compteur — vous payez à la consommation réelle." />}
+            </div>
+            {/* Gardien si présent */}
+            {r.gardien?.nom && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👷</span><span>Gardien(ne) : {r.gardien.nom}</span></div>}
+            {/* Conseil syndical */}
+            {r.conseil_syndical?.membres?.length > 0 && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👥</span><span>Conseil syndical · {r.conseil_syndical.membres.length} membre{r.conseil_syndical.membres.length > 1 ? 's' : ''}</span></div>}
+            {r.conseil_syndical?.echeance_mandat && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>⏳</span><span>Mandat jusqu'au {formatDate(r.conseil_syndical.echeance_mandat)}</span></div>}
+            {r.fonds_travaux_alur_global != null && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🔧</span><span>Fonds ALUR : {Number(r.fonds_travaux_alur_global).toLocaleString('fr-FR')} €</span></div>}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Diagnostics parties communes */}
