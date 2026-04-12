@@ -133,6 +133,8 @@ function buildDocumentPrompt(p: string): string {
   parts.push('- diagnostics_parties_communes : extraire chaque diagnostic avec son entreprise, sa date et son résultat (negatif = aucune présence, positif = présence détectée, non_effectue = immeuble soumis mais pas de recherche). Ne pas confondre avec les diagnostics privatifs du lot.');
   parts.push('- mesures_administratives : toutes les réponses OUI/NON sur arrêté de péril, insalubrité, injonction de travaux, monument historique, administration provisoire.');
   parts.push('- contrats : ne pas mettre de date_effet si non mentionnée dans le document. Ne pas inventer de dates.');
+  parts.push('- type_chauffage : mettre UNIQUEMENT l energie utilisee : "gaz", "fioul", "electricite", "bois". Ne JAMAIS mettre "collectif" ou "individuel" dans ce champ — c est le role du booleen chauffage_collectif.');
+  parts.push('- nb_lots_principaux / nb_lots_detail : recopier EXACTEMENT les chiffres ecrits dans le document. Ne pas additionner ni deduire. Si le document indique 381 logements et 224 parkings, mettre ces chiffres tels quels.');
   parts.push('- travaux_realises : ne jamais remplir le champ financement. Le laisser toujours à null. Le carnet d entretien est un document historique, tous les travaux listés sont considérés comme soldés.');
   parts.push('- infos_complementaires : tout ce qui ne rentre pas dans les champs prévus mais qui est utile pour un acheteur (ex: fibre optique, patrimoine syndicat, AFUL, syndicat secondaire...).');
   parts.push('- travaux_realises.label : mettre UNIQUEMENT la description du travail, sans le montant. Le montant va dans le champ montant. Ne jamais inclure de chiffres ou de € dans le label.');
