@@ -490,7 +490,7 @@ export default function NouvelleAnalyse() {
 
     const etapes = [
       { id: 'upload',   label: 'Envoi des documents',   detail: 'Transfert sécurisé de vos fichiers',         seuil: 0,  fin: 45,  couleur: '#2a7d9c', icon: '📤' },
-      { id: 'analyse',  label: 'Analyse en cours',      detail: 'Claude lit et analyse tous vos documents',   seuil: 45, fin: 85,  couleur: '#d97706', icon: '🔍' },
+      { id: 'analyse',  label: 'Analyse en cours',      detail: 'Verimo lit et analyse tous vos documents',   seuil: 45, fin: 85,  couleur: '#d97706', icon: '🔍' },
       { id: 'synthese', label: 'Synthèse croisée',      detail: 'Croisement des informations entre documents', seuil: 85, fin: 95,  couleur: '#0891b2', icon: '⚡' },
       { id: 'rapport',  label: 'Génération du rapport', detail: 'Rédaction de votre rapport personnalisé…',   seuil: 95, fin: 100, couleur: '#16a34a', icon: '✅' },
     ];
