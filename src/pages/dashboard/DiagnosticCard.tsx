@@ -3,6 +3,28 @@ import { useState } from 'react';
 const C = {
   bg: '#ffffff', bgSec: '#f8fafc', border: '#e2e8f0',
   text: '#0f172a', textSec: '#64748b',
+
+// Formate le texte brut en liste de phrases lisibles
+function DetailTexte({ text }: { text: string }) {
+  if (!text) return null;
+  const phrases = text
+    .split(/\.\s+(?=[A-ZÀ-Ü])|;\s+/)
+    .map((s: string) => s.trim().replace(/\.$/, ''))
+    .filter((s: string) => s.length > 10);
+  if (phrases.length <= 1) {
+    return <p style={{ margin: 0, fontSize: 13, color: C.textSec, lineHeight: 1.65 }}>{text}</p>;
+  }
+  return (
+    <ul style={{ margin: 0, padding: '0 0 0 16px', listStyle: 'none' }}>
+      {phrases.map((p: string, i: number) => (
+        <li key={i} style={{ fontSize: 13, color: C.textSec, lineHeight: 1.65, marginBottom: 6, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+          <span style={{ color: C.border, marginTop: 6, flexShrink: 0, fontSize: 6 }}>●</span>
+          <span>{p}.</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
   green: { bg: '#f0fdf4', border: '#bbf7d0', text: '#166534', dot: '#16a34a' },
   red: { bg: '#fef2f2', border: '#fecaca', text: '#991b1b', dot: '#dc2626' },
   orange: { bg: '#fff7ed', border: '#fed7aa', text: '#92400e', dot: '#f97316' },
@@ -77,7 +99,7 @@ function DiagAmiante({ d }: { d: any }) {
         {d.localisation && ` Zones visitées : ${d.localisation}.`}
       </div>
       {d.alerte && <div style={{ fontSize: 13, color: C.red.dot, marginTop: 8, fontWeight: 500 }}>⚠ {d.alerte}</div>}
-      {d.detail && <Accordion>{d.detail}</Accordion>}
+      {d.detail && <Accordion><DetailTexte text={d.detail} /></Accordion>}
     </CardShell>
   );
 }
@@ -96,7 +118,7 @@ function DiagTermites({ d }: { d: any }) {
         {d.localisation && ` Zone : ${d.localisation}.`}
       </div>
       {d.alerte && <div style={{ fontSize: 13, color: C.red.dot, marginTop: 8, fontWeight: 500 }}>⚠ {d.alerte}</div>}
-      {d.detail && <Accordion>{d.detail}</Accordion>}
+      {d.detail && <Accordion><DetailTexte text={d.detail} /></Accordion>}
     </CardShell>
   );
 }
@@ -126,7 +148,7 @@ function DiagElectricite({ d }: { d: any }) {
           ))}
         </div>
       )}
-      {d.detail && <Accordion>{d.detail}</Accordion>}
+      {d.detail && <Accordion><DetailTexte text={d.detail} /></Accordion>}
     </CardShell>
   );
 }
@@ -142,7 +164,7 @@ function DiagGaz({ d }: { d: any }) {
       </div>
       {d.localisation && <div style={{ fontSize: 13, color: C.textSec }}>{d.localisation}</div>}
       {d.alerte && <div style={{ fontSize: 13, color: C.red.dot, marginTop: 8, fontWeight: 500 }}>⚠ {d.alerte}</div>}
-      {d.detail && <Accordion>{d.detail}</Accordion>}
+      {d.detail && <Accordion><DetailTexte text={d.detail} /></Accordion>}
     </CardShell>
   );
 }
@@ -161,7 +183,7 @@ function DiagPlomb({ d }: { d: any }) {
         {na ? 'Immeuble construit après 1949 — diagnostic non requis.' : ok ? 'Aucune concentration en plomb détectée.' : 'Présence de plomb détectée.'}
       </div>
       {d.alerte && <div style={{ fontSize: 13, color: C.red.dot, marginTop: 8, fontWeight: 500 }}>⚠ {d.alerte}</div>}
-      {d.detail && <Accordion>{d.detail}</Accordion>}
+      {d.detail && <Accordion><DetailTexte text={d.detail} /></Accordion>}
     </CardShell>
   );
 }
@@ -200,7 +222,7 @@ function DiagERP({ d }: { d: any }) {
         </div>
       )}
       {d.alerte && <div style={{ fontSize: 13, color: C.orange.dot, marginTop: 8, fontWeight: 500 }}>⚠ {d.alerte}</div>}
-      {d.detail && <Accordion>{d.detail}</Accordion>}
+      {d.detail && <Accordion><DetailTexte text={d.detail} /></Accordion>}
     </CardShell>
   );
 }
@@ -214,7 +236,7 @@ function DiagCarrez({ d }: { d: any }) {
         <Badge label="Informatif" color={C.gray.text} bg={C.gray.bg} border={C.gray.border} />
       </div>
       {d.resultat && <div style={{ fontSize: 13, color: C.textSec }}>{d.resultat}</div>}
-      {d.detail && <Accordion>{d.detail}</Accordion>}
+      {d.detail && <Accordion><DetailTexte text={d.detail} /></Accordion>}
     </CardShell>
   );
 }
@@ -250,7 +272,7 @@ function DiagGenerique({ d }: { d: any }) {
       </div>
       {d.resultat && <div style={{ fontSize: 13, color: C.textSec, marginBottom: 4 }}>{d.resultat}</div>}
       {d.alerte && <div style={{ fontSize: 13, color: C.red.dot, marginTop: 6, fontWeight: 500 }}>⚠ {d.alerte}</div>}
-      {d.detail && <Accordion>{d.detail}</Accordion>}
+      {d.detail && <Accordion><DetailTexte text={d.detail} /></Accordion>}
     </CardShell>
   );
 }
