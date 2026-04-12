@@ -819,7 +819,6 @@ function RendererCarnetEntretien({ r }: { r: any }) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererPreEtatDate({ r }: { r: any }) {
   const sub = [r.date ? `Établi le ${r.date}` : null, r.syndic ? `Syndic : ${r.syndic}` : null].filter(Boolean).join(' · ');
-  const totalCharge = r.travaux_charge_vendeur?.reduce((s: number, t: { montant?: number }) => s + (Number(t.montant) || 0), 0) || 0;
   const lotIcon = (type: string) => type === 'cave' ? '🔒' : type === 'parking' || type === 'garage' ? '🚗' : type === 'grenier' ? '📦' : '🏠';
   const totalAnnuel = r.charges_futures?.montant_annuel || ((Number(r.charges_futures?.montant_trimestriel || 0) + Number(r.charges_futures?.fonds_travaux_trimestriel || 0)) * 4);
 
