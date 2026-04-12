@@ -874,8 +874,8 @@ function RendererPreEtatDate({ r }: { r: any }) {
             )}
             {r.fonds_travaux_alur && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                <span>💚</span>
-                <span style={{ color: C.text }}>Fonds ALUR à restituer : {Number(r.fonds_travaux_alur).toLocaleString('fr-FR')} €</span>
+                <span>💰</span>
+                <span style={{ color: C.text }}>Fonds ALUR : {Number(r.fonds_travaux_alur).toLocaleString('fr-FR')} € à verser au vendeur</span>
               </div>
             )}
           </div>
@@ -918,8 +918,8 @@ function RendererPreEtatDate({ r }: { r: any }) {
           <div style={{ fontSize: 22, fontWeight: 600, color: Number(r.impayes_vendeur) === 0 ? '#16a34a' : '#dc2626' }}>{r.impayes_vendeur !== undefined ? `${Number(r.impayes_vendeur).toLocaleString('fr-FR')} €` : '—'}</div>
           <div style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>{Number(r.impayes_vendeur) === 0 ? 'Vendeur à jour' : 'Attention'}</div>
         </div>
-        {r.fonds_travaux_alur && <Kpi label="Fonds travaux ALUR récupérable" value={`${Number(r.fonds_travaux_alur).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="Versé à l'acheteur à la signature" />}
-        {r.fonds_roulement_acheteur && <Kpi label="Fonds de roulement à reconstituer" value={`${Number(r.fonds_roulement_acheteur).toLocaleString('fr-FR')} €`} color="#d97706" sub="À verser à la signature" />}
+        {r.fonds_travaux_alur && <Kpi label="Fonds travaux ALUR" value={`${Number(r.fonds_travaux_alur).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="À verser au vendeur à la signature" />}
+        {r.fonds_roulement_acheteur && <Kpi label="Fonds de roulement" value={`${Number(r.fonds_roulement_acheteur).toLocaleString('fr-FR')} €`} color="#d97706" sub="À verser au vendeur à la signature" />}
       </KpiGrid>
 
       {/* Charges futures */}
