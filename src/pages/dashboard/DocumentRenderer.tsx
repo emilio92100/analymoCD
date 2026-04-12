@@ -370,11 +370,10 @@ function RendererDDT({ r }: { r: any }) {
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
             {diags.map((d: any, i: number) => {
               const s = diagStatut(d);
-              const shortLabel = d.label?.length > 28 ? d.label.substring(0, 26) + '…' : d.label;
               return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                  <span style={{ fontSize: 13, color: C.text, flex: 1 }}>{shortLabel}</span>
-                  <span style={{ fontSize: 13 }}>{s.icon}</span>
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                  <span style={{ fontSize: 12, color: C.text, flex: 1, lineHeight: 1.4 }}>{d.label}</span>
+                  <span style={{ fontSize: 13, flexShrink: 0 }}>{s.icon}</span>
                 </div>
               );
             })}
