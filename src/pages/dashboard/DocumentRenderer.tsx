@@ -455,8 +455,8 @@ function RendererDDT({ r }: { r: any }) {
         </div>
       )}
 
-      {/* Travaux préconisés */}
-      {r.travaux_preconises?.length > 0 && (
+      {/* Travaux préconisés — uniquement si DPE présent */}
+      {r.travaux_preconises?.length > 0 && r.dpe?.classe && (
         <Card>
           <CardHeader label="TRAVAUX RECOMMANDÉS PAR LE DPE" color="#d97706" />
           {r.travaux_preconises.map((t: any, i: number) => (
