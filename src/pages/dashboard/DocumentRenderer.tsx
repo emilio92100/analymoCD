@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import DiagnosticCard from './DiagnosticCard';
+import DiagnosticCard, { DiagDetailParserExport } from './DiagnosticCard';
 
 // Couleurs hardcodées (pas de CSS vars — compatibilité RapportPage)
 const C = {
@@ -252,15 +252,135 @@ function SeparateurSynthese() {
 
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+function DiagnosticCardRow({ d }: { d: any }) {
+  const [open, setOpen] = useState(false);
+  const isOk = d.presence === 'conforme' || d.presence === 'non_detecte' || d.presence === 'non_applicable';
+  const isAnomalie = d.presence === 'anomalie';
+  const rowBg = isOk ? C.green.bg : isAnomalie ? C.red.bg : C.bg;
+  const rowBorder = isOk ? C.green.border : isAnomalie ? C.red.border : C.border;
+  const badgeColor = isOk ? C.green.text : isAnomalie ? C.red.text : C.gray.text;
+  const badgeBg = isOk ? C.green.bg : isAnomalie ? C.red.bg : C.gray.bg;
+  const badgeBorder = isOk ? C.green.border : isAnomalie ? C.red.border : C.gray.border;
+  const badgeLabel = isOk
+    ? (d.presence === 'conforme' ? '✓ Conforme' : d.presence === 'non_applicable' ? 'Non applicable' : '✓ Non détecté')
+    : isAnomalie ? '⚠ Anomalie détectée'
+    : 'Informatif';
+
+  return (
+    <div style={{ border: `0.5px solid ${rowBorder}`, borderRadius: 12, overflow: 'hidden', marginBottom: 8, background: rowBg }}>
+      {/* Ligne principale */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', gap: 12 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{d.label}</div>
+          {d.alerte && <div style={{ fontSize: 13, color: C.red.dot, marginTop: 4, fontWeight: 500 }}>⚠ {d.alerte}</div>}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: badgeColor, background: badgeBg, border: `0.5px solid ${badgeBorder}`, padding: '3px 12px', borderRadius: 100, whiteSpace: 'nowrap' as const }}>{badgeLabel}</span>
+          {d.detail && (
+            <button onClick={() => setOpen(!open)} style={{ background: 'none', border: `0.5px solid ${C.border}`, borderRadius: 8, padding: '5px 12px', cursor: 'pointer', fontSize: 12, color: '#2a7d9c', fontFamily: 'inherit', fontWeight: 500, whiteSpace: 'nowrap' as const, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', fontSize: 9 }}>▶</span>
+              {open ? 'Masquer' : 'Voir le détail'}
+            </button>
+          )}
+        </div>
+      </div>
+      {/* Détail pleine largeur */}
+      {open && d.detail && (
+        <div style={{ borderTop: `0.5px solid ${rowBorder}`, padding: '16px 20px', background: C.bg }}>
+          <DiagnosticCardDetail d={d} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function DiagnosticCardDetail({ d }: { d: any }) {
+  const type = (d.type || '').toUpperCase() as 'DPE' | 'AMIANTE' | 'TERMITES' | 'PLOMB' | 'ELECTRICITE' | 'GAZ' | 'ERP' | 'CARREZ' | 'AUTRE';
+  return <DiagDetailParserExport text={d.detail} type={type} />;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererDDT({ r }: { r: any }) {
   const diags = r.diagnostics || [];
+  const lotsIdf = r.lots_identifies || [];
+  const sub = [r.diagnostiqueur?.nom ? `Diagnostiqueur : ${r.diagnostiqueur.nom}` : null, r.diagnostiqueur?.date ? `le ${r.diagnostiqueur.date}` : null].filter(Boolean).join(' · ');
 
-  const sub = [r.diagnostiqueur?.nom ? `Diagnostiqueur : ${r.diagnostiqueur.nom}` : null, r.diagnostiqueur?.date ? `le ${r.diagnostiqueur.date}` : null, r.diagnostiqueur?.certification].filter(Boolean).join(' · ');
+  // Trier diagnostics
+  const diagsOk = diags.filter((d: any) => d.presence === 'conforme' || d.presence === 'non_detecte' || d.presence === 'non_applicable');
+  const diagsBad = diags.filter((d: any) => d.presence === 'anomalie');
+  const diagsInfo = diags.filter((d: any) => !['conforme','non_detecte','non_applicable','anomalie'].includes(d.presence));
+
+  // Récap statut pour encart
+  const diagStatut = (d: any) => {
+    if (d.presence === 'anomalie') return { icon: '🔴', color: C.red.text };
+    if (d.presence === 'conforme' || d.presence === 'non_detecte') return { icon: '✅', color: C.green.text };
+    if (d.presence === 'non_applicable') return { icon: '➖', color: C.gray.text };
+    return { icon: 'ℹ️', color: C.gray.text };
+  };
+
+  const lotIcon = (type: string) => type === 'cave' ? '🔒' : type === 'parking' || type === 'garage' ? '🚗' : type === 'grenier' ? '📦' : '🏠';
 
   return (
     <div>
       <Header type="Dossier de Diagnostic Technique" titre={r.titre} sub={sub} />
       <Resume text={r.resume} />
+
+      {/* 3 encarts d'info */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
+
+        {/* Encart 1 — Diagnostiqueur */}
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🔬 Diagnostiqueur</div>
+          {r.diagnostiqueur?.nom && <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 4 }}>{r.diagnostiqueur.nom}</div>}
+          {r.diagnostiqueur?.date && <div style={{ fontSize: 13, color: C.textSec, marginBottom: 3 }}>📅 Réalisé le {r.diagnostiqueur.date}</div>}
+          {r.diagnostiqueur?.certification && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 3 }}>🎖 {r.diagnostiqueur.certification}</div>}
+        </div>
+
+        {/* Encart 2 — Lots visités */}
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏘 Lots visités</div>
+          {lotsIdf.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+              {lotsIdf.map((lot: any, i: number) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 16 }}>{lotIcon(lot.type)}</span>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>
+                      {lot.type.charAt(0).toUpperCase() + lot.type.slice(1)}{lot.numero ? ` n°${lot.numero}` : ''}
+                    </div>
+                    {(lot.etage || lot.description) && <div style={{ fontSize: 12, color: C.textSec }}>{lot.etage || lot.description}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            r.carrez?.surface_totale && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 16 }}>🏠</span>
+                <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Appartement — {r.carrez.surface_totale} m²</div>
+              </div>
+            )
+          )}
+        </div>
+
+        {/* Encart 3 — Récap diagnostics */}
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>📋 Diagnostics réalisés</div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+            {diags.map((d: any, i: number) => {
+              const s = diagStatut(d);
+              const shortLabel = d.label?.length > 28 ? d.label.substring(0, 26) + '…' : d.label;
+              return (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                  <span style={{ fontSize: 13, color: C.text, flex: 1 }}>{shortLabel}</span>
+                  <span style={{ fontSize: 13 }}>{s.icon}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
 
       {/* DPE + GES */}
       {r.dpe?.classe && (
@@ -270,7 +390,7 @@ function RendererDDT({ r }: { r: any }) {
         </div>
       )}
 
-      {/* Surface + Lots identifiés */}
+      {/* Surface Carrez */}
       {r.carrez?.surface_totale && (() => {
         const label = r.carrez.surface_type === 'boutin' ? 'Surface habitable (Loi Boutin)'
           : r.carrez.surface_type === 'autre' ? 'Surface mesurée'
@@ -278,23 +398,11 @@ function RendererDDT({ r }: { r: any }) {
         const piecesCarrez = (r.carrez.pieces || []).filter((p: any) => !p.hors_carrez);
         const piecesHorsCarrez = (r.carrez.pieces || []).filter((p: any) => p.hors_carrez);
         const annexes = r.carrez.annexes || [];
-        const lotsIdf = r.lots_identifies || [];
         return (
           <Card>
-            <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `0.5px solid ${C.border}` }}>
-              <div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: C.textSec }}>{label}</span>
-                {lotsIdf.length > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6, marginTop: 8 }}>
-                    {lotsIdf.map((lot: any, i: number) => {
-                      const icon = lot.type === 'cave' ? '🔒' : lot.type === 'parking' || lot.type === 'garage' ? '🚗' : lot.type === 'grenier' ? '📦' : '🏠';
-                      const lotLabel = [icon, lot.type.charAt(0).toUpperCase() + lot.type.slice(1), lot.numero ? `n°${lot.numero}` : null, lot.etage ? `(${lot.etage})` : null].filter(Boolean).join(' ');
-                      return <span key={i} style={{ fontSize: 12, padding: '3px 10px', borderRadius: 100, background: C.bgSecondary, border: `0.5px solid ${C.border}`, color: C.textSec }}>{lotLabel}</span>;
-                    })}
-                  </div>
-                )}
-              </div>
-              <span style={{ fontSize: 24, fontWeight: 600, color: C.text, whiteSpace: 'nowrap' as const, marginLeft: 16 }}>{r.carrez.surface_totale} m²</span>
+            <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: C.textSec }}>{label}</span>
+              <span style={{ fontSize: 24, fontWeight: 600, color: C.text }}>{r.carrez.surface_totale} m²</span>
             </div>
             {(piecesCarrez.length > 0 || piecesHorsCarrez.length > 0 || annexes.length > 0) && (
               <CarrezAccordeon pieces={piecesCarrez} piecesHorsCarrez={piecesHorsCarrez} annexes={annexes} />
@@ -303,30 +411,43 @@ function RendererDDT({ r }: { r: any }) {
         );
       })()}
 
-      {/* Diagnostics — verts d'abord, rouges ensuite, informatifs en dernier */}
-      {diags.length > 0 && (() => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const ok = diags.filter((d: any) => d.presence === 'conforme' || d.presence === 'non_detecte' || d.presence === 'non_applicable');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const bad = diags.filter((d: any) => d.presence === 'anomalie');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const info = diags.filter((d: any) => d.presence === 'informatif' || (!['conforme','non_detecte','non_applicable','anomalie'].includes(d.presence)));
-        const sorted = [...ok, ...bad, ...info];
-        return (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            {sorted.map((d: any, i: number) => (
-              <DiagnosticCard key={i} d={d} />
-            ))}
-          </div>
-        );
-      })()}
+      {/* Diagnostics — ligne par ligne, verts puis rouges puis informatifs */}
+      {diags.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          {diagsOk.length > 0 && (
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.green.text, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.green.dot }} />
+                Conformes / Non détectés
+              </div>
+              {diagsOk.map((d: any, i: number) => <DiagnosticCardRow key={i} d={d} />)}
+            </div>
+          )}
+          {diagsBad.length > 0 && (
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.red.text, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.red.dot }} />
+                Anomalies détectées
+              </div>
+              {diagsBad.map((d: any, i: number) => <DiagnosticCardRow key={i} d={d} />)}
+            </div>
+          )}
+          {diagsInfo.length > 0 && (
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.gray.text, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.gray.dot }} />
+                Informatifs
+              </div>
+              {diagsInfo.map((d: any, i: number) => <DiagnosticCardRow key={i} d={d} />)}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Travaux préconisés */}
       {r.travaux_preconises?.length > 0 && (
         <Card>
           <CardHeader label="TRAVAUX RECOMMANDÉS PAR LE DPE" color="#d97706" />
-          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {r.travaux_preconises.map((t: any, i: number) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: i < r.travaux_preconises.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
               <div>
@@ -348,7 +469,6 @@ function RendererDDT({ r }: { r: any }) {
         </Card>
       )}
 
-      {/* Séparateur avant synthèse */}
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
