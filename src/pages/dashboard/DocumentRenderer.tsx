@@ -203,29 +203,6 @@ function CarrezAccordeon({ pieces, surfaceSol }: { pieces: any[]; surfaceSol?: s
   );
 }
 
-// Formate le texte brut du détail en liste de phrases lisibles
-function DetailTexte({ text }: { text: string }) {
-  if (!text) return null;
-  // Découper en phrases/points
-  const phrases = text
-    .split(/\.\s+(?=[A-ZÀ-Ü])|;\s+/)
-    .map(s => s.trim().replace(/\.$/, ''))
-    .filter(s => s.length > 10);
-  if (phrases.length <= 1) {
-    return <p style={{ margin: 0, fontSize: 13, color: C.textSec, lineHeight: 1.65 }}>{text}</p>;
-  }
-  return (
-    <ul style={{ margin: 0, padding: '0 0 0 16px', listStyle: 'none' }}>
-      {phrases.map((p, i) => (
-        <li key={i} style={{ fontSize: 13, color: C.textSec, lineHeight: 1.65, marginBottom: 6, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-          <span style={{ color: C.border, marginTop: 6, flexShrink: 0, fontSize: 6 }}>●</span>
-          <span>{p}.</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 function SeparateurSynthese() {
   return (
     <div style={{ margin: '24px 0 20px', display: 'flex', alignItems: 'center', gap: 16 }}>
