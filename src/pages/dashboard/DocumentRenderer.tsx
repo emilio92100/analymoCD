@@ -824,22 +824,21 @@ function RendererPreEtatDate({ r }: { r: any }) {
 
   return (
     <div>
-      <Header type="Pré-État Daté" titre={r.titre} sub={sub} />
-
-      {/* Lots en badges dans le header zone */}
-      {r.lots_vente?.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, marginBottom: 16 }}>
-          {r.lots_vente.map((lot: any, i: number) => (
-            <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, padding: '10px 16px' }}>
-              <span style={{ fontSize: 18 }}>{lotIcon(lot.type)}</span>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{lot.type.charAt(0).toUpperCase() + lot.type.slice(1)}{lot.numero ? ` n°${lot.numero}` : ''}</div>
-                {(lot.batiment || lot.etage) && <div style={{ fontSize: 12, color: C.textSec }}>{[lot.batiment ? `Bât. ${lot.batiment}` : null, lot.etage].filter(Boolean).join(' · ')}</div>}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <div style={{ background: C.dark, borderRadius: 14, padding: '22px 28px', marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', marginBottom: 8, textTransform: 'uppercase' as const }}>Pré-État Daté</div>
+        <div style={{ fontSize: 20, fontWeight: 600, color: '#fff', marginBottom: sub ? 6 : 0, lineHeight: 1.3 }}>{r.titre}</div>
+        {sub && <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: r.lots_vente?.length > 0 ? 12 : 0 }}>{sub}</div>}
+        {r.lots_vente?.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, marginTop: 10 }}>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', alignSelf: 'center', marginRight: 2 }}>Document portant sur :</span>
+            {r.lots_vente.map((lot: any, i: number) => (
+              <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.1)', border: '0.5px solid rgba(255,255,255,0.2)', borderRadius: 100, padding: '4px 12px', fontSize: 12, color: 'rgba(255,255,255,0.85)' }}>
+                {lotIcon(lot.type)} {lot.type.charAt(0).toUpperCase() + lot.type.slice(1)}{lot.numero ? ` n°${lot.numero}` : ''}{lot.batiment ? ` — Bât. ${lot.batiment}` : ''}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
 
       <Resume text={r.resume} />
 
@@ -979,8 +978,9 @@ function RendererPreEtatDate({ r }: { r: any }) {
               <span style={{ fontSize: 15, fontWeight: 600, color: C.text, whiteSpace: 'nowrap' as const, marginLeft: 16 }}>{Number(r.fonds_travaux_copro_global).toLocaleString('fr-FR')} €</span>
             </div>
           )}
-          <div style={{ padding: '13px 20px', background: '#fff7ed', fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>
-            ⚠ Les impayés globaux sont normaux dans toute copropriété — chaque copropriétaire règle ses charges à des échéances différentes. Ils deviennent préoccupants s'ils dépassent significativement un trimestre de budget collectif. C'est seulement un montant important et répété qui mérite attention.
+          <div style={{ padding: '16px 20px', background: '#fff7ed', borderTop: `0.5px solid #fed7aa` }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#92400e', marginBottom: 6 }}>ℹ À savoir sur les impayés de copropriété</div>
+            <div style={{ fontSize: 13, color: '#92400e', lineHeight: 1.7 }}>Les impayés globaux sont <strong>normaux dans toute copropriété</strong> — chaque copropriétaire règle ses charges à des échéances différentes. Ils deviennent préoccupants uniquement s'ils dépassent significativement un trimestre de budget collectif, ou s'ils sont en hausse répétée d'année en année.</div>
           </div>
         </div>
       )}
@@ -1056,22 +1056,21 @@ function RendererEtatDate({ r }: { r: any }) {
 
   return (
     <div>
-      <Header type="État Daté" titre={r.titre} sub={sub} />
-
-      {/* Lots */}
-      {r.lots_vente?.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, marginBottom: 16 }}>
-          {r.lots_vente.map((lot: any, i: number) => (
-            <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, padding: '10px 16px' }}>
-              <span style={{ fontSize: 18 }}>{lotIcon(lot.type)}</span>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{lot.type.charAt(0).toUpperCase() + lot.type.slice(1)}{lot.numero ? ` n°${lot.numero}` : ''}</div>
-                {(lot.batiment || lot.etage) && <div style={{ fontSize: 12, color: C.textSec }}>{[lot.batiment ? `Bât. ${lot.batiment}` : null, lot.etage].filter(Boolean).join(' · ')}</div>}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <div style={{ background: C.dark, borderRadius: 14, padding: '22px 28px', marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', marginBottom: 8, textTransform: 'uppercase' as const }}>État Daté</div>
+        <div style={{ fontSize: 20, fontWeight: 600, color: '#fff', marginBottom: sub ? 6 : 0, lineHeight: 1.3 }}>{r.titre}</div>
+        {sub && <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: r.lots_vente?.length > 0 ? 12 : 0 }}>{sub}</div>}
+        {r.lots_vente?.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, marginTop: 10 }}>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', alignSelf: 'center', marginRight: 2 }}>Document portant sur :</span>
+            {r.lots_vente.map((lot: any, i: number) => (
+              <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.1)', border: '0.5px solid rgba(255,255,255,0.2)', borderRadius: 100, padding: '4px 12px', fontSize: 12, color: 'rgba(255,255,255,0.85)' }}>
+                {lotIcon(lot.type)} {lot.type.charAt(0).toUpperCase() + lot.type.slice(1)}{lot.numero ? ` n°${lot.numero}` : ''}{lot.batiment ? ` — Bât. ${lot.batiment}` : ''}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
 
       <Resume text={r.resume} />
 
