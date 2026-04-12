@@ -35,7 +35,7 @@ function Header({ type, titre, sub }: { type: string; titre: string; sub?: strin
 
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14, ...style }}>
+    <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 20, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', ...style }}>
       {children}
     </div>
   );
@@ -43,9 +43,9 @@ function Card({ children, style }: { children: React.ReactNode; style?: React.CS
 
 function CardHeader({ label, color }: { label: string; color: string }) {
   return (
-    <div style={{ padding: '12px 20px', borderBottom: `0.5px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
-      <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-      <div style={{ fontSize: 12, fontWeight: 600, color: C.textSec, letterSpacing: '0.05em' }}>{label}</div>
+    <div style={{ padding: '14px 20px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10, background: C.bgSecondary }}>
+      <div style={{ width: 10, height: 10, borderRadius: '50%', background: color, flexShrink: 0 }} />
+      <div style={{ fontSize: 12, fontWeight: 700, color: C.text, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>{label}</div>
     </div>
   );
 }
@@ -176,7 +176,7 @@ function CarrezAccordeon({ pieces, surfaceSol }: { pieces: any[]; surfaceSol?: s
     <div style={{ borderTop: `0.5px solid ${C.border}` }}>
       <button
         onClick={() => setOpen(!open)}
-        style={{ width: '100%', background: 'none', border: 'none', padding: '12px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: C.textSec, fontFamily: 'inherit', textAlign: 'left' as const }}
+        style={{ width: '100%', background: C.bgSecondary, border: 'none', padding: '12px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#2a7d9c', fontFamily: 'inherit', textAlign: 'left' as const, fontWeight: 500 }}
       >
         <span style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', fontSize: 10 }}>▶</span>
         {open ? 'Masquer le détail par pièce' : 'Voir le détail par pièce'}
@@ -298,8 +298,6 @@ function RendererDDT({ r }: { r: any }) {
       )}
 
       {/* Séparateur avant synthèse */}
-      <SeparateurSynthese />
-
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} />
