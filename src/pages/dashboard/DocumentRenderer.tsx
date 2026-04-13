@@ -522,69 +522,145 @@ function RendererDDT({ r }: { r: any }) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererPVAG({ r }: { r: any }) {
-  const sub = [r.date_ag, r.quorum?.presents && r.quorum?.total ? `${r.quorum.presents}/${r.quorum.total} copropriétaires · ${r.quorum.tantiemes_pct}` : null].filter(Boolean).join(' · ');
+  const typeAGLabel = r.type_ag === 'extraordinaire' ? 'Assemblée Générale Extraordinaire'
+    : r.type_ag === 'mixte' ? 'Assemblée Générale Ordinaire & Extraordinaire'
+    : 'Assemblée Générale Ordinaire';
+
+  // Composant bloc coloré réutilisable
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const PBlock = ({ children, borderColor, headerBg, dotColor, labelColor, label, note }: { children: React.ReactNode; borderColor: string; headerBg: string; dotColor: string; labelColor: string; label: string; note?: string }) => (
+    <div style={{ borderRadius: 14, border: `0.5px solid ${borderColor}`, overflow: 'hidden', marginBottom: 16, background: C.bg }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 20px', background: headerBg, borderBottom: `0.5px solid ${borderColor}` }}>
+        <div style={{ width: 9, height: 9, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: labelColor, flex: 1 }}>{label}</span>
+      </div>
+      {note && (
+        <div style={{ padding: '10px 20px', background: headerBg, borderBottom: `0.5px solid ${borderColor}`, fontSize: 13, color: labelColor, opacity: 0.85 }}>
+          {note}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+
   return (
     <div>
-      <Header type="Procès-Verbal d'Assemblée Générale" titre={r.titre} sub={sub} />
+      <Header type={typeAGLabel} titre={r.titre} sub={[formatDate(r.date_ag), r.lieu_ag].filter(Boolean).join(' · ')} />
       <Resume text={r.resume} />
 
-      <KpiGrid>
-        {r.budget_vote?.montant && <Kpi label={r.budget_vote.annee ? `Budget voté pour ${r.budget_vote.annee}` : 'Budget voté'} value={`${Number(r.budget_vote.montant).toLocaleString('fr-FR')} €`} sub={r.budget_precedent?.montant && r.budget_precedent?.annee ? `vs ${Number(r.budget_precedent.montant).toLocaleString('fr-FR')} € en ${r.budget_precedent.annee}` : undefined} />}
-        {r.syndic && <Kpi label="Syndic" value={r.syndic} />}
-        {r.quorum?.tantiemes_pct && <Kpi label="Quorum (% tantièmes)" value={String(r.quorum.tantiemes_pct).replace('%','').trim() + ' %'} color="#16a34a" sub={r.quorum.presents && r.quorum.total ? `${r.quorum.presents}/${r.quorum.total} copropriétaires présents` : undefined} tooltip="Le quorum est le pourcentage de tantièmes représentés à l'assemblée générale. Il détermine si les décisions votées sont valides. Un quorum faible peut fragiliser certains votes." />}
-      </KpiGrid>
+      {/* 3 encarts */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
 
-      {r.travaux_votes?.length > 0 && (
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
-          <CardHeader label="TRAVAUX VOTÉS" color={C.blue.dot} />
-          <div style={{ padding: '10px 20px', background: C.blue.bg, borderBottom: `0.5px solid ${C.blue.border}`, fontSize: 13, color: C.blue.text }}>
-            ℹ Votés avant compromis = à la charge du vendeur. À vérifier avec votre notaire.
+        {/* Encart 1 — L'assemblée */}
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏛 L'assemblée</div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
+            <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📋</span><span style={{ fontWeight: 600 }}>{typeAGLabel}</span></div>
+            {r.date_ag && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📅</span><span>{formatDate(r.date_ag)}</span></div>}
+            {r.lieu_ag && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📍</span><span>{r.lieu_ag}</span></div>}
+            {r.syndic && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏢</span><span>{r.syndic}</span></div>}
+            {r.syndic_reconduit != null && (
+              <div style={{ display: 'flex', gap: 8, fontSize: 13, color: r.syndic_reconduit ? '#16a34a' : '#dc2626' }}>
+                <span>{r.syndic_reconduit ? '✅' : '❌'}</span>
+                <span>{r.syndic_reconduit ? 'Syndic reconduit' : 'Syndic non reconduit'}</span>
+              </div>
+            )}
           </div>
-          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+        </div>
+
+        {/* Encart 2 — Participation */}
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>👥 Participation</div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
+            {r.president_seance && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🪑</span><span>Président de séance : <strong>{r.president_seance}</strong></span></div>}
+            {r.quorum?.tantiemes_pct && (
+              <div style={{ marginTop: 4 }}>
+                <div style={{ fontSize: 11, color: C.textSec, marginBottom: 4 }}>Tantièmes représentés</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: '#16a34a' }}>{String(r.quorum.tantiemes_pct).replace('%','').trim()} %</div>
+                {r.quorum.presents && r.quorum.total && (
+                  <div style={{ fontSize: 12, color: C.textSec, marginTop: 2 }}>
+                    {r.quorum.presents}/{r.quorum.total} copropriétaires présents ou représentés
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Encart 3 — Chiffres clés */}
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>📊 Chiffres clés</div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+            {r.budget_vote?.montant && (
+              <div>
+                <div style={{ fontSize: 11, color: C.textSec, marginBottom: 3 }}>Budget voté{r.budget_vote.annee ? ` ${r.budget_vote.annee}` : ''}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: C.text }}>{Number(r.budget_vote.montant).toLocaleString('fr-FR')} €</div>
+                {r.budget_precedent?.montant && r.budget_precedent?.annee && (
+                  <div style={{ fontSize: 12, color: C.textSec, marginTop: 2 }}>
+                    vs {Number(r.budget_precedent.montant).toLocaleString('fr-FR')} € en {r.budget_precedent.annee}
+                  </div>
+                )}
+              </div>
+            )}
+            {r.nb_resolutions && (
+              <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🗳</span><span>{r.nb_resolutions} résolutions à l'ordre du jour</span></div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Travaux votés — bleu */}
+      {r.travaux_votes?.length > 0 && (
+        <PBlock label="Travaux votés" borderColor="#B5D4F4" headerBg="#E6F1FB" dotColor="#185FA5" labelColor="#0C447C"
+          note="ℹ Votés avant compromis = à la charge du vendeur. À vérifier avec votre notaire.">
           {r.travaux_votes.map((t: any, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: i < r.travaux_votes.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: i < r.travaux_votes.length - 1 ? `0.5px solid ${C.border}` : 'none', background: C.bg }}>
               <div>
                 <div style={{ fontSize: 14, color: C.text }}>{t.label}</div>
                 {t.echeance && <div style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>{t.echeance}</div>}
               </div>
-              {t.montant && <div style={{ fontSize: 15, fontWeight: 600, color: C.blue.dot, whiteSpace: 'nowrap' as const, marginLeft: 20 }}>{Number(t.montant).toLocaleString('fr-FR')} €</div>}
+              {t.montant && <div style={{ fontSize: 15, fontWeight: 600, color: '#185FA5', whiteSpace: 'nowrap' as const, marginLeft: 20 }}>{Number(t.montant).toLocaleString('fr-FR')} €</div>}
             </div>
           ))}
-        </div>
+        </PBlock>
       )}
 
-      {(() => { const travCopro = (r.travaux_evoques || []).filter((t: any) => !t.concerne_lot_prive); return travCopro.length > 0 && (
-        <div style={{ background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
-          <CardHeader label="TRAVAUX ÉVOQUÉS — NON ENCORE VOTÉS" color={C.orange.dot} />
-          <div style={{ padding: '10px 20px', background: '#fff7ed', borderBottom: `0.5px solid ${C.orange.border}`, fontSize: 13, color: C.orange.text }}>
-            ⚠ Mentionnés sans vote. S'ils sont votés après votre achat, vous en supporterez la charge en tant que nouveau copropriétaire.
-          </div>
-          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          {travCopro.map((t: any, i: number) => (
-            <div key={i} style={{ padding: '14px 20px', borderBottom: i < travCopro.length - 1 ? `0.5px solid ${C.orange.border}` : 'none', background: i % 2 === 0 ? C.orange.bg : '#fffbf5' }}>
-              <div style={{ fontSize: 14, color: C.text }}>{t.label}</div>
-              {t.precision && <div style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>{t.precision}</div>}
-            </div>
-          ))}
-        </div>
-      ); })()}
+      {/* Travaux évoqués — amber */}
+      {(() => {
+        const travCopro = (r.travaux_evoques || []).filter((t: any) => !t.concerne_lot_prive);
+        return travCopro.length > 0 && (
+          <PBlock label="Travaux évoqués — non encore votés" borderColor="#FAC775" headerBg="#FAEEDA" dotColor="#BA7517" labelColor="#854F0B"
+            note="⚠ Mentionnés sans vote. S'ils sont votés après votre achat, vous en supporterez la charge.">
+            {travCopro.map((t: any, i: number) => (
+              <div key={i} style={{ padding: '14px 20px', borderBottom: i < travCopro.length - 1 ? `0.5px solid ${C.border}` : 'none', background: C.bg }}>
+                <div style={{ fontSize: 14, color: C.text }}>{t.label}</div>
+                {t.precision && <div style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>{t.precision}</div>}
+              </div>
+            ))}
+          </PBlock>
+        );
+      })()}
 
-      {r.questions_diverses?.length > 0 && (
-        <Card>
-          <CardHeader label="QUESTIONS DIVERSES NOTABLES" color={C.gray.dot} />
-          {r.questions_diverses.map((q: any, i: number) => (
-            <div key={i} style={{ padding: '12px 20px', borderBottom: i < r.questions_diverses.length - 1 ? `0.5px solid ${C.border}` : 'none', fontSize: 14, color: C.text, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>{typeof q === 'string' ? q : q.label || q.detail || JSON.stringify(q)}</div>
-          ))}
-        </Card>
-      )}
-
+      {/* Procédures — rouge */}
       {r.procedures?.length > 0 && (
-        <div style={{ background: C.red.bg, border: `0.5px solid ${C.red.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
-          <CardHeader label="PROCÉDURES / LITIGES MENTIONNÉS" color={C.red.dot} />
+        <PBlock label="Procédures / Litiges mentionnés" borderColor="#F7C1C1" headerBg="#FCEBEB" dotColor="#A32D2D" labelColor="#791F1F">
           {r.procedures.map((p: any, i: number) => (
-            <div key={i} style={{ padding: '12px 20px', fontSize: 14, color: C.text, borderBottom: i < r.procedures.length - 1 ? `0.5px solid ${C.red.border}` : 'none' }}>{typeof p === 'string' ? p : p.label || p.message || p.detail || JSON.stringify(p)}</div>
+            <div key={i} style={{ padding: '12px 20px', fontSize: 14, color: C.text, borderBottom: i < r.procedures.length - 1 ? `0.5px solid #F7C1C1` : 'none', background: C.bg }}>
+              {typeof p === 'string' ? p : p.label || p.message || p.detail || JSON.stringify(p)}
+            </div>
           ))}
-        </div>
+        </PBlock>
+      )}
+
+      {/* Questions diverses — gris */}
+      {r.questions_diverses?.length > 0 && (
+        <PBlock label="Questions diverses notables" borderColor="#D3D1C7" headerBg="#F1EFE8" dotColor="#5F5E5A" labelColor="#444441">
+          {r.questions_diverses.map((q: any, i: number) => (
+            <div key={i} style={{ padding: '12px 20px', borderBottom: i < r.questions_diverses.length - 1 ? `0.5px solid ${C.border}` : 'none', fontSize: 14, color: C.text, background: C.bg }}>
+              {typeof q === 'string' ? q : q.label || q.detail || JSON.stringify(q)}
+            </div>
+          ))}
+        </PBlock>
       )}
 
       <SeparateurSynthese />
