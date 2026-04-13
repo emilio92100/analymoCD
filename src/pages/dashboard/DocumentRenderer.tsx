@@ -455,34 +455,40 @@ function RendererDDT({ r }: { r: any }) {
         );
       })()}
 
-      {/* Diagnostics — ligne par ligne, verts puis rouges puis informatifs */}
+      {/* Diagnostics — Option D : header coloré plein + bordure gauche */}
       {diags.length > 0 && (
-        <div style={{ marginBottom: 14 }}>
+        <div style={{ marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
           {diagsOk.length > 0 && (
-            <div style={{ marginBottom: 8 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.green.text, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.green.dot }} />
-                Conformes / Non détectés
+            <div>
+              <div style={{ background: C.green.dot, borderRadius: '8px 8px 0 0', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.6)', flexShrink: 0 }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', letterSpacing: '0.07em', textTransform: 'uppercase' as const }}>Conformes / Non détectés</span>
               </div>
-              {diagsOk.map((d: any, i: number) => <DiagnosticCardRow key={i} d={d} />)}
+              <div style={{ borderRadius: '0 0 10px 10px', overflow: 'hidden', border: `0.5px solid ${C.green.border}`, borderTop: 'none', borderLeft: `4px solid ${C.green.dot}` }}>
+                {diagsOk.map((d: any, i: number) => <DiagnosticCardRow key={i} d={d} />)}
+              </div>
             </div>
           )}
           {diagsBad.length > 0 && (
-            <div style={{ marginBottom: 8 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.red.text, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.red.dot }} />
-                Anomalies détectées
+            <div>
+              <div style={{ background: C.red.dot, borderRadius: '8px 8px 0 0', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.6)', flexShrink: 0 }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', letterSpacing: '0.07em', textTransform: 'uppercase' as const }}>Anomalies détectées</span>
               </div>
-              {diagsBad.map((d: any, i: number) => <DiagnosticCardRow key={i} d={d} />)}
+              <div style={{ borderRadius: '0 0 10px 10px', overflow: 'hidden', border: `0.5px solid ${C.red.border}`, borderTop: 'none', borderLeft: `4px solid ${C.red.dot}` }}>
+                {diagsBad.map((d: any, i: number) => <DiagnosticCardRow key={i} d={d} />)}
+              </div>
             </div>
           )}
           {diagsInfo.length > 0 && (
-            <div style={{ marginBottom: 8 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.gray.text, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.gray.dot }} />
-                Informatifs
+            <div>
+              <div style={{ background: C.gray.dot, borderRadius: '8px 8px 0 0', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(255,255,255,0.6)', flexShrink: 0 }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', letterSpacing: '0.07em', textTransform: 'uppercase' as const }}>Informatifs</span>
               </div>
-              {diagsInfo.map((d: any, i: number) => <DiagnosticCardRow key={i} d={d} />)}
+              <div style={{ borderRadius: '0 0 10px 10px', overflow: 'hidden', border: `0.5px solid ${C.gray.border}`, borderTop: 'none', borderLeft: `4px solid ${C.gray.dot}` }}>
+                {diagsInfo.map((d: any, i: number) => <DiagnosticCardRow key={i} d={d} />)}
+              </div>
             </div>
           )}
         </div>
