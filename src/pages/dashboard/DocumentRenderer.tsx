@@ -156,6 +156,10 @@ function TableHeader({ cols }: { cols: { label: string; align?: 'left' | 'right'
   );
 }
 
+function stripLeadingEmoji(text: string): string {
+  return text.replace(/^[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FEFF}⚠️ℹ️✓✅❌🔴🟠🟡🟢⚠ℹ]+\s*/u, '').trim();
+}
+
 function PointsFortsVigilances({ forts, vigilances }: { forts: string[]; vigilances: string[] }) {
   if (!forts?.length && !vigilances?.length) return null;
   return (
@@ -167,8 +171,9 @@ function PointsFortsVigilances({ forts, vigilances }: { forts: string[]; vigilan
             <div style={{ fontSize: 12, fontWeight: 600, color: C.textSec, letterSpacing: '0.05em' }}>POINTS POSITIFS</div>
           </div>
           {forts.map((p, i) => (
-            <div key={i} style={{ padding: '12px 20px', borderBottom: i < forts.length - 1 ? `0.5px solid #bbf7d0` : 'none', background: i % 2 === 0 ? '#f0fdf4' : '#f7fef9', fontSize: 14, color: C.text }}>
-              {p}
+            <div key={i} style={{ padding: '12px 20px', borderBottom: i < forts.length - 1 ? `0.5px solid #bbf7d0` : 'none', background: i % 2 === 0 ? '#f0fdf4' : '#f7fef9', fontSize: 14, color: C.text, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <span style={{ color: '#16a34a', fontWeight: 700, flexShrink: 0, marginTop: 1 }}>✓</span>
+              <span>{stripLeadingEmoji(p)}</span>
             </div>
           ))}
         </div>
@@ -180,8 +185,9 @@ function PointsFortsVigilances({ forts, vigilances }: { forts: string[]; vigilan
             <div style={{ fontSize: 12, fontWeight: 600, color: C.textSec, letterSpacing: '0.05em' }}>POINTS DE VIGILANCE</div>
           </div>
           {vigilances.map((p, i) => (
-            <div key={i} style={{ padding: '12px 20px', borderBottom: i < vigilances.length - 1 ? `0.5px solid #fecaca` : 'none', background: i % 2 === 0 ? '#fef2f2' : '#fff5f5', fontSize: 14, color: C.text }}>
-              {p}
+            <div key={i} style={{ padding: '12px 20px', borderBottom: i < vigilances.length - 1 ? `0.5px solid #fecaca` : 'none', background: i % 2 === 0 ? '#fef2f2' : '#fff5f5', fontSize: 14, color: C.text, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <span style={{ color: '#dc2626', fontWeight: 700, flexShrink: 0, marginTop: 1 }}>⚠</span>
+              <span>{stripLeadingEmoji(p)}</span>
             </div>
           ))}
         </div>
