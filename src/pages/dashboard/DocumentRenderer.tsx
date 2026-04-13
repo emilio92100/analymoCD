@@ -1308,8 +1308,11 @@ function RendererPreEtatDate({ r }: { r: any }) {
 
       {/* Charges futures */}
       {(r.charges_futures?.montant_trimestriel || r.charges_futures?.fonds_travaux_trimestriel) && (
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
-          <CardHeader label="💸 CHARGES FUTURES ACHETEUR" color={C.blue.dot} />
+        <div style={{ background: C.bg, border: `0.5px solid ${C.blue.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 20px', background: C.blue.bg, borderBottom: `0.5px solid ${C.blue.border}` }}>
+            <div style={{ width: 9, height: 9, borderRadius: '50%', background: C.blue.dot, flexShrink: 0 }} />
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: C.blue.text }}>💸 Charges futures acheteur</span>
+          </div>
           <div style={{ padding: '10px 20px', background: C.blue.bg, borderBottom: `0.5px solid ${C.blue.border}`, fontSize: 13, color: C.blue.text }}>
             ℹ Ces montants seront à régler dès votre entrée dans la copropriété, chaque trimestre.
           </div>
@@ -1336,8 +1339,11 @@ function RendererPreEtatDate({ r }: { r: any }) {
 
       {/* Santé financière copro */}
       {(r.impayes_copro_global != null || r.dette_fournisseurs != null) && (
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
-          <CardHeader label="🏢 SANTÉ FINANCIÈRE DE LA COPROPRIÉTÉ" color={C.orange.dot} />
+        <div style={{ background: C.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 20px', background: C.orange.bg, borderBottom: `0.5px solid ${C.orange.border}` }}>
+            <div style={{ width: 9, height: 9, borderRadius: '50%', background: C.orange.dot, flexShrink: 0 }} />
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: C.orange.text }}>🏢 Santé financière de la copropriété</span>
+          </div>
           {r.impayes_copro_global != null && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '13px 20px', borderBottom: `0.5px solid ${C.border}` }}>
               <div>
@@ -1371,13 +1377,16 @@ function RendererPreEtatDate({ r }: { r: any }) {
 
       {/* Travaux charge vendeur */}
       {r.travaux_charge_vendeur?.length > 0 && (
-        <div style={{ background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
-          <CardHeader label="TRAVAUX VOTÉS À LA CHARGE DU VENDEUR" color={C.orange.dot} />
+        <div style={{ background: C.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 20px', background: C.orange.bg, borderBottom: `0.5px solid ${C.orange.border}` }}>
+            <div style={{ width: 9, height: 9, borderRadius: '50%', background: C.orange.dot, flexShrink: 0 }} />
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: C.orange.text }}>Travaux votés à la charge du vendeur</span>
+          </div>
           <div style={{ padding: '10px 20px', background: C.blue.bg, borderBottom: `0.5px solid ${C.blue.border}`, fontSize: 13, color: C.blue.text }}>
             ℹ Ces travaux ont été votés avant le compromis — ils restent à la charge du vendeur, sans impact pour l'acheteur.
           </div>
           {r.travaux_charge_vendeur.map((t: any, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: i < r.travaux_charge_vendeur.length - 1 ? `0.5px solid ${C.orange.border}` : 'none', background: i % 2 === 0 ? C.orange.bg : '#fffbf5' }}>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: i < r.travaux_charge_vendeur.length - 1 ? `0.5px solid ${C.orange.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
               <div style={{ fontSize: 14, color: C.text }}>{t.label}</div>
               {t.montant && <div style={{ fontSize: 15, fontWeight: 600, color: '#f97316', whiteSpace: 'nowrap' as const, marginLeft: 20 }}>{Number(t.montant).toLocaleString('fr-FR')} €</div>}
             </div>
@@ -1388,7 +1397,10 @@ function RendererPreEtatDate({ r }: { r: any }) {
       {/* Historique charges */}
       {r.historique_charges?.length > 0 && (
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
-          <CardHeader label="📊 HISTORIQUE DES CHARGES DU LOT" color={C.gray.dot} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 20px', background: C.bgSecondary, borderBottom: `0.5px solid ${C.border}` }}>
+            <div style={{ width: 9, height: 9, borderRadius: '50%', background: C.gray.dot, flexShrink: 0 }} />
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: C.textSec }}>📊 Historique des charges du lot</span>
+          </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: C.bgSecondary }}>
@@ -1515,8 +1527,11 @@ function RendererEtatDate({ r }: { r: any }) {
 
       {/* Charges futures */}
       {(r.charges_futures?.montant_trimestriel || r.charges_futures?.fonds_travaux_trimestriel) && (
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
-          <CardHeader label="💸 CHARGES FUTURES ACHETEUR" color={C.blue.dot} />
+        <div style={{ background: C.bg, border: `0.5px solid ${C.blue.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 20px', background: C.blue.bg, borderBottom: `0.5px solid ${C.blue.border}` }}>
+            <div style={{ width: 9, height: 9, borderRadius: '50%', background: C.blue.dot, flexShrink: 0 }} />
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: C.blue.text }}>💸 Charges futures acheteur</span>
+          </div>
           <div style={{ padding: '10px 20px', background: C.blue.bg, borderBottom: `0.5px solid ${C.blue.border}`, fontSize: 13, color: C.blue.text }}>ℹ Ces montants seront à régler dès votre entrée dans la copropriété, chaque trimestre.</div>
           {r.charges_futures?.montant_trimestriel && <div style={{ display: 'flex', justifyContent: 'space-between', padding: '13px 20px', borderBottom: `0.5px solid ${C.border}` }}><span style={{ fontSize: 14, color: C.text }}>Charges courantes</span><span style={{ fontSize: 15, fontWeight: 600, color: C.blue.dot }}>{Number(r.charges_futures.montant_trimestriel).toLocaleString('fr-FR')} € / trimestre</span></div>}
           {r.charges_futures?.fonds_travaux_trimestriel && <div style={{ display: 'flex', justifyContent: 'space-between', padding: '13px 20px', borderBottom: `0.5px solid ${C.border}` }}><span style={{ fontSize: 14, color: C.text }}>Fonds de travaux ALUR</span><span style={{ fontSize: 15, fontWeight: 600, color: C.blue.dot }}>{Number(r.charges_futures.fonds_travaux_trimestriel).toLocaleString('fr-FR')} € / trimestre</span></div>}
@@ -1548,10 +1563,13 @@ function RendererEtatDate({ r }: { r: any }) {
 
       {/* Travaux consignés */}
       {r.travaux_consignes?.length > 0 && (
-        <div style={{ background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
-          <CardHeader label="TRAVAUX CONSIGNÉS VENDEUR" color={C.orange.dot} />
+        <div style={{ background: C.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 20px', background: C.orange.bg, borderBottom: `0.5px solid ${C.orange.border}` }}>
+            <div style={{ width: 9, height: 9, borderRadius: '50%', background: C.orange.dot, flexShrink: 0 }} />
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: C.orange.text }}>Travaux consignés vendeur</span>
+          </div>
           {r.travaux_consignes.map((t: any, i: number) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '13px 20px', borderBottom: i < r.travaux_consignes.length - 1 ? `0.5px solid ${C.orange.border}` : 'none' }}>
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '13px 20px', borderBottom: i < r.travaux_consignes.length - 1 ? `0.5px solid ${C.orange.border}` : 'none', background: C.bg }}>
               <span style={{ fontSize: 14, color: C.text }}>{t.label}</span>
               {t.montant && <span style={{ fontSize: 15, fontWeight: 600, color: '#f97316' }}>{Number(t.montant).toLocaleString('fr-FR')} €</span>}
             </div>
@@ -1562,7 +1580,10 @@ function RendererEtatDate({ r }: { r: any }) {
       {/* Historique charges */}
       {r.historique_charges?.length > 0 && (
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
-          <CardHeader label="📊 HISTORIQUE DES CHARGES DU LOT" color={C.gray.dot} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 20px', background: C.bgSecondary, borderBottom: `0.5px solid ${C.border}` }}>
+            <div style={{ width: 9, height: 9, borderRadius: '50%', background: C.gray.dot, flexShrink: 0 }} />
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: C.textSec }}>📊 Historique des charges du lot</span>
+          </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: C.bgSecondary }}>
