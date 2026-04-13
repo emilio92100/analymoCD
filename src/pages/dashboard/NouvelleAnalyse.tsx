@@ -265,8 +265,9 @@ export default function NouvelleAnalyse() {
     if (!result.success) {
       await refundCredit(creditType);
       await markAnalyseFailed(analyseId);
+      setStep('upload'); resetUpload();
       setError(result.errorMessage || "Une erreur est survenue. Votre crédit a été remboursé automatiquement.");
-      setStep('upload'); resetUpload(); setIsAnalysing(false);
+      setIsAnalysing(false);
       console.error('[Verimo] Erreur analyse:', result.errorMessage);
       return;
     }
