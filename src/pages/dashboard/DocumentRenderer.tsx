@@ -1862,6 +1862,177 @@ function RendererDiagCommunes({ r }: { r: any }) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+function RendererModificatifRCP({ r }: { r: any }) {
+  const typeLabel: Record<string, string> = {
+    creation_lot: 'Création de lot',
+    suppression_lot: 'Suppression de lot',
+    changement_usage: "Changement d'usage",
+    mise_a_jour_tantiemes: 'Mise à jour des tantièmes',
+    servitude: 'Servitude',
+    fusion_lots: 'Fusion de lots',
+    autre: 'Modification diverse',
+  };
+  const sub = [
+    r.notaire?.nom ? `Me ${r.notaire.nom}` : null,
+    r.notaire?.ville || null,
+    r.date_acte ? formatDate(r.date_acte) : null,
+  ].filter(Boolean).join(' · ');
+
+  const roleLabel = (role: string) =>
+    role === 'beneficiaire' ? 'Bénéficiaire' :
+    role === 'vendeur' ? 'Vendeur' :
+    role === 'syndicat' ? 'Syndicat des copropriétaires' : 'Autre partie';
+
+  return (
+    <div>
+      <Header type="Modificatif de Règlement de Copropriété" titre={r.titre} sub={sub} />
+      <Resume text={r.resume} />
+
+      {/* Encarts infos acte */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+
+        {/* Notaire */}
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>⚖️ Notaire</div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
+            {r.notaire?.nom && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👤</span><span style={{ fontWeight: 600 }}>Me {r.notaire.nom}</span></div>}
+            {r.notaire?.etude && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏢</span><span>{r.notaire.etude}</span></div>}
+            {r.notaire?.ville && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📍</span><span>{r.notaire.ville}</span></div>}
+          </div>
+        </div>
+
+        {/* Acte */}
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>📋 Acte</div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
+            {r.type_modification && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏷</span><span style={{ fontWeight: 600 }}>{typeLabel[r.type_modification] || r.type_modification}</span></div>}
+            {r.date_acte && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📅</span><span>Acte du {formatDate(r.date_acte)}</span></div>}
+            {r.date_acte_rectificatif && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.orange.text }}><span>⚠</span><span>Acte rectificatif du {formatDate(r.date_acte_rectificatif)}</span></div>}
+            {r.copropriete && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏘</span><span>{r.copropriete}</span></div>}
+          </div>
+        </div>
+
+        {/* Publication */}
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏛 Publication foncière</div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
+            {r.publication_fonciere?.service && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📍</span><span>{r.publication_fonciere.service}</span></div>}
+            {r.publication_fonciere?.date && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📅</span><span>Publié le {formatDate(r.publication_fonciere.date)}</span></div>}
+            {!r.publication_fonciere?.service && !r.publication_fonciere?.date && (
+              <div style={{ fontSize: 13, color: C.textSec, fontStyle: 'italic' as const }}>À vérifier auprès du service de publicité foncière</div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Sur quoi porte ce modificatif */}
+      {r.sur_quoi_porte?.length > 0 && (
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="SUR QUOI PORTE CE MODIFICATIF" color={C.blue.dot} />
+          {r.sur_quoi_porte.map((item: any, i: number) => (
+            <div key={i} style={{ padding: '14px 20px', borderBottom: i < r.sur_quoi_porte.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 4 }}>{item.aspect}</div>
+              {item.detail && <div style={{ fontSize: 13, color: C.textSec, lineHeight: 1.6 }}>{item.detail}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Parties impliquées */}
+      {r.parties_impliquees?.length > 0 && (
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="PARTIES IMPLIQUÉES" color={C.gray.dot} />
+          {r.parties_impliquees.map((p: any, i: number) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '12px 20px', borderBottom: i < r.parties_impliquees.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary, gap: 16 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: C.textSec, flexShrink: 0, minWidth: 140 }}>{roleLabel(p.role)}</span>
+              <div style={{ textAlign: 'right' as const }}>
+                <div style={{ fontSize: 14, fontWeight: 500, color: C.text }}>{p.nom}</div>
+                {p.precision && <div style={{ fontSize: 12, color: C.textSec, marginTop: 2 }}>{p.precision}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Impact sur la copropriété */}
+      {r.impact_copropriete && (
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="IMPACT SUR LA COPROPRIÉTÉ" color={C.blue.dot} />
+          <div style={{ padding: '16px 20px' }}>
+            {/* Lots concernés */}
+            {r.impact_copropriete.lots_concernes?.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: C.textSec, marginBottom: 8, letterSpacing: '0.05em' }}>LOTS CONCERNÉS</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8 }}>
+                  {r.impact_copropriete.lots_concernes.map((lot: any, i: number) => (
+                    <div key={i} style={{ background: C.bgSecondary, border: `0.5px solid ${C.border}`, borderRadius: 10, padding: '8px 14px' }}>
+                      {lot.numero && <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Lot n°{lot.numero}</span>}
+                      {lot.type && <span style={{ fontSize: 13, color: C.textSec }}> — {lot.type}</span>}
+                      {lot.description && <div style={{ fontSize: 12, color: C.textSec, marginTop: 3 }}>{lot.description}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Tantièmes */}
+            {(r.impact_copropriete.tantiemes_avant || r.impact_copropriete.tantiemes_apres) && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 14 }}>
+                <div style={{ background: C.bgSecondary, border: `0.5px solid ${C.border}`, borderRadius: 10, padding: '10px 18px', textAlign: 'center' as const }}>
+                  <div style={{ fontSize: 11, color: C.textSec, marginBottom: 4 }}>Tantièmes avant</div>
+                  <div style={{ fontSize: 18, fontWeight: 600, color: C.text }}>{r.impact_copropriete.tantiemes_avant}</div>
+                </div>
+                <span style={{ fontSize: 20, color: C.textSec }}>→</span>
+                <div style={{ background: C.blue.bg, border: `0.5px solid ${C.blue.border}`, borderRadius: 10, padding: '10px 18px', textAlign: 'center' as const }}>
+                  <div style={{ fontSize: 11, color: C.blue.text, marginBottom: 4 }}>Tantièmes après</div>
+                  <div style={{ fontSize: 18, fontWeight: 600, color: C.blue.text }}>{r.impact_copropriete.tantiemes_apres}</div>
+                </div>
+              </div>
+            )}
+            {/* Impact acheteur */}
+            {r.impact_copropriete.impact_acheteur && (
+              <div style={{ background: C.blue.bg, border: `0.5px solid ${C.blue.border}`, borderRadius: 10, padding: '12px 16px', fontSize: 13, color: C.blue.text, lineHeight: 1.6 }}>
+                💡 {r.impact_copropriete.impact_acheteur}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Points d'attention acheteur */}
+      {r.points_attention?.length > 0 && (
+        <div style={{ background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="POINTS D'ATTENTION ACHETEUR" color={C.orange.dot} />
+          {r.points_attention.map((p: any, i: number) => (
+            <div key={i} style={{ padding: '14px 20px', borderBottom: i < r.points_attention.length - 1 ? `0.5px solid ${C.orange.border}` : 'none', background: i % 2 === 0 ? C.orange.bg : '#fffbf5' }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 4 }}>{p.label}</div>
+              {p.detail && <div style={{ fontSize: 13, color: C.textSec, lineHeight: 1.6 }}>{p.detail}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Informations complémentaires */}
+      {r.infos_complementaires?.length > 0 && (
+        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
+          <CardHeader label="INFORMATIONS COMPLÉMENTAIRES" color={C.gray.dot} />
+          {r.infos_complementaires.map((info: any, i: number) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: i < r.infos_complementaires.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary, gap: 16 }}>
+              <span style={{ fontSize: 13, color: C.textSec }}>{info.label}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: C.text, textAlign: 'right' as const, flexShrink: 0, maxWidth: '60%' }}>{info.valeur}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <SeparateurSynthese />
+      <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
+      <AvisVerimo text={r.avis_verimo} />
+    </div>
+  );
+}
+
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererAutre({ r }: { r: any }) {
   return (
     <div>
@@ -1910,6 +2081,7 @@ function SafeRenderer({ result }: { result: any }) {
       case 'TAXE_FONCIERE': return <RendererTaxeFonciere r={result} />;
       case 'COMPROMIS': return <RendererCompromis r={result} />;
       case 'DIAGNOSTIC_PARTIES_COMMUNES': return <RendererDiagCommunes r={result} />;
+      case 'MODIFICATIF_RCP': return <RendererModificatifRCP r={result} />;
       default: return <RendererAutre r={result} />;
     }
   } catch {
