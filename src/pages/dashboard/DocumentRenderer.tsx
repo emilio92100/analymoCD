@@ -1862,6 +1862,17 @@ function RendererDiagCommunes({ r }: { r: any }) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+function SectionTitle({ label, color, count }: { label: string; color: string; count?: number }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 0 10px', borderBottom: `1.5px solid ${C.border}`, marginBottom: 14 }}>
+      <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+      <span style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>{label}</span>
+      {count != null && <span style={{ fontSize: 11, color: C.textSec, marginLeft: 'auto' }}>{count} point{count > 1 ? 's' : ''}</span>}
+    </div>
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererModificatifRCP({ r }: { r: any }) {
   const typeLabel: Record<string, string> = {
     creation_lot: 'Création de lot',
@@ -1872,26 +1883,27 @@ function RendererModificatifRCP({ r }: { r: any }) {
     fusion_lots: 'Fusion de lots',
     autre: 'Modification diverse',
   };
+
+  const roleLabel = (role: string) =>
+    role === 'beneficiaire' ? 'Bénéficiaire' :
+    role === 'vendeur' ? 'Vendeur' :
+    role === 'syndicat' ? 'Syndicat' : 'Autre partie';
+
+  const porteIcons: Record<number, string> = { 0: '🏗', 1: '👤', 2: '⚖️', 3: '📋', 4: '📍', 5: '🔄' };
+
   const sub = [
     r.notaire?.nom ? `Me ${r.notaire.nom}` : null,
     r.notaire?.ville || null,
     r.date_acte ? formatDate(r.date_acte) : null,
   ].filter(Boolean).join(' · ');
 
-  const roleLabel = (role: string) =>
-    role === 'beneficiaire' ? 'Bénéficiaire' :
-    role === 'vendeur' ? 'Vendeur' :
-    role === 'syndicat' ? 'Syndicat des copropriétaires' : 'Autre partie';
-
   return (
     <div>
       <Header type="Modificatif de Règlement de Copropriété" titre={r.titre} sub={sub} />
       <Resume text={r.resume} />
 
-      {/* Encarts infos acte */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
-
-        {/* Notaire */}
+      {/* 3 encarts */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>⚖️ Notaire</div>
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
@@ -1900,19 +1912,15 @@ function RendererModificatifRCP({ r }: { r: any }) {
             {r.notaire?.ville && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📍</span><span>{r.notaire.ville}</span></div>}
           </div>
         </div>
-
-        {/* Acte */}
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>📋 Acte</div>
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
             {r.type_modification && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏷</span><span style={{ fontWeight: 600 }}>{typeLabel[r.type_modification] || r.type_modification}</span></div>}
             {r.date_acte && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📅</span><span>Acte du {formatDate(r.date_acte)}</span></div>}
-            {r.date_acte_rectificatif && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.orange.text }}><span>⚠</span><span>Acte rectificatif du {formatDate(r.date_acte_rectificatif)}</span></div>}
+            {r.date_acte_rectificatif && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.orange.text }}><span>⚠</span><span>Rectificatif du {formatDate(r.date_acte_rectificatif)}</span></div>}
             {r.copropriete && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏘</span><span>{r.copropriete}</span></div>}
           </div>
         </div>
-
-        {/* Publication */}
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏛 Publication foncière</div>
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
@@ -1927,12 +1935,18 @@ function RendererModificatifRCP({ r }: { r: any }) {
 
       {/* Sur quoi porte ce modificatif */}
       {r.sur_quoi_porte?.length > 0 && (
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
-          <CardHeader label="SUR QUOI PORTE CE MODIFICATIF" color={C.blue.dot} />
+        <div style={{ marginBottom: 20 }}>
+          <SectionTitle label="Sur quoi porte ce modificatif" color={C.blue.dot} count={r.sur_quoi_porte.length} />
           {r.sur_quoi_porte.map((item: any, i: number) => (
-            <div key={i} style={{ padding: '14px 20px', borderBottom: i < r.sur_quoi_porte.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 4 }}>{item.aspect}</div>
-              {item.detail && <div style={{ fontSize: 13, color: C.textSec, lineHeight: 1.6 }}>{item.detail}</div>}
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '13px 0', borderBottom: i < r.sur_quoi_porte.length - 1 ? `0.5px solid ${C.border}` : 'none' }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: C.bgSecondary, border: `0.5px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14 }}>
+                {porteIcons[i] || '📌'}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 3 }}>{item.aspect}</div>
+                {item.detail && <div style={{ fontSize: 13, color: C.textSec, lineHeight: 1.6 }}>{item.detail}</div>}
+              </div>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: C.bgSecondary, border: `0.5px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: C.textSec, fontSize: 14, alignSelf: 'center' as const }}>›</div>
             </div>
           ))}
         </div>
@@ -1940,13 +1954,13 @@ function RendererModificatifRCP({ r }: { r: any }) {
 
       {/* Parties impliquées */}
       {r.parties_impliquees?.length > 0 && (
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
-          <CardHeader label="PARTIES IMPLIQUÉES" color={C.gray.dot} />
+        <div style={{ marginBottom: 20 }}>
+          <SectionTitle label="Parties impliquées" color={C.gray.dot} />
           {r.parties_impliquees.map((p: any, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '12px 20px', borderBottom: i < r.parties_impliquees.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary, gap: 16 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: C.textSec, flexShrink: 0, minWidth: 140 }}>{roleLabel(p.role)}</span>
-              <div style={{ textAlign: 'right' as const }}>
-                <div style={{ fontSize: 14, fontWeight: 500, color: C.text }}>{p.nom}</div>
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 0', borderBottom: i < r.parties_impliquees.length - 1 ? `0.5px solid ${C.border}` : 'none' }}>
+              <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: C.bgSecondary, border: `0.5px solid ${C.border}`, color: C.textSec, whiteSpace: 'nowrap' as const, flexShrink: 0, marginTop: 2 }}>{roleLabel(p.role)}</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{p.nom}</div>
                 {p.precision && <div style={{ fontSize: 12, color: C.textSec, marginTop: 2 }}>{p.precision}</div>}
               </div>
             </div>
@@ -1956,56 +1970,55 @@ function RendererModificatifRCP({ r }: { r: any }) {
 
       {/* Impact sur la copropriété */}
       {r.impact_copropriete && (
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
-          <CardHeader label="IMPACT SUR LA COPROPRIÉTÉ" color={C.blue.dot} />
-          <div style={{ padding: '16px 20px' }}>
-            {/* Lots concernés */}
-            {r.impact_copropriete.lots_concernes?.length > 0 && (
-              <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: C.textSec, marginBottom: 8, letterSpacing: '0.05em' }}>LOTS CONCERNÉS</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8 }}>
-                  {r.impact_copropriete.lots_concernes.map((lot: any, i: number) => (
-                    <div key={i} style={{ background: C.bgSecondary, border: `0.5px solid ${C.border}`, borderRadius: 10, padding: '8px 14px' }}>
-                      {lot.numero && <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Lot n°{lot.numero}</span>}
-                      {lot.type && <span style={{ fontSize: 13, color: C.textSec }}> — {lot.type}</span>}
-                      {lot.description && <div style={{ fontSize: 12, color: C.textSec, marginTop: 3 }}>{lot.description}</div>}
+        <div style={{ marginBottom: 20 }}>
+          <SectionTitle label="Impact sur la copropriété" color={C.blue.dot} />
+          {r.impact_copropriete.lots_concernes?.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: C.textSec, letterSpacing: '0.06em', marginBottom: 8 }}>LOTS CONCERNÉS</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+                {r.impact_copropriete.lots_concernes.map((lot: any, i: number) => (
+                  <div key={i} style={{ background: C.bgSecondary, border: `0.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 2 }}>
+                      {lot.numero ? `Lot n°${lot.numero}` : ''}{lot.type ? ` — ${lot.type}` : ''}
                     </div>
-                  ))}
-                </div>
+                    {lot.description && <div style={{ fontSize: 12, color: C.textSec, lineHeight: 1.4 }}>{lot.description}</div>}
+                  </div>
+                ))}
               </div>
-            )}
-            {/* Tantièmes */}
-            {(r.impact_copropriete.tantiemes_avant || r.impact_copropriete.tantiemes_apres) && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 14 }}>
-                <div style={{ background: C.bgSecondary, border: `0.5px solid ${C.border}`, borderRadius: 10, padding: '10px 18px', textAlign: 'center' as const }}>
-                  <div style={{ fontSize: 11, color: C.textSec, marginBottom: 4 }}>Tantièmes avant</div>
-                  <div style={{ fontSize: 18, fontWeight: 600, color: C.text }}>{r.impact_copropriete.tantiemes_avant}</div>
-                </div>
-                <span style={{ fontSize: 20, color: C.textSec }}>→</span>
-                <div style={{ background: C.blue.bg, border: `0.5px solid ${C.blue.border}`, borderRadius: 10, padding: '10px 18px', textAlign: 'center' as const }}>
-                  <div style={{ fontSize: 11, color: C.blue.text, marginBottom: 4 }}>Tantièmes après</div>
-                  <div style={{ fontSize: 18, fontWeight: 600, color: C.blue.text }}>{r.impact_copropriete.tantiemes_apres}</div>
-                </div>
+            </div>
+          )}
+          {(r.impact_copropriete.tantiemes_avant || r.impact_copropriete.tantiemes_apres) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <div style={{ background: C.bgSecondary, border: `0.5px solid ${C.border}`, borderRadius: 10, padding: '10px 18px', textAlign: 'center' as const }}>
+                <div style={{ fontSize: 11, color: C.textSec, marginBottom: 3 }}>Tantièmes avant</div>
+                <div style={{ fontSize: 20, fontWeight: 600, color: C.text }}>{r.impact_copropriete.tantiemes_avant}</div>
               </div>
-            )}
-            {/* Impact acheteur */}
-            {r.impact_copropriete.impact_acheteur && (
-              <div style={{ background: C.blue.bg, border: `0.5px solid ${C.blue.border}`, borderRadius: 10, padding: '12px 16px', fontSize: 13, color: C.blue.text, lineHeight: 1.6 }}>
-                💡 {r.impact_copropriete.impact_acheteur}
+              <span style={{ fontSize: 18, color: C.textSec }}>→</span>
+              <div style={{ background: C.blue.bg, border: `0.5px solid ${C.blue.border}`, borderRadius: 10, padding: '10px 18px', textAlign: 'center' as const }}>
+                <div style={{ fontSize: 11, color: C.blue.text, marginBottom: 3 }}>Tantièmes après</div>
+                <div style={{ fontSize: 20, fontWeight: 600, color: C.blue.text }}>{r.impact_copropriete.tantiemes_apres}</div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+          {r.impact_copropriete.impact_acheteur && (
+            <div style={{ background: C.blue.bg, border: `0.5px solid ${C.blue.border}`, borderRadius: 10, padding: '12px 16px', fontSize: 13, color: C.blue.text, lineHeight: 1.6 }}>
+              💡 {r.impact_copropriete.impact_acheteur}
+            </div>
+          )}
         </div>
       )}
 
       {/* Points d'attention acheteur */}
       {r.points_attention?.length > 0 && (
-        <div style={{ background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
-          <CardHeader label="POINTS D'ATTENTION ACHETEUR" color={C.orange.dot} />
+        <div style={{ marginBottom: 20 }}>
+          <SectionTitle label="Points d'attention acheteur" color={C.orange.dot} count={r.points_attention.length} />
           {r.points_attention.map((p: any, i: number) => (
-            <div key={i} style={{ padding: '14px 20px', borderBottom: i < r.points_attention.length - 1 ? `0.5px solid ${C.orange.border}` : 'none', background: i % 2 === 0 ? C.orange.bg : '#fffbf5' }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 4 }}>{p.label}</div>
-              {p.detail && <div style={{ fontSize: 13, color: C.textSec, lineHeight: 1.6 }}>{p.detail}</div>}
+            <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '13px 0', borderBottom: i < r.points_attention.length - 1 ? `0.5px solid ${C.border}` : 'none' }}>
+              <span style={{ color: C.orange.dot, fontWeight: 700, flexShrink: 0, marginTop: 1, fontSize: 14 }}>⚠</span>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 3 }}>{p.label}</div>
+                {p.detail && <div style={{ fontSize: 13, color: C.textSec, lineHeight: 1.6 }}>{p.detail}</div>}
+              </div>
             </div>
           ))}
         </div>
@@ -2013,10 +2026,10 @@ function RendererModificatifRCP({ r }: { r: any }) {
 
       {/* Informations complémentaires */}
       {r.infos_complementaires?.length > 0 && (
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
-          <CardHeader label="INFORMATIONS COMPLÉMENTAIRES" color={C.gray.dot} />
+        <div style={{ marginBottom: 20 }}>
+          <SectionTitle label="Informations complémentaires" color={C.gray.dot} />
           {r.infos_complementaires.map((info: any, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: i < r.infos_complementaires.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary, gap: 16 }}>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 0', borderBottom: i < r.infos_complementaires.length - 1 ? `0.5px solid ${C.border}` : 'none', gap: 16 }}>
               <span style={{ fontSize: 13, color: C.textSec }}>{info.label}</span>
               <span style={{ fontSize: 13, fontWeight: 600, color: C.text, textAlign: 'right' as const, flexShrink: 0, maxWidth: '60%' }}>{info.valeur}</span>
             </div>
