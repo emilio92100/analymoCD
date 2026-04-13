@@ -609,7 +609,11 @@ function RendererPVAG({ r }: { r: any }) {
               </div>
             )}
             {r.nb_resolutions && (
-              <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🗳</span><span>{r.nb_resolutions} résolutions à l'ordre du jour</span></div>
+              <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text, alignItems: 'center' }}>
+                <span>🗳</span>
+                <span>{r.nb_resolutions} résolutions à l'ordre du jour</span>
+                <TooltipIcon text="Verimo détecte les résolutions les plus importantes parmi l'ensemble des points votés en AG et vous les synthétise ici." />
+              </div>
             )}
           </div>
         </div>
