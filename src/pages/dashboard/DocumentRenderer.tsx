@@ -953,30 +953,32 @@ function RendererCarnetEntretien({ r }: { r: any }) {
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>⚡ Énergie & Eau</div>
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
-            {/* Chauffage */}
-            <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text, alignItems: 'center' }}>
-              <span>🔥</span>
-              <span>Chauffage · {r.chauffage_collectif ? 'Collectif' : 'Individuel'}{r.type_chauffage ? ` ${r.type_chauffage.charAt(0).toUpperCase() + r.type_chauffage.slice(1).toLowerCase()}` : ''}</span>
-              {!r.chauffage_collectif && <TooltipIcon text="Non inclus dans les charges de copropriété. Demandez les dernières factures au vendeur pour estimer votre budget chauffage." />}
-            </div>
-            {/* Eau chaude */}
-            <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text, alignItems: 'center' }}>
-              <span>🚿</span>
-              <span>Eau chaude · {r.eau_chaude_collective ? 'Collective' : 'Individuelle'}{r.type_chauffage && !r.eau_chaude_collective ? ` ${r.type_chauffage.charAt(0).toUpperCase() + r.type_chauffage.slice(1).toLowerCase()}` : ''}</span>
-              {!r.eau_chaude_collective && <TooltipIcon text="Non incluse dans les charges. Demandez les factures au vendeur pour estimer le coût annuel." />}
-            </div>
-            {/* Eau froide */}
-            <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text, alignItems: 'center' }}>
-              <span>💧</span>
-              <span>Eau froide · {r.eau_froide_collective === false ? 'Individuelle' : 'Collective'}</span>
-              {r.eau_froide_collective === false && <TooltipIcon text="Chaque lot a son propre compteur — vous payez à la consommation réelle." />}
-            </div>
+            {/* Chauffage — uniquement si renseigné */}
+            {r.chauffage_collectif !== null && r.chauffage_collectif !== undefined && (
+              <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text, alignItems: 'center' }}>
+                <span>🔥</span>
+                <span>Chauffage · {r.chauffage_collectif ? 'Collectif' : 'Individuel'}{r.type_chauffage ? ` ${r.type_chauffage.charAt(0).toUpperCase() + r.type_chauffage.slice(1).toLowerCase()}` : ''}</span>
+                {!r.chauffage_collectif && <TooltipIcon text="Non inclus dans les charges de copropriété. Demandez les dernières factures au vendeur pour estimer votre budget chauffage." />}
+              </div>
+            )}
+            {/* Eau chaude — uniquement si renseigné */}
+            {r.eau_chaude_collective !== null && r.eau_chaude_collective !== undefined && (
+              <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text, alignItems: 'center' }}>
+                <span>🚿</span>
+                <span>Eau chaude · {r.eau_chaude_collective ? 'Collective' : 'Individuelle'}{r.type_chauffage && !r.eau_chaude_collective ? ` ${r.type_chauffage.charAt(0).toUpperCase() + r.type_chauffage.slice(1).toLowerCase()}` : ''}</span>
+                {!r.eau_chaude_collective && <TooltipIcon text="Non incluse dans les charges. Demandez les factures au vendeur pour estimer le coût annuel." />}
+              </div>
+            )}
+            {/* Eau froide — uniquement si renseigné */}
+            {r.eau_froide_collective !== null && r.eau_froide_collective !== undefined && (
+              <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text, alignItems: 'center' }}>
+                <span>💧</span>
+                <span>Eau froide · {r.eau_froide_collective ? 'Collective' : 'Individuelle'}</span>
+                {!r.eau_froide_collective && <TooltipIcon text="Chaque lot a son propre compteur — vous payez à la consommation réelle." />}
+              </div>
+            )}
             {/* Gardien si présent */}
             {r.gardien?.nom && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👷</span><span>Gardien(ne) : {r.gardien.nom}</span></div>}
-            {/* Conseil syndical */}
-            {r.conseil_syndical?.membres?.length > 0 && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👥</span><span>Conseil syndical · {r.conseil_syndical.membres.length} membre{r.conseil_syndical.membres.length > 1 ? 's' : ''}</span></div>}
-            {r.conseil_syndical?.echeance_mandat && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>⏳</span><span>Mandat jusqu'au {formatDate(r.conseil_syndical.echeance_mandat)}</span></div>}
-            {r.fonds_travaux_alur_global != null && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🔧</span><span>Fonds ALUR : {Number(r.fonds_travaux_alur_global).toLocaleString('fr-FR')} €</span></div>}
           </div>
         </div>
       </div>
