@@ -78,7 +78,8 @@ function buildDocumentPrompt(p: string): string {
   const parts: string[] = [];
   parts.push('Tu es le moteur d analyse de documents immobiliers de Verimo. Profil : ' + p + '. Tu n utilises jamais les mots Claude, Anthropic ou IA.');
   parts.push('');
-  parts.push('Detecte le type de document parmi : DDT, PV_AG, APPEL_CHARGES, RCP, DTG_PPT, CARNET_ENTRETIEN, PRE_ETAT_DATE, ETAT_DATE, TAXE_FONCIERE, COMPROMIS, DIAGNOSTIC_PARTIES_COMMUNES, AUTRE.');
+  parts.push('Detecte le type de document parmi : DDT, PV_AG, APPEL_CHARGES, RCP, DTG_PPT, CARNET_ENTRETIEN, PRE_ETAT_DATE, ETAT_DATE, TAXE_FONCIERE, COMPROMIS, DIAGNOSTIC_PARTIES_COMMUNES, MODIFICATIF_RCP, AUTRE.');
+  parts.push('MODIFICATIF_RCP : document notarié portant modification de l etat descriptif de division et/ou du règlement de copropriété. Indices : mots-clés "modificatif", "état descriptif de division", "règlement de copropriété" + notaire + création/suppression/modification de lot ou de tantièmes.');
   parts.push('');
   parts.push('Reponds UNIQUEMENT en JSON strict selon le type detecte.');
   parts.push('');
@@ -176,7 +177,17 @@ function buildDocumentPrompt(p: string): string {
   parts.push('- zones_saines : zones ou materiaux confirmes sans amiante apres analyse ou par nature.');
   parts.push('- action : AC1=action corrective premier niveau, EP=evaluation periodique, surveillance=surveillance reguliere, non_detecte=absence confirmee.');
   parts.push('');
-  parts.push('AUTRE : {"document_type":"AUTRE","titre":"...","resume":"...","infos_cles":[{"label":"...","valeur":"..."}],"contenu":[{"section":"...","detail":"..."}],"points_forts":[],"points_vigilance":[],"avis_verimo":"..."}');
+  parts.push('MODIFICATIF_RCP : {"document_type":"MODIFICATIF_RCP","titre":"...","resume":"3-4 phrases en langage simple — ce qui change et pourquoi, utile pour un acheteur","type_modification":"creation_lot|suppression_lot|changement_usage|mise_a_jour_tantiemes|servitude|fusion_lots|autre","copropriete":null,"notaire":{"nom":null,"etude":null,"ville":null},"date_acte":null,"date_acte_rectificatif":null,"publication_fonciere":{"service":null,"date":null},"sur_quoi_porte":[{"aspect":"...","detail":"explication courte en langage simple sans jargon juridique"}],"parties_impliquees":[{"role":"beneficiaire|vendeur|syndicat|autre","nom":null,"precision":null}],"impact_copropriete":{"lots_concernes":[{"numero":null,"type":null,"description":null}],"tantiemes_avant":null,"tantiemes_apres":null,"impact_acheteur":"1-2 phrases max sur ce que ça change concrètement pour un futur acheteur"},"points_attention":[{"label":"...","detail":"explication claire en 1 phrase"}],"infos_complementaires":[{"label":"...","valeur":"..."}],"points_forts":[],"points_vigilance":[],"avis_verimo":"..."}');
+  parts.push('REGLES MODIFICATIF_RCP :');
+  parts.push('- Objectif : aider un acheteur à comprendre ce que change ce modificatif et ce que ça implique pour lui. Ignorer tout ce qui est purement procédural, fiscal ou sans impact pratique pour un acheteur.');
+  parts.push('- sur_quoi_porte : décrire en 2-4 points ce que modifie concrètement cet acte. Langage simple, pas juridique. Ex: "Création d\'un nouveau lot cave n°99 au sous-sol" plutôt que "Modificatif à l\'état descriptif de division portant création du lot n°99".');
+  parts.push('- parties_impliquees : uniquement les parties utiles à connaître pour l\'acheteur (bénéficiaires du lot créé, syndicat). Pas les clercs, témoins ou formalités administratives.');
+  parts.push('- impact_copropriete.impact_acheteur : ce que ça change concrètement. Ex: "Le lot 99 est enclavé et accessible uniquement via le lot 74 — un acheteur qui voudrait les séparer ne pourrait pas accéder au lot 99."');
+  parts.push('- points_attention : uniquement ce qui peut impacter un acheteur (lot enclavé, servitude, accès conditionné, publication à vérifier, acte rectificatif). Maximum 4.');
+  parts.push('- infos_complementaires : uniquement les infos utiles non couvertes ailleurs (nombre total de lots après modificatif, référence cadastrale, droits d\'enregistrement si significatifs). Labels courts 3-4 mots. EXCLURE : détails juridiques, formalités administratives, mentions légales.');
+  parts.push('- Ne jamais recopier le tableau récapitulatif des lots — juste mentionner le nombre total de lots après modificatif dans infos_complementaires si pertinent.');
+
+    parts.push('AUTRE : {"document_type":"AUTRE","titre":"...","resume":"...","infos_cles":[{"label":"...","valeur":"..."}],"contenu":[{"section":"...","detail":"..."}],"points_forts":[],"points_vigilance":[],"avis_verimo":"..."}');
   parts.push('');
   parts.push('REGLES GENERALES : resume = 3-4 phrases. avis_verimo se termine par : Cette analyse porte sur un seul document. Pour une vision complete de votre futur bien, lancez une Analyse Complete. Ne jamais inventer des donnees absentes - mettre null si absent.');
   return parts.join('\n');
