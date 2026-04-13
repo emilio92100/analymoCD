@@ -1862,17 +1862,6 @@ function RendererDiagCommunes({ r }: { r: any }) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function SectionTitle({ label, color, count }: { label: string; color: string; count?: number }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 0 10px', borderBottom: `1.5px solid ${C.border}`, marginBottom: 14 }}>
-      <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-      <span style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>{label}</span>
-      {count != null && <span style={{ fontSize: 11, color: C.textSec, marginLeft: 'auto' }}>{count} point{count > 1 ? 's' : ''}</span>}
-    </div>
-  );
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererModificatifRCP({ r }: { r: any }) {
   const typeLabel: Record<string, string> = {
     creation_lot: 'Création de lot',
@@ -1883,19 +1872,30 @@ function RendererModificatifRCP({ r }: { r: any }) {
     fusion_lots: 'Fusion de lots',
     autre: 'Modification diverse',
   };
-
   const roleLabel = (role: string) =>
     role === 'beneficiaire' ? 'Bénéficiaire' :
     role === 'vendeur' ? 'Vendeur' :
     role === 'syndicat' ? 'Syndicat' : 'Autre partie';
-
+  const roleBadgeStyle = (role: string): React.CSSProperties =>
+    role === 'syndicat'
+      ? { background: '#E6F1FB', color: '#185FA5', border: '0.5px solid #B5D4F4' }
+      : role === 'beneficiaire'
+      ? { background: '#EAF3DE', color: '#3B6D11', border: '0.5px solid #C0DD97' }
+      : { background: C.bgSecondary, color: C.textSec, border: `0.5px solid ${C.border}` };
   const porteIcons: Record<number, string> = { 0: '🏗', 1: '👤', 2: '⚖️', 3: '📋', 4: '📍', 5: '🔄' };
+  const sub = [r.notaire?.nom ? `Me ${r.notaire.nom}` : null, r.notaire?.ville || null, r.date_acte ? formatDate(r.date_acte) : null].filter(Boolean).join(' · ');
 
-  const sub = [
-    r.notaire?.nom ? `Me ${r.notaire.nom}` : null,
-    r.notaire?.ville || null,
-    r.date_acte ? formatDate(r.date_acte) : null,
-  ].filter(Boolean).join(' · ');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const MBlock = ({ children, borderColor, headerBg, dotColor, labelColor, label, count }: { children: React.ReactNode; borderColor: string; headerBg: string; dotColor: string; labelColor: string; label: string; count?: number }) => (
+    <div style={{ borderRadius: 14, border: `0.5px solid ${borderColor}`, overflow: 'hidden', marginBottom: 16, background: C.bg }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 20px', background: headerBg, borderBottom: `0.5px solid ${borderColor}` }}>
+        <div style={{ width: 9, height: 9, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: labelColor, flex: 1 }}>{label}</span>
+        {count != null && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, border: `0.5px solid ${borderColor}`, background: headerBg, color: labelColor }}>{count} point{count > 1 ? 's' : ''}</span>}
+      </div>
+      {children}
+    </div>
+  );
 
   return (
     <div>
@@ -1903,7 +1903,7 @@ function RendererModificatifRCP({ r }: { r: any }) {
       <Resume text={r.resume} />
 
       {/* 3 encarts */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>⚖️ Notaire</div>
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
@@ -1926,115 +1926,105 @@ function RendererModificatifRCP({ r }: { r: any }) {
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
             {r.publication_fonciere?.service && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📍</span><span>{r.publication_fonciere.service}</span></div>}
             {r.publication_fonciere?.date && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📅</span><span>Publié le {formatDate(r.publication_fonciere.date)}</span></div>}
-            {!r.publication_fonciere?.service && !r.publication_fonciere?.date && (
-              <div style={{ fontSize: 13, color: C.textSec, fontStyle: 'italic' as const }}>À vérifier auprès du service de publicité foncière</div>
-            )}
+            {!r.publication_fonciere?.service && !r.publication_fonciere?.date && <div style={{ fontSize: 13, color: C.textSec, fontStyle: 'italic' as const }}>À vérifier auprès du service de publicité foncière</div>}
           </div>
         </div>
       </div>
 
-      {/* Sur quoi porte ce modificatif */}
+      {/* Sur quoi porte — teal */}
       {r.sur_quoi_porte?.length > 0 && (
-        <div style={{ marginBottom: 20 }}>
-          <SectionTitle label="Sur quoi porte ce modificatif" color={C.blue.dot} count={r.sur_quoi_porte.length} />
+        <MBlock label="Sur quoi porte ce modificatif" borderColor="#9FE1CB" headerBg="#E1F5EE" dotColor="#0F6E56" labelColor="#085041" count={r.sur_quoi_porte.length}>
           {r.sur_quoi_porte.map((item: any, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '13px 0', borderBottom: i < r.sur_quoi_porte.length - 1 ? `0.5px solid ${C.border}` : 'none' }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: C.bgSecondary, border: `0.5px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14 }}>
-                {porteIcons[i] || '📌'}
-              </div>
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 20px', borderBottom: i < r.sur_quoi_porte.length - 1 ? `0.5px solid ${C.border}` : 'none', background: C.bg }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: C.bgSecondary, border: `0.5px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14 }}>{porteIcons[i] || '📌'}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 3 }}>{item.aspect}</div>
                 {item.detail && <div style={{ fontSize: 13, color: C.textSec, lineHeight: 1.6 }}>{item.detail}</div>}
               </div>
-              <div style={{ width: 28, height: 28, borderRadius: '50%', background: C.bgSecondary, border: `0.5px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: C.textSec, fontSize: 14, alignSelf: 'center' as const }}>›</div>
             </div>
           ))}
-        </div>
+        </MBlock>
       )}
 
-      {/* Parties impliquées */}
+      {/* Parties impliquées — gris */}
       {r.parties_impliquees?.length > 0 && (
-        <div style={{ marginBottom: 20 }}>
-          <SectionTitle label="Parties impliquées" color={C.gray.dot} />
+        <MBlock label="Parties impliquées" borderColor="#D3D1C7" headerBg="#F1EFE8" dotColor="#5F5E5A" labelColor="#444441">
           {r.parties_impliquees.map((p: any, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 0', borderBottom: i < r.parties_impliquees.length - 1 ? `0.5px solid ${C.border}` : 'none' }}>
-              <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: C.bgSecondary, border: `0.5px solid ${C.border}`, color: C.textSec, whiteSpace: 'nowrap' as const, flexShrink: 0, marginTop: 2 }}>{roleLabel(p.role)}</span>
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 20px', borderBottom: i < r.parties_impliquees.length - 1 ? `0.5px solid ${C.border}` : 'none', background: C.bg }}>
+              <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100, whiteSpace: 'nowrap' as const, flexShrink: 0, marginTop: 2, ...roleBadgeStyle(p.role) }}>{roleLabel(p.role)}</span>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{p.nom}</div>
                 {p.precision && <div style={{ fontSize: 12, color: C.textSec, marginTop: 2 }}>{p.precision}</div>}
               </div>
             </div>
           ))}
-        </div>
+        </MBlock>
       )}
 
-      {/* Impact sur la copropriété */}
+      {/* Impact — bleu */}
       {r.impact_copropriete && (
-        <div style={{ marginBottom: 20 }}>
-          <SectionTitle label="Impact sur la copropriété" color={C.blue.dot} />
-          {r.impact_copropriete.lots_concernes?.length > 0 && (
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: C.textSec, letterSpacing: '0.06em', marginBottom: 8 }}>LOTS CONCERNÉS</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
-                {r.impact_copropriete.lots_concernes.map((lot: any, i: number) => (
-                  <div key={i} style={{ background: C.bgSecondary, border: `0.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px' }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 2 }}>
-                      {lot.numero ? `Lot n°${lot.numero}` : ''}{lot.type ? ` — ${lot.type}` : ''}
+        <MBlock label="Impact sur la copropriété" borderColor="#B5D4F4" headerBg="#E6F1FB" dotColor="#185FA5" labelColor="#0C447C">
+          <div style={{ padding: '16px 20px' }}>
+            {r.impact_copropriete.lots_concernes?.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.06em', marginBottom: 8 }}>LOTS CONCERNÉS</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8 }}>
+                  {r.impact_copropriete.lots_concernes.map((lot: any, i: number) => (
+                    <div key={i} style={{ background: C.bgSecondary, border: `0.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px' }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 2 }}>{lot.numero ? `Lot n°${lot.numero}` : ''}{lot.type ? ` — ${lot.type}` : ''}</div>
+                      {lot.description && <div style={{ fontSize: 12, color: C.textSec, lineHeight: 1.4 }}>{lot.description}</div>}
                     </div>
-                    {lot.description && <div style={{ fontSize: 12, color: C.textSec, lineHeight: 1.4 }}>{lot.description}</div>}
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-          {(r.impact_copropriete.tantiemes_avant || r.impact_copropriete.tantiemes_apres) && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-              <div style={{ background: C.bgSecondary, border: `0.5px solid ${C.border}`, borderRadius: 10, padding: '10px 18px', textAlign: 'center' as const }}>
-                <div style={{ fontSize: 11, color: C.textSec, marginBottom: 3 }}>Tantièmes avant</div>
-                <div style={{ fontSize: 20, fontWeight: 600, color: C.text }}>{r.impact_copropriete.tantiemes_avant}</div>
+            )}
+            {(r.impact_copropriete.tantiemes_avant || r.impact_copropriete.tantiemes_apres) && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                <div style={{ background: C.bgSecondary, border: `0.5px solid ${C.border}`, borderRadius: 10, padding: '10px 18px', textAlign: 'center' as const }}>
+                  <div style={{ fontSize: 11, color: C.textSec, marginBottom: 3 }}>Tantièmes avant</div>
+                  <div style={{ fontSize: 20, fontWeight: 600, color: C.text }}>{r.impact_copropriete.tantiemes_avant}</div>
+                </div>
+                <span style={{ fontSize: 18, color: C.textSec }}>→</span>
+                <div style={{ background: C.blue.bg, border: `0.5px solid ${C.blue.border}`, borderRadius: 10, padding: '10px 18px', textAlign: 'center' as const }}>
+                  <div style={{ fontSize: 11, color: C.blue.text, marginBottom: 3 }}>Tantièmes après</div>
+                  <div style={{ fontSize: 20, fontWeight: 600, color: C.blue.text }}>{r.impact_copropriete.tantiemes_apres}</div>
+                </div>
               </div>
-              <span style={{ fontSize: 18, color: C.textSec }}>→</span>
-              <div style={{ background: C.blue.bg, border: `0.5px solid ${C.blue.border}`, borderRadius: 10, padding: '10px 18px', textAlign: 'center' as const }}>
-                <div style={{ fontSize: 11, color: C.blue.text, marginBottom: 3 }}>Tantièmes après</div>
-                <div style={{ fontSize: 20, fontWeight: 600, color: C.blue.text }}>{r.impact_copropriete.tantiemes_apres}</div>
+            )}
+            {r.impact_copropriete.impact_acheteur && (
+              <div style={{ background: C.blue.bg, border: `0.5px solid ${C.blue.border}`, borderRadius: 10, padding: '12px 16px', fontSize: 13, color: C.blue.text, lineHeight: 1.6 }}>
+                💡 {r.impact_copropriete.impact_acheteur}
               </div>
-            </div>
-          )}
-          {r.impact_copropriete.impact_acheteur && (
-            <div style={{ background: C.blue.bg, border: `0.5px solid ${C.blue.border}`, borderRadius: 10, padding: '12px 16px', fontSize: 13, color: C.blue.text, lineHeight: 1.6 }}>
-              💡 {r.impact_copropriete.impact_acheteur}
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        </MBlock>
       )}
 
-      {/* Points d'attention acheteur */}
+      {/* Points attention — amber */}
       {r.points_attention?.length > 0 && (
-        <div style={{ marginBottom: 20 }}>
-          <SectionTitle label="Points d'attention acheteur" color={C.orange.dot} count={r.points_attention.length} />
+        <MBlock label="Points d'attention acheteur" borderColor="#FAC775" headerBg="#FAEEDA" dotColor="#BA7517" labelColor="#854F0B" count={r.points_attention.length}>
           {r.points_attention.map((p: any, i: number) => (
-            <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '13px 0', borderBottom: i < r.points_attention.length - 1 ? `0.5px solid ${C.border}` : 'none' }}>
-              <span style={{ color: C.orange.dot, fontWeight: 700, flexShrink: 0, marginTop: 1, fontSize: 14 }}>⚠</span>
+            <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '14px 20px', borderBottom: i < r.points_attention.length - 1 ? `0.5px solid ${C.border}` : 'none', background: C.bg }}>
+              <span style={{ color: '#BA7517', fontWeight: 700, flexShrink: 0, marginTop: 1, fontSize: 14 }}>⚠</span>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 3 }}>{p.label}</div>
                 {p.detail && <div style={{ fontSize: 13, color: C.textSec, lineHeight: 1.6 }}>{p.detail}</div>}
               </div>
             </div>
           ))}
-        </div>
+        </MBlock>
       )}
 
-      {/* Informations complémentaires */}
+      {/* Infos complémentaires — gris */}
       {r.infos_complementaires?.length > 0 && (
-        <div style={{ marginBottom: 20 }}>
-          <SectionTitle label="Informations complémentaires" color={C.gray.dot} />
+        <MBlock label="Informations complémentaires" borderColor="#D3D1C7" headerBg="#F1EFE8" dotColor="#888780" labelColor="#5F5E5A">
           {r.infos_complementaires.map((info: any, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 0', borderBottom: i < r.infos_complementaires.length - 1 ? `0.5px solid ${C.border}` : 'none', gap: 16 }}>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 20px', borderBottom: i < r.infos_complementaires.length - 1 ? `0.5px solid ${C.border}` : 'none', background: C.bg, gap: 16 }}>
               <span style={{ fontSize: 13, color: C.textSec }}>{info.label}</span>
               <span style={{ fontSize: 13, fontWeight: 600, color: C.text, textAlign: 'right' as const, flexShrink: 0, maxWidth: '60%' }}>{info.valeur}</span>
             </div>
           ))}
-        </div>
+        </MBlock>
       )}
 
       <SeparateurSynthese />
@@ -2043,7 +2033,6 @@ function RendererModificatifRCP({ r }: { r: any }) {
     </div>
   );
 }
-
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function RendererAutre({ r }: { r: any }) {
