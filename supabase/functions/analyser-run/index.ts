@@ -315,10 +315,11 @@ async function runAnalyseWithData(
     await Promise.all(fileIds.map(id => deleteFromFilesAPI(id, apiKey)));
 
     if (result.error || !report) {
-      const msg = result.error === 'rate_limit' ? 'Service surcharg\u00e9. R\u00e9essayez dans quelques minutes.'
-        : result.error === 'overload' ? 'Service indisponible. R\u00e9essayez dans quelques minutes.'
-        : !report ? 'Erreur de g\u00e9n\u00e9ration. R\u00e9essayez ou contactez le support.'
-        : 'Erreur inattendue. Contactez le support.';
+      const msg = result.error === 'rate_limit' ? 'Notre outil est momentanément surchargé. Votre crédit a été remboursé. Réessayez dans 2 à 3 minutes.'
+        : result.error === 'overload' ? 'Notre outil est temporairement indisponible. Votre crédit a été remboursé. Réessayez dans quelques minutes.'
+        : (result.error && result.error.startsWith('api_error_5')) ? 'Notre outil rencontre une perturbation temporaire. Votre crédit a été remboursé. Réessayez dans quelques minutes.'
+        : !report ? 'Une erreur est survenue lors de la génération. Votre crédit a été remboursé. Réessayez ou contactez le support.'
+        : 'Erreur inattendue. Votre crédit a été remboursé. Contactez le support.';
       await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: msg }).eq('id', analyseId);
       return;
     }
@@ -417,10 +418,11 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
     await Promise.all(fileIds.map(id => deleteFromFilesAPI(id, apiKey)));
 
     if (result.error || !report) {
-      const msg = result.error === 'rate_limit' ? 'Service surcharg\u00e9. R\u00e9essayez dans quelques minutes.'
-        : result.error === 'overload' ? 'Service indisponible. R\u00e9essayez dans quelques minutes.'
-        : !report ? 'Erreur de g\u00e9n\u00e9ration. R\u00e9essayez ou contactez le support.'
-        : 'Erreur inattendue. Contactez le support.';
+      const msg = result.error === 'rate_limit' ? 'Notre outil est momentanément surchargé. Votre crédit a été remboursé. Réessayez dans 2 à 3 minutes.'
+        : result.error === 'overload' ? 'Notre outil est temporairement indisponible. Votre crédit a été remboursé. Réessayez dans quelques minutes.'
+        : (result.error && result.error.startsWith('api_error_5')) ? 'Notre outil rencontre une perturbation temporaire. Votre crédit a été remboursé. Réessayez dans quelques minutes.'
+        : !report ? 'Une erreur est survenue lors de la génération. Votre crédit a été remboursé. Réessayez ou contactez le support.'
+        : 'Erreur inattendue. Votre crédit a été remboursé. Contactez le support.';
       await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: msg }).eq('id', analyseId);
       return;
     }
