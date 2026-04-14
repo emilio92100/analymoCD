@@ -1344,7 +1344,7 @@ function TabProcedures({ rapport }: { rapport: RapportData }) {
 /* ══════════════════════════════════
    ONGLET DOCUMENTS
 ══════════════════════════════════ */
-function TabDocuments({ rapport, onTabChange }: { rapport: RapportData; onTabChange?: (tab: string) => void }) {
+function TabDocuments({ rapport }: { rapport: RapportData }) {
   const [tooltipDoc, setTooltipDoc] = useState<string | null>(null);
   const docTypeLabel: Record<string, string> = {
     PV_AG: "PV d'Assemblée Générale", REGLEMENT_COPRO: 'Règlement de copropriété',
@@ -1849,7 +1849,7 @@ export default function RapportPage() {
         {activeTab === 'copropriete' && isComplete && hasCopro && <SafeTabBoundary><TabCopropriete rapport={rapport} /></SafeTabBoundary>}
         {activeTab === 'logement' && isComplete && <SafeTabBoundary><TabLogement rapport={rapport} /></SafeTabBoundary>}
         {activeTab === 'procedures' && isComplete && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
-        {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} onTabChange={(tab) => setActiveTab(tab as TabId)} /></SafeTabBoundary>}
+        {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} /></SafeTabBoundary>}
 
         {/* Bannière 7 jours */}
         {isComplete && !rapport.is_preview && rapport.regeneration_deadline && (() => {
