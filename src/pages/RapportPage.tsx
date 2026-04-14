@@ -565,7 +565,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
   const nbProcedures = rapport.procedures.length;
   const nbLots = (finances?.nombre_lots as number | null) || ((rapport as Record<string, unknown>).nombre_lots as number | null);
   const categories = rapport.categories as Record<string, { note: number; note_max: number }>;
-  const catLabels: Record<string, string> = { travaux: 'Travaux', procedures: 'Procédures', finances: 'Finances', diags_privatifs: 'Diagnostics privatifs', diags_communs: 'Diagnostics communs' };
+  const catLabels: Record<string, string> = { travaux: 'État des travaux', procedures: 'Risques juridiques', finances: 'Santé financière', diags_privatifs: 'Diagnostics privatifs', diags_communs: 'Diagnostics communs' };
   const catIcons: Record<string, string> = { travaux: '🏗', procedures: '⚖️', finances: '💰', diags_privatifs: '🔍', diags_communs: '🏢' };
   const getCatColor = (pct: number) => pct >= 80 ? '#1D9E75' : pct >= 60 ? '#BA7517' : '#E24B4A';
   const getCatBg = (pct: number) => pct >= 80 ? '#EAF3DE' : pct >= 60 ? '#FAEEDA' : '#FCEBEB';
@@ -622,7 +622,10 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
         {/* Détail de la note */}
         {isComplete && Object.keys(categories).length > 0 && (
           <div style={{ padding: '16px 22px 0' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 14 }}>DÉTAIL DE LA NOTE</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 10 }}>DÉTAIL DE LA NOTE</div>
+            <p style={{ fontSize: 12, color: '#64748b', lineHeight: 1.7, margin: '0 0 14px 0', padding: '10px 14px', background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7' }}>
+              Votre score de <strong style={{ color: '#0f172a' }}>{rapport.score.toFixed(1)}/20</strong> se compose de 5 catégories. Plus vous récupérez de points dans chaque catégorie, moins il y a de risques détectés dans vos documents.
+            </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
               {Object.entries(categories).map(([key, cat]) => {
                 const c = cat as { note: number; note_max: number };
@@ -651,7 +654,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
                             </div>
                           )}
                         </div>
-                        <span style={{ fontSize: 12, fontWeight: 600, color }}>{c.note} / {c.note_max}</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color }}>{c.note} pt sur {c.note_max}</span>
                       </div>
                       <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99 }}>
                         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99 }} />
