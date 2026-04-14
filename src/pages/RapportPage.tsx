@@ -552,12 +552,17 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
 
             {/* Adresse + infos */}
             <div style={{ flex: 1, minWidth: 200 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', marginBottom: 6 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.65)', letterSpacing: '0.12em', marginBottom: 6 }}>
                 {rapport.type_bien === 'maison' ? 'MAISON INDIVIDUELLE' : 'APPARTEMENT EN COPROPRIÉTÉ'} · {rapport.profil === 'invest' ? 'INVESTISSEMENT LOCATIF' : 'RÉSIDENCE PRINCIPALE'}
               </div>
               <h1 style={{ fontSize: 'clamp(15px,2.2vw,20px)', fontWeight: 800, color: '#fff', lineHeight: 1.3, marginBottom: 4 }}>{rapport.adresse}</h1>
-              {rapport.adresseSub && <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginBottom: 12 }}>{rapport.adresseSub}</div>}
-              <DetailNote rapport={rapport} />
+              {rapport.adresseSub && <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', marginBottom: 10 }}>{rapport.adresseSub}</div>}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                <span style={{ fontSize: 10, padding: '3px 9px', borderRadius: 100, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.85)' }}>{getTypeBienLabel(rapport.type_bien)}</span>
+                <span style={{ fontSize: 10, padding: '3px 9px', borderRadius: 100, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.85)' }}>{getProfilLabel(rapport.profil)}</span>
+                {rapport.annee_construction && <span style={{ fontSize: 10, padding: '3px 9px', borderRadius: 100, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.85)' }}>Construit en {rapport.annee_construction}</span>}
+                <span style={{ fontSize: 10, padding: '3px 9px', borderRadius: 100, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.65)' }}>Analysé le {rapport.date}</span>
+              </div>
             </div>
           </div>
         )}
@@ -568,9 +573,9 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
               <FileText size={20} style={{ color: 'rgba(255,255,255,0.7)' }} />
             </div>
             <div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', marginBottom: 4 }}>ANALYSE DOCUMENT</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.65)', letterSpacing: '0.1em', marginBottom: 4 }}>ANALYSE DOCUMENT</div>
               <div style={{ fontSize: 17, fontWeight: 800, color: '#fff' }}>{rapport.adresse}</div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>Analysé le {rapport.date}</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', marginTop: 2 }}>Analysé le {rapport.date}</div>
             </div>
           </div>
         )}
@@ -582,13 +587,16 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
    ONGLET SYNTHÈSE
 ══════════════════════════════════ */
 function TabSynthese({ rapport }: { rapport: RapportData }) {
+  const [tooltip, setTooltip] = useState<string | null>(null);
   const docsIgnores = (rapport as Record<string, unknown>).documents_ignores as string[] | undefined;
   const avertissement = (rapport as Record<string, unknown>).avertissement_docs as string | undefined;
   const isComplete = rapport.type === 'complete';
   const finances = rapport.finances as Record<string, unknown> | null;
   const chargesLot = finances?.charges_annuelles_lot;
   const chargesLotNum = typeof chargesLot === 'number' ? chargesLot : typeof chargesLot === 'string' ? parseFloat(String(chargesLot).replace(/[^0-9.]/g, '')) || 0 : 0;
-  const taxeFonciere = finances?.taxe_fonciere as string | null;
+  // Taxe foncière — chercher dans plusieurs champs possibles
+  const taxeFonciere = (finances?.taxe_fonciere || finances?.taxe_fonciere_annuelle || (rapport as Record<string, unknown>).taxe_fonciere) as string | number | null;
+  const taxeFonciereStr = taxeFonciere ? (typeof taxeFonciere === 'number' ? `${taxeFonciere.toLocaleString('fr-FR')} €` : safeStr(taxeFonciere)) : null;
   const dpe = rapport.diagnostics.find((d: Record<string, unknown>) => d.type === 'DPE' && d.perimetre === 'lot_privatif') as Record<string, unknown> | undefined;
   const dpeClasse = dpe ? safeStr(dpe.resultat)?.match(/Classe\s+([A-G])\b/i)?.[1]?.toUpperCase() : null;
   const dpeColors: Record<string, string> = { A: '#16a34a', B: '#22c55e', C: '#84cc16', D: '#eab308', E: '#f97316', F: '#ef4444', G: '#991b1b' };
@@ -601,6 +609,30 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
   const catIcons: Record<string, string> = { travaux: '🏗', procedures: '⚖️', finances: '💰', diags_privatifs: '🔍', diags_communs: '🏢' };
   const getCatColor = (pct: number) => pct >= 80 ? '#1D9E75' : pct >= 60 ? '#BA7517' : '#E24B4A';
   const getCatBg = (pct: number) => pct >= 80 ? '#EAF3DE' : pct >= 60 ? '#FAEEDA' : '#FCEBEB';
+
+  // KPIs avec disposition intelligente
+  const buildKpis = () => {
+    const kpis: { icon: string; label: string; value: string; color?: string }[] = [];
+    if (nbLots) kpis.push({ icon: '🏢', label: 'Nombre de lots', value: String(nbLots) });
+    if (rapport.annee_construction) kpis.push({ icon: '📅', label: 'Année de construction', value: safeStr(rapport.annee_construction) });
+    if (chargesLotNum > 0) kpis.push({ icon: '💰', label: 'Charges annuelles', value: `${chargesLotNum.toLocaleString('fr-FR')} €/an` });
+    if (totalTravauxVotes > 0) kpis.push({ icon: '🏗', label: 'Travaux votés', value: `~${totalTravauxVotes.toLocaleString('fr-FR')} €` });
+    if (nbTravauxEvoques > 0) kpis.push({ icon: '⚠️', label: 'Travaux évoqués', value: `${nbTravauxEvoques} mentionné${nbTravauxEvoques > 1 ? 's' : ''}` });
+    if (dpeClasse) kpis.push({ icon: '⚡', label: 'Classe DPE', value: `Classe ${dpeClasse}`, color: dpeColors[dpeClasse] });
+    kpis.push({ icon: '⚖️', label: 'Procédures', value: nbProcedures === 0 ? 'Aucune détectée' : `${nbProcedures} détectée${nbProcedures > 1 ? 's' : ''}`, color: nbProcedures > 0 ? '#dc2626' : '#16a34a' });
+    if (taxeFonciereStr) kpis.push({ icon: '🏛', label: 'Taxe foncière', value: taxeFonciereStr });
+    return kpis;
+  };
+
+  const kpis = buildKpis();
+  const kpiGridStyle = kpis.length <= 2
+    ? { display: 'flex', gap: '10px', justifyContent: 'center' as const }
+    : kpis.length <= 4
+      ? { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }
+      : { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '10px' };
+  const kpiCardStyle = kpis.length <= 2
+    ? { background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, padding: '14px 16px', minWidth: 160, maxWidth: 220 }
+    : { background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, padding: '14px 16px' };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -620,77 +652,97 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
         </div>
       )}
 
-      {/* 1. RÉSUMÉ */}
-      <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '20px 22px' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 10 }}>RÉSUMÉ</div>
-        <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.9, margin: 0 }}>{rapport.resume}</p>
-      </div>
+      {/* 1. RÉSUMÉ + DÉTAIL NOTE fusionnés */}
+      <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+        {/* Résumé */}
+        <div style={{ padding: '20px 22px 16px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 10 }}>RÉSUMÉ</div>
+          <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.9, margin: 0 }}>{rapport.resume}</p>
+        </div>
 
-      {/* 2. KPIs */}
-      {isComplete && (() => {
-        const kpis: { icon: string; label: string; value: string; color?: string }[] = [];
-        if (nbLots) kpis.push({ icon: '🏢', label: 'Nombre de lots', value: String(nbLots) });
-        if (rapport.annee_construction) kpis.push({ icon: '📅', label: 'Année de construction', value: safeStr(rapport.annee_construction) });
-        if (chargesLotNum > 0) kpis.push({ icon: '💰', label: 'Charges annuelles', value: `${chargesLotNum.toLocaleString('fr-FR')} €/an` });
-        if (totalTravauxVotes > 0) kpis.push({ icon: '🏗', label: 'Travaux votés', value: `~${totalTravauxVotes.toLocaleString('fr-FR')} €` });
-        if (nbTravauxEvoques > 0) kpis.push({ icon: '⚠️', label: 'Travaux évoqués', value: `${nbTravauxEvoques} mentionné${nbTravauxEvoques > 1 ? 's' : ''}` });
-        if (dpeClasse) kpis.push({ icon: '⚡', label: 'Classe DPE', value: `Classe ${dpeClasse}`, color: dpeColors[dpeClasse] });
-        kpis.push({ icon: '⚖️', label: 'Procédures', value: nbProcedures === 0 ? 'Aucune détectée' : `${nbProcedures} détectée${nbProcedures > 1 ? 's' : ''}`, color: nbProcedures > 0 ? '#dc2626' : '#16a34a' });
-        if (taxeFonciere) kpis.push({ icon: '🏛', label: 'Taxe foncière', value: safeStr(taxeFonciere) });
-        if (kpis.length === 0) return null;
-        return (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
-            {kpis.map((kpi, i) => (
-              <div key={i} style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, padding: '14px 16px' }}>
-                <div style={{ fontSize: 18, marginBottom: 8 }}>{kpi.icon}</div>
-                <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>{kpi.label}</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: kpi.color || '#0f172a' }}>{kpi.value}</div>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
+        {/* Séparateur */}
+        {isComplete && Object.keys(categories).length > 0 && (
+          <div style={{ height: 1, background: '#f1f5f9', margin: '0 22px' }} />
+        )}
 
-      {/* 3. DÉTAIL DE LA NOTE */}
-      {isComplete && Object.keys(categories).length > 0 && (
-        <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, overflow: 'hidden' }}>
-          <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {Object.entries(categories).map(([key, cat]) => {
-              const c = cat as { note: number; note_max: number };
-              const pct = Math.round((c.note / c.note_max) * 100);
-              const color = getCatColor(pct);
-              const bg = getCatBg(pct);
-              return (
-                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <div style={{ width: 38, height: 38, borderRadius: 9, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>{catIcons[key] || '📊'}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
-                      <span style={{ fontSize: 13, color: '#0f172a' }}>{catLabels[key] || key}</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, color }}>{c.note} / {c.note_max}</span>
-                    </div>
-                    <div style={{ height: 6, background: '#f1f5f9', borderRadius: 99 }}>
-                      <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99 }} />
+        {/* Détail de la note */}
+        {isComplete && Object.keys(categories).length > 0 && (
+          <div style={{ padding: '16px 22px 0' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 14 }}>DÉTAIL DE LA NOTE</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
+              {Object.entries(categories).map(([key, cat]) => {
+                const c = cat as { note: number; note_max: number };
+                const isZero = c.note === 0;
+                const pct = Math.round((c.note / c.note_max) * 100);
+                const color = isZero ? '#94a3b8' : getCatColor(pct);
+                const bg = isZero ? '#f8fafc' : getCatBg(pct);
+                const tooltipKey = `${key}`;
+                return (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 34, height: 34, borderRadius: 8, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>{catIcons[key] || '📊'}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 13, color: '#0f172a' }}>{catLabels[key] || key}</span>
+                          {isZero && (
+                            <div style={{ position: 'relative', display: 'inline-flex' }}
+                              onMouseEnter={() => setTooltip(tooltipKey)}
+                              onMouseLeave={() => setTooltip(null)}>
+                              <div style={{ width: 15, height: 15, borderRadius: '50%', background: '#f1f5f9', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>?</div>
+                              {tooltip === tooltipKey && (
+                                <div style={{ position: 'absolute', left: 22, top: -8, width: 260, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 11.5, color: '#fff', lineHeight: 1.7, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.2)', animation: 'fadeUp 0.15s ease' }}>
+                                  Cette note est nulle car aucun document pertinent n'a été détecté. Complétez votre dossier dans les 7 jours pour améliorer votre score.
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <span style={{ fontSize: 12, fontWeight: 600, color }}>{c.note} / {c.note_max}</span>
+                      </div>
+                      <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99 }}>
+                        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99 }} />
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-          <div style={{ background: getScoreColor(rapport.score), padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        )}
+
+        {/* Footer score coloré */}
+        {isComplete && (
+          <div style={{ marginTop: 16, background: getScoreColor(rapport.score), padding: '14px 22px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.85)' }}>Score total</span>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-              <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>{getScoreLabel(rapport.score)}</span>
+              <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>{getScoreLabel(rapport.score)}</span>
               <span style={{ fontSize: 22, fontWeight: 500, color: '#fff' }}>{rapport.score.toFixed(1)}<span style={{ fontSize: 13, fontWeight: 400, opacity: 0.7 }}> / 20</span></span>
             </div>
           </div>
+        )}
+      </div>
+
+      {/* 2. KPIs — disposition intelligente */}
+      {isComplete && kpis.length > 0 && (
+        <div style={kpiGridStyle}>
+          {kpis.map((kpi, i) => (
+            <div key={i} style={kpiCardStyle}>
+              <div style={{ fontSize: 18, marginBottom: 8 }}>{kpi.icon}</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>{kpi.label}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: kpi.color || '#0f172a' }}>{kpi.value}</div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* 4. POINTS POSITIFS / VIGILANCE */}
+      {/* 3. POINTS POSITIFS / VIGILANCE */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 8, marginBottom: 24 }}>
           <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
-          <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>SYNTHÈSE DE L'ANALYSE</span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 17, fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>Synthèse de l'analyse</span>
+            <div style={{ height: 3, width: '100%', background: '#2a7d9c', borderRadius: 99 }} />
+          </div>
           <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
@@ -730,7 +782,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
         </div>
       </div>
 
-      {/* 5. PISTES DE NÉGOCIATION */}
+      {/* 4. PISTES DE NÉGOCIATION */}
       {rapport.negociation?.applicable && rapport.negociation.elements.length > 0 && rapport.score < 14 && (
         <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 14, padding: '18px 20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -743,18 +795,24 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {rapport.negociation.elements.map((el: any, i: number) => {
-              const isStr = typeof el === 'string';
-              const obj = isStr ? null : el as Record<string, string>;
+              const texte = typeof el === 'string'
+                ? el
+                : safeStr(el?.motif || el?.argument || el?.description || el?.levier || el?.texte || Object.values(el || {}).find((v: unknown) => typeof v === 'string' && (v as string).length > 10));
+              if (!texte) return null;
+              const levier = typeof el !== 'string' ? safeStr(el?.levier) : '';
               return (
                 <div key={i} style={{ background: '#fff', borderRadius: 10, border: '1px solid #fde68a', padding: '12px 14px' }}>
-                  {isStr ? (
-                    <div style={{ display: 'flex', gap: 8 }}><span>💡</span><span style={{ fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>{safeStr(el)}</span></div>
-                  ) : (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <span style={{ fontSize: 16, flexShrink: 0 }}>💡</span>
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 4 }}>💡 {safeStr(obj?.motif || obj?.argument)}</div>
-                      {obj?.levier && <span style={{ fontSize: 11, fontWeight: 700, color: '#d97706', background: '#fef3c7', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 100 }}>Levier : {safeStr(obj.levier)}</span>}
+                      <div style={{ fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>{texte}</div>
+                      {levier && levier !== texte && (
+                        <span style={{ display: 'inline-block', marginTop: 6, fontSize: 11, fontWeight: 700, color: '#d97706', background: '#fef3c7', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 100 }}>
+                          Levier : {levier}
+                        </span>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })}
@@ -762,7 +820,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
         </div>
       )}
 
-      {/* 6. AVIS VERIMO */}
+      {/* 5. AVIS VERIMO */}
       <div style={{ background: '#0f2d3d', borderRadius: 16, overflow: 'hidden' }}>
         <div style={{ padding: '24px 28px 20px', borderBottom: '0.5px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 22, flexShrink: 0 }}>⭐</span>
