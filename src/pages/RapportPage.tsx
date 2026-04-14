@@ -38,6 +38,36 @@ function getProfilLabel(profil: string) {
 function isCoproType(type: string) {
   return type === 'appartement' || type === 'maison_copro';
 }
+function safeStr(val: unknown): string {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+  if (typeof val === 'object') return JSON.stringify(val);
+  return String(val);
+}
+
+/* ══════════════════════════════════
+   SAFE TAB BOUNDARY — protection bug React #31
+══════════════════════════════════ */
+class SafeTabBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '32px 24px', textAlign: 'center' }}>
+          <div style={{ fontSize: 24, marginBottom: 12 }}>⚠️</div>
+          <p style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Erreur d'affichage</p>
+          <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>Un problème est survenu sur cet onglet. Vos données sont intactes.</p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 /* ══════════════════════════════════
    ACCORDÉON
@@ -554,6 +584,23 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
 function TabSynthese({ rapport }: { rapport: RapportData }) {
   const docsIgnores = (rapport as Record<string, unknown>).documents_ignores as string[] | undefined;
   const avertissement = (rapport as Record<string, unknown>).avertissement_docs as string | undefined;
+  const isComplete = rapport.type === 'complete';
+  const finances = rapport.finances as Record<string, unknown> | null;
+  const chargesLot = finances?.charges_annuelles_lot;
+  const chargesLotNum = typeof chargesLot === 'number' ? chargesLot : typeof chargesLot === 'string' ? parseFloat(String(chargesLot).replace(/[^0-9.]/g, '')) || 0 : 0;
+  const taxeFonciere = finances?.taxe_fonciere as string | null;
+  const dpe = rapport.diagnostics.find((d: Record<string, unknown>) => d.type === 'DPE' && d.perimetre === 'lot_privatif') as Record<string, unknown> | undefined;
+  const dpeClasse = dpe ? safeStr(dpe.resultat)?.match(/Classe\s+([A-G])\b/i)?.[1]?.toUpperCase() : null;
+  const dpeColors: Record<string, string> = { A: '#16a34a', B: '#22c55e', C: '#84cc16', D: '#eab308', E: '#f97316', F: '#ef4444', G: '#991b1b' };
+  const totalTravauxVotes = rapport.travaux_votes.reduce((acc: number, t: Record<string, unknown>) => acc + (typeof t.montant_estime === 'number' ? t.montant_estime : 0), 0);
+  const nbTravauxEvoques = rapport.travaux_a_prevoir.length;
+  const nbProcedures = rapport.procedures.length;
+  const nbLots = (finances?.nombre_lots as number | null) || ((rapport as Record<string, unknown>).nombre_lots as number | null);
+  const categories = rapport.categories as Record<string, { note: number; note_max: number }>;
+  const catLabels: Record<string, string> = { travaux: 'Travaux', procedures: 'Procédures', finances: 'Finances', diags_privatifs: 'Diagnostics privatifs', diags_communs: 'Diagnostics communs' };
+  const catIcons: Record<string, string> = { travaux: '🏗', procedures: '⚖️', finances: '💰', diags_privatifs: '🔍', diags_communs: '🏢' };
+  const getCatColor = (pct: number) => pct >= 80 ? '#1D9E75' : pct >= 60 ? '#BA7517' : '#E24B4A';
+  const getCatBg = (pct: number) => pct >= 80 ? '#EAF3DE' : pct >= 60 ? '#FAEEDA' : '#FCEBEB';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -573,87 +620,117 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
         </div>
       )}
 
-      {/* Résumé */}
+      {/* 1. RÉSUMÉ */}
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '20px 22px' }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 10 }}>RÉSUMÉ</div>
-        <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.9 }}>{rapport.resume}</p>
+        <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.9, margin: 0 }}>{rapport.resume}</p>
       </div>
 
-      {/* Points positifs + vigilance — affichage compact si beaucoup de points */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 14 }}>
-        {/* Points positifs */}
-        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '18px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <CheckCircle size={15} style={{ color: '#16a34a' }} />
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Points positifs</span>
-            {rapport.points_forts.length > 0 && (
-              <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, background: '#f0fdf4', color: '#16a34a', marginLeft: 'auto' }}>
-                {rapport.points_forts.length}
-              </span>
-            )}
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {rapport.points_forts.length > 0 ? rapport.points_forts.map((p, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '6px 10px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0' }}>
-                <CheckCircle size={12} color="#16a34a" style={{ flexShrink: 0, marginTop: 2 }} />
-                <span style={{ fontSize: 12, color: '#166534', lineHeight: 1.5 }}>{p}</span>
+      {/* 2. KPIs */}
+      {isComplete && (() => {
+        const kpis: { icon: string; label: string; value: string; color?: string }[] = [];
+        if (nbLots) kpis.push({ icon: '🏢', label: 'Nombre de lots', value: String(nbLots) });
+        if (rapport.annee_construction) kpis.push({ icon: '📅', label: 'Année de construction', value: safeStr(rapport.annee_construction) });
+        if (chargesLotNum > 0) kpis.push({ icon: '💰', label: 'Charges annuelles', value: `${chargesLotNum.toLocaleString('fr-FR')} €/an` });
+        if (totalTravauxVotes > 0) kpis.push({ icon: '🏗', label: 'Travaux votés', value: `~${totalTravauxVotes.toLocaleString('fr-FR')} €` });
+        if (nbTravauxEvoques > 0) kpis.push({ icon: '⚠️', label: 'Travaux évoqués', value: `${nbTravauxEvoques} mentionné${nbTravauxEvoques > 1 ? 's' : ''}` });
+        if (dpeClasse) kpis.push({ icon: '⚡', label: 'Classe DPE', value: `Classe ${dpeClasse}`, color: dpeColors[dpeClasse] });
+        kpis.push({ icon: '⚖️', label: 'Procédures', value: nbProcedures === 0 ? 'Aucune détectée' : `${nbProcedures} détectée${nbProcedures > 1 ? 's' : ''}`, color: nbProcedures > 0 ? '#dc2626' : '#16a34a' });
+        if (taxeFonciere) kpis.push({ icon: '🏛', label: 'Taxe foncière', value: safeStr(taxeFonciere) });
+        if (kpis.length === 0) return null;
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
+            {kpis.map((kpi, i) => (
+              <div key={i} style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, padding: '14px 16px' }}>
+                <div style={{ fontSize: 18, marginBottom: 8 }}>{kpi.icon}</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>{kpi.label}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: kpi.color || '#0f172a' }}>{kpi.value}</div>
               </div>
-            )) : <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun point positif identifié.</p>}
-          </div>
-        </div>
-
-        {/* Points de vigilance */}
-        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '18px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <AlertTriangle size={15} style={{ color: '#d97706' }} />
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Points de vigilance</span>
-            {rapport.points_vigilance.length > 0 && (
-              <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 100, background: '#fffbeb', color: '#d97706', marginLeft: 'auto' }}>
-                {rapport.points_vigilance.length}
-              </span>
-            )}
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {rapport.points_vigilance.length > 0 ? rapport.points_vigilance.map((p, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '6px 10px', background: '#fffbeb', borderRadius: 8, border: '1px solid #fde68a' }}>
-                <AlertTriangle size={12} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
-                <span style={{ fontSize: 12, color: '#92400e', lineHeight: 1.5 }}>{p}</span>
-              </div>
-            )) : <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun point de vigilance identifié.</p>}
-          </div>
-        </div>
-      </div>
-
-      {/* Avis Verimo */}
-      <div style={{ background: '#0f2d3d', borderRadius: 16, padding: '24px 28px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-          <Star size={15} style={{ color: '#5bb8d4' }} />
-          <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.12em' }}>AVIS VERIMO</span>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {(rapport.avis_verimo || '')
-            .split(/\.\s+/)
-            .filter(s => s.trim().length > 20)
-            .reduce<string[][]>((acc, sentence, i, arr) => {
-              const groupIdx = Math.floor(i / Math.ceil(arr.length / 3));
-              if (!acc[groupIdx]) acc[groupIdx] = [];
-              acc[groupIdx].push(sentence.trim());
-              return acc;
-            }, [])
-            .map((group, i) => (
-              <p key={i} style={{ fontSize: 14, color: i === 0 ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.75)', lineHeight: 1.8, margin: 0, paddingTop: i > 0 ? 12 : 0, borderTop: i > 0 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
-                {group.join('. ').replace(/\.+$/, '')}.
-              </p>
             ))}
-        </div>
-        {rapport.type !== 'complete' && (
-          <div style={{ marginTop: 16, padding: '12px 14px', background: 'rgba(255,255,255,0.07)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', fontSize: 12, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6 }}>
-            💡 Cette analyse porte sur un seul document. Pour un score /20 et un rapport complet du bien, lancez une <span style={{ color: '#5bb8d4', fontWeight: 600 }}>Analyse Complète</span>.
           </div>
-        )}
+        );
+      })()}
+
+      {/* 3. DÉTAIL DE LA NOTE */}
+      {isComplete && Object.keys(categories).length > 0 && (
+        <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {Object.entries(categories).map(([key, cat]) => {
+              const c = cat as { note: number; note_max: number };
+              const pct = Math.round((c.note / c.note_max) * 100);
+              const color = getCatColor(pct);
+              const bg = getCatBg(pct);
+              return (
+                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 9, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>{catIcons[key] || '📊'}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
+                      <span style={{ fontSize: 13, color: '#0f172a' }}>{catLabels[key] || key}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color }}>{c.note} / {c.note_max}</span>
+                    </div>
+                    <div style={{ height: 6, background: '#f1f5f9', borderRadius: 99 }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99 }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ background: getScoreColor(rapport.score), padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.85)' }}>Score total</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+              <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>{getScoreLabel(rapport.score)}</span>
+              <span style={{ fontSize: 22, fontWeight: 500, color: '#fff' }}>{rapport.score.toFixed(1)}<span style={{ fontSize: 13, fontWeight: 400, opacity: 0.7 }}> / 20</span></span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. POINTS POSITIFS / VIGILANCE */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+          <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', letterSpacing: '0.1em', whiteSpace: 'nowrap' }}>SYNTHÈSE DE L'ANALYSE</span>
+          <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+          <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, padding: '22px 24px' }}>
+            <div style={{ display: 'inline-block', background: '#2d6a2d', color: '#fff', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', padding: '6px 16px', borderRadius: 99, marginBottom: 20 }}>POINTS POSITIFS</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {rapport.points_forts.length > 0 ? rapport.points_forts.map((p: string, i: number) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <div style={{ width: 22, height: 22, flexShrink: 0, marginTop: 2 }}>
+                    <svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="11" cy="11" r="10" stroke="#2d6a2d" strokeWidth="1.5"/>
+                      <path d="M7 11.5l3 3 5-5" stroke="#2d6a2d" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                  <span style={{ fontSize: 13.5, color: '#0f172a', lineHeight: 1.65 }}>{safeStr(p)}</span>
+                </div>
+              )) : <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun point positif identifié.</p>}
+            </div>
+          </div>
+          <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, padding: '22px 24px' }}>
+            <div style={{ display: 'inline-block', background: '#92400e', color: '#fff', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', padding: '6px 16px', borderRadius: 99, marginBottom: 20 }}>POINTS DE VIGILANCE</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {rapport.points_vigilance.length > 0 ? rapport.points_vigilance.map((p: string, i: number) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <div style={{ width: 22, height: 22, flexShrink: 0, marginTop: 2 }}>
+                    <svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M11 2.5L2 19.5h18L11 2.5z" stroke="#92400e" strokeWidth="1.5" strokeLinejoin="round"/>
+                      <path d="M11 9.5v4.5" stroke="#92400e" strokeWidth="1.5" strokeLinecap="round"/>
+                      <circle cx="11" cy="16.5" r="0.8" fill="#92400e"/>
+                    </svg>
+                  </div>
+                  <span style={{ fontSize: 13.5, color: '#0f172a', lineHeight: 1.65 }}>{safeStr(p)}</span>
+                </div>
+              )) : <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun point de vigilance identifié.</p>}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Négociation */}
+      {/* 5. PISTES DE NÉGOCIATION */}
       {rapport.negociation?.applicable && rapport.negociation.elements.length > 0 && rapport.score < 14 && (
         <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 14, padding: '18px 20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -671,11 +748,11 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
               return (
                 <div key={i} style={{ background: '#fff', borderRadius: 10, border: '1px solid #fde68a', padding: '12px 14px' }}>
                   {isStr ? (
-                    <div style={{ display: 'flex', gap: 8 }}><span>💡</span><span style={{ fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>{el}</span></div>
+                    <div style={{ display: 'flex', gap: 8 }}><span>💡</span><span style={{ fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>{safeStr(el)}</span></div>
                   ) : (
                     <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 4 }}>💡 {obj?.motif || obj?.argument}</div>
-                      {obj?.levier && <span style={{ fontSize: 11, fontWeight: 700, color: '#d97706', background: '#fef3c7', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 100 }}>Levier : {obj.levier}</span>}
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 4 }}>💡 {safeStr(obj?.motif || obj?.argument)}</div>
+                      {obj?.levier && <span style={{ fontSize: 11, fontWeight: 700, color: '#d97706', background: '#fef3c7', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 100 }}>Levier : {safeStr(obj.levier)}</span>}
                     </div>
                   )}
                 </div>
@@ -684,6 +761,38 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
           </div>
         </div>
       )}
+
+      {/* 6. AVIS VERIMO */}
+      <div style={{ background: '#0f2d3d', borderRadius: 16, overflow: 'hidden' }}>
+        <div style={{ padding: '24px 28px 20px', borderBottom: '0.5px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 22, flexShrink: 0 }}>⭐</span>
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <span style={{ fontSize: 22, fontWeight: 500, color: '#fff', position: 'relative', zIndex: 1 }}>Avis Verimo</span>
+            <div style={{ position: 'absolute', bottom: 1, left: 0, right: 0, height: 8, background: 'rgba(91,184,212,0.45)', zIndex: 0, borderRadius: 2 }} />
+          </div>
+        </div>
+        <div style={{ padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 0 }}>
+          {(rapport.avis_verimo || '')
+            .split(/\.\s+/)
+            .filter(s => s.trim().length > 20)
+            .reduce<string[][]>((acc, sentence, i, arr) => {
+              const groupIdx = Math.floor(i / Math.ceil(arr.length / 3));
+              if (!acc[groupIdx]) acc[groupIdx] = [];
+              acc[groupIdx].push(sentence.trim());
+              return acc;
+            }, [])
+            .map((group, i) => (
+              <p key={i} style={{ fontSize: 14, color: i === 0 ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.75)', lineHeight: 1.85, margin: 0, marginTop: i > 0 ? 16 : 0, paddingTop: i > 0 ? 16 : 0, borderTop: i > 0 ? '0.5px solid rgba(255,255,255,0.1)' : 'none' }}>
+                {group.join('. ').replace(/\.+$/, '')}.
+              </p>
+            ))}
+        </div>
+        {rapport.type !== 'complete' && (
+          <div style={{ margin: '0 28px 24px', padding: '12px 14px', background: 'rgba(255,255,255,0.07)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', fontSize: 12, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6 }}>
+            💡 Cette analyse porte sur un seul document. Pour un score /20 et un rapport complet du bien, lancez une <span style={{ color: '#5bb8d4', fontWeight: 600 }}>Analyse Complète</span>.
+          </div>
+        )}
+      </div>
 
     </div>
   );
@@ -1606,7 +1715,7 @@ export default function RapportPage() {
 
   const isComplete = rapport.type === 'complete';
   const hasCopro = isCoproType(rapport.type_bien);
-  const logementLabel = rapport.type_bien === 'maison' ? 'Votre maison' : 'Votre appartement';
+  const logementLabel = rapport.type_bien === 'maison' ? 'Votre maison' : 'Votre futur logement';
   const logementIcon = rapport.type_bien === 'maison' ? <Home size={14} /> : <Building2 size={14} />;
 
   // Onglets selon type de bien
@@ -1664,11 +1773,11 @@ export default function RapportPage() {
         )}
 
         {/* Contenu onglets */}
-        {(activeTab === 'synthese' || !isComplete) && <TabSynthese rapport={rapport} />}
-        {activeTab === 'copropriete' && isComplete && hasCopro && <TabCopropriete rapport={rapport} />}
-        {activeTab === 'logement' && isComplete && <TabLogement rapport={rapport} />}
-        {activeTab === 'procedures' && isComplete && <TabProcedures rapport={rapport} />}
-        {activeTab === 'documents' && isComplete && <TabDocuments rapport={rapport} />}
+        {(activeTab === 'synthese' || !isComplete) && <SafeTabBoundary><TabSynthese rapport={rapport} /></SafeTabBoundary>}
+        {activeTab === 'copropriete' && isComplete && hasCopro && <SafeTabBoundary><TabCopropriete rapport={rapport} /></SafeTabBoundary>}
+        {activeTab === 'logement' && isComplete && <SafeTabBoundary><TabLogement rapport={rapport} /></SafeTabBoundary>}
+        {activeTab === 'procedures' && isComplete && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
+        {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} /></SafeTabBoundary>}
 
         {/* Bannière 7 jours */}
         {isComplete && !rapport.is_preview && rapport.regeneration_deadline && (() => {
