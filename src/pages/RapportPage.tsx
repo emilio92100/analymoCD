@@ -867,8 +867,8 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>
             <Building2 size={14} style={{ color: '#7c3aed', flexShrink: 0, marginTop: 1 }} />
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{syndic.nom}</div>
-              {syndic.fin_mandat && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Mandat jusqu'en {syndic.fin_mandat}</div>}
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{safeStr(syndic.nom)}</div>
+              {syndic.fin_mandat && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Mandat jusqu'en {safeStr(syndic.fin_mandat)}</div>}
             </div>
           </div>
         )}
@@ -876,7 +876,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         {syndic?.tensions_detectees && syndic.tensions_detail && (
           <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', marginBottom: 4 }}>⚠ Tensions détectées au sein de la copropriété</div>
-            <div style={{ fontSize: 12, color: '#92400e', lineHeight: 1.6 }}>{syndic.tensions_detail}</div>
+            <div style={{ fontSize: 12, color: '#92400e', lineHeight: 1.6 }}>{safeStr(syndic.tensions_detail)}</div>
           </div>
         )}
 
@@ -893,11 +893,11 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
               <tbody>
                 {participation.map((p: ParticT, i: number) => (
                   <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '9px 12px', fontWeight: 700, color: '#0f172a' }}>{p.annee ?? ''}</td>
-                    <td style={{ padding: '9px 12px', color: '#374151' }}>{p.copropietaires_presents_representes ?? '—'}</td>
-                    <td style={{ padding: '9px 12px', color: '#374151' }}>{p.taux_tantiemes_pct ?? '—'}</td>
+                    <td style={{ padding: '9px 12px', fontWeight: 700, color: '#0f172a' }}>{safeStr(p.annee) ?? ''}</td>
+                    <td style={{ padding: '9px 12px', color: '#374151' }}>{safeStr(p.copropietaires_presents_representes) ?? '—'}</td>
+                    <td style={{ padding: '9px 12px', color: '#374151' }}>{safeStr(p.taux_tantiemes_pct) ?? '—'}</td>
                     <td style={{ padding: '9px 12px' }}>
-                      {p.quorum_note && <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fffbeb', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 100 }}>{p.quorum_note}</span>}
+                      {p.quorum_note && <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fffbeb', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 100 }}>{safeStr(p.quorum_note)}</span>}
                     </td>
                   </tr>
                 ))}
@@ -910,7 +910,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>Questions diverses notables :</div>
             {(vie?.questions_diverses_notables ?? []).map((q, i) => (
-              <div key={i} style={{ fontSize: 12, color: '#374151', padding: '6px 10px', background: '#f8fafc', borderRadius: 7, marginBottom: 4, border: '1px solid #edf2f7' }}>• {q}</div>
+              <div key={i} style={{ fontSize: 12, color: '#374151', padding: '6px 10px', background: '#f8fafc', borderRadius: 7, marginBottom: 4, border: '1px solid #edf2f7' }}>• {safeStr(q)}</div>
             ))}
           </div>
         )}
@@ -1158,11 +1158,11 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
                 <div style={{ display: 'flex', padding: '10px 14px', borderBottom: '1px solid #f1f5f9' }}>
                   <span style={{ fontSize: 12, color: '#64748b', width: 160, flexShrink: 0 }}>Quote-part tantièmes</span>
                   <div style={{ flex: 1 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{lot.quote_part_tantiemes}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{safeStr(lot.quote_part_tantiemes)}</span>
                     {(lot.parties_privatives as string[])?.length > 0 && (
                       <div style={{ marginTop: 4 }}>
                         {(lot.parties_privatives as string[]).map((p, i) => (
-                          <div key={i} style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>• {p}</div>
+                          <div key={i} style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>• {safeStr(p)}</div>
                         ))}
                       </div>
                     )}
@@ -1173,7 +1173,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
                 <div style={{ display: 'flex', padding: '10px 14px', borderBottom: (lot.travaux_votes_charge_vendeur as string[])?.length > 0 || (lot.restrictions_usage as string[])?.length > 0 ? '1px solid #f1f5f9' : 'none' }}>
                   <span style={{ fontSize: 12, color: '#64748b', width: 160, flexShrink: 0 }}>Fonds travaux ALUR</span>
                   <span style={{ fontSize: 12, fontWeight: 600, color: '#16a34a', flex: 1 }}>
-                    {isNaN(Number(String(lot.fonds_travaux_alur).replace(/[^0-9.]/g, ''))) ? lot.fonds_travaux_alur : `${Number(String(lot.fonds_travaux_alur).replace(/[^0-9.]/g, '')).toLocaleString('fr-FR')}€`} — récupérable à la signature
+                    {isNaN(Number(String(lot.fonds_travaux_alur).replace(/[^0-9.]/g, ''))) ? safeStr(lot.fonds_travaux_alur) : `${Number(String(lot.fonds_travaux_alur).replace(/[^0-9.]/g, '')).toLocaleString('fr-FR')}€`} — récupérable à la signature
                   </span>
                 </div>
               )}
@@ -1182,19 +1182,19 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
                   <span style={{ fontSize: 12, color: '#64748b', width: 160, flexShrink: 0 }}>Charge vendeur</span>
                   <div style={{ flex: 1 }}>
                     {(lot.travaux_votes_charge_vendeur as string[]).map((t, i) => (
-                      <div key={i} style={{ fontSize: 12, color: '#1d4ed8', marginBottom: 2 }}>• {t}</div>
+                      <div key={i} style={{ fontSize: 12, color: '#1d4ed8', marginBottom: 2 }}>• {safeStr(t)}</div>
                     ))}
                   </div>
                 </div>
               )}
             </div>
             {(lot.restrictions_usage as string[])?.length > 0 &&
-              !(lot.restrictions_usage as string[]).some(r => r.toLowerCase().includes('aucune restriction') || r.toLowerCase().includes('règlement copropriété complet non fourni')) && (
+              !(lot.restrictions_usage as string[]).some(r => safeStr(r).toLowerCase().includes('aucune restriction') || safeStr(r).toLowerCase().includes('règlement copropriété complet non fourni')) && (
               <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', marginBottom: 2 }}>Restrictions d'usage</div>
                 <div style={{ fontSize: 11, color: '#b45309', marginBottom: 8, fontStyle: 'italic' }}>Issues du règlement de copropriété fourni</div>
                 {(lot.restrictions_usage as string[]).map((r, i) => (
-                  <div key={i} style={{ fontSize: 12, color: '#92400e', marginBottom: 3 }}>• {r}</div>
+                  <div key={i} style={{ fontSize: 12, color: '#92400e', marginBottom: 3 }}>• {safeStr(r)}</div>
                 ))}
               </div>
             )}
@@ -1230,12 +1230,12 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
           {finances?.taxe_fonciere && (
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 12px', background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7', fontSize: 13 }}>
               <span style={{ color: '#64748b' }}>Taxe foncière</span>
-              <span style={{ fontWeight: 600, color: '#0f172a' }}>{finances.taxe_fonciere}</span>
+              <span style={{ fontWeight: 600, color: '#0f172a' }}>{safeStr(finances.taxe_fonciere)}</span>
             </div>
           )}
           {lot?.impayes_detectes && (
             <div style={{ padding: '9px 12px', background: '#fef2f2', borderRadius: 9, border: '1px solid #fecaca', fontSize: 12, color: '#991b1b' }}>
-              ⚠️ Impayés détectés sur ce lot : {lot.impayes_detectes}
+              ⚠️ Impayés détectés sur ce lot : {safeStr(lot.impayes_detectes)}
             </div>
           )}
           {!rapport.charges_mensuelles && !finances?.taxe_fonciere && !lot?.impayes_detectes && (() => {
@@ -1297,8 +1297,8 @@ function TabProcedures({ rapport }: { rapport: RapportData }) {
         <div style={{ width: 60, height: 60, borderRadius: 16, background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
           <CheckCircle size={26} style={{ color: '#16a34a' }} />
         </div>
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>Aucune procédure identifiée</h3>
-        <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.6, maxWidth: 360, margin: '0 auto' }}>
+        <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>Aucune procédure identifiée</h3>
+        <p style={{ fontSize: 15, color: '#64748b', lineHeight: 1.7, maxWidth: 400, margin: '0 auto' }}>
           Aucune procédure judiciaire ou litige n'a été détecté dans les documents analysés. Cela ne garantit pas l'absence totale de procédure — vérifiez avec votre notaire.
         </p>
       </div>
@@ -1312,25 +1312,25 @@ function TabProcedures({ rapport }: { rapport: RapportData }) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ padding: '12px 16px', background: '#fef2f2', borderRadius: 12, border: '1px solid #fecaca', display: 'flex', gap: 10, alignItems: 'center' }}>
-        <AlertTriangle size={15} style={{ color: '#dc2626', flexShrink: 0 }} />
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#991b1b' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ padding: '14px 20px', background: '#fef2f2', borderRadius: 12, border: '1px solid #fecaca', display: 'flex', gap: 12, alignItems: 'center' }}>
+        <AlertTriangle size={18} style={{ color: '#dc2626', flexShrink: 0 }} />
+        <span style={{ fontSize: 15, fontWeight: 600, color: '#991b1b' }}>
           {rapport.procedures.length} procédure{rapport.procedures.length > 1 ? 's' : ''} détectée{rapport.procedures.length > 1 ? 's' : ''} dans les documents.
         </span>
       </div>
       {rapport.procedures.map((proc, i) => {
-        const g = graviteStyle(proc.gravite);
+        const g = graviteStyle(safeStr(proc.gravite));
         return (
           <div key={i} style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
-            <div style={{ padding: '14px 18px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Gavel size={15} style={{ color: '#dc2626', flexShrink: 0 }} />
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', flex: 1 }}>{proc.label || proc.type || 'Procédure détectée'}</span>
-              <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100, background: g.bg, border: `1px solid ${g.border}`, color: g.color }}>Gravité : {g.label}</span>
+            <div style={{ padding: '16px 22px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Gavel size={18} style={{ color: '#dc2626', flexShrink: 0 }} />
+              <span style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', flex: 1 }}>{safeStr(proc.label) || safeStr(proc.type) || 'Procédure détectée'}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 100, background: g.bg, border: `1px solid ${g.border}`, color: g.color, flexShrink: 0 }}>Gravité : {g.label}</span>
             </div>
-            <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {proc.message && <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.7 }}>{proc.message}</p>}
-              <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a', fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>
+            <div style={{ padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {proc.message && <p style={{ fontSize: 15, color: '#374151', lineHeight: 1.8, margin: 0 }}>{safeStr(proc.message)}</p>}
+              <div style={{ padding: '12px 16px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a', fontSize: 14, color: '#92400e', lineHeight: 1.6 }}>
                 ⚠️ Demandez des précisions au vendeur ou à votre notaire sur cette procédure avant de vous engager.
               </div>
             </div>
@@ -1344,102 +1344,163 @@ function TabProcedures({ rapport }: { rapport: RapportData }) {
 /* ══════════════════════════════════
    ONGLET DOCUMENTS
 ══════════════════════════════════ */
-function TabDocuments({ rapport }: { rapport: RapportData }) {
+function TabDocuments({ rapport, onTabChange }: { rapport: RapportData; onTabChange?: (tab: string) => void }) {
+  const [tooltipDoc, setTooltipDoc] = useState<string | null>(null);
   const docTypeLabel: Record<string, string> = {
     PV_AG: "PV d'Assemblée Générale", REGLEMENT_COPRO: 'Règlement de copropriété',
     APPEL_CHARGES: 'Appel de charges', DPE: 'DPE', DIAGNOSTIC: 'Diagnostic',
     DDT: 'Dossier Diagnostic Technique', COMPROMIS: 'Compromis de vente',
-    ETAT_DATE: 'État daté', TAXE_FONCIERE: 'Taxe foncière', AUTRE: 'Autre document',
+    ETAT_DATE: 'État daté', TAXE_FONCIERE: 'Taxe foncière',
+    CARNET_ENTRETIEN: "Carnet d'entretien", AUTRE: 'Autre document',
+    MODIFICATIF_RCP: 'Modificatif RCP', PRE_ETAT_DATE: 'Pré-état daté',
+    DIAGNOSTIC_PARTIES_COMMUNES: 'Diagnostics parties communes',
   };
   const docTypeIcon: Record<string, string> = {
     PV_AG: '📋', REGLEMENT_COPRO: '📜', APPEL_CHARGES: '💶', DPE: '⚡',
-    DIAGNOSTIC: '🔍', DDT: '🗂', COMPROMIS: '✍️', ETAT_DATE: '📊', TAXE_FONCIERE: '🏛', AUTRE: '📄',
+    DIAGNOSTIC: '🔍', DDT: '🗂', COMPROMIS: '✍️', ETAT_DATE: '📊',
+    TAXE_FONCIERE: '🏛', AUTRE: '📄', CARNET_ENTRETIEN: '📓',
+    MODIFICATIF_RCP: '📜', PRE_ETAT_DATE: '📋', DIAGNOSTIC_PARTIES_COMMUNES: '🏗',
   };
 
-  const docsAnalyses = (rapport as Record<string, unknown>).documents_analyses as Array<{ type: string; annee?: string; nom?: string }> || [];
+  const docsAnalyses = (rapport as Record<string, unknown>).documents_analyses as Array<Record<string, unknown>> || [];
+  const docsAnalysesTypes = docsAnalyses.map(d => safeStr(d.type));
+  const hasDoc = (types: string[]) => types.some(t => docsAnalysesTypes.includes(t));
+  const isCopro = rapport.type_bien === 'appartement' || rapport.type_bien === 'maison_copro';
+  const anneeNum = rapport.annee_construction ? parseInt(rapport.annee_construction) : null;
+
+  // Docs essentiels
+  const docsEssentiels = isCopro ? [
+    { label: '3 derniers PV d\'Assemblée Générale', present: hasDoc(['PV_AG']), tooltip: null },
+    { label: 'Règlement de copropriété + modificatifs', present: hasDoc(['REGLEMENT_COPRO', 'MODIFICATIF_RCP']), tooltip: null },
+    { label: 'Carnet d\'entretien de l\'immeuble', present: hasDoc(['CARNET_ENTRETIEN']), tooltip: 'Document tenu par le syndic qui retrace l\'historique des travaux réalisés, les contrats d\'entretien en cours et les diagnostics effectués sur l\'immeuble.' },
+    { label: 'Diagnostics privatifs (DDT)', present: hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']), tooltip: `Selon l'année de construction de l'immeuble${anneeNum ? ` (${anneeNum})` : ''}, certains diagnostics peuvent ne pas être obligatoires.` },
+    { label: 'Appel de charges / Appel de fonds', present: hasDoc(['APPEL_CHARGES']), tooltip: null },
+  ] : [
+    { label: 'DDT complet (Dossier Diagnostic Technique)', present: hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']), tooltip: 'DPE, électricité, gaz, amiante, plomb, termites…' },
+    { label: 'Taxe foncière', present: hasDoc(['TAXE_FONCIERE']), tooltip: null },
+  ];
+
+  // Docs secondaires
+  const docsSecondaires = isCopro ? [
+    { label: 'Diagnostics parties communes', present: hasDoc(['DIAGNOSTIC_PARTIES_COMMUNES']), tooltip: 'Amiante, plomb et risques environnementaux sur les parties communes de l\'immeuble.' },
+    { label: 'DTG — Diagnostic Technique Global', present: false, tooltip: 'Bilan complet de l\'état de l\'immeuble réalisé par un expert. Obligatoire pour les copropriétés de plus de 200 lots ou de plus de 15 ans. Permet d\'anticiper les grands travaux.' },
+    { label: 'PPT — Plan Pluriannuel de Travaux', present: false, tooltip: 'Planning des travaux prévus sur 10 ans établi à partir du DTG. Permet d\'anticiper les charges futures liées aux travaux obligatoires.' },
+    { label: 'Pré-état daté', present: hasDoc(['PRE_ETAT_DATE']), tooltip: 'Document fourni par le syndic avant la vente qui récapitule les sommes dues par le vendeur à la copropriété, les procédures en cours et les charges à venir.' },
+    { label: 'Tout autre document lié à votre futur logement', present: false, tooltip: null },
+  ] : [];
+
+  const docsEssentielManquants = docsEssentiels.filter(d => !d.present);
+  const docsSecondairesManquants = docsSecondaires.filter(d => !d.present);
+  const hasDocs = rapport.documents_detectes.length > 0 || docsAnalyses.length > 0;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
       {/* Documents analysés */}
-      {(rapport.documents_detectes.length > 0 || docsAnalyses.length > 0) && (
+      {hasDocs && (
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
-          <div style={{ padding: '14px 18px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Paperclip size={14} style={{ color: '#94a3b8' }} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b', letterSpacing: '0.06em' }}>DOCUMENTS ANALYSÉS</span>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Paperclip size={15} style={{ color: '#94a3b8' }} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#64748b', letterSpacing: '0.06em' }}>DOCUMENTS ANALYSÉS</span>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
             {(docsAnalyses.length > 0 ? docsAnalyses : rapport.documents_detectes).map((doc, i) => {
-              const type = (doc as Record<string, unknown>).type as string;
-              const annee = (doc as Record<string, unknown>).annee as string;
-              const nom = (doc as Record<string, unknown>).nom as string || (doc as Record<string, unknown>).name as string;
+              const type = safeStr((doc as Record<string, unknown>).type);
+              const annee = safeStr((doc as Record<string, unknown>).annee);
+              const nom = safeStr((doc as Record<string, unknown>).nom || (doc as Record<string, unknown>).name);
+              const arr = docsAnalyses.length > 0 ? docsAnalyses : rapport.documents_detectes;
               return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderBottom: i < rapport.documents_detectes.length - 1 ? '1px solid #f8fafc' : 'none' }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px', borderBottom: i < arr.length - 1 ? '1px solid #f8fafc' : 'none' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 9, background: '#f8fafc', border: '1px solid #edf2f7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
                     {docTypeIcon[type] || '📄'}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{nom || docTypeLabel[type] || type}</div>
-                    {annee && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>{annee}</div>}
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>{nom || docTypeLabel[type] || type}</div>
+                    {annee && <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{annee}</div>}
                   </div>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
                 </div>
               );
             })}
           </div>
-        </div>
-      )}
-
-      {/* Fichiers uploadés — supprimé car redondant avec Documents analysés */}
-      {rapport.document_names.length > 0 && docsAnalyses.length === 0 && (
-        <div style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Shield size={11} style={{ color: '#94a3b8' }} />
-          <span style={{ fontSize: 11, color: '#94a3b8' }}>Documents supprimés de nos serveurs après traitement — conformément au RGPD.</span>
-        </div>
-      )}
-
-      {/* Recommandations documents */}
-      {(() => {
-        const isCopro = rapport.type_bien === 'appartement' || rapport.type_bien === 'maison_copro';
-        const docsAnalysesTypes = ((rapport as Record<string, unknown>).documents_analyses as Array<Record<string, unknown>> || []).map(d => d.type as string);
-        const hasDoc = (types: string[]) => types.some(t => docsAnalysesTypes.includes(t));
-
-        const docsRecommandes = isCopro ? [
-          { label: '3 derniers PV d\'Assemblée Générale', present: hasDoc(['PV_AG']), note: 'Indispensable pour analyser les travaux votés, les procédures et la vie de la copropriété' },
-          { label: 'Règlement de copropriété (et ses modificatifs)', present: hasDoc(['REGLEMENT_COPRO']), note: 'Définit les règles d\'usage, les charges et vos droits' },
-          { label: 'Carnet d\'entretien de l\'immeuble', present: hasDoc(['CARNET_ENTRETIEN']), note: 'Historique des travaux et contrats d\'entretien' },
-          { label: 'DTG (Diagnostic Technique Global)', present: false, note: 'Si l\'immeuble en a fait réaliser un' },
-          { label: 'PPT (Plan Pluriannuel de Travaux)', present: false, note: 'Si l\'immeuble en a établi un (> 200 lots ou > 15 ans)' },
-          { label: 'Diagnostics parties communes (DTA, plomb, ERP)', present: docsAnalysesTypes.some(t => t === 'DIAGNOSTIC' || t === 'DDT'), note: 'Amiante, plomb et risques sur les parties communes' },
-          { label: 'DDT complet du logement', present: hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']), note: 'DPE, électricité, gaz, amiante, plomb privatifs' },
-        ] : [
-          { label: 'DDT complet (Dossier Diagnostic Technique)', present: hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']), note: 'DPE, électricité, gaz, amiante, plomb, termites…' },
-          { label: 'Taxe foncière', present: hasDoc(['TAXE_FONCIERE']), note: 'Pour estimer le coût annuel de détention' },
-          { label: 'Titre de propriété', present: false, note: 'Pour vérifier les servitudes et l\'historique du bien' },
-        ];
-
-        const docsManquants = docsRecommandes.filter(d => !d.present);
-        if (docsManquants.length === 0) return null;
-
-        return (
-          <div style={{ background: '#f0f9ff', borderRadius: 14, border: '1px solid #bae6fd', overflow: 'hidden' }}>
-            <div style={{ padding: '14px 18px', borderBottom: '1px solid #bae6fd' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#0369a1', marginBottom: 4 }}>Pour une analyse complète et fiable</div>
-              <div style={{ fontSize: 12, color: '#0284c7' }}>Nous vous recommandons de demander les documents suivants à votre agent immobilier ou vendeur :</div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {docsManquants.map((doc, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 18px', borderBottom: i < docsManquants.length - 1 ? '1px solid #e0f2fe' : 'none' }}>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#0284c7', flexShrink: 0, marginTop: 5 }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0c4a6e' }}>{doc.label}</div>
-                    <div style={{ fontSize: 11, color: '#0369a1', marginTop: 2 }}>{doc.note}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div style={{ padding: '10px 20px', background: '#f8fafc', display: 'flex', alignItems: 'center', gap: 6, borderTop: '1px solid #f1f5f9' }}>
+            <Shield size={11} style={{ color: '#94a3b8', flexShrink: 0 }} />
+            <span style={{ fontSize: 11, color: '#94a3b8' }}>Documents supprimés de nos serveurs après traitement — conformément au RGPD.</span>
           </div>
-        );
-      })()}
+        </div>
+      )}
+
+      {/* Section docs manquants */}
+      {(docsEssentielManquants.length > 0 || docsSecondairesManquants.length > 0) && (
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+
+          {/* Header avec bouton compléter */}
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>Pour améliorer votre score</div>
+              <div style={{ fontSize: 12, color: '#64748b' }}>Ajoutez ces documents dans les 7 jours suivant la date de ce rapport</div>
+            </div>
+            <button
+              onClick={() => window.location.href = `/dashboard/rapport?id=${rapport.id}&action=complement`}
+              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 10, border: 'none', background: '#2a7d9c', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+              <RefreshCw size={13} /> Compléter mon dossier
+            </button>
+          </div>
+
+          <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+            {/* Docs essentiels manquants */}
+            {docsEssentielManquants.length > 0 && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 12 }}>ESSENTIELS</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {docsEssentielManquants.map((doc, i) => (
+                    <div key={i} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 99, background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 13, color: '#1e40af', fontWeight: 500, cursor: doc.tooltip ? 'help' : 'default' }}
+                      onMouseEnter={() => doc.tooltip && setTooltipDoc(`e${i}`)}
+                      onMouseLeave={() => setTooltipDoc(null)}>
+                      {doc.label}
+                      {doc.tooltip && (
+                        <span style={{ width: 15, height: 15, borderRadius: '50%', background: '#bfdbfe', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#1e40af', fontWeight: 700, flexShrink: 0 }}>?</span>
+                      )}
+                      {tooltipDoc === `e${i}` && doc.tooltip && (
+                        <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: 280, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.7, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
+                          {doc.tooltip}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Docs secondaires manquants */}
+            {docsSecondairesManquants.length > 0 && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 12 }}>SECONDAIRES</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {docsSecondairesManquants.map((doc, i) => (
+                    <div key={i} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 99, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: 13, color: '#475569', fontWeight: 500, cursor: doc.tooltip ? 'help' : 'default' }}
+                      onMouseEnter={() => doc.tooltip && setTooltipDoc(`s${i}`)}
+                      onMouseLeave={() => setTooltipDoc(null)}>
+                      {doc.label}
+                      {doc.tooltip && (
+                        <span style={{ width: 15, height: 15, borderRadius: '50%', background: '#e2e8f0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#475569', fontWeight: 700, flexShrink: 0 }}>?</span>
+                      )}
+                      {tooltipDoc === `s${i}` && doc.tooltip && (
+                        <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: 280, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.7, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
+                          {doc.tooltip}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -1788,7 +1849,7 @@ export default function RapportPage() {
         {activeTab === 'copropriete' && isComplete && hasCopro && <SafeTabBoundary><TabCopropriete rapport={rapport} /></SafeTabBoundary>}
         {activeTab === 'logement' && isComplete && <SafeTabBoundary><TabLogement rapport={rapport} /></SafeTabBoundary>}
         {activeTab === 'procedures' && isComplete && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
-        {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} /></SafeTabBoundary>}
+        {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} onTabChange={(tab) => setActiveTab(tab as TabId)} /></SafeTabBoundary>}
 
         {/* Bannière 7 jours */}
         {isComplete && !rapport.is_preview && rapport.regeneration_deadline && (() => {
