@@ -458,46 +458,6 @@ function ShareButton({ analyseId }: { analyseId: string }) {
 ══════════════════════════════════ */
 type RapportData = ReturnType<typeof buildRapport>;
 
-function DetailNote({ rapport }: { rapport: RapportData }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <button onClick={() => setOpen(o => !o)}
-        style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '5px 12px', cursor: 'pointer', width: 'fit-content' }}>
-        {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />} Détail de la note
-      </button>
-      {open && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 7, padding: '14px 16px', background: 'rgba(255,255,255,0.06)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)' }}>
-          {Object.entries(rapport.categories).map(([key, cat]) => {
-            const c = cat as { note: number; note_max: number };
-            const pct = (c.note / c.note_max) * 100;
-            const color = pct >= 80 ? '#4ade80' : pct >= 60 ? '#fbbf24' : '#f87171';
-            const labels: Record<string, string> = { travaux: 'Travaux', procedures: 'Procédures', finances: 'Finances copro', diags_privatifs: 'Diagnostics privatifs', diags_communs: 'Diagnostics communs' };
-            return (
-              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', width: 150, flexShrink: 0 }}>{labels[key] || key}</span>
-                <div style={{ flex: 1, height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 3, transition: 'width 0.5s ease' }} />
-                </div>
-                <span style={{ fontSize: 12, fontWeight: 800, color, width: 40, textAlign: 'right', flexShrink: 0 }}>{c.note}/{c.note_max}</span>
-              </div>
-            );
-          })}
-          <div style={{ marginTop: 4, padding: '8px 10px', background: 'rgba(255,255,255,0.05)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginBottom: 4 }}>Note globale</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: getScoreColor(rapport.score) }}>{rapport.score.toFixed(1)}<span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.3)' }}>/20</span></div>
-          </div>
-        </div>
-      )}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 10, padding: '3px 9px', borderRadius: 100, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.55)' }}>{getTypeBienLabel(rapport.type_bien)}</span>
-        <span style={{ fontSize: 10, padding: '3px 9px', borderRadius: 100, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.55)' }}>{getProfilLabel(rapport.profil)}</span>
-        {rapport.annee_construction && <span style={{ fontSize: 10, padding: '3px 9px', borderRadius: 100, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.55)' }}>Construit en {rapport.annee_construction}</span>}
-        <span style={{ fontSize: 10, padding: '3px 9px', borderRadius: 100, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.4)' }}>Analysé le {rapport.date}</span>
-      </div>
-    </div>
-  );
-}
 function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: boolean }) {
   const scoreColor = getScoreColor(rapport.score);
   const isComplete = rapport.type === 'complete';
