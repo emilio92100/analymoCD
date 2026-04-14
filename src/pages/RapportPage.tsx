@@ -585,14 +585,8 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
   };
 
   const kpis = buildKpis();
-  const kpiGridStyle = kpis.length <= 2
-    ? { display: 'flex', gap: '10px', justifyContent: 'center' as const }
-    : kpis.length <= 4
-      ? { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }
-      : { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '10px' };
-  const kpiCardStyle = kpis.length <= 2
-    ? { background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, padding: '14px 16px', minWidth: 160, maxWidth: 220 }
-    : { background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, padding: '14px 16px' };
+  const kpiCols = Math.min(kpis.length, 4);
+  const kpiGridStyle = { display: 'grid', gridTemplateColumns: `repeat(${kpiCols}, 1fr)`, gap: '12px' } as const;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -686,10 +680,10 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
       {isComplete && kpis.length > 0 && (
         <div style={kpiGridStyle}>
           {kpis.map((kpi, i) => (
-            <div key={i} style={kpiCardStyle}>
-              <div style={{ fontSize: 18, marginBottom: 8 }}>{kpi.icon}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>{kpi.label}</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: kpi.color || '#0f172a' }}>{kpi.value}</div>
+            <div key={i} style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, padding: '18px 20px' }}>
+              <div style={{ fontSize: 24, marginBottom: 10 }}>{kpi.icon}</div>
+              <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 6 }}>{kpi.label}</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: kpi.color || '#0f172a' }}>{kpi.value}</div>
             </div>
           ))}
         </div>
@@ -697,13 +691,9 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
 
       {/* 3. POINTS POSITIFS / VIGILANCE */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 8, marginBottom: 24 }}>
-          <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontSize: 17, fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>Synthèse de l'analyse</span>
-            <div style={{ height: 3, width: '100%', background: '#2a7d9c', borderRadius: 99 }} />
-          </div>
-          <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+        <div style={{ textAlign: 'center', padding: '20px 0 24px' }}>
+          <span style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Synthèse de l'analyse</span>
+          <div style={{ height: 2, background: 'linear-gradient(90deg, transparent, #2a7d9c, transparent)', marginTop: 8, borderRadius: 99 }} />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
           <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, padding: '22px 24px' }}>
