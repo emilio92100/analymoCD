@@ -1688,7 +1688,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
                         </div>
                         {(tMin || tMax) && (
                           <span style={{ fontSize: 13, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>
-                            {tMin && tMax ? `${Number(tMin).toLocaleString('fr-FR')} – ${Number(tMax).toLocaleString('fr-FR')} €` : `${Number(tMin ?? tMax).toLocaleString('fr-FR')} €`}
+                            {tMin && tMax ? `${Number(tMin as number).toLocaleString('fr-FR')} – ${Number(tMax as number).toLocaleString('fr-FR')} €` : `${Number((tMin ?? tMax) as number).toLocaleString('fr-FR')} €`}
                           </span>
                         )}
                       </div>
