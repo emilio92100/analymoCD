@@ -1675,19 +1675,25 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
               <>
                 <SectionTitle emoji="🔨" text="Travaux préconisés pour améliorer le DPE" />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {travaux.map((t, i) => (
-                    <div key={i} style={{ background: 'var(--color-background-secondary)', borderRadius: 10, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{safeStr(t.label)}</div>
-                        {t.priorite && <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>{String(t.priorite) === 'prioritaire' ? '🔴 Prioritaire' : '🟡 Recommandé'}</div>}
+                  {travaux.map((t, i) => {
+                    const tLabel = safeStr((t as Record<string, unknown>).label);
+                    const tPriorite = (t as Record<string, unknown>).priorite;
+                    const tMin = (t as Record<string, unknown>).cout_min;
+                    const tMax = (t as Record<string, unknown>).cout_max;
+                    return (
+                      <div key={i} style={{ background: 'var(--color-background-secondary)', borderRadius: 10, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{tLabel}</div>
+                          {tPriorite && <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>{String(tPriorite) === 'prioritaire' ? '🔴 Prioritaire' : '🟡 Recommandé'}</div>}
+                        </div>
+                        {(tMin || tMax) && (
+                          <span style={{ fontSize: 13, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>
+                            {tMin && tMax ? `${Number(tMin).toLocaleString('fr-FR')} – ${Number(tMax).toLocaleString('fr-FR')} €` : `${Number(tMin ?? tMax).toLocaleString('fr-FR')} €`}
+                          </span>
+                        )}
                       </div>
-                      {(t.cout_min || t.cout_max) && (
-                        <span style={{ fontSize: 13, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>
-                          {t.cout_min && t.cout_max ? `${Number(t.cout_min).toLocaleString('fr-FR')} – ${Number(t.cout_max).toLocaleString('fr-FR')} €` : `${Number(t.cout_min ?? t.cout_max).toLocaleString('fr-FR')} €`}
-                        </span>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             );
