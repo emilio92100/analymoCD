@@ -415,7 +415,7 @@ function RendererDDT({ r }: { r: any }) {
           {r.diagnostiqueur?.nom && <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 4 }}>{r.diagnostiqueur.nom}</div>}
           {r.diagnostiqueur?.date && <div style={{ fontSize: 15, color: C.textSec, marginBottom: 3 }}>📅 Réalisé le {formatDate(r.diagnostiqueur.date)}</div>}
           {r.diagnostiqueur?.certification && <div style={{ fontSize: 14, color: C.textSec, marginBottom: 3 }}>🎖 {r.diagnostiqueur.certification}</div>}
-        </div>
+        </SectionKpi>
 
         {/* Encart 2 — Lots visités */}
         <SectionKpi icon="🏘" label="Lots visités">
@@ -441,7 +441,7 @@ function RendererDDT({ r }: { r: any }) {
               </div>
             )
           )}
-        </div>
+        </SectionKpi>
 
         {/* Encart 3 — Récap diagnostics */}
         <SectionKpi icon="📋" label="Diagnostics réalisés">
@@ -456,7 +456,7 @@ function RendererDDT({ r }: { r: any }) {
               );
             })}
           </div>
-        </div>
+        </SectionKpi>
       </div>
 
       {/* DPE + GES */}
@@ -604,7 +604,7 @@ function RendererPVAG({ r }: { r: any }) {
               </div>
             )}
           </div>
-        </div>
+        </SectionKpi>
 
         {/* Encart 2 — Participation */}
         <SectionKpi icon="👥" label="Participation">
@@ -622,7 +622,7 @@ function RendererPVAG({ r }: { r: any }) {
               </div>
             )}
           </div>
-        </div>
+        </SectionKpi>
 
         {/* Encart 3 — Chiffres clés */}
         <SectionKpi icon="📊" label="Chiffres clés">
@@ -646,7 +646,7 @@ function RendererPVAG({ r }: { r: any }) {
               </div>
             )}
           </div>
-        </div>
+        </SectionKpi>
       </div>
 
       {/* Travaux votés — bleu */}
@@ -753,11 +753,7 @@ function RendererAppelCharges({ r }: { r: any }) {
           {r.reference_dossier && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📋</span><span>Réf. : {r.reference_dossier}</span></div>}
           {r.echeance && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📅</span><span>Échéance : {r.echeance}</span></div>}
         </div>
-      </div>
-
-      {/* KPIs */}
-      <KpiGrid>
-        {r.montant_trimestre && <Kpi label="Appel pour ce trimestre" value={`${Number(r.montant_trimestre).toLocaleString('fr-FR')} €`} />}
+      </div> && <Kpi label="Appel pour ce trimestre" value={`${Number(r.montant_trimestre).toLocaleString('fr-FR')} €`} />}
         {r.montant_mensuel && <Kpi label="Charges mensuelles" value={`${Number(r.montant_mensuel).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="/ mois" />}
         {r.montant_annuel && <Kpi label="Charges annuelles estimées" value={`${Number(r.montant_annuel).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="× 4 trimestres" />}
       </KpiGrid>
@@ -1052,7 +1048,7 @@ function RendererCarnetEntretien({ r }: { r: any }) {
             {r.syndic_garantie && <div style={{ display: 'flex', gap: 8, fontSize: 14, color: C.textSec }}><span>🛡</span><span>Garantie : {r.syndic_garantie}</span></div>}
             {r.syndic_carte_pro && <div style={{ display: 'flex', gap: 8, fontSize: 14, color: C.textSec }}><span>🏛</span><span>Carte pro : {r.syndic_carte_pro}</span></div>}
           </div>
-        </div>
+        </SectionKpi>
 
         {/* Encart Copropriété */}
         <SectionKpi icon="🏗" label="Infos copropriété">
@@ -1062,12 +1058,11 @@ function RendererCarnetEntretien({ r }: { r: any }) {
             {nbLotsTotal && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🏘</span><span>{nbLotsTotal} lots au total{r.nb_lots_secondaires ? ` (${r.nb_lots_principaux} principaux · ${r.nb_lots_secondaires} secondaires)` : ''}</span></div>}
             {r.nb_lots_detail?.logements && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🏠</span><span>{r.nb_lots_detail.logements} logements{r.nb_lots_detail.caves ? ` · ${r.nb_lots_detail.caves} caves` : ''}{r.nb_lots_detail.parkings ? ` · ${r.nb_lots_detail.parkings} parkings` : ''}</span></div>}
             {r.immatriculation_registre && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📋</span><span>Immat. : {r.immatriculation_registre}</span></div>}
-
             {r.fibre_optique != null && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>💾</span><span>Fibre optique : {r.fibre_optique ? 'Oui' : 'Non'}</span></div>}
             {r.rcp_info?.date_origine && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📜</span><span>RCP de {formatDate(r.rcp_info.date_origine)}{r.rcp_info.modificatifs?.length > 0 ? ` · ${r.rcp_info.modificatifs.length} modificatif(s)` : ''}</span></div>}
             {r.assurance?.compagnie && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🛡</span><span>Assurance : {r.assurance.compagnie}{r.assurance.police ? ` — Police n°${r.assurance.police}` : ''}{r.assurance.echeance ? ` · Éch. ${formatDate(r.assurance.echeance)}` : ''}</span></div>}
           </div>
-        </div>
+        </SectionKpi>
 
         {/* Encart Energie & Eau */}
         <SectionKpi icon="⚡" label="Énergie & Eau">
@@ -1099,7 +1094,7 @@ function RendererCarnetEntretien({ r }: { r: any }) {
             {/* Gardien si présent */}
             {r.gardien?.nom && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>👷</span><span>Gardien(ne) : {r.gardien.nom}</span></div>}
           </div>
-        </div>
+        </SectionKpi>
       </div>
 
       {/* Diagnostics parties communes */}
@@ -1262,7 +1257,7 @@ function RendererPreEtatDate({ r }: { r: any }) {
           {r.date && <div style={{ fontSize: 14, color: C.textSec, marginBottom: 4 }}>📅 Document établi le {formatDate(r.date)}</div>}
           {r.nb_lots_copro && <div style={{ fontSize: 14, color: C.textSec, marginBottom: 4 }}>🏘 Copropriété de {r.nb_lots_copro} lots</div>}
           {r.immatriculation_registre && <div style={{ fontSize: 11, color: C.textSec, marginTop: 6, padding: '4px 8px', background: C.bgSecondary, borderRadius: 6 }}>Immat. {r.immatriculation_registre}</div>}
-        </div>
+        </SectionKpi>
 
         {/* Situation vendeur */}
         <SectionKpi icon="👤" label="Situation vendeur">
@@ -1288,7 +1283,7 @@ function RendererPreEtatDate({ r }: { r: any }) {
               </div>
             )}
           </div>
-        </div>
+        </SectionKpi>
 
         {/* Situation copro */}
         <SectionKpi icon="🏢" label="Copropriété">
@@ -1316,7 +1311,7 @@ function RendererPreEtatDate({ r }: { r: any }) {
               <span style={{ color: C.text }}>{r.procedures_copro === 'neant' || !r.procedures_copro ? 'Aucune procédure copro' : 'Procédures copro en cours'}</span>
             </div>
           </div>
-        </div>
+        </SectionKpi>
       </div>
 
       {/* KPIs acheteur */}
@@ -1503,7 +1498,7 @@ function RendererEtatDate({ r }: { r: any }) {
           {r.date && <div style={{ fontSize: 14, color: C.textSec, marginBottom: 4 }}>📅 Document établi le {formatDate(r.date)}</div>}
           {r.nb_lots_copro && <div style={{ fontSize: 14, color: C.textSec }}>🏘 {r.nb_lots_copro} lots dans la copropriété</div>}
           {r.immatriculation_registre && <div style={{ fontSize: 11, color: C.textSec, marginTop: 6, padding: '4px 8px', background: C.bgSecondary, borderRadius: 6 }}>Immat. {r.immatriculation_registre}</div>}
-        </div>
+        </SectionKpi>
         <SectionKpi icon="👤" label="Situation vendeur">
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
@@ -1529,14 +1524,14 @@ function RendererEtatDate({ r }: { r: any }) {
               </div>
             )}
           </div>
-        </div>
+        </SectionKpi>
         <SectionKpi icon="🏢" label="Copropriété">
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
             {r.impayes_copro_global != null && <div style={{ display: 'flex', gap: 8, fontSize: 13 }}><span>{Number(r.impayes_copro_global) > 0 ? '⚠️' : '✅'}</span><span style={{ color: C.text }}>Impayés : {Number(r.impayes_copro_global).toLocaleString('fr-FR')} €</span></div>}
             {r.dette_fournisseurs != null && <div style={{ display: 'flex', gap: 8, fontSize: 13 }}><span>{Number(r.dette_fournisseurs) > 0 ? '⚠️' : '✅'}</span><span style={{ color: C.text }}>Dette fournisseurs : {Number(r.dette_fournisseurs).toLocaleString('fr-FR')} €</span></div>}
             <div style={{ display: 'flex', gap: 8, fontSize: 13 }}><span>{r.procedures_copro === 'neant' || !r.procedures_copro ? '✅' : '⚠️'}</span><span style={{ color: C.text }}>{r.procedures_copro === 'neant' || !r.procedures_copro ? 'Aucune procédure copro' : 'Procédures en cours'}</span></div>
           </div>
-        </div>
+        </SectionKpi>
       </div>
 
       {/* KPIs */}
@@ -1815,8 +1810,6 @@ function RendererDiagCommunes({ r }: { r: any }) {
           ))}
         </div>
       </div>
-
-      {/* ── KPIs ── */}
       {!nonDetecte ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 14 }}>
           <Kpi label="Matériaux amiantés" value={String(nbDetectes)} color={nbDetectes > 0 ? C.red.dot : C.green.dot} />
@@ -2038,7 +2031,7 @@ function RendererModificatifRCP({ r }: { r: any }) {
             {r.notaire?.etude && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🏢</span><span>{r.notaire.etude}</span></div>}
             {r.notaire?.ville && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📍</span><span>{r.notaire.ville}</span></div>}
           </div>
-        </div>
+        </SectionKpi>
         <SectionKpi icon="📋" label="Acte">
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
             {r.type_modification && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🏷</span><span style={{ fontWeight: 600 }}>{typeLabel[r.type_modification] || r.type_modification}</span></div>}
@@ -2046,14 +2039,14 @@ function RendererModificatifRCP({ r }: { r: any }) {
             {r.date_acte_rectificatif && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.orange.text }}><span>⚠</span><span>Rectificatif du {formatDate(r.date_acte_rectificatif)}</span></div>}
             {r.copropriete && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🏘</span><span>{r.copropriete}</span></div>}
           </div>
-        </div>
+        </SectionKpi>
         <SectionKpi icon="🏛" label="Publication foncière">
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
             {r.publication_fonciere?.service && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📍</span><span>{r.publication_fonciere.service}</span></div>}
             {r.publication_fonciere?.date && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📅</span><span>Publié le {formatDate(r.publication_fonciere.date)}</span></div>}
             {!r.publication_fonciere?.service && !r.publication_fonciere?.date && <div style={{ fontSize: 15, color: C.textSec, fontStyle: 'italic' as const }}>À vérifier auprès du service de publicité foncière</div>}
           </div>
-        </div>
+        </SectionKpi>
       </div>
 
       {/* Sur quoi porte — teal */}
