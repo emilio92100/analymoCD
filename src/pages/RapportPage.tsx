@@ -1216,37 +1216,11 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
 
       {/* ── FINANCES ── */}
       <AccordionSection
-        title="Finances" sub="Budget copro · fonds travaux · charges lot · historique" icon="💰"
+        title="Finances" sub="Budget copro · fonds travaux · historique" icon="💰"
         status={fondsInsuffisant ? 'warning' : 'ok'}
         badge={rapport.fonds_travaux_statut === 'conforme' ? 'Sain' : rapport.fonds_travaux_statut === 'insuffisant' ? 'Vigilance' : rapport.fonds_travaux_statut === 'absent' ? 'Absent' : 'Détecté'}>
 
-        {/* Titre coloré charges */}
-        {chargesAnnuelles && (
-          <>
-            <div style={{ background: '#2a7d9c', borderRadius: 8, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <span style={{ fontSize: 16 }}>💶</span>
-              <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>Charges de votre lot</span>
-            </div>
-            <div style={{ background: '#eff6ff', border: '0.5px solid #bfdbfe', borderRadius: 12, padding: '20px 24px', display: 'flex', gap: 32, alignItems: 'center', flexWrap: 'wrap', marginBottom: 24 }}>
-              <div>
-                <div style={{ fontSize: 13, color: '#2563eb', marginBottom: 8 }}>
-                  <Tooltip text="Montant total des charges que vous devrez payer chaque année pour votre lot (entretien parties communes + fonds travaux).">Charges annuelles votre lot</Tooltip>
-                </div>
-                <div style={{ fontSize: 36, fontWeight: 500, color: '#1e3a5f', lineHeight: 1 }}>{chargesAnnuelles.toLocaleString('fr-FR')} €</div>
-              </div>
-              {chargesMensuelles && (
-                <>
-                  <div style={{ width: 0.5, height: 52, background: '#bfdbfe', flexShrink: 0 }} />
-                  <div>
-                    <div style={{ fontSize: 13, color: '#3b82f6', marginBottom: 8 }}>Soit par mois</div>
-                    <div style={{ fontSize: 36, fontWeight: 500, color: '#1e40af', lineHeight: 1 }}>{chargesMensuelles.toLocaleString('fr-FR')} €</div>
-                  </div>
-                </>
-              )}
-              <div style={{ fontSize: 12, color: '#3b82f6', marginLeft: 'auto', fontStyle: 'italic', alignSelf: 'flex-end' }}>Charges courantes · hors appels exceptionnels</div>
-            </div>
-          </>
-        )}
+
 
         {/* Titre coloré budget copro */}
         <div style={{ background: '#2a7d9c', borderRadius: 8, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
@@ -1386,16 +1360,67 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
 /* ══════════════════════════════════
    ONGLET VOTRE LOGEMENT
 ══════════════════════════════════ */
-function TabLogement({ rapport }: { rapport: RapportData }) {
-  const [allOpen, setAllOpen] = useState(true);
-  type LotT2 = { quote_part_tantiemes?: string; fonds_travaux_alur?: string; parties_privatives?: string[]; restrictions_usage?: string[]; travaux_votes_charge_vendeur?: string[]; impayes_detectes?: string; points_specifiques?: string[] };
-  type FinancesT = { taxe_fonciere?: string; type_chauffage?: string; charges_annuelles?: number | string; fonds_travaux?: number | string; fonds_travaux_statut?: string };
-  const lot = rapport.lot_achete as LotT2 | null;
-  const finances = rapport.finances as FinancesT | null;
+function SectionTitle({ emoji, text, tooltip }: { emoji: string; text: string; tooltip?: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div style={{ background: '#2a7d9c', borderRadius: 8, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ fontSize: 16 }}>{emoji}</span>
+      <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>{text}</span>
+      {tooltip && (
+        <div style={{ position: 'relative', marginLeft: 2 }}
+          onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+          <span style={{ width: 16, height: 16, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#fff', fontWeight: 700, cursor: 'help' }}>?</span>
+          {show && (
+            <div style={{ position: 'absolute', left: 22, top: -4, width: 280, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.6, zIndex: 200, boxShadow: '0 8px 24px rgba(0,0,0,0.2)', pointerEvents: 'none' }}>{tooltip}</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
+function TabLogement({ rapport }: { rapport: RapportData }) {
+  type LotT2 = {
+    quote_part_tantiemes?: string; fonds_travaux_alur?: string;
+    parties_privatives?: unknown[]; restrictions_usage?: string[];
+    travaux_votes_charge_vendeur?: unknown[]; impayes_detectes?: string;
+    points_specifiques?: string[];
+  };
+  type TaxeT = { montant_total?: number; montant_mensuel?: number; evolution_pct?: number; montant_precedent?: number; annee?: number };
+  type CompromisT = {
+    vendeur?: string; acheteur?: string; notaire_acheteur?: string; notaire_vendeur?: string; agence?: string;
+    prix_net_vendeur?: number; honoraires_agence?: number; honoraires_charge?: string; prix_total?: number;
+    depot_garantie?: number; depot_sequestre?: number;
+    date_signature?: string; date_acte?: string; bien_libre_a?: string;
+    conditions_suspensives?: Array<{ label?: string; detail?: string; date_limite?: string; statut?: string }>;
+    clauses_particulieres?: string[];
+    financement?: { apport?: number; montant_pret?: number; etablissement?: string };
+    bien?: { surface_carrez?: number; type?: string; annexes?: string[] };
+  };
+
+  const lot = rapport.lot_achete as LotT2 | null;
+  const fin = rapport.finances as Record<string, unknown> | null;
+  const chargesLot = fin?.charges_annuelles_lot;
+  const chargesLotNum = typeof chargesLot === 'number' ? chargesLot : typeof chargesLot === 'string' ? parseFloat(String(chargesLot).replace(/[^0-9.]/g, '')) || 0 : 0;
+  const chargesMensuellesLot = chargesLotNum > 0 ? Math.round(chargesLotNum / 12) : 0;
+
+  // Taxe foncière depuis rapport.finances ou documents_analyses
+  const taxeFonciereRaw = (rapport as Record<string, unknown>).taxe_fonciere as TaxeT | number | string | null;
+  const taxeAnnuelle = typeof taxeFonciereRaw === 'number' ? taxeFonciereRaw
+    : typeof taxeFonciereRaw === 'object' && taxeFonciereRaw !== null ? (taxeFonciereRaw as TaxeT).montant_total ?? null
+    : typeof taxeFonciereRaw === 'string' ? parseFloat(taxeFonciereRaw.replace(/[^0-9.]/g, '')) || null : null;
+  const taxeMensuelle = taxeAnnuelle ? Math.round(taxeAnnuelle / 12) : null;
+  const taxeEvol = typeof taxeFonciereRaw === 'object' && taxeFonciereRaw !== null ? (taxeFonciereRaw as TaxeT).evolution_pct ?? null : null;
+  const taxePrecedent = typeof taxeFonciereRaw === 'object' && taxeFonciereRaw !== null ? (taxeFonciereRaw as TaxeT).montant_precedent ?? null : null;
+
+  // Compromis
+  const docsAnalyses = (rapport as Record<string, unknown>).documents_analyses as Array<Record<string, unknown>> || [];
+  const compromisDoc = docsAnalyses.find(d => safeStr(d.type) === 'COMPROMIS');
+  const compromis = (rapport as Record<string, unknown>).compromis as CompromisT | null;
+
+  // DPE
   const diagsPriv = rapport.diagnostics.filter((d: Record<string, unknown>) => d.perimetre === 'lot_privatif');
-  const dpe = diagsPriv.find((d: Record<string, unknown>) => d.type === 'DPE');
-  // Tri : absence (vert) en premier, alertes (rouge) en dernier
+  const dpe = diagsPriv.find((d: Record<string, unknown>) => d.type === 'DPE') as Record<string, unknown> | undefined;
   const autresDiags = diagsPriv
     .filter((d: Record<string, unknown>) => d.type !== 'DPE')
     .sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
@@ -1404,152 +1429,520 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
       return scoreA - scoreB;
     });
 
-  const dpeClasse = dpe ? (dpe.resultat as string)?.match(/Classe ([A-G])/i)?.[1]?.toUpperCase() || (dpe.resultat as string) : null;
+  const resultatStr = dpe ? safeStr(dpe.resultat) : '';
+  const dpeClasse = resultatStr?.match(/Classe\s*([A-G])/i)?.[1]?.toUpperCase() ?? null;
+  const dpeGesClasse = resultatStr?.match(/GES[^A-G]*Classe\s*([A-G])/i)?.[1]?.toUpperCase() ?? null;
+  const dpeKwh = resultatStr?.match(/([\d,.]+)\s*kWh/i)?.[1] ?? null;
+  const dpeGes = resultatStr?.match(/([\d,.]+)\s*kg/i)?.[1] ?? null;
   const dpeBad = dpeClasse && ['F', 'G'].includes(dpeClasse);
-  const hasDiagAlert = diagsPriv.some((d: Record<string, unknown>) => d.alerte);
+  const dpeGood = dpeClasse && ['A', 'B', 'C'].includes(dpeClasse);
+  const hasDiagAlert = autresDiags.some((d: Record<string, unknown>) => d.alerte);
+
+  const DPE_COLORS: Record<string, string> = { A: '#16a34a', B: '#22c55e', C: '#84cc16', D: '#eab308', E: '#f97316', F: '#ef4444', G: '#991b1b' };
+  const DPE_CLASSES = ['A','B','C','D','E','F','G'];
+
+  // Fonds travaux ALUR
+  const fondsAlurRaw = lot?.fonds_travaux_alur;
+  const fondsAlurNum = fondsAlurRaw ? (isNaN(Number(String(fondsAlurRaw).replace(/[^0-9.]/g, ''))) ? null : Number(String(fondsAlurRaw).replace(/[^0-9.]/g, ''))) : null;
+
+  // Travaux évoqués (pour rappel)
+  const travauxEvoques = rapport.travaux_a_prevoir ?? [];
+
+  // Restrictions usage
+  const restrictions = ((lot?.restrictions_usage as string[]) ?? []).filter(
+    r => !safeStr(r).toLowerCase().includes('aucune restriction') && !safeStr(r).toLowerCase().includes('règlement copropriété complet non fourni')
+  );
+
+  // KPIs bandeau
+  const kpiItems: { emoji: string; label: string; value: string; sub?: string; color?: string; bg?: string; border?: string; tooltip?: string }[] = [];
+  if (dpeClasse) kpiItems.push({ emoji: '⚡', label: 'Performance énergétique', value: `Classe ${dpeClasse}`, sub: dpeKwh ? `${dpeKwh} kWh/m²/an` : undefined, color: DPE_COLORS[dpeClasse], bg: `${DPE_COLORS[dpeClasse]}12`, border: `${DPE_COLORS[dpeClasse]}44`, tooltip: "Classe énergétique du logement. A = très performant, G = passoire thermique. F et G seront progressivement interdits à la location." });
+  if (chargesMensuellesLot > 0) kpiItems.push({ emoji: '💶', label: 'Charges mensuelles lot', value: `${chargesMensuellesLot.toLocaleString('fr-FR')} €`, sub: `${chargesLotNum.toLocaleString('fr-FR')} €/an`, color: '#1e40af', bg: '#eff6ff', border: '#bfdbfe', tooltip: "Charges de copropriété annuelles de votre lot divisées par 12." });
+  if (taxeMensuelle) kpiItems.push({ emoji: '🏛', label: 'Taxe foncière', value: `${taxeMensuelle.toLocaleString('fr-FR')} €/mois`, sub: taxeAnnuelle ? `${taxeAnnuelle.toLocaleString('fr-FR')} €/an` : undefined, tooltip: "Impôt local annuel dû par le propriétaire, calculé sur la valeur locative cadastrale." });
+  if (lot?.quote_part_tantiemes) kpiItems.push({ emoji: '⚖️', label: 'Tantièmes du lot', value: safeStr(lot.quote_part_tantiemes) ?? '—', sub: 'quote-part copropriété', tooltip: "Votre quote-part dans la copropriété. Détermine votre participation aux charges et votre poids lors des votes en AG." });
+  if (fondsAlurNum) kpiItems.push({ emoji: '💰', label: 'Fonds travaux ALUR', value: `${fondsAlurNum.toLocaleString('fr-FR')} €`, sub: 'À rembourser au vendeur', color: '#d97706', bg: '#fff7ed', border: '#fed7aa', tooltip: "Ce montant est attaché au lot. Il vous sera transféré mais vous devrez le rembourser au vendeur en sus du prix de vente." });
+
+  // Purge conditions suspensives
+  const today = new Date();
+  const joursRestants = (dateStr: string) => {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return null;
+    return Math.ceil((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  };
+
+  const TOOLTIPS_CS: Record<string, string> = {
+    pret: "Vous devez obtenir votre accord de prêt bancaire avant la date limite. Sans accord obtenu dans les délais, vous pouvez vous rétracter et récupérer votre dépôt de garantie intégralement.",
+    preemption: "La mairie dispose d'un droit de préemption urbain (DPU) : elle peut se substituer à l'acheteur pour acquérir le bien au même prix. Ce droit expire généralement 2 mois après la DIA déposée en mairie.",
+    vente: "L'achat est conditionné à la vente préalable d'un bien appartenant à l'acheteur. Si la vente ne se réalise pas dans les délais, l'acheteur peut se rétracter sans pénalité.",
+    permis: "Un permis de construire ou d'aménager doit être obtenu avant la date limite pour que la vente soit définitive.",
+    default: "Condition dont la réalisation est nécessaire pour que la vente soit définitive. Si elle n'est pas remplie dans les délais, l'acheteur peut se rétracter sans pénalité.",
+  };
+
+  const getCSTooltip = (label: string) => {
+    const l = label.toLowerCase();
+    if (l.includes('prêt') || l.includes('pret') || l.includes('financement')) return TOOLTIPS_CS.pret;
+    if (l.includes('préemption') || l.includes('preemption')) return TOOLTIPS_CS.preemption;
+    if (l.includes('vente') || l.includes('cession')) return TOOLTIPS_CS.vente;
+    if (l.includes('permis')) return TOOLTIPS_CS.permis;
+    return TOOLTIPS_CS.default;
+  };
+
+  const getCSEmoji = (label: string) => {
+    const l = label.toLowerCase();
+    if (l.includes('prêt') || l.includes('pret') || l.includes('financement')) return '🏦';
+    if (l.includes('préemption') || l.includes('preemption')) return '🏛';
+    if (l.includes('vente') || l.includes('cession')) return '🏠';
+    if (l.includes('permis')) return '📋';
+    if (l.includes('diagnostic')) return '✅';
+    return '⏳';
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button onClick={() => setAllOpen(!allOpen)} style={{ fontSize: 12, color: '#64748b', background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 8, padding: '6px 14px', cursor: 'pointer' }}>
-          {allOpen ? 'Tout replier' : 'Tout déplier'}
-        </button>
-      </div>
 
-      {/* INFOS LOT EN PREMIER */}
-      {lot && (lot.quote_part_tantiemes || lot.fonds_travaux_alur || (lot.restrictions_usage as string[])?.length > 0) && (
-        <AccordionSection
-          title="Informations sur votre lot" sub="Tantièmes · fonds ALUR · restrictions" icon="🏠"
-          status="neutral" badge="Informatif" defaultOpen={true}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', overflow: 'hidden' }}>
-              {lot.quote_part_tantiemes && (
-                <div style={{ display: 'flex', padding: '10px 14px', borderBottom: '1px solid #f1f5f9' }}>
-                  <span style={{ fontSize: 12, color: '#64748b', width: 160, flexShrink: 0 }}>Quote-part tantièmes</span>
-                  <div style={{ flex: 1 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{safeStr(lot.quote_part_tantiemes)}</span>
-                    {(lot.parties_privatives as string[])?.length > 0 && (
-                      <div style={{ marginTop: 4 }}>
-                        {(lot.parties_privatives as string[]).map((p, i) => (
-                          <div key={i} style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>• {safeStr(p)}</div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-              {lot.fonds_travaux_alur && (
-                <div style={{ display: 'flex', padding: '10px 14px', borderBottom: (lot.travaux_votes_charge_vendeur as string[])?.length > 0 || (lot.restrictions_usage as string[])?.length > 0 ? '1px solid #f1f5f9' : 'none' }}>
-                  <span style={{ fontSize: 12, color: '#64748b', width: 160, flexShrink: 0 }}>Fonds travaux ALUR</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#16a34a', flex: 1 }}>
-                    {isNaN(Number(String(lot.fonds_travaux_alur).replace(/[^0-9.]/g, ''))) ? safeStr(lot.fonds_travaux_alur) : `${Number(String(lot.fonds_travaux_alur).replace(/[^0-9.]/g, '')).toLocaleString('fr-FR')}€`} — récupérable à la signature
-                  </span>
-                </div>
-              )}
-              {(lot.travaux_votes_charge_vendeur as string[])?.length > 0 && (
-                <div style={{ display: 'flex', padding: '10px 14px', borderBottom: (lot.restrictions_usage as string[])?.length > 0 ? '1px solid #f1f5f9' : 'none' }}>
-                  <span style={{ fontSize: 12, color: '#64748b', width: 160, flexShrink: 0 }}>Charge vendeur</span>
-                  <div style={{ flex: 1 }}>
-                    {(lot.travaux_votes_charge_vendeur as string[]).map((t, i) => (
-                      <div key={i} style={{ fontSize: 12, color: '#1d4ed8', marginBottom: 2 }}>• {safeStr(t)}</div>
+      {/* BANDEAU KPIs */}
+      {kpiItems.length > 0 && (
+        <>
+          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>Vue d'ensemble</div>
+          <KpiBand items={kpiItems} />
+        </>
+      )}
+
+      {/* ── VOTRE LOT ── */}
+      <AccordionSection
+        title="Votre lot" sub="Tantièmes · parties privatives · fonds ALUR · restrictions" icon="🏠"
+        status="neutral" badge={lot?.quote_part_tantiemes ? safeStr(lot.quote_part_tantiemes) ?? 'Lot' : 'Informatif'}
+        defaultOpen={true}>
+
+        <SectionTitle emoji="⚖️" text="Informations officielles du lot" tooltip="Données issues du règlement de copropriété, du pré-état daté ou de l'état daté." />
+
+        <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
+          {lot?.quote_part_tantiemes && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: '0.5px solid var(--color-border-tertiary)', gap: 12 }}>
+              <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', flexShrink: 0 }}>
+                <Tooltip text="Votre quote-part dans la copropriété. Détermine votre participation aux charges et votre poids lors des votes en assemblée générale.">Tantièmes</Tooltip>
+              </span>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--color-text-primary)' }}>{safeStr(lot.quote_part_tantiemes)}</div>
+                {(lot.parties_privatives as unknown[] ?? []).length > 0 && (
+                  <div style={{ marginTop: 4 }}>
+                    {(lot.parties_privatives as unknown[]).map((p, i) => (
+                      <div key={i} style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>• {safeStr(p)}</div>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-            {(lot.restrictions_usage as string[])?.length > 0 &&
-              !(lot.restrictions_usage as string[]).some(r => safeStr(r).toLowerCase().includes('aucune restriction') || safeStr(r).toLowerCase().includes('règlement copropriété complet non fourni')) && (
-              <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', marginBottom: 2 }}>Restrictions d'usage</div>
-                <div style={{ fontSize: 11, color: '#b45309', marginBottom: 8, fontStyle: 'italic' }}>Issues du règlement de copropriété fourni</div>
-                {(lot.restrictions_usage as string[]).map((r, i) => (
-                  <div key={i} style={{ fontSize: 12, color: '#92400e', marginBottom: 3 }}>• {safeStr(r)}</div>
-                ))}
+          )}
+          {fondsAlurNum && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: restrictions.length > 0 ? '0.5px solid var(--color-border-tertiary)' : 'none', gap: 12 }}>
+              <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', flexShrink: 0, maxWidth: 160 }}>
+                <Tooltip text="Ce montant est attaché au lot et vous sera transféré. Vous devrez le rembourser au vendeur en sus du prix de vente lors de la signature de l'acte authentique.">Fonds travaux ALUR</Tooltip>
+              </span>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 15, fontWeight: 500, color: '#d97706' }}>{fondsAlurNum.toLocaleString('fr-FR')} €</div>
+                <div style={{ fontSize: 12, color: '#a16207', marginTop: 3 }}>À rembourser au vendeur à la signature de l'acte</div>
+              </div>
+            </div>
+          )}
+          {restrictions.length > 0 && (
+            <div style={{ padding: '12px 16px' }}>
+              <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 10 }}>Restrictions d'usage (RCP)</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                {restrictions.map((r, i) => {
+                  const low = r.toLowerCase();
+                  const interdit = low.includes('interdit') || low.includes('interdit') || low.includes('prohib') || low.includes('non autoris');
+                  const color = interdit ? '#dc2626' : '#16a34a';
+                  const bg = interdit ? '#fef2f2' : '#f0fdf4';
+                  const border = interdit ? '#fecaca' : '#bbf7d0';
+                  const label = interdit ? '✗ Interdit' : '✓ Autorisé';
+                  return (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--color-background-secondary)', borderRadius: 9, gap: 10 }}>
+                      <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>{safeStr(r).replace(/^[✓✗×•-]\s*/, '')}</span>
+                      <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, background: bg, color, border: `0.5px solid ${border}`, flexShrink: 0, fontWeight: 500 }}>{label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Rappel travaux évoqués */}
+        {travauxEvoques.length > 0 && (
+          <div style={{ background: '#fff7ed', border: '0.5px solid #fed7aa', borderRadius: 10, padding: '14px 16px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 20, flexShrink: 0 }}>⚠️</span>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e', marginBottom: 4 }}>
+                {travauxEvoques.length} travaux évoqués sans vote dans la copropriété
+              </div>
+              <div style={{ fontSize: 13, color: '#a16207', lineHeight: 1.6 }}>
+                Si ces travaux sont votés en AG après votre acquisition, vous en supporterez une part proportionnelle à vos tantièmes — potentiellement plusieurs milliers d'euros.
+              </div>
+              <div style={{ marginTop: 8, fontSize: 13, color: '#2a7d9c', fontWeight: 500, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}>
+                → Voir les travaux évoqués dans l'onglet Copropriété
+              </div>
+            </div>
+          </div>
+        )}
+      </AccordionSection>
+
+      {/* ── DPE ── */}
+      {dpe && (
+        <AccordionSection
+          title="Performance énergétique" sub={dpeClasse ? `DPE Classe ${dpeClasse}${dpeGesClasse ? ` · GES Classe ${dpeGesClasse}` : ''}` : 'DPE fourni'} icon="⚡"
+          status={dpeBad ? 'alert' : dpeGood ? 'ok' : 'warning'}
+          badge={dpeClasse ? `Classe ${dpeClasse}` : 'Détecté'}
+          defaultOpen={true}
+          tooltip="Le DPE mesure la consommation d'énergie du logement de A (très performant) à G (passoire thermique). Les logements F sont interdits à la location dès 2028, G dès 2025.">
+
+          {dpeBad && (
+            <div style={{ padding: '12px 16px', background: '#fef2f2', border: '0.5px solid #fecaca', borderRadius: 10, fontSize: 13, color: '#991b1b', lineHeight: 1.6 }}>
+              ⚠️ <strong>DPE classe {dpeClasse} — passoire thermique.</strong> Ce logement ne pourra plus être mis en location à partir de {dpeClasse === 'G' ? '2025' : '2028'}. Des travaux de rénovation énergétique importants sont à prévoir.
+            </div>
+          )}
+
+          <SectionTitle emoji="📊" text="Classement énergétique" tooltip="Comparaison du logement sur l'échelle de performance énergétique A à G." />
+
+          {/* Jauges DPE + GES */}
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {/* Énergie */}
+            <div style={{ flex: 1, minWidth: 180, background: 'var(--color-background-secondary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, padding: 18 }}>
+              <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 14, fontWeight: 500 }}>Énergie primaire</div>
+              <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end', height: 56, marginBottom: 12 }}>
+                {DPE_CLASSES.map((c, i) => {
+                  const active = c === dpeClasse;
+                  const h = 28 + i * 4;
+                  return (
+                    <div key={c} style={{ flex: 1, height: active ? 56 : h, borderRadius: 5, background: active ? DPE_COLORS[c] : `${DPE_COLORS[c]}20`, border: active ? `2px solid ${DPE_COLORS[c]}` : `1px solid ${DPE_COLORS[c]}40`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: active ? 14 : 11, fontWeight: 600, color: active ? '#fff' : DPE_COLORS[c] }}>{c}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>{dpeKwh ? `${dpeKwh} kWh/m²/an` : '—'}</span>
+                {dpeClasse && <span style={{ fontSize: 13, fontWeight: 600, color: DPE_COLORS[dpeClasse], background: `${DPE_COLORS[dpeClasse]}18`, padding: '3px 12px', borderRadius: 20, border: `1px solid ${DPE_COLORS[dpeClasse]}44` }}>Classe {dpeClasse}</span>}
+              </div>
+            </div>
+            {/* GES */}
+            {dpeGesClasse && (
+              <div style={{ flex: 1, minWidth: 180, background: 'var(--color-background-secondary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, padding: 18 }}>
+                <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 14, fontWeight: 500 }}>Émissions GES</div>
+                <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end', height: 56, marginBottom: 12 }}>
+                  {DPE_CLASSES.map((c, i) => {
+                    const active = c === dpeGesClasse;
+                    const h = 28 + i * 4;
+                    return (
+                      <div key={c} style={{ flex: 1, height: active ? 56 : h, borderRadius: 5, background: active ? DPE_COLORS[c] : `${DPE_COLORS[c]}20`, border: active ? `2px solid ${DPE_COLORS[c]}` : `1px solid ${DPE_COLORS[c]}40`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ fontSize: active ? 14 : 11, fontWeight: 600, color: active ? '#fff' : DPE_COLORS[c] }}>{c}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>{dpeGes ? `${dpeGes} kg CO₂/m²/an` : '—'}</span>
+                  {dpeGesClasse && <span style={{ fontSize: 13, fontWeight: 600, color: DPE_COLORS[dpeGesClasse], background: `${DPE_COLORS[dpeGesClasse]}18`, padding: '3px 12px', borderRadius: 20, border: `1px solid ${DPE_COLORS[dpeGesClasse]}44` }}>Classe {dpeGesClasse}</span>}
+                </div>
               </div>
             )}
           </div>
-        </AccordionSection>
-      )}
 
-      {/* FINANCES DU LOT */}
-      <AccordionSection
-        title="Finances de votre lot" sub="Charges annuelles · impayés" icon="💶"
-        status={(lot?.impayes_detectes) ? 'alert' : 'neutral'}
-        badge={(lot?.impayes_detectes) ? 'Impayés détectés' : 'Informatif'}
-        defaultOpen={true}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* Coût énergétique */}
           {(() => {
-            const fin = rapport.finances as Record<string, unknown> | null;
-            const chargesLot = fin?.charges_annuelles_lot;
-            const chargesLotNum = typeof chargesLot === 'number' ? chargesLot : typeof chargesLot === 'string' ? parseFloat(String(chargesLot).replace(/[^0-9.]/g, '')) || 0 : 0;
-            if (chargesLotNum > 0) return (
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 12px', background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7', fontSize: 15 }}>
-                <span style={{ color: '#64748b' }}>Charges annuelles votre lot</span>
-                <span style={{ fontWeight: 600, color: '#0f172a' }}>{chargesLotNum.toLocaleString('fr-FR')}€/an</span>
+            const dpeObj = dpe as Record<string, unknown>;
+            const min = dpeObj?.cout_annuel_min as number | null;
+            const max = dpeObj?.cout_annuel_max as number | null;
+            if (!min && !max) return null;
+            return (
+              <div style={{ background: 'var(--color-background-secondary)', borderRadius: 10, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                <div>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Coût énergétique annuel estimé</div>
+                  <div style={{ fontSize: 22, fontWeight: 500, color: 'var(--color-text-primary)' }}>
+                    {min && max ? `${min.toLocaleString('fr-FR')} – ${max.toLocaleString('fr-FR')} €` : min ? `${min.toLocaleString('fr-FR')} €` : `${max!.toLocaleString('fr-FR')} €`}
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontStyle: 'italic', textAlign: 'right' }}>Estimation indicative selon conditions climatiques<br/>et habitudes de consommation</div>
               </div>
             );
-            if (rapport.charges_mensuelles > 0) return (
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 12px', background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7', fontSize: 13 }}>
-                <span style={{ color: '#64748b' }}>Charges mensuelles estimées</span>
-                <span style={{ fontWeight: 600, color: '#0f172a' }}>{rapport.charges_mensuelles}€/mois</span>
-              </div>
-            );
-            return null;
           })()}
-          {finances?.taxe_fonciere && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 12px', background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7', fontSize: 13 }}>
-              <span style={{ color: '#64748b' }}>Taxe foncière</span>
-              <span style={{ fontWeight: 600, color: '#0f172a' }}>{safeStr(finances.taxe_fonciere)}</span>
-            </div>
-          )}
-          {lot?.impayes_detectes && (
-            <div style={{ padding: '9px 12px', background: '#fef2f2', borderRadius: 9, border: '1px solid #fecaca', fontSize: 12, color: '#991b1b' }}>
-              ⚠️ Impayés détectés sur ce lot : {safeStr(lot.impayes_detectes)}
-            </div>
-          )}
-          {!rapport.charges_mensuelles && !finances?.taxe_fonciere && !lot?.impayes_detectes && (() => {
-            const fin = rapport.finances as Record<string, unknown> | null;
-            const c = fin?.charges_annuelles_lot;
-            const n = typeof c === 'number' ? c : 0;
-            return n === 0 ? <p style={{ fontSize: 13, color: '#94a3b8' }}>Uploadez un appel de charges pour obtenir ces informations.</p> : null;
-          })()}
-        </div>
-      </AccordionSection>
 
-      {/* DPE */}
-      {dpe && (
-        <AccordionSection
-          title="DPE — Performance énergétique" sub={dpeClasse ? `Classe ${dpeClasse}` : ''} icon="⚡"
-          status={dpeBad ? 'alert' : dpeClasse && ['A', 'B', 'C'].includes(dpeClasse) ? 'ok' : 'warning'}
-          badge={dpeClasse ? `Classe ${dpeClasse}` : 'Détecté'}
-          defaultOpen={true}>
-          <DiagRow d={dpe} />
-          {dpeBad && (
-            <div style={{ padding: '10px 14px', background: '#fef2f2', borderRadius: 10, border: '1px solid #fecaca', fontSize: 12, color: '#991b1b', lineHeight: 1.6 }}>
-              ⚠️ Un DPE classé {dpeClasse} peut impacter la valeur du bien et sa revente. Pour une résidence principale, ce bien ne pourra plus être mis en location à partir de 2025 (G) ou 2028 (F).
-            </div>
-          )}
+          {/* Travaux préconisés DPE */}
+          {(() => {
+            const dpeObj = dpe as Record<string, unknown>;
+            const travaux = dpeObj?.travaux_preconises as Array<Record<string, unknown>> | null;
+            if (!travaux || travaux.length === 0) return null;
+            return (
+              <>
+                <SectionTitle emoji="🔨" text="Travaux préconisés pour améliorer le DPE" />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {travaux.map((t, i) => (
+                    <div key={i} style={{ background: 'var(--color-background-secondary)', borderRadius: 10, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{safeStr(t.label)}</div>
+                        {t.priorite && <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>{String(t.priorite) === 'prioritaire' ? '🔴 Prioritaire' : '🟡 Recommandé'}</div>}
+                      </div>
+                      {(t.cout_min || t.cout_max) && (
+                        <span style={{ fontSize: 13, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>
+                          {t.cout_min && t.cout_max ? `${Number(t.cout_min).toLocaleString('fr-FR')} – ${Number(t.cout_max).toLocaleString('fr-FR')} €` : `${Number(t.cout_min ?? t.cout_max).toLocaleString('fr-FR')} €`}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            );
+          })()}
         </AccordionSection>
       )}
 
-      {/* Autres diagnostics privatifs */}
+      {/* ── DIAGNOSTICS PRIVATIFS ── */}
       {(autresDiags.length > 0 || hasDiagAlert) && (
         <AccordionSection
           title="Diagnostics privatifs" sub="Électricité · gaz · amiante · plomb · termites · Carrez" icon="🔍"
           status={hasDiagAlert ? 'alert' : 'ok'}
           badge={hasDiagAlert ? "Points d'attention" : `${autresDiags.length} diagnostic${autresDiags.length > 1 ? 's' : ''}`}
           defaultOpen={true}>
+
+          <SectionTitle emoji="✅" text="Résultats des diagnostics" />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {autresDiags.map((d: Record<string, unknown>, i: number) => <DiagRow key={i} d={d} />)}
           </div>
+
+          {/* Surface Carrez */}
+          {(() => {
+            const carrez = autresDiags.find((d: Record<string, unknown>) => d.type === 'CARREZ') as Record<string, unknown> | undefined;
+            if (!carrez) return null;
+            const pieces = carrez.pieces_detail as Array<{ piece: string; surface: number }> | null;
+            const surface = safeStr(carrez.resultat)?.match(/([\d,.]+)\s*m²/i)?.[1];
+            return (
+              <>
+                <SectionTitle emoji="📐" text="Surface Carrez" tooltip="La loi Carrez impose la mesure officielle de la surface privative. Si la surface réelle est inférieure de plus de 5% à celle du compromis, vous pouvez demander une réduction du prix proportionnelle." />
+                <div style={{ background: 'var(--color-background-secondary)', borderRadius: 10, overflow: 'hidden' }}>
+                  {surface && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: pieces ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
+                      <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Surface totale Carrez</span>
+                      <span style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>{surface} m²</span>
+                    </div>
+                  )}
+                  {pieces && pieces.length > 0 && (
+                    <div style={{ padding: '12px 16px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {pieces.map((p, i) => (
+                        <span key={i} style={{ fontSize: 12, padding: '3px 10px', borderRadius: 20, background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', color: 'var(--color-text-secondary)' }}>
+                          {p.piece} — {p.surface} m²
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
         </AccordionSection>
       )}
 
-      {diagsPriv.length === 0 && (
-        <div style={{ padding: '20px', background: '#fff', borderRadius: 13, border: '1px solid #edf2f7', textAlign: 'center' }}>
-          <Shield size={24} style={{ color: '#94a3b8', margin: '0 auto 10px' }} />
-          <p style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Aucun diagnostic détecté</p>
-          <p style={{ fontSize: 12, color: '#94a3b8' }}>Uploadez le Dossier de Diagnostic Technique (DDT) pour obtenir l'analyse DPE, électricité, gaz, amiante et plomb de votre logement.</p>
+      {/* ── FINANCES DU LOT ── */}
+      <AccordionSection
+        title="Finances de votre lot" sub="Charges · taxe foncière · impayés" icon="💶"
+        status={lot?.impayes_detectes ? 'alert' : 'neutral'}
+        badge={lot?.impayes_detectes ? 'Impayés détectés' : 'Informatif'}
+        defaultOpen={true}>
+
+        {/* Charges */}
+        {chargesLotNum > 0 && (
+          <>
+            <SectionTitle emoji="💶" text="Charges de copropriété" />
+            <div style={{ background: '#eff6ff', border: '0.5px solid #bfdbfe', borderRadius: 12, padding: '20px 24px', display: 'flex', gap: 32, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ fontSize: 13, color: '#2563eb', marginBottom: 8 }}>Charges annuelles lot</div>
+                <div style={{ fontSize: 36, fontWeight: 500, color: '#1e3a5f', lineHeight: 1 }}>{chargesLotNum.toLocaleString('fr-FR')} €</div>
+              </div>
+              <div style={{ width: 0.5, height: 52, background: '#bfdbfe', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: 13, color: '#3b82f6', marginBottom: 8 }}>Soit par mois</div>
+                <div style={{ fontSize: 36, fontWeight: 500, color: '#1e40af', lineHeight: 1 }}>{chargesMensuellesLot.toLocaleString('fr-FR')} €</div>
+              </div>
+              <div style={{ fontSize: 12, color: '#3b82f6', marginLeft: 'auto', fontStyle: 'italic', alignSelf: 'flex-end' }}>Charges courantes · hors appels exceptionnels</div>
+            </div>
+          </>
+        )}
+
+        {/* Taxe foncière */}
+        {taxeAnnuelle && (
+          <>
+            <SectionTitle emoji="🏛" text="Taxe foncière" tooltip="Impôt local annuel dû par le propriétaire du bien, calculé sur la valeur locative cadastrale. Elle est due même si le bien est loué et peut évoluer chaque année." />
+            <div style={{ display: 'grid', gridTemplateColumns: taxeEvol !== null ? '1fr 1fr 1fr' : '1fr 1fr', gap: 10 }}>
+              <div style={{ background: 'var(--color-background-secondary)', borderRadius: 10, padding: '14px 16px', textAlign: 'center' }}>
+                <div style={{ fontSize: 22, fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: 5 }}>{taxeAnnuelle.toLocaleString('fr-FR')} €</div>
+                <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Montant annuel</div>
+              </div>
+              <div style={{ background: 'var(--color-background-secondary)', borderRadius: 10, padding: '14px 16px', textAlign: 'center' }}>
+                <div style={{ fontSize: 22, fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: 5 }}>{taxeMensuelle!.toLocaleString('fr-FR')} €</div>
+                <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Par mois</div>
+              </div>
+              {taxeEvol !== null && (
+                <div style={{ background: taxeEvol > 5 ? '#fff7ed' : '#f8fafc', border: taxeEvol > 5 ? '0.5px solid #fed7aa' : '0.5px solid var(--color-border-tertiary)', borderRadius: 10, padding: '14px 16px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 22, fontWeight: 500, color: taxeEvol > 5 ? '#a16207' : 'var(--color-text-primary)', marginBottom: 5 }}>{taxeEvol > 0 ? '+' : ''}{taxeEvol.toFixed(1)}%</div>
+                  <div style={{ fontSize: 12, color: taxeEvol > 5 ? '#a16207' : 'var(--color-text-secondary)' }}>vs {taxePrecedent ? `${taxePrecedent.toLocaleString('fr-FR')} €` : 'année précédente'}</div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Impayés */}
+        {lot?.impayes_detectes && (
+          <div style={{ padding: '12px 16px', background: '#fef2f2', borderRadius: 10, border: '0.5px solid #fecaca', fontSize: 13, color: '#991b1b', lineHeight: 1.6 }}>
+            ⚠️ <strong>Impayés détectés sur ce lot :</strong> {safeStr(lot.impayes_detectes)}. Le vendeur doit apurer cette dette avant la signature de l'acte authentique.
+          </div>
+        )}
+
+        {chargesLotNum === 0 && !taxeAnnuelle && !lot?.impayes_detectes && (
+          <div style={{ padding: '20px', textAlign: 'center' }}>
+            <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Uploadez un appel de charges et/ou votre taxe foncière pour obtenir ces informations.</p>
+          </div>
+        )}
+      </AccordionSection>
+
+      {/* ── COMPROMIS ── */}
+      {(compromisDoc || compromis) && (
+        <AccordionSection
+          title="Compromis de vente" sub="Intervenants · prix · dates · conditions suspensives" icon="✍️"
+          status="neutral" badge={compromis?.date_signature ? `Signé le ${safeStr(compromis.date_signature)}` : 'Détecté'}
+          defaultOpen={true}
+          tooltip="Le compromis de vente est l'acte par lequel vendeur et acheteur s'engagent mutuellement. Il fixe le prix, les conditions et les délais de la transaction.">
+
+          {/* Intervenants */}
+          <SectionTitle emoji="👥" text="Intervenants" />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {[
+              { label: 'Vendeur', value: compromis?.vendeur },
+              { label: 'Acheteur', value: compromis?.acheteur },
+              { label: 'Notaire vendeur', value: compromis?.notaire_vendeur },
+              { label: 'Notaire acheteur', value: compromis?.notaire_acheteur },
+              { label: 'Agence immobilière', value: compromis?.agence, full: true },
+            ].filter(r => r.value).map((row, i) => (
+              <div key={i} style={{ background: 'var(--color-background-secondary)', borderRadius: 10, padding: '13px 16px', gridColumn: row.full ? 'span 2' : undefined }}>
+                <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{row.label}</div>
+                <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{safeStr(row.value)}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Prix */}
+          {(compromis?.prix_net_vendeur || compromis?.prix_total) && (
+            <>
+              <SectionTitle emoji="💰" text="Prix et financement" />
+              <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
+                {compromis.prix_net_vendeur && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
+                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Prix net vendeur</span>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{Number(compromis.prix_net_vendeur).toLocaleString('fr-FR')} €</span>
+                  </div>
+                )}
+                {compromis.honoraires_agence && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '0.5px solid var(--color-border-tertiary)', background: 'var(--color-background-secondary)' }}>
+                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Honoraires agence {compromis.honoraires_charge ? `(charge ${compromis.honoraires_charge})` : ''}</span>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{Number(compromis.honoraires_agence).toLocaleString('fr-FR')} €</span>
+                  </div>
+                )}
+                {compromis.prix_total && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderBottom: compromis.depot_garantie ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
+                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Prix total acheteur</span>
+                    <span style={{ fontSize: 18, fontWeight: 500, color: '#1e40af' }}>{Number(compromis.prix_total).toLocaleString('fr-FR')} €</span>
+                  </div>
+                )}
+                {compromis.depot_garantie && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--color-background-secondary)' }}>
+                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Dépôt de garantie <span style={{ fontSize: 11, fontStyle: 'italic' }}>(séquestre notaire)</span></span>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{Number(compromis.depot_garantie).toLocaleString('fr-FR')} €</span>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Dates clés */}
+          {(compromis?.date_signature || compromis?.date_acte) && (
+            <>
+              <SectionTitle emoji="📅" text="Dates clés" />
+              <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
+                {compromis.date_signature && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
+                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Signature compromis</span>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{safeStr(compromis.date_signature)}</span>
+                  </div>
+                )}
+                {compromis.date_acte && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderBottom: compromis.bien_libre_a ? '0.5px solid var(--color-border-tertiary)' : 'none', background: 'var(--color-background-secondary)' }}>
+                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Acte définitif prévu</span>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: '#1e40af' }}>{safeStr(compromis.date_acte)}</span>
+                  </div>
+                )}
+                {compromis.bien_libre_a && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px' }}>
+                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Disponibilité du bien</span>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{safeStr(compromis.bien_libre_a)}</span>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Conditions suspensives */}
+          {(compromis?.conditions_suspensives ?? []).length > 0 && (
+            <>
+              <SectionTitle emoji="⏳" text="Conditions suspensives" tooltip="Une condition suspensive est une clause qui permet à l'acheteur de se rétracter sans pénalité et de récupérer son dépôt de garantie si la condition n'est pas remplie avant la date limite." />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {compromis!.conditions_suspensives!.map((cs, i) => {
+                  const label = safeStr(cs.label) ?? '';
+                  const jours = cs.date_limite ? joursRestants(cs.date_limite) : null;
+                  const purge = cs.statut === 'purge' || cs.statut === 'levee';
+                  const borderColor = purge ? '#bbf7d0' : jours !== null && jours < 15 ? '#fecaca' : '#fed7aa';
+                  const badgeBg = purge ? '#f0fdf4' : jours !== null && jours < 15 ? '#fef2f2' : '#fff7ed';
+                  const badgeColor = purge ? '#166534' : jours !== null && jours < 15 ? '#dc2626' : '#a16207';
+                  const badgeText = purge ? '✓ Purgée' : jours !== null ? `⏳ Purge dans ${jours} jours` : cs.date_limite ? `Date : ${safeStr(cs.date_limite)}` : 'En cours';
+                  const [showCSTooltip, setShowCSTooltip] = useState(false);
+                  return (
+                    <div key={i} style={{ border: `0.5px solid ${borderColor}`, borderRadius: 10, padding: '14px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                        <span style={{ fontSize: 18, flexShrink: 0 }}>{getCSEmoji(label)}</span>
+                        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', flex: 1 }}>{label}</span>
+                        <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, background: badgeBg, color: badgeColor, border: `0.5px solid ${borderColor}`, fontWeight: 500, flexShrink: 0 }}>{badgeText}</span>
+                        <div style={{ position: 'relative' }} onMouseEnter={() => setShowCSTooltip(true)} onMouseLeave={() => setShowCSTooltip(false)}>
+                          <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#f1f5f9', border: '1px solid #e2e8f0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#94a3b8', fontWeight: 700, cursor: 'help', flexShrink: 0 }}>?</span>
+                          {showCSTooltip && (
+                            <div style={{ position: 'absolute', right: 0, top: 22, width: 280, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.6, zIndex: 200, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>{getCSTooltip(label)}</div>
+                          )}
+                        </div>
+                      </div>
+                      {cs.detail && <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6, marginLeft: 28 }}>{safeStr(cs.detail)}</div>}
+                      {cs.date_limite && !purge && <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginLeft: 28, marginTop: 4 }}>Date limite : <strong>{safeStr(cs.date_limite)}</strong></div>}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {/* Clauses particulières */}
+          {(compromis?.clauses_particulieres ?? []).length > 0 && (
+            <>
+              <SectionTitle emoji="📋" text="Clauses particulières importantes" />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {compromis!.clauses_particulieres!.map((c, i) => (
+                  <div key={i} style={{ fontSize: 13, color: 'var(--color-text-primary)', padding: '10px 14px', background: 'var(--color-background-secondary)', borderRadius: 9, lineHeight: 1.6 }}>• {safeStr(c)}</div>
+                ))}
+              </div>
+            </>
+          )}
+        </AccordionSection>
+      )}
+
+      {diagsPriv.length === 0 && !chargesLotNum && !taxeAnnuelle && (
+        <div style={{ padding: '32px 20px', background: 'var(--color-background-primary)', borderRadius: 16, border: '0.5px solid var(--color-border-tertiary)', textAlign: 'center' }}>
+          <Shield size={28} style={{ color: '#94a3b8', margin: '0 auto 12px' }} />
+          <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: 6 }}>Aucun document privatif détecté</p>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Uploadez le DDT, un appel de charges, la taxe foncière ou le compromis pour enrichir cet onglet.</p>
         </div>
       )}
     </div>
