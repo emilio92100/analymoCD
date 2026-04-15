@@ -611,7 +611,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
         {/* Résumé */}
         <div style={{ padding: '20px 22px 16px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 10 }}>RÉSUMÉ</div>
-          <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.9, margin: 0 }}>{rapport.resume}</p>
+          <p style={{ fontSize: 15, color: '#374151', lineHeight: 1.9, margin: 0 }}>{rapport.resume}</p>
         </div>
 
         {/* Séparateur */}
@@ -738,14 +738,14 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
       {/* 4. PISTES DE NÉGOCIATION */}
       {rapport.negociation?.applicable && rapport.negociation.elements.length > 0 && rapport.score < 14 && (
         <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <TrendingDown size={15} style={{ color: '#d97706' }} />
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>Pistes de négociation</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <TrendingDown size={16} style={{ color: '#d97706' }} />
+            <span style={{ fontSize: 15, fontWeight: 700, color: '#92400e' }}>Pistes de négociation</span>
           </div>
-          <p style={{ fontSize: 12, color: '#92400e', margin: '0 0 12px 0', lineHeight: 1.6, opacity: 0.85 }}>
+          <p style={{ fontSize: 14, color: '#92400e', margin: '0 0 14px 0', lineHeight: 1.6, opacity: 0.85 }}>
             Voici les arguments concrets sur lesquels vous appuyer pour défendre votre négociation auprès du vendeur.
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {rapport.negociation.elements.map((el: any, i: number) => {
               const texte = typeof el === 'string'
@@ -754,17 +754,21 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
               if (!texte) return null;
               const levier = typeof el !== 'string' ? safeStr(el?.levier) : '';
               return (
-                <div key={i} style={{ background: '#fff', borderRadius: 10, border: '1px solid #fde68a', padding: '12px 14px' }}>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <span style={{ fontSize: 16, flexShrink: 0 }}>💡</span>
-                    <div>
-                      <div style={{ fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>{texte}</div>
-                      {levier && levier !== texte && (
-                        <span style={{ display: 'inline-block', marginTop: 6, fontSize: 11, fontWeight: 700, color: '#d97706', background: '#fef3c7', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 100 }}>
-                          Levier : {levier}
-                        </span>
-                      )}
-                    </div>
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 16px', background: '#fff', borderRadius: 10, border: '1px solid #fde68a' }}>
+                  <div style={{ width: 22, height: 22, flexShrink: 0, marginTop: 2 }}>
+                    <svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M11 2.5L2 19.5h18L11 2.5z" stroke="#d97706" strokeWidth="1.5" strokeLinejoin="round"/>
+                      <path d="M11 9.5v4.5" stroke="#d97706" strokeWidth="1.5" strokeLinecap="round"/>
+                      <circle cx="11" cy="16.5" r="0.8" fill="#d97706"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 14, color: '#92400e', lineHeight: 1.65 }}>{texte}</span>
+                    {levier && levier !== texte && (
+                      <span style={{ display: 'inline-block', marginTop: 6, fontSize: 12, fontWeight: 600, color: '#d97706', background: '#fef3c7', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 100 }}>
+                        Levier : {levier}
+                      </span>
+                    )}
                   </div>
                 </div>
               );
@@ -793,7 +797,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
               return acc;
             }, [])
             .map((group, i) => (
-              <p key={i} style={{ fontSize: 14, color: i === 0 ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.75)', lineHeight: 1.85, margin: 0, marginTop: i > 0 ? 16 : 0, paddingTop: i > 0 ? 16 : 0, borderTop: i > 0 ? '0.5px solid rgba(255,255,255,0.1)' : 'none' }}>
+              <p key={i} style={{ fontSize: 15, color: i === 0 ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.75)', lineHeight: 1.85, margin: 0, marginTop: i > 0 ? 16 : 0, paddingTop: i > 0 ? 16 : 0, borderTop: i > 0 ? '0.5px solid rgba(255,255,255,0.1)' : 'none' }}>
                 {group.join('. ').replace(/\.+$/, '')}.
               </p>
             ))}
@@ -1322,11 +1326,11 @@ function TabProcedures({ rapport }: { rapport: RapportData }) {
       {rapport.procedures.map((proc, i) => {
         const g = graviteStyle(safeStr(proc.gravite));
         return (
-          <div key={i} style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
-            <div style={{ padding: '16px 22px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <Gavel size={18} style={{ color: '#dc2626', flexShrink: 0 }} />
-              <span style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', flex: 1 }}>{safeStr(proc.label) || safeStr(proc.type) || 'Procédure détectée'}</span>
-              <span style={{ fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 100, background: g.bg, border: `1px solid ${g.border}`, color: g.color, flexShrink: 0 }}>Gravité : {g.label}</span>
+          <div key={i} style={{ background: '#fff', borderRadius: 14, border: `1px solid ${g.border}`, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 22px', background: g.bg, display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Gavel size={18} style={{ color: g.color, flexShrink: 0 }} />
+              <span style={{ fontSize: 16, fontWeight: 700, color: g.color, flex: 1 }}>{safeStr(proc.label) || safeStr(proc.type) || 'Procédure détectée'}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 100, background: 'rgba(255,255,255,0.6)', border: `1px solid ${g.border}`, color: g.color, flexShrink: 0 }}>Gravité : {g.label}</span>
             </div>
             <div style={{ padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: 12 }}>
               {proc.message && <p style={{ fontSize: 15, color: '#374151', lineHeight: 1.8, margin: 0 }}>{safeStr(proc.message)}</p>}
@@ -1396,7 +1400,62 @@ function TabDocuments({ rapport }: { rapport: RapportData }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-      {/* Documents analysés */}
+      {/* Section docs manquants EN HAUT */}
+      {(docsEssentielManquants.length > 0 || docsSecondairesManquants.length > 0) && (
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>Pour améliorer votre score et mieux comprendre votre achat</div>
+              <div style={{ fontSize: 13, color: '#64748b' }}>Ajoutez ces documents dans les 7 jours suivant la date de ce rapport</div>
+            </div>
+            <button
+              onClick={() => window.location.href = `/dashboard/rapport?id=${rapport.id}&action=complement`}
+              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 10, border: 'none', background: '#2a7d9c', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+              <RefreshCw size={13} /> Compléter mon dossier
+            </button>
+          </div>
+          <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {docsEssentielManquants.length > 0 && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 12 }}>ESSENTIELS</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {docsEssentielManquants.map((doc, i) => (
+                    <div key={i} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 99, background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 13, color: '#1e40af', fontWeight: 500, cursor: doc.tooltip ? 'help' : 'default' }}
+                      onMouseEnter={() => doc.tooltip && setTooltipDoc(`e${i}`)}
+                      onMouseLeave={() => setTooltipDoc(null)}>
+                      {doc.label}
+                      {doc.tooltip && <span style={{ width: 15, height: 15, borderRadius: '50%', background: '#bfdbfe', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#1e40af', fontWeight: 700, flexShrink: 0 }}>?</span>}
+                      {tooltipDoc === `e${i}` && doc.tooltip && (
+                        <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: 280, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.7, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>{doc.tooltip}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {docsSecondairesManquants.length > 0 && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 12 }}>SECONDAIRES</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {docsSecondairesManquants.map((doc, i) => (
+                    <div key={i} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 99, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: 13, color: '#475569', fontWeight: 500, cursor: doc.tooltip ? 'help' : 'default' }}
+                      onMouseEnter={() => doc.tooltip && setTooltipDoc(`s${i}`)}
+                      onMouseLeave={() => setTooltipDoc(null)}>
+                      {doc.label}
+                      {doc.tooltip && <span style={{ width: 15, height: 15, borderRadius: '50%', background: '#e2e8f0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#475569', fontWeight: 700, flexShrink: 0 }}>?</span>}
+                      {tooltipDoc === `s${i}` && doc.tooltip && (
+                        <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: 280, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.7, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>{doc.tooltip}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Documents analysés EN BAS */}
       {hasDocs && (
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1426,77 +1485,6 @@ function TabDocuments({ rapport }: { rapport: RapportData }) {
           <div style={{ padding: '10px 20px', background: '#f8fafc', display: 'flex', alignItems: 'center', gap: 6, borderTop: '1px solid #f1f5f9' }}>
             <Shield size={11} style={{ color: '#94a3b8', flexShrink: 0 }} />
             <span style={{ fontSize: 11, color: '#94a3b8' }}>Documents supprimés de nos serveurs après traitement — conformément au RGPD.</span>
-          </div>
-        </div>
-      )}
-
-      {/* Section docs manquants */}
-      {(docsEssentielManquants.length > 0 || docsSecondairesManquants.length > 0) && (
-        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
-
-          {/* Header avec bouton compléter */}
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>Pour améliorer votre score</div>
-              <div style={{ fontSize: 12, color: '#64748b' }}>Ajoutez ces documents dans les 7 jours suivant la date de ce rapport</div>
-            </div>
-            <button
-              onClick={() => window.location.href = `/dashboard/rapport?id=${rapport.id}&action=complement`}
-              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 10, border: 'none', background: '#2a7d9c', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
-              <RefreshCw size={13} /> Compléter mon dossier
-            </button>
-          </div>
-
-          <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-            {/* Docs essentiels manquants */}
-            {docsEssentielManquants.length > 0 && (
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 12 }}>ESSENTIELS</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {docsEssentielManquants.map((doc, i) => (
-                    <div key={i} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 99, background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 13, color: '#1e40af', fontWeight: 500, cursor: doc.tooltip ? 'help' : 'default' }}
-                      onMouseEnter={() => doc.tooltip && setTooltipDoc(`e${i}`)}
-                      onMouseLeave={() => setTooltipDoc(null)}>
-                      {doc.label}
-                      {doc.tooltip && (
-                        <span style={{ width: 15, height: 15, borderRadius: '50%', background: '#bfdbfe', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#1e40af', fontWeight: 700, flexShrink: 0 }}>?</span>
-                      )}
-                      {tooltipDoc === `e${i}` && doc.tooltip && (
-                        <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: 280, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.7, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
-                          {doc.tooltip}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Docs secondaires manquants */}
-            {docsSecondairesManquants.length > 0 && (
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 12 }}>SECONDAIRES</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {docsSecondairesManquants.map((doc, i) => (
-                    <div key={i} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 99, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: 13, color: '#475569', fontWeight: 500, cursor: doc.tooltip ? 'help' : 'default' }}
-                      onMouseEnter={() => doc.tooltip && setTooltipDoc(`s${i}`)}
-                      onMouseLeave={() => setTooltipDoc(null)}>
-                      {doc.label}
-                      {doc.tooltip && (
-                        <span style={{ width: 15, height: 15, borderRadius: '50%', background: '#e2e8f0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#475569', fontWeight: 700, flexShrink: 0 }}>?</span>
-                      )}
-                      {tooltipDoc === `s${i}` && doc.tooltip && (
-                        <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: 280, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.7, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
-                          {doc.tooltip}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
           </div>
         </div>
       )}
@@ -1767,7 +1755,7 @@ export default function RapportPage() {
   if (documentResult) {
     return (
       <div style={{ minHeight: '100vh', background: '#f5f9fb', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '20px 24px' }}>
+        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '20px 32px' }}>
           <div style={{ marginBottom: 20 }}>
             <Link to="/dashboard/analyses" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#64748b', textDecoration: 'none', fontWeight: 500 }}>
               ← Mes analyses
@@ -1801,7 +1789,7 @@ export default function RapportPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f9fb', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '20px 32px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
         <RapportHeader rapport={rapport} isShared={isShared} />
 
