@@ -149,8 +149,8 @@ function TravauxRow({ t, variant }: { t: any; variant: 'realise' | 'vote' | 'evo
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', borderRadius: 10, background: c.bg, border: `1px solid ${c.border}` }}>
       <div style={{ width: 7, height: 7, borderRadius: '50%', background: c.dot, flexShrink: 0, marginTop: 5 }} />
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginBottom: 2 }}>{t.label}</div>
-        <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.4 }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', marginBottom: 2 }}>{t.label}</div>
+        <div style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.5 }}>
           {variant === 'realise' && t.annee && `Réalisé en ${t.annee}`}
           {variant === 'vote' && t.annee && `Prévu ${t.annee}`}
           {variant === 'evoque' && t.annee && `Horizon ${t.annee}`}
@@ -270,7 +270,7 @@ function DiagRow({ d }: { d: any }) {
           <div style={{ width: 36, height: 36, borderRadius: 10, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{icon}</div>
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{d.label || d.type}</div>
-            {d.localisation && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>📍 {d.localisation}</div>}
+            {d.localisation && <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 2 }}>📍 {d.localisation}</div>}
           </div>
         </div>
         <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 100, background: presenceStyle.bg, border: `1px solid ${presenceStyle.border}`, color: presenceStyle.text, flexShrink: 0, whiteSpace: 'nowrap' }}>{presenceLabel}</span>
@@ -323,7 +323,7 @@ function DiagRow({ d }: { d: any }) {
                 <div style={{ background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7', overflow: 'hidden' }}>
                   <div style={{ padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7' }}>Détail par pièce</div>
                   {carrezPieces.map((p, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 12px', borderBottom: i < carrezPieces.length - 1 ? '1px solid #f1f5f9' : 'none', fontSize: 12 }}>
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 12px', borderBottom: i < carrezPieces.length - 1 ? '1px solid #f1f5f9' : 'none', fontSize: 14 }}>
                       <span style={{ color: '#374151' }}>{p.piece}</span>
                       <span style={{ fontWeight: 700, color: '#0f172a' }}>{p.surface}</span>
                     </div>
@@ -623,7 +623,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
         {isComplete && Object.keys(categories).length > 0 && (
           <div style={{ padding: '16px 22px 0' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 10 }}>DÉTAIL DE LA NOTE</div>
-            <p style={{ fontSize: 12, color: '#64748b', lineHeight: 1.7, margin: '0 0 14px 0', padding: '10px 14px', background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7' }}>
+            <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, margin: '0 0 14px 0', padding: '10px 14px', background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7' }}>
               Votre score de <strong style={{ color: '#0f172a' }}>{rapport.score.toFixed(1)}/20</strong> se compose de 5 catégories. Plus vous récupérez de points dans chaque catégorie, moins il y a de risques détectés dans vos documents.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
@@ -640,7 +640,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontSize: 13, color: '#0f172a' }}>{catLabels[key] || key}</span>
+                          <span style={{ fontSize: 15, color: '#0f172a' }}>{catLabels[key] || key}</span>
                           {isZero && (
                             <div style={{ position: 'relative', display: 'inline-flex' }}
                               onMouseEnter={() => setTooltip(tooltipKey)}
@@ -654,7 +654,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
                             </div>
                           )}
                         </div>
-                        <span style={{ fontSize: 12, fontWeight: 600, color }}>{c.note} pt sur {c.note_max}</span>
+                        <span style={{ fontSize: 14, fontWeight: 600, color }}>{c.note} pt sur {c.note_max}</span>
                       </div>
                       <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99 }}>
                         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99 }} />
@@ -685,8 +685,8 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
           {kpis.map((kpi, i) => (
             <div key={i} style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, padding: '18px 20px' }}>
               <div style={{ fontSize: 24, marginBottom: 10 }}>{kpi.icon}</div>
-              <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 6 }}>{kpi.label}</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: kpi.color || '#0f172a' }}>{kpi.value}</div>
+              <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 6 }}>{kpi.label}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: kpi.color || '#0f172a' }}>{kpi.value}</div>
             </div>
           ))}
         </div>
@@ -710,7 +710,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
                       <path d="M7 11.5l3 3 5-5" stroke="#2d6a2d" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </div>
-                  <span style={{ fontSize: 13.5, color: '#0f172a', lineHeight: 1.65 }}>{safeStr(p)}</span>
+                  <span style={{ fontSize: 15, color: '#0f172a', lineHeight: 1.7 }}>{safeStr(p)}</span>
                 </div>
               )) : <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun point positif identifié.</p>}
             </div>
@@ -727,7 +727,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
                       <circle cx="11" cy="16.5" r="0.8" fill="#92400e"/>
                     </svg>
                   </div>
-                  <span style={{ fontSize: 13.5, color: '#0f172a', lineHeight: 1.65 }}>{safeStr(p)}</span>
+                  <span style={{ fontSize: 15, color: '#0f172a', lineHeight: 1.7 }}>{safeStr(p)}</span>
                 </div>
               )) : <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun point de vigilance identifié.</p>}
             </div>
@@ -871,8 +871,8 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>
             <Building2 size={14} style={{ color: '#7c3aed', flexShrink: 0, marginTop: 1 }} />
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{safeStr(syndic.nom)}</div>
-              {syndic.fin_mandat && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Mandat jusqu'en {safeStr(syndic.fin_mandat)}</div>}
+              <div style={{ fontSize: 15, fontWeight: 600, color: '#0f172a' }}>{safeStr(syndic.nom)}</div>
+              {syndic.fin_mandat && <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 2 }}>Mandat jusqu'en {safeStr(syndic.fin_mandat)}</div>}
             </div>
           </div>
         )}
@@ -880,13 +880,13 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         {syndic?.tensions_detectees && syndic.tensions_detail && (
           <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', marginBottom: 4 }}>⚠ Tensions détectées au sein de la copropriété</div>
-            <div style={{ fontSize: 12, color: '#92400e', lineHeight: 1.6 }}>{safeStr(syndic.tensions_detail)}</div>
+            <div style={{ fontSize: 14, color: '#92400e', lineHeight: 1.6 }}>{safeStr(syndic.tensions_detail)}</div>
           </div>
         )}
 
         {participation.length > 0 && (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
               <thead>
                 <tr style={{ background: '#f8fafc' }}>
                   {['Année', 'Participation', 'Taux', 'Note'].map(h => (
@@ -914,7 +914,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>Questions diverses notables :</div>
             {(vie?.questions_diverses_notables ?? []).map((q, i) => (
-              <div key={i} style={{ fontSize: 12, color: '#374151', padding: '6px 10px', background: '#f8fafc', borderRadius: 7, marginBottom: 4, border: '1px solid #edf2f7' }}>• {safeStr(q)}</div>
+              <div key={i} style={{ fontSize: 14, color: '#374151', padding: '8px 12px', background: '#f8fafc', borderRadius: 7, marginBottom: 4, border: '1px solid #edf2f7' }}>• {safeStr(q)}</div>
             ))}
           </div>
         )}
@@ -1021,7 +1021,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
                 📊 ÉVOLUTION DES BUDGETS (source : PV d'AG)
               </div>
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                   <thead>
                     <tr style={{ background: '#f1f5f9' }}>
                       {['Année', 'Budget copro', 'Fonds travaux', 'Évolution'].map(h => (
@@ -1218,7 +1218,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
             const chargesLot = fin?.charges_annuelles_lot;
             const chargesLotNum = typeof chargesLot === 'number' ? chargesLot : typeof chargesLot === 'string' ? parseFloat(String(chargesLot).replace(/[^0-9.]/g, '')) || 0 : 0;
             if (chargesLotNum > 0) return (
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 12px', background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7', fontSize: 13 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 12px', background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7', fontSize: 15 }}>
                 <span style={{ color: '#64748b' }}>Charges annuelles votre lot</span>
                 <span style={{ fontWeight: 600, color: '#0f172a' }}>{chargesLotNum.toLocaleString('fr-FR')}€/an</span>
               </div>
