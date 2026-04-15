@@ -154,13 +154,15 @@ function TooltipIcon({ text }: { text: string }) {
 
 function Kpi({ label, value, sub, color, tooltip }: { label: string; value: string; sub?: string; color?: string; tooltip?: string }) {
   return (
-    <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, padding: '18px 20px' }}>
-      <div style={{ fontSize: 14, color: C.textSec, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
-        {label}
+    <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ padding: '10px 16px', background: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', letterSpacing: '0.04em' }}>{label}</span>
         {tooltip && <TooltipIcon text={tooltip} />}
       </div>
-      <div style={{ fontSize: 22, fontWeight: 600, color: color || C.text, lineHeight: 1.2 }}>{value}</div>
-      {sub && <div style={{ fontSize: 14, color: C.textSec, marginTop: 4 }}>{sub}</div>}
+      <div style={{ padding: '14px 16px' }}>
+        <div style={{ fontSize: 22, fontWeight: 600, color: color || C.text, lineHeight: 1.2 }}>{value}</div>
+        {sub && <div style={{ fontSize: 14, color: C.textSec, marginTop: 4 }}>{sub}</div>}
+      </div>
     </div>
   );
 }
@@ -744,15 +746,16 @@ function RendererAppelCharges({ r }: { r: any }) {
       )}
 
       {/* Encart syndic */}
-      <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px', marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏢 Syndic</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 16 }}>
-          {r.syndic && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>👤</span><span style={{ fontWeight: 600 }}>{r.syndic}</span></div>}
-          {r.syndic_adresse && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📍</span><span>{r.syndic_adresse}</span></div>}
-          {r.syndic_gestionnaire && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>👩‍💼</span><span>Gestionnaire : {r.syndic_gestionnaire}</span></div>}
-          {r.reference_dossier && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📋</span><span>Réf. : {r.reference_dossier}</span></div>}
-          {r.echeance && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📅</span><span>Échéance : {r.echeance}</span></div>}
-        </div>
+      <div style={{ marginBottom: 16 }}>
+        <SectionKpi icon="🏢" label="Syndic">
+          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 16 }}>
+            {r.syndic && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>👤</span><span style={{ fontWeight: 600 }}>{r.syndic}</span></div>}
+            {r.syndic_adresse && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📍</span><span>{r.syndic_adresse}</span></div>}
+            {r.syndic_gestionnaire && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>👩‍💼</span><span>Gestionnaire : {r.syndic_gestionnaire}</span></div>}
+            {r.reference_dossier && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📋</span><span>Réf. : {r.reference_dossier}</span></div>}
+            {r.echeance && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📅</span><span>Échéance : {r.echeance}</span></div>}
+          </div>
+        </SectionKpi>
       </div>
 
       {/* KPIs */}
