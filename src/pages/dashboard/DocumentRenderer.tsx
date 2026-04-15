@@ -118,6 +118,20 @@ function KpiGrid({ children }: { children: React.ReactNode }) {
   );
 }
 
+function SectionKpi({ icon, label, children }: { icon: string; label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden' }}>
+      <div style={{ padding: '13px 18px', background: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 18 }}>{icon}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: '#fff', letterSpacing: '0.04em' }}>{label}</span>
+      </div>
+      <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function TooltipIcon({ text }: { text: string }) {
   const [visible, setVisible] = useState(false);
   return (
@@ -397,16 +411,14 @@ function RendererDDT({ r }: { r: any }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
 
         {/* Encart 1 — Diagnostiqueur */}
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🔬 Diagnostiqueur</div>
+        <SectionKpi icon="🔬" label="Diagnostiqueur">
           {r.diagnostiqueur?.nom && <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 4 }}>{r.diagnostiqueur.nom}</div>}
           {r.diagnostiqueur?.date && <div style={{ fontSize: 15, color: C.textSec, marginBottom: 3 }}>📅 Réalisé le {formatDate(r.diagnostiqueur.date)}</div>}
           {r.diagnostiqueur?.certification && <div style={{ fontSize: 14, color: C.textSec, marginBottom: 3 }}>🎖 {r.diagnostiqueur.certification}</div>}
         </div>
 
         {/* Encart 2 — Lots visités */}
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏘 Lots visités</div>
+        <SectionKpi icon="🏘" label="Lots visités">
           {lotsIdf.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
               {lotsIdf.map((lot: any, i: number) => (
@@ -432,8 +444,7 @@ function RendererDDT({ r }: { r: any }) {
         </div>
 
         {/* Encart 3 — Récap diagnostics */}
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>📋 Diagnostics réalisés</div>
+        <SectionKpi icon="📋" label="Diagnostics réalisés">
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
             {diags.map((d: any, i: number) => {
               const s = diagStatut(d);
@@ -580,8 +591,7 @@ function RendererPVAG({ r }: { r: any }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
 
         {/* Encart 1 — L'assemblée */}
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏛 L'assemblée</div>
+        <SectionKpi icon="🏛" label="L'assemblée">
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
             <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📋</span><span style={{ fontWeight: 600 }}>{typeAGLabel}</span></div>
             {r.date_ag && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📅</span><span>{formatDate(r.date_ag)}</span></div>}
@@ -597,8 +607,7 @@ function RendererPVAG({ r }: { r: any }) {
         </div>
 
         {/* Encart 2 — Participation */}
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>👥 Participation</div>
+        <SectionKpi icon="👥" label="Participation">
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
             {r.president_seance && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🪑</span><span>Président de séance : <strong>{r.president_seance}</strong></span></div>}
             {r.quorum?.tantiemes_pct && (
@@ -616,8 +625,7 @@ function RendererPVAG({ r }: { r: any }) {
         </div>
 
         {/* Encart 3 — Chiffres clés */}
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>📊 Chiffres clés</div>
+        <SectionKpi icon="📊" label="Chiffres clés">
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
             {r.budget_vote?.montant && (
               <div>
@@ -1032,8 +1040,7 @@ function RendererCarnetEntretien({ r }: { r: any }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
 
         {/* Encart Syndic */}
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏢 Syndic</div>
+        <SectionKpi icon="🏢" label="Syndic">
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
             {r.syndic && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>👤</span><span style={{ fontWeight: 600 }}>{r.syndic}</span></div>}
             {r.syndic_adresse && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📍</span><span>{r.syndic_adresse}</span></div>}
@@ -1048,8 +1055,7 @@ function RendererCarnetEntretien({ r }: { r: any }) {
         </div>
 
         {/* Encart Copropriété */}
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏗 Infos copropriété</div>
+        <SectionKpi icon="🏗" label="Infos copropriété">
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
             {r.annee_construction && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📅</span><span>Construit en {r.annee_construction}</span></div>}
             {r.nb_batiments && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🏢</span><span>{r.nb_batiments} bâtiment{r.nb_batiments > 1 ? 's' : ''}</span></div>}
@@ -1064,8 +1070,7 @@ function RendererCarnetEntretien({ r }: { r: any }) {
         </div>
 
         {/* Encart Energie & Eau */}
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>⚡ Énergie & Eau</div>
+        <SectionKpi icon="⚡" label="Énergie & Eau">
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
             {/* Chauffage — uniquement si renseigné */}
             {r.chauffage_collectif !== null && r.chauffage_collectif !== undefined && (
@@ -1251,8 +1256,7 @@ function RendererPreEtatDate({ r }: { r: any }) {
       {/* 3 encarts */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
         {/* Syndic */}
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏢 Syndic</div>
+        <SectionKpi icon="🏢" label="Syndic">
           {r.syndic && <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>{r.syndic}</div>}
           {r.syndic_adresse && <div style={{ fontSize: 14, color: C.textSec, marginBottom: 4 }}>📍 {r.syndic_adresse}</div>}
           {r.date && <div style={{ fontSize: 14, color: C.textSec, marginBottom: 4 }}>📅 Document établi le {formatDate(r.date)}</div>}
@@ -1261,8 +1265,7 @@ function RendererPreEtatDate({ r }: { r: any }) {
         </div>
 
         {/* Situation vendeur */}
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>👤 Situation vendeur</div>
+        <SectionKpi icon="👤" label="Situation vendeur">
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
               <span>{Number(r.impayes_vendeur) === 0 ? '✅' : '🔴'}</span>
@@ -1288,8 +1291,7 @@ function RendererPreEtatDate({ r }: { r: any }) {
         </div>
 
         {/* Situation copro */}
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏢 Copropriété</div>
+        <SectionKpi icon="🏢" label="Copropriété">
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
             {r.impayes_copro_global != null && (
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13 }}>
@@ -1495,16 +1497,14 @@ function RendererEtatDate({ r }: { r: any }) {
 
       {/* 3 encarts */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏢 Syndic</div>
+        <SectionKpi icon="🏢" label="Syndic">
           {r.syndic && <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>{r.syndic}</div>}
           {r.syndic_adresse && <div style={{ fontSize: 14, color: C.textSec, marginBottom: 4 }}>📍 {r.syndic_adresse}</div>}
           {r.date && <div style={{ fontSize: 14, color: C.textSec, marginBottom: 4 }}>📅 Document établi le {formatDate(r.date)}</div>}
           {r.nb_lots_copro && <div style={{ fontSize: 14, color: C.textSec }}>🏘 {r.nb_lots_copro} lots dans la copropriété</div>}
           {r.immatriculation_registre && <div style={{ fontSize: 11, color: C.textSec, marginTop: 6, padding: '4px 8px', background: C.bgSecondary, borderRadius: 6 }}>Immat. {r.immatriculation_registre}</div>}
         </div>
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>👤 Situation vendeur</div>
+        <SectionKpi icon="👤" label="Situation vendeur">
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
               <span>{Number(r.impayes_vendeur) === 0 ? '✅' : '🔴'}</span>
@@ -1530,8 +1530,7 @@ function RendererEtatDate({ r }: { r: any }) {
             )}
           </div>
         </div>
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏢 Copropriété</div>
+        <SectionKpi icon="🏢" label="Copropriété">
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
             {r.impayes_copro_global != null && <div style={{ display: 'flex', gap: 8, fontSize: 13 }}><span>{Number(r.impayes_copro_global) > 0 ? '⚠️' : '✅'}</span><span style={{ color: C.text }}>Impayés : {Number(r.impayes_copro_global).toLocaleString('fr-FR')} €</span></div>}
             {r.dette_fournisseurs != null && <div style={{ display: 'flex', gap: 8, fontSize: 13 }}><span>{Number(r.dette_fournisseurs) > 0 ? '⚠️' : '✅'}</span><span style={{ color: C.text }}>Dette fournisseurs : {Number(r.dette_fournisseurs).toLocaleString('fr-FR')} €</span></div>}
@@ -2033,16 +2032,14 @@ function RendererModificatifRCP({ r }: { r: any }) {
 
       {/* 3 encarts */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>⚖️ Notaire</div>
+        <SectionKpi icon="⚖️" label="Notaire">
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
             {r.notaire?.nom && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>👤</span><span style={{ fontWeight: 600 }}>Me {r.notaire.nom}</span></div>}
             {r.notaire?.etude && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🏢</span><span>{r.notaire.etude}</span></div>}
             {r.notaire?.ville && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📍</span><span>{r.notaire.ville}</span></div>}
           </div>
         </div>
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>📋 Acte</div>
+        <SectionKpi icon="📋" label="Acte">
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
             {r.type_modification && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🏷</span><span style={{ fontWeight: 600 }}>{typeLabel[r.type_modification] || r.type_modification}</span></div>}
             {r.date_acte && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📅</span><span>Acte du {formatDate(r.date_acte)}</span></div>}
@@ -2050,8 +2047,7 @@ function RendererModificatifRCP({ r }: { r: any }) {
             {r.copropriete && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🏘</span><span>{r.copropriete}</span></div>}
           </div>
         </div>
-        <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏛 Publication foncière</div>
+        <SectionKpi icon="🏛" label="Publication foncière">
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
             {r.publication_fonciere?.service && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📍</span><span>{r.publication_fonciere.service}</span></div>}
             {r.publication_fonciere?.date && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📅</span><span>Publié le {formatDate(r.publication_fonciere.date)}</span></div>}
