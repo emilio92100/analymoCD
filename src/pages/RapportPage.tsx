@@ -1754,9 +1754,9 @@ export default function RapportPage() {
     return (
       <div style={{ minHeight: '100vh', background: '#f5f9fb', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
         <div style={{ maxWidth: 1250, margin: '0 auto', padding: '20px 28px' }}>
-          <div style={{ marginBottom: 20 }}>
-            <Link to="/dashboard/analyses" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#64748b', textDecoration: 'none', fontWeight: 500 }}>
-              ← Mes analyses
+          <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Link to="/dashboard/analyses" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: '#fff', textDecoration: 'none', padding: '9px 18px', borderRadius: 9, background: '#2a7d9c', flexShrink: 0 }}>
+              <ChevronLeft size={15} /> Mes analyses
             </Link>
           </div>
           <DocumentRenderer result={documentResult} />
