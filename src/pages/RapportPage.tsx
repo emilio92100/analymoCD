@@ -681,10 +681,14 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
       {isComplete && kpis.length > 0 && (
         <div style={kpiGridStyle}>
           {kpis.map((kpi, i) => (
-            <div key={i} style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, padding: '18px 20px' }}>
-              <div style={{ fontSize: 24, marginBottom: 10 }}>{kpi.icon}</div>
-              <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 6 }}>{kpi.label}</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: kpi.color || '#0f172a' }}>{kpi.value}</div>
+            <div key={i} style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ padding: '10px 16px', background: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 20 }}>{kpi.icon}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', letterSpacing: '0.04em' }}>{kpi.label}</span>
+              </div>
+              <div style={{ padding: '14px 16px' }}>
+                <div style={{ fontSize: 20, fontWeight: 700, color: kpi.color || '#0f172a' }}>{kpi.value}</div>
+              </div>
             </div>
           ))}
         </div>
