@@ -2013,18 +2013,6 @@ function RendererDiagCommunes({ r }: { r: any }) {
   );
 }
 
-              <span key={i} style={{ fontSize: 13, fontWeight: 500, padding: '5px 14px', borderRadius: 100, background: C.bg, border: `0.5px solid ${C.green.border}`, color: C.green.text }}>{z}</span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <SeparateurSynthese />
-      <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} />
-    </div>
-  );
-}
 
 function RendererModificatifRCP({ r }: { r: any }) {
   const typeLabel: Record<string, string> = {
