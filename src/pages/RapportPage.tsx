@@ -943,7 +943,6 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
   const chargesAnnuelles = fin?.charges_annuelles_lot as number | null;
   const chargesMensuelles = chargesAnnuelles ? Math.round(chargesAnnuelles / 12) : null;
 
-  const quitusToutesAGs = participation.filter(p => p.quitus?.soumis !== false);
   const quitusRefuse = participation.some(p => p.quitus?.soumis === true && p.quitus?.approuve === false);
 
   // KPIs bandeau
