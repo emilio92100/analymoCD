@@ -101,7 +101,21 @@ function Resume({ text }: { text: string }) {
 }
 
 function KpiGrid({ children }: { children: React.ReactNode }) {
-  return <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>{children}</div>;
+  const count = React.Children.count(children);
+  const cols = count === 1 ? 1 : count === 2 ? 2 : 3;
+  const justify = count <= 2 ? 'center' : 'stretch';
+  return (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: count === 1 ? 'minmax(0, 400px)' : `repeat(${cols}, 1fr)`,
+      gap: 12,
+      marginBottom: 14,
+      justifyContent: justify,
+      justifyItems: justify
+    }}>
+      {children}
+    </div>
+  );
 }
 
 function TooltipIcon({ text }: { text: string }) {
