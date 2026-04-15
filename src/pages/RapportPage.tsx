@@ -818,106 +818,276 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
 /* ══════════════════════════════════
    ONGLET COPROPRIÉTÉ
 ══════════════════════════════════ */
+function Tooltip({ text, children }: { text: string; children: React.ReactNode }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
+      onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+      {children}
+      <span style={{ marginLeft: 4, width: 15, height: 15, borderRadius: '50%', background: '#f1f5f9', border: '1px solid #e2e8f0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#94a3b8', fontWeight: 700, cursor: 'help', flexShrink: 0 }}>?</span>
+      {show && (
+        <span style={{ position: 'absolute', left: 0, top: 22, width: 260, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.6, zIndex: 200, boxShadow: '0 8px 24px rgba(0,0,0,0.2)', pointerEvents: 'none' }}>{text}</span>
+      )}
+    </span>
+  );
+}
+
+function KpiBand({ items }: { items: { label: string; value: string; sub?: string; color?: string; bg?: string; border?: string; tooltip?: string }[] }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(items.length, 5)}, minmax(0,1fr))`, gap: 10, marginBottom: 14 }}>
+      {items.map((item, i) => (
+        <div key={i} style={{ background: item.bg ?? '#f8fafc', border: `1px solid ${item.border ?? '#edf2f7'}`, borderRadius: 12, padding: '12px 14px' }}>
+          <div style={{ fontSize: 11, color: '#64748b', marginBottom: 5, lineHeight: 1.3 }}>
+            {item.tooltip ? <Tooltip text={item.tooltip}>{item.label}</Tooltip> : item.label}
+          </div>
+          <div style={{ fontSize: 19, fontWeight: 700, color: item.color ?? '#0f172a', lineHeight: 1 }}>{item.value}</div>
+          {item.sub && <div style={{ fontSize: 11, color: item.color ?? '#94a3b8', marginTop: 4 }}>{item.sub}</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SyndicBand({ syndic, nbLots, nbBatiments }: { syndic: Record<string, unknown> | null; nbLots: number | null; nbBatiments: number | null }) {
+  if (!syndic?.nom) return null;
+  const finMandat = safeStr(syndic.fin_mandat);
+  const gestionnaire = safeStr(syndic.gestionnaire);
+  const type = safeStr(syndic.type);
+  const tensions = syndic.tensions_detectees === true;
+  return (
+    <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, padding: '14px 18px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+      <div style={{ width: 38, height: 38, borderRadius: 9, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#1e40af', flexShrink: 0 }}>
+        {safeStr(syndic.nom)?.substring(0, 2).toUpperCase() ?? 'SY'}
+      </div>
+      <div style={{ flex: 1, minWidth: 160 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>{safeStr(syndic.nom)}</div>
+        <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {type && <span>{type === 'professionnel' ? 'Cabinet professionnel' : 'Syndic bénévole'}</span>}
+          {gestionnaire && <span>Gestionnaire : {gestionnaire}</span>}
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
+        {nbLots && (
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 2 }}>Lots</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{nbLots}</div>
+          </div>
+        )}
+        {nbBatiments && (
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 2 }}>Bâtiments</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{nbBatiments}</div>
+          </div>
+        )}
+        {finMandat && (
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 2 }}>Fin de mandat</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#a16207' }}>{finMandat}</div>
+          </div>
+        )}
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 2 }}>Tensions</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: tensions ? '#dc2626' : '#16a34a' }}>{tensions ? 'Détectées' : 'Aucune'}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TabCopropriete({ rapport }: { rapport: RapportData }) {
   const [allOpen, setAllOpen] = useState(false);
-  type SyndicT = { nom?: string; fin_mandat?: string; tensions_detectees?: boolean; tensions_detail?: string };
-  type LotT = { quote_part_tantiemes?: string; fonds_travaux_alur?: string; parties_privatives?: string[]; restrictions_usage?: string[]; travaux_votes_charge_vendeur?: string[]; impayes_detectes?: string };
-  type ParticT = { annee?: string; copropietaires_presents_representes?: string; taux_tantiemes_pct?: string; quorum_note?: string; resolutions_refusees?: string[] };
-  type VieT = { syndic?: SyndicT; participation_ag?: ParticT[]; tendance_participation?: string; analyse_participation?: string; travaux_votes_non_realises?: unknown[]; appels_fonds_exceptionnels?: unknown[]; questions_diverses_notables?: string[]; honoraires_syndic_evolution?: string };
+  type SyndicT = { nom?: string; type?: string; gestionnaire?: string; fin_mandat?: string; tensions_detectees?: boolean; tensions_detail?: string };
+  type QuitusT = { soumis?: boolean; approuve?: boolean; detail?: string };
+  type ParticT = { annee?: string; copropietaires_presents_representes?: string; taux_tantiemes_pct?: string; quorum_note?: string; quitus?: QuitusT };
+  type NbLotsT = { logements?: number | null; parkings?: number | null; caves?: number | null; commerces?: number | null };
+  type DtgT = { present?: boolean; etat_general?: string | null; budget_urgent_3ans?: number | null; budget_total_10ans?: number | null; travaux_prioritaires?: string[] };
+  type RegleT = { label?: string; statut?: string; impact_rp?: boolean; impact_invest?: boolean };
+  type VieT = {
+    syndic?: SyndicT; nb_lots_total?: number | null; nb_lots_detail?: NbLotsT; nb_batiments?: number | null;
+    participation_ag?: ParticT[]; tendance_participation?: string; analyse_participation?: string;
+    travaux_votes_non_realises?: unknown[]; appels_fonds_exceptionnels?: unknown[];
+    questions_diverses_notables?: unknown[]; dtg?: DtgT; regles_copro?: RegleT[];
+  };
+
   const vie = rapport.vie_copropriete as VieT | null;
-  void (rapport.lot_achete as LotT | null); // lot utilisé uniquement dans TabLogement
+  const syndic = (vie?.syndic ?? null) as SyndicT | null;
+  const participation = (vie?.participation_ag ?? []) as ParticT[];
+  const nbLotsTotal = vie?.nb_lots_total ?? null;
+  const nbLotsDetail = vie?.nb_lots_detail ?? null;
+  const nbBatiments = vie?.nb_batiments ?? null;
+  const dtg = vie?.dtg ?? null;
+  const reglesCopro = (vie?.regles_copro ?? []) as RegleT[];
 
   const travaux_realises = rapport.travaux_realises;
   const travaux_votes = rapport.travaux_votes;
   const travaux_evoques_raw = rapport.travaux_a_prevoir;
-  // Filtrer les travaux issus des diags privatifs (DPE, isolation, électricité perso...)
-  // Ces travaux appartiennent à l'onglet "Votre logement", pas à la copropriété
   const MOTS_DIAGS_PRIVATIFS = ['dpe', 'diagnostic', 'isolation mur', 'isolation plafond', 'double vitrage', 'fenêtre', 'electricit', 'gaz intérieur', 'amiante lot', 'plomb lot', 'pack 1', 'pack 2', 'rénovation énergétique'];
   const travaux_evoques = travaux_evoques_raw.filter(t => {
     const label = ((t.label as string) || '').toLowerCase();
     const precision = ((t.precision as string) || '').toLowerCase();
     return !MOTS_DIAGS_PRIVATIFS.some(m => label.includes(m) || precision.includes(m));
   });
-  const hasTravauxAlert = travaux_evoques.length > 0;
-  const hasTravauxWarning = travaux_votes.length > 0;
 
   const diagsCommuns = rapport.diagnostics.filter((d: Record<string, unknown>) => d.perimetre === 'parties_communes' || d.perimetre === 'immeuble');
   const hasDiagAlert = diagsCommuns.some((d: Record<string, unknown>) => d.alerte);
+  const amiante_ac1 = diagsCommuns.some((d: Record<string, unknown>) => d.type === 'AMIANTE' && d.presence === 'detectee' && d.alerte);
 
   const anneeConstruction = (rapport as Record<string, unknown>).annee_construction as string | null;
   const anneeNum = anneeConstruction ? parseInt(anneeConstruction) : null;
+  const fin = rapport.finances as Record<string, unknown> | null;
+  const budgetTotal = fin?.budget_total_copro;
+  const budgetNum = typeof budgetTotal === 'number' ? budgetTotal : typeof budgetTotal === 'string' ? parseFloat(String(budgetTotal).replace(/[^0-9.]/g, '')) || 0 : 0;
+  const fondsNum = rapport.fonds_travaux > 0 ? rapport.fonds_travaux : 0;
+  const fondsPct = budgetNum > 0 && fondsNum > 0 ? ((fondsNum / budgetNum) * 100) : null;
+  const fondsInsuffisant = rapport.fonds_travaux_statut === 'insuffisant' || rapport.fonds_travaux_statut === 'absent';
+  const chargesAnnuelles = fin?.charges_annuelles_lot as number | null;
+  const chargesMensuelles = chargesAnnuelles ? Math.round(chargesAnnuelles / 12) : null;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const participation = (vie?.participation_ag as ParticT[]) || [];
-  const syndic = vie?.syndic as SyndicT | null;
+  const quitusToutesAGs = participation.filter(p => p.quitus?.soumis !== false);
+  const quitusRefuse = participation.some(p => p.quitus?.soumis === true && p.quitus?.approuve === false);
 
-  const toggleAll = () => {
-    setAllOpen(!allOpen);
-  };
+  // KPIs bandeau
+  const kpiItems = [];
+  if (chargesMensuelles) kpiItems.push({ label: 'Charges mensuelles', value: `${chargesMensuelles.toLocaleString('fr-FR')} €`, sub: chargesAnnuelles ? `${chargesAnnuelles.toLocaleString('fr-FR')} €/an` : undefined, color: '#1e40af', bg: '#eff6ff', border: '#bfdbfe', tooltip: "Montant que vous devrez payer chaque mois pour l'entretien des parties communes et le fonds travaux." });
+  if (nbLotsTotal) kpiItems.push({ label: 'Lots dans la copropriété', value: String(nbLotsTotal), sub: nbBatiments ? `${nbBatiments} bâtiment${nbBatiments > 1 ? 's' : ''}` : undefined, tooltip: "Nombre total de lots (appartements, parkings, caves...) composant la copropriété." });
+  if (fondsPct !== null) kpiItems.push({ label: 'Fonds travaux', value: `${fondsPct.toFixed(1)}%`, sub: fondsPct < 5 ? 'Insuffisant — seuil 5%' : 'Conforme loi ALUR', color: fondsPct < 5 ? '#a16207' : '#16a34a', bg: fondsPct < 5 ? '#fff7ed' : '#f0fdf4', border: fondsPct < 5 ? '#fed7aa' : '#bbf7d0', tooltip: "Réserve obligatoire pour financer les futurs travaux. La loi ALUR impose minimum 5% du budget annuel de la copropriété." });
+  if (travaux_votes.length > 0) kpiItems.push({ label: 'Travaux charge vendeur', value: String(travaux_votes.filter((t: Record<string, unknown>) => t.charge_vendeur !== false).length || travaux_votes.length), sub: 'À vérifier notaire', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' });
+  if (amiante_ac1) kpiItems.push({ label: 'Amiante AC1', value: 'Détecté', sub: 'Action corrective requise', color: '#dc2626', bg: '#fef2f2', border: '#fecaca', tooltip: "Des matériaux amiantés nécessitant une action corrective ont été détectés dans les parties communes. Des travaux obligatoires sont à prévoir." });
+  else if (participation.length > 0) kpiItems.push({ label: 'AG analysées', value: String(participation.length), sub: `sur ${participation.length} PV fourni${participation.length > 1 ? 's' : ''}` });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button onClick={toggleAll} style={{ fontSize: 12, color: '#64748b', background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 8, padding: '6px 14px', cursor: 'pointer' }}>
+
+      {/* BANDEAU VUE D'ENSEMBLE */}
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 4 }}>Vue d'ensemble</div>
+
+      {/* Syndic band */}
+      <SyndicBand syndic={syndic as Record<string, unknown> | null} nbLots={nbLotsTotal} nbBatiments={nbBatiments} />
+
+      {/* KPIs */}
+      {kpiItems.length > 0 && <KpiBand items={kpiItems} />}
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+        <button onClick={() => setAllOpen(!allOpen)} style={{ fontSize: 12, color: '#64748b', background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 8, padding: '6px 14px', cursor: 'pointer' }}>
           {allOpen ? 'Tout replier' : 'Tout déplier'}
         </button>
       </div>
 
-      {/* VIE DE LA COPRO - en premier */}
+      {/* ── VIE DE LA COPRO ── */}
       <AccordionSection
-        title="Vie de la copropriété" sub="Syndic · participation AG · résolutions" icon="🏢"
+        title="Vie de la copropriété" sub="Syndic · lots · participation AG · résolutions" icon="🏢"
         status={syndic?.tensions_detectees ? 'warning' : 'neutral'}
         badge={participation.length > 0 ? `${participation.length} AG analysée${participation.length > 1 ? 's' : ''}` : 'Non disponible'}>
 
-        {syndic?.nom && (
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>
-            <Building2 size={14} style={{ color: '#7c3aed', flexShrink: 0, marginTop: 1 }} />
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: '#0f172a' }}>{safeStr(syndic.nom)}</div>
-              {syndic.fin_mandat && <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 2 }}>Mandat jusqu'en {safeStr(syndic.fin_mandat)}</div>}
-            </div>
-          </div>
-        )}
-
+        {/* Alerte tensions */}
         {syndic?.tensions_detectees && syndic.tensions_detail && (
           <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', marginBottom: 4 }}>⚠ Tensions détectées au sein de la copropriété</div>
-            <div style={{ fontSize: 14, color: '#92400e', lineHeight: 1.6 }}>{safeStr(syndic.tensions_detail)}</div>
+            <div style={{ fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>{safeStr(syndic.tensions_detail)}</div>
           </div>
         )}
 
+        {/* Composition lots */}
+        {nbLotsDetail && (nbLotsDetail.logements || nbLotsDetail.parkings || nbLotsDetail.caves) && (() => {
+          const total = nbLotsTotal || ((nbLotsDetail.logements ?? 0) + (nbLotsDetail.parkings ?? 0) + (nbLotsDetail.caves ?? 0) + (nbLotsDetail.commerces ?? 0));
+          const rows = [
+            { icon: '🏠', label: 'Appartements', count: nbLotsDetail.logements, color: '#2a7d9c' },
+            { icon: '🚗', label: 'Parkings', count: nbLotsDetail.parkings, color: '#64748b' },
+            { icon: '📦', label: 'Caves', count: nbLotsDetail.caves, color: '#64748b' },
+            { icon: '🏪', label: 'Commerces', count: nbLotsDetail.commerces, color: '#64748b' },
+          ].filter(r => r.count);
+          return (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                <Tooltip text="Répartition officielle des lots par type au sein de la copropriété.">Composition de la copropriété</Tooltip>
+              </div>
+              <div style={{ border: '1px solid #edf2f7', borderRadius: 10, overflow: 'hidden' }}>
+                {rows.map((row, i) => {
+                  const pct = total > 0 ? Math.round((row.count! / total) * 100) : 0;
+                  return (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderBottom: i < rows.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                      <span style={{ fontSize: 14, width: 20, textAlign: 'center', flexShrink: 0 }}>{row.icon}</span>
+                      <span style={{ fontSize: 13, color: '#0f172a', width: 110, flexShrink: 0 }}>{row.label}</span>
+                      <div style={{ flex: 1, height: 6, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ width: `${pct}%`, height: '100%', background: row.color, borderRadius: 3 }} />
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: row.color, width: 26, textAlign: 'right', flexShrink: 0 }}>{row.count}</span>
+                      <span style={{ fontSize: 11, color: '#94a3b8', width: 36, textAlign: 'right', flexShrink: 0 }}>{pct}%</span>
+                    </div>
+                  );
+                })}
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '9px 14px', background: '#f8fafc', fontSize: 12, fontWeight: 700 }}>
+                  <span style={{ color: '#64748b' }}>Total</span>
+                  <span style={{ color: '#0f172a' }}>{total} lots{nbBatiments ? ` · ${nbBatiments} bâtiment${nbBatiments > 1 ? 's' : ''}` : ''}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Participation AG */}
         {participation.length > 0 && (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-              <thead>
-                <tr style={{ background: '#f8fafc' }}>
-                  {['Année', 'Participation', 'Taux', 'Note'].map(h => (
-                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {participation.map((p: ParticT, i: number) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '9px 12px', fontWeight: 700, color: '#0f172a' }}>{safeStr(p.annee) ?? ''}</td>
-                    <td style={{ padding: '9px 12px', color: '#374151' }}>{safeStr(p.copropietaires_presents_representes) ?? '—'}</td>
-                    <td style={{ padding: '9px 12px', color: '#374151' }}>{safeStr(p.taux_tantiemes_pct) ?? '—'}</td>
-                    <td style={{ padding: '9px 12px' }}>
-                      {p.quorum_note && <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fffbeb', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 100 }}>{safeStr(p.quorum_note)}</span>}
-                    </td>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Participation aux assemblées générales</div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc' }}>
+                    {['Année', 'Présents / Représentés', 'Taux tantièmes', 'Quitus syndic', 'Note'].map(h => (
+                      <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7', fontSize: 11 }}>{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {participation.map((p: ParticT, i: number) => {
+                    const q = p.quitus;
+                    const qLabel = !q || q.soumis === false ? null : q.approuve ? '✓ Approuvé' : '✗ Refusé';
+                    const qColor = q?.approuve ? '#16a34a' : '#dc2626';
+                    return (
+                      <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '9px 12px', fontWeight: 700, color: '#0f172a' }}>{safeStr(p.annee) ?? ''}</td>
+                        <td style={{ padding: '9px 12px', color: '#374151' }}>{safeStr(p.copropietaires_presents_representes) ?? '—'}</td>
+                        <td style={{ padding: '9px 12px', color: '#374151' }}>{safeStr(p.taux_tantiemes_pct) ?? '—'}</td>
+                        <td style={{ padding: '9px 12px' }}>
+                          {qLabel ? (
+                            <div>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: qColor, background: q?.approuve ? '#f0fdf4' : '#fef2f2', border: `1px solid ${q?.approuve ? '#bbf7d0' : '#fecaca'}`, padding: '2px 8px', borderRadius: 100 }}>{qLabel}</span>
+                              {q?.detail && <div style={{ fontSize: 11, color: '#dc2626', marginTop: 3 }}>{q.detail}</div>}
+                            </div>
+                          ) : <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>}
+                        </td>
+                        <td style={{ padding: '9px 12px' }}>
+                          {p.quorum_note && <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fffbeb', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 100 }}>{safeStr(p.quorum_note)}</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {quitusRefuse && (
+              <div style={{ marginTop: 8, padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, fontSize: 12, color: '#991b1b', lineHeight: 1.6 }}>
+                <strong>Quitus refusé détecté.</strong> Le quitus est le vote par lequel les copropriétaires approuvent la gestion financière du syndic. Un refus traduit une méfiance ou un désaccord sur sa gestion — à surveiller.
+              </div>
+            )}
           </div>
         )}
 
+        {/* Questions diverses */}
         {(vie?.questions_diverses_notables ?? []).length > 0 && (
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>Questions diverses notables :</div>
-            {(vie?.questions_diverses_notables ?? []).map((q, i) => (
-              <div key={i} style={{ fontSize: 14, color: '#374151', padding: '8px 12px', background: '#f8fafc', borderRadius: 7, marginBottom: 4, border: '1px solid #edf2f7' }}>• {safeStr(q)}</div>
-            ))}
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>Questions diverses notables</div>
+            {(vie?.questions_diverses_notables ?? []).map((q, i) => {
+              const obj = typeof q === 'object' && q !== null ? q as Record<string, unknown> : null;
+              const label = obj ? safeStr(obj.label || obj.detail || q) : safeStr(q);
+              const detail = obj?.detail && obj.label ? safeStr(obj.detail) : null;
+              return (
+                <div key={i} style={{ fontSize: 13, color: '#374151', padding: '9px 12px', background: '#f8fafc', borderRadius: 8, marginBottom: 4, border: '1px solid #edf2f7', lineHeight: 1.5 }}>
+                  <div style={{ fontWeight: 500 }}>{label}</div>
+                  {detail && <div style={{ fontSize: 12, color: '#64748b', marginTop: 3 }}>{detail}</div>}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -926,12 +1096,87 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         )}
       </AccordionSection>
 
-      {/* TRAVAUX */}
+      {/* ── RÈGLES DE LA COPROPRIÉTÉ (RCP) ── */}
+      {reglesCopro.length > 0 && (
+        <AccordionSection
+          title="Règles de la copropriété" sub="Règlement de copropriété · usages · restrictions" icon="📜"
+          status="neutral" badge={`${reglesCopro.length} règle${reglesCopro.length > 1 ? 's' : ''}`}
+          tooltip="Règles issues du Règlement de Copropriété (RCP) — le document fondateur qui définit ce qui est autorisé ou interdit dans la résidence.">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {reglesCopro.map((r: RegleT, i: number) => {
+              const color = r.statut === 'interdit' ? '#dc2626' : r.statut === 'autorise' ? '#16a34a' : '#d97706';
+              const bg = r.statut === 'interdit' ? '#fef2f2' : r.statut === 'autorise' ? '#f0fdf4' : '#fff7ed';
+              const border = r.statut === 'interdit' ? '#fecaca' : r.statut === 'autorise' ? '#bbf7d0' : '#fed7aa';
+              const label = r.statut === 'interdit' ? '✗ Interdit' : r.statut === 'autorise' ? '✓ Autorisé' : '~ Sous conditions';
+              return (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #edf2f7', gap: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: '#0f172a' }}>{safeStr(r.label)}</div>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                      {r.impact_rp && <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 20, background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe' }}>Vie quotidienne</span>}
+                      {r.impact_invest && <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 20, background: '#fdf4ff', color: '#7e22ce', border: '1px solid #e9d5ff' }}>Location</span>}
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: bg, color, border: `1px solid ${border}`, flexShrink: 0 }}>{label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </AccordionSection>
+      )}
+
+      {/* ── DTG / PPT ── */}
+      {dtg?.present && (
+        <AccordionSection
+          title="Plan pluriannuel de travaux" sub="DTG · PPT · état général de l'immeuble" icon="🏗"
+          status={dtg.etat_general === 'degrade' ? 'alert' : dtg.etat_general === 'moyen' ? 'warning' : 'ok'}
+          badge={dtg.etat_general === 'degrade' ? 'Dégradé' : dtg.etat_general === 'moyen' ? 'Moyen' : dtg.etat_general === 'bon' ? 'Bon état' : 'Présent'}
+          tooltip="Le DTG (Diagnostic Technique Global) ou PPT (Plan Pluriannuel de Travaux) liste les travaux à prévoir sur 10 ans avec leur coût estimé. Document obligatoire pour les copropriétés de plus de 10 ans.">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px,1fr))', gap: 10, marginBottom: 12 }}>
+            {dtg.budget_urgent_3ans && (
+              <div style={{ padding: 14, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, textAlign: 'center' }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: '#dc2626' }}>{dtg.budget_urgent_3ans.toLocaleString('fr-FR')} €</div>
+                <div style={{ fontSize: 11, color: '#b91c1c', marginTop: 4 }}>Travaux urgents (3 ans)</div>
+              </div>
+            )}
+            {dtg.budget_total_10ans && (
+              <div style={{ padding: 14, background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10, textAlign: 'center' }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: '#d97706' }}>{dtg.budget_total_10ans.toLocaleString('fr-FR')} €</div>
+                <div style={{ fontSize: 11, color: '#a16207', marginTop: 4 }}>Budget total (10 ans)</div>
+              </div>
+            )}
+            {dtg.etat_general && (
+              <div style={{ padding: 14, background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 10, textAlign: 'center' }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: dtg.etat_general === 'bon' ? '#16a34a' : dtg.etat_general === 'moyen' ? '#d97706' : '#dc2626' }}>
+                  {dtg.etat_general === 'bon' ? '✓ Bon' : dtg.etat_general === 'moyen' ? '~ Moyen' : '⚠ Dégradé'}
+                </div>
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>État général immeuble</div>
+              </div>
+            )}
+          </div>
+          {(dtg.travaux_prioritaires ?? []).length > 0 && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', marginBottom: 6 }}>Travaux prioritaires identifiés</div>
+              {dtg.travaux_prioritaires!.map((t, i) => (
+                <div key={i} style={{ fontSize: 13, padding: '8px 12px', background: '#fef2f2', borderRadius: 8, marginBottom: 4, border: '1px solid #fecaca', color: '#991b1b' }}>• {safeStr(t)}</div>
+              ))}
+            </div>
+          )}
+        </AccordionSection>
+      )}
+
+      {/* ── TRAVAUX ── */}
       <AccordionSection
-        title="Travaux" sub="Réalisés · votés · évoqués" icon="🏗"
-        status={hasTravauxAlert ? 'warning' : hasTravauxWarning ? 'ok' : 'ok'}
-        badge={hasTravauxAlert ? `${travaux_evoques.length} vigilance${travaux_evoques.length > 1 ? 's' : ''}` : `${travaux_realises.length + travaux_votes.length} détectés`}
-        tooltip="✅ Réalisés — déjà effectués, intégrés à l'immeuble.|🗳 Votés — décidés en AG. S'ils l'ont été avant le compromis, c'est la charge du vendeur.|⚠️ Évoqués non votés — mentionnés mais pas décidés. Si le vote a lieu après votre achat, vous en paierez une part.">
+        title="Travaux" sub="Réalisés · votés · évoqués" icon="🔨"
+        status={travaux_evoques.length > 0 ? 'warning' : travaux_votes.length > 0 ? 'ok' : 'ok'}
+        badge={travaux_evoques.length > 0 ? `${travaux_evoques.length} vigilance${travaux_evoques.length > 1 ? 's' : ''}` : `${travaux_realises.length + travaux_votes.length} détectés`}
+        tooltip="✅ Réalisés — déjà effectués, intégrés à l'immeuble.|🗳 Votés — décidés en AG. S'ils l'ont été avant le compromis, c'est la charge du vendeur.|⚠️ Évoqués — mentionnés sans vote. Si le vote a lieu après votre achat, vous en paierez une part.">
+
+        {travaux_votes.length > 0 && (
+          <div style={{ padding: '10px 14px', background: '#fef2f2', borderRadius: 10, border: '1px solid #fecaca', fontSize: 13, color: '#991b1b', lineHeight: 1.6 }}>
+            <strong>⚖️ Travaux votés avant le compromis = charge du vendeur.</strong> Tout travail voté en AG avant la signature de votre compromis de vente est légalement à la charge du vendeur, même si les appels interviennent après. Vérifiez avec votre notaire.
+          </div>
+        )}
 
         {travaux_realises.length > 0 && (
           <div>
@@ -948,9 +1193,6 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#3b82f6', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#3b82f6' }} /> Votés en AG
-            </div>
-            <div style={{ padding: '8px 12px', background: '#eff6ff', borderRadius: 8, border: '1px solid #bfdbfe', marginBottom: 8, fontSize: 12, color: '#1e40af' }}>
-              ℹ️ Les travaux votés avant la signature du compromis sont à la charge du vendeur. Vérifiez ce point avec votre notaire.
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {travaux_votes.map((t, i) => <TravauxRow key={i} t={t} variant="vote" />)}
@@ -977,110 +1219,117 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         )}
       </AccordionSection>
 
-      {/* FINANCES */}
+      {/* ── FINANCES ── */}
       <AccordionSection
-        title="Finances" sub="Budget copro · fonds travaux · charges" icon="💰"
-        status={rapport.fonds_travaux_statut === 'insuffisant' || rapport.fonds_travaux_statut === 'absent' ? 'warning' : 'ok'}
+        title="Finances" sub="Budget copro · fonds travaux · charges lot · historique" icon="💰"
+        status={fondsInsuffisant ? 'warning' : 'ok'}
         badge={rapport.fonds_travaux_statut === 'conforme' ? 'Sain' : rapport.fonds_travaux_statut === 'insuffisant' ? 'Vigilance' : rapport.fonds_travaux_statut === 'absent' ? 'Absent' : 'Détecté'}>
 
-        {/* Grille chiffres clés — uniquement données COPRO globales */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 10 }}>
-          {(() => {
-            const fin = rapport.finances as Record<string, unknown> | null;
-            const budgetTotal = fin?.budget_total_copro;
-            const budgetNum = typeof budgetTotal === 'number' ? budgetTotal : typeof budgetTotal === 'string' ? parseFloat(String(budgetTotal).replace(/[^0-9.]/g, '')) || 0 : 0;
-            const hist = fin?.budgets_historique as Array<{ annee: string; budget_total: number; fonds_travaux?: number }> | null;
-            const lastYear = hist && hist.length > 0 ? [...hist].sort((a, b) => String(b.annee).localeCompare(String(a.annee)))[0].annee : null;
-            const fondsNum = rapport.fonds_travaux > 0 ? rapport.fonds_travaux : 0;
-            const fondsPct = budgetNum > 0 && fondsNum > 0 ? ((fondsNum / budgetNum) * 100).toFixed(1) : null;
-            return (<>
-              {budgetNum > 0 && (
-                <div style={{ padding: '14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', textAlign: 'center' }}>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>{budgetNum.toLocaleString('fr-FR')}€</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Budget annuel copropriété{lastYear ? ` (${lastYear})` : ''}</div>
-                </div>
-              )}
-              {fondsNum > 0 && (
-                <div style={{ padding: '14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', textAlign: 'center' }}>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: '#7c3aed', marginBottom: 3 }}>{fondsNum.toLocaleString('fr-FR')}€</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Fonds travaux copro{lastYear ? ` (${lastYear})` : ''}</div>
-                  {fondsPct && <div style={{ fontSize: 10, color: '#7c3aed', marginTop: 3 }}>≈ {fondsPct}% du budget voté</div>}
-                </div>
-              )}
-            </>);
-          })()}
-        </div>
-
-        {/* Tableau évolution budgets par année */}
-        {(() => {
-          const fin = rapport.finances as Record<string, unknown> | null;
-          const hist = fin?.budgets_historique as Array<{ annee: string; budget_total: number; fonds_travaux?: number; charges_lot?: number }> | null;
-          if (!hist || hist.length < 2) return null;
-          const sorted = [...hist].sort((a, b) => String(a.annee).localeCompare(String(b.annee)));
-          return (
-            <div style={{ background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', overflow: 'hidden' }}>
-              <div style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7', letterSpacing: '0.06em' }}>
-                📊 ÉVOLUTION DES BUDGETS (source : PV d'AG)
+        {/* Charges lot */}
+        {chargesAnnuelles && (
+          <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: '16px 18px', display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: 12, color: '#2563eb', marginBottom: 5 }}>
+                <Tooltip text="Montant total des charges que vous devrez payer chaque année pour votre lot (entretien parties communes + fonds travaux).">Charges annuelles votre lot</Tooltip>
               </div>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-                  <thead>
-                    <tr style={{ background: '#f1f5f9' }}>
-                      {['Année', 'Budget copro', 'Fonds travaux', 'Évolution'].map(h => (
-                        <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7', fontSize: 11 }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sorted.map((row, i) => {
-                      const prev = i > 0 ? sorted[i - 1] : null;
-                      const evol = prev && prev.budget_total > 0 ? ((row.budget_total - prev.budget_total) / prev.budget_total * 100) : null;
-                      return (
-                        <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
-                          <td style={{ padding: '9px 12px', fontWeight: 700, color: '#0f172a' }}>{row.annee}</td>
-                          <td style={{ padding: '9px 12px', color: '#374151' }}>{row.budget_total?.toLocaleString('fr-FR')}€</td>
-                          <td style={{ padding: '9px 12px', color: '#7c3aed' }}>{row.fonds_travaux ? `${row.fonds_travaux.toLocaleString('fr-FR')}€` : '—'}</td>
-                          <td style={{ padding: '9px 12px' }}>
-                            {evol !== null ? (
-                              <span style={{ fontSize: 11, fontWeight: 700, color: evol > 5 ? '#dc2626' : evol > 0 ? '#d97706' : '#16a34a' }}>
-                                {evol > 0 ? '+' : ''}{evol.toFixed(1)}%
-                              </span>
-                            ) : <span style={{ color: '#94a3b8' }}>—</span>}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              <div style={{ fontSize: 28, fontWeight: 700, color: '#1e3a5f', lineHeight: 1 }}>{chargesAnnuelles.toLocaleString('fr-FR')} €</div>
+            </div>
+            {chargesMensuelles && (
+              <>
+                <div style={{ width: 1, height: 44, background: '#bfdbfe' }} />
+                <div>
+                  <div style={{ fontSize: 12, color: '#3b82f6', marginBottom: 5 }}>Soit par mois</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: '#1e40af', lineHeight: 1 }}>{chargesMensuelles.toLocaleString('fr-FR')} €</div>
+                </div>
+              </>
+            )}
+            <div style={{ fontSize: 11, color: '#3b82f6', marginLeft: 'auto', fontStyle: 'italic' }}>Charges courantes · hors appels exceptionnels</div>
+          </div>
+        )}
+
+        {/* KPIs budget copro */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 10 }}>
+          {budgetNum > 0 && (
+            <div style={{ padding: 14, background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', textAlign: 'center' }}>
+              <div style={{ fontSize: 19, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>{budgetNum.toLocaleString('fr-FR')} €</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Budget annuel copropriété</div>
+            </div>
+          )}
+          {fondsNum > 0 && (
+            <div style={{ padding: 14, background: fondsInsuffisant ? '#fff7ed' : '#f0fdf4', borderRadius: 10, border: `1px solid ${fondsInsuffisant ? '#fed7aa' : '#bbf7d0'}`, textAlign: 'center' }}>
+              <div style={{ fontSize: 19, fontWeight: 700, color: fondsInsuffisant ? '#a16207' : '#16a34a', marginBottom: 3 }}>{fondsNum.toLocaleString('fr-FR')} €</div>
+              <div style={{ fontSize: 11, color: fondsInsuffisant ? '#a16207' : '#16a34a', fontWeight: 600 }}>
+                <Tooltip text="Réserve obligatoire de la copropriété pour financer les futurs travaux. La loi ALUR impose minimum 5% du budget annuel.">Fonds travaux copro</Tooltip>
+                {fondsPct && ` — ${fondsPct.toFixed(1)}%`}
               </div>
             </div>
-          );
-        })()}
+          )}
+        </div>
 
-        {/* Statut fonds travaux */}
-        {rapport.fonds_travaux_statut && rapport.fonds_travaux_statut !== 'non_mentionne' && (
-          <div style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid', background: rapport.fonds_travaux_statut === 'conforme' ? '#f0fdf4' : '#fef2f2', borderColor: rapport.fonds_travaux_statut === 'conforme' ? '#bbf7d0' : '#fecaca' }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: rapport.fonds_travaux_statut === 'conforme' ? '#166534' : '#991b1b' }}>
-              Fonds travaux : {rapport.fonds_travaux_statut === 'conforme' ? '✓ conforme au minimum légal (5%)' : rapport.fonds_travaux_statut === 'insuffisant' ? '⚠️ insuffisant (< 5% du budget)' : '⚠️ absent ou non mentionné'}
-            </span>
-            {rapport.fonds_travaux_statut === 'insuffisant' && (
-              <div style={{ fontSize: 11, color: '#b91c1c', marginTop: 4 }}>La loi ALUR impose un fonds travaux d'au minimum 5% du budget prévisionnel annuel. Un fonds insuffisant peut entraîner des appels de fonds exceptionnels imprévus.</div>
+        {/* Barre fonds travaux */}
+        {fondsPct !== null && budgetNum > 0 && (
+          <div style={{ background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', padding: '12px 14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748b', marginBottom: 6 }}>
+              <span>Fonds travaux actuel — {fondsPct.toFixed(1)}%</span>
+              <span style={{ color: '#16a34a' }}>Seuil légal ALUR — 5%</span>
+            </div>
+            <div style={{ height: 10, borderRadius: 5, background: '#edf2f7', overflow: 'hidden', position: 'relative' }}>
+              <div style={{ width: `${Math.min((fondsPct / 10) * 100, 100)}%`, height: '100%', background: fondsInsuffisant ? '#d97706' : '#16a34a', borderRadius: 5 }} />
+              <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 2, background: '#16a34a', opacity: 0.6 }} />
+            </div>
+            {fondsInsuffisant && (
+              <div style={{ marginTop: 8, fontSize: 12, color: '#a16207' }}>
+                La loi ALUR impose minimum 5% ({Math.round(budgetNum * 0.05).toLocaleString('fr-FR')} € requis). Un fonds insuffisant peut entraîner des <strong>appels de fonds exceptionnels imprévus</strong>.
+              </div>
             )}
           </div>
         )}
 
+        {/* Historique budgets */}
+        {(() => {
+          const hist = fin?.budgets_historique as Array<{ annee: string; budget_total: number; fonds_travaux?: number }> | null;
+          if (!hist || hist.length < 2) return null;
+          const sorted = [...hist].sort((a, b) => String(a.annee).localeCompare(String(b.annee)));
+          const max = Math.max(...sorted.map(r => r.budget_total));
+          return (
+            <div style={{ background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+              <div style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7', letterSpacing: '0.06em' }}>
+                HISTORIQUE BUDGETS VOTÉS EN AG <span style={{ fontWeight: 400, fontStyle: 'italic' }}>(source : PV d'AG)</span>
+              </div>
+              {sorted.map((row, i) => {
+                const prev = i > 0 ? sorted[i - 1] : null;
+                const evol = prev && prev.budget_total > 0 ? ((row.budget_total - prev.budget_total) / prev.budget_total * 100) : null;
+                const pct = max > 0 ? (row.budget_total / max) * 100 : 0;
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: i < sorted.length - 1 ? '1px solid #f1f5f9' : 'none', background: i === sorted.length - 1 ? '#f0f7ff' : 'transparent' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: i === sorted.length - 1 ? '#2a7d9c' : '#0f172a', width: 42, flexShrink: 0 }}>{row.annee}</span>
+                    <div style={{ flex: 1, height: 8, background: '#edf2f7', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: i === sorted.length - 1 ? '#2a7d9c' : '#94a3b8', borderRadius: 4, opacity: 0.7 + i * 0.15 }} />
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: i === sorted.length - 1 ? '#2a7d9c' : '#0f172a', width: 100, textAlign: 'right', flexShrink: 0 }}>{row.budget_total.toLocaleString('fr-FR')} €</span>
+                    <span style={{ fontSize: 11, width: 36, textAlign: 'right', flexShrink: 0, color: evol !== null ? (evol > 5 ? '#dc2626' : evol > 0 ? '#d97706' : '#16a34a') : '#94a3b8', fontWeight: evol !== null ? 700 : 400 }}>
+                      {evol !== null ? `${evol > 0 ? '+' : ''}${evol.toFixed(1)}%` : '—'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+
         {/* Appels de fonds exceptionnels */}
         {(vie?.appels_fonds_exceptionnels?.length ?? 0) > 0 && (
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#d97706', marginBottom: 4 }}>⚠ Appels de fonds exceptionnels votés en AG :</div>
-            <div style={{ fontSize: 11, color: '#b45309', marginBottom: 8, fontStyle: 'italic' }}>Informations issues des PV d'assemblée générale fournis</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#d97706', marginBottom: 6 }}>
+              <Tooltip text="Somme demandée aux copropriétaires en dehors des charges habituelles, souvent pour financer des travaux imprévus.">⚠ Appels de fonds exceptionnels votés en AG</Tooltip>
+            </div>
             {vie!.appels_fonds_exceptionnels!.map((a, i) => {
               const obj = typeof a === 'string' ? { motif: a } : a as Record<string, unknown>;
               const montant: number | null = typeof obj.montant_total === 'number' ? obj.montant_total : typeof obj.montant === 'number' ? obj.montant : null;
               return (
-                <div key={i} style={{ fontSize: 12, color: '#92400e', padding: '9px 12px', background: '#fffbeb', borderRadius: 8, marginBottom: 6, border: '1px solid #fde68a', lineHeight: 1.5 }}>
+                <div key={i} style={{ fontSize: 13, color: '#92400e', padding: '9px 12px', background: '#fffbeb', borderRadius: 8, marginBottom: 6, border: '1px solid #fde68a', lineHeight: 1.5 }}>
                   <div style={{ fontWeight: 600, marginBottom: 2 }}>• {String(obj.motif ?? obj.description ?? obj.libelle ?? 'Appel de fonds exceptionnel')}</div>
-                  {montant !== null && <div style={{ fontSize: 11, color: '#d97706' }}>Montant total copro : {montant.toLocaleString('fr-FR')}€</div>}
+                  {montant !== null && <div style={{ fontSize: 11, color: '#d97706' }}>Montant total copro : {montant.toLocaleString('fr-FR')} €</div>}
                   {obj.date != null && <div style={{ fontSize: 11, color: '#b45309' }}>Date : {String(obj.date)}</div>}
                 </div>
               );
@@ -1089,11 +1338,17 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         )}
       </AccordionSection>
 
-      {/* DIAGNOSTICS PARTIES COMMUNES */}
+      {/* ── DIAGNOSTICS PARTIES COMMUNES ── */}
       <AccordionSection
         title="Diagnostics parties communes" sub="Amiante · plomb · termites · ERP" icon="📋"
         status={hasDiagAlert ? 'alert' : diagsCommuns.length > 0 ? 'ok' : 'neutral'}
-        badge={hasDiagAlert ? 'Alerte' : diagsCommuns.length > 0 ? `${diagsCommuns.length} détecté${diagsCommuns.length > 1 ? 's' : ''}` : 'Non détectés'}>
+        badge={amiante_ac1 ? 'Amiante AC1 !' : hasDiagAlert ? 'Alerte' : diagsCommuns.length > 0 ? `${diagsCommuns.length} détecté${diagsCommuns.length > 1 ? 's' : ''}` : 'Non détectés'}>
+
+        {amiante_ac1 && (
+          <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, fontSize: 13, color: '#991b1b', lineHeight: 1.6 }}>
+            <strong>⚠ Amiante AC1 détecté dans les parties communes.</strong> Des matériaux amiantés nécessitent une action corrective (AC1). Des travaux de désamiantage ou de confinement sont à prévoir dans les parties communes. Renseignez-vous sur le calendrier et le budget prévu.
+          </div>
+        )}
 
         {diagsCommuns.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1105,7 +1360,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
           <Info size={13} style={{ color: '#64748b', flexShrink: 0, marginTop: 1 }} />
           <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>
             {diagsCommuns.length === 0
-              ? "Aucun diagnostic parties communes dans les documents fournis. Vérifiez auprès du vendeur ou de l'agent immobilier si l'immeuble dispose de :"
+              ? "Aucun diagnostic parties communes dans les documents fournis. Vérifiez auprès du vendeur si l'immeuble dispose de :"
               : "D'autres diagnostics parties communes peuvent exister. Vérifiez auprès du vendeur si l'immeuble dispose également de :"}
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
               {(!anneeNum || anneeNum < 1997) && <span style={{ fontSize: 11, padding: '2px 9px', borderRadius: 100, background: '#fff', border: '1px solid #e2e8f0', color: '#475569' }}>DTA (avant 1997)</span>}
@@ -1119,6 +1374,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
     </div>
   );
 }
+
 
 /* ══════════════════════════════════
    ONGLET VOTRE LOGEMENT
