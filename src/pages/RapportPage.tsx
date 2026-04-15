@@ -1482,9 +1482,9 @@ function TabDocuments({ rapport }: { rapport: RapportData }) {
               );
             })}
           </div>
-          <div style={{ padding: '10px 20px', background: '#f8fafc', display: 'flex', alignItems: 'center', gap: 6, borderTop: '1px solid #f1f5f9' }}>
-            <Shield size={11} style={{ color: '#94a3b8', flexShrink: 0 }} />
-            <span style={{ fontSize: 11, color: '#94a3b8' }}>Documents supprimés de nos serveurs après traitement — conformément au RGPD.</span>
+          <div style={{ padding: '12px 20px', background: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8, borderTop: '1px solid #f1f5f9' }}>
+            <Shield size={13} style={{ color: '#94a3b8', flexShrink: 0 }} />
+            <span style={{ fontSize: 13, color: '#94a3b8' }}>Documents supprimés de nos serveurs après traitement — conformément au RGPD.</span>
           </div>
         </div>
       )}
@@ -1755,7 +1755,7 @@ export default function RapportPage() {
   if (documentResult) {
     return (
       <div style={{ minHeight: '100vh', background: '#f5f9fb', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '20px 32px' }}>
+        <div style={{ maxWidth: 1250, margin: '0 auto', padding: '20px 28px' }}>
           <div style={{ marginBottom: 20 }}>
             <Link to="/dashboard/analyses" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#64748b', textDecoration: 'none', fontWeight: 500 }}>
               ← Mes analyses
@@ -1789,7 +1789,7 @@ export default function RapportPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f5f9fb', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '20px 32px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ maxWidth: 1250, margin: '0 auto', padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
         <RapportHeader rapport={rapport} isShared={isShared} />
 
