@@ -67,7 +67,7 @@ function Header({ type, titre, sub }: { type: string; titre: string; sub?: strin
     <div style={{ background: C.dark, borderRadius: 14, padding: '22px 28px', marginBottom: 16 }}>
       <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', marginBottom: 8, textTransform: 'uppercase' as const }}>{type}</div>
       <div style={{ fontSize: 20, fontWeight: 600, color: '#fff', marginBottom: sub ? 6 : 0, lineHeight: 1.3 }}>{titre}</div>
-      {sub && <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>{sub}</div>}
     </div>
   );
 }
@@ -84,7 +84,7 @@ function CardHeader({ label, color }: { label: string; color: string }) {
   return (
     <div style={{ padding: '14px 20px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10, background: C.bgSecondary }}>
       <div style={{ width: 10, height: 10, borderRadius: '50%', background: color, flexShrink: 0 }} />
-      <div style={{ fontSize: 12, fontWeight: 700, color: C.text, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>{label}</div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: C.text, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>{label}</div>
     </div>
   );
 }
@@ -115,7 +115,7 @@ function TooltipIcon({ text }: { text: string }) {
         style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: '#334155', fontSize: 10, fontWeight: 700, color: '#fff', cursor: 'help', flexShrink: 0, userSelect: 'none' as const }}
       >ℹ</span>
       {visible && (
-        <span style={{ position: 'absolute', bottom: '120%', left: '50%', transform: 'translateX(-50%)', background: '#0f172a', color: '#f1f5f9', fontSize: 12, lineHeight: 1.6, padding: '10px 14px', borderRadius: 10, width: 260, zIndex: 100, boxShadow: '0 4px 20px rgba(0,0,0,0.25)', whiteSpace: 'normal' as const, pointerEvents: 'none' as const }}>
+        <span style={{ position: 'absolute', bottom: '120%', left: '50%', transform: 'translateX(-50%)', background: '#0f172a', color: '#f1f5f9', fontSize: 14, lineHeight: 1.7, padding: '10px 14px', borderRadius: 10, width: 260, zIndex: 100, boxShadow: '0 4px 20px rgba(0,0,0,0.25)', whiteSpace: 'normal' as const, pointerEvents: 'none' as const }}>
           {text}
           <span style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', borderWidth: 6, borderStyle: 'solid', borderColor: '#0f172a transparent transparent transparent' }} />
         </span>
@@ -127,12 +127,12 @@ function TooltipIcon({ text }: { text: string }) {
 function Kpi({ label, value, sub, color, tooltip }: { label: string; value: string; sub?: string; color?: string; tooltip?: string }) {
   return (
     <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, padding: '18px 20px' }}>
-      <div style={{ fontSize: 12, color: C.textSec, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+      <div style={{ fontSize: 14, color: C.textSec, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
         {label}
         {tooltip && <TooltipIcon text={tooltip} />}
       </div>
       <div style={{ fontSize: 22, fontWeight: 600, color: color || C.text, lineHeight: 1.2 }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 14, color: C.textSec, marginTop: 4 }}>{sub}</div>}
     </div>
   );
 }
@@ -198,12 +198,20 @@ function PointsFortsVigilances({ forts, vigilances }: { forts: string[]; vigilan
 
 function AvisVerimo({ text }: { text: string }) {
   return (
-    <div style={{ background: C.dark, borderRadius: 12, padding: '22px 28px' }}>
-      <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', marginBottom: 12, textTransform: 'uppercase' as const }}>Avis Verimo</div>
-      <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.88)', lineHeight: 1.8 }}>{text}</div>
-      <div style={{ marginTop: 16, padding: '12px 16px', background: 'rgba(255,255,255,0.06)', borderRadius: 8, fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
-        Pour une vision complète de votre futur bien, lancez une{' '}
-        <Link to="/dashboard/nouvelle-analyse" style={{ color: '#7dd3fc', textDecoration: 'none', fontWeight: 600 }}>Analyse Complète</Link>.
+    <div style={{ background: C.dark, borderRadius: 12, overflow: 'hidden' }}>
+      <div style={{ padding: '20px 28px 16px', borderBottom: '0.5px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span style={{ fontSize: 22, flexShrink: 0 }}>⭐</span>
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+          <span style={{ fontSize: 22, fontWeight: 500, color: '#fff', position: 'relative', zIndex: 1 }}>Avis Verimo</span>
+          <div style={{ position: 'absolute', bottom: 1, left: 0, right: 0, height: 8, background: 'rgba(91,184,212,0.45)', zIndex: 0, borderRadius: 2 }} />
+        </div>
+      </div>
+      <div style={{ padding: '20px 28px' }}>
+        <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.88)', lineHeight: 1.85 }}>{text}</div>
+        <div style={{ marginTop: 16, padding: '12px 16px', background: 'rgba(255,255,255,0.06)', borderRadius: 8, fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>
+          Pour une vision complète de votre futur bien, lancez une{' '}
+          <Link to="/dashboard/nouvelle-analyse" style={{ color: '#7dd3fc', textDecoration: 'none', fontWeight: 600 }}>Analyse Complète</Link>.
+        </div>
       </div>
     </div>
   );
@@ -213,7 +221,7 @@ function DpeJauge({ classe, label, valeur }: { classe: string; label: string; va
   const classes = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
   return (
     <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, padding: '20px', flex: 1 }}>
-      <div style={{ fontSize: 13, color: C.textSec, marginBottom: 16, fontWeight: 500 }}>{label}</div>
+      <div style={{ fontSize: 15, color: C.textSec, marginBottom: 16, fontWeight: 500 }}>{label}</div>
       <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end', height: 56, marginBottom: 12 }}>
         {classes.map((c, i) => {
           const active = c === classe;
@@ -226,7 +234,7 @@ function DpeJauge({ classe, label, valeur }: { classe: string; label: string; va
         })}
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 13, color: C.textSec }}>{valeur}</span>
+        <span style={{ fontSize: 15, color: C.textSec }}>{valeur}</span>
         {classe && (
           <span style={{ fontSize: 13, fontWeight: 600, color: DPE_COLORS[classe], background: `${DPE_COLORS[classe]}18`, padding: '3px 12px', borderRadius: 100, border: `1px solid ${DPE_COLORS[classe]}44` }}>
             Classe {classe}
@@ -246,7 +254,7 @@ function CarrezAccordeon({ pieces, piecesHorsCarrez, annexes }: { pieces: any[];
     <div>
       <button
         onClick={() => setOpen(!open)}
-        style={{ width: '100%', background: C.bgSecondary, border: 'none', padding: '12px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#2a7d9c', fontFamily: 'inherit', textAlign: 'left' as const, fontWeight: 500 }}
+        style={{ width: '100%', background: C.bgSecondary, border: 'none', padding: '12px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: '#2a7d9c', fontFamily: 'inherit', textAlign: 'left' as const, fontWeight: 500 }}
       >
         <span style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', fontSize: 10 }}>▶</span>
         {open ? 'Masquer le détail' : 'Voir le détail par pièce'}
@@ -317,7 +325,7 @@ function DiagnosticCardRow({ d }: { d: any }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', gap: 12 }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{d.label}</div>
-          {d.alerte && <div style={{ fontSize: 13, color: C.red.dot, marginTop: 4, fontWeight: 500 }}>⚠ {d.alerte}</div>}
+          {d.alerte && <div style={{ fontSize: 15, color: C.red.dot, marginTop: 4, fontWeight: 500 }}>⚠ {d.alerte}</div>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           <span style={{ fontSize: 12, fontWeight: 600, color: badgeColor, background: badgeBg, border: `0.5px solid ${badgeBorder}`, padding: '3px 12px', borderRadius: 100, whiteSpace: 'nowrap' as const }}>{badgeLabel}</span>
@@ -378,8 +386,8 @@ function RendererDDT({ r }: { r: any }) {
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🔬 Diagnostiqueur</div>
           {r.diagnostiqueur?.nom && <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 4 }}>{r.diagnostiqueur.nom}</div>}
-          {r.diagnostiqueur?.date && <div style={{ fontSize: 13, color: C.textSec, marginBottom: 3 }}>📅 Réalisé le {formatDate(r.diagnostiqueur.date)}</div>}
-          {r.diagnostiqueur?.certification && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 3 }}>🎖 {r.diagnostiqueur.certification}</div>}
+          {r.diagnostiqueur?.date && <div style={{ fontSize: 15, color: C.textSec, marginBottom: 3 }}>📅 Réalisé le {formatDate(r.diagnostiqueur.date)}</div>}
+          {r.diagnostiqueur?.certification && <div style={{ fontSize: 14, color: C.textSec, marginBottom: 3 }}>🎖 {r.diagnostiqueur.certification}</div>}
         </div>
 
         {/* Encart 2 — Lots visités */}
@@ -391,10 +399,10 @@ function RendererDDT({ r }: { r: any }) {
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 16 }}>{lotIcon(lot.type)}</span>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>
                       {lot.type.charAt(0).toUpperCase() + lot.type.slice(1)}{lot.numero ? ` n°${lot.numero}` : ''}
                     </div>
-                    {(lot.etage || lot.description) && <div style={{ fontSize: 12, color: C.textSec }}>{formatEtage(lot.etage) || lot.description}</div>}
+                    {(lot.etage || lot.description) && <div style={{ fontSize: 14, color: C.textSec }}>{formatEtage(lot.etage) || lot.description}</div>}
                   </div>
                 </div>
               ))}
@@ -403,7 +411,7 @@ function RendererDDT({ r }: { r: any }) {
             r.carrez?.surface_totale && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 16 }}>🏠</span>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Appartement — {r.carrez.surface_totale} m²</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>Appartement — {r.carrez.surface_totale} m²</div>
               </div>
             )
           )}
@@ -417,8 +425,8 @@ function RendererDDT({ r }: { r: any }) {
               const s = diagStatut(d);
               return (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-                  <span style={{ fontSize: 12, color: C.text, flex: 1, lineHeight: 1.4 }}>{d.label}</span>
-                  <span style={{ fontSize: 13, flexShrink: 0 }}>{s.icon}</span>
+                  <span style={{ fontSize: 14, color: C.text, flex: 1, lineHeight: 1.4 }}>{d.label}</span>
+                  <span style={{ fontSize: 15, flexShrink: 0 }}>{s.icon}</span>
                 </div>
               );
             })}
@@ -445,7 +453,7 @@ function RendererDDT({ r }: { r: any }) {
         return (
           <Card>
             <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: C.textSec }}>{label}</span>
+              <span style={{ fontSize: 15, fontWeight: 600, color: C.textSec }}>{label}</span>
               <span style={{ fontSize: 24, fontWeight: 600, color: C.text }}>{r.carrez.surface_totale} m²</span>
             </div>
             {(piecesCarrez.length > 0 || piecesHorsCarrez.length > 0 || annexes.length > 0) && (
@@ -502,7 +510,7 @@ function RendererDDT({ r }: { r: any }) {
             <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: i < r.travaux_preconises.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
               <div>
                 <div style={{ fontSize: 14, color: C.text }}>{t.label}</div>
-                <div style={{ fontSize: 12, color: t.priorite === 'prioritaire' ? '#dc2626' : '#d97706', marginTop: 4 }}>{t.priorite === 'prioritaire' ? 'Prioritaire' : 'Recommandé'}</div>
+                <div style={{ fontSize: 14, color: t.priorite === 'prioritaire' ? '#dc2626' : '#d97706', marginTop: 4 }}>{t.priorite === 'prioritaire' ? 'Prioritaire' : 'Recommandé'}</div>
               </div>
               {(t.cout_min || t.cout_max) && (
                 <div style={{ fontSize: 14, fontWeight: 600, color: C.text, whiteSpace: 'nowrap' as const, marginLeft: 20 }}>
@@ -512,7 +520,7 @@ function RendererDDT({ r }: { r: any }) {
             </div>
           ))}
           {r.gain_energetique && (
-            <div style={{ padding: '12px 20px', background: '#f0f9ff', borderTop: `0.5px solid #bae6fd`, fontSize: 13, color: '#0369a1' }}>
+            <div style={{ padding: '12px 20px', background: '#f0f9ff', borderTop: `0.5px solid #bae6fd`, fontSize: 15, color: '#0369a1' }}>
               {r.gain_energetique}
             </div>
           )}
@@ -541,7 +549,7 @@ function RendererPVAG({ r }: { r: any }) {
         <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: labelColor, flex: 1 }}>{label}</span>
       </div>
       {note && (
-        <div style={{ padding: '10px 20px', background: headerBg, borderBottom: `0.5px solid ${borderColor}`, fontSize: 13, color: labelColor, opacity: 0.85 }}>
+        <div style={{ padding: '10px 20px', background: headerBg, borderBottom: `0.5px solid ${borderColor}`, fontSize: 15, color: labelColor, opacity: 0.85 }}>
           {note}
         </div>
       )}
@@ -561,12 +569,12 @@ function RendererPVAG({ r }: { r: any }) {
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏛 L'assemblée</div>
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
-            <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📋</span><span style={{ fontWeight: 600 }}>{typeAGLabel}</span></div>
-            {r.date_ag && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📅</span><span>{formatDate(r.date_ag)}</span></div>}
-            {r.lieu_ag && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📍</span><span>{r.lieu_ag}</span></div>}
-            {r.syndic && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏢</span><span>{r.syndic}</span></div>}
+            <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📋</span><span style={{ fontWeight: 600 }}>{typeAGLabel}</span></div>
+            {r.date_ag && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📅</span><span>{formatDate(r.date_ag)}</span></div>}
+            {r.lieu_ag && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📍</span><span>{r.lieu_ag}</span></div>}
+            {r.syndic && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🏢</span><span>{r.syndic}</span></div>}
             {r.syndic_reconduit != null && (
-              <div style={{ display: 'flex', gap: 8, fontSize: 13, color: r.syndic_reconduit ? '#16a34a' : '#dc2626' }}>
+              <div style={{ display: 'flex', gap: 8, fontSize: 15, color: r.syndic_reconduit ? '#16a34a' : '#dc2626' }}>
                 <span>{r.syndic_reconduit ? '✅' : '❌'}</span>
                 <span>{r.syndic_reconduit ? 'Syndic reconduit' : 'Syndic non reconduit'}</span>
               </div>
@@ -578,13 +586,13 @@ function RendererPVAG({ r }: { r: any }) {
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>👥 Participation</div>
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
-            {r.president_seance && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🪑</span><span>Président de séance : <strong>{r.president_seance}</strong></span></div>}
+            {r.president_seance && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🪑</span><span>Président de séance : <strong>{r.president_seance}</strong></span></div>}
             {r.quorum?.tantiemes_pct && (
               <div style={{ marginTop: 4 }}>
                 <div style={{ fontSize: 11, color: C.textSec, marginBottom: 4 }}>Tantièmes représentés</div>
                 <div style={{ fontSize: 22, fontWeight: 700, color: '#16a34a' }}>{String(r.quorum.tantiemes_pct).replace('%','').trim()} %</div>
                 {r.quorum.presents && r.quorum.total && (
-                  <div style={{ fontSize: 12, color: C.textSec, marginTop: 2 }}>
+                  <div style={{ fontSize: 14, color: C.textSec, marginTop: 2 }}>
                     {r.quorum.presents}/{r.quorum.total} copropriétaires présents ou représentés
                   </div>
                 )}
@@ -600,16 +608,16 @@ function RendererPVAG({ r }: { r: any }) {
             {r.budget_vote?.montant && (
               <div>
                 <div style={{ fontSize: 11, color: C.textSec, marginBottom: 3 }}>Budget voté{r.budget_vote.annee ? ` ${r.budget_vote.annee}` : ''}</div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: C.text }}>{Number(r.budget_vote.montant).toLocaleString('fr-FR')} €</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: C.text }}>{Number(r.budget_vote.montant).toLocaleString('fr-FR')} €</div>
                 {r.budget_precedent?.montant && r.budget_precedent?.annee && (
-                  <div style={{ fontSize: 12, color: C.textSec, marginTop: 2 }}>
+                  <div style={{ fontSize: 14, color: C.textSec, marginTop: 2 }}>
                     vs {Number(r.budget_precedent.montant).toLocaleString('fr-FR')} € en {r.budget_precedent.annee}
                   </div>
                 )}
               </div>
             )}
             {r.nb_resolutions && (
-              <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text, alignItems: 'center' }}>
                 <span>🗳</span>
                 <span>{r.nb_resolutions} résolutions à l'ordre du jour</span>
                 <TooltipIcon text="Verimo détecte les résolutions les plus importantes parmi l'ensemble des points votés en AG et vous les synthétise ici." />
@@ -627,7 +635,7 @@ function RendererPVAG({ r }: { r: any }) {
             <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: i < r.travaux_votes.length - 1 ? `0.5px solid ${C.border}` : 'none', background: C.bg }}>
               <div>
                 <div style={{ fontSize: 14, color: C.text }}>{t.label}</div>
-                {t.echeance && <div style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>{t.echeance}</div>}
+                {t.echeance && <div style={{ fontSize: 14, color: C.textSec, marginTop: 4 }}>{t.echeance}</div>}
               </div>
               {t.montant && <div style={{ fontSize: 15, fontWeight: 600, color: '#185FA5', whiteSpace: 'nowrap' as const, marginLeft: 20 }}>{Number(t.montant).toLocaleString('fr-FR')} €</div>}
             </div>
@@ -644,7 +652,7 @@ function RendererPVAG({ r }: { r: any }) {
             {travCopro.map((t: any, i: number) => (
               <div key={i} style={{ padding: '14px 20px', borderBottom: i < travCopro.length - 1 ? `0.5px solid ${C.border}` : 'none', background: C.bg }}>
                 <div style={{ fontSize: 14, color: C.text }}>{t.label}</div>
-                {t.precision && <div style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>{t.precision}</div>}
+                {t.precision && <div style={{ fontSize: 14, color: C.textSec, marginTop: 4 }}>{t.precision}</div>}
               </div>
             ))}
           </PBlock>
@@ -691,7 +699,7 @@ function RendererAppelCharges({ r }: { r: any }) {
       <div style={{ background: C.dark, borderRadius: 14, padding: '22px 28px', marginBottom: 16 }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', marginBottom: 8, textTransform: 'uppercase' as const }}>Appel de Charges / Appel de Fonds</div>
         <div style={{ fontSize: 19, fontWeight: 600, color: '#fff', marginBottom: 6, lineHeight: 1.3 }}>{r.titre}</div>
-        {r.periode && <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: lots.length > 0 ? 10 : 0 }}>{r.periode}</div>}
+        {r.periode && <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: lots.length > 0 ? 10 : 0 }}>{r.periode}</div>}
         {lots.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6, marginTop: 6 }}>
             <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', alignSelf: 'center', marginRight: 2 }}>Lots concernés :</span>
@@ -708,7 +716,7 @@ function RendererAppelCharges({ r }: { r: any }) {
 
       {/* Alerte impayé si présente */}
       {r.alerte_impaye && (
-        <div style={{ background: C.red.bg, border: `0.5px solid ${C.red.border}`, borderRadius: 12, padding: '14px 18px', marginBottom: 14, fontSize: 13, color: C.red.text, lineHeight: 1.6 }}>
+        <div style={{ background: C.red.bg, border: `0.5px solid ${C.red.border}`, borderRadius: 12, padding: '14px 18px', marginBottom: 14, fontSize: 15, color: C.red.text, lineHeight: 1.6 }}>
           ⚠ {r.alerte_impaye}
         </div>
       )}
@@ -717,11 +725,11 @@ function RendererAppelCharges({ r }: { r: any }) {
       <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px', marginBottom: 16 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏢 Syndic</div>
         <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 16 }}>
-          {r.syndic && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👤</span><span style={{ fontWeight: 600 }}>{r.syndic}</span></div>}
-          {r.syndic_adresse && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📍</span><span>{r.syndic_adresse}</span></div>}
-          {r.syndic_gestionnaire && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👩‍💼</span><span>Gestionnaire : {r.syndic_gestionnaire}</span></div>}
-          {r.reference_dossier && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📋</span><span>Réf. : {r.reference_dossier}</span></div>}
-          {r.echeance && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📅</span><span>Échéance : {r.echeance}</span></div>}
+          {r.syndic && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>👤</span><span style={{ fontWeight: 600 }}>{r.syndic}</span></div>}
+          {r.syndic_adresse && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📍</span><span>{r.syndic_adresse}</span></div>}
+          {r.syndic_gestionnaire && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>👩‍💼</span><span>Gestionnaire : {r.syndic_gestionnaire}</span></div>}
+          {r.reference_dossier && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📋</span><span>Réf. : {r.reference_dossier}</span></div>}
+          {r.echeance && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📅</span><span>Échéance : {r.echeance}</span></div>}
         </div>
       </div>
 
@@ -749,7 +757,7 @@ function RendererAppelCharges({ r }: { r: any }) {
                     <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>
                       {lot.type.charAt(0).toUpperCase() + lot.type.slice(1)}{lot.numero ? ` n°${lot.numero}` : ''}
                     </div>
-                    <div style={{ fontSize: 12, color: C.textSec }}>
+                    <div style={{ fontSize: 14, color: C.textSec }}>
                       {[lot.escalier ? `Escalier ${lot.escalier}` : null, formatEtage(lot.etage)].filter(Boolean).join(' · ')}
                     </div>
                   </div>
@@ -765,7 +773,7 @@ function RendererAppelCharges({ r }: { r: any }) {
               {lot.postes?.map((p: any, pi: number) => (
                 <div key={pi} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px 10px 50px', borderTop: `0.5px solid ${C.border}` }}>
                   <div>
-                    <div style={{ fontSize: 13, color: C.text }}>{p.label}</div>
+                    <div style={{ fontSize: 15, color: C.text }}>{p.label}</div>
                     {p.tantiemes && p.base_tantiemes && (
                       <div style={{ fontSize: 11, color: C.textSec, marginTop: 2 }}>{p.tantiemes} tantièmes / {p.base_tantiemes}</div>
                     )}
@@ -827,7 +835,7 @@ function RendererRCP({ r }: { r: any }) {
         {r.date_reglement && <Kpi label="Date du règlement" value={String(r.date_reglement)} />}
         {r.total_lots != null && (
           <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, padding: '18px 20px' }}>
-            <div style={{ fontSize: 12, color: C.textSec, marginBottom: 8 }}>Total lots</div>
+            <div style={{ fontSize: 14, color: C.textSec, marginBottom: 8 }}>Total lots</div>
             <div style={{ fontSize: 22, fontWeight: 600, color: C.text, lineHeight: 1.2 }}>{r.total_lots} lots</div>
             {totalAnnexes > 0 && <div style={{ fontSize: 11, color: C.textSec, marginTop: 4 }}>dont {annexesDetail}</div>}
           </div>
@@ -848,7 +856,7 @@ function RendererRCP({ r }: { r: any }) {
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
                   {cat.elements.map((el: string, j: number) => (
-                    <span key={j} style={{ fontSize: 13, padding: '4px 12px', borderRadius: 100, background: C.bgSecondary, border: `0.5px solid ${C.border}`, color: C.text }}>{el}</span>
+                    <span key={j} style={{ fontSize: 14, padding: '4px 12px', borderRadius: 100, background: C.bgSecondary, border: `0.5px solid ${C.border}`, color: C.text }}>{el}</span>
                   ))}
                 </div>
               </div>
@@ -908,7 +916,7 @@ function RendererRCP({ r }: { r: any }) {
                   {bloquant && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 100, background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', whiteSpace: 'nowrap' as const }}>⚠ Bloquant</span>}
                   <span style={{ fontSize: 14, fontWeight: 500, color: C.text }}>{label}</span>
                 </div>
-                {detail && <div style={{ fontSize: 13, color: C.textSec, marginTop: 4 }}>{detail}</div>}
+                {detail && <div style={{ fontSize: 15, color: C.textSec, marginTop: 4 }}>{detail}</div>}
               </div>
             );
           })}
@@ -947,7 +955,7 @@ function RendererDTGPPT({ r }: { r: any }) {
                 return (
                   <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}`, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
                     <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{t.label}</td>
-                    <td style={{ padding: '11px 20px', fontSize: 13, color: C.textSec, textAlign: 'center' }}>{t.horizon || '—'}</td>
+                    <td style={{ padding: '11px 20px', fontSize: 15, color: C.textSec, textAlign: 'center' }}>{t.horizon || '—'}</td>
                     <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: C.text, textAlign: 'right' }}>{t.montant ? `${Number(t.montant).toLocaleString('fr-FR')} €` : '—'}</td>
                     <td style={{ padding: '11px 20px', textAlign: 'center' }}><span style={{ fontSize: 12, padding: '3px 10px', borderRadius: 100, background: pc.bg, color: pc.text, border: `0.5px solid ${pc.border}` }}>{pc.label}</span></td>
                   </tr>
@@ -966,7 +974,7 @@ function RendererDTGPPT({ r }: { r: any }) {
             return (
               <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: i < r.etat_elements.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
                 <span style={{ fontSize: 14, color: C.text }}>{e.element}</span>
-                <span style={{ fontSize: 13, fontWeight: 500, color: ec.color, background: ec.bg, padding: '3px 12px', borderRadius: 100, border: `0.5px solid ${ec.border}` }}>{ec.label}</span>
+                <span style={{ fontSize: 14, fontWeight: 500, color: ec.color, background: ec.bg, padding: '3px 12px', borderRadius: 100, border: `0.5px solid ${ec.border}` }}>{ec.label}</span>
               </div>
             );
           })}
@@ -998,9 +1006,9 @@ function RendererCarnetEntretien({ r }: { r: any }) {
           {r.procedures.map((p: any, i: number) => (
             <div key={i} style={{ padding: '14px 20px', borderBottom: i < r.procedures.length - 1 ? `0.5px solid ${C.red.border}` : 'none' }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: C.red.text, marginBottom: 4 }}>{p.label}</div>
-              {p.date_debut && <div style={{ fontSize: 12, color: C.red.text, marginBottom: 3 }}>Depuis le {formatDate(p.date_debut)}{p.date_fin ? ` → ${formatDate(p.date_fin)}` : ''}</div>}
-              {p.commentaire && <div style={{ fontSize: 13, color: C.red.text, marginTop: 4 }}>{p.commentaire}</div>}
-              <div style={{ fontSize: 12, color: C.red.text, marginTop: 6, fontStyle: 'italic' as const }}>⚠ Une procédure judiciaire active peut impacter la vente et générer des coûts collectifs futurs.</div>
+              {p.date_debut && <div style={{ fontSize: 14, color: C.red.text, marginBottom: 3 }}>Depuis le {formatDate(p.date_debut)}{p.date_fin ? ` → ${formatDate(p.date_fin)}` : ''}</div>}
+              {p.commentaire && <div style={{ fontSize: 15, color: C.red.text, marginTop: 4 }}>{p.commentaire}</div>}
+              <div style={{ fontSize: 14, color: C.red.text, marginTop: 6, fontStyle: 'italic' as const }}>⚠ Une procédure judiciaire active peut impacter la vente et générer des coûts collectifs futurs.</div>
             </div>
           ))}
         </div>
@@ -1013,15 +1021,15 @@ function RendererCarnetEntretien({ r }: { r: any }) {
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏢 Syndic</div>
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
-            {r.syndic && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👤</span><span style={{ fontWeight: 600 }}>{r.syndic}</span></div>}
-            {r.syndic_adresse && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📍</span><span>{r.syndic_adresse}</span></div>}
-            {r.syndic_responsable && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👨‍💼</span><span>Principal : {r.syndic_responsable}</span></div>}
-            {r.syndic_gestionnaire && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👩‍💼</span><span>Gestionnaire : {r.syndic_gestionnaire}</span></div>}
-            {r.syndic_comptable && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🧾</span><span>Comptable : {r.syndic_comptable}</span></div>}
-            {r.syndic_email && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>✉️</span><span>{r.syndic_email}</span></div>}
-            {r.syndic_date_designation && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📅</span><span>Désigné le {formatDate(r.syndic_date_designation)}</span></div>}
-            {r.syndic_garantie && <div style={{ display: 'flex', gap: 8, fontSize: 12, color: C.textSec }}><span>🛡</span><span>Garantie : {r.syndic_garantie}</span></div>}
-            {r.syndic_carte_pro && <div style={{ display: 'flex', gap: 8, fontSize: 12, color: C.textSec }}><span>🏛</span><span>Carte pro : {r.syndic_carte_pro}</span></div>}
+            {r.syndic && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>👤</span><span style={{ fontWeight: 600 }}>{r.syndic}</span></div>}
+            {r.syndic_adresse && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📍</span><span>{r.syndic_adresse}</span></div>}
+            {r.syndic_responsable && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>👨‍💼</span><span>Principal : {r.syndic_responsable}</span></div>}
+            {r.syndic_gestionnaire && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>👩‍💼</span><span>Gestionnaire : {r.syndic_gestionnaire}</span></div>}
+            {r.syndic_comptable && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🧾</span><span>Comptable : {r.syndic_comptable}</span></div>}
+            {r.syndic_email && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>✉️</span><span>{r.syndic_email}</span></div>}
+            {r.syndic_date_designation && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📅</span><span>Désigné le {formatDate(r.syndic_date_designation)}</span></div>}
+            {r.syndic_garantie && <div style={{ display: 'flex', gap: 8, fontSize: 14, color: C.textSec }}><span>🛡</span><span>Garantie : {r.syndic_garantie}</span></div>}
+            {r.syndic_carte_pro && <div style={{ display: 'flex', gap: 8, fontSize: 14, color: C.textSec }}><span>🏛</span><span>Carte pro : {r.syndic_carte_pro}</span></div>}
           </div>
         </div>
 
@@ -1029,15 +1037,15 @@ function RendererCarnetEntretien({ r }: { r: any }) {
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏗 Infos copropriété</div>
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
-            {r.annee_construction && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📅</span><span>Construit en {r.annee_construction}</span></div>}
-            {r.nb_batiments && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏢</span><span>{r.nb_batiments} bâtiment{r.nb_batiments > 1 ? 's' : ''}</span></div>}
-            {nbLotsTotal && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏘</span><span>{nbLotsTotal} lots au total{r.nb_lots_secondaires ? ` (${r.nb_lots_principaux} principaux · ${r.nb_lots_secondaires} secondaires)` : ''}</span></div>}
-            {r.nb_lots_detail?.logements && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏠</span><span>{r.nb_lots_detail.logements} logements{r.nb_lots_detail.caves ? ` · ${r.nb_lots_detail.caves} caves` : ''}{r.nb_lots_detail.parkings ? ` · ${r.nb_lots_detail.parkings} parkings` : ''}</span></div>}
-            {r.immatriculation_registre && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📋</span><span>Immat. : {r.immatriculation_registre}</span></div>}
+            {r.annee_construction && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📅</span><span>Construit en {r.annee_construction}</span></div>}
+            {r.nb_batiments && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🏢</span><span>{r.nb_batiments} bâtiment{r.nb_batiments > 1 ? 's' : ''}</span></div>}
+            {nbLotsTotal && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🏘</span><span>{nbLotsTotal} lots au total{r.nb_lots_secondaires ? ` (${r.nb_lots_principaux} principaux · ${r.nb_lots_secondaires} secondaires)` : ''}</span></div>}
+            {r.nb_lots_detail?.logements && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🏠</span><span>{r.nb_lots_detail.logements} logements{r.nb_lots_detail.caves ? ` · ${r.nb_lots_detail.caves} caves` : ''}{r.nb_lots_detail.parkings ? ` · ${r.nb_lots_detail.parkings} parkings` : ''}</span></div>}
+            {r.immatriculation_registre && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📋</span><span>Immat. : {r.immatriculation_registre}</span></div>}
 
-            {r.fibre_optique != null && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>💾</span><span>Fibre optique : {r.fibre_optique ? 'Oui' : 'Non'}</span></div>}
-            {r.rcp_info?.date_origine && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📜</span><span>RCP de {formatDate(r.rcp_info.date_origine)}{r.rcp_info.modificatifs?.length > 0 ? ` · ${r.rcp_info.modificatifs.length} modificatif(s)` : ''}</span></div>}
-            {r.assurance?.compagnie && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🛡</span><span>Assurance : {r.assurance.compagnie}{r.assurance.police ? ` — Police n°${r.assurance.police}` : ''}{r.assurance.echeance ? ` · Éch. ${formatDate(r.assurance.echeance)}` : ''}</span></div>}
+            {r.fibre_optique != null && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>💾</span><span>Fibre optique : {r.fibre_optique ? 'Oui' : 'Non'}</span></div>}
+            {r.rcp_info?.date_origine && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📜</span><span>RCP de {formatDate(r.rcp_info.date_origine)}{r.rcp_info.modificatifs?.length > 0 ? ` · ${r.rcp_info.modificatifs.length} modificatif(s)` : ''}</span></div>}
+            {r.assurance?.compagnie && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🛡</span><span>Assurance : {r.assurance.compagnie}{r.assurance.police ? ` — Police n°${r.assurance.police}` : ''}{r.assurance.echeance ? ` · Éch. ${formatDate(r.assurance.echeance)}` : ''}</span></div>}
           </div>
         </div>
 
@@ -1047,7 +1055,7 @@ function RendererCarnetEntretien({ r }: { r: any }) {
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
             {/* Chauffage — uniquement si renseigné */}
             {r.chauffage_collectif !== null && r.chauffage_collectif !== undefined && (
-              <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text, alignItems: 'center' }}>
                 <span>🔥</span>
                 <span>Chauffage · {r.chauffage_collectif ? 'Collectif' : 'Individuel'}{r.type_chauffage ? ` ${r.type_chauffage.charAt(0).toUpperCase() + r.type_chauffage.slice(1).toLowerCase()}` : ''}</span>
                 {!r.chauffage_collectif && <TooltipIcon text="Non inclus dans les charges de copropriété. Demandez les dernières factures au vendeur pour estimer votre budget chauffage." />}
@@ -1055,7 +1063,7 @@ function RendererCarnetEntretien({ r }: { r: any }) {
             )}
             {/* Eau chaude — uniquement si renseigné */}
             {r.eau_chaude_collective !== null && r.eau_chaude_collective !== undefined && (
-              <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text, alignItems: 'center' }}>
                 <span>🚿</span>
                 <span>Eau chaude · {r.eau_chaude_collective ? 'Collective' : 'Individuelle'}{r.type_chauffage && !r.eau_chaude_collective ? ` ${r.type_chauffage.charAt(0).toUpperCase() + r.type_chauffage.slice(1).toLowerCase()}` : ''}</span>
                 {!r.eau_chaude_collective && <TooltipIcon text="Non incluse dans les charges. Demandez les factures au vendeur pour estimer le coût annuel." />}
@@ -1063,14 +1071,14 @@ function RendererCarnetEntretien({ r }: { r: any }) {
             )}
             {/* Eau froide — uniquement si renseigné */}
             {r.eau_froide_collective !== null && r.eau_froide_collective !== undefined && (
-              <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text, alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text, alignItems: 'center' }}>
                 <span>💧</span>
                 <span>Eau froide · {r.eau_froide_collective ? 'Collective' : 'Individuelle'}</span>
                 {!r.eau_froide_collective && <TooltipIcon text="Chaque lot a son propre compteur — vous payez à la consommation réelle." />}
               </div>
             )}
             {/* Gardien si présent */}
-            {r.gardien?.nom && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👷</span><span>Gardien(ne) : {r.gardien.nom}</span></div>}
+            {r.gardien?.nom && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>👷</span><span>Gardien(ne) : {r.gardien.nom}</span></div>}
           </div>
         </div>
       </div>
@@ -1085,8 +1093,8 @@ function RendererCarnetEntretien({ r }: { r: any }) {
               <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 20px', borderBottom: i < r.diagnostics_parties_communes.length - 1 ? `0.5px solid ${C.border}` : 'none' }}>
                 <div>
                   <div style={{ fontSize: 14, color: C.text }}>{d.label || d.type}</div>
-                  {(d.entreprise || d.date) && <div style={{ fontSize: 12, color: C.textSec, marginTop: 3 }}>{[d.entreprise, formatDate(d.date)].filter(Boolean).join(' · ')}</div>}
-                  {d.commentaire && <div style={{ fontSize: 12, color: C.textSec, marginTop: 2, fontStyle: 'italic' as const }}>{d.commentaire}</div>}
+                  {(d.entreprise || d.date) && <div style={{ fontSize: 14, color: C.textSec, marginTop: 3 }}>{[d.entreprise, formatDate(d.date)].filter(Boolean).join(' · ')}</div>}
+                  {d.commentaire && <div style={{ fontSize: 14, color: C.textSec, marginTop: 2, fontStyle: 'italic' as const }}>{d.commentaire}</div>}
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: dc.bg, color: dc.text, border: `0.5px solid ${dc.border}`, whiteSpace: 'nowrap' as const, marginLeft: 16 }}>
                   {diagLabel(d.resultat || 'non_effectue')}
@@ -1122,7 +1130,7 @@ function RendererCarnetEntretien({ r }: { r: any }) {
                 <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}` }}>
                   <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{c.equipement}</td>
                   <td style={{ padding: '11px 20px', fontSize: 14, color: C.textSec }}>{c.prestataire || '—'}</td>
-                  <td style={{ padding: '11px 20px', fontSize: 13, color: C.textSec }}>{c.reference || '—'}</td>
+                  <td style={{ padding: '11px 20px', fontSize: 15, color: C.textSec }}>{c.reference || '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -1142,8 +1150,8 @@ function RendererCarnetEntretien({ r }: { r: any }) {
               <div>
                 <div style={{ fontSize: 14, color: C.text, fontWeight: 500 }}>{t.label}</div>
                 <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
-                  {t.date_ag && <span style={{ fontSize: 12, color: C.textSec }}>📅 Voté le {formatDate(t.date_ag)}</span>}
-                  {t.entreprise && <span style={{ fontSize: 12, color: C.textSec }}>🏢 {t.entreprise}</span>}
+                  {t.date_ag && <span style={{ fontSize: 14, color: C.textSec }}>📅 Voté le {formatDate(t.date_ag)}</span>}
+                  {t.entreprise && <span style={{ fontSize: 14, color: C.textSec }}>🏢 {t.entreprise}</span>}
                 </div>
               </div>
               {t.montant && (
@@ -1169,7 +1177,7 @@ function RendererCarnetEntretien({ r }: { r: any }) {
                   <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 600, color: C.text, whiteSpace: 'nowrap' as const }}>{t.annee}</td>
                   <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>
                     <div>{t.label}</div>
-                    {t.entreprise && <div style={{ fontSize: 12, color: C.textSec, marginTop: 2 }}>{t.entreprise}{t.assurance_do ? ` · DO : ${t.assurance_do}` : ''}</div>}
+                    {t.entreprise && <div style={{ fontSize: 14, color: C.textSec, marginTop: 2 }}>{t.entreprise}{t.assurance_do ? ` · DO : ${t.assurance_do}` : ''}</div>}
                     {t.financement === 'en_cours' && <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, padding: '2px 8px', borderRadius: 100, display: 'inline-block', background: C.orange.bg, color: C.orange.text, border: `0.5px solid ${C.orange.border}` }}>⏳ Financement en cours</div>}
                   </td>
                   <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: C.text, textAlign: 'right' as const, whiteSpace: 'nowrap' as const }}>{t.montant ? `${Number(t.montant).toLocaleString('fr-FR')} €` : '—'}</td>
@@ -1186,8 +1194,8 @@ function RendererCarnetEntretien({ r }: { r: any }) {
           <CardHeader label="INFORMATIONS COMPLÉMENTAIRES" color={C.gray.dot} />
           {r.infos_complementaires.map((info: any, i: number) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: i < r.infos_complementaires.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary, gap: 16 }}>
-              <span style={{ fontSize: 13, color: C.textSec }}>{info.label}</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: C.text, textAlign: 'right' as const, flexShrink: 0, maxWidth: '55%' }}>{info.valeur}</span>
+              <span style={{ fontSize: 15, color: C.textSec }}>{info.label}</span>
+              <span style={{ fontSize: 15, fontWeight: 600, color: C.text, textAlign: 'right' as const, flexShrink: 0, maxWidth: '55%' }}>{info.valeur}</span>
             </div>
           ))}
         </div>
@@ -1211,7 +1219,7 @@ function RendererPreEtatDate({ r }: { r: any }) {
       <div style={{ background: C.dark, borderRadius: 14, padding: '22px 28px', marginBottom: 16 }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', marginBottom: 8, textTransform: 'uppercase' as const }}>Pré-État Daté</div>
         <div style={{ fontSize: 20, fontWeight: 600, color: '#fff', marginBottom: sub ? 6 : 0, lineHeight: 1.3 }}>{r.titre}</div>
-        {sub && <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: r.lots_vente?.length > 0 ? 12 : 0 }}>{sub}</div>}
+        {sub && <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: r.lots_vente?.length > 0 ? 12 : 0 }}>{sub}</div>}
         {r.lots_vente?.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, marginTop: 10 }}>
             <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', alignSelf: 'center', marginRight: 2 }}>Document portant sur :</span>
@@ -1232,9 +1240,9 @@ function RendererPreEtatDate({ r }: { r: any }) {
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏢 Syndic</div>
           {r.syndic && <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>{r.syndic}</div>}
-          {r.syndic_adresse && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 4 }}>📍 {r.syndic_adresse}</div>}
-          {r.date && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 4 }}>📅 Document établi le {formatDate(r.date)}</div>}
-          {r.nb_lots_copro && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 4 }}>🏘 Copropriété de {r.nb_lots_copro} lots</div>}
+          {r.syndic_adresse && <div style={{ fontSize: 14, color: C.textSec, marginBottom: 4 }}>📍 {r.syndic_adresse}</div>}
+          {r.date && <div style={{ fontSize: 14, color: C.textSec, marginBottom: 4 }}>📅 Document établi le {formatDate(r.date)}</div>}
+          {r.nb_lots_copro && <div style={{ fontSize: 14, color: C.textSec, marginBottom: 4 }}>🏘 Copropriété de {r.nb_lots_copro} lots</div>}
           {r.immatriculation_registre && <div style={{ fontSize: 11, color: C.textSec, marginTop: 6, padding: '4px 8px', background: C.bgSecondary, borderRadius: 6 }}>Immat. {r.immatriculation_registre}</div>}
         </div>
 
@@ -1298,9 +1306,9 @@ function RendererPreEtatDate({ r }: { r: any }) {
       {/* KPIs acheteur */}
       <KpiGrid>
         <div style={{ background: Number(r.impayes_vendeur) === 0 ? C.green.bg : C.red.bg, border: `0.5px solid ${Number(r.impayes_vendeur) === 0 ? C.green.border : C.red.border}`, borderRadius: 12, padding: '18px 20px' }}>
-          <div style={{ fontSize: 12, color: C.textSec, marginBottom: 8 }}>Impayés vendeur</div>
+          <div style={{ fontSize: 14, color: C.textSec, marginBottom: 8 }}>Impayés vendeur</div>
           <div style={{ fontSize: 22, fontWeight: 600, color: Number(r.impayes_vendeur) === 0 ? '#16a34a' : '#dc2626' }}>{r.impayes_vendeur !== undefined ? `${Number(r.impayes_vendeur).toLocaleString('fr-FR')} €` : '—'}</div>
-          <div style={{ fontSize: 12, color: C.textSec, marginTop: 4 }}>{Number(r.impayes_vendeur) === 0 ? 'Vendeur à jour' : 'Attention'}</div>
+          <div style={{ fontSize: 14, color: C.textSec, marginTop: 4 }}>{Number(r.impayes_vendeur) === 0 ? 'Vendeur à jour' : 'Attention'}</div>
         </div>
         {r.fonds_travaux_alur && <Kpi label="Fonds travaux ALUR" value={`${Number(r.fonds_travaux_alur).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="À verser au vendeur à la signature" />}
         {r.fonds_roulement_acheteur && <Kpi label="Fonds de roulement" value={`${Number(r.fonds_roulement_acheteur).toLocaleString('fr-FR')} €`} color="#d97706" sub="À verser au vendeur à la signature" />}
@@ -1348,7 +1356,7 @@ function RendererPreEtatDate({ r }: { r: any }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '13px 20px', borderBottom: `0.5px solid ${C.border}` }}>
               <div>
                 <div style={{ fontSize: 14, color: C.text }}>Impayés globaux copropriété</div>
-                <div style={{ fontSize: 12, color: C.textSec, marginTop: 3 }}>Charges en attente de régularisation à la date d'édition</div>
+                <div style={{ fontSize: 14, color: C.textSec, marginTop: 3 }}>Charges en attente de régularisation à la date d'édition</div>
               </div>
               <span style={{ fontSize: 15, fontWeight: 600, color: '#d97706', whiteSpace: 'nowrap' as const, marginLeft: 16 }}>{Number(r.impayes_copro_global).toLocaleString('fr-FR')} €</span>
             </div>
@@ -1357,7 +1365,7 @@ function RendererPreEtatDate({ r }: { r: any }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '13px 20px', borderBottom: `0.5px solid ${C.border}` }}>
               <div>
                 <div style={{ fontSize: 14, color: C.text }}>Dette fournisseurs syndicat</div>
-                <div style={{ fontSize: 12, color: C.textSec, marginTop: 3 }}>Factures non réglées à la date du document</div>
+                <div style={{ fontSize: 14, color: C.textSec, marginTop: 3 }}>Factures non réglées à la date du document</div>
               </div>
               <span style={{ fontSize: 15, fontWeight: 600, color: '#d97706', whiteSpace: 'nowrap' as const, marginLeft: 16 }}>{Number(r.dette_fournisseurs).toLocaleString('fr-FR')} €</span>
             </div>
@@ -1431,7 +1439,7 @@ function RendererPreEtatDate({ r }: { r: any }) {
           </table>
           <div style={{ padding: '16px 20px', background: C.bgSecondary, borderTop: `0.5px solid ${C.border}` }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: C.textSec, marginBottom: 6 }}>💡 Comment lire ce tableau ?</div>
-            <div style={{ fontSize: 13, color: C.textSec, lineHeight: 1.7 }}>Le <strong>budget appelé</strong> est ce que la copropriété a prévu de dépenser sur l'exercice. Les <strong>charges réelles</strong> sont ce qui a été effectivement dépensé après clôture de l'exercice. Un petit écart est tout à fait normal — personne ne peut prévoir les dépenses à l'euro près. C'est seulement un écart important et répété sur plusieurs exercices qui mérite attention.</div>
+            <div style={{ fontSize: 15, color: C.textSec, lineHeight: 1.7 }}>Le <strong>budget appelé</strong> est ce que la copropriété a prévu de dépenser sur l'exercice. Les <strong>charges réelles</strong> sont ce qui a été effectivement dépensé après clôture de l'exercice. Un petit écart est tout à fait normal — personne ne peut prévoir les dépenses à l'euro près. C'est seulement un écart important et répété sur plusieurs exercices qui mérite attention.</div>
           </div>
         </div>
       )}
@@ -1456,7 +1464,7 @@ function RendererEtatDate({ r }: { r: any }) {
       <div style={{ background: C.dark, borderRadius: 14, padding: '22px 28px', marginBottom: 16 }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', marginBottom: 8, textTransform: 'uppercase' as const }}>État Daté</div>
         <div style={{ fontSize: 20, fontWeight: 600, color: '#fff', marginBottom: sub ? 6 : 0, lineHeight: 1.3 }}>{r.titre}</div>
-        {sub && <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: r.lots_vente?.length > 0 ? 12 : 0 }}>{sub}</div>}
+        {sub && <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: r.lots_vente?.length > 0 ? 12 : 0 }}>{sub}</div>}
         {r.lots_vente?.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, marginTop: 10 }}>
             <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', alignSelf: 'center', marginRight: 2 }}>Document portant sur :</span>
@@ -1476,9 +1484,9 @@ function RendererEtatDate({ r }: { r: any }) {
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏢 Syndic</div>
           {r.syndic && <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>{r.syndic}</div>}
-          {r.syndic_adresse && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 4 }}>📍 {r.syndic_adresse}</div>}
-          {r.date && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 4 }}>📅 Document établi le {formatDate(r.date)}</div>}
-          {r.nb_lots_copro && <div style={{ fontSize: 12, color: C.textSec }}>🏘 {r.nb_lots_copro} lots dans la copropriété</div>}
+          {r.syndic_adresse && <div style={{ fontSize: 14, color: C.textSec, marginBottom: 4 }}>📍 {r.syndic_adresse}</div>}
+          {r.date && <div style={{ fontSize: 14, color: C.textSec, marginBottom: 4 }}>📅 Document établi le {formatDate(r.date)}</div>}
+          {r.nb_lots_copro && <div style={{ fontSize: 14, color: C.textSec }}>🏘 {r.nb_lots_copro} lots dans la copropriété</div>}
           {r.immatriculation_registre && <div style={{ fontSize: 11, color: C.textSec, marginTop: 6, padding: '4px 8px', background: C.bgSecondary, borderRadius: 6 }}>Immat. {r.immatriculation_registre}</div>}
         </div>
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
@@ -1610,7 +1618,7 @@ function RendererEtatDate({ r }: { r: any }) {
           </table>
           <div style={{ padding: '16px 20px', background: C.bgSecondary, borderTop: `0.5px solid ${C.border}` }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: C.textSec, marginBottom: 6 }}>💡 Comment lire ce tableau ?</div>
-            <div style={{ fontSize: 13, color: C.textSec, lineHeight: 1.7 }}>Le <strong>budget appelé</strong> est ce que la copropriété a prévu de dépenser sur l'exercice. Les <strong>charges réelles</strong> sont ce qui a été effectivement dépensé après clôture de l'exercice. Un petit écart est tout à fait normal — personne ne peut prévoir les dépenses à l'euro près. C'est seulement un écart important et répété sur plusieurs exercices qui mérite attention.</div>
+            <div style={{ fontSize: 15, color: C.textSec, lineHeight: 1.7 }}>Le <strong>budget appelé</strong> est ce que la copropriété a prévu de dépenser sur l'exercice. Les <strong>charges réelles</strong> sont ce qui a été effectivement dépensé après clôture de l'exercice. Un petit écart est tout à fait normal — personne ne peut prévoir les dépenses à l'euro près. C'est seulement un écart important et répété sur plusieurs exercices qui mérite attention.</div>
           </div>
         </div>
       )}
@@ -1644,7 +1652,7 @@ function RendererTaxeFonciere({ r }: { r: any }) {
               {r.decomposition.map((d: any, i: number) => (
                 <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}`, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
                   <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{d.collectivite}</td>
-                  <td style={{ padding: '11px 20px', fontSize: 13, color: C.textSec, textAlign: 'center' }}>{d.taux ? `${d.taux}%` : '—'}</td>
+                  <td style={{ padding: '11px 20px', fontSize: 15, color: C.textSec, textAlign: 'center' }}>{d.taux ? `${d.taux}%` : '—'}</td>
                   <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: C.text, textAlign: 'right' }}>{d.montant ? `${Number(d.montant).toLocaleString('fr-FR')} €` : '—'}</td>
                 </tr>
               ))}
@@ -1700,7 +1708,7 @@ function RendererCompromis({ r }: { r: any }) {
                 return (
                   <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}`, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
                     <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{c.label}</td>
-                    <td style={{ padding: '11px 20px', fontSize: 13, color: C.textSec }}>{c.detail || '—'}</td>
+                    <td style={{ padding: '11px 20px', fontSize: 15, color: C.textSec }}>{c.detail || '—'}</td>
                     <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: '#dc2626', textAlign: 'center' }}>{formatDate(c.date_limite) || '—'}</td>
                     <td style={{ padding: '11px 20px', textAlign: 'center' }}><span style={{ fontSize: 12, padding: '3px 10px', borderRadius: 100, background: sc.bg, color: sc.text, border: `0.5px solid ${sc.border}` }}>{sc.label}</span></td>
                   </tr>
@@ -1787,7 +1795,7 @@ function RendererDiagCommunes({ r }: { r: any }) {
       <div style={{ background: C.dark, borderRadius: 14, padding: '22px 28px', marginBottom: 16 }}>
         <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', marginBottom: 8, textTransform: 'uppercase' as const }}>{typeLabel}</div>
         <div style={{ fontSize: 19, fontWeight: 600, color: '#fff', marginBottom: 6, lineHeight: 1.3 }}>{r.titre}</div>
-        {r.commanditaire && <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 4 }}>{r.commanditaire}</div>}
+        {r.commanditaire && <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 4 }}>{r.commanditaire}</div>}
         <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6, marginTop: 10 }}>
           {headerBadges.map((b, i) => (
             <span key={i} style={{ fontSize: 11, fontWeight: 600, padding: '4px 12px', borderRadius: 100, background: 'rgba(255,255,255,0.1)', border: '0.5px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.85)' }}>{b.label}</span>
@@ -1847,11 +1855,11 @@ function RendererDiagCommunes({ r }: { r: any }) {
                 <div key={i} style={{ background: C.bgSecondary, border: `0.5px solid ${C.border}`, borderRadius: 12, padding: '14px 16px' }}>
                   <div style={{ fontSize: 10, fontWeight: 600, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8 }}>{i === 0 ? 'Rapport initial' : 'Rapport complémentaire'} · {rap.annee || ''}</div>
                   <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
-                    {rap.cabinet && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏢</span><span style={{ fontWeight: 600 }}>{rap.cabinet}</span></div>}
-                    {rap.operateur && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👤</span><span>{rap.operateur}</span></div>}
-                    {rap.date && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📅</span><span>{formatDate(rap.date)}</span></div>}
-                    {rap.perimetre && <div style={{ display: 'flex', gap: 8, fontSize: 12, color: C.textSec }}><span>📍</span><span>{rap.perimetre}</span></div>}
-                    {rap.certification && <div style={{ display: 'flex', gap: 8, fontSize: 12, color: C.textSec }}><span>🏅</span><span>{rap.certification}</span></div>}
+                    {rap.cabinet && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🏢</span><span style={{ fontWeight: 600 }}>{rap.cabinet}</span></div>}
+                    {rap.operateur && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>👤</span><span>{rap.operateur}</span></div>}
+                    {rap.date && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📅</span><span>{formatDate(rap.date)}</span></div>}
+                    {rap.perimetre && <div style={{ display: 'flex', gap: 8, fontSize: 14, color: C.textSec }}><span>📍</span><span>{rap.perimetre}</span></div>}
+                    {rap.certification && <div style={{ display: 'flex', gap: 8, fontSize: 14, color: C.textSec }}><span>🏅</span><span>{rap.certification}</span></div>}
                   </div>
                 </div>
               ))}
@@ -1862,25 +1870,25 @@ function RendererDiagCommunes({ r }: { r: any }) {
               {(r.cabinet || r.rapports?.[0]?.cabinet) && (
                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                   <span style={{ fontSize: 16 }}>🏢</span>
-                  <div><div style={{ fontSize: 11, color: C.textSec, marginBottom: 2 }}>Entreprise</div><div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.cabinet || r.rapports?.[0]?.cabinet}</div></div>
+                  <div><div style={{ fontSize: 11, color: C.textSec, marginBottom: 2 }}>Entreprise</div><div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>{r.cabinet || r.rapports?.[0]?.cabinet}</div></div>
                 </div>
               )}
               {(r.operateur || r.rapports?.[0]?.operateur) && (
                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                   <span style={{ fontSize: 16 }}>👤</span>
-                  <div><div style={{ fontSize: 11, color: C.textSec, marginBottom: 2 }}>Opérateur</div><div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.operateur || r.rapports?.[0]?.operateur}</div></div>
+                  <div><div style={{ fontSize: 11, color: C.textSec, marginBottom: 2 }}>Opérateur</div><div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>{r.operateur || r.rapports?.[0]?.operateur}</div></div>
                 </div>
               )}
               {(r.date || r.rapports?.[0]?.date) && (
                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                   <span style={{ fontSize: 16 }}>📅</span>
-                  <div><div style={{ fontSize: 11, color: C.textSec, marginBottom: 2 }}>Date de réalisation</div><div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{formatDate(r.date || r.rapports?.[0]?.date)}</div></div>
+                  <div><div style={{ fontSize: 11, color: C.textSec, marginBottom: 2 }}>Date de réalisation</div><div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>{formatDate(r.date || r.rapports?.[0]?.date)}</div></div>
                 </div>
               )}
               {(r.certification || r.rapports?.[0]?.certification) && (
                 <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                   <span style={{ fontSize: 16 }}>🏅</span>
-                  <div><div style={{ fontSize: 11, color: C.textSec, marginBottom: 2 }}>Certification</div><div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{r.certification || r.rapports?.[0]?.certification}</div></div>
+                  <div><div style={{ fontSize: 11, color: C.textSec, marginBottom: 2 }}>Certification</div><div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>{r.certification || r.rapports?.[0]?.certification}</div></div>
                 </div>
               )}
             </div>
@@ -1893,8 +1901,8 @@ function RendererDiagCommunes({ r }: { r: any }) {
         <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
           <div style={{ padding: '14px 20px', borderBottom: `0.5px solid ${C.border}`, background: C.bgSecondary, display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 9, height: 9, borderRadius: '50%', background: nonDetecte ? C.green.dot : C.red.dot, flexShrink: 0 }} />
-            <div style={{ fontSize: 12, fontWeight: 700, color: C.text, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>Localisations du rapport</div>
-            <div style={{ fontSize: 12, color: C.textSec }}>— {r.zones_par_localisation.length} zone{r.zones_par_localisation.length > 1 ? 's' : ''}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: C.text, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>Localisations du rapport</div>
+            <div style={{ fontSize: 14, color: C.textSec }}>— {r.zones_par_localisation.length} zone{r.zones_par_localisation.length > 1 ? 's' : ''}</div>
           </div>
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {r.zones_par_localisation.map((groupe: any, gi: number) => {
@@ -1910,8 +1918,8 @@ function RendererDiagCommunes({ r }: { r: any }) {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ fontSize: 15 }}>{groupe.emoji || '📍'}</span>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{groupe.localisation}</span>
-                    <span style={{ fontSize: 12, color: C.textSec }}>{groupe.zones?.length || 0} matériau{(groupe.zones?.length || 0) > 1 ? 'x' : ''}</span>
+                    <span style={{ fontSize: 15, fontWeight: 600, color: C.text }}>{groupe.localisation}</span>
+                    <span style={{ fontSize: 14, color: C.textSec }}>{groupe.zones?.length || 0} matériau{(groupe.zones?.length || 0) > 1 ? 'x' : ''}</span>
                     {groupe.rapport_annee && <span style={{ fontSize: 11, color: C.textSec }}>· {groupe.cabinet || ''} {groupe.rapport_annee}</span>}
                     {hasAC1 && <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 100, background: C.red.bg, color: C.red.text, border: `0.5px solid ${C.red.border}` }}>AC1</span>}
                   </div>
@@ -1929,14 +1937,14 @@ function RendererDiagCommunes({ r }: { r: any }) {
                       const isAC1 = z.action === 'AC1';
                       return (
                         <div key={zi} style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1.5fr', gap: 8, padding: '10px 20px', borderBottom: zi < groupe.zones.length - 1 ? `0.5px solid ${C.border}` : 'none', alignItems: 'center', background: isAC1 ? C.red.bg : zi % 2 === 0 ? C.bg : C.bgSecondary }}>
-                          <span style={{ fontSize: 13, color: C.text }}>{z.localisation_detail || z.identifiant || '—'}</span>
-                          <span style={{ fontSize: 13, color: C.textSec }}>{z.materiau || '—'}</span>
+                          <span style={{ fontSize: 15, color: C.text }}>{z.localisation_detail || z.identifiant || '—'}</span>
+                          <span style={{ fontSize: 15, color: C.textSec }}>{z.materiau || '—'}</span>
                           <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: ac.bg, color: ac.text, border: `0.5px solid ${ac.border}`, display: 'inline-block', whiteSpace: 'nowrap' as const }}>{actionLabel(z.action)}</span>
                         </div>
                       );
                     })}
                     {groupe.plus && (
-                      <div style={{ padding: '9px 20px', fontSize: 12, color: C.textSec, fontStyle: 'italic' as const }}>{groupe.plus}</div>
+                      <div style={{ padding: '9px 20px', fontSize: 14, color: C.textSec, fontStyle: 'italic' as const }}>{groupe.plus}</div>
                     )}
                   </div>
                 )}
@@ -2014,26 +2022,26 @@ function RendererModificatifRCP({ r }: { r: any }) {
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>⚖️ Notaire</div>
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
-            {r.notaire?.nom && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>👤</span><span style={{ fontWeight: 600 }}>Me {r.notaire.nom}</span></div>}
-            {r.notaire?.etude && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏢</span><span>{r.notaire.etude}</span></div>}
-            {r.notaire?.ville && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📍</span><span>{r.notaire.ville}</span></div>}
+            {r.notaire?.nom && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>👤</span><span style={{ fontWeight: 600 }}>Me {r.notaire.nom}</span></div>}
+            {r.notaire?.etude && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🏢</span><span>{r.notaire.etude}</span></div>}
+            {r.notaire?.ville && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📍</span><span>{r.notaire.ville}</span></div>}
           </div>
         </div>
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>📋 Acte</div>
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
-            {r.type_modification && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏷</span><span style={{ fontWeight: 600 }}>{typeLabel[r.type_modification] || r.type_modification}</span></div>}
-            {r.date_acte && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📅</span><span>Acte du {formatDate(r.date_acte)}</span></div>}
+            {r.type_modification && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🏷</span><span style={{ fontWeight: 600 }}>{typeLabel[r.type_modification] || r.type_modification}</span></div>}
+            {r.date_acte && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📅</span><span>Acte du {formatDate(r.date_acte)}</span></div>}
             {r.date_acte_rectificatif && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.orange.text }}><span>⚠</span><span>Rectificatif du {formatDate(r.date_acte_rectificatif)}</span></div>}
-            {r.copropriete && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>🏘</span><span>{r.copropriete}</span></div>}
+            {r.copropriete && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🏘</span><span>{r.copropriete}</span></div>}
           </div>
         </div>
         <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, padding: '18px 20px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 12 }}>🏛 Publication foncière</div>
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
-            {r.publication_fonciere?.service && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📍</span><span>{r.publication_fonciere.service}</span></div>}
-            {r.publication_fonciere?.date && <div style={{ display: 'flex', gap: 8, fontSize: 13, color: C.text }}><span>📅</span><span>Publié le {formatDate(r.publication_fonciere.date)}</span></div>}
-            {!r.publication_fonciere?.service && !r.publication_fonciere?.date && <div style={{ fontSize: 13, color: C.textSec, fontStyle: 'italic' as const }}>À vérifier auprès du service de publicité foncière</div>}
+            {r.publication_fonciere?.service && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📍</span><span>{r.publication_fonciere.service}</span></div>}
+            {r.publication_fonciere?.date && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📅</span><span>Publié le {formatDate(r.publication_fonciere.date)}</span></div>}
+            {!r.publication_fonciere?.service && !r.publication_fonciere?.date && <div style={{ fontSize: 15, color: C.textSec, fontStyle: 'italic' as const }}>À vérifier auprès du service de publicité foncière</div>}
           </div>
         </div>
       </div>
@@ -2046,7 +2054,7 @@ function RendererModificatifRCP({ r }: { r: any }) {
               <div style={{ width: 32, height: 32, borderRadius: 8, background: C.bgSecondary, border: `0.5px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14 }}>{porteIcons[i] || '📌'}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 3 }}>{item.aspect}</div>
-                {item.detail && <div style={{ fontSize: 13, color: C.textSec, lineHeight: 1.6 }}>{item.detail}</div>}
+                {item.detail && <div style={{ fontSize: 15, color: C.textSec, lineHeight: 1.6 }}>{item.detail}</div>}
               </div>
             </div>
           ))}
@@ -2061,7 +2069,7 @@ function RendererModificatifRCP({ r }: { r: any }) {
               <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100, whiteSpace: 'nowrap' as const, flexShrink: 0, marginTop: 2, ...roleBadgeStyle(p.role) }}>{roleLabel(p.role)}</span>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{p.nom}</div>
-                {p.precision && <div style={{ fontSize: 12, color: C.textSec, marginTop: 2 }}>{p.precision}</div>}
+                {p.precision && <div style={{ fontSize: 14, color: C.textSec, marginTop: 2 }}>{p.precision}</div>}
               </div>
             </div>
           ))}
@@ -2078,8 +2086,8 @@ function RendererModificatifRCP({ r }: { r: any }) {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8 }}>
                   {r.impact_copropriete.lots_concernes.map((lot: any, i: number) => (
                     <div key={i} style={{ background: C.bgSecondary, border: `0.5px solid ${C.border}`, borderRadius: 10, padding: '10px 14px' }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 2 }}>{lot.numero ? `Lot n°${lot.numero}` : ''}{lot.type ? ` — ${lot.type}` : ''}</div>
-                      {lot.description && <div style={{ fontSize: 12, color: C.textSec, lineHeight: 1.4 }}>{lot.description}</div>}
+                      <div style={{ fontSize: 15, fontWeight: 600, color: C.text, marginBottom: 2 }}>{lot.numero ? `Lot n°${lot.numero}` : ''}{lot.type ? ` — ${lot.type}` : ''}</div>
+                      {lot.description && <div style={{ fontSize: 14, color: C.textSec, lineHeight: 1.4 }}>{lot.description}</div>}
                     </div>
                   ))}
                 </div>
@@ -2115,7 +2123,7 @@ function RendererModificatifRCP({ r }: { r: any }) {
               <span style={{ color: '#BA7517', fontWeight: 700, flexShrink: 0, marginTop: 1, fontSize: 14 }}>⚠</span>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 3 }}>{p.label}</div>
-                {p.detail && <div style={{ fontSize: 13, color: C.textSec, lineHeight: 1.6 }}>{p.detail}</div>}
+                {p.detail && <div style={{ fontSize: 15, color: C.textSec, lineHeight: 1.6 }}>{p.detail}</div>}
               </div>
             </div>
           ))}
@@ -2127,8 +2135,8 @@ function RendererModificatifRCP({ r }: { r: any }) {
         <MBlock label="Informations complémentaires" borderColor="#D3D1C7" headerBg="#F1EFE8" dotColor="#888780" labelColor="#5F5E5A">
           {r.infos_complementaires.map((info: any, i: number) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 20px', borderBottom: i < r.infos_complementaires.length - 1 ? `0.5px solid ${C.border}` : 'none', background: C.bg, gap: 16 }}>
-              <span style={{ fontSize: 13, color: C.textSec }}>{info.label}</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: C.text, textAlign: 'right' as const, flexShrink: 0, maxWidth: '60%' }}>{info.valeur}</span>
+              <span style={{ fontSize: 15, color: C.textSec }}>{info.label}</span>
+              <span style={{ fontSize: 15, fontWeight: 600, color: C.text, textAlign: 'right' as const, flexShrink: 0, maxWidth: '60%' }}>{info.valeur}</span>
             </div>
           ))}
         </MBlock>
@@ -2160,7 +2168,7 @@ function RendererAutre({ r }: { r: any }) {
           {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
           {r.contenu.map((c: any, i: number) => (
             <div key={i} style={{ padding: '14px 20px', borderBottom: i < r.contenu.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
-              {c.section && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 4, fontWeight: 500 }}>{c.section}</div>}
+              {c.section && <div style={{ fontSize: 14, color: C.textSec, marginBottom: 4, fontWeight: 500 }}>{c.section}</div>}
               <div style={{ fontSize: 14, color: C.text }}>{c.detail}</div>
             </div>
           ))}
