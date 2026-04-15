@@ -753,7 +753,11 @@ function RendererAppelCharges({ r }: { r: any }) {
           {r.reference_dossier && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📋</span><span>Réf. : {r.reference_dossier}</span></div>}
           {r.echeance && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📅</span><span>Échéance : {r.echeance}</span></div>}
         </div>
-      </div> && <Kpi label="Appel pour ce trimestre" value={`${Number(r.montant_trimestre).toLocaleString('fr-FR')} €`} />}
+      </div>
+
+      {/* KPIs */}
+      <KpiGrid>
+        {r.montant_trimestre && <Kpi label="Appel pour ce trimestre" value={`${Number(r.montant_trimestre).toLocaleString('fr-FR')} €`} />}
         {r.montant_mensuel && <Kpi label="Charges mensuelles" value={`${Number(r.montant_mensuel).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="/ mois" />}
         {r.montant_annuel && <Kpi label="Charges annuelles estimées" value={`${Number(r.montant_annuel).toLocaleString('fr-FR')} €`} color="#2a7d9c" sub="× 4 trimestres" />}
       </KpiGrid>
