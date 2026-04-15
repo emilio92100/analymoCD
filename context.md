@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet complet — 12 avril 2026
+# VERIMO — Contexte projet complet — 15 avril 2026
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -10,7 +10,10 @@
 - Pour créer un nouveau fichier : GitHub → dossier cible → "Add file" → "Create new file"
 - Vercel redéploie automatiquement après chaque push GitHub
 - Claude peut cloner le repo : `https://github.com/emilio92100/analymoCD.git`
-- Claude doit toujours re-cloner avant de modifier, puis donner le fichier COMPLET à coller
+- Claude doit **toujours re-cloner** avant de modifier : `git clone https://github.com/emilio92100/analymoCD.git`
+- Claude livre les fichiers via `present_files` depuis `/mnt/user-data/outputs/`
+- L'utilisateur push manuellement sur GitHub
+- **Ne jamais coder sans accord préalable** — toujours échanger et valider avant de toucher au code
 
 ---
 
@@ -134,7 +137,6 @@ fetch(`${supabaseUrl}/functions/v1/analyser-run`, {
 
 ### Processing bloqué — causes connues
 - Redéploiement d'`analyser-run` pendant une analyse en cours → shutdown coupe le `waitUntil`
-- Analyses simultanées sans redéploiement : OK, chaque invocation est indépendante
 - Solution : supprimer l'analyse bloquée et relancer
 
 ---
@@ -153,6 +155,7 @@ fetch(`${supabaseUrl}/functions/v1/analyser-run`, {
 - Single-call Claude avec file_ids
 - Suppression RGPD immédiate après analyse
 - Verify JWT = **OFF** (obligatoire)
+- JSON `DIAGNOSTIC_PARTIES_COMMUNES` inclut `syndic` et `adresse_bien` ✅ (15 avril)
 
 ### Secrets Supabase
 - `ANTHROPIC_API_KEY` : clé API Anthropic
@@ -176,76 +179,88 @@ fetch(`${supabaseUrl}/functions/v1/analyser-run`, {
 | `src/lib/analyses.ts` | CRUD Supabase — createAnalyse, createApercu, fetchAnalyses, deductCredit, refundCredit |
 | `src/pages/RapportPage.tsx` | Affichage rapport standalone — onglets analyse complète + DocumentRenderer pour analyse simple |
 | `src/pages/dashboard/NouvelleAnalyse.tsx` | UX progression 2 colonnes, 4 étapes visuelles, logique crédits/aperçu + DocumentRenderer |
-| `src/pages/dashboard/DocumentRenderer.tsx` | **NOUVEAU** — Renderers par type de document pour analyse simple |
-| `src/pages/dashboard/DiagnosticCard.tsx` | **NOUVEAU** — Renderer intelligent par type de diagnostic DDT |
+| `src/pages/dashboard/DocumentRenderer.tsx` | Renderers par type de document pour analyse simple |
+| `src/pages/dashboard/DiagnosticCard.tsx` | Renderer intelligent par type de diagnostic DDT |
 | `src/pages/dashboard/MesAnalyses.tsx` | Liste analyses |
 | `src/pages/dashboard/HomeView.tsx` | Tableau de bord |
 | `src/pages/dashboard/Compte.tsx` | 3 encarts : crédits complets, crédits simples, analyses réalisées |
 
 ---
 
-## Analyse Simple Document — mode=document (NEW session 12 avril)
-
-### Principe
-L'analyse simple (1 document, 4,90€) utilise un prompt spécifique `buildDocumentPrompt` qui détecte le type de document et retourne un JSON structuré adapté. Rendu via `DocumentRenderer.tsx` + `DiagnosticCard.tsx`.
+## Analyse Simple Document — mode=document
 
 ### Types de documents détectés et leurs renderers
 
 | Type JSON | Renderer | Sections affichées |
 |---|---|---|
-| `DDT` | `RendererDDT` | Header, Résumé, Jauges DPE+GES, Surface (accordéon), Diagnostics triés (verts→rouges→info), Travaux DPE, SYNTHÈSE, Points+/vigilances côte à côte, Avis Verimo |
-| `PV_AG` | `RendererPVAG` | Header, Résumé, KPIs (budget/fonds/quorum), Travaux votés, Travaux évoqués, Questions diverses, Procédures, SYNTHÈSE, Avis |
-| `APPEL_CHARGES` | `RendererAppelCharges` | Header, Résumé, KPIs (trimestre/annuel/mensuel), Décomposition tableau, Infos lot, SYNTHÈSE, Avis |
+| `DDT` | `RendererDDT` | Header, Résumé, Jauges DPE+GES, Surface (accordéon), Diagnostics triés (verts→rouges→info), Travaux DPE, SYNTHÈSE, Points+/vigilances, Avis Verimo |
+| `PV_AG` | `RendererPVAG` | Header, Résumé, SectionKpi (L'assemblée / Participation / Chiffres clés), Travaux votés, Travaux évoqués, Questions diverses, Procédures, SYNTHÈSE, Avis |
+| `APPEL_CHARGES` | `RendererAppelCharges` | Header, Résumé, SectionKpi charges, KPIs (trimestre/annuel/mensuel), Décomposition tableau, Infos lot, SYNTHÈSE, Avis |
 | `RCP` | `RendererRCP` | Header, Résumé, KPIs, Parties communes (pills), Règles usage, Restrictions, SYNTHÈSE, Avis |
 | `DTG_PPT` | `RendererDTGPPT` | Header, Résumé, KPIs, Planning travaux tableau, État éléments, SYNTHÈSE, Avis |
-| `CARNET_ENTRETIEN` | `RendererCarnetEntretien` | Header, Résumé, Contrats maintenance, Historique travaux, Diagnostics mentionnés, SYNTHÈSE, Avis |
-| `PRE_ETAT_DATE` | `RendererPreEtatDate` | Header, Résumé, KPIs, Travaux charge vendeur, Procédures vendeur, SYNTHÈSE, Avis |
-| `ETAT_DATE` | `RendererEtatDate` | Header, Résumé, KPIs, Décompte définitif, Travaux consignés, SYNTHÈSE, Avis |
+| `CARNET_ENTRETIEN` | `RendererCarnetEntretien` | Header, Résumé, SectionKpi (Syndic / Infos copro / Énergie & Eau), Contrats maintenance, Historique travaux, SYNTHÈSE, Avis |
+| `PRE_ETAT_DATE` | `RendererPreEtatDate` | Header, Résumé, SectionKpi (Syndic / Situation vendeur / Copropriété), Travaux charge vendeur, Procédures vendeur, SYNTHÈSE, Avis |
+| `ETAT_DATE` | `RendererEtatDate` | Header, Résumé, SectionKpi (Syndic / Situation vendeur / Copropriété), Décompte définitif, Travaux consignés, SYNTHÈSE, Avis |
 | `TAXE_FONCIERE` | `RendererTaxeFonciere` | Header, Résumé, KPIs, Décomposition collectivités, Infos cadastrales, SYNTHÈSE, Avis |
 | `COMPROMIS` | `RendererCompromis` | Header, Résumé, 4 KPIs, Désignation bien, Conditions suspensives+dates, Financement, Dates clés, Clauses, Servitudes, SYNTHÈSE, Avis |
-| `DIAGNOSTIC_PARTIES_COMMUNES` | `RendererDiagCommunes` | Header, Résumé, KPIs, Zones détectées tableau, Zones saines pills, SYNTHÈSE, Avis |
+| `DIAGNOSTIC_PARTIES_COMMUNES` | `RendererDiagCommunes` | Header dark + adresse_bien, Résumé, Bloc vert impactant (non détecté) ou KPIs 4 chiffres, SectionKpi Diagnostiqueur(s), Zones non accessibles, Accordéon zones (AC1/EP visibles, non_detecte masqués), Zones saines, SYNTHÈSE, Avis |
+| `MODIFICATIF_RCP` | `RendererModificatifRCP` | Header, Résumé, SectionKpi (Notaire / Acte / Publication foncière), Sur quoi porte, Parties impliquées, Impact copro, Points attention, SYNTHÈSE, Avis |
 | `AUTRE` | `RendererAutre` | Header, Résumé, Infos clés, Contenu structuré, SYNTHÈSE, Avis |
 
-### Composants communs DocumentRenderer
-- `Header` — fond `#0f2d3d`, titre + sous-titre diagnostiqueur/syndic
-- `Card` — bordure 1px, borderRadius 14, shadow légère, marginBottom 20
-- `CardHeader` — fond grisé, dot coloré, texte uppercase gras
-- `Resume`, `KpiGrid`, `Kpi`, `InfoRow`, `TableHeader`
+### Composants communs DocumentRenderer (état au 15 avril 2026)
+
+#### Composants UI (design system)
+- **`Kpi`** — header bleu `#2a7d9c` + label blanc, valeur + sub en dessous
+- **`KpiGrid`** — intelligent : 1 KPI → centré max 400px, 2 → 2 col, 3+ → 3 col
+- **`SectionKpi`** — header bleu `#2a7d9c` + emoji + label blanc, corps blanc. Appliqué sur 18 blocs dans DDT, PV AG, Carnet entretien, Pré-état daté, État daté, Modificatif RCP, Appel de charges
+- `Resume` — bloc résumé standard
+- `InfoRow`, `TableHeader`
 - `DpeJauge` — jauge A→G avec barre active surlignée
-- `CarrezAccordeon` — surface totale visible, détail pièces en accordéon fermé, label dynamique (carrez|boutin|autre)
+- `CarrezAccordeon` — surface totale visible, détail pièces en accordéon fermé
 - `PointsFortsVigilances` — 2 colonnes côte à côte (vert/rouge)
 - `SeparateurSynthese` — ligne horizontale avec titre "SYNTHÈSE" — présent dans TOUS les renderers
 - `AvisVerimo` — fond sombre + lien "Analyse Complète"
 - `SafeRenderer` — try/catch global, fallback sur RendererAutre si crash
+- `TooltipIcon` — bulle `?` au survol
+- `formatDate` — formatage dates FR
+
+#### RendererDiagCommunes — détail (refonte 15 avril)
+- **Bloc vert impactant** si `resultat_global === 'non_detecte'` : cercle vert checkmark SVG 56px + titre 18px bold + sous-texte
+- **KPIs 4 colonnes** si amiante détecté : matériaux amiantés / AC1 / EP / zones saines
+- Résumé positionné juste après le header
+- SectionKpi header bleu 🔬 sur le bloc Diagnostiqueur
+- `syndic` affiché dans le bloc diagnostiqueur, `adresse_bien` dans le header
+- Zones non accessibles : alertes orange (réglementaire) ou bleues (informatif)
+- Accordéon : AC1/EP toujours visibles, `non_detecte` masqués → bouton vert toggle
+- Badge `⚠ AC1` dans les en-têtes d'accordéon
+- `nbDetectes` filtré : `action !== 'non_detecte'`
+
+### Design system (couleurs hardcodées — pas CSS vars)
+```
+Bg: #ffffff | BgSec: #f8fafc | Border: #e2e8f0 | Text: #0f172a | TextSec: #64748b
+Vert:   bg=#f0fdf4 / border=#bbf7d0 / text=#166534 / dot=#16a34a
+Rouge:  bg=#fef2f2 / border=#fecaca / text=#991b1b / dot=#dc2626
+Orange: bg=#fff7ed / border=#fed7aa / text=#92400e / dot=#d97706
+Bleu:   bg=#eff6ff / border=#bfdbfe / text=#1e40af / dot=#2563eb
+Gris:   bg=#f8fafc / border=#e2e8f0 / text=#64748b / dot=#94a3b8
+Header dark: #0f2d3d (conservé — décision finale)
+Bleu Verimo (SectionKpi / accents): #2a7d9c
+DPE: A=#16a34a B=#22c55e C=#84cc16 D=#eab308 E=#f97316 F=#ef4444 G=#991b1b
+```
 
 ### DiagnosticCard — renderers par type
-- `DiagAmiante` — badge Non détecté/Présence + résumé 1 ligne + accordéon DetailTexte
-- `DiagTermites` — badge + zone + accordéon
-- `DiagElectricite` — badge conforme/anomalie + alerte + accordéon
-- `DiagGaz` — badge + localisation + accordéon
-- `DiagPlomb` — badge + non applicable si >= 1949 + accordéon
-- `DiagERP` — badge Informatif + pills (sismique/radon/argile/inondation/PPR/BASIAS) + accordéon
-- `DiagCarrez` — badge + résultat + accordéon
-- `DiagDPE` — badge Informatif + résumé + accordéon
-- `DiagGenerique` — fallback
-- `DetailTexte` — formate le texte brut en liste de phrases avec bullets
+- `DiagAmiante`, `DiagTermites`, `DiagElectricite`, `DiagGaz`, `DiagPlomb`, `DiagERP`, `DiagCarrez`, `DiagDPE`, `DiagGenerique`
+- `DetailTexte` — formate texte brut en liste de phrases avec bullets
 - `Accordion` — bouton bleu "Voir le détail complet", bordure gauche bleue
-
-**Tri diagnostics DDT :** Conformes/Non détectés → Anomalies → Informatifs
-
-### Design system DocumentRenderer (couleurs hardcodées — pas CSS vars)
-- Bg: `#ffffff`, BgSec: `#f8fafc`, Border: `#e2e8f0`, Text: `#0f172a`, TextSec: `#64748b`
-- Vert: `#f0fdf4/#bbf7d0/#166534`, Rouge: `#fef2f2/#fecaca/#991b1b`
-- Orange: `#fff7ed/#fed7aa/#92400e`, Bleu: `#eff6ff/#bfdbfe/#1e40af`
-- Header dark: `#0f2d3d`
-- DPE: A=#16a34a B=#22c55e C=#84cc16 D=#eab308 E=#f97316 F=#ef4444 G=#991b1b
+- **Tri DDT :** Conformes/Non détectés → Anomalies → Informatifs
 
 ### Règles prompt mode=document importantes
 - `carrez.surface_type` : "carrez|boutin|autre" → label dynamique dans renderer
-- DPE D/E ne doit JAMAIS être dans points_vigilance — seulement F et G
+- DPE D/E jamais dans points_vigilance — seulement F et G
 - `diagnostics.detail` = texte complet pour accordéon
-- `diagnostics.alerte` = 1 phrase courte uniquement pour points critiques
+- `diagnostics.alerte` = 1 phrase courte pour points critiques
 - `avis_verimo` se termine par : "Cette analyse porte sur un seul document. Pour une vision complète de votre futur bien, lancez une Analyse Complète."
+- `DIAGNOSTIC_PARTIES_COMMUNES` inclut `syndic` et `adresse_bien` dans le JSON
 
 ---
 
@@ -323,32 +338,81 @@ L'analyse simple (1 document, 4,90€) utilise un prompt spécifique `buildDocum
 ```
 
 ### Règles prompt mode=complete importantes
-- Score /20, négociation applicable=true UNIQUEMENT si score < 14
+- Score /20 — **note haute = bien** (4/4 procédures = aucune procédure = parfait)
+- Score part de 20, points déduits selon les risques détectés
+- Négociation `applicable=true` UNIQUEMENT si score < 14
+- `negociation.elements` : objets avec champs `motif`, `argument`, `levier`
 - DPE F ou G uniquement dans vigilances et négociation (pas D ou E)
 - Plomb parties communes : NE PAS inclure si annee_construction >= 1949
 - Amiante parties communes : NE PAS inclure si annee_construction >= 1997
 - `charges_annuelles_lot` à extraire depuis appels de fonds provisionnels aussi
 - `budgets_historique` depuis chaque PV AG disponible
 - `lot_achete.parties_privatives` : lister TOUS les éléments privatifs avec numéros et tantièmes
-- DPE "resultat" doit contenir classe énergie ET classe GES : "Classe E - 281 kWh/m2/an. GES: Classe D - 61 kg CO2/m2/an."
+- DPE "resultat" : classe énergie ET classe GES ex: "Classe E - 281 kWh/m2/an. GES: Classe D - 61 kg CO2/m2/an."
 
 ---
 
-## Onglets RapportPage (analyse complète)
+## RapportPage.tsx — Onglets analyse complète (état au 15 avril 2026)
 
-1. **Synthèse** — résumé, points forts/vigilance, avis Verimo
-2. **Copropriété** — syndic, participation AG, travaux copro, finances
-3. **Votre logement** — DPE avec gauge visuelle A→G, diagnostics privatifs par type, lot
-4. **Procédures** — label + type + gravité + détail
-5. **Documents** — docs analysés avec emoji par type
+```
+TabId = 'synthese' | 'copropriete' | 'logement' | 'procedures' | 'documents'
+```
+
+### Onglet Synthèse — ✅ Terminé (15 avril)
+- **Header** (`#0f2d3d`) : titre, badges lisibles (`rgba(255,255,255,0.85)`), bouton "Détail de la note" supprimé
+- **Bloc Résumé + Note fusionnés** : résumé → séparateur → barres B1 par catégorie → footer score coloré
+- **KPIs** : toujours sur 1 ligne (max 4 col), emoji 24px, label 12px, valeur 18px. Taxe foncière depuis plusieurs champs
+- **"Synthèse de l'analyse"** variante 5 : 17px, centré, lignes dégradées bleues `#2a7d9c`
+- **Catégories renommées** : "État des travaux", "Risques juridiques", "Santé financière"
+- **Tooltip `?`** animé sur catégories à note 0
+- **Pistes de négociation** corrigées (champs `motif`/`argument`/`levier`)
+- **SafeTabBoundary** sur chaque onglet
+
+### Onglet Analyse complète (KPIs) — ✅ Terminé (15 avril)
+- Cartes KPI avec header bleu `#2a7d9c`
+
+### Onglet Copropriété — ❌ À faire (ligne ~821)
+- Actuellement cassé (erreur React au clic)
+- Contenu prévu : syndic, participation AG, travaux copro, finances
+
+### Onglet Votre logement — ❌ À faire (ligne ~1126)
+- Actuellement cassé (erreur React au clic)
+- Contenu prévu : DPE jauge A→G, diagnostics privatifs par type, lot acheté
+
+### Onglet Procédures — 🔲 À confirmer (ligne ~1299)
+- Fonctionnel mais texte trop petit sur PC
+
+### Onglet Documents — 🔲 Partiel (ligne ~1353)
+- **Docs essentiels** : 3 derniers PV d'AG, RCP + modificatifs, Carnet d'entretien, DDT privatifs (selon année construction), Appels de charges/fonds récents
+- **Docs secondaires** : Diagnostics parties communes, DTG/PPT, Pré-état daté, État daté, Taxe foncière, Compromis
+- Bannière "7 jours" + bouton "Compléter" → `/dashboard/rapport?id=XXX&action=complement`
+
+---
+
+## Feature "Compléter mon dossier" — À coder (session dédiée)
+
+**Principe** : uploader des documents supplémentaires après une analyse complète pour enrichir le rapport. Utilisable une seule fois.
+
+### Flow prévu
+1. Bouton dans onglet Documents → même URL que bannière : `/dashboard/rapport?id=XXX&action=complement`
+2. Redirection vers NouvelleAnalyse avec l'ID du rapport existant
+3. Fusion des résultats avec le rapport existant
+4. Header rapport "Analyse mise à jour le [date]"
+5. Bouton grisé après usage
+
+### Modifications nécessaires
+- Colonne `complement_used BOOLEAN` à ajouter en base Supabase
+- `analyser-run/index.ts` + `analyser/index.ts` : logique fusion
+- `NouvelleAnalyse.tsx` : accepter un ID rapport existant
+- `RapportPage.tsx` : header "mis à jour le" + bouton grisé
 
 ---
 
 ## UX Progression (NouvelleAnalyse)
 
 Layout 2 colonnes sur PC — 4 étapes :
-1. Envoi des documents (0→45%) — upload Files API
-2. Analyse en cours (45→85%) — Claude analyse
+1. Envoi des documents (0→45%)
+2. Analyse en cours (45→85%)
 3. Synthèse croisée (85→95%)
 4. Génération du rapport (95→100%)
 
@@ -358,104 +422,104 @@ Layout 2 colonnes sur PC — 4 étapes :
 
 ### Table `analyses`
 ```
-id UUID
-user_id UUID → profiles
-type TEXT (document | complete | pack2 | pack3 | apercu_complete | apercu_document)
-status TEXT (pending | processing | files_ready | completed | failed)
-mode TEXT
-file_ids JSONB (stocke [{id, name}] temporairement, vidé après analyse)
-title TEXT
-score NUMERIC
-avis_verimo TEXT
-profil TEXT (rp | invest)
-type_bien TEXT
-result JSONB
-apercu JSONB
-is_preview BOOLEAN
-paid BOOLEAN
-progress_current INTEGER
-progress_total INTEGER
-progress_message TEXT
-document_names TEXT[]
-regeneration_deadline TIMESTAMPTZ
-stripe_payment_id TEXT
-created_at TIMESTAMPTZ
+id UUID | user_id UUID → profiles | type TEXT | status TEXT | mode TEXT
+file_ids JSONB | title TEXT | score NUMERIC | avis_verimo TEXT
+profil TEXT (rp | invest) | type_bien TEXT | result JSONB | apercu JSONB
+is_preview BOOLEAN | paid BOOLEAN | progress_current INTEGER | progress_total INTEGER
+progress_message TEXT | document_names TEXT[] | regeneration_deadline TIMESTAMPTZ
+stripe_payment_id TEXT | created_at TIMESTAMPTZ
 ```
+**À ajouter** : `complement_used BOOLEAN`
 
 ### Table `profiles`
 ```
-id UUID → auth.users
-full_name TEXT
-free_preview_used BOOLEAN
-created_at TIMESTAMPTZ
+id UUID → auth.users | full_name TEXT | free_preview_used BOOLEAN | created_at TIMESTAMPTZ
 ```
 
 ---
 
-## Flux paiement complet
+## Flux paiement
 
 ### Achat depuis page Tarifs
-1. Clic "Acheter" → `CheckoutModal` → Stripe
-2. `success_url` → `/dashboard/tarifs?success=true`
-3. Webhook Stripe → `stripe-webhook` → ajoute crédits dans `profiles`
+Stripe → `success_url=/dashboard/tarifs?success=true` → webhook → crédits
 
-### Déblocage depuis aperçu gratuit
-1. Clic "Débloquer" → `lancerPaiementApercu(isComplete, apercuId)`
-2. `success_url` → `/dashboard/rapport?id=APERCU_ID&action=reupload`
-3. Webhook Stripe → ajoute crédits
-4. `RapportDashboard` détecte `action=reupload` → message RGPD
-5. Utilisateur re-uploade → analyse complète → `/rapport?id=NEW_ID`
+### Déblocage aperçu gratuit
+Stripe → `success_url=/dashboard/rapport?id=APERCU_ID&action=reupload` → webhook → crédits → re-upload → `/rapport?id=NEW_ID`
 
 ---
 
 ## Décisions produit
 
-- **Score** : /20 (pas /10)
-- **Analyse simple** : 1 doc, pas de score, rapport personnalisé par type de document
-- **Analyse complète** : docs illimités pour un bien, score /20, titre = adresse du bien
-- **Aperçu gratuit** : résumé + points de vigilance + score flouté + CTA débloquer
-- **RGPD** : documents supprimés après traitement (Supabase Storage immédiatement, Files API Anthropic < 1 min)
-- **Comparaison biens** : se débloque avec 2+ analyses complètes
-- **DPE D** = bonne performance, jamais dans les points de vigilance
+- **Score /20** — note haute = bien, note basse = risque. 4/4 procédures = parfait (aucun risque)
+- Score part de 20, points déduits selon dangers détectés (expliqué dans onglet "Notre méthode")
+- **Analyse simple** : 1 doc, pas de score, rapport personnalisé par type
+- **Analyse complète** : docs illimités, score /20, titre = adresse du bien
+- **Aperçu gratuit** : résumé + vigilances + score flouté + CTA débloquer
+- **RGPD** : documents supprimés après traitement (<1 min)
+- **Header fond foncé `#0f2d3d`** — décision finale conservée
+- **Bleu Verimo** = `#2a7d9c` (SectionKpi, accents, titres)
+- **DPE D** = bonne performance, jamais dans vigilances
 
 ---
 
-## Points connus non résolus / à faire
+## Points en attente / À faire
 
-| Problème | Statut |
-|---|---|
-| Timeout frontend sur analyses bloquées en `processing` | **À FAIRE** — afficher erreur après 20 min |
-| Badge "Échoué" dans MesAnalyses pour analyses bloquées | **À FAIRE** |
-| Message d'erreur visible si processing > 20 min | **À FAIRE** |
-| PDF rapport analyse simple | **À FAIRE** |
-| Boutons Partager/PDF sur RapportPage pour analyses document | **À FAIRE** |
-| Stripe mode TEST | À passer en production |
-| Mobile responsive progression | 2 colonnes non adaptées mobile |
-| Compare.tsx | Présent, non testé |
-| Régénération rapport (7 jours) | Logique non testée |
-| PDF téléchargeable | `window.print()` — non optimisé |
+| Priorité | Sujet | Statut |
+|---|---|---|
+| 🔴 | TabCopropriete — onglet cassé | **Prochaine session** |
+| 🔴 | TabLogement — onglet cassé | **Prochaine session** |
+| 🟡 | TabProcedures — texte trop petit PC | À confirmer |
+| 🟡 | TabDocuments — finaliser visuellement | Partiel |
+| 🟡 | Feature "Compléter mon dossier" | Session dédiée |
+| 🟡 | Renderers non refondus (RCP, DTG, TaxeFonciere, Compromis, Autre) | Aligner avec charte UI |
+| 🟠 | Stripe TEST → production | Price IDs à changer |
+| 🟠 | PDF téléchargeable optimisé | `window.print()` non optimisé |
+| 🟠 | Mobile responsive | 2 colonnes non adaptées |
+| 🟠 | Timeout analyses bloquées > 20 min | Badge "Échoué" |
+| 🔵 | Compare.tsx | Présent, non testé |
+| 🔵 | Régénération rapport 7 jours | Non testée |
 
 ---
 
 ## Sessions de développement
 
 ### Session 11 avril 2026 — Architecture majeure
-- Files API Anthropic implémentée
-- Single-call Claude — cohérence maximale
-- 2 Edge Functions séparées (analyser + analyser-run)
-- Race condition résolue
-- Max tokens 64 000
-- Modèle claude-sonnet-4-6
+- Files API Anthropic, Single-call Claude, 2 Edge Functions, race condition résolue, max 64K tokens, claude-sonnet-4-6
 
 ### Session 12 avril 2026 — Analyse simple + DocumentRenderer
-- `buildDocumentPrompt` dans analyser-run — 12 types de documents
-- `DocumentRenderer.tsx` — renderer principal avec 12 sous-renderers
-- `DiagnosticCard.tsx` — renderer intelligent par type de diagnostic DDT
-- `carrez.surface_type` — label dynamique Carrez/Boutin/autre
-- Diagnostics triés (verts → rouges → informatifs)
-- `SeparateurSynthese` dans tous les renderers
-- `PointsFortsVigilances` côte à côte (2 colonnes)
-- `DetailTexte` — formatage accordéon en liste de phrases
-- `CarrezAccordeon` — détail pièces en accordéon fermé
-- Lien retour rapport → `/dashboard/analyses` (corrigé)
-- `SafeRenderer` — try/catch global sur tous les renderers
+- `buildDocumentPrompt` (12 types), `DocumentRenderer.tsx` (12 renderers), `DiagnosticCard.tsx`
+- Tri diagnostics, `SeparateurSynthese`, `PointsFortsVigilances`, `SafeRenderer`, `CarrezAccordeon`
+
+### Session 15 avril 2026 — RapportPage Synthèse + Design system + DiagCommunes
+
+#### RapportPage.tsx — Synthèse
+- `SafeTabBoundary` sur chaque onglet
+- Header : badges lisibles, bouton "Détail de la note" supprimé
+- Résumé + Note fusionnés (barres B1, footer coloré)
+- KPIs 1 ligne, texte agrandi, taxe foncière multi-champs
+- "Synthèse de l'analyse" variante 5 + lignes dégradées bleues
+- Catégories renommées ("État des travaux", "Risques juridiques", "Santé financière")
+- Tooltip `?` animé sur catégories à note 0
+- Bug négociation corrigé (`motif`/`argument`/`levier`)
+- Interprétation score clarifiée (note haute = bien, part de 20)
+
+#### RapportPage.tsx — KPIs Analyse complète
+- Header bleu `#2a7d9c` sur les cartes KPI
+
+#### DocumentRenderer.tsx — Nouveau design system
+- `Kpi` : header bleu + label blanc + valeur en dessous
+- `KpiGrid` intelligent (1/2/3+ colonnes)
+- `SectionKpi` : header bleu + emoji + label blanc — appliqué sur 18 blocs
+- `import React, { useState }` ajouté
+
+#### DocumentRenderer.tsx — RendererDiagCommunes (refonte)
+- Bloc vert impactant (checkmark SVG 56px) si non détecté
+- KPIs 4 colonnes si amiante détecté
+- Résumé après header, SectionKpi 🔬 diagnostiqueur
+- `syndic` dans diagnostiqueur, `adresse_bien` dans header
+- Zones non accessibles orange/bleues
+- Accordéon AC1/EP visibles, non_detecte masqués, bouton vert toggle
+- Badge `⚠ AC1`, `nbDetectes` corrigé
+
+#### analyser-run/index.ts
+- `syndic` et `adresse_bien` ajoutés au JSON `DIAGNOSTIC_PARTIES_COMMUNES`
