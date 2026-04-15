@@ -420,7 +420,7 @@ function ShareButton({ analyseId }: { analyseId: string }) {
   return (
     <div style={{ position: 'relative' }} ref={menuRef}>
       <button onClick={() => setShowMenu(!showMenu)} disabled={loading}
-        style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 10, border: '1px solid #e2e8f0', background: copied ? '#f0fdf4' : '#f8fafc', color: copied ? '#16a34a' : '#64748b', fontSize: 13, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}>
+        style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.08)', color: copied ? '#4ade80' : 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}>
         {copied ? <Check size={14} /> : <Copy size={14} />}
         {copied ? 'Lien copié !' : loading ? 'Chargement…' : 'Partager'}
       </button>
@@ -467,15 +467,13 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
       {/* Hero header — full dark */}
       <div style={{ background: 'linear-gradient(135deg, #0f2d3d 0%, #1a4a5e 100%)', borderRadius: 16, overflow: 'hidden' }}>
         {/* Topbar nav */}
-        <div style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           {!isShared ? (
-            <Link to="/dashboard/analyses" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.5)', textDecoration: 'none', flexShrink: 0 }}
-              onMouseOver={e => (e.currentTarget as HTMLElement).style.color = '#fff'}
-              onMouseOut={e => (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.5)'}>
-              <ChevronLeft size={14} /> Mes analyses
+            <Link to="/dashboard/analyses" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: '#fff', textDecoration: 'none', padding: '9px 18px', borderRadius: 9, background: '#2a7d9c', flexShrink: 0 }}>
+              <ChevronLeft size={15} /> Mes analyses
             </Link>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
               <Shield size={13} /> Rapport partagé — Verimo
             </div>
           )}
@@ -483,8 +481,8 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
             {!isShared && <ShareButton analyseId={rapport.id} />}
             <button onClick={() => { const params = new URLSearchParams(window.location.search); window.open(`/rapport/print?id=${params.get('id') || ''}`, '_blank'); }}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-              <Download size={13} /> PDF
+              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, border: 'none', background: '#fff', color: '#0f2d3d', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              <Download size={14} /> Télécharger PDF
             </button>
           </div>
         </div>
