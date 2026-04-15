@@ -832,16 +832,17 @@ function Tooltip({ text, children }: { text: string; children: React.ReactNode }
   );
 }
 
-function KpiBand({ items }: { items: { label: string; value: string; sub?: string; color?: string; bg?: string; border?: string; tooltip?: string }[] }) {
+function KpiBand({ items }: { items: { label: string; value: string; sub?: string; color?: string; bg?: string; border?: string; tooltip?: string; emoji?: string }[] }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(items.length, 5)}, minmax(0,1fr))`, gap: 10, marginBottom: 14 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(items.length, 5)}, minmax(0,1fr))`, gap: 12, marginBottom: 20 }}>
       {items.map((item, i) => (
-        <div key={i} style={{ background: item.bg ?? '#f8fafc', border: `1px solid ${item.border ?? '#edf2f7'}`, borderRadius: 12, padding: '12px 14px' }}>
-          <div style={{ fontSize: 11, color: '#64748b', marginBottom: 5, lineHeight: 1.3 }}>
+        <div key={i} style={{ background: item.bg ?? '#f8fafc', border: `0.5px solid ${item.border ?? '#edf2f7'}`, borderRadius: 14, padding: '16px 18px' }}>
+          {item.emoji && <div style={{ fontSize: 22, marginBottom: 10 }}>{item.emoji}</div>}
+          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6, lineHeight: 1.3 }}>
             {item.tooltip ? <Tooltip text={item.tooltip}>{item.label}</Tooltip> : item.label}
           </div>
-          <div style={{ fontSize: 19, fontWeight: 700, color: item.color ?? '#0f172a', lineHeight: 1 }}>{item.value}</div>
-          {item.sub && <div style={{ fontSize: 11, color: item.color ?? '#94a3b8', marginTop: 4 }}>{item.sub}</div>}
+          <div style={{ fontSize: 26, fontWeight: 500, color: item.color ?? '#0f172a', lineHeight: 1 }}>{item.value}</div>
+          {item.sub && <div style={{ fontSize: 12, color: item.color ?? '#94a3b8', marginTop: 5 }}>{item.sub}</div>}
         </div>
       ))}
     </div>
@@ -854,40 +855,27 @@ function SyndicBand({ syndic, nbLots, nbBatiments }: { syndic: Record<string, un
   const gestionnaire = safeStr(syndic.gestionnaire);
   const type = safeStr(syndic.type);
   const tensions = syndic.tensions_detectees === true;
+  const Divider = () => <div style={{ width: 0.5, height: 40, background: '#edf2f7', flexShrink: 0 }} />;
   return (
-    <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, padding: '14px 18px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-      <div style={{ width: 38, height: 38, borderRadius: 9, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#1e40af', flexShrink: 0 }}>
+    <div style={{ background: '#fff', border: '0.5px solid #edf2f7', borderRadius: 14, padding: '16px 20px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+      <div style={{ width: 42, height: 42, borderRadius: 10, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 500, color: '#1e40af', flexShrink: 0 }}>
         {safeStr(syndic.nom)?.substring(0, 2).toUpperCase() ?? 'SY'}
       </div>
-      <div style={{ flex: 1, minWidth: 160 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>{safeStr(syndic.nom)}</div>
-        <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          {type && <span>{type === 'professionnel' ? 'Cabinet professionnel' : 'Syndic bénévole'}</span>}
-          {gestionnaire && <span>Gestionnaire : {gestionnaire}</span>}
+      <div style={{ flex: 1, minWidth: 180 }}>
+        <div style={{ fontSize: 16, fontWeight: 500, color: '#0f172a' }}>{safeStr(syndic.nom)}</div>
+        <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          {type && <span>🏢 {type === 'professionnel' ? 'Cabinet professionnel' : 'Syndic bénévole'}</span>}
+          {gestionnaire && <span>👤 {gestionnaire}</span>}
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
-        {nbLots && (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 2 }}>Lots</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{nbLots}</div>
-          </div>
-        )}
-        {nbBatiments && (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 2 }}>Bâtiments</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{nbBatiments}</div>
-          </div>
-        )}
-        {finMandat && (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 2 }}>Fin de mandat</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#a16207' }}>{finMandat}</div>
-          </div>
-        )}
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 2 }}>Tensions</div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: tensions ? '#dc2626' : '#16a34a' }}>{tensions ? 'Détectées' : 'Aucune'}</div>
+      <div style={{ display: 'flex', gap: 0, alignItems: 'center', flexWrap: 'wrap' }}>
+        {nbLots && (<><Divider /><div style={{ textAlign: 'center', padding: '0 16px' }}><div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 3 }}>Lots</div><div style={{ fontSize: 15, fontWeight: 500, color: '#0f172a' }}>{nbLots}</div></div></>)}
+        {nbBatiments && (<><Divider /><div style={{ textAlign: 'center', padding: '0 16px' }}><div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 3 }}>Bâtiments</div><div style={{ fontSize: 15, fontWeight: 500, color: '#0f172a' }}>{nbBatiments}</div></div></>)}
+        {finMandat && (<><Divider /><div style={{ textAlign: 'center', padding: '0 16px' }}><div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 3 }}>Fin de mandat</div><div style={{ fontSize: 15, fontWeight: 500, color: '#a16207' }}>{finMandat}</div></div></>)}
+        <Divider />
+        <div style={{ textAlign: 'center', padding: '0 16px' }}>
+          <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 3 }}>Tensions</div>
+          <div style={{ fontSize: 14, fontWeight: 500, color: tensions ? '#dc2626' : '#16a34a' }}>{tensions ? '⚠ Détectées' : '✓ Aucune'}</div>
         </div>
       </div>
     </div>
@@ -947,12 +935,12 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
 
   // KPIs bandeau
   const kpiItems = [];
-  if (chargesMensuelles) kpiItems.push({ label: 'Charges mensuelles', value: `${chargesMensuelles.toLocaleString('fr-FR')} €`, sub: chargesAnnuelles ? `${chargesAnnuelles.toLocaleString('fr-FR')} €/an` : undefined, color: '#1e40af', bg: '#eff6ff', border: '#bfdbfe', tooltip: "Montant que vous devrez payer chaque mois pour l'entretien des parties communes et le fonds travaux." });
-  if (nbLotsTotal) kpiItems.push({ label: 'Lots dans la copropriété', value: String(nbLotsTotal), sub: nbBatiments ? `${nbBatiments} bâtiment${nbBatiments > 1 ? 's' : ''}` : undefined, tooltip: "Nombre total de lots (appartements, parkings, caves...) composant la copropriété." });
-  if (fondsPct !== null) kpiItems.push({ label: 'Fonds travaux', value: `${fondsPct.toFixed(1)}%`, sub: fondsPct < 5 ? 'Insuffisant — seuil 5%' : 'Conforme loi ALUR', color: fondsPct < 5 ? '#a16207' : '#16a34a', bg: fondsPct < 5 ? '#fff7ed' : '#f0fdf4', border: fondsPct < 5 ? '#fed7aa' : '#bbf7d0', tooltip: "Réserve obligatoire pour financer les futurs travaux. La loi ALUR impose minimum 5% du budget annuel de la copropriété." });
-  if (travaux_votes.length > 0) kpiItems.push({ label: 'Travaux charge vendeur', value: String(travaux_votes.filter((t: Record<string, unknown>) => t.charge_vendeur !== false).length || travaux_votes.length), sub: 'À vérifier notaire', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' });
-  if (amiante_ac1) kpiItems.push({ label: 'Amiante AC1', value: 'Détecté', sub: 'Action corrective requise', color: '#dc2626', bg: '#fef2f2', border: '#fecaca', tooltip: "Des matériaux amiantés nécessitant une action corrective ont été détectés dans les parties communes. Des travaux obligatoires sont à prévoir." });
-  else if (participation.length > 0) kpiItems.push({ label: 'AG analysées', value: String(participation.length), sub: `sur ${participation.length} PV fourni${participation.length > 1 ? 's' : ''}` });
+  if (chargesMensuelles) kpiItems.push({ emoji: '💶', label: 'Charges mensuelles lot', value: `${chargesMensuelles.toLocaleString('fr-FR')} €`, sub: chargesAnnuelles ? `${chargesAnnuelles.toLocaleString('fr-FR')} €/an` : undefined, color: '#1e40af', bg: '#eff6ff', border: '#bfdbfe', tooltip: "Montant que vous devrez payer chaque mois pour l'entretien des parties communes et le fonds travaux." });
+  if (nbLotsTotal) kpiItems.push({ emoji: '🏢', label: 'Lots dans la copropriété', value: String(nbLotsTotal), sub: nbBatiments ? `${nbBatiments} bâtiment${nbBatiments > 1 ? 's' : ''}` : undefined, tooltip: "Nombre total de lots (appartements, parkings, caves...) composant la copropriété." });
+  if (fondsPct !== null) kpiItems.push({ emoji: '🔧', label: 'Fonds travaux', value: `${fondsPct.toFixed(1)}%`, sub: fondsPct < 5 ? 'Insuffisant — seuil 5%' : 'Conforme loi ALUR', color: fondsPct < 5 ? '#a16207' : '#16a34a', bg: fondsPct < 5 ? '#fff7ed' : '#f0fdf4', border: fondsPct < 5 ? '#fed7aa' : '#bbf7d0', tooltip: "Réserve obligatoire pour financer les futurs travaux. La loi ALUR impose minimum 5% du budget annuel de la copropriété." });
+  if (travaux_votes.length > 0) kpiItems.push({ emoji: '⚖️', label: 'Travaux charge vendeur', value: String(travaux_votes.filter((t: Record<string, unknown>) => t.charge_vendeur !== false).length || travaux_votes.length), sub: 'À vérifier notaire', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' });
+  if (amiante_ac1) kpiItems.push({ emoji: '⚠️', label: 'Amiante AC1', value: 'Détecté', sub: 'Action corrective requise', color: '#dc2626', bg: '#fef2f2', border: '#fecaca', tooltip: "Des matériaux amiantés nécessitant une action corrective ont été détectés dans les parties communes. Des travaux obligatoires sont à prévoir." });
+  else if (participation.length > 0) kpiItems.push({ emoji: '📋', label: 'AG analysées', value: String(participation.length), sub: `sur ${participation.length} PV fourni${participation.length > 1 ? 's' : ''}` });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -997,8 +985,10 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
           ].filter(r => r.count);
           return (
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-                <Tooltip text="Répartition officielle des lots par type au sein de la copropriété.">Composition de la copropriété</Tooltip>
+              <div style={{ background: '#2a7d9c', borderRadius: 8, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                <span style={{ fontSize: 16 }}>🏠</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>Composition de la copropriété</span>
+                <span style={{ marginLeft: 4, width: 16, height: 16, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#fff', cursor: 'help' }} title="Répartition officielle des lots par type au sein de la copropriété.">?</span>
               </div>
               <div style={{ border: '1px solid #edf2f7', borderRadius: 10, overflow: 'hidden' }}>
                 {rows.map((row, i) => {
@@ -1027,9 +1017,12 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         {/* Participation AG */}
         {participation.length > 0 && (
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Participation aux assemblées générales</div>
+            <div style={{ background: '#2a7d9c', borderRadius: 8, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, marginTop: 8 }}>
+              <span style={{ fontSize: 16 }}>📊</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>Participation aux assemblées générales</span>
+            </div>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                 <thead>
                   <tr style={{ background: '#f8fafc' }}>
                     {['Année', 'Présents / Représentés', 'Taux tantièmes', 'Quitus syndic', 'Note'].map(h => (
@@ -1075,7 +1068,10 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         {/* Questions diverses */}
         {(vie?.questions_diverses_notables ?? []).length > 0 && (
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 6 }}>Questions diverses notables</div>
+            <div style={{ background: '#2a7d9c', borderRadius: 8, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, marginTop: 8 }}>
+              <span style={{ fontSize: 16 }}>💬</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>Questions diverses notables</span>
+            </div>
             {(vie?.questions_diverses_notables ?? []).map((q, i) => {
               const obj = typeof q === 'object' && q !== null ? q as Record<string, unknown> : null;
               const label = obj ? safeStr(obj.label || obj.detail || q) : safeStr(q);
@@ -1224,29 +1220,39 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         status={fondsInsuffisant ? 'warning' : 'ok'}
         badge={rapport.fonds_travaux_statut === 'conforme' ? 'Sain' : rapport.fonds_travaux_statut === 'insuffisant' ? 'Vigilance' : rapport.fonds_travaux_statut === 'absent' ? 'Absent' : 'Détecté'}>
 
-        {/* Charges lot */}
+        {/* Titre coloré charges */}
         {chargesAnnuelles && (
-          <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: '16px 18px', display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ fontSize: 12, color: '#2563eb', marginBottom: 5 }}>
-                <Tooltip text="Montant total des charges que vous devrez payer chaque année pour votre lot (entretien parties communes + fonds travaux).">Charges annuelles votre lot</Tooltip>
-              </div>
-              <div style={{ fontSize: 28, fontWeight: 700, color: '#1e3a5f', lineHeight: 1 }}>{chargesAnnuelles.toLocaleString('fr-FR')} €</div>
+          <>
+            <div style={{ background: '#2a7d9c', borderRadius: 8, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <span style={{ fontSize: 16 }}>💶</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>Charges de votre lot</span>
             </div>
-            {chargesMensuelles && (
-              <>
-                <div style={{ width: 1, height: 44, background: '#bfdbfe' }} />
-                <div>
-                  <div style={{ fontSize: 12, color: '#3b82f6', marginBottom: 5 }}>Soit par mois</div>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: '#1e40af', lineHeight: 1 }}>{chargesMensuelles.toLocaleString('fr-FR')} €</div>
+            <div style={{ background: '#eff6ff', border: '0.5px solid #bfdbfe', borderRadius: 12, padding: '20px 24px', display: 'flex', gap: 32, alignItems: 'center', flexWrap: 'wrap', marginBottom: 24 }}>
+              <div>
+                <div style={{ fontSize: 13, color: '#2563eb', marginBottom: 8 }}>
+                  <Tooltip text="Montant total des charges que vous devrez payer chaque année pour votre lot (entretien parties communes + fonds travaux).">Charges annuelles votre lot</Tooltip>
                 </div>
-              </>
-            )}
-            <div style={{ fontSize: 11, color: '#3b82f6', marginLeft: 'auto', fontStyle: 'italic' }}>Charges courantes · hors appels exceptionnels</div>
-          </div>
+                <div style={{ fontSize: 36, fontWeight: 500, color: '#1e3a5f', lineHeight: 1 }}>{chargesAnnuelles.toLocaleString('fr-FR')} €</div>
+              </div>
+              {chargesMensuelles && (
+                <>
+                  <div style={{ width: 0.5, height: 52, background: '#bfdbfe', flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontSize: 13, color: '#3b82f6', marginBottom: 8 }}>Soit par mois</div>
+                    <div style={{ fontSize: 36, fontWeight: 500, color: '#1e40af', lineHeight: 1 }}>{chargesMensuelles.toLocaleString('fr-FR')} €</div>
+                  </div>
+                </>
+              )}
+              <div style={{ fontSize: 12, color: '#3b82f6', marginLeft: 'auto', fontStyle: 'italic', alignSelf: 'flex-end' }}>Charges courantes · hors appels exceptionnels</div>
+            </div>
+          </>
         )}
 
-        {/* KPIs budget copro */}
+        {/* Titre coloré budget copro */}
+        <div style={{ background: '#2a7d9c', borderRadius: 8, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+          <span style={{ fontSize: 16 }}>📊</span>
+          <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>Budget de la copropriété</span>
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 10 }}>
           {budgetNum > 0 && (
             <div style={{ padding: 14, background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', textAlign: 'center' }}>
@@ -1292,8 +1298,10 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
           const max = Math.max(...sorted.map(r => r.budget_total));
           return (
             <div style={{ background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', overflow: 'hidden' }}>
-              <div style={{ padding: '10px 14px', fontSize: 11, fontWeight: 700, color: '#64748b', borderBottom: '1px solid #edf2f7', letterSpacing: '0.06em' }}>
-                HISTORIQUE BUDGETS VOTÉS EN AG <span style={{ fontWeight: 400, fontStyle: 'italic' }}>(source : PV d'AG)</span>
+              <div style={{ background: '#2a7d9c', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 16 }}>📈</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>Historique budgets votés en AG</span>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', fontStyle: 'italic', marginLeft: 4 }}>source : PV d'AG</span>
               </div>
               {sorted.map((row, i) => {
                 const prev = i > 0 ? sorted[i - 1] : null;
