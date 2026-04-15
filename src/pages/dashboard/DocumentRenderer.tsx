@@ -1817,6 +1817,14 @@ function RendererDiagCommunes({ r }: { r: any }) {
           ))}
         </div>
       </div>
+      {/* ── RÉSUMÉ — juste après header ── */}
+      {r.resume && (
+        <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 14, padding: '18px 20px', marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: C.textSec, letterSpacing: '0.1em', marginBottom: 10, textTransform: 'uppercase' as const }}>Résumé</div>
+          <div style={{ fontSize: 15, color: C.text, lineHeight: 1.8 }}>{r.resume}</div>
+        </div>
+      )}
+
       {!nonDetecte ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 14 }}>
           <Kpi label="Matériaux amiantés" value={String(nbDetectes)} color={nbDetectes > 0 ? C.red.dot : C.green.dot} />
@@ -1827,7 +1835,7 @@ function RendererDiagCommunes({ r }: { r: any }) {
       ) : (
         <div style={{ background: C.green.bg, border: `0.5px solid ${C.green.border}`, borderRadius: 12, padding: '16px 20px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 10, height: 10, borderRadius: '50%', background: C.green.dot, flexShrink: 0 }} />
-          <div style={{ fontSize: 14, fontWeight: 600, color: C.green.text }}>Aucun matériau contenant de l'amiante n'a été détecté dans les parties communes visitées.</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: C.green.text }}>Aucun matériau contenant de l'amiante n'a été détecté dans les parties communes visitées.</div>
         </div>
       )}
 
@@ -1839,20 +1847,12 @@ function RendererDiagCommunes({ r }: { r: any }) {
             const isReglementaire = z.niveau === 'reglementaire';
             const col = isReglementaire ? C.orange : C.blue;
             return (
-              <div key={i} style={{ background: col.bg, border: `0.5px solid ${col.border}`, borderRadius: 12, padding: '13px 18px', marginBottom: 8, fontSize: 13, color: col.text, lineHeight: 1.6 }}>
+              <div key={i} style={{ background: col.bg, border: `0.5px solid ${col.border}`, borderRadius: 12, padding: '13px 18px', marginBottom: 8, fontSize: 14, color: col.text, lineHeight: 1.6 }}>
                 <div style={{ fontWeight: 600, marginBottom: 3 }}>{isReglementaire ? '⚠ Zone non inspectée — obligation réglementaire non remplie' : 'ℹ Zone non visitée lors de la visite'}</div>
                 <div>{z.detail}</div>
               </div>
             );
           })}
-        </div>
-      )}
-
-      {/* ── RÉSUMÉ ── */}
-      {r.resume && (
-        <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 14, padding: '18px 20px', marginBottom: 14 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: C.textSec, letterSpacing: '0.1em', marginBottom: 10, textTransform: 'uppercase' as const }}>Résumé</div>
-          <div style={{ fontSize: 15, color: C.text, lineHeight: 1.8 }}>{r.resume}</div>
         </div>
       )}
 
