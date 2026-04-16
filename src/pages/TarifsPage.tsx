@@ -190,7 +190,7 @@ export default function TarifsPage() {
         </motion.h1>
 
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.13 }}
-          style={{ fontSize: 16, color: '#64748b', maxWidth: 700, margin: '0 auto 28px', lineHeight: 1.65, whiteSpace: 'nowrap' }}>
+          style={{ fontSize: 16, color: '#64748b', maxWidth: 520, margin: '0 auto 28px', lineHeight: 1.65, textAlign: 'center', padding: '0 16px' }}>
           Sans abonnement. Sans engagement. Payez une fois, gardez votre rapport.
         </motion.p>
 
