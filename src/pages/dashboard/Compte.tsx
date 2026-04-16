@@ -79,7 +79,7 @@ export default function Compte() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em' }}>Mon compte</h1>
+      
 
       {/* Résumé rapide — 2 colonnes sur mobile, 3 sur desktop */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
