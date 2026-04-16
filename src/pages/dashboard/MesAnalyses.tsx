@@ -122,6 +122,28 @@ function AnalyseRow({ a, onDelete, selected, onToggleSelect, selectionMode }: {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const isComplete = a.type === 'complete';
   const displayTitle = isComplete ? (a.adresse_bien || 'Adresse en cours de détection…') : (a.nom_document || 'Document sans nom');
+  // Version courte pour mobile — on extrait juste le type de doc
+  const shortTitle = (() => {
+    if (isComplete) return displayTitle;
+    const t = (a.nom_document || '').toLowerCase();
+    if (t.includes('amiante') || t.includes('dta') || t.includes('dossier technique')) return 'Dossier Technique Amiante';
+    if (t.includes('procès-verbal') || t.includes('pv ag') || t.includes('assemblée générale') || t.includes('proces verbal')) return 'PV Assemblée Générale';
+    if (t.includes('règlement de copropriété') || t.includes('reglement de copropriete') || t.includes('rcp')) return 'Règlement de Copropriété';
+    if (t.includes('modificatif') && (t.includes('règlement') || t.includes('copro'))) return 'Modificatif RCP';
+    if (t.includes('appel de charges') || t.includes('appel de fonds')) return 'Appel de Charges';
+    if (t.includes('diagnostic') && t.includes('parties communes')) return 'Diagnostic Parties Communes';
+    if (t.includes('carnet d') && t.includes('entretien')) return "Carnet d'Entretien";
+    if (t.includes('pré-état daté') || t.includes('pre-etat date') || t.includes('pré état daté')) return 'Pré-état Daté';
+    if (t.includes('état daté') || t.includes('etat date')) return 'État Daté';
+    if (t.includes('taxe foncière') || t.includes('taxe fonciere')) return 'Taxe Foncière';
+    if (t.includes('compromis') || t.includes('promesse de vente')) return 'Compromis de Vente';
+    if (t.includes('dtg') || t.includes('plan pluriannuel') || t.includes('ppt')) return 'DTG / PPT';
+    if (t.includes('dpe') || t.includes('diagnostic de performance')) return 'DPE';
+    // Fallback: prendre avant le premier "—" ou les 40 premiers caractères
+    const dash = displayTitle.indexOf('—');
+    if (dash > 0 && dash < 50) return displayTitle.substring(0, dash).trim();
+    return displayTitle.length > 42 ? displayTitle.substring(0, 40) + '…' : displayTitle;
+  })();
   const isPreview = a.is_preview ?? false;
   const typeLabel = isPreview ? 'Aperçu gratuit' : isComplete ? 'Analyse Complète' : 'Analyse Document';
   const typeBg = isPreview ? 'rgba(22,163,74,0.07)' : isComplete ? 'rgba(15,45,61,0.07)' : 'rgba(42,125,156,0.07)';
@@ -192,7 +214,7 @@ function AnalyseRow({ a, onDelete, selected, onToggleSelect, selectionMode }: {
               : isComplete ? <Building2 size={15} style={{ color: '#0f2d3d' }} /> : <FileText size={15} style={{ color: '#2a7d9c' }} />}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', lineHeight: 1.35, wordBreak: 'break-word' as const }}>{displayTitle}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', lineHeight: 1.35 }}>{shortTitle}</div>
           </div>
         </div>
         {/* Ligne 2 — Actions */}
