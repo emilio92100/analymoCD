@@ -64,10 +64,10 @@ const DPE_COLORS: Record<string, string> = {
 
 function Header({ type, titre, sub }: { type: string; titre: string; sub?: string }) {
   return (
-    <div style={{ background: C.dark, borderRadius: 14, padding: '22px 28px', marginBottom: 16 }}>
-      <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', marginBottom: 8, textTransform: 'uppercase' as const }}>{type}</div>
-      <div className="dr-header-titre" style={{ fontSize: 20, fontWeight: 600, color: '#fff', marginBottom: sub ? 6 : 0, lineHeight: 1.3, wordBreak: 'break-word' as const }}>{titre}</div>
-      {sub && <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>{sub}</div>}
+    <div className="dr-header" style={{ background: C.dark, borderRadius: 14, padding: '18px 20px', marginBottom: 14 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', marginBottom: 7, textTransform: 'uppercase' as const }}>{type}</div>
+      <div className="dr-header-titre" style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: sub ? 5 : 0, lineHeight: 1.3, wordBreak: 'break-word' as const }}>{titre}</div>
+      {sub && <div className="dr-header-sub" style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 4, lineHeight: 1.5 }}>{sub}</div>}
     </div>
   );
 }
@@ -90,11 +90,16 @@ function CardHeader({ label, color }: { label: string; color: string }) {
 }
 
 function Resume({ text }: { text: string }) {
+  const [expanded, setExpanded] = React.useState(false);
   return (
     <Card>
-      <div style={{ padding: '18px 20px' }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: C.textSec, letterSpacing: '0.1em', marginBottom: 10, textTransform: 'uppercase' as const }}>Résumé</div>
-        <div style={{ fontSize: 15, color: C.text, lineHeight: 1.8 }}>{text}</div>
+      <div style={{ padding: '16px 18px' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#0f2d3d', color: '#fff', fontSize: 11, fontWeight: 700, padding: '4px 11px', borderRadius: 99, letterSpacing: '0.06em', marginBottom: 12 }}>📋 RÉSUMÉ</div>
+        <div className={!expanded ? 'dr-resume-clamped' : ''} style={{ fontSize: 14, color: C.text, lineHeight: 1.75 }}>{text}</div>
+        <button className="dr-resume-toggle" onClick={() => setExpanded(v => !v)}
+          style={{ display: 'none', marginTop: 8, fontSize: 13, fontWeight: 600, color: '#2a7d9c', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+          {expanded ? 'Réduire ↑' : 'Lire la suite ↓'}
+        </button>
       </div>
     </Card>
   );
@@ -105,16 +110,23 @@ function KpiGrid({ children }: { children: React.ReactNode }) {
   const cols = count === 1 ? 1 : count === 2 ? 2 : 3;
   const justify = count <= 2 ? 'center' : 'stretch';
   return (
-    <div className="dr-kpi-grid" style={{
-      display: 'grid',
-      gridTemplateColumns: count === 1 ? 'minmax(0, 400px)' : `repeat(${cols}, 1fr)`,
-      gap: 12,
-      marginBottom: 14,
-      justifyContent: justify,
-      justifyItems: justify
-    }}>
-      {children}
-    </div>
+    <>
+      {/* Desktop */}
+      <div className="dr-kpi-grid" style={{
+        display: 'grid',
+        gridTemplateColumns: count === 1 ? 'minmax(0, 400px)' : `repeat(${cols}, 1fr)`,
+        gap: 12,
+        marginBottom: 14,
+        justifyContent: justify,
+        justifyItems: justify
+      }}>
+        {children}
+      </div>
+      {/* Mobile — liste dans une card */}
+      <div className="dr-kpi-list" style={{ display: 'none', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+        {children}
+      </div>
+    </>
   );
 }
 
@@ -154,24 +166,37 @@ function TooltipIcon({ text }: { text: string }) {
 
 function Kpi({ label, value, sub, color, tooltip }: { label: string; value: string; sub?: string; color?: string; tooltip?: string }) {
   return (
-    <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
-      <div style={{ padding: '10px 16px', background: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', letterSpacing: '0.04em' }}>{label}</span>
-        {tooltip && <TooltipIcon text={tooltip} />}
+    <>
+      {/* Desktop — bloc avec header bleu */}
+      <div className="dr-kpi-block" style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ padding: '10px 16px', background: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', letterSpacing: '0.04em' }}>{label}</span>
+          {tooltip && <TooltipIcon text={tooltip} />}
+        </div>
+        <div style={{ padding: '14px 16px' }}>
+          <div className="dr-kpi-value" style={{ fontSize: 20, fontWeight: 700, color: color || C.text, lineHeight: 1.2 }}>{value}</div>
+          {sub && <div className="dr-kpi-sub" style={{ fontSize: 13, color: C.textSec, marginTop: 4 }}>{sub}</div>}
+        </div>
       </div>
-      <div style={{ padding: '14px 16px' }}>
-        <div className="dr-kpi-value" style={{ fontSize: 22, fontWeight: 600, color: color || C.text, lineHeight: 1.2 }}>{value}</div>
-        {sub && <div className="dr-kpi-sub" style={{ fontSize: 14, color: C.textSec, marginTop: 4 }}>{sub}</div>}
+      {/* Mobile — ligne compacte */}
+      <div className="dr-kpi-row" style={{ display: 'none', alignItems: 'center', gap: 12, padding: '11px 16px', borderBottom: `0.5px solid ${C.border}` }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, color: C.textSec, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            {label}{tooltip && <TooltipIcon text={tooltip} />}
+          </div>
+          {sub && <div style={{ fontSize: 11, color: C.textSec, opacity: 0.7 }}>{sub}</div>}
+        </div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: color || C.text, flexShrink: 0 }}>{value}</div>
       </div>
-    </div>
+    </>
   );
 }
 
 function InfoRow({ label, value, alt, valueColor }: { label: string; value: string; alt?: boolean; valueColor?: string }) {
   return (
-    <div className="dr-info-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: `0.5px solid ${C.border}`, background: alt ? C.bgSecondary : C.bg, gap: 8, flexWrap: 'wrap' as const }}>
-      <span style={{ fontSize: 14, color: C.textSec }}>{label}</span>
-      <span style={{ fontSize: 14, fontWeight: 500, color: valueColor || C.text }}>{value}</span>
+    <div className="dr-info-row" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '11px 16px', borderBottom: `0.5px solid ${C.border}`, background: alt ? C.bgSecondary : C.bg, gap: 12 }}>
+      <span style={{ fontSize: 13, color: C.textSec, flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: 13, fontWeight: 600, color: valueColor || C.text, textAlign: 'right' as const, wordBreak: 'break-word' as const }}>{value}</span>
     </div>
   );
 }
@@ -1951,27 +1976,48 @@ function RendererDiagCommunes({ r }: { r: any }) {
                 </div>
                 {open && (
                   <div style={{ background: C.bgSecondary, borderTop: `0.5px solid ${C.border}` }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1.5fr', gap: 8, padding: '8px 20px', fontSize: 10, fontWeight: 700, color: C.textSec, letterSpacing: '0.07em', textTransform: 'uppercase' as const, borderBottom: `0.5px solid ${C.border}` }}>
+                    {/* Header colonnes — masqué mobile */}
+                    <div className="dr-zone-header" style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1.5fr', gap: 8, padding: '8px 20px', fontSize: 10, fontWeight: 700, color: C.textSec, letterSpacing: '0.07em', textTransform: 'uppercase' as const, borderBottom: `0.5px solid ${C.border}` }}>
                       <span>Localisation précise</span><span>Matériau</span><span>Action</span>
                     </div>
                     {zonesActives.map((z: any, zi: number) => {
                       const ac = actionColor(z.action);
                       const isAC1 = z.action === 'AC1';
                       return (
-                        <div key={zi} style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1.5fr', gap: 8, padding: '10px 20px', borderBottom: `0.5px solid ${C.border}`, alignItems: 'center', background: isAC1 ? C.red.bg : zi % 2 === 0 ? C.bg : C.bgSecondary }}>
-                          <span style={{ fontSize: 14, color: C.text }}>{z.localisation_detail || z.identifiant || '—'}</span>
-                          <span style={{ fontSize: 14, color: C.textSec }}>{z.materiau || '—'}</span>
-                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: ac.bg, color: ac.text, border: `0.5px solid ${ac.border}`, display: 'inline-block', whiteSpace: 'nowrap' as const }}>{actionLabel(z.action)}</span>
+                        <div key={zi} style={{ borderBottom: `0.5px solid ${C.border}`, background: isAC1 ? C.red.bg : zi % 2 === 0 ? C.bg : C.bgSecondary }}>
+                          {/* Desktop — grille 3 cols */}
+                          <div className="dr-zone-row-desktop" style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1.5fr', gap: 8, padding: '10px 20px', alignItems: 'center' }}>
+                            <span style={{ fontSize: 14, color: C.text }}>{z.localisation_detail || z.identifiant || '—'}</span>
+                            <span style={{ fontSize: 14, color: C.textSec }}>{z.materiau || '—'}</span>
+                            <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: ac.bg, color: ac.text, border: `0.5px solid ${ac.border}`, display: 'inline-block', whiteSpace: 'nowrap' as const }}>{actionLabel(z.action)}</span>
+                          </div>
+                          {/* Mobile — card empilée */}
+                          <div className="dr-zone-row-mobile" style={{ display: 'none', padding: '10px 14px', flexDirection: 'column' as const, gap: 5 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: C.text, flex: 1 }}>{z.localisation_detail || z.identifiant || '—'}</span>
+                              <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 100, background: ac.bg, color: ac.text, border: `0.5px solid ${ac.border}`, whiteSpace: 'nowrap' as const, flexShrink: 0 }}>{actionLabel(z.action)}</span>
+                            </div>
+                            <span style={{ fontSize: 12, color: C.textSec }}>{z.materiau || '—'}</span>
+                          </div>
                         </div>
                       );
                     })}
                     {zonesNonDetecte.length > 0 && (
                       <>
                         {showND && zonesNonDetecte.map((z: any, zi: number) => (
-                          <div key={`nd-${zi}`} style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1.5fr', gap: 8, padding: '10px 20px', borderBottom: `0.5px solid ${C.border}`, alignItems: 'center', opacity: 0.65, background: C.bgSecondary }}>
-                            <span style={{ fontSize: 14, color: C.text }}>{z.localisation_detail || z.identifiant || '—'}</span>
-                            <span style={{ fontSize: 14, color: C.textSec }}>{z.materiau || '—'}</span>
-                            <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: C.gray.bg, color: C.gray.text, border: `0.5px solid ${C.gray.border}`, display: 'inline-block' }}>Non détecté ✓</span>
+                          <div key={`nd-${zi}`} style={{ borderBottom: `0.5px solid ${C.border}`, opacity: 0.65, background: C.bgSecondary }}>
+                            <div className="dr-zone-row-desktop" style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1.5fr', gap: 8, padding: '10px 20px', alignItems: 'center' }}>
+                              <span style={{ fontSize: 14, color: C.text }}>{z.localisation_detail || z.identifiant || '—'}</span>
+                              <span style={{ fontSize: 14, color: C.textSec }}>{z.materiau || '—'}</span>
+                              <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: C.gray.bg, color: C.gray.text, border: `0.5px solid ${C.gray.border}`, display: 'inline-block' }}>Non détecté ✓</span>
+                            </div>
+                            <div className="dr-zone-row-mobile" style={{ display: 'none', padding: '10px 14px', flexDirection: 'column' as const, gap: 4 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                                <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{z.localisation_detail || z.identifiant || '—'}</span>
+                                <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 100, background: C.gray.bg, color: C.gray.text, border: `0.5px solid ${C.gray.border}` }}>Non détecté ✓</span>
+                              </div>
+                              <span style={{ fontSize: 12, color: C.textSec }}>{z.materiau || '—'}</span>
+                            </div>
                           </div>
                         ))}
                         <button
@@ -2246,35 +2292,54 @@ export default function DocumentRenderer({ result }: { result: any }) {
     <>
       <style>{`
         @media (max-width: 640px) {
-          .dr-root > div > div:first-child[style*="background: rgb(15, 45, 61)"],
-          .dr-root > div > div:first-child[style*="background:#0f2d3d"] {
-            border-radius: 0 !important;
-            padding: 14px 14px !important;
-          }
-          .dr-root [style*="grid-template-columns: repeat(3"] { grid-template-columns: 1fr !important; }
-          .dr-root [style*="grid-template-columns: repeat(2"] { grid-template-columns: 1fr !important; }
-          .dr-root [style*="grid-template-columns: 1fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
-          .dr-root [style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
+          /* ── Wrapper pleine largeur ── */
+          .dr-root { padding: 0 !important; }
+
+          /* ── Header — bords à zéro, compact ── */
+          .dr-root .dr-header { border-radius: 0 !important; padding: 14px 14px !important; margin-bottom: 10px !important; }
+          .dr-header-titre { font-size: 15px !important; line-height: 1.3 !important; }
+          .dr-header-sub { font-size: 11px !important; }
+
+          /* ── Cards ── */
+          .dr-root > div { padding: 0 8px !important; }
+
+          /* ── KPI desktop → caché, mobile liste → visible ── */
+          .dr-kpi-grid { display: none !important; }
+          .dr-kpi-list { display: block !important; }
+          .dr-kpi-block { display: none !important; }
+          .dr-kpi-row { display: flex !important; }
+
+          /* ── Résumé avec clamp ── */
+          .dr-resume-clamped { display: -webkit-box !important; -webkit-line-clamp: 4 !important; -webkit-box-orient: vertical !important; overflow: hidden !important; }
+          .dr-resume-toggle { display: block !important; }
+
+          /* ── Tables scroll horizontal ── */
           .dr-root .dr-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
           .dr-root .dr-table-wrap table { min-width: 460px; font-size: 12px !important; }
           .dr-root .dr-table-wrap th,
           .dr-root .dr-table-wrap td { padding: 7px 10px !important; }
+
+          /* ── Grilles 3-col → 1-col ── */
           .dr-root .dr-points-grid { grid-template-columns: 1fr !important; }
-          .dr-root .dr-kpi-grid { grid-template-columns: 1fr !important; }
-          .dr-kpi-value { font-size: 16px !important; }
-          .dr-kpi-sub { font-size: 12px !important; }
-          .dr-header-titre { font-size: 15px !important; line-height: 1.3 !important; }
+          .dr-root [style*="grid-template-columns: repeat(3"] { grid-template-columns: 1fr !important; }
+          .dr-root [style*="grid-template-columns: 1fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
+
+          /* ── Avis Verimo ── */
           .dr-avis-pad { padding: 12px 14px !important; }
           .dr-avis-para { font-size: 13px !important; line-height: 1.65 !important; }
+
+          /* ── Montants inline ── */
           .dr-montant-inline { margin-left: 0 !important; display: block !important; margin-top: 4px !important; }
-          .dr-info-row { flex-direction: column !important; align-items: flex-start !important; gap: 3px !important; }
+
+          /* ── Badges nowrap ── */
           .dr-badge-nowrap { white-space: normal !important; word-break: break-word !important; }
-          .dr-resume-text { font-size: 14px !important; line-height: 1.65 !important; }
-          .dr-section-pad { padding: 10px 12px !important; }
-          .dr-card-pad { padding: 10px 12px !important; }
         }
+          /* ── Zones localisation ── */
+          .dr-zone-header { display: none !important; }
+          .dr-zone-row-desktop { display: none !important; }
+          .dr-zone-row-mobile { display: flex !important; }
+
         @media (max-width: 390px) {
-          .dr-kpi-value { font-size: 14px !important; }
           .dr-header-titre { font-size: 14px !important; }
         }
       `}</style>
