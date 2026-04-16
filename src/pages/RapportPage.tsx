@@ -1257,17 +1257,22 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
               <span style={{ fontSize: 16 }}>💬</span>
               <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>Questions diverses notables</span>
             </div>
-            {(vie?.questions_diverses_notables ?? []).map((q, i) => {
-              const obj = typeof q === 'object' && q !== null ? q as Record<string, unknown> : null;
-              const label = obj ? safeStr(obj.label || obj.detail || q) : safeStr(q);
-              const detail = obj?.detail && obj.label ? safeStr(obj.detail) : null;
-              return (
-                <div key={i} style={{ fontSize: 13, color: '#374151', padding: '9px 12px', background: '#f8fafc', borderRadius: 8, marginBottom: 4, border: '1px solid #edf2f7', lineHeight: 1.5 }}>
-                  <div style={{ fontWeight: 500 }}>{label}</div>
-                  {detail && <div style={{ fontSize: 12, color: '#64748b', marginTop: 3 }}>{detail}</div>}
-                </div>
-              );
-            })}
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {(vie?.questions_diverses_notables ?? []).map((q, i, arr) => {
+                const obj = typeof q === 'object' && q !== null ? q as Record<string, unknown> : null;
+                const label = obj ? safeStr(obj.label || obj.detail || q) : safeStr(q);
+                const detail = obj?.detail && obj.label ? safeStr(obj.detail) : null;
+                return (
+                  <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '11px 0', borderBottom: i < arr.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                    <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#2a7d9c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: '#374151', lineHeight: 1.55 }}>{label}</div>
+                      {detail && <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, lineHeight: 1.5 }}>{detail}</div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -1283,28 +1288,48 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         defaultOpen={allOpen}
           status="neutral" badge={`${reglesCopro.length} règle${reglesCopro.length > 1 ? 's' : ''}`}
           tooltip="Règles issues du Règlement de Copropriété (RCP) — le document fondateur qui définit ce qui est autorisé ou interdit dans la résidence.">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {reglesCopro.map((r: RegleT, i: number) => {
-              const color = r.statut === 'interdit' ? '#dc2626' : r.statut === 'autorise' ? '#16a34a' : '#d97706';
-              const bg = r.statut === 'interdit' ? '#fef2f2' : r.statut === 'autorise' ? '#f0fdf4' : '#fff7ed';
-              const border = r.statut === 'interdit' ? '#fecaca' : r.statut === 'autorise' ? '#bbf7d0' : '#fed7aa';
-              const label = r.statut === 'interdit' ? '✗ Interdit' : r.statut === 'autorise' ? '✓ Autorisé' : '~ Sous conditions';
-              return (
-                <div key={i} className="rcp-rule-row" style={{ padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #edf2f7' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: '#0f172a', lineHeight: 1.5 }}>{safeStr(r.label)}</div>
-                      <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {(() => {
+              const getRcpEmoji = (label: string): string => {
+                const l = (label || '').toLowerCase();
+                if (l.includes('animal') || l.includes('chien') || l.includes('chat') || l.includes('nac')) return '🐾';
+                if (l.includes('location') || l.includes('louer') || l.includes('locataire') || l.includes('airbnb') || l.includes('meublé')) return '🔑';
+                if (l.includes('travaux') || l.includes('modification') || l.includes('percer') || l.includes('aménag')) return '🔨';
+                if (l.includes('façade') || l.includes('extérieur') || l.includes('fenêtre') || l.includes('volet') || l.includes('balcon') || l.includes('store')) return '🪟';
+                if (l.includes('parking') || l.includes('stationnement') || l.includes('garage') || l.includes('véhicule') || l.includes('voiture')) return '🚗';
+                if (l.includes('occupation') || l.includes('bourgeois') || l.includes('commercial') || l.includes('profession') || l.includes('activité')) return '🏠';
+                if (l.includes('ordure') || l.includes('poubelle') || l.includes('déchet') || l.includes('tri')) return '🗑️';
+                if (l.includes('bruit') || l.includes('nuisance') || l.includes('sonore') || l.includes('tapage')) return '🔇';
+                if (l.includes('cave') || l.includes('grenier') || l.includes('stockage')) return '📦';
+                if (l.includes('ascenseur')) return '🛗';
+                if (l.includes('jardin') || l.includes('cour') || l.includes('terrasse') || l.includes('espace vert')) return '🌿';
+                if (l.includes('antenne') || l.includes('satellite') || l.includes('fibre')) return '📡';
+                if (l.includes('enseigne') || l.includes('affiche') || l.includes('publicité')) return '📢';
+                return '📜';
+              };
+              return reglesCopro.map((r: RegleT, i: number) => {
+                const color = r.statut === 'interdit' ? '#dc2626' : r.statut === 'autorise' ? '#16a34a' : '#d97706';
+                const bg = r.statut === 'interdit' ? '#fef2f2' : r.statut === 'autorise' ? '#f0fdf4' : '#fff7ed';
+                const border = r.statut === 'interdit' ? '#fecaca' : r.statut === 'autorise' ? '#bbf7d0' : '#fed7aa';
+                const badgeLabel = r.statut === 'interdit' ? '✗ Interdit' : r.statut === 'autorise' ? '✓ Autorisé' : '~ Sous conditions';
+                const iconBg = r.statut === 'interdit' ? '#fef2f2' : r.statut === 'autorise' ? '#f0fdf4' : '#fff7ed';
+                const iconBorder = r.statut === 'interdit' ? '#fecaca' : r.statut === 'autorise' ? '#bbf7d0' : '#fed7aa';
+                const emoji = getRcpEmoji(safeStr(r.label));
+                return (
+                  <div key={i} style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    <div style={{ width: 34, height: 34, borderRadius: 9, background: iconBg, border: `1px solid ${iconBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>{emoji}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', lineHeight: 1.5, marginBottom: 6 }}>{safeStr(r.label)}</div>
+                      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' as const, alignItems: 'center' }}>
                         {r.impact_rp && <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 20, background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe' }}>Vie quotidienne</span>}
                         {r.impact_invest && <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 20, background: '#fdf4ff', color: '#7e22ce', border: '1px solid #e9d5ff' }}>Location</span>}
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 9px', borderRadius: 20, background: bg, color, border: `1px solid ${border}` }}>{badgeLabel}</span>
                       </div>
                     </div>
-                    <span className="rcp-badge-desktop" style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: bg, color, border: `1px solid ${border}`, flexShrink: 0, whiteSpace: 'nowrap' as const }}>{label}</span>
                   </div>
-                  <span className="rcp-badge-mobile" style={{ display: 'none', marginTop: 8, fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 20, background: bg, color, border: `1px solid ${border}` }}>{label}</span>
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
         </AccordionSection>
       )}
