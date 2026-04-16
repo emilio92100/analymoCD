@@ -426,22 +426,27 @@ export default function NouvelleAnalyse() {
         </div>
       )}
 
-      {/* Zone de dépôt */}
-      <div onClick={() => document.getElementById('file-input')?.click()}
-        style={{ padding: '44px 32px', borderRadius: 18, border: '2px dashed #dde6ec', background: '#fafcfe', textAlign: 'center', cursor: 'pointer', marginBottom: 14, transition: 'all 0.18s' }}
-        onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.background = 'rgba(42,125,156,0.02)'; }}
-        onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#dde6ec'; el.style.background = '#fafcfe'; }}
+      {/* Zone de dépôt — label natif pour compatibilité mobile Safari */}
+      <label htmlFor="file-input-mobile"
+        style={{ display: 'block', padding: '36px 24px', borderRadius: 18, border: '2px dashed #dde6ec', background: '#fafcfe', textAlign: 'center', cursor: 'pointer', marginBottom: 14, transition: 'all 0.18s' }}
         onDragOver={e => { e.preventDefault(); (e.currentTarget as HTMLElement).style.borderColor = '#2a7d9c'; }}
         onDrop={e => { e.preventDefault(); handleFiles(Array.from(e.dataTransfer.files)); }}>
-        <input id="file-input" type="file" multiple={plan.max > 1} accept=".pdf" style={{ display: 'none' }}
+        <input id="file-input-mobile" type="file" multiple={plan.max > 1} accept=".pdf,application/pdf"
+          style={{ display: 'none' }}
           onChange={e => { if (e.target.files) handleFiles(Array.from(e.target.files)); }} />
         <div style={{ width: 54, height: 54, borderRadius: 15, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}><Upload size={24} style={{ color: '#2a7d9c' }} /></div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 5 }}>Déposez vos documents ici</div>
-        <div style={{ fontSize: 13, color: '#94a3b8' }}>ou <span style={{ color: '#2a7d9c', fontWeight: 700 }}>cliquez pour sélectionner</span></div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 5 }}>
+          <span className="upload-desktop-text">Déposez vos documents ici</span>
+          <span className="upload-mobile-text" style={{ display: 'none' }}>Appuyez pour sélectionner</span>
+        </div>
+        <div style={{ fontSize: 13, color: '#94a3b8' }}>
+          <span className="upload-desktop-text">ou <span style={{ color: '#2a7d9c', fontWeight: 700 }}>cliquez pour sélectionner</span></span>
+          <span className="upload-mobile-text" style={{ display: 'none' }}>vos fichiers PDF</span>
+        </div>
         <div style={{ fontSize: 12, color: '#cbd5e1', marginTop: 8 }}>
           PDF uniquement · Max {MAX_FILE_SIZE_MB} Mo par fichier{plan.max > 1 ? ` · ${plan.max} fichiers max` : ' · 1 fichier'}
         </div>
-      </div>
+      </label>
 
       {/* Formats acceptés */}
       <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16, padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #f1f5f9' }}>
@@ -503,8 +508,13 @@ export default function NouvelleAnalyse() {
         <style>{`
           @keyframes vr-shimmer { from { transform:translateX(-100%); } to { transform:translateX(200%); } }
           @keyframes vr-pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.6; transform:scale(0.9); } }
+          @media (max-width: 640px) {
+            .na-analyse-grid { grid-template-columns: 1fr !important; }
+            .upload-mobile-text { display: inline !important; }
+            .upload-desktop-text { display: none !important; }
+          }
         `}</style>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 24, alignItems: 'start' }}>
+        <div className="na-analyse-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 24, alignItems: 'start' }}>
 
           {/* Colonne gauche */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
