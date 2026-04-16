@@ -839,14 +839,13 @@ function KpiBand({ items }: { items: { label: string; value: string; sub?: strin
           background: item.bg ?? 'var(--color-background-primary)',
           border: `0.5px solid ${item.border ?? 'var(--color-border-tertiary)'}`,
           borderRadius: 14,
-          borderLeft: `3px solid ${item.color ?? '#2a7d9c'}`,
-          padding: '16px 18px',
+          padding: '18px 20px',
         }}>
-          {item.emoji && <div style={{ fontSize: 22, marginBottom: 10 }}>{item.emoji}</div>}
+          {item.emoji && <div style={{ fontSize: 28, marginBottom: 12 }}>{item.emoji}</div>}
           <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 6, lineHeight: 1.3 }}>
             {item.tooltip ? <Tooltip text={item.tooltip}>{item.label}</Tooltip> : item.label}
           </div>
-          <div style={{ fontSize: 26, fontWeight: 500, color: item.color ?? 'var(--color-text-primary)', lineHeight: 1 }}>{item.value}</div>
+          <div style={{ fontSize: 24, fontWeight: 500, color: item.color ?? 'var(--color-text-primary)', lineHeight: 1.1 }}>{item.value}</div>
           {item.sub && <div style={{ fontSize: 12, color: item.color ?? 'var(--color-text-secondary)', marginTop: 5 }}>{item.sub}</div>}
         </div>
       ))}
@@ -1469,7 +1468,11 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
   if (dpeClasse) kpiItems.push({ emoji: '⚡', label: 'Performance énergétique', value: `Classe ${dpeClasse}`, sub: dpeKwh ? `${dpeKwh} kWh/m²/an` : undefined, color: DPE_COLORS[dpeClasse], bg: `${DPE_COLORS[dpeClasse]}12`, border: `${DPE_COLORS[dpeClasse]}44`, tooltip: "Classe énergétique du logement. A = très performant, G = passoire thermique. F et G seront progressivement interdits à la location." });
   if (chargesMensuellesLot > 0) kpiItems.push({ emoji: '💶', label: 'Charges mensuelles lot', value: `${chargesMensuellesLot.toLocaleString('fr-FR')} €`, sub: `${chargesLotNum.toLocaleString('fr-FR')} €/an`, color: '#1e40af', bg: '#eff6ff', border: '#bfdbfe', tooltip: "Charges de copropriété annuelles de votre lot divisées par 12." });
   if (taxeMensuelle) kpiItems.push({ emoji: '🏛', label: 'Taxe foncière', value: `${taxeMensuelle.toLocaleString('fr-FR')} €/mois`, sub: taxeAnnuelle ? `${taxeAnnuelle.toLocaleString('fr-FR')} €/an` : undefined, tooltip: "Impôt local annuel dû par le propriétaire, calculé sur la valeur locative cadastrale." });
-  if (lot?.quote_part_tantiemes) kpiItems.push({ emoji: '⚖️', label: 'Tantièmes du lot', value: safeStr(lot.quote_part_tantiemes) ?? '—', sub: 'quote-part copropriété', tooltip: "Votre quote-part dans la copropriété. Détermine votre participation aux charges et votre poids lors des votes en AG." });
+  // Tantièmes : affiché dans "Votre lot", pas dans KPI (trop long)
+  // Surface Carrez depuis diagnostics
+  const carrezDiag = diagsPriv.find((d: Record<string, unknown>) => d.type === 'CARREZ') as Record<string, unknown> | undefined;
+  const carrezSurface = carrezDiag ? safeStr(carrezDiag.resultat)?.match(/([\d,\.]+)\s*m²/i)?.[1] : null;
+  if (carrezSurface) kpiItems.push({ emoji: '🏠', label: 'Surface Carrez', value: `${carrezSurface} m²`, sub: 'surface privative officielle', tooltip: "Surface mesurée selon la loi Carrez. Si la surface réelle est inférieure de plus de 5% à celle du compromis, vous pouvez demander une réduction du prix." });
   if (fondsAlurNum) kpiItems.push({ emoji: '💰', label: 'Fonds travaux ALUR', value: `${fondsAlurNum.toLocaleString('fr-FR')} €`, sub: 'À rembourser au vendeur', color: '#d97706', bg: '#fff7ed', border: '#fed7aa', tooltip: "Ce montant est attaché au lot. Il vous sera transféré mais vous devrez le rembourser au vendeur en sus du prix de vente." });
 
   // Purge conditions suspensives
@@ -1519,92 +1522,177 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
       )}
 
       {/* ── VOTRE LOT ── */}
-      <AccordionSection
-        title="Votre lot" sub="Tantièmes · parties privatives · fonds ALUR · restrictions" icon="🏠"
-        status="neutral" badge={lot?.quote_part_tantiemes ? safeStr(lot.quote_part_tantiemes) ?? 'Lot' : 'Informatif'}
-        defaultOpen={true}>
+      {(() => {
+        type PedLot = { present?: boolean; impayes_vendeur?: number; fonds_travaux_alur?: number | null; fonds_roulement_acheteur?: number | null; fonds_roulement_modalite?: string | null; honoraires_syndic?: number | null; charges_futures?: { montant_trimestriel?: number | null; fonds_travaux_trimestriel?: number | null; montant_annuel?: number | null }; travaux_charge_vendeur?: Array<{ label?: string; montant?: number | null }>; procedures_contre_vendeur?: string[]; procedures_copro?: string; impayes_copro_global?: number | null; dette_fournisseurs?: number | null; fonds_travaux_copro_global?: number | null; historique_charges?: Array<{ exercice?: string; annee?: number | null; budget_appele?: number | null; charges_reelles?: number | null }> };
+        const ped = (rapport as Record<string, unknown>).pre_etat_date as PedLot | null;
+        const hasPed = ped?.present === true;
+        const hasLotInfo = lot?.quote_part_tantiemes || fondsAlurNum || restrictions.length > 0 || (lot?.parties_privatives as unknown[] ?? []).length > 0;
+        if (!hasLotInfo && !hasPed && travauxEvoques.length === 0) return null;
+        return (
+          <AccordionSection
+            title="Votre lot" sub="Tantièmes · situation vendeur · historique charges · restrictions" icon="🏠"
+            status="neutral" badge={lot?.quote_part_tantiemes ? 'Informatif' : 'Informatif'}
+            defaultOpen={true}>
 
-        <SectionTitle emoji="⚖️" text="Informations officielles du lot" tooltip="Données issues du règlement de copropriété, du pré-état daté ou de l'état daté." />
-
-        <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
-          {lot?.quote_part_tantiemes && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: '0.5px solid var(--color-border-tertiary)', gap: 12 }}>
-              <span style={{ fontSize: 14, color: 'var(--color-text-secondary)', flexShrink: 0 }}>
-                <Tooltip text="Votre quote-part dans la copropriété. Détermine votre participation aux charges et votre poids lors des votes en assemblée générale.">Tantièmes</Tooltip>
-              </span>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--color-text-primary)' }}>{safeStr(lot.quote_part_tantiemes)}</div>
-                {(lot.parties_privatives as unknown[] ?? []).length > 0 && (
-                  <div style={{ marginTop: 4 }}>
-                    {(lot.parties_privatives as unknown[]).map((p, i) => {
-                      // Parser si JSON brut {"numero":"17","description":"..."}
-                      let label = safeStr(p);
-                      if (label && label.startsWith('{')) {
-                        try {
-                          const obj = JSON.parse(label);
-                          label = obj.description ?? obj.label ?? obj.numero ?? label;
-                          if (obj.numero && obj.description) label = `Lot ${obj.numero} — ${obj.description}`;
-                        } catch { /* keep label as-is */ }
-                      }
-                      return <div key={i} style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 3 }}>• {label}</div>;
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          {fondsAlurNum && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: restrictions.length > 0 ? '0.5px solid var(--color-border-tertiary)' : 'none', gap: 12 }}>
-              <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', flexShrink: 0, maxWidth: 160 }}>
-                <Tooltip text="Ce montant est attaché au lot et vous sera transféré. Vous devrez le rembourser au vendeur en sus du prix de vente lors de la signature de l'acte authentique.">Fonds travaux ALUR</Tooltip>
-              </span>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 15, fontWeight: 500, color: '#d97706' }}>{fondsAlurNum.toLocaleString('fr-FR')} €</div>
-                <div style={{ fontSize: 12, color: '#a16207', marginTop: 3 }}>À rembourser au vendeur à la signature de l'acte</div>
-              </div>
-            </div>
-          )}
-          {restrictions.length > 0 && (
-            <div style={{ padding: '12px 16px' }}>
-              <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 10 }}>Restrictions d'usage (RCP)</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                {restrictions.map((r, i) => {
-                  const low = r.toLowerCase();
-                  const interdit = low.includes('interdit') || low.includes('interdit') || low.includes('prohib') || low.includes('non autoris');
-                  const color = interdit ? '#dc2626' : '#16a34a';
-                  const bg = interdit ? '#fef2f2' : '#f0fdf4';
-                  const border = interdit ? '#fecaca' : '#bbf7d0';
-                  const label = interdit ? '✗ Interdit' : '✓ Autorisé';
-                  return (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--color-background-secondary)', borderRadius: 9, gap: 10 }}>
-                      <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>{safeStr(r).replace(/^[✓✗×•-]\s*/, '')}</span>
-                      <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, background: bg, color, border: `0.5px solid ${border}`, flexShrink: 0, fontWeight: 500 }}>{label}</span>
+            {/* Identité du lot */}
+            {(lot?.quote_part_tantiemes || (lot?.parties_privatives as unknown[] ?? []).length > 0) && (
+              <>
+                <SectionTitle emoji="🏠" text="Identité du lot" tooltip="Données issues du règlement de copropriété, du pré-état daté ou de l'état daté." />
+                <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
+                  {(lot?.parties_privatives as unknown[] ?? []).length > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: lot?.quote_part_tantiemes ? '0.5px solid var(--color-border-tertiary)' : 'none', gap: 16 }}>
+                      <span style={{ fontSize: 14, color: 'var(--color-text-secondary)', flexShrink: 0 }}>Lots concernés</span>
+                      <div style={{ textAlign: 'right' }}>
+                        {(lot.parties_privatives as unknown[]).map((p, i) => {
+                          let label = safeStr(p);
+                          if (label && label.startsWith('{')) { try { const obj = JSON.parse(label); label = obj.numero && obj.description ? `Lot ${obj.numero} — ${obj.description}` : obj.description ?? obj.label ?? label; } catch { /* keep */ } }
+                          return <div key={i} style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: 2 }}>{label}</div>;
+                        })}
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+                  )}
+                  {lot?.quote_part_tantiemes && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--color-background-secondary)', gap: 16 }}>
+                      <span style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>
+                        <Tooltip text="Votre quote-part dans la copropriété. Détermine votre participation aux charges et votre poids lors des votes en AG.">Tantièmes</Tooltip>
+                      </span>
+                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', textAlign: 'right' }}>{safeStr(lot.quote_part_tantiemes)}</span>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
 
-        {/* Rappel travaux évoqués */}
-        {travauxEvoques.length > 0 && (
-          <div style={{ background: '#fff7ed', border: '0.5px solid #fed7aa', borderRadius: 10, padding: '14px 16px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-            <span style={{ fontSize: 20, flexShrink: 0 }}>⚠️</span>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e', marginBottom: 4 }}>
-                {travauxEvoques.length} travaux évoqués sans vote dans la copropriété
+            {/* Situation vendeur (pré-état daté) */}
+            {hasPed && (
+              <>
+                <SectionTitle emoji="👤" text="Situation du vendeur" tooltip="Informations issues du pré-état daté établi par le syndic avant la vente." />
+                <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
+                    <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Impayés de charges</span>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: Number(ped!.impayes_vendeur) === 0 ? '#16a34a' : '#dc2626' }}>{Number(ped!.impayes_vendeur) === 0 ? '✓ Vendeur à jour' : `${Number(ped!.impayes_vendeur).toLocaleString('fr-FR')} € impayés`}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: ped!.honoraires_syndic ? '0.5px solid var(--color-border-tertiary)' : 'none', background: 'var(--color-background-secondary)' }}>
+                    <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Procédures contre le vendeur</span>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: (ped!.procedures_contre_vendeur ?? []).length === 0 ? '#16a34a' : '#dc2626' }}>{(ped!.procedures_contre_vendeur ?? []).length === 0 ? '✓ Aucune' : 'En cours'}</span>
+                  </div>
+                  {ped!.honoraires_syndic && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', gap: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Frais d'établissement du document</div>
+                        <div style={{ fontSize: 12, color: '#16a34a', marginTop: 3 }}>✓ À la charge du vendeur uniquement — rien à payer pour vous</div>
+                      </div>
+                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-secondary)', flexShrink: 0 }}>{Number(ped!.honoraires_syndic).toLocaleString('fr-FR')} €</span>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Sommes à verser au vendeur */}
+            {(fondsAlurNum || ped?.fonds_roulement_acheteur) && (
+              <>
+                <SectionTitle emoji="💰" text="Sommes à verser au vendeur à la signature" tooltip="Ces montants sont attachés au lot. Ils vous seront transférés mais vous devrez les rembourser au vendeur en sus du prix de vente, à la signature de l'acte authentique." />
+                <div style={{ border: '0.5px solid #fed7aa', borderRadius: 10, overflow: 'hidden', background: '#fffbeb' }}>
+                  {fondsAlurNum && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: ped?.fonds_roulement_acheteur ? '0.5px solid #fde68a' : 'none', gap: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e' }}><Tooltip text="Part des fonds de travaux constituée par le vendeur pendant sa détention du lot. Elle vous est transférée mais vous devez la rembourser au vendeur à la signature.">Fonds travaux ALUR</Tooltip></div>
+                        <div style={{ fontSize: 12, color: '#a16207', marginTop: 3 }}>Part constituée par le vendeur, attachée au lot</div>
+                      </div>
+                      <span style={{ fontSize: 16, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>{fondsAlurNum.toLocaleString('fr-FR')} €</span>
+                    </div>
+                  )}
+                  {ped?.fonds_roulement_acheteur && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', gap: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e' }}>Fonds de roulement</div>
+                        <div style={{ fontSize: 12, color: '#a16207', marginTop: 3 }}>{ped.fonds_roulement_modalite === 'remboursement_vendeur' ? 'Remboursement au vendeur' : 'Reconstitution au syndicat'}</div>
+                      </div>
+                      <span style={{ fontSize: 16, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>{Number(ped.fonds_roulement_acheteur).toLocaleString('fr-FR')} €</span>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Historique charges N-1/N-2 */}
+            {hasPed && (ped!.historique_charges ?? []).filter(h => h.budget_appele || h.charges_reelles).length > 0 && (
+              <>
+                <SectionTitle emoji="📊" text="Historique des charges du lot" tooltip="Le budget appelé est ce que la copropriété a prévu de dépenser. Les charges réelles sont ce qui a été effectivement dépensé. Un écart est normal — seul un écart important et répété mérite attention." />
+                <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--color-background-secondary)' }}>
+                        {['Exercice', 'Budget appelé', 'Charges réelles', 'Écart'].map((h, i) => (
+                          <th key={i} style={{ padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right' as const, fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ped!.historique_charges!.filter(h => h.budget_appele || h.charges_reelles).map((h, i, arr) => {
+                        const ecart = h.charges_reelles && h.budget_appele ? Number(h.charges_reelles) - Number(h.budget_appele) : null;
+                        return (
+                          <tr key={i} style={{ borderBottom: i < arr.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none', background: i % 2 === 0 ? 'var(--color-background-primary)' : 'var(--color-background-secondary)' }}>
+                            <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{safeStr(h.exercice)}{h.annee ? ` (${h.annee})` : ''}</td>
+                            <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--color-text-secondary)', textAlign: 'right' as const }}>{h.budget_appele ? `${Number(h.budget_appele).toLocaleString('fr-FR')} €` : '—'}</td>
+                            <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', textAlign: 'right' as const }}>{h.charges_reelles ? `${Number(h.charges_reelles).toLocaleString('fr-FR')} €` : '—'}</td>
+                            <td style={{ padding: '12px 16px', textAlign: 'right' as const }}>
+                              {ecart !== null && (
+                                <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 9px', borderRadius: 20, background: ecart > 0 ? '#fef2f2' : '#f0fdf4', color: ecart > 0 ? '#dc2626' : '#16a34a' }}>
+                                  {ecart > 0 ? '+' : ''}{ecart.toLocaleString('fr-FR')} €
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  <div style={{ padding: '14px 16px', background: 'var(--color-background-secondary)', borderTop: '0.5px solid var(--color-border-tertiary)' }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6 }}>💡 Comment lire ce tableau ?</div>
+                    <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.7 }}>Le <strong>budget appelé</strong> est ce que la copropriété a prévu de dépenser sur l'exercice. Les <strong>charges réelles</strong> sont ce qui a été effectivement dépensé après clôture. Un petit écart est tout à fait normal. C'est seulement un écart important et répété sur plusieurs exercices qui mérite attention.</div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Restrictions RCP */}
+            {restrictions.length > 0 && (
+              <>
+                <SectionTitle emoji="📜" text="Règles d'usage (RCP)" tooltip="Issues du Règlement de Copropriété — ce qui est autorisé ou interdit dans votre lot et la résidence." />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                  {restrictions.map((r, i) => {
+                    const low = r.toLowerCase();
+                    const interdit = low.includes('interdit') || low.includes('prohib') || low.includes('non autoris');
+                    const color = interdit ? '#dc2626' : '#16a34a';
+                    const bg = interdit ? '#fef2f2' : '#f0fdf4';
+                    const border = interdit ? '#fecaca' : '#bbf7d0';
+                    return (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '11px 14px', background: 'var(--color-background-secondary)', borderRadius: 9, gap: 10 }}>
+                        <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>{safeStr(r).replace(/^[✓✗×•-]\s*/, '')}</span>
+                        <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 20, background: bg, color, border: `0.5px solid ${border}`, flexShrink: 0, fontWeight: 500 }}>{interdit ? '✗ Interdit' : '✓ Autorisé'}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* Rappel travaux évoqués */}
+            {travauxEvoques.length > 0 && (
+              <div style={{ background: '#fff7ed', border: '0.5px solid #fed7aa', borderRadius: 10, padding: '14px 16px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 20, flexShrink: 0 }}>⚠️</span>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e', marginBottom: 4 }}>{travauxEvoques.length} travaux évoqués sans vote dans la copropriété</div>
+                  <div style={{ fontSize: 13, color: '#a16207', lineHeight: 1.6 }}>Si ces travaux sont votés en AG après votre acquisition, vous en supporterez une part proportionnelle à vos tantièmes — potentiellement plusieurs milliers d'euros.</div>
+                  <div style={{ marginTop: 8, fontSize: 13, color: '#2a7d9c', fontWeight: 500, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}>→ Voir les travaux évoqués dans l'onglet Copropriété</div>
+                </div>
               </div>
-              <div style={{ fontSize: 13, color: '#a16207', lineHeight: 1.6 }}>
-                Si ces travaux sont votés en AG après votre acquisition, vous en supporterez une part proportionnelle à vos tantièmes — potentiellement plusieurs milliers d'euros.
-              </div>
-              <div style={{ marginTop: 8, fontSize: 13, color: '#2a7d9c', fontWeight: 500, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}>
-                → Voir les travaux évoqués dans l'onglet Copropriété
-              </div>
-            </div>
-          </div>
-        )}
-      </AccordionSection>
+            )}
+          </AccordionSection>
+        );
+      })()}
 
       {/* ── DPE ── */}
       {dpe && (
