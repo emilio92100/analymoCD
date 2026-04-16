@@ -463,6 +463,36 @@ function ShareButton({ analyseId }: { analyseId: string }) {
 }
 
 /* ══════════════════════════════════
+   BOUTON PDF — desktop : nouvelle fenêtre / mobile : toast explicatif
+══════════════════════════════════ */
+function PdfButton({ rapportId }: { rapportId: string }) {
+  const [showToast, setShowToast] = useState(false);
+  const handleClick = () => {
+    const isMobile = window.innerWidth <= 640;
+    if (isMobile) {
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 4000);
+    } else {
+      window.open(`/rapport/print?id=${rapportId}`, '_blank');
+    }
+  };
+  return (
+    <>
+      <button onClick={handleClick} className="topnav-dl-btn"
+        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, border: 'none', background: '#fff', color: '#0f2d3d', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+        <Download size={14} /> <span className="topnav-dl-label">PDF</span>
+      </button>
+      {showToast && (
+        <div style={{ position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, background: '#0f172a', color: '#fff', borderRadius: 12, padding: '12px 18px', fontSize: 13, lineHeight: 1.5, maxWidth: 'calc(100vw - 40px)', textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
+          📥 Le PDF est disponible sur ordinateur uniquement.<br/>
+          <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>Ouvrez ce rapport sur votre PC pour le télécharger.</span>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ══════════════════════════════════
    HEADER RAPPORT
 ══════════════════════════════════ */
 type RapportData = ReturnType<typeof buildRapport>;
@@ -489,11 +519,7 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
           <div style={{ flex: 1 }} />
           <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
             {!isShared && <ShareButton analyseId={rapport.id} />}
-            <button onClick={() => { const params = new URLSearchParams(window.location.search); const url = `/rapport/print?id=${params.get('id') || ''}`; const isMob = window.innerWidth <= 640; if (isMob) { window.location.href = url; } else { window.open(url, '_blank'); } }}
-              className="topnav-dl-btn"
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, border: 'none', background: '#fff', color: '#0f2d3d', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
-              <Download size={14} /> <span className="topnav-dl-label">Télécharger PDF</span>
-            </button>
+            <PdfButton rapportId={new URLSearchParams(window.location.search).get('id') || ''} />
           </div>
         </div>
 
