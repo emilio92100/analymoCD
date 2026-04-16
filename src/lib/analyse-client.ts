@@ -31,8 +31,18 @@ export async function lancerAnalyseEdge(params: {
   const { files, mode, analyseId, profil, onProgress } = params;
 
   try {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return { success: false, error: 'unknown', errorMessage: 'Session expirée' };
+    // Tenter getSession, puis getUser en fallback (mobile Safari peut perdre la session localStorage)
+    let session = (await supabase.auth.getSession()).data.session;
+    if (!session) {
+      // Forcer un refresh du token
+      const { data: refreshData } = await supabase.auth.refreshSession();
+      session = refreshData.session;
+    }
+    if (!session) {
+      // Dernier recours : rediriger vers connexion
+      if (typeof window !== 'undefined') window.location.href = '/connexion?redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+      return { success: false, error: 'unknown', errorMessage: 'Session expirée. Reconnectez-vous et réessayez.' };
+    }
 
     // ── 1. Upload PDFs dans Storage ───────────────────────────
     const storagePaths: string[] = [];
@@ -49,9 +59,24 @@ export async function lancerAnalyseEdge(params: {
       const safeName = files[i].name.replace(/[^a-zA-Z0-9._-]/g, '_');
       const storagePath = `${analyseId}/${i}_${safeName}`;
 
+      // Sur mobile (iOS Files app, Google Drive), le fichier peut être un pointeur cloud
+      // pas encore téléchargé localement → on force la lecture complète en mémoire d'abord
+      let fileToUpload: File | Blob = files[i];
+      try {
+        const arrayBuffer = await files[i].arrayBuffer();
+        if (arrayBuffer.byteLength === 0) {
+          console.error('[Verimo] Fichier vide après lecture:', files[i].name);
+          return { success: false, error: 'unknown', errorMessage: `Le fichier "${files[i].name}" semble vide ou inaccessible. Vérifiez qu'il est bien téléchargé sur votre appareil avant de l'uploader.` };
+        }
+        fileToUpload = new Blob([arrayBuffer], { type: 'application/pdf' });
+      } catch (readErr) {
+        console.error('[Verimo] Impossible de lire le fichier:', files[i].name, readErr);
+        return { success: false, error: 'unknown', errorMessage: `Impossible de lire "${files[i].name}". Sur mobile, assurez-vous que le fichier est téléchargé localement (pas dans le cloud).` };
+      }
+
       const { error: uploadError } = await supabase.storage
         .from(STORAGE_BUCKET)
-        .upload(storagePath, files[i], { contentType: 'application/pdf', upsert: true });
+        .upload(storagePath, fileToUpload, { contentType: 'application/pdf', upsert: true });
 
       if (uploadError) {
         console.error('[Verimo] Erreur upload Storage:', uploadError);
