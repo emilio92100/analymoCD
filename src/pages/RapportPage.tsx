@@ -110,7 +110,7 @@ function AccordionSection({
                 onMouseEnter={() => { if (tooltipBtnRef.current) { const r = tooltipBtnRef.current.getBoundingClientRect(); setTooltipPos({ top: r.bottom + 6, left: Math.min(r.left, window.innerWidth - 320) }); } setShowTooltip(true); }}
                 onMouseLeave={() => { setShowTooltip(false); setTooltipPos(null); }}
                 onClick={e => e.stopPropagation()}>
-                <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#f1f5f9', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>i</div>
+<TooltipBtn text={tooltip} />
                 {showTooltip && tooltipPos && (
                   <div style={{ position: 'fixed', top: tooltipPos.top, left: tooltipPos.left, width: 300, background: '#0f172a', borderRadius: 10, padding: '12px 14px', fontSize: 12, color: '#fff', lineHeight: 1.7, zIndex: 9999, boxShadow: '0 8px 24px rgba(0,0,0,0.3)', pointerEvents: 'none' }}>
                     {tooltip.split('|').map((part, i) => (
@@ -825,6 +825,28 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
 /* ══════════════════════════════════
    ONGLET COPROPRIÉTÉ
 ══════════════════════════════════ */
+// Composant ? universel — fond sombre, position fixed, jamais rogné
+function TooltipBtn({ text, white = false }: { text: string; white?: boolean }) {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const ref = useRef<HTMLSpanElement>(null);
+  const show = () => {
+    if (!ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    const left = Math.min(r.left, window.innerWidth - 280);
+    const top = r.bottom + 6;
+    setPos({ top, left });
+  };
+  return (
+    <span ref={ref} onMouseEnter={show} onMouseLeave={() => setPos(null)}
+      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: white ? 'rgba(255,255,255,0.25)' : '#f1f5f9', border: white ? 'none' : '1px solid #e2e8f0', fontSize: 10, color: white ? '#fff' : '#94a3b8', fontWeight: 700, cursor: 'help', flexShrink: 0, position: 'relative' }}>
+      ?
+      {pos && (
+        <span style={{ position: 'fixed', top: pos.top, left: pos.left, width: 270, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.6, zIndex: 9999, boxShadow: '0 8px 24px rgba(0,0,0,0.3)', pointerEvents: 'none', whiteSpace: 'normal', fontWeight: 400 }}>{text}</span>
+      )}
+    </span>
+  );
+}
+
 function useTooltipPos() {
   const ref = useRef<HTMLSpanElement>(null);
   const getPos = () => {
@@ -838,32 +860,16 @@ function useTooltipPos() {
 }
 
 function Tooltip({ text, children }: { text: string; children: React.ReactNode }) {
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
-  const { ref, getPos } = useTooltipPos();
   return (
-    <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
-      onMouseEnter={() => setPos(getPos())} onMouseLeave={() => setPos(null)}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
       {children}
-      <span ref={ref} style={{ marginLeft: 4, width: 15, height: 15, borderRadius: '50%', background: '#f1f5f9', border: '1px solid #e2e8f0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#94a3b8', fontWeight: 700, cursor: 'help', flexShrink: 0 }}>?</span>
-      {pos && (
-        <span style={{ position: 'fixed', top: pos.top, left: pos.left, width: 260, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.6, zIndex: 9999, boxShadow: '0 8px 24px rgba(0,0,0,0.3)', pointerEvents: 'none' }}>{text}</span>
-      )}
+      <TooltipBtn text={text} />
     </span>
   );
 }
 
 function TooltipWhite({ text }: { text: string }) {
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
-  const { ref, getPos } = useTooltipPos();
-  return (
-    <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
-      onMouseEnter={() => setPos(getPos())} onMouseLeave={() => setPos(null)}>
-      <span ref={ref} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 15, height: 15, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', fontSize: 9, color: '#fff', fontWeight: 700, cursor: 'help', flexShrink: 0 }}>?</span>
-      {pos && (
-        <span style={{ position: 'fixed', top: pos.top, left: pos.left, width: 260, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.6, zIndex: 9999, boxShadow: '0 8px 24px rgba(0,0,0,0.3)', pointerEvents: 'none', whiteSpace: 'normal' }}>{text}</span>
-      )}
-    </span>
-  );
+  return <TooltipBtn text={text} white={true} />;
 }
 
 function KpiBand({ items }: { items: { label: string; value: string; sub?: string; color?: string; bg?: string; border?: string; tooltip?: string; emoji?: string }[] }) {
@@ -879,7 +885,7 @@ function KpiBand({ items }: { items: { label: string; value: string; sub?: strin
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', marginBottom: 6, lineHeight: 1.3 }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                 <span>{item.label}</span>
-                {item.tooltip && <TooltipWhite text={item.tooltip} />}
+                {item.tooltip && <TooltipBtn text={item.tooltip} white={true} />}
               </span>
             </div>
             <div style={{ fontSize: 26, fontWeight: 500, color: '#fff', lineHeight: 1.1 }}>{item.value}</div>
@@ -1031,7 +1037,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
               <div style={{ background: '#2a7d9c', borderRadius: 8, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                 <span style={{ fontSize: 16 }}>🏠</span>
                 <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>Composition de la copropriété</span>
-                <span style={{ marginLeft: 4, width: 16, height: 16, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#fff', cursor: 'help' }} title="Répartition officielle des lots par type au sein de la copropriété.">?</span>
+                <TooltipBtn text="Répartition officielle des lots par type au sein de la copropriété." white={true} />
               </div>
               <div style={{ border: '1px solid #edf2f7', borderRadius: 10, overflow: 'hidden' }}>
                 {rows.map((row, i) => {
@@ -2256,19 +2262,14 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
                   const badgeBg = purge ? '#f0fdf4' : jours !== null && jours < 15 ? '#fef2f2' : '#fff7ed';
                   const badgeColor = purge ? '#166534' : jours !== null && jours < 15 ? '#dc2626' : '#a16207';
                   const badgeText = purge ? '✓ Purgée' : jours !== null ? `⏳ Purge dans ${jours} jours` : cs.date_limite ? `Date : ${safeStr(cs.date_limite)}` : 'En cours';
-                  const [showCSTooltip, setShowCSTooltip] = useState(false);
+
                   return (
                     <div key={i} style={{ border: `0.5px solid ${borderColor}`, borderRadius: 10, padding: '14px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
                         <span style={{ fontSize: 18, flexShrink: 0 }}>{getCSEmoji(label)}</span>
                         <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', flex: 1 }}>{label}</span>
                         <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, background: badgeBg, color: badgeColor, border: `0.5px solid ${borderColor}`, fontWeight: 500, flexShrink: 0 }}>{badgeText}</span>
-                        <div style={{ position: 'relative' }} onMouseEnter={() => setShowCSTooltip(true)} onMouseLeave={() => setShowCSTooltip(false)}>
-                          <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#f1f5f9', border: '1px solid #e2e8f0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#94a3b8', fontWeight: 700, cursor: 'help', flexShrink: 0 }}>?</span>
-                          {showCSTooltip && (
-                            <div style={{ position: 'absolute', right: 0, top: 22, width: 280, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.6, zIndex: 200, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>{getCSTooltip(label)}</div>
-                          )}
-                        </div>
+                        <TooltipBtn text={getCSTooltip(label)} />
                       </div>
                       {cs.detail && <div style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.6, marginLeft: 28 }}>{safeStr(cs.detail)}</div>}
                       {cs.date_limite && !purge && <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginLeft: 28, marginTop: 4 }}>Date limite : <strong>{safeStr(cs.date_limite)}</strong></div>}
@@ -2437,7 +2438,7 @@ function TabDocuments({ rapport }: { rapport: RapportData }) {
                       onMouseEnter={() => doc.tooltip && setTooltipDoc(`e${i}`)}
                       onMouseLeave={() => setTooltipDoc(null)}>
                       {doc.label}
-                      {doc.tooltip && <span style={{ width: 15, height: 15, borderRadius: '50%', background: '#bfdbfe', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#1e40af', fontWeight: 700, flexShrink: 0 }}>?</span>}
+                      {doc.tooltip && <TooltipBtn text={doc.tooltip} />}
                       {tooltipDoc === `e${i}` && doc.tooltip && (
                         <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: 280, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.7, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>{doc.tooltip}</div>
                       )}
@@ -2455,7 +2456,7 @@ function TabDocuments({ rapport }: { rapport: RapportData }) {
                       onMouseEnter={() => doc.tooltip && setTooltipDoc(`s${i}`)}
                       onMouseLeave={() => setTooltipDoc(null)}>
                       {doc.label}
-                      {doc.tooltip && <span style={{ width: 15, height: 15, borderRadius: '50%', background: '#e2e8f0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#475569', fontWeight: 700, flexShrink: 0 }}>?</span>}
+                      {doc.tooltip && <TooltipBtn text={doc.tooltip} />}
                       {tooltipDoc === `s${i}` && doc.tooltip && (
                         <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: 280, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.7, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>{doc.tooltip}</div>
                       )}
