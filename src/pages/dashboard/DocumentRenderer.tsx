@@ -66,7 +66,7 @@ function Header({ type, titre, sub }: { type: string; titre: string; sub?: strin
   return (
     <div style={{ background: C.dark, borderRadius: 14, padding: '22px 28px', marginBottom: 16 }}>
       <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', marginBottom: 8, textTransform: 'uppercase' as const }}>{type}</div>
-      <div style={{ fontSize: 20, fontWeight: 600, color: '#fff', marginBottom: sub ? 6 : 0, lineHeight: 1.3 }}>{titre}</div>
+      <div className="dr-header-titre" style={{ fontSize: 20, fontWeight: 600, color: '#fff', marginBottom: sub ? 6 : 0, lineHeight: 1.3, wordBreak: 'break-word' as const }}>{titre}</div>
       {sub && <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>{sub}</div>}
     </div>
   );
@@ -105,7 +105,7 @@ function KpiGrid({ children }: { children: React.ReactNode }) {
   const cols = count === 1 ? 1 : count === 2 ? 2 : 3;
   const justify = count <= 2 ? 'center' : 'stretch';
   return (
-    <div style={{
+    <div className="dr-kpi-grid" style={{
       display: 'grid',
       gridTemplateColumns: count === 1 ? 'minmax(0, 400px)' : `repeat(${cols}, 1fr)`,
       gap: 12,
@@ -160,8 +160,8 @@ function Kpi({ label, value, sub, color, tooltip }: { label: string; value: stri
         {tooltip && <TooltipIcon text={tooltip} />}
       </div>
       <div style={{ padding: '14px 16px' }}>
-        <div style={{ fontSize: 22, fontWeight: 600, color: color || C.text, lineHeight: 1.2 }}>{value}</div>
-        {sub && <div style={{ fontSize: 14, color: C.textSec, marginTop: 4 }}>{sub}</div>}
+        <div className="dr-kpi-value" style={{ fontSize: 22, fontWeight: 600, color: color || C.text, lineHeight: 1.2 }}>{value}</div>
+        {sub && <div className="dr-kpi-sub" style={{ fontSize: 14, color: C.textSec, marginTop: 4 }}>{sub}</div>}
       </div>
     </div>
   );
@@ -169,7 +169,7 @@ function Kpi({ label, value, sub, color, tooltip }: { label: string; value: stri
 
 function InfoRow({ label, value, alt, valueColor }: { label: string; value: string; alt?: boolean; valueColor?: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: `0.5px solid ${C.border}`, background: alt ? C.bgSecondary : C.bg }}>
+    <div className="dr-info-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: `0.5px solid ${C.border}`, background: alt ? C.bgSecondary : C.bg, gap: 8, flexWrap: 'wrap' as const }}>
       <span style={{ fontSize: 14, color: C.textSec }}>{label}</span>
       <span style={{ fontSize: 14, fontWeight: 500, color: valueColor || C.text }}>{value}</span>
     </div>
@@ -193,7 +193,7 @@ function stripLeadingEmoji(text: string): string {
 function PointsFortsVigilances({ forts, vigilances }: { forts: string[]; vigilances: string[] }) {
   if (!forts?.length && !vigilances?.length) return null;
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+    <div className="dr-points-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
       {forts?.length > 0 && (
         <div style={{ background: '#f0fdf4', border: `0.5px solid #bbf7d0`, borderRadius: 12, overflow: 'hidden' }}>
           <div style={{ padding: '12px 20px', borderBottom: `0.5px solid #bbf7d0`, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -229,14 +229,14 @@ function PointsFortsVigilances({ forts, vigilances }: { forts: string[]; vigilan
 function AvisVerimo({ text }: { text: string }) {
   return (
     <div style={{ background: C.dark, borderRadius: 12, overflow: 'hidden' }}>
-      <div style={{ padding: '20px 28px 16px', borderBottom: '0.5px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div className="dr-avis-pad" style={{ padding: '20px 28px 16px', borderBottom: '0.5px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 12 }}>
         <span style={{ fontSize: 22, flexShrink: 0 }}>⭐</span>
         <div style={{ position: 'relative', display: 'inline-block' }}>
           <span style={{ fontSize: 22, fontWeight: 500, color: '#fff', position: 'relative', zIndex: 1 }}>Avis Verimo</span>
           <div style={{ position: 'absolute', bottom: 1, left: 0, right: 0, height: 8, background: 'rgba(91,184,212,0.45)', zIndex: 0, borderRadius: 2 }} />
         </div>
       </div>
-      <div style={{ padding: '20px 28px' }}>
+      <div className="dr-avis-pad" style={{ padding: '20px 28px' }}>
         <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.88)', lineHeight: 1.85 }}>{text}</div>
         <div style={{ marginTop: 16, padding: '12px 16px', background: 'rgba(255,255,255,0.06)', borderRadius: 8, fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>
           Pour une vision complète de votre futur bien, lancez une{' '}
@@ -410,7 +410,7 @@ function RendererDDT({ r }: { r: any }) {
       <Resume text={r.resume} />
 
       {/* 3 encarts d'info */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
+      <div className="dr-kpi-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
 
         {/* Encart 1 — Diagnostiqueur */}
         <SectionKpi icon="🔬" label="Diagnostiqueur">
@@ -590,7 +590,7 @@ function RendererPVAG({ r }: { r: any }) {
       <Resume text={r.resume} />
 
       {/* 3 encarts */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+      <div className="dr-kpi-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
 
         {/* Encart 1 — L'assemblée */}
         <SectionKpi icon="🏛" label="L'assemblée">
@@ -661,7 +661,7 @@ function RendererPVAG({ r }: { r: any }) {
                 <div style={{ fontSize: 14, color: C.text }}>{t.label}</div>
                 {t.echeance && <div style={{ fontSize: 14, color: C.textSec, marginTop: 4 }}>{t.echeance}</div>}
               </div>
-              {t.montant && <div style={{ fontSize: 15, fontWeight: 600, color: '#185FA5', whiteSpace: 'nowrap' as const, marginLeft: 20 }}>{Number(t.montant).toLocaleString('fr-FR')} €</div>}
+              {t.montant && <div className="dr-montant-inline" style={{ fontSize: 15, fontWeight: 600, color: '#185FA5', whiteSpace: 'normal' as const }}>{Number(t.montant).toLocaleString('fr-FR')} €</div>}
             </div>
           ))}
         </PBlock>
@@ -1040,7 +1040,7 @@ function RendererCarnetEntretien({ r }: { r: any }) {
       )}
 
       {/* 3 encarts fixes */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+      <div className="dr-kpi-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
 
         {/* Encart Syndic */}
         <SectionKpi icon="🏢" label="Syndic">
@@ -1256,7 +1256,7 @@ function RendererPreEtatDate({ r }: { r: any }) {
       <Resume text={r.resume} />
 
       {/* 3 encarts */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+      <div className="dr-kpi-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
         {/* Syndic */}
         <SectionKpi icon="🏢" label="Syndic">
           {r.syndic && <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>{r.syndic}</div>}
@@ -1498,7 +1498,7 @@ function RendererEtatDate({ r }: { r: any }) {
       <Resume text={r.resume} />
 
       {/* 3 encarts */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+      <div className="dr-kpi-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
         <SectionKpi icon="🏢" label="Syndic">
           {r.syndic && <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>{r.syndic}</div>}
           {r.syndic_adresse && <div style={{ fontSize: 14, color: C.textSec, marginBottom: 4 }}>📍 {r.syndic_adresse}</div>}
@@ -2055,7 +2055,7 @@ function RendererModificatifRCP({ r }: { r: any }) {
       <Resume text={r.resume} />
 
       {/* 3 encarts */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+      <div className="dr-kpi-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
         <SectionKpi icon="⚖️" label="Notaire">
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
             {r.notaire?.nom && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>👤</span><span style={{ fontWeight: 600 }}>Me {r.notaire.nom}</span></div>}
@@ -2242,5 +2242,45 @@ function SafeRenderer({ result }: { result: any }) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function DocumentRenderer({ result }: { result: any }) {
-  return <SafeRenderer result={result} />;
+  return (
+    <>
+      <style>{`
+        @media (max-width: 640px) {
+          .dr-root > div > div:first-child[style*="background: rgb(15, 45, 61)"],
+          .dr-root > div > div:first-child[style*="background:#0f2d3d"] {
+            border-radius: 0 !important;
+            padding: 14px 14px !important;
+          }
+          .dr-root [style*="grid-template-columns: repeat(3"] { grid-template-columns: 1fr !important; }
+          .dr-root [style*="grid-template-columns: repeat(2"] { grid-template-columns: 1fr !important; }
+          .dr-root [style*="grid-template-columns: 1fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
+          .dr-root [style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
+          .dr-root .dr-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+          .dr-root .dr-table-wrap table { min-width: 460px; font-size: 12px !important; }
+          .dr-root .dr-table-wrap th,
+          .dr-root .dr-table-wrap td { padding: 7px 10px !important; }
+          .dr-root .dr-points-grid { grid-template-columns: 1fr !important; }
+          .dr-root .dr-kpi-grid { grid-template-columns: 1fr !important; }
+          .dr-kpi-value { font-size: 16px !important; }
+          .dr-kpi-sub { font-size: 12px !important; }
+          .dr-header-titre { font-size: 15px !important; line-height: 1.3 !important; }
+          .dr-avis-pad { padding: 12px 14px !important; }
+          .dr-avis-para { font-size: 13px !important; line-height: 1.65 !important; }
+          .dr-montant-inline { margin-left: 0 !important; display: block !important; margin-top: 4px !important; }
+          .dr-info-row { flex-direction: column !important; align-items: flex-start !important; gap: 3px !important; }
+          .dr-badge-nowrap { white-space: normal !important; word-break: break-word !important; }
+          .dr-resume-text { font-size: 14px !important; line-height: 1.65 !important; }
+          .dr-section-pad { padding: 10px 12px !important; }
+          .dr-card-pad { padding: 10px 12px !important; }
+        }
+        @media (max-width: 390px) {
+          .dr-kpi-value { font-size: 14px !important; }
+          .dr-header-titre { font-size: 14px !important; }
+        }
+      `}</style>
+      <div className="dr-root">
+        <SafeRenderer result={result} />
+      </div>
+    </>
+  );
 }
