@@ -832,23 +832,25 @@ function Tooltip({ text, children }: { text: string; children: React.ReactNode }
 }
 
 function KpiBand({ items }: { items: { label: string; value: string; sub?: string; color?: string; bg?: string; border?: string; tooltip?: string; emoji?: string }[] }) {
+  // Palette bleu Verimo dégradée — plus clair à gauche, plus foncé à droite
+  const bleus = ['#2a7d9c', '#236b87', '#1e5f77', '#185166', '#133d50'];
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(items.length, 5)}, minmax(0,1fr))`, gap: 12, marginBottom: 20 }}>
-      {items.map((item, i) => (
-        <div key={i} style={{
-          background: item.bg ?? 'var(--color-background-primary)',
-          border: `0.5px solid ${item.border ?? 'var(--color-border-tertiary)'}`,
-          borderRadius: 14,
-          padding: '18px 20px',
-        }}>
-          {item.emoji && <div style={{ fontSize: 28, marginBottom: 12 }}>{item.emoji}</div>}
-          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 6, lineHeight: 1.3 }}>
-            {item.tooltip ? <Tooltip text={item.tooltip}>{item.label}</Tooltip> : item.label}
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(items.length, 5)}, minmax(0,1fr))`, gap: 10, marginBottom: 20 }}>
+      {items.map((item, i) => {
+        const bg = bleus[Math.min(i, bleus.length - 1)];
+        return (
+          <div key={i} style={{ background: bg, borderRadius: 14, padding: '20px 22px' }}>
+            {item.emoji && <div style={{ fontSize: 26, marginBottom: 10 }}>{item.emoji}</div>}
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', marginBottom: 6, lineHeight: 1.3 }}>
+              {item.tooltip ? (
+                <span title={item.tooltip} style={{ cursor: 'help', borderBottom: '1px dotted rgba(255,255,255,0.4)' }}>{item.label}</span>
+              ) : item.label}
+            </div>
+            <div style={{ fontSize: 26, fontWeight: 500, color: '#fff', lineHeight: 1.1 }}>{item.value}</div>
+            {item.sub && <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 5 }}>{item.sub}</div>}
           </div>
-          <div style={{ fontSize: 24, fontWeight: 500, color: item.color ?? 'var(--color-text-primary)', lineHeight: 1.1 }}>{item.value}</div>
-          {item.sub && <div style={{ fontSize: 12, color: item.color ?? 'var(--color-text-secondary)', marginTop: 5 }}>{item.sub}</div>}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
