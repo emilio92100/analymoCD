@@ -128,33 +128,36 @@ function AnalyseRow({ a, onDelete, selected, onToggleSelect, selectionMode }: {
   const typeColor = isPreview ? '#16a34a' : isComplete ? '#0f2d3d' : '#2a7d9c';
 
   return (
-    <div style={{ background: selected ? '#f0f7fb' : '#fff', borderRadius: 13, border: `1px solid ${selected ? '#2a7d9c' : '#edf2f7'}`, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', boxShadow: selected ? '0 0 0 2px rgba(42,125,156,0.12)' : '0 1px 3px rgba(0,0,0,0.03)', transition: 'all 0.18s', cursor: selectionMode ? 'pointer' : 'default' }}
+    <div className="ma-card" style={{ background: selected ? '#f0f7fb' : '#fff', borderRadius: 13, border: `1px solid ${selected ? '#2a7d9c' : '#edf2f7'}`, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', boxShadow: selected ? '0 0 0 2px rgba(42,125,156,0.12)' : '0 1px 3px rgba(0,0,0,0.03)', transition: 'all 0.18s', cursor: selectionMode ? 'pointer' : 'default' }}
       onClick={() => { if (selectionMode) onToggleSelect(a.id); }}
-      onMouseOver={e => { if (!selectionMode && !selected) { const el = e.currentTarget as HTMLElement; el.style.boxShadow = '0 4px 18px rgba(42,125,156,0.08)'; el.style.transform = 'translateY(-1px)'; el.style.borderColor = '#dbeafe'; } }}
-      onMouseOut={e => { if (!selectionMode && !selected) { const el = e.currentTarget as HTMLElement; el.style.boxShadow = '0 1px 3px rgba(0,0,0,0.03)'; el.style.transform = 'translateY(0)'; el.style.borderColor = '#edf2f7'; } }}>
+      onMouseOver={e => { if (!selectionMode && !selected) { const el = e.currentTarget as HTMLElement; el.style.boxShadow = '0 4px 18px rgba(42,125,156,0.08)'; el.style.borderColor = '#dbeafe'; } }}
+      onMouseOut={e => { if (!selectionMode && !selected) { const el = e.currentTarget as HTMLElement; el.style.boxShadow = '0 1px 3px rgba(0,0,0,0.03)'; el.style.borderColor = '#edf2f7'; } }}>
 
-      {/* Checkbox sélection */}
       {selectionMode && (
         <div onClick={e => { e.stopPropagation(); onToggleSelect(a.id); }} style={{ flexShrink: 0, cursor: 'pointer' }}>
-          {selected
-            ? <CheckSquare size={18} color="#2a7d9c" />
-            : <Square size={18} color="#cbd5e1" />}
+          {selected ? <CheckSquare size={18} color="#2a7d9c" /> : <Square size={18} color="#cbd5e1" />}
         </div>
       )}
 
-      <div style={{ width: 42, height: 42, borderRadius: 11, flexShrink: 0, background: a.status === 'processing' ? 'rgba(42,125,156,0.07)' : `${isComplete ? '#0f2d3d' : '#2a7d9c'}0d`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0, background: a.status === 'processing' ? 'rgba(42,125,156,0.07)' : `${isComplete ? '#0f2d3d' : '#2a7d9c'}0d`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {a.status === 'processing'
-          ? <div style={{ width: 17, height: 17, borderRadius: '50%', border: '2.5px solid #2a7d9c', borderTopColor: 'transparent', animation: 'spin 0.85s linear infinite' }} />
-          : isComplete ? <Building2 size={17} style={{ color: '#0f2d3d' }} /> : <FileText size={17} style={{ color: '#2a7d9c' }} />}
+          ? <div style={{ width: 16, height: 16, borderRadius: '50%', border: '2.5px solid #2a7d9c', borderTopColor: 'transparent', animation: 'spin 0.85s linear infinite' }} />
+          : isComplete ? <Building2 size={16} style={{ color: '#0f2d3d' }} /> : <FileText size={16} style={{ color: '#2a7d9c' }} />}
       </div>
+
+      {/* Titre + meta */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayTitle}</div>
+        <div className="ma-title" style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayTitle}</div>
         <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ background: typeBg, borderRadius: 5, padding: '2px 7px', fontSize: 10, fontWeight: 700, color: typeColor }}>{typeLabel}</span>
           <span>·</span><span>{a.date}</span>
+          {/* Score inline sur mobile */}
+          {isComplete && a.score != null && <span className="ma-score-inline" style={{ display: 'none', fontWeight: 700, fontSize: 11, color: a.score >= 14 ? '#16a34a' : a.score >= 10 ? '#d97706' : '#dc2626' }}>{a.score.toFixed(1)}/20</span>}
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
+
+      {/* Actions */}
+      <div className="ma-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
         {a.status === 'processing' ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: '#2a7d9c', background: 'rgba(42,125,156,0.07)', padding: '6px 12px', borderRadius: 8, border: '1px solid rgba(42,125,156,0.15)', whiteSpace: 'nowrap' }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#2a7d9c', animation: 'pulse 1.5s ease-in-out infinite' }} />
@@ -162,7 +165,7 @@ function AnalyseRow({ a, onDelete, selected, onToggleSelect, selectionMode }: {
           </div>
         ) : (
           <>
-            {isComplete && a.score != null && <ScoreBadge score={a.score} size="sm" />}
+            {isComplete && a.score != null && <span className="ma-score-desktop"><ScoreBadge score={a.score} size="sm" /></span>}
             {!selectionMode && (
               <Link to={`/dashboard/rapport?id=${a.id}`}
                 style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', fontSize: 12, fontWeight: 700, color: '#2a7d9c', textDecoration: 'none', whiteSpace: 'nowrap' }}
@@ -176,8 +179,7 @@ function AnalyseRow({ a, onDelete, selected, onToggleSelect, selectionMode }: {
         )}
         {!selectionMode && (!confirmDelete ? (
           <button onClick={() => setConfirmDelete(true)}
-            style={{ width: 30, height: 30, borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
-            title="Supprimer cette analyse">
+            style={{ width: 30, height: 30, borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
             <Trash2 size={12} color="#dc2626" />
           </button>
         ) : (
@@ -188,7 +190,17 @@ function AnalyseRow({ a, onDelete, selected, onToggleSelect, selectionMode }: {
           </div>
         ))}
       </div>
-      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} } @keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 640px) {
+          .ma-card { padding: 12px 14px !important; gap: 10px !important; }
+          .ma-title { font-size: 13px !important; white-space: normal !important; display: -webkit-box !important; -webkit-line-clamp: 2 !important; -webkit-box-orient: vertical !important; overflow: hidden !important; }
+          .ma-score-desktop { display: none !important; }
+          .ma-score-inline { display: inline !important; }
+          .ma-actions { gap: 6px !important; }
+        }
+      `}</style>
     </div>
   );
 }
