@@ -834,6 +834,19 @@ function Tooltip({ text, children }: { text: string; children: React.ReactNode }
   );
 }
 
+function TooltipWhite({ text }: { text: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
+      onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 15, height: 15, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', fontSize: 9, color: '#fff', fontWeight: 700, cursor: 'help', flexShrink: 0 }}>?</span>
+      {show && (
+        <span style={{ position: 'absolute', left: 20, top: -4, width: 260, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.6, zIndex: 300, boxShadow: '0 8px 24px rgba(0,0,0,0.3)', pointerEvents: 'none', whiteSpace: 'normal' }}>{text}</span>
+      )}
+    </span>
+  );
+}
+
 function KpiBand({ items }: { items: { label: string; value: string; sub?: string; color?: string; bg?: string; border?: string; tooltip?: string; emoji?: string }[] }) {
   // Palette bleu Verimo dégradée — plus clair à gauche, plus foncé à droite
   const bleus = ['#2a7d9c', '#236b87', '#1e5f77', '#185166', '#133d50'];
@@ -845,12 +858,10 @@ function KpiBand({ items }: { items: { label: string; value: string; sub?: strin
           <div key={i} style={{ background: bg, borderRadius: 14, padding: '20px 22px' }}>
             {item.emoji && <div style={{ fontSize: 26, marginBottom: 10 }}>{item.emoji}</div>}
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', marginBottom: 6, lineHeight: 1.3 }}>
-              {item.tooltip ? (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'default' }}>
-                  {item.label}
-                  <span title={item.tooltip} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 15, height: 15, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', fontSize: 9, color: '#fff', fontWeight: 700, cursor: 'help', flexShrink: 0 }}>?</span>
-                </span>
-              ) : item.label}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <span>{item.label}</span>
+                {item.tooltip && <TooltipWhite text={item.tooltip} />}
+              </span>
             </div>
             <div style={{ fontSize: 26, fontWeight: 500, color: '#fff', lineHeight: 1.1 }}>{item.value}</div>
             {item.sub && <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 5 }}>{item.sub}</div>}
