@@ -706,15 +706,32 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
       {isComplete && kpis.length > 0 && (() => {
         const bleus = ['#2a7d9c','#236b87','#1e5f77','#185166','#133d50','#0f3d4e','#0b2e3b'];
         return (
-          <div style={kpiGridStyle} className="kpi-band-grid">
-            {kpis.map((kpi, i) => (
-              <div key={i} style={{ background: bleus[Math.min(i, bleus.length-1)], borderRadius: 12, padding: '16px 16px' }}>
-                <div style={{ fontSize: 26, marginBottom: 10 }}>{kpi.icon}</div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', marginBottom: 6, lineHeight: 1.3 }}>{kpi.label}</div>
-                <div style={{ fontSize: 24, fontWeight: 500, color: '#fff', lineHeight: 1.1 }}>{kpi.value}</div>
-              </div>
-            ))}
-          </div>
+          <>
+            {/* Desktop — grille blocs */}
+            <div style={kpiGridStyle} className="kpi-band-grid kpi-synth-desktop">
+              {kpis.map((kpi, i) => (
+                <div key={i} style={{ background: bleus[Math.min(i, bleus.length-1)], borderRadius: 12, padding: '16px 16px' }}>
+                  <div style={{ fontSize: 26, marginBottom: 10 }}>{kpi.icon}</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', marginBottom: 6, lineHeight: 1.3 }}>{kpi.label}</div>
+                  <div style={{ fontSize: 24, fontWeight: 500, color: '#fff', lineHeight: 1.1 }}>{kpi.value}</div>
+                </div>
+              ))}
+            </div>
+            {/* Mobile — liste compacte */}
+            <div className="kpi-synth-mobile" style={{ display: 'none', flexDirection: 'column', gap: 0, background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, overflow: 'hidden', marginBottom: 4 }}>
+              {kpis.map((kpi, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: i < kpis.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: bleus[Math.min(i, bleus.length-1)], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                    {kpi.icon}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, color: '#64748b' }}>{kpi.label}</div>
+                  </div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: kpi.color || '#0f172a', flexShrink: 0 }}>{kpi.value}</div>
+                </div>
+              ))}
+            </div>
+          </>
         );
       })()}
 
@@ -846,19 +863,27 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
 function TooltipBtn({ text, white = false }: { text: string; white?: boolean }) {
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const ref = useRef<HTMLSpanElement>(null);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 640;
   const show = () => {
     if (!ref.current) return;
     const r = ref.current.getBoundingClientRect();
-    const left = Math.min(r.left, window.innerWidth - 280);
-    const top = r.bottom + 6;
-    setPos({ top, left });
+    if (isMobile) {
+      setPos({ top: window.innerHeight / 2 - 60, left: 16 });
+    } else {
+      const left = Math.min(r.left, window.innerWidth - 290);
+      const top = r.bottom + 6;
+      setPos({ top, left });
+    }
   };
+  const isMobilePos = pos && typeof window !== 'undefined' && window.innerWidth <= 640;
   return (
-    <span ref={ref} onMouseEnter={show} onMouseLeave={() => setPos(null)}
-      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: white ? 'rgba(255,255,255,0.25)' : '#f1f5f9', border: white ? 'none' : '1px solid #e2e8f0', fontSize: 10, color: white ? '#fff' : '#94a3b8', fontWeight: 700, cursor: 'help', flexShrink: 0, position: 'relative' }}>
+    <span ref={ref}
+      onMouseEnter={show} onMouseLeave={() => setPos(null)}
+      onClick={e => { e.stopPropagation(); pos ? setPos(null) : show(); }}
+      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: white ? 'rgba(255,255,255,0.25)' : '#f1f5f9', border: white ? 'none' : '1px solid #e2e8f0', fontSize: 10, color: white ? '#fff' : '#94a3b8', fontWeight: 700, cursor: 'pointer', flexShrink: 0, position: 'relative' }}>
       ?
       {pos && (
-        <span className="tooltip-bubble" style={{ position: 'fixed', top: pos.top, left: pos.left, width: 270, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.6, zIndex: 9999, boxShadow: '0 8px 24px rgba(0,0,0,0.3)', pointerEvents: 'none', whiteSpace: 'normal', fontWeight: 400 }}>{text}</span>
+        <span className="tooltip-bubble" style={{ position: 'fixed', top: isMobilePos ? '50%' : pos.top, left: isMobilePos ? '50%' : pos.left, transform: isMobilePos ? 'translate(-50%, -50%)' : 'none', width: isMobilePos ? 'calc(100vw - 48px)' : 270, maxWidth: isMobilePos ? 340 : 270, background: '#0f172a', borderRadius: 12, padding: '14px 16px', fontSize: 13, color: '#fff', lineHeight: 1.65, zIndex: 9999, boxShadow: '0 8px 32px rgba(0,0,0,0.35)', pointerEvents: 'none', whiteSpace: 'normal', fontWeight: 400 }}>{text}</span>
       )}
     </span>
   );
@@ -901,21 +926,21 @@ function KpiBand({ items }: { items: { label: string; value: string; sub?: strin
         {items.map((item, i) => {
           const bg = bleus[Math.min(i, bleus.length - 1)];
           return (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: i < items.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: i < items.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
                 {item.emoji ?? '•'}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                <div style={{ fontSize: 13, color: '#64748b', marginBottom: 1 }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                     {item.label}
                     {item.tooltip && <TooltipBtn text={item.tooltip} white={false} />}
                   </span>
                 </div>
-                {item.sub && <div style={{ fontSize: 10, color: '#94a3b8' }}>{item.sub}</div>}
+                {item.sub && <div style={{ fontSize: 11, color: '#94a3b8' }}>{item.sub}</div>}
               </div>
               <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{item.value}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>{item.value}</div>
               </div>
             </div>
           );
@@ -1720,12 +1745,15 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
                 <SectionTitle emoji="💰" text="Sommes à verser au vendeur à la signature" tooltip="Ces montants sont attachés au lot. Ils vous seront transférés mais vous devrez les rembourser au vendeur en sus du prix de vente, à la signature de l'acte authentique." />
                 <div style={{ border: '0.5px solid #fed7aa', borderRadius: 10, overflow: 'hidden', background: '#fffbeb' }}>
                   {fondsAlurNum && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: ped?.fonds_roulement_acheteur ? '0.5px solid #fde68a' : 'none', gap: 12 }}>
-                      <div>
+                    <div style={{ padding: '12px 16px', borderBottom: ped?.fonds_roulement_acheteur ? '0.5px solid #fde68a' : 'none' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 6 }}>
                         <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e' }}><Tooltip text="Part des fonds de travaux constituée par le vendeur pendant sa détention du lot. Elle vous est transférée mais vous devez la rembourser au vendeur à la signature.">Fonds travaux ALUR</Tooltip></div>
-                        <div style={{ fontSize: 13, color: '#a16207', marginTop: 3 }}>Part constituée par le vendeur, attachée au lot</div>
+                        <span style={{ fontSize: 18, fontWeight: 700, color: '#d97706', flexShrink: 0 }}>{fondsAlurNum.toLocaleString('fr-FR')} €</span>
                       </div>
-                      <span style={{ fontSize: 16, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>{fondsAlurNum.toLocaleString('fr-FR')} €</span>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, padding: '7px 10px', background: 'rgba(217,119,6,0.08)', borderRadius: 8, border: '1px solid #fde68a' }}>
+                        <span style={{ fontSize: 12, flexShrink: 0, marginTop: 1 }}>ℹ️</span>
+                        <span style={{ fontSize: 12, color: '#92400e', lineHeight: 1.5 }}>Ce montant est à rembourser au vendeur en sus du prix de vente, à la signature de l'acte authentique.</span>
+                      </div>
                     </div>
                   )}
                   {ped?.fonds_roulement_acheteur && (
@@ -2558,8 +2586,8 @@ function TabDocuments({ rapport }: { rapport: RapportData }) {
                   <div style={{ width: 36, height: 36, borderRadius: 9, background: '#f8fafc', border: '1px solid #edf2f7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
                     {docTypeIcon[type] || '📄'}
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>{nom || docTypeLabel[type] || type}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', wordBreak: 'break-word' as const, overflowWrap: 'break-word' as const }}>{nom || docTypeLabel[type] || type}</div>
                     {annee && <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{annee}</div>}
                   </div>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
@@ -2926,19 +2954,17 @@ export default function RapportPage() {
 
         {/* ══ BOTTOM TAB BAR — mobile uniquement — Option C pill ══ */}
         {isComplete && (
-          <div className="bottom-tab-bar" style={{ display: 'none', position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200, background: '#fff', borderTop: '1px solid #edf2f7', boxShadow: '0 -4px 20px rgba(0,0,0,0.08)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
-            <div style={{ display: 'flex', alignItems: 'stretch', padding: '6px 4px 8px', gap: 3 }}>
+          <div className="bottom-tab-bar" style={{ display: 'none', position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200, background: '#fff', borderTop: '1px solid #edf2f7', boxShadow: '0 -2px 16px rgba(0,0,0,0.07)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+            <div style={{ display: 'flex', alignItems: 'stretch', padding: '8px 6px 12px', gap: 4 }}>
               {tabs.map(tab => {
                 const active = activeTab === tab.id;
-                const activeBg = `${tab.dotColor}18`;
-                const activeColor = tab.dotColor;
                 return (
                   <button key={tab.id} onClick={() => { setActiveTab(tab.id); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                    style={{ flex: active ? 1.6 : 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '7px 6px 7px', border: 'none', background: active ? activeBg : 'transparent', borderRadius: 12, cursor: 'pointer', transition: 'all 0.18s' }}>
-                    <div style={{ fontSize: 22, lineHeight: 1, color: active ? activeColor : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    style={{ flex: active ? 1.7 : 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, padding: active ? '10px 8px' : '10px 4px', border: 'none', background: active ? `${tab.dotColor}18` : 'transparent', borderRadius: 14, cursor: 'pointer', transition: 'all 0.2s' }}>
+                    <div style={{ fontSize: 26, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', filter: active ? 'none' : 'grayscale(1)', opacity: active ? 1 : 0.45 }}>
                       {tab.icon}
                     </div>
-                    <span style={{ fontSize: 10, fontWeight: active ? 700 : 500, color: active ? activeColor : '#94a3b8', whiteSpace: 'nowrap' as const, lineHeight: 1 }}>{tab.label}</span>
+                    <span style={{ fontSize: 12, fontWeight: active ? 700 : 500, color: active ? tab.dotColor : '#94a3b8', whiteSpace: 'nowrap' as const, lineHeight: 1 }}>{tab.label}</span>
                   </button>
                 );
               })}
@@ -3024,9 +3050,8 @@ export default function RapportPage() {
           /* ── KPI desktop → cacher, mobile liste → montrer ── */
           .kpi-desktop { display: none !important; }
           .kpi-mobile { display: flex !important; }
-          .kpi-mobile > div { padding: 11px 14px !important; }
-          .kpi-mobile .kpi-label { font-size: 12px !important; }
-          .kpi-mobile .kpi-val { font-size: 15px !important; font-weight: 700 !important; }
+          .kpi-synth-desktop { display: none !important; }
+          .kpi-synth-mobile { display: flex !important; }
 
           /* ── Accordéon ── */
           .rapport-accordion-header { padding: 10px 12px !important; }
@@ -3105,6 +3130,8 @@ export default function RapportPage() {
           .bottom-tab-bar { display: none !important; }
           .kpi-desktop { display: grid !important; }
           .kpi-mobile { display: none !important; }
+          .kpi-synth-desktop { display: grid !important; }
+          .kpi-synth-mobile { display: none !important; }
           .print-section { break-inside: avoid; margin-bottom: 16px; }
           @page { margin: 1.5cm; size: A4; }
         }
