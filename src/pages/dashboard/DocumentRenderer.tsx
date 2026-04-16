@@ -2360,13 +2360,13 @@ export default function DocumentRenderer({ result }: { result: any }) {
           /* ── Wrapper pleine largeur ── */
           .dr-root { padding: 0 !important; }
 
-          /* ── Header — bords à zéro, compact ── */
-          .dr-root .dr-header { border-radius: 0 !important; padding: 14px 14px !important; margin-bottom: 10px !important; }
+          /* ── Header — compact sur mobile, coins arrondis conservés ── */
+          .dr-root .dr-header { border-radius: 14px !important; padding: 14px 16px !important; margin-bottom: 10px !important; }
           .dr-header-titre { font-size: 15px !important; line-height: 1.3 !important; }
           .dr-header-sub { font-size: 11px !important; }
 
-          /* ── Cards ── */
-          .dr-root > div { padding: 0 8px !important; }
+          /* ── Wrapper avec marges latérales légères ── */
+          .dr-root > div { padding: 0 6px !important; }
 
           /* ── KPI desktop → caché, mobile liste → visible ── */
           .dr-kpi-grid { display: none !important; }
