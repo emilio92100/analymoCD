@@ -14,14 +14,45 @@ const docTypes = [
   {
     id: 'pvag',
     emoji: '📋',
-    label: "PV d'Assemblée Générale",
-    what: "Le compte-rendu officiel de la réunion annuelle des copropriétaires. C'est le document le plus riche — il contient toutes les décisions votées, le budget et les travaux approuvés.",
+    label: "PV d'Assemblée Générale (3 derniers)",
+    what: "Le compte-rendu officiel des réunions annuelles des copropriétaires. C'est le document le plus riche — il contient toutes les décisions votées, le budget, les travaux approuvés et les procédures en cours. Fournir les 3 derniers PV permet de détecter les tendances sur plusieurs années.",
     extracts: [
       'Travaux votés ou évoqués (ravalement, toiture, ascenseur…)',
       'Budget annuel de la copropriété et écarts constatés',
       'Procédures judiciaires en cours',
       'État des impayés de charges',
-      'Fonds de travaux disponible',
+      'Fonds de travaux disponible et évolution',
+      'Participation des copropriétaires et quitus syndic',
+    ],
+    priority: 'Indispensable',
+    pc: '#16a34a', pb: '#f0fdf4', pb2: '#d1fae5',
+  },
+  {
+    id: 'ddt',
+    emoji: '⚡',
+    label: 'Dossier de Diagnostic Technique (DDT)',
+    what: "L'ensemble des diagnostics obligatoires du logement : DPE, électricité, gaz, amiante, plomb, termites, ERP… Chacun analyse un risque spécifique. Le DDT complet est exigé pour toute vente et impacte directement le score.",
+    extracts: [
+      'Classe énergétique DPE (A à G) et consommation kWh/an',
+      'Conformité de l\'installation électrique',
+      'État de l\'installation gaz',
+      'Présence ou absence d\'amiante accessible',
+      'Risques naturels et technologiques (ERP)',
+      'Surface loi Carrez certifiée',
+    ],
+    priority: 'Indispensable',
+    pc: '#16a34a', pb: '#f0fdf4', pb2: '#d1fae5',
+  },
+  {
+    id: 'charges',
+    emoji: '💸',
+    label: 'Appels de charges',
+    what: "Document envoyé par le syndic réclamant votre participation aux dépenses communes. Il reflète les charges réelles mensuelles ou trimestrielles du logement et permet de vérifier l'historique financier.",
+    extracts: [
+      'Montant exact des charges courantes annuelles',
+      'Répartition par poste (gardien, entretien, eau…)',
+      'Appels exceptionnels liés à des travaux imprévus',
+      'Évolution des charges sur plusieurs exercices',
     ],
     priority: 'Indispensable',
     pc: '#16a34a', pb: '#f0fdf4', pb2: '#d1fae5',
@@ -29,72 +60,86 @@ const docTypes = [
   {
     id: 'reglement',
     emoji: '📑',
-    label: 'Règlement de copropriété',
-    what: "Le document juridique qui définit les règles de vie dans l'immeuble, les parties communes, les restrictions d'usage et la répartition des charges entre copropriétaires.",
+    label: 'Règlement de copropriété (RCP)',
+    what: "Le document juridique qui définit les règles de vie dans l'immeuble, les parties communes, les restrictions d'usage et la répartition des charges. Indispensable pour connaître les tantièmes, les restrictions d'usage et les règles de modification.",
     extracts: [
       'Répartition des charges par lot (tantièmes)',
-      "Restrictions d'usage (animaux, location, travaux…)",
+      "Restrictions d'usage (animaux, location, Airbnb, travaux…)",
       'Définition des parties communes et privatives',
-      'Règles de modification du règlement',
+      'Règles applicables aux modifications du règlement',
     ],
     priority: 'Indispensable',
     pc: '#16a34a', pb: '#f0fdf4', pb2: '#d1fae5',
   },
   {
-    id: 'dpe',
-    emoji: '🔋',
-    label: 'Diagnostic de Performance Énergétique (DPE)',
-    what: "Classe le logement de A (très économe) à G (très énergivore) selon sa consommation d'énergie et ses émissions de CO₂. Un DPE F ou G peut impacter fortement la valeur et la revente.",
+    id: 'pre-etat',
+    emoji: '📄',
+    label: 'Pré-état daté / État daté',
+    what: "Document établi par le syndic avant la vente. Il récapitule la situation financière exacte du vendeur vis-à-vis de la copropriété : impayés, fonds de travaux ALUR à rembourser, charges futures et historique N-1/N-2. Très utile pour évaluer les sommes réelles à débourser.",
     extracts: [
-      'Classe énergétique (A à G)',
-      'Consommation estimée en kWh/an',
-      'Émissions de gaz à effet de serre',
-      'Recommandations de travaux d\'isolation',
+      'Impayés du vendeur envers la copropriété',
+      'Fonds travaux ALUR attaché au lot (à rembourser au vendeur)',
+      'Charges futures trimestrielles à prévoir',
+      'Historique des charges réelles N-1 et N-2',
+      'Travaux votés à la charge du vendeur',
+      'Dette fournisseurs et santé financière de la copro',
     ],
-    priority: 'Recommandé',
-    pc: '#d97706', pb: '#fffbeb', pb2: '#fde68a',
-  },
-  {
-    id: 'charges',
-    emoji: '💸',
-    label: 'Appels de charges',
-    what: "Document envoyé par le syndic réclamant votre participation aux dépenses communes. Il reflète les charges réelles mensuelles ou trimestrielles du logement.",
-    extracts: [
-      'Montant exact des charges courantes',
-      'Répartition par poste (gardien, entretien, eau…)',
-      'Appels exceptionnels (travaux non prévus)',
-      'Évolution des charges dans le temps',
-    ],
-    priority: 'Recommandé',
-    pc: '#d97706', pb: '#fffbeb', pb2: '#fde68a',
-  },
-  {
-    id: 'diags',
-    emoji: '⚡',
-    label: 'Diagnostics techniques (électricité, amiante, termites…)',
-    what: "L'ensemble des diagnostics obligatoires du logement. Chacun analyse un risque spécifique : installation électrique, matériaux dangereux, parasites, risques naturels.",
-    extracts: [
-      'Conformité de l\'installation électrique',
-      'Présence ou absence d\'amiante accessible',
-      'Présence ou absence de termites',
-      'Risques naturels et technologiques (ERRIAL)',
-    ],
-    priority: 'Utile',
+    priority: 'Complémentaire',
     pc: '#2a7d9c', pb: '#f0f7fb', pb2: '#bae3f5',
   },
   {
-    id: 'autres',
-    emoji: '📂',
-    label: 'Autres documents reconnus',
-    what: "Verimo reconnaît aussi : Plan Pluriannuel de Travaux (PPT), Diagnostic Technique Global (DTG), état daté, carnet d'entretien, garantie décennale, compromis de vente, bail emphytéotique.",
+    id: 'dtg',
+    emoji: '🏗️',
+    label: 'DTG / Plan Pluriannuel de Travaux (PPT)',
+    what: "Le Diagnostic Technique Global évalue l'état général de l'immeuble et planifie les travaux sur 10 ans. Obligatoire dans les copropriétés de plus de 10 ans, il permet d'anticiper les grosses dépenses futures.",
     extracts: [
-      'PPT : travaux planifiés sur 10 ans avec budget',
-      'DTG : état général de l\'immeuble',
-      'Garantie décennale : couverture des gros travaux récents',
-      'État daté : situation financière du vendeur vis-à-vis de la copro',
+      'État général de l\'immeuble (bon / moyen / mauvais)',
+      'Budget travaux urgents à 3 ans',
+      'Budget travaux total estimé sur 10 ans',
+      'Travaux prioritaires identifiés',
     ],
-    priority: 'Utile',
+    priority: 'Complémentaire',
     pc: '#2a7d9c', pb: '#f0f7fb', pb2: '#bae3f5',
+  },
+  {
+    id: 'taxe',
+    emoji: '🏛️',
+    label: 'Taxe foncière',
+    what: "L'avis de taxe foncière permet de connaître le montant exact de l'impôt local annuel dû par le propriétaire. Cette charge annuelle peut représenter plusieurs mois de loyer et est souvent sous-estimée par les acheteurs.",
+    extracts: [
+      'Montant exact de la taxe foncière annuelle',
+      'Calcul du coût mensuel réel du bien',
+      'Comparaison avec les charges de copropriété',
+    ],
+    priority: 'Complémentaire',
+    pc: '#2a7d9c', pb: '#f0f7fb', pb2: '#bae3f5',
+  },
+  {
+    id: 'compromis',
+    emoji: '🤝',
+    label: 'Compromis / Promesse de vente',
+    what: "Le compromis de vente permet à Verimo d'extraire les informations clés de la transaction : prix, intervenants, dates, conditions suspensives et clauses particulières. Utile pour vérifier la cohérence avec les documents de copropriété.",
+    extracts: [
+      'Prix net vendeur et honoraires d\'agence',
+      'Conditions suspensives (prêt, purge, diagnostics…)',
+      'Dates clés (signature, acte authentique)',
+      'Clauses particulières importantes',
+    ],
+    priority: 'Recommandé',
+    pc: '#7c3aed', pb: '#f5f3ff', pb2: '#ddd6fe',
+  },
+  {
+    id: 'carnet',
+    emoji: '📒',
+    label: 'Carnet d\'entretien',
+    what: "Tenu par le syndic, le carnet d'entretien retrace l'historique des travaux réalisés, les contrats d'entretien en cours et les garanties décennales actives. Il permet de vérifier que l'immeuble a été correctement entretenu.",
+    extracts: [
+      'Historique des travaux réalisés avec dates',
+      'Contrats d\'entretien en cours (ascenseur, chaudière…)',
+      'Garanties décennales encore actives',
+    ],
+    priority: 'Recommandé',
+    pc: '#7c3aed', pb: '#f5f3ff', pb2: '#ddd6fe',
   },
 ];
 
@@ -270,13 +315,13 @@ export default function MethodePage() {
               <button key={s.id} onClick={() => scrollTo(s.id)}
                 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: 'none', background: activeSection === s.id ? '#f0f7fb' : 'transparent', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}>
                 <div style={{ width: 3, height: 16, borderRadius: 99, background: activeSection === s.id ? '#2a7d9c' : '#e2e8f0', flexShrink: 0, transition: 'all 0.15s' }} />
-                <span style={{ fontSize: 14, fontWeight: activeSection === s.id ? 700 : 400, color: activeSection === s.id ? '#0f172a' : '#64748b', lineHeight: 1.4, transition: 'all 0.15s' }}>{s.label}</span>
+                <span style={{ fontSize: 15, fontWeight: activeSection === s.id ? 700 : 400, color: activeSection === s.id ? '#0f172a' : '#64748b', lineHeight: 1.4, transition: 'all 0.15s' }}>{s.label}</span>
               </button>
             ))}
           </nav>
           <div style={{ marginTop: 28, padding: '18px', borderRadius: 14, background: '#f8fafc', border: '1px solid #edf2f7' }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f2d3d', marginBottom: 6 }}>Analyser un bien</div>
-            <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 14, lineHeight: 1.5 }}>Score /20 en moins de 30 secondes*</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#0f2d3d', marginBottom: 6 }}>Analyser un bien</div>
+            <div style={{ fontSize: 14, color: '#94a3b8', marginBottom: 14, lineHeight: 1.5 }}>Score /20 en moins de 30 secondes*</div>
             <Link to="/start" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', borderRadius: 10, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
               Commencer <ArrowRight size={13} />
             </Link>
@@ -301,8 +346,8 @@ export default function MethodePage() {
                     Vous uploadez <strong style={{ color: '#0f172a' }}>un seul document</strong>. Notre outil l'identifie, en extrait les informations clés, et vous donne les points forts et les vigilances détectés.
                   </div>
                   <div style={{ padding: '12px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca' }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#dc2626', marginBottom: 2 }}>⚠ Pas de note /20</div>
-                    <div style={{ fontSize: 12, color: '#7f1d1d' }}>L'analyse simple porte sur un seul document, pas sur un bien complet.</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#dc2626', marginBottom: 2 }}>⚠ Pas de note /20</div>
+                    <div style={{ fontSize: 13, color: '#7f1d1d' }}>L'analyse simple porte sur un seul document, pas sur un bien complet.</div>
                   </div>
                 </div>
               </Reveal>
@@ -315,8 +360,8 @@ export default function MethodePage() {
                     Vous uploadez <strong style={{ color: '#0f172a' }}>autant de documents que vous voulez</strong>. Notre outil les croise et génère un score /20 global du bien avec rapport complet.
                   </div>
                   <div style={{ padding: '12px 14px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #d1fae5' }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#16a34a', marginBottom: 2 }}>✓ Score /20 + rapport PDF</div>
-                    <div style={{ fontSize: 12, color: '#14532d' }}>Recommandation d'achat, travaux, charges, procédures — tout est inclus.</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#16a34a', marginBottom: 2 }}>✓ Score /20 + rapport PDF</div>
+                    <div style={{ fontSize: 13, color: '#14532d' }}>Recommandation d'achat, travaux, charges, procédures — tout est inclus.</div>
                   </div>
                 </div>
               </Reveal>
@@ -332,10 +377,10 @@ export default function MethodePage() {
             {/* Barre de priorité */}
             <Reveal delay={0.04}>
               <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap' as const }}>
-                {[{ l: 'Indispensable', c: '#16a34a', bg: '#f0fdf4', b: '#d1fae5' }, { l: 'Recommandé', c: '#d97706', bg: '#fffbeb', b: '#fde68a' }, { l: 'Utile', c: '#2a7d9c', bg: '#f0f7fb', b: '#bae3f5' }].map((t) => (
+                {[{ l: '✓ Indispensable', c: '#16a34a', bg: '#f0fdf4', b: '#d1fae5' }, { l: '+ Complémentaire', c: '#2a7d9c', bg: '#f0f7fb', b: '#bae3f5' }, { l: '★ Recommandé', c: '#7c3aed', bg: '#f5f3ff', b: '#ddd6fe' }].map((t) => (
                   <Tag key={t.l} color={t.c} bg={t.bg} border={t.b}>{t.l}</Tag>
                 ))}
-                <span style={{ fontSize: 12, color: '#94a3b8', alignSelf: 'center' }}>— priorité recommandée pour l'analyse complète</span>
+                <span style={{ fontSize: 13, color: '#94a3b8', alignSelf: 'center' }}>— pour l'analyse complète</span>
               </div>
             </Reveal>
 
@@ -350,7 +395,7 @@ export default function MethodePage() {
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{doc.label}</div>
-                        <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                        <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 2 }}>
                           {openDoc === doc.id ? 'Ce qu\'on extrait de ce document' : doc.what.slice(0, 60) + '…'}
                         </div>
                       </div>
@@ -364,13 +409,13 @@ export default function MethodePage() {
                       {openDoc === doc.id && (
                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22 }} style={{ overflow: 'hidden' }}>
                           <div style={{ borderTop: `1px solid ${doc.pb2}`, padding: '18px 20px', background: doc.pb }}>
-                            <p style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.75, marginBottom: 16 }}>{doc.what}</p>
+                            <p style={{ fontSize: 16, color: '#374151', lineHeight: 1.85, marginBottom: 16 }}>{doc.what}</p>
                             <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', textTransform: 'uppercase' as const, letterSpacing: '0.07em', marginBottom: 10 }}>Ce qu'on en extrait</div>
                             <div className="extracts-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7 }}>
                               {doc.extracts.map((e, i) => (
                                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 10px', borderRadius: 8, background: '#fff', border: `1px solid ${doc.pb2}` }}>
                                   <Check size={12} color={doc.pc} style={{ flexShrink: 0, marginTop: 2 }} />
-                                  <span style={{ fontSize: 12, color: '#374151', lineHeight: 1.4 }}>{e}</span>
+                                  <span style={{ fontSize: 14, color: '#374151', lineHeight: 1.5 }}>{e}</span>
                                 </div>
                               ))}
                             </div>
@@ -386,7 +431,7 @@ export default function MethodePage() {
             <Reveal delay={0.3}>
               <div style={{ marginTop: 14, padding: '13px 18px', borderRadius: 11, background: '#f0fdf4', border: '1px solid #d1fae5', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Shield size={14} color="#16a34a" style={{ flexShrink: 0 }} />
-                <p style={{ fontSize: 13, color: '#15803d', fontWeight: 600, margin: 0 }}>
+                <p style={{ fontSize: 14, color: '#15803d', fontWeight: 600, margin: 0 }}>
                   Vos documents sont supprimés immédiatement après traitement. Aucun stockage permanent — RGPD complet.
                 </p>
               </div>
@@ -422,8 +467,8 @@ export default function MethodePage() {
                     <div style={{ width: 44, height: 44, borderRadius: '50%', background: s.bg, border: (s as any).border, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, fontWeight: 900, color: s.color, margin: '0 auto 12px' }}>
                       {s.icon}
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>{s.title}</div>
-                    <div style={{ fontSize: 12, color: '#94a3b8' }}>{s.sub}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>{s.title}</div>
+                    <div style={{ fontSize: 13, color: '#94a3b8' }}>{s.sub}</div>
                   </div>
                 </Reveal>
               ))}
@@ -444,7 +489,7 @@ export default function MethodePage() {
               </div>
               <div style={{ display: 'flex', gap: 14, marginBottom: 22, flexWrap: 'wrap' as const }}>
                 {categories.map((c) => (
-                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b' }}>
+                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#64748b' }}>
                     <div style={{ width: 9, height: 9, borderRadius: 2, background: c.color }} /> {c.label} ({c.pts} pts)
                   </div>
                 ))}
@@ -460,7 +505,7 @@ export default function MethodePage() {
                       <div style={{ width: 38, height: 38, borderRadius: 10, background: cat.light, border: `1px solid ${cat.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{cat.emoji}</div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{cat.label}</div>
-                        <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 1 }}>Sur {cat.pts} points</div>
+                        <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 1 }}>Sur {cat.pts} points</div>
                       </div>
                       <span style={{ fontSize: 14, fontWeight: 900, color: cat.color, marginRight: 8 }}>{cat.pts} pts</span>
                       <ChevronDown size={15} color="#cbd5e1" style={{ flexShrink: 0, transform: openCat === cat.id ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
@@ -469,7 +514,7 @@ export default function MethodePage() {
                       {openCat === cat.id && (
                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22 }} style={{ overflow: 'hidden' }}>
                           <div style={{ borderTop: `1px solid ${cat.border}`, padding: '16px 20px', background: cat.light }}>
-                            <p style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.7, marginBottom: 16 }}>{cat.desc}</p>
+                            <p style={{ fontSize: 16, color: '#374151', lineHeight: 1.85, marginBottom: 16 }}>{cat.desc}</p>
                             <div className="cat-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                               <div style={{ background: '#fff', borderRadius: 11, border: '1px solid #fecaca', padding: '14px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
@@ -479,7 +524,7 @@ export default function MethodePage() {
                                 <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
                                   {cat.bad.map((item, i) => (
                                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                                      <span style={{ fontSize: 12, color: '#374151', lineHeight: 1.4 }}>{item.l}</span>
+                                      <span style={{ fontSize: 14, color: '#374151', lineHeight: 1.5 }}>{item.l}</span>
                                       <span style={{ fontSize: 11, fontWeight: 800, color: '#dc2626', background: '#fee2e2', padding: '2px 7px', borderRadius: 5, flexShrink: 0 }}>{item.v}</span>
                                     </div>
                                   ))}
@@ -493,7 +538,7 @@ export default function MethodePage() {
                                 <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
                                   {cat.good.map((item, i) => (
                                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                                      <span style={{ fontSize: 12, color: '#374151', lineHeight: 1.4 }}>{item.l}</span>
+                                      <span style={{ fontSize: 14, color: '#374151', lineHeight: 1.5 }}>{item.l}</span>
                                       <span style={{ fontSize: 11, fontWeight: 800, color: '#16a34a', background: '#dcfce7', padding: '2px 7px', borderRadius: 5, flexShrink: 0 }}>{item.v}</span>
                                     </div>
                                   ))}
@@ -520,7 +565,7 @@ export default function MethodePage() {
               <div style={{ background: '#f8fafc', borderBottom: '1px solid #edf2f7', padding: '13px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 16 }}>🏠</span>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>12 rue des Lilas — Appartement 4B, Lyon 6e</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>12 rue des Lilas — Appartement 4B, Lyon 6e</div>
                   <div style={{ fontSize: 11, color: '#94a3b8' }}>PV d'AG 2024 + DPE + Règlement copropriété analysés</div>
                 </div>
               </div>
@@ -546,7 +591,7 @@ export default function MethodePage() {
               <Reveal delay={0.3}>
                 <div style={{ borderTop: '2px solid #edf2f7', padding: '16px 20px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 10 }}>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Score final</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Score final</div>
                     <div style={{ fontSize: 11, color: '#94a3b8' }}>Arrondi au 0,5 près</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -554,7 +599,7 @@ export default function MethodePage() {
                       <span style={{ fontSize: 38, fontWeight: 900, color: '#16a34a', letterSpacing: '-0.03em' }}>16</span>
                       <span style={{ fontSize: 18, fontWeight: 700, color: '#cbd5e1' }}>/20</span>
                     </div>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', border: '1px solid #d1fae5', padding: '5px 14px', borderRadius: 10 }}>Bien sain ✓</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', border: '1px solid #d1fae5', padding: '5px 14px', borderRadius: 10 }}>Bien sain ✓</span>
                   </div>
                 </div>
               </Reveal>
@@ -577,7 +622,7 @@ export default function MethodePage() {
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 14, fontWeight: 800, color: level.c, marginBottom: 2 }}>{level.l}</div>
-                        <div style={{ fontSize: 12, color: '#64748b' }}>{level.desc}</div>
+                        <div style={{ fontSize: 13, color: '#64748b' }}>{level.desc}</div>
                       </div>
                     </div>
                     <ScoreBar pct={level.pct} color={level.bar} delay={i * 0.1 + 0.2} />
@@ -588,7 +633,7 @@ export default function MethodePage() {
             <Reveal delay={0.5}>
               <div style={{ marginTop: 16, padding: '14px 18px', borderRadius: 11, background: '#fffbeb', border: '1px solid #fde68a', display: 'flex', gap: 10 }}>
                 <AlertTriangle size={14} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
-                <p style={{ fontSize: 13, color: '#92400e', margin: 0, lineHeight: 1.6 }}>
+                <p style={{ fontSize: 14, color: '#92400e', margin: 0, lineHeight: 1.6 }}>
                   <strong>Astuce :</strong> si votre score est entre 0 et 13, Verimo génère automatiquement des pistes de négociation pour vous aider à revoir le prix à la baisse.
                 </p>
               </div>
@@ -612,7 +657,7 @@ export default function MethodePage() {
                     <AnimatePresence>
                       {openFaq === i && (
                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
-                          <p style={{ fontSize: 13.5, color: '#64748b', lineHeight: 1.8, margin: 0, padding: '0 20px 16px', borderTop: '1px solid #f0f5f9' }}>{faq.a}</p>
+                          <p style={{ fontSize: 16, color: '#64748b', lineHeight: 1.85, margin: 0, padding: '0 20px 16px', borderTop: '1px solid #f0f5f9' }}>{faq.a}</p>
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -627,7 +672,7 @@ export default function MethodePage() {
             <div style={{ borderRadius: 18, background: 'linear-gradient(135deg,#f0f7fb,#e8f4fa)', border: '1.5px solid #bae3f5', padding: '32px 36px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' as const }}>
               <div>
                 <div style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em', marginBottom: 5 }}>Prêt à analyser votre bien ?</div>
-                <div style={{ fontSize: 14, color: '#64748b' }}>Score /20 + rapport complet en moins de 30 secondes*.</div>
+                <div style={{ fontSize: 15, color: '#64748b' }}>Score /20 + rapport complet en moins de 30 secondes*.</div>
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <Link to="/start" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '11px 22px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 14px rgba(42,125,156,0.25)' }}>
