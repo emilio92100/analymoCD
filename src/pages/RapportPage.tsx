@@ -81,6 +81,9 @@ function AccordionSection({
 }) {
   const [open, setOpen] = useState(defaultOpen ?? true);
   const [showTooltip, setShowTooltip] = useState(false);
+  React.useEffect(() => { if (defaultOpen !== undefined) setOpen(defaultOpen); }, [defaultOpen]);
+  // Synchroniser avec defaultOpen quand il change (ex: bouton Tout déplier/replier)
+  React.useEffect(() => { if (defaultOpen !== undefined) setOpen(defaultOpen); }, [defaultOpen]);
   const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number } | null>(null);
   const tooltipBtnRef = useRef<HTMLDivElement>(null);
   const dotColor = status === 'alert' ? '#ef4444' : status === 'warning' ? '#f97316' : status === 'ok' ? '#22c55e' : '#94a3b8';
@@ -1424,7 +1427,7 @@ function SectionTitle({ emoji, text, tooltip }: { emoji: string; text: string; t
   );
 }
 
-function TabLogement({ rapport }: { rapport: RapportData }) {
+function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchTab?: (tab: string) => void }) {
   type LotT2 = {
     quote_part_tantiemes?: string; fonds_travaux_alur?: string;
     parties_privatives?: unknown[]; restrictions_usage?: string[];
@@ -1721,7 +1724,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e', marginBottom: 4 }}>{travauxEvoques.length} travaux évoqués sans vote dans la copropriété</div>
                   <div style={{ fontSize: 13, color: '#a16207', lineHeight: 1.6 }}>Si ces travaux sont votés en AG après votre acquisition, vous en supporterez une part proportionnelle à vos tantièmes — potentiellement plusieurs milliers d'euros.</div>
-                  <div style={{ marginTop: 8, fontSize: 13, color: '#2a7d9c', fontWeight: 500, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}>→ Voir les travaux évoqués dans l'onglet Copropriété</div>
+                  <button onClick={() => onSwitchTab?.('copropriete')} style={{ marginTop: 8, fontSize: 13, color: '#2a7d9c', fontWeight: 500, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3, background: 'none', border: 'none', padding: 0, textAlign: 'left', fontFamily: 'inherit' }}>→ Voir les travaux évoqués dans l'onglet Copropriété</button>
                 </div>
               </div>
             )}
@@ -2845,7 +2848,7 @@ export default function RapportPage() {
         {/* Contenu onglets */}
         {(activeTab === 'synthese' || !isComplete) && <SafeTabBoundary><TabSynthese rapport={rapport} /></SafeTabBoundary>}
         {activeTab === 'copropriete' && isComplete && hasCopro && <SafeTabBoundary><TabCopropriete rapport={rapport} /></SafeTabBoundary>}
-        {activeTab === 'logement' && isComplete && <SafeTabBoundary><TabLogement rapport={rapport} /></SafeTabBoundary>}
+        {activeTab === 'logement' && isComplete && <SafeTabBoundary><TabLogement rapport={rapport} onSwitchTab={setActiveTab} /></SafeTabBoundary>}
         {activeTab === 'procedures' && isComplete && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
         {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} /></SafeTabBoundary>}
 
