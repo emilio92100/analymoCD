@@ -102,7 +102,7 @@ function AccordionSection({
       <button onClick={() => setOpen(!open)} className="rapport-accordion-header" style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
         onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#f8fafc'}
         onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'none'}>
-        <div style={{ width: 34, height: 34, borderRadius: 9, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>{icon}</div>
+        <div className="accord-icon" style={{ width: 34, height: 34, borderRadius: 9, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>{icon}</div>
         <div style={{ flex: 1, textAlign: 'left' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 15, fontWeight: 500, color: '#0f172a' }}>{title}</span>
@@ -474,9 +474,9 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {/* Hero header — full dark */}
-      <div style={{ background: 'linear-gradient(135deg, #0f2d3d 0%, #1a4a5e 100%)', borderRadius: 16, overflow: 'hidden' }}>
+      <div className="rapport-header" style={{ background: 'linear-gradient(135deg, #0f2d3d 0%, #1a4a5e 100%)', borderRadius: 16, overflow: 'hidden' }}>
         {/* Topbar nav */}
-        <div style={{ padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="rapport-topnav" style={{ padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           {!isShared ? (
             <Link to="/dashboard/analyses" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: '#fff', textDecoration: 'none', padding: '9px 18px', borderRadius: 9, background: '#2a7d9c', flexShrink: 0 }}>
               <ChevronLeft size={15} /> Mes analyses
@@ -498,10 +498,10 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
 
         {/* Hero content */}
         {isComplete && (
-          <div style={{ padding: '22px 24px 24px', display: 'flex', alignItems: 'center', gap: 22, flexWrap: 'wrap' }}>
+          <div className="rapport-hero" style={{ padding: '22px 24px 24px', display: 'flex', alignItems: 'center', gap: 22, flexWrap: 'wrap' }}>
             {/* Score cercle */}
             <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-              <div style={{ position: 'relative', width: 88, height: 88 }}>
+              <div className="rapport-score-circle" style={{ position: 'relative', width: 88, height: 88 }}>
                 <svg width="88" height="88" style={{ transform: 'rotate(-90deg)' }}>
                   <circle cx="44" cy="44" r="36" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="7" />
                   <circle cx="44" cy="44" r="36" fill="none" stroke={scoreColor} strokeWidth="7"
@@ -711,7 +711,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
           <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, padding: '22px 24px' }}>
             <div style={{ display: 'inline-block', background: '#2d6a2d', color: '#fff', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', padding: '6px 16px', borderRadius: 99, marginBottom: 20 }}>POINTS POSITIFS</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="rapport-main" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {rapport.points_forts.length > 0 ? rapport.points_forts.map((p: string, i: number) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                   <div style={{ width: 22, height: 22, flexShrink: 0, marginTop: 2 }}>
@@ -727,7 +727,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
           </div>
           <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, padding: '22px 24px' }}>
             <div style={{ display: 'inline-block', background: '#92400e', color: '#fff', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', padding: '6px 16px', borderRadius: 99, marginBottom: 20 }}>POINTS DE VIGILANCE</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="rapport-main" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {rapport.points_vigilance.length > 0 ? rapport.points_vigilance.map((p: string, i: number) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                   <div style={{ width: 22, height: 22, flexShrink: 0, marginTop: 2 }}>
@@ -842,7 +842,7 @@ function TooltipBtn({ text, white = false }: { text: string; white?: boolean }) 
       style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: white ? 'rgba(255,255,255,0.25)' : '#f1f5f9', border: white ? 'none' : '1px solid #e2e8f0', fontSize: 10, color: white ? '#fff' : '#94a3b8', fontWeight: 700, cursor: 'help', flexShrink: 0, position: 'relative' }}>
       ?
       {pos && (
-        <span style={{ position: 'fixed', top: pos.top, left: pos.left, width: 270, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.6, zIndex: 9999, boxShadow: '0 8px 24px rgba(0,0,0,0.3)', pointerEvents: 'none', whiteSpace: 'normal', fontWeight: 400 }}>{text}</span>
+        <span className="tooltip-bubble" style={{ position: 'fixed', top: pos.top, left: pos.left, width: 270, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.6, zIndex: 9999, boxShadow: '0 8px 24px rgba(0,0,0,0.3)', pointerEvents: 'none', whiteSpace: 'normal', fontWeight: 400 }}>{text}</span>
       )}
     </span>
   );
@@ -2787,8 +2787,8 @@ export default function RapportPage() {
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f9fb', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      <div style={{ maxWidth: 1250, margin: '0 auto', padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div className="rapport-wrapper" style={{ minHeight: '100vh', background: '#f5f9fb', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <div className="rapport-inner" style={{ maxWidth: 1250, margin: '0 auto', padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
         <RapportHeader rapport={rapport} isShared={isShared} />
 
@@ -2816,7 +2816,7 @@ export default function RapportPage() {
 
         {/* Onglets */}
         {isComplete && (
-          <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, padding: '5px', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          <div className="rapport-tabs" style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, padding: '5px', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
             {tabs.map(tab => {
               const active = activeTab === tab.id;
               return (
@@ -2877,39 +2877,61 @@ export default function RapportPage() {
       </div>
       <style>{`
         @media (max-width: 640px) {
+          /* ── Page pleine largeur ── */
+          html, body { overflow-x: hidden; }
+          .rapport-wrapper { padding: 0 !important; }
+          .rapport-inner { padding: 8px 6px !important; gap: 8px !important; max-width: 100vw !important; }
+          .rapport-main { padding: 8px 4px !important; gap: 8px !important; }
+
+          /* ── Header score compact ── */
+          .rapport-header { border-radius: 0 !important; margin: 0 !important; }
+          .rapport-score-bar { padding: 8px 12px !important; font-size: 12px !important; }
+          .rapport-header-content { padding: 12px 14px !important; }
+
           /* ── Navigation onglets ── */
-          .rapport-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; flex-wrap: nowrap !important; gap: 0 !important; border-radius: 0 !important; }
+          .rapport-tabs-wrap { border-radius: 0 !important; margin: 0 !important; padding: 0 !important; }
+          .rapport-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; flex-wrap: nowrap !important; gap: 0 !important; border-radius: 0 !important; padding: 0 4px !important; }
           .rapport-tabs::-webkit-scrollbar { display: none; }
-          .rapport-tab-btn { font-size: 11px !important; padding: 10px 12px !important; white-space: nowrap; flex-shrink: 0; }
+          .rapport-tab-btn { font-size: 11px !important; padding: 10px 10px !important; white-space: nowrap !important; flex-shrink: 0; min-width: unset !important; }
 
-          /* ── KPI bands ── */
-          .kpi-band-grid { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
-          .kpi-value { font-size: 18px !important; }
+          /* ── Contenu principal ── */
+          .rapport-main { padding: 8px !important; gap: 8px !important; }
 
-          /* ── AccordionSection ── */
-          .rapport-accordion-header { padding: 12px 14px !important; }
-          .rapport-accordion-body { padding: 12px 14px !important; }
+          /* ── KPI bands — 2 colonnes compactes ── */
+          .kpi-band-grid { grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap: 7px !important; margin-bottom: 10px !important; }
+          .kpi-band-grid > div { padding: 12px 12px !important; border-radius: 10px !important; }
+          .kpi-value { font-size: 16px !important; }
 
-          /* ── Grids 2 colonnes → 1 colonne ── */
+          /* ── AccordionSection compact ── */
+          .rapport-accordion-header { padding: 11px 12px !important; }
+          .rapport-accordion-header .accord-icon { width: 28px !important; height: 28px !important; font-size: 14px !important; }
+          .rapport-accordion-body { padding: 10px 12px !important; }
+
+          /* ── SectionTitle compact ── */
+          .section-title-bar { padding: 8px 12px !important; border-radius: 6px !important; }
+          .section-title-bar span { font-size: 12px !important; }
+
+          /* ── Tables compactes ── */
+          table { font-size: 12px !important; }
+          th, td { padding: 7px 9px !important; }
+
+          /* ── Grids forcés en 1 colonne ── */
           .grid-2col { grid-template-columns: 1fr !important; }
           .grid-3col { grid-template-columns: 1fr !important; }
 
-          /* ── Tables ── */
-          table { font-size: 12px !important; }
-          th, td { padding: 8px 10px !important; }
+          /* ── Textes ── */
+          .rapport-main p, .rapport-main div { max-width: 100%; word-break: break-word; }
+          .rapport-header-content { padding: 12px 12px !important; }
+          .rapport-score-bar { padding: 8px 12px !important; font-size: 12px !important; }
 
-          /* ── SectionTitle ── */
-          .section-title-bar { padding: 8px 12px !important; }
-          .section-title-bar span { font-size: 13px !important; }
-
-          /* ── Bandeau score top ── */
-          .rapport-score-bar { padding: 10px 14px !important; font-size: 13px !important; }
-
-          /* ── Textes généraux ── */
-          .rapport-main { padding: 12px !important; }
+          /* ── Tooltip mobile — repositionné pour rester visible ── */
+          .tooltip-bubble { max-width: calc(100vw - 24px) !important; left: 12px !important; right: 12px !important; width: auto !important; }
         }
-        @media (max-width: 400px) {
-          .kpi-band-grid { grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap: 6px !important; }
+        @media (max-width: 390px) {
+          .kpi-band-grid { gap: 5px !important; }
+          .kpi-band-grid > div { padding: 10px 10px !important; }
+          .kpi-value { font-size: 14px !important; }
+          .rapport-tab-btn { font-size: 10px !important; padding: 9px 8px !important; }
         }
         @media print {
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
