@@ -431,7 +431,7 @@ function ShareButton({ analyseId }: { analyseId: string }) {
       <button onClick={() => setShowMenu(!showMenu)} disabled={loading} className="topnav-share-btn"
         style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.08)', color: copied ? '#4ade80' : 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}>
         {copied ? <Check size={14} /> : <Copy size={14} />}
-        <span className="topnav-share-label">{copied ? 'Lien copié !' : loading ? '…' : 'Partager'}</span>
+        <span className="topnav-share-label">{copied ? 'Copié' : loading ? '…' : 'Partager'}</span>
       </button>
       {showMenu && (
         <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.10)', zIndex: 100, overflow: 'hidden', minWidth: 200 }}>
@@ -553,6 +553,23 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
   );
 }
 /* ══════════════════════════════════
+   RÉSUMÉ BLOCK — avec line-clamp mobile
+══════════════════════════════════ */
+function ResumeBlock({ resume }: { resume: string }) {
+  const [expanded, setExpanded] = React.useState(false);
+  return (
+    <div style={{ padding: '20px 22px 16px' }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 10 }}>RÉSUMÉ</div>
+      <p className={!expanded ? 'resume-clamped' : ''} style={{ fontSize: 15, color: '#374151', lineHeight: 1.9, margin: 0 }}>{resume}</p>
+      <button className="resume-toggle" onClick={() => setExpanded(v => !v)}
+        style={{ display: 'none', marginTop: 8, fontSize: 13, fontWeight: 600, color: '#2a7d9c', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+        {expanded ? 'Réduire ↑' : 'Lire la suite ↓'}
+      </button>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════
    ONGLET SYNTHÈSE
 ══════════════════════════════════ */
 function TabSynthese({ rapport }: { rapport: RapportData }) {
@@ -618,10 +635,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
       {/* 1. RÉSUMÉ + DÉTAIL NOTE fusionnés */}
       <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
         {/* Résumé */}
-        <div style={{ padding: '20px 22px 16px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 10 }}>RÉSUMÉ</div>
-          <p style={{ fontSize: 15, color: '#374151', lineHeight: 1.9, margin: 0 }}>{rapport.resume}</p>
-        </div>
+        <ResumeBlock resume={rapport.resume} />
 
         {/* Séparateur */}
         {isComplete && Object.keys(categories).length > 0 && (
@@ -939,6 +953,12 @@ function SyndicBand({ syndic, nbLots, nbBatiments }: { syndic: Record<string, un
         {finMandat && <div style={{ textAlign: 'center', padding: '4px 8px', borderLeft: '1px solid #f1f5f9' }}><div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>Fin mandat</div><div style={{ fontSize: 13, fontWeight: 500, color: '#a16207' }}>{finMandat}</div></div>}
         <div style={{ textAlign: 'center', padding: '4px 8px', borderLeft: '1px solid #f1f5f9' }}><div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>Tensions</div><div style={{ fontSize: 13, fontWeight: 500, color: tensions ? '#dc2626' : '#16a34a' }}>{tensions ? '⚠ Oui' : '✓ Non'}</div></div>
       </div>
+      {/* Alerte tensions ou fin mandat */}
+      {(tensions || (finMandat && new Date(finMandat) < new Date(Date.now() + 180 * 24 * 60 * 60 * 1000))) && (
+        <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: tensions ? '#fef2f2' : '#fffbeb', border: `1px solid ${tensions ? '#fecaca' : '#fde68a'}`, fontSize: 13, color: tensions ? '#991b1b' : '#92400e', lineHeight: 1.55 }}>
+          {tensions ? '⚠ Des tensions ont été détectées au sein de la copropriété — vérifiez les détails dans les PV d\'AG.' : `⏳ Le mandat du syndic arrive à échéance le ${finMandat} — une AG de renouvellement sera nécessaire.`}
+        </div>
+      )}
     </div>
   );
 }
@@ -1007,7 +1027,11 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
       {/* BANDEAU VUE D'ENSEMBLE */}
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 4 }}>Vue d'ensemble</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, marginTop: 6 }}>
+        <div style={{ height: 3, width: 20, background: '#2a7d9c', borderRadius: 99 }} />
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>Vue d'ensemble</span>
+        <div style={{ flex: 1, height: 1, background: '#edf2f7' }} />
+      </div>
 
       {/* Syndic band */}
       <SyndicBand syndic={syndic as Record<string, unknown> | null} nbLots={nbLotsTotal} nbBatiments={nbBatiments} />
@@ -1611,7 +1635,11 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
       {/* BANDEAU KPIs */}
       {kpiItems.length > 0 && (
         <>
-          <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>Vue d'ensemble</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, marginTop: 6 }}>
+            <div style={{ height: 3, width: 20, background: '#2a7d9c', borderRadius: 99 }} />
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>Vue d'ensemble</span>
+            <div style={{ flex: 1, height: 1, background: '#edf2f7' }} />
+          </div>
           <KpiBand items={kpiItems} />
         </>
       )}
@@ -1647,11 +1675,13 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
                     </div>
                   )}
                   {lot?.quote_part_tantiemes && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--color-background-secondary)', gap: 16 }}>
-                      <span style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>
+                    <div className="lot-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', background: 'var(--color-background-secondary)', gap: 16 }}>
+                      <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', flexShrink: 0 }}>
                         <Tooltip text="Votre quote-part dans la copropriété. Détermine votre participation aux charges et votre poids lors des votes en AG.">Tantièmes</Tooltip>
                       </span>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', textAlign: 'right' }}>{safeStr(lot?.quote_part_tantiemes)}</span>
+                      <div className="lot-row-value" style={{ textAlign: 'right' }}>
+                        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{safeStr(lot?.quote_part_tantiemes)}</span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -2414,7 +2444,7 @@ function TabProcedures({ rapport }: { rapport: RapportData }) {
    ONGLET DOCUMENTS
 ══════════════════════════════════ */
 function TabDocuments({ rapport }: { rapport: RapportData }) {
-  const [tooltipDoc, setTooltipDoc] = useState<string | null>(null);
+
   const docTypeLabel: Record<string, string> = {
     PV_AG: "PV d'Assemblée Générale", REGLEMENT_COPRO: 'Règlement de copropriété',
     APPEL_CHARGES: 'Appel de charges', DPE: 'DPE', DIAGNOSTIC: 'Diagnostic',
@@ -2485,14 +2515,9 @@ function TabDocuments({ rapport }: { rapport: RapportData }) {
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 12 }}>ESSENTIELS</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {docsEssentielManquants.map((doc, i) => (
-                    <div key={i} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 99, background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 14, color: '#1e40af', fontWeight: 500, cursor: doc.tooltip ? 'help' : 'default' }}
-                      onMouseEnter={() => doc.tooltip && setTooltipDoc(`e${i}`)}
-                      onMouseLeave={() => setTooltipDoc(null)}>
+                    <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 99, background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 14, color: '#1e40af', fontWeight: 500 }}>
                       {doc.label}
                       {doc.tooltip && <TooltipBtn text={doc.tooltip} />}
-                      {tooltipDoc === `e${i}` && doc.tooltip && (
-                        <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: 280, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.7, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>{doc.tooltip}</div>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -2503,14 +2528,9 @@ function TabDocuments({ rapport }: { rapport: RapportData }) {
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 12 }}>SECONDAIRES</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {docsSecondairesManquants.map((doc, i) => (
-                    <div key={i} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 99, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: 13, color: '#475569', fontWeight: 500, cursor: doc.tooltip ? 'help' : 'default' }}
-                      onMouseEnter={() => doc.tooltip && setTooltipDoc(`s${i}`)}
-                      onMouseLeave={() => setTooltipDoc(null)}>
+                    <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 99, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: 13, color: '#475569', fontWeight: 500 }}>
                       {doc.label}
                       {doc.tooltip && <TooltipBtn text={doc.tooltip} />}
-                      {tooltipDoc === `s${i}` && doc.tooltip && (
-                        <div style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, width: 280, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.7, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>{doc.tooltip}</div>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -2904,21 +2924,21 @@ export default function RapportPage() {
         {activeTab === 'procedures' && isComplete && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
         {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} /></SafeTabBoundary>}
 
-        {/* ══ BOTTOM TAB BAR — mobile uniquement ══ */}
+        {/* ══ BOTTOM TAB BAR — mobile uniquement — Option C pill ══ */}
         {isComplete && (
-          <div className="bottom-tab-bar" style={{ display: 'none', position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200, background: '#fff', borderTop: '1px solid #edf2f7', padding: '0', boxShadow: '0 -4px 20px rgba(0,0,0,0.08)' }}>
-            <div style={{ display: 'flex', alignItems: 'stretch' }}>
+          <div className="bottom-tab-bar" style={{ display: 'none', position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200, background: '#fff', borderTop: '1px solid #edf2f7', boxShadow: '0 -4px 20px rgba(0,0,0,0.08)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+            <div style={{ display: 'flex', alignItems: 'stretch', padding: '6px 4px 8px', gap: 3 }}>
               {tabs.map(tab => {
                 const active = activeTab === tab.id;
+                const activeBg = `${tab.dotColor}18`;
+                const activeColor = tab.dotColor;
                 return (
                   <button key={tab.id} onClick={() => { setActiveTab(tab.id); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                    style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, padding: '8px 4px 10px', border: 'none', background: 'transparent', cursor: 'pointer', position: 'relative' as const }}>
-                    {active && <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 2, background: tab.dotColor, borderRadius: '0 0 2px 2px' }} />}
-                    <div style={{ color: active ? tab.dotColor : '#94a3b8', transition: 'color 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    style={{ flex: active ? 1.6 : 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '7px 6px 7px', border: 'none', background: active ? activeBg : 'transparent', borderRadius: 12, cursor: 'pointer', transition: 'all 0.18s' }}>
+                    <div style={{ fontSize: 22, lineHeight: 1, color: active ? activeColor : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {tab.icon}
                     </div>
-                    <span style={{ fontSize: 9, fontWeight: active ? 700 : 400, color: active ? '#0f172a' : '#94a3b8', whiteSpace: 'nowrap' as const, lineHeight: 1 }}>{tab.label}</span>
-                    <div style={{ width: 4, height: 4, borderRadius: '50%', background: tab.dotColor, opacity: active ? 1 : 0.4 }} />
+                    <span style={{ fontSize: 10, fontWeight: active ? 700 : 500, color: active ? activeColor : '#94a3b8', whiteSpace: 'nowrap' as const, lineHeight: 1 }}>{tab.label}</span>
                   </button>
                 );
               })}
@@ -2970,9 +2990,9 @@ export default function RapportPage() {
         @media (max-width: 640px) {
           html, body { overflow-x: hidden; }
 
-          /* ── Layout général — padding bottom pour bottom bar ── */
+          /* ── Layout général ── */
           .rapport-wrapper { padding: 0 !important; }
-          .rapport-inner { padding: 6px 4px 80px 4px !important; gap: 6px !important; max-width: 100vw !important; }
+          .rapport-inner { padding: 6px 4px 90px 4px !important; gap: 6px !important; max-width: 100vw !important; }
           .rapport-main { padding: 6px 4px !important; gap: 8px !important; }
 
           /* ── Header ── */
@@ -2980,15 +3000,16 @@ export default function RapportPage() {
           .rapport-hero { padding: 14px 14px 16px !important; }
           .rapport-score-circle { width: 70px !important; height: 70px !important; }
           .score-label-badge { font-size: 9px !important; padding: 2px 8px !important; }
-          .hero-tags span { font-size: 8px !important; padding: 2px 6px !important; }
+          /* Badges hero — masqués sur mobile (redondants avec les infos du header) */
+          .hero-tags { display: none !important; }
 
-          /* ── Topnav — icônes seules ── */
-          .topnav-back-label { display: none !important; }
-          .topnav-share-label { display: none !important; }
-          .topnav-dl-label { display: none !important; }
-          .topnav-back-btn { padding: 8px 10px !important; }
-          .topnav-share-btn { padding: 8px 10px !important; }
-          .topnav-dl-btn { padding: 8px 10px !important; }
+          /* ── Topnav — labels courts ── */
+          .topnav-back-label { font-size: 11px !important; }
+          .topnav-share-label { font-size: 11px !important; }
+          .topnav-dl-label { font-size: 11px !important; }
+          .topnav-back-btn { padding: 7px 10px !important; }
+          .topnav-share-btn { padding: 7px 10px !important; }
+          .topnav-dl-btn { padding: 7px 10px !important; }
 
           /* ── Onglets desktop — cachés sur mobile ── */
           .rapport-tabs { display: none !important; }
@@ -2996,9 +3017,16 @@ export default function RapportPage() {
           /* ── Bottom tab bar — visible sur mobile ── */
           .bottom-tab-bar { display: block !important; }
 
-          /* ── KPI desktop → cacher, mobile → montrer ── */
+          /* ── Résumé — line-clamp 5 lignes ── */
+          .resume-clamped { display: -webkit-box !important; -webkit-line-clamp: 5 !important; -webkit-box-orient: vertical !important; overflow: hidden !important; }
+          .resume-toggle { display: block !important; }
+
+          /* ── KPI desktop → cacher, mobile liste → montrer ── */
           .kpi-desktop { display: none !important; }
           .kpi-mobile { display: flex !important; }
+          .kpi-mobile > div { padding: 11px 14px !important; }
+          .kpi-mobile .kpi-label { font-size: 12px !important; }
+          .kpi-mobile .kpi-val { font-size: 15px !important; font-weight: 700 !important; }
 
           /* ── Accordéon ── */
           .rapport-accordion-header { padding: 10px 12px !important; }
@@ -3021,9 +3049,11 @@ export default function RapportPage() {
           .rcp-badge-desktop { display: none !important; }
           .rcp-badge-mobile { display: inline-block !important; }
 
-          /* ── SyndicBand mobile ── */
+          /* ── SyndicBand mobile 2x2 ── */
           .syndic-stats { grid-template-columns: repeat(2, 1fr) !important; }
-          .syndic-stats > div { border-left: none !important; border-top: 1px solid #f1f5f9; padding: 6px 4px !important; }
+          .syndic-stats > div { border-left: none !important; border-top: 1px solid #f1f5f9; padding: 8px 6px !important; }
+          .syndic-stats > div > div:first-child { font-size: 11px !important; }
+          .syndic-stats > div > div:last-child { font-size: 15px !important; }
           .syndic-stats > div:nth-child(even) { border-left: 1px solid #f1f5f9 !important; }
 
           /* ── Points positifs/vigilance ── */
