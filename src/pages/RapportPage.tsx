@@ -559,7 +559,7 @@ function ResumeBlock({ resume }: { resume: string }) {
   const [expanded, setExpanded] = React.useState(false);
   return (
     <div style={{ padding: '20px 22px 16px' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 10 }}>RÉSUMÉ</div>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#0f2d3d', color: '#fff', fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 99, letterSpacing: '0.06em', marginBottom: 14 }}>📋 RÉSUMÉ</div>
       <p className={!expanded ? 'resume-clamped' : ''} style={{ fontSize: 15, color: '#374151', lineHeight: 1.9, margin: 0 }}>{resume}</p>
       <button className="resume-toggle" onClick={() => setExpanded(v => !v)}
         style={{ display: 'none', marginTop: 8, fontSize: 13, fontWeight: 600, color: '#2a7d9c', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
@@ -1052,10 +1052,8 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
       {/* BANDEAU VUE D'ENSEMBLE */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, marginTop: 6 }}>
-        <div style={{ height: 3, width: 20, background: '#2a7d9c', borderRadius: 99 }} />
-        <span style={{ fontSize: 12, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>Vue d'ensemble</span>
-        <div style={{ flex: 1, height: 1, background: '#edf2f7' }} />
+      <div style={{ marginBottom: 16, marginTop: 6 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#0f2d3d', color: '#fff', fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 99, letterSpacing: '0.06em' }}>🏢 VUE D'ENSEMBLE</span>
       </div>
 
       {/* Syndic band */}
@@ -1660,10 +1658,8 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
       {/* BANDEAU KPIs */}
       {kpiItems.length > 0 && (
         <>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, marginTop: 6 }}>
-            <div style={{ height: 3, width: 20, background: '#2a7d9c', borderRadius: 99 }} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>Vue d'ensemble</span>
-            <div style={{ flex: 1, height: 1, background: '#edf2f7' }} />
+          <div style={{ marginBottom: 16, marginTop: 6 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#0f2d3d', color: '#fff', fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 99, letterSpacing: '0.06em' }}>🏢 VUE D'ENSEMBLE</span>
           </div>
           <KpiBand items={kpiItems} />
         </>
