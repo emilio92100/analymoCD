@@ -489,7 +489,7 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
           <div style={{ flex: 1 }} />
           <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
             {!isShared && <ShareButton analyseId={rapport.id} />}
-            <button onClick={() => { const params = new URLSearchParams(window.location.search); window.open(`/rapport/print?id=${params.get('id') || ''}`, '_blank'); }}
+            <button onClick={() => { const params = new URLSearchParams(window.location.search); const url = `/rapport/print?id=${params.get('id') || ''}`; const isMob = window.innerWidth <= 640; if (isMob) { window.location.href = url; } else { window.open(url, '_blank'); } }}
               className="topnav-dl-btn"
               style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, border: 'none', background: '#fff', color: '#0f2d3d', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
               <Download size={14} /> <span className="topnav-dl-label">Télécharger PDF</span>
@@ -863,19 +863,19 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
 function TooltipBtn({ text, white = false }: { text: string; white?: boolean }) {
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const ref = useRef<HTMLSpanElement>(null);
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 640;
   const show = () => {
     if (!ref.current) return;
-    const r = ref.current.getBoundingClientRect();
-    if (isMobile) {
-      setPos({ top: window.innerHeight / 2 - 60, left: 16 });
+    const mobile = window.innerWidth <= 640;
+    if (mobile) {
+      setPos({ top: -9999, left: -9999 }); // flag mobile
     } else {
+      const r = ref.current.getBoundingClientRect();
       const left = Math.min(r.left, window.innerWidth - 290);
       const top = r.bottom + 6;
       setPos({ top, left });
     }
   };
-  const isMobilePos = pos && typeof window !== 'undefined' && window.innerWidth <= 640;
+  const isMobilePos = pos && pos.top === -9999;
   return (
     <span ref={ref}
       onMouseEnter={show} onMouseLeave={() => setPos(null)}
@@ -883,7 +883,7 @@ function TooltipBtn({ text, white = false }: { text: string; white?: boolean }) 
       style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: white ? 'rgba(255,255,255,0.25)' : '#f1f5f9', border: white ? 'none' : '1px solid #e2e8f0', fontSize: 10, color: white ? '#fff' : '#94a3b8', fontWeight: 700, cursor: 'pointer', flexShrink: 0, position: 'relative' }}>
       ?
       {pos && (
-        <span className="tooltip-bubble" style={{ position: 'fixed', top: isMobilePos ? '50%' : pos.top, left: isMobilePos ? '50%' : pos.left, transform: isMobilePos ? 'translate(-50%, -50%)' : 'none', width: isMobilePos ? 'calc(100vw - 48px)' : 270, maxWidth: isMobilePos ? 340 : 270, background: '#0f172a', borderRadius: 12, padding: '14px 16px', fontSize: 13, color: '#fff', lineHeight: 1.65, zIndex: 9999, boxShadow: '0 8px 32px rgba(0,0,0,0.35)', pointerEvents: 'none', whiteSpace: 'normal', fontWeight: 400 }}>{text}</span>
+        <span className="tooltip-bubble" style={{ position: 'fixed', top: isMobilePos ? '50%' : pos.top, left: isMobilePos ? '50%' : pos.left, transform: isMobilePos ? 'translate(-50%, -50%)' : 'none', width: isMobilePos ? 'calc(100vw - 48px)' : 270, maxWidth: isMobilePos ? 340 : 270, background: '#0f172a', borderRadius: 12, padding: '14px 16px', fontSize: 13, color: '#fff', lineHeight: 1.65, zIndex: 9999, pointerEvents: 'none', whiteSpace: 'normal', fontWeight: 400 }}>{text}</span>
       )}
     </span>
   );
@@ -1742,7 +1742,7 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
             {/* Sommes à verser au vendeur */}
             {(fondsAlurNum || ped?.fonds_roulement_acheteur) && (
               <>
-                <SectionTitle emoji="💰" text="Sommes à verser au vendeur à la signature" tooltip="Ces montants sont attachés au lot. Ils vous seront transférés mais vous devrez les rembourser au vendeur en sus du prix de vente, à la signature de l'acte authentique." />
+                <SectionTitle emoji="💰" text="Sommes à verser au vendeur à la signature" />
                 <div style={{ border: '0.5px solid #fed7aa', borderRadius: 10, overflow: 'hidden', background: '#fffbeb' }}>
                   {fondsAlurNum && (
                     <div style={{ padding: '12px 16px', borderBottom: ped?.fonds_roulement_acheteur ? '0.5px solid #fde68a' : 'none' }}>
@@ -2888,7 +2888,7 @@ export default function RapportPage() {
 
   const isComplete = rapport.type === 'complete';
   const hasCopro = isCoproType(rapport.type_bien);
-  const logementLabel = rapport.type_bien === 'maison' ? 'Votre maison' : 'Votre futur logement';
+  const logementLabel = rapport.type_bien === 'maison' ? 'Ma maison' : 'Logement';
   const logementIcon = rapport.type_bien === 'maison' ? <Home size={14} /> : <Building2 size={14} />;
 
   // Onglets selon type de bien
