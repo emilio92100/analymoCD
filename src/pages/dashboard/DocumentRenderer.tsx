@@ -1859,12 +1859,12 @@ function RendererDiagCommunes({ r }: { r: any }) {
           </div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 14 }}>
+        <KpiGrid>
           <Kpi label="Matériaux amiantés" value={String(nbDetectes)} color={nbDetectes > 0 ? C.red.dot : C.green.dot} />
           <Kpi label="Action corrective (AC1)" value={String(nbAC1)} color={nbAC1 > 0 ? '#d97706' : C.green.dot} />
           <Kpi label="Surveillance périodique" value={String(nbEP)} color={C.blue.dot} />
           <Kpi label="Zones sans amiante" value={String(nbSaines)} color={C.green.dot} />
-        </div>
+        </KpiGrid>
       )}
 
       {/* ── DIAGNOSTIQUEUR(S) ── */}
@@ -1900,29 +1900,48 @@ function RendererDiagCommunes({ r }: { r: any }) {
                 ))}
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 0 }}>
+                {/* Ligne 1 : Opérateur + Date */}
+                {(r.operateur || r.rapports?.[0]?.operateur || r.rapports?.[0]?.date) && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '10px 0', borderBottom: `0.5px solid ${C.border}`, gap: 16 }}>
+                    {(r.operateur || r.rapports?.[0]?.operateur) && (
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                        <span style={{ fontSize: 15 }}>👤</span>
+                        <div>
+                          <div style={{ fontSize: 11, color: C.textSec, marginBottom: 1 }}>Opérateur</div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{r.operateur || r.rapports?.[0]?.operateur}</div>
+                        </div>
+                      </div>
+                    )}
+                    {r.rapports?.[0]?.date && (
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', textAlign: 'right' as const }}>
+                        <span style={{ fontSize: 15 }}>📅</span>
+                        <div>
+                          <div style={{ fontSize: 11, color: C.textSec, marginBottom: 1 }}>Date</div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{formatDate(r.rapports[0].date)}</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Ligne 2 : Entreprise */}
                 {(r.cabinet || r.rapports?.[0]?.cabinet) && (
-                  <div style={{ display: 'flex', gap: 10 }}>
-                    <span style={{ fontSize: 16 }}>🏢</span>
-                    <div><div style={{ fontSize: 11, color: C.textSec, marginBottom: 2 }}>Entreprise</div><div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>{r.cabinet || r.rapports?.[0]?.cabinet}</div></div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '10px 0', borderBottom: r.rapports?.[0]?.certification ? `0.5px solid ${C.border}` : 'none' }}>
+                    <span style={{ fontSize: 15 }}>🏢</span>
+                    <div>
+                      <div style={{ fontSize: 11, color: C.textSec, marginBottom: 1 }}>Entreprise</div>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: C.text, lineHeight: 1.5 }}>{r.cabinet || r.rapports?.[0]?.cabinet}</div>
+                    </div>
                   </div>
                 )}
-                {(r.operateur || r.rapports?.[0]?.operateur) && (
-                  <div style={{ display: 'flex', gap: 10 }}>
-                    <span style={{ fontSize: 16 }}>👤</span>
-                    <div><div style={{ fontSize: 11, color: C.textSec, marginBottom: 2 }}>Opérateur</div><div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>{r.operateur || r.rapports?.[0]?.operateur}</div></div>
-                  </div>
-                )}
-                {(r.rapports?.[0]?.date) && (
-                  <div style={{ display: 'flex', gap: 10 }}>
-                    <span style={{ fontSize: 16 }}>📅</span>
-                    <div><div style={{ fontSize: 11, color: C.textSec, marginBottom: 2 }}>Date</div><div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>{formatDate(r.rapports[0].date)}</div></div>
-                  </div>
-                )}
-                {(r.rapports?.[0]?.certification) && (
-                  <div style={{ display: 'flex', gap: 10 }}>
-                    <span style={{ fontSize: 16 }}>🏅</span>
-                    <div><div style={{ fontSize: 11, color: C.textSec, marginBottom: 2 }}>Certification</div><div style={{ fontSize: 14, color: C.text }}>{r.rapports[0].certification}</div></div>
+                {/* Ligne 3 : Certification */}
+                {r.rapports?.[0]?.certification && (
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '10px 0' }}>
+                    <span style={{ fontSize: 15 }}>🏅</span>
+                    <div>
+                      <div style={{ fontSize: 11, color: C.textSec, marginBottom: 1 }}>Certification</div>
+                      <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5 }}>{r.rapports[0].certification}</div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1962,17 +1981,25 @@ function RendererDiagCommunes({ r }: { r: any }) {
             const zonesActives = groupe.zones?.filter((z: any) => z.action !== 'non_detecte') || [];
             const zonesNonDetecte = groupe.zones?.filter((z: any) => z.action === 'non_detecte') || [];
             const showND = showNonDetecte[key];
+            const zc = [
+              {bg:'#eff6ff',border:'#bfdbfe',header:'#dbeafe',dot:'#3b82f6',text:'#1e40af'},
+              {bg:'#f0fdf4',border:'#bbf7d0',header:'#dcfce7',dot:'#16a34a',text:'#15803d'},
+              {bg:'#fff7ed',border:'#fed7aa',header:'#ffedd5',dot:'#f97316',text:'#9a3412'},
+              {bg:'#fdf4ff',border:'#e9d5ff',header:'#f3e8ff',dot:'#9333ea',text:'#6b21a8'},
+              {bg:'#f0f9ff',border:'#bae6fd',header:'#e0f2fe',dot:'#0284c7',text:'#0c4a6e'},
+              {bg:'#fefce8',border:'#fde68a',header:'#fef9c3',dot:'#ca8a04',text:'#713f12'},
+            ][gi % 6];
             return (
               <div key={gi} style={{ borderBottom: gi < r.zones_par_localisation.length - 1 ? `0.5px solid ${C.border}` : 'none' }}>
-                <div onClick={() => toggleSection(key)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 20px', cursor: 'pointer', background: C.bg }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 16 }}>{groupe.emoji || '📍'}</span>
-                    <span style={{ fontSize: 15, fontWeight: 600, color: C.text }}>{groupe.localisation}</span>
-                    <span style={{ fontSize: 13, color: C.textSec }}>{groupe.zones?.length || 0} matériau{(groupe.zones?.length || 0) > 1 ? 'x' : ''}</span>
-                    {groupe.rapport_annee && <span style={{ fontSize: 11, color: C.textSec }}>· {groupe.cabinet || ''} {groupe.rapport_annee}</span>}
+                <div onClick={() => toggleSection(key)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', background: zc.header }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const, flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: 16, flexShrink: 0 }}>{groupe.emoji || '📍'}</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: zc.text }}>{groupe.localisation}</span>
+                    <span style={{ fontSize: 12, color: zc.dot, fontWeight: 600 }}>{groupe.zones?.length || 0} mat.</span>
+                    {groupe.rapport_annee && <span style={{ fontSize: 11, color: zc.text, opacity: 0.7 }}>· {groupe.cabinet || ''} {groupe.rapport_annee}</span>}
                     {hasAC1 && <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 100, background: C.red.bg, color: C.red.text, border: `0.5px solid ${C.red.border}` }}>⚠ AC1</span>}
                   </div>
-                  <span style={{ fontSize: 11, color: C.textSec, transform: open ? 'none' : 'rotate(-90deg)', display: 'inline-block', transition: 'transform 0.2s' }}>▾</span>
+                  <span style={{ fontSize: 11, color: zc.dot, transform: open ? 'none' : 'rotate(-90deg)', display: 'inline-block', transition: 'transform 0.2s', flexShrink: 0 }}>▾</span>
                 </div>
                 {open && (
                   <div style={{ background: C.bgSecondary, borderTop: `0.5px solid ${C.border}` }}>
@@ -1991,13 +2018,11 @@ function RendererDiagCommunes({ r }: { r: any }) {
                             <span style={{ fontSize: 14, color: C.textSec }}>{z.materiau || '—'}</span>
                             <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 100, background: ac.bg, color: ac.text, border: `0.5px solid ${ac.border}`, display: 'inline-block', whiteSpace: 'nowrap' as const }}>{actionLabel(z.action)}</span>
                           </div>
-                          {/* Mobile — card empilée */}
-                          <div className="dr-zone-row-mobile" style={{ display: 'none', padding: '10px 14px', flexDirection: 'column' as const, gap: 5 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                              <span style={{ fontSize: 13, fontWeight: 600, color: C.text, flex: 1 }}>{z.localisation_detail || z.identifiant || '—'}</span>
-                              <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 9px', borderRadius: 100, background: ac.bg, color: ac.text, border: `0.5px solid ${ac.border}`, whiteSpace: 'nowrap' as const, flexShrink: 0 }}>{actionLabel(z.action)}</span>
-                            </div>
+                          {/* Mobile — card empilée avec badge centré */}
+                          <div className="dr-zone-row-mobile" style={{ display: 'none', padding: '10px 14px', flexDirection: 'column' as const, gap: 6, alignItems: 'flex-start' }}>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: C.text, lineHeight: 1.4 }}>{z.localisation_detail || z.identifiant || '—'}</span>
                             <span style={{ fontSize: 12, color: C.textSec }}>{z.materiau || '—'}</span>
+                            <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 12px', borderRadius: 6, background: ac.bg, color: ac.text, border: `0.5px solid ${ac.border}` }}>{actionLabel(z.action)}</span>
                           </div>
                         </div>
                       );
@@ -2039,14 +2064,16 @@ function RendererDiagCommunes({ r }: { r: any }) {
 
       {/* ── ZONES SAINES ── */}
       {r.zones_saines?.length > 0 && (
-        <div style={{ background: C.green.bg, border: `0.5px solid ${C.green.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
-          <div style={{ padding: '12px 20px', borderBottom: `0.5px solid ${C.green.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ background: C.green.bg, border: `0.5px solid ${C.green.border}`, borderRadius: 10, overflow: 'hidden', marginBottom: 14 }}>
+          <div style={{ padding: '10px 16px', borderBottom: `0.5px solid ${C.green.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.green.dot }} />
             <div style={{ fontSize: 12, fontWeight: 700, color: C.green.text, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>Zones non concernées</div>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8, padding: '14px 20px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column' as const }}>
             {r.zones_saines.map((z: string, i: number) => (
-              <span key={i} style={{ fontSize: 13, fontWeight: 600, padding: '4px 12px', borderRadius: 100, background: C.bg, border: `0.5px solid ${C.green.border}`, color: C.green.text }}>{z}</span>
+              <div key={i} style={{ padding: '9px 16px', borderBottom: i < r.zones_saines.length - 1 ? `0.5px solid ${C.green.border}` : 'none', fontSize: 13, color: C.green.text, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: C.green.dot, fontWeight: 700 }}>✓</span> {z}
+              </div>
             ))}
           </div>
         </div>
