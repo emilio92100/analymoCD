@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
-import { ArrowRight, ChevronDown, TrendingDown, TrendingUp, AlertTriangle, Shield, Check } from 'lucide-react';
+import { ArrowRight, ChevronDown, TrendingDown, TrendingUp, AlertTriangle, Shield, Check, Info } from 'lucide-react';
 
 const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
 const isLowPerf = () => isIOS() || (typeof window !== 'undefined' && window.innerWidth <= 768);
@@ -147,37 +147,83 @@ const categories = [
   {
     id: 'travaux', emoji: '🏗️', label: 'Travaux', pts: 5,
     color: '#f0a500', light: '#fffbeb', border: '#fde68a',
-    desc: "Les travaux sont le premier risque financier. On détecte tout ce qui est évoqué, voté ou urgent dans vos PV d'AG.",
-    bad: [{ l: 'Gros travaux évoqués non votés', v: '-2 à -3' }, { l: 'Travaux urgents non anticipés', v: '-3 à -4' }],
-    good: [{ l: 'Travaux votés (charge du vendeur)', v: '+0,5 à +1' }, { l: 'Garantie décennale récente', v: '+0,5 à +1' }],
+    desc: "Les travaux sont le premier risque financier. On détecte tout ce qui est évoqué ou voté dans vos PV d'AG, en distinguant les travaux lourds des travaux légers.",
+    bad: [
+      { l: 'Travaux lourds évoqués non votés', v: '-3', tip: 'Toiture, ravalement, chaudière collective, ascenseur, structure — évoqués en AG mais pas encore votés ni budgétés. Risque d\'appel de fonds important à prévoir.' },
+      { l: 'Travaux légers évoqués non votés', v: '-1', tip: 'Peinture parties communes, interphones, petit entretien — évoqués sans vote. Impact financier limité.' },
+    ],
+    good: [
+      { l: 'Travaux votés à charge du vendeur (petits/moyens)', v: '+2', tip: 'Des travaux ont été votés et seront payés par le vendeur avant la vente. L\'acheteur en bénéficie sans les financer.' },
+      { l: 'Gros travaux votés à charge du vendeur', v: '+3', tip: 'Chaudière, ravalement, toiture — travaux lourds déjà votés et financés par le vendeur. Signal très positif.' },
+      { l: 'Garantie décennale récente sur travaux', v: '+2', tip: 'Les travaux réalisés sont couverts par une garantie décennale en cours de validité — protection contre les malfaçons pendant 10 ans.' },
+    ],
   },
   {
     id: 'procedures', emoji: '⚖️', label: 'Procédures juridiques', pts: 4,
     color: '#dc2626', light: '#fef2f2', border: '#fecaca',
-    desc: "Un litige peut bloquer la vente ou engager des frais imprévus.",
-    bad: [{ l: 'Copropriété vs syndic', v: '-2 à -4' }, { l: 'Copropriété vs copropriétaire', v: '-0,5 à -1' }, { l: 'Copropriété en difficulté officielle', v: '-3 à -4' }],
-    good: [{ l: 'Aucune procédure détectée', v: 'Pas de pénalité ✓' }],
+    desc: "Un litige peut bloquer la vente ou engager des frais imprévus importants. On distingue les procédures selon leur gravité.",
+    bad: [
+      { l: 'Procédure significative', v: '-3', tip: 'Litige bloquant, administration provisoire, détournement syndic, impayés massifs — peut impacter la vente ou générer des coûts imprévus importants.' },
+      { l: 'Procédure mineure', v: '-1,5', tip: 'Petit litige isolé, mise en demeure sans suite judiciaire, un seul copropriétaire en impayé — impact limité, situation généralement en cours de résolution.' },
+    ],
+    good: [
+      { l: 'Aucune procédure détectée', v: '+1', tip: 'Aucun litige en cours dans les documents analysés — situation juridique saine.' },
+    ],
   },
   {
     id: 'finances', emoji: '💰', label: 'Finances copropriété', pts: 4,
     color: '#2a7d9c', light: '#f0f7fb', border: '#bae3f5',
-    desc: "La santé financière conditionne vos charges futures. Un fonds de travaux insuffisant peut coûter très cher.",
-    bad: [{ l: 'Écart budget réalisé > 30%', v: '-3' }, { l: 'Fonds travaux nul', v: '-2' }, { l: 'Impayés de charges', v: '-1 à -2' }],
-    good: [{ l: 'Fonds travaux conforme au légal', v: '+0,5' }, { l: 'Fonds travaux au-dessus du légal', v: '+1' }],
+    desc: "La santé financière conditionne vos charges futures. Un fonds de travaux insuffisant peut coûter très cher en cas de travaux imprévus.",
+    bad: [
+      { l: 'Fonds travaux nul ou absent', v: '-1', tip: 'Aucun fonds de travaux provisionné — en cas de travaux importants, des appels de fonds exceptionnels seront inévitables.' },
+      { l: 'Impayés anormaux (> 15% du budget)', v: '-1', tip: 'Le niveau d\'impayés de charges dépasse 15% du budget annuel de la copropriété — signal de fragilité financière collective.' },
+    ],
+    good: [
+      { l: 'Fonds travaux conforme au légal (5%)', v: '+0,5', tip: 'Le fonds de travaux respecte le minimum légal imposé par la loi ALUR — copropriété à jour de ses obligations.' },
+      { l: 'Fonds travaux bien provisionné (6–9%)', v: '+1', tip: 'Le fonds de travaux dépasse le minimum légal — bonne anticipation des dépenses futures.' },
+      { l: 'Fonds travaux excellent (≥ 10%)', v: '+1,5', tip: 'Fonds de travaux très bien provisionné — la copropriété est en excellente santé financière pour faire face aux travaux.' },
+    ],
+    info: [
+      { l: 'Écart budget voté / charges réelles', tip: 'Affiché à titre informatif avec les deux montants si disponibles. Un écart peut être justifié par des travaux imprévus ou une dépense exceptionnelle.' },
+      { l: 'Appels de fonds exceptionnels', tip: 'Mentionnés dans le rapport si détectés, sans pénalité si justifiés par des travaux votés.' },
+    ],
   },
   {
     id: 'diags-prives', emoji: '🏠', label: 'Diagnostics privatifs', pts: 4,
     color: '#7c3aed', light: '#f5f3ff', border: '#ddd6fe',
-    desc: "DPE, électricité, amiante — ils impactent la valeur, la revente et les charges énergétiques.",
-    bad: [{ l: 'DPE F (résidence principale)', v: '-2' }, { l: 'DPE G (résidence principale)', v: '-3' }, { l: 'DPE F ou G (investissement)', v: '-4 à -6' }, { l: 'Électricité : anomalies majeures', v: '-2' }],
-    good: [{ l: 'DPE A', v: '+1' }, { l: 'DPE B ou C', v: '+0,5' }],
+    desc: "DPE, électricité, gaz, amiante — ils impactent la valeur du bien, sa revendabilité et vos charges énergétiques futures.",
+    bad: [
+      { l: 'DPE F (résidence principale)', v: '-2', tip: 'Passoire thermique — charges énergétiques élevées et restrictions locatives à venir.' },
+      { l: 'DPE G (résidence principale)', v: '-3', tip: 'Passoire thermique sévère — interdiction de location en vigueur, travaux de rénovation incontournables.' },
+      { l: 'DPE F (investissement locatif)', v: '-4', tip: 'Déjà soumis à restrictions locatives — impact direct sur la rentabilité.' },
+      { l: 'DPE G (investissement locatif)', v: '-6', tip: 'Interdit à la location — investissement bloqué sans travaux lourds de rénovation énergétique.' },
+      { l: 'Électricité : anomalies majeures', v: '-2', tip: 'Anomalies importantes sur l\'installation électrique nécessitant une mise en conformité — coût et délais à prévoir.' },
+    ],
+    good: [
+      { l: 'DPE A, B ou C', v: '+1,5', tip: 'Excellente performance énergétique — charges réduites, bien attractif à la revente, aucune contrainte réglementaire.' },
+      { l: 'DPE D', v: '+1', tip: 'Bonne performance énergétique — aucune contrainte réglementaire immédiate, charges maîtrisées.' },
+      { l: 'Diagnostics complets sans anomalie (hors ERP)', v: '+2', tip: 'Tous les diagnostics obligatoires présents sont conformes, sans aucune anomalie détectée. L\'ERP (risques naturels) est toujours informatif et n\'entre pas dans ce calcul.' },
+    ],
   },
   {
     id: 'diags-communs', emoji: '🏢', label: 'Diagnostics communs', pts: 3,
     color: '#16a34a', light: '#f0fdf4', border: '#bbf7d0',
-    desc: "L'état des parties communes conditionne vos charges collectives futures.",
-    bad: [{ l: 'Amiante parties communes dégradé', v: '-2' }, { l: 'Termites parties communes', v: '-2' }],
-    good: [{ l: 'Immeuble bien entretenu', v: '+0,5' }, { l: 'Entretien chaudière certifié', v: '+0,5' }],
+    desc: "L'état des parties communes conditionne vos futures charges collectives. Un immeuble bien entretenu, c'est moins de mauvaises surprises.",
+    bad: [
+      { l: 'Amiante parties communes dégradé', v: '-2', tip: 'Présence d\'amiante dégradé dans les parties communes — travaux de désamiantage obligatoires, coûteux et complexes.' },
+      { l: 'Termites parties communes', v: '-2', tip: 'Infestation de termites détectée dans les parties communes — traitement et consolidation structurelle à prévoir.' },
+      { l: 'DTG : état général dégradé', v: '-2', tip: 'Le Diagnostic Technique Global révèle un immeuble en mauvais état général — travaux lourds à anticiper sur plusieurs années.' },
+      { l: 'DTG : budget urgent < 50 000 €', v: '-1', tip: 'Des travaux urgents sont identifiés dans le DTG pour un montant inférieur à 50 000 € — à surveiller.' },
+      { l: 'DTG : budget urgent > 50 000 €', v: '-2', tip: 'Des travaux urgents importants sont identifiés dans le DTG — appels de fonds significatifs à prévoir à court terme.' },
+    ],
+    good: [
+      { l: 'Immeuble bien entretenu', v: '+0,5', tip: 'Les documents montrent un immeuble correctement entretenu, sans signalement de dégradation notable.' },
+      { l: 'Entretien chaudière certifié', v: '+0,5', tip: 'Contrat d\'entretien chaudière collective en règle — équipement suivi, risques réduits.' },
+      { l: 'DTG : état général bon', v: '+1', tip: 'Le Diagnostic Technique Global confirme un immeuble en bon état général — rassurance sur les dépenses futures.' },
+    ],
+    info: [
+      { l: 'PPT (Plan Pluriannuel de Travaux)', tip: 'Affiché à titre informatif — planification des travaux sur 10 ans. Permet d\'anticiper les dépenses futures sans impacter la note.' },
+    ],
   },
 ];
 
@@ -521,28 +567,52 @@ export default function MethodePage() {
                                   <TrendingDown size={12} color="#dc2626" />
                                   <span style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Pénalités</span>
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                                   {cat.bad.map((item, i) => (
-                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                                      <span style={{ fontSize: 14, color: '#374151', lineHeight: 1.5 }}>{item.l}</span>
-                                      <span style={{ fontSize: 11, fontWeight: 800, color: '#dc2626', background: '#fee2e2', padding: '2px 7px', borderRadius: 5, flexShrink: 0 }}>{item.v}</span>
+                                    <div key={i}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                                        <span style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>{item.l}</span>
+                                        <span style={{ fontSize: 11, fontWeight: 800, color: '#dc2626', background: '#fee2e2', padding: '2px 7px', borderRadius: 5, flexShrink: 0 }}>{item.v}</span>
+                                      </div>
+                                      {(item as any).tip && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3, lineHeight: 1.5 }}>{(item as any).tip}</div>}
                                     </div>
                                   ))}
                                 </div>
                               </div>
-                              <div style={{ background: '#fff', borderRadius: 11, border: '1px solid #d1fae5', padding: '14px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
-                                  <TrendingUp size={12} color="#16a34a" />
-                                  <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Bonus</span>
+                              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+                                <div style={{ background: '#fff', borderRadius: 11, border: '1px solid #d1fae5', padding: '14px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
+                                    <TrendingUp size={12} color="#16a34a" />
+                                    <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Bonus</span>
+                                  </div>
+                                  <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+                                    {cat.good.map((item, i) => (
+                                      <div key={i}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                                          <span style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>{item.l}</span>
+                                          <span style={{ fontSize: 11, fontWeight: 800, color: '#16a34a', background: '#dcfce7', padding: '2px 7px', borderRadius: 5, flexShrink: 0 }}>{item.v}</span>
+                                        </div>
+                                        {(item as any).tip && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3, lineHeight: 1.5 }}>{(item as any).tip}</div>}
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
-                                  {cat.good.map((item, i) => (
-                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                                      <span style={{ fontSize: 14, color: '#374151', lineHeight: 1.5 }}>{item.l}</span>
-                                      <span style={{ fontSize: 11, fontWeight: 800, color: '#16a34a', background: '#dcfce7', padding: '2px 7px', borderRadius: 5, flexShrink: 0 }}>{item.v}</span>
+                                {(cat as any).info && (cat as any).info.length > 0 && (
+                                  <div style={{ background: '#fff', borderRadius: 11, border: '1px solid #e2e8f0', padding: '14px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
+                                      <Info size={12} color="#64748b" />
+                                      <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Informatif</span>
                                     </div>
-                                  ))}
-                                </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+                                      {(cat as any).info.map((item: any, i: number) => (
+                                        <div key={i}>
+                                          <span style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>{item.l}</span>
+                                          {item.tip && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3, lineHeight: 1.5 }}>{item.tip}</div>}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -572,10 +642,10 @@ export default function MethodePage() {
               <div>
                 {[
                   { label: 'Point de départ', note: '', pts: '+20', color: '#0f172a', sub: false },
-                  { label: 'Ravalement de façade évoqué non voté', note: 'Travaux — risque financier pour l\'acheteur', pts: '−2,5', color: '#dc2626', sub: true },
-                  { label: 'Fonds travaux sous-provisionné', note: 'Finances — budget inférieur au minimum légal', pts: '−2', color: '#dc2626', sub: true },
-                  { label: 'DPE classé C', note: 'Diagnostics privatifs — bonne performance', pts: '+0,5', color: '#16a34a', sub: true },
-                  { label: 'Aucune procédure judiciaire', note: 'Procédures — situation juridique saine', pts: '±0', color: '#94a3b8', sub: true },
+                  { label: 'Ravalement de façade évoqué non voté', note: 'Travaux — travaux lourds évoqués sans vote ni budget', pts: '−3', color: '#dc2626', sub: true },
+                  { label: 'Fonds travaux nul', note: 'Finances — aucun fonds de travaux provisionné', pts: '−1', color: '#dc2626', sub: true },
+                  { label: 'DPE classé C', note: 'Diagnostics privatifs — excellente performance énergétique', pts: '+1,5', color: '#16a34a', sub: true },
+                  { label: 'Aucune procédure judiciaire', note: 'Procédures — situation juridique saine', pts: '+1', color: '#16a34a', sub: true },
                 ].map((row, i) => (
                   <Reveal key={i} delay={i * 0.05}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '13px 20px', borderBottom: i < 4 ? '1px solid #f8fafc' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
@@ -596,10 +666,10 @@ export default function MethodePage() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
-                      <span style={{ fontSize: 38, fontWeight: 900, color: '#16a34a', letterSpacing: '-0.03em' }}>16</span>
+                      <span style={{ fontSize: 38, fontWeight: 900, color: '#15803d', letterSpacing: '-0.03em' }}>18,5</span>
                       <span style={{ fontSize: 18, fontWeight: 700, color: '#cbd5e1' }}>/20</span>
                     </div>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', border: '1px solid #d1fae5', padding: '5px 14px', borderRadius: 10 }}>Bien sain ✓</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#15803d', background: '#f0fdf4', border: '1px solid #d1fae5', padding: '5px 14px', borderRadius: 10 }}>Bien irréprochable ✓</span>
                   </div>
                 </div>
               </Reveal>
