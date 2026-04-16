@@ -214,9 +214,49 @@ Tu informes, tu n orientes jamais la decision finale. Tu n utilises jamais les m
 Si une information est absente, tu le signales clairement.
 
 REGLES DE NOTATION /20 (profil ${p}) :
-- Base : 12/20. Travaux urgents non anticipes : -3 a -4. Gros travaux evoques non votes : -2 a -3.
-- Fonds travaux nul : -2. DPE F (RP) : -2 / DPE G (RP) : -3. DPE F (invest) : -4 / DPE G (invest) : -6.
-- Procedures judiciaires : -2 a -4. Fonds travaux conforme legal (5%) : +0.5. Fonds travaux bien (6-9%) : +1. Fonds travaux excellent (>=10%) : +1.5. DPE A : +1 / DPE B ou C : +0.5.
+- Base : 20/20. On déduit pour chaque risque détecté, on ajoute pour chaque élément positif. Note plafonnée à 20.
+
+TRAVAUX :
+- Travaux lourds évoqués non votés (toiture, ravalement, chaudière, ascenseur, structure) : -3
+- Travaux légers évoqués non votés (peinture PC, interphones, petit entretien) : -1
+- Travaux votés a charge du vendeur (petits/moyens) : +2
+- Gros travaux votes a charge du vendeur (chaudiere, ravalement, toiture) : +3
+- Garantie decennale recente sur travaux realises : +2
+
+PROCEDURES :
+- Procedure significative (litige bloquant, administration provisoire, detournement syndic, impayes massifs) : -3
+- Procedure mineure (petit litige isole, mise en demeure sans suite, un seul coproprietaire en impaye) : -1.5
+- Aucune procedure detectee : +1
+
+FINANCES :
+- Fonds travaux nul ou absent : -1
+- Impayes anormaux dans la copropriete (> 15% du budget annuel) : -1
+- Fonds travaux conforme legal (= 5% budget) : +0.5
+- Fonds travaux bien provisionne (6-9% budget) : +1
+- Fonds travaux excellent (>= 10% budget) : +1.5
+- Ecart budget vote / charges reelles : INFORMATIF UNIQUEMENT, afficher les deux montants si disponibles, ne jamais penaliser
+- Appels de fonds exceptionnels : INFORMATIF UNIQUEMENT si justifies par travaux votes
+
+DIAGNOSTICS PRIVATIFS :
+- DPE F (residence principale) : -2
+- DPE G (residence principale) : -3
+- DPE F (investissement locatif) : -4
+- DPE G (investissement locatif) : -6
+- Electricite : anomalies majeures : -2
+- DPE A, B ou C : +1.5
+- DPE D : +1
+- Diagnostics complets sans anomalie (hors ERP) avec DPE <= D : +2 (l ERP est toujours informatif, ne compte pas dans ce calcul. Amiante obligatoire si avant 1997, plomb obligatoire si avant 1949, termites selon zone prefectorale independamment de l annee)
+
+DIAGNOSTICS COMMUNS :
+- Amiante parties communes degrade : -2
+- Termites parties communes : -2
+- DTG etat general degrade : -2
+- DTG budget travaux urgents < 50 000 euros : -1
+- DTG budget travaux urgents > 50 000 euros : -2
+- Immeuble bien entretenu : +0.5
+- Entretien chaudiere collective certifie : +0.5
+- DTG etat general bon : +1
+- PPT (Plan Pluriannuel de Travaux) : INFORMATIF UNIQUEMENT, ne pas penaliser ni bonifier
 
 REGLES FONDS TRAVAUX STATUT :
 - "absent" : aucun fonds de travaux mentionné ou = 0€
