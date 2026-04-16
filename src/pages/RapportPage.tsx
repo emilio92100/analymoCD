@@ -2920,8 +2920,15 @@ export default function RapportPage() {
   if (documentResult) {
     return (
       <div style={{ minHeight: '100vh', background: '#f5f9fb', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-        <div style={{ maxWidth: 1250, margin: '0 auto', padding: '20px 28px' }}>
-          <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <style>{`
+          @media (max-width: 640px) {
+            .doc-simple-wrapper { padding: 0 !important; }
+            .doc-simple-back { margin: 10px 12px 8px !important; }
+            .doc-simple-back a { padding: 8px 14px !important; font-size: 13px !important; }
+          }
+        `}</style>
+        <div className="doc-simple-wrapper" style={{ maxWidth: 900, margin: '0 auto', padding: '20px 20px' }}>
+          <div className="doc-simple-back" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
             <Link to="/dashboard/analyses" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: '#fff', textDecoration: 'none', padding: '9px 18px', borderRadius: 9, background: '#2a7d9c', flexShrink: 0 }}>
               <ChevronLeft size={15} /> Mes analyses
             </Link>
