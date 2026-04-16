@@ -218,13 +218,16 @@ function DiagRow({ d }: { d: any }) {
   const isAbsence = d.presence === 'absence';
   const isNonRealise = d.presence === 'non_realise';
 
+  // "Détecté" sans alerte = installation présente et conforme → badge vert
+  const isConforme = d.presence === 'detecte' && !hasAlert && !isERP && !isCarrez;
   const presenceStyle = isAbsence
     ? { bg: '#f0fdf4', border: '#bbf7d0', text: '#16a34a' }
     : isNonRealise ? { bg: '#f8fafc', border: '#e2e8f0', text: '#94a3b8' }
     : isERP ? { bg: '#f8fafc', border: '#e2e8f0', text: '#64748b' }
     : hasAlert ? { bg: '#fef2f2', border: '#fecaca', text: '#dc2626' }
+    : isConforme ? { bg: '#f0fdf4', border: '#bbf7d0', text: '#16a34a' }
     : { bg: '#fff7ed', border: '#fed7aa', text: '#d97706' };
-  const presenceLabel = isAbsence ? '✓ Non détecté' : isNonRealise ? 'Non réalisé' : isERP ? 'Informatif' : hasAlert ? 'Anomalies' : 'Détecté';
+  const presenceLabel = isAbsence ? '✓ Non détecté' : isNonRealise ? 'Non réalisé' : isERP ? 'Informatif' : hasAlert ? 'Anomalies' : isConforme ? '✓ Conforme' : 'Détecté';
 
   const dpeClasse = d.type === 'DPE' ? (d.resultat as string)?.match(/Classe\s+([A-G])\b/i)?.[1]?.toUpperCase() : null;
   const gesClasse = d.type === 'DPE' ? (d.resultat as string)?.match(/GES[:\s]+Classe\s+([A-G])\b/i)?.[1]?.toUpperCase() : null;
@@ -681,14 +684,10 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
       {isComplete && kpis.length > 0 && (
         <div style={kpiGridStyle}>
           {kpis.map((kpi, i) => (
-            <div key={i} style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, overflow: 'hidden' }}>
-              <div style={{ padding: '10px 16px', background: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 20 }}>{kpi.icon}</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', letterSpacing: '0.04em' }}>{kpi.label}</span>
-              </div>
-              <div style={{ padding: '14px 16px' }}>
-                <div style={{ fontSize: 20, fontWeight: 700, color: kpi.color || '#0f172a' }}>{kpi.value}</div>
-              </div>
+            <div key={i} style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 14, padding: '16px 18px' }}>
+              <div style={{ fontSize: 22, marginBottom: 10 }}>{kpi.icon}</div>
+              <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 6, lineHeight: 1.3 }}>{kpi.label}</div>
+              <div style={{ fontSize: 22, fontWeight: 500, color: kpi.color || 'var(--color-text-primary)', lineHeight: 1 }}>{kpi.value}</div>
             </div>
           ))}
         </div>
@@ -836,13 +835,19 @@ function KpiBand({ items }: { items: { label: string; value: string; sub?: strin
   return (
     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(items.length, 5)}, minmax(0,1fr))`, gap: 12, marginBottom: 20 }}>
       {items.map((item, i) => (
-        <div key={i} style={{ background: item.bg ?? '#f8fafc', border: `0.5px solid ${item.border ?? '#edf2f7'}`, borderRadius: 14, padding: '16px 18px' }}>
+        <div key={i} style={{
+          background: item.bg ?? 'var(--color-background-primary)',
+          border: `0.5px solid ${item.border ?? 'var(--color-border-tertiary)'}`,
+          borderRadius: 14,
+          borderLeft: `3px solid ${item.color ?? '#2a7d9c'}`,
+          padding: '16px 18px',
+        }}>
           {item.emoji && <div style={{ fontSize: 22, marginBottom: 10 }}>{item.emoji}</div>}
-          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6, lineHeight: 1.3 }}>
+          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 6, lineHeight: 1.3 }}>
             {item.tooltip ? <Tooltip text={item.tooltip}>{item.label}</Tooltip> : item.label}
           </div>
-          <div style={{ fontSize: 26, fontWeight: 500, color: item.color ?? '#0f172a', lineHeight: 1 }}>{item.value}</div>
-          {item.sub && <div style={{ fontSize: 12, color: item.color ?? '#94a3b8', marginTop: 5 }}>{item.sub}</div>}
+          <div style={{ fontSize: 26, fontWeight: 500, color: item.color ?? 'var(--color-text-primary)', lineHeight: 1 }}>{item.value}</div>
+          {item.sub && <div style={{ fontSize: 12, color: item.color ?? 'var(--color-text-secondary)', marginTop: 5 }}>{item.sub}</div>}
         </div>
       ))}
     </div>
@@ -955,7 +960,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
       {kpiItems.length > 0 && <KpiBand items={kpiItems} />}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
-        <button onClick={() => setAllOpen(!allOpen)} style={{ fontSize: 12, color: '#64748b', background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 8, padding: '6px 14px', cursor: 'pointer' }}>
+        <button onClick={() => setAllOpen(v => !v)} style={{ fontSize: 12, color: '#64748b', background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 8, padding: '6px 14px', cursor: 'pointer' }}>
           {allOpen ? 'Tout replier' : 'Tout déplier'}
         </button>
       </div>
@@ -963,6 +968,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
       {/* ── VIE DE LA COPRO ── */}
       <AccordionSection
         title="Vie de la copropriété" sub="Syndic · lots · participation AG · résolutions" icon="🏢"
+        defaultOpen={allOpen}
         status={syndic?.tensions_detectees ? 'warning' : 'neutral'}
         badge={participation.length > 0 ? `${participation.length} AG analysée${participation.length > 1 ? 's' : ''}` : 'Non disponible'}>
 
@@ -1095,6 +1101,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
       {reglesCopro.length > 0 && (
         <AccordionSection
           title="Règles de la copropriété" sub="Règlement de copropriété · usages · restrictions" icon="📜"
+        defaultOpen={allOpen}
           status="neutral" badge={`${reglesCopro.length} règle${reglesCopro.length > 1 ? 's' : ''}`}
           tooltip="Règles issues du Règlement de Copropriété (RCP) — le document fondateur qui définit ce qui est autorisé ou interdit dans la résidence.">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -1124,6 +1131,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
       {dtg?.present && (
         <AccordionSection
           title="Plan pluriannuel de travaux" sub="DTG · PPT · état général de l'immeuble" icon="🏗"
+        defaultOpen={allOpen}
           status={dtg.etat_general === 'degrade' ? 'alert' : dtg.etat_general === 'moyen' ? 'warning' : 'ok'}
           badge={dtg.etat_general === 'degrade' ? 'Dégradé' : dtg.etat_general === 'moyen' ? 'Moyen' : dtg.etat_general === 'bon' ? 'Bon état' : 'Présent'}
           tooltip="Le DTG (Diagnostic Technique Global) ou PPT (Plan Pluriannuel de Travaux) liste les travaux à prévoir sur 10 ans avec leur coût estimé. Document obligatoire pour les copropriétés de plus de 10 ans.">
@@ -1163,6 +1171,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
       {/* ── TRAVAUX ── */}
       <AccordionSection
         title="Travaux" sub="Réalisés · votés · évoqués" icon="🔨"
+        defaultOpen={allOpen}
         status={travaux_evoques.length > 0 ? 'warning' : travaux_votes.length > 0 ? 'ok' : 'ok'}
         badge={travaux_evoques.length > 0 ? `${travaux_evoques.length} vigilance${travaux_evoques.length > 1 ? 's' : ''}` : `${travaux_realises.length + travaux_votes.length} détectés`}
         tooltip="✅ Réalisés — déjà effectués, intégrés à l'immeuble.|🗳 Votés — décidés en AG. S'ils l'ont été avant le compromis, c'est la charge du vendeur.|⚠️ Évoqués — mentionnés sans vote. Si le vote a lieu après votre achat, vous en paierez une part.">
@@ -1217,6 +1226,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
       {/* ── FINANCES ── */}
       <AccordionSection
         title="Finances" sub="Budget copro · fonds travaux · historique" icon="💰"
+        defaultOpen={allOpen}
         status={fondsInsuffisant ? 'warning' : 'ok'}
         badge={rapport.fonds_travaux_statut === 'conforme' ? 'Sain' : rapport.fonds_travaux_statut === 'insuffisant' ? 'Vigilance' : rapport.fonds_travaux_statut === 'absent' ? 'Absent' : 'Détecté'}>
 
@@ -1322,6 +1332,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
       {/* ── DIAGNOSTICS PARTIES COMMUNES ── */}
       <AccordionSection
         title="Diagnostics parties communes" sub="Amiante · plomb · termites · ERP" icon="📋"
+        defaultOpen={allOpen}
         status={hasDiagAlert ? 'alert' : diagsCommuns.length > 0 ? 'ok' : 'neutral'}
         badge={amiante_ac1 ? 'Amiante AC1 !' : hasDiagAlert ? 'Alerte' : diagsCommuns.length > 0 ? `${diagsCommuns.length} détecté${diagsCommuns.length > 1 ? 's' : ''}` : 'Non détectés'}>
 
@@ -1422,11 +1433,11 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
   const diagsPriv = rapport.diagnostics.filter((d: Record<string, unknown>) => d.perimetre === 'lot_privatif');
   const dpe = diagsPriv.find((d: Record<string, unknown>) => d.type === 'DPE') as Record<string, unknown> | undefined;
   const autresDiags = diagsPriv
-    .filter((d: Record<string, unknown>) => d.type !== 'DPE')
+    .filter((d: Record<string, unknown>) => d.type !== 'DPE' && d.type !== 'CARREZ')
     .sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
-      const scoreA = a.presence === 'absence' ? 0 : a.alerte ? 2 : 1;
-      const scoreB = b.presence === 'absence' ? 0 : b.alerte ? 2 : 1;
-      return scoreA - scoreB;
+      const score = (d: Record<string, unknown>) =>
+        d.alerte ? 3 : d.presence === 'detecte' && !d.alerte ? 1 : d.type === 'ERP' ? 0 : -1;
+      return score(b) - score(a);
     });
 
   const resultatStr = dpe ? safeStr(dpe.resultat) : '';
@@ -1518,16 +1529,25 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
         <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
           {lot?.quote_part_tantiemes && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: '0.5px solid var(--color-border-tertiary)', gap: 12 }}>
-              <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', flexShrink: 0 }}>
+              <span style={{ fontSize: 14, color: 'var(--color-text-secondary)', flexShrink: 0 }}>
                 <Tooltip text="Votre quote-part dans la copropriété. Détermine votre participation aux charges et votre poids lors des votes en assemblée générale.">Tantièmes</Tooltip>
               </span>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--color-text-primary)' }}>{safeStr(lot.quote_part_tantiemes)}</div>
                 {(lot.parties_privatives as unknown[] ?? []).length > 0 && (
                   <div style={{ marginTop: 4 }}>
-                    {(lot.parties_privatives as unknown[]).map((p, i) => (
-                      <div key={i} style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>• {safeStr(p)}</div>
-                    ))}
+                    {(lot.parties_privatives as unknown[]).map((p, i) => {
+                      // Parser si JSON brut {"numero":"17","description":"..."}
+                      let label = safeStr(p);
+                      if (label && label.startsWith('{')) {
+                        try {
+                          const obj = JSON.parse(label);
+                          label = obj.description ?? obj.label ?? obj.numero ?? label;
+                          if (obj.numero && obj.description) label = `Lot ${obj.numero} — ${obj.description}`;
+                        } catch { /* keep label as-is */ }
+                      }
+                      return <div key={i} style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 3 }}>• {label}</div>;
+                    })}
                   </div>
                 )}
               </div>
@@ -1754,8 +1774,8 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
         badge={lot?.impayes_detectes ? 'Impayés détectés' : 'Informatif'}
         defaultOpen={true}>
 
-        {/* Charges */}
-        {chargesLotNum > 0 && (
+        {/* Charges — affichées uniquement si pas déjà dans KPI */}
+        {chargesLotNum > 0 && !taxeAnnuelle && (
           <>
             <SectionTitle emoji="💶" text="Charges de copropriété" />
             <div style={{ background: '#eff6ff', border: '0.5px solid #bfdbfe', borderRadius: 12, padding: '20px 24px', display: 'flex', gap: 32, alignItems: 'center', flexWrap: 'wrap' }}>
