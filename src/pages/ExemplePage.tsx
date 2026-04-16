@@ -43,11 +43,11 @@ const rapport = {
   ],
 
   categories: [
-    { label: 'Travaux', note: 4, max: 5, color: '#f0a500', icon: '🏗️', detail: 'Ravalement évoqué non voté — pénalité partielle appliquée.' },
-    { label: 'Procédures', note: 4, max: 4, color: '#16a34a', icon: '⚖️', detail: 'Aucune procédure judiciaire détectée dans les documents.' },
-    { label: 'Finances', note: 3, max: 4, color: '#2a7d9c', icon: '💰', detail: 'Fonds travaux conforme au légal (+0,5). Deux lots en léger impayé (-1).' },
-    { label: 'Diags privatifs', note: 3, max: 4, color: '#7c3aed', icon: '🏠', detail: 'DPE C (+0,5). Amiante : absence confirmée. Électricité conforme.' },
-    { label: 'Diags communs', note: 0.8, max: 3, color: '#16a34a', icon: '🏢', detail: 'Immeuble bien entretenu (+0,5). Aucun amiante commun détecté.' },
+    { label: 'Travaux', note: 2, max: 5, color: '#f0a500', icon: '🏗️', detail: 'Ravalement de façade évoqué non voté — travaux lourds (-3). Garantie décennale récente sur toiture refaite (+2).' },
+    { label: 'Procédures', note: 4, max: 4, color: '#16a34a', icon: '⚖️', detail: 'Aucune procédure judiciaire détectée — bonus (+1) appliqué.' },
+    { label: 'Finances', note: 3.5, max: 4, color: '#2a7d9c', icon: '💰', detail: 'Fonds travaux conforme au légal (+0,5). Impayés dans les normes — informatif uniquement.' },
+    { label: 'Diags privatifs', note: 4, max: 4, color: '#7c3aed', icon: '🏠', detail: 'DPE C (+1,5). Diagnostics complets sans anomalie hors ERP (+2). Maximum atteint.' },
+    { label: 'Diags communs', note: 2, max: 3, color: '#16a34a', icon: '🏢', detail: 'Immeuble bien entretenu (+0,5). Entretien chaudière certifié (+0,5). Aucun amiante commun.' },
   ],
 
   finances: {
