@@ -889,7 +889,6 @@ function SyndicBand({ syndic, nbLots, nbBatiments }: { syndic: Record<string, un
   const gestionnaire = safeStr(syndic.gestionnaire);
   const type = safeStr(syndic.type);
   const tensions = syndic.tensions_detectees === true;
-  const Divider = () => <div style={{ width: 0.5, height: 40, background: '#edf2f7', flexShrink: 0 }} />;
   return (
     <div className="syndic-band" style={{ background: '#fff', border: '0.5px solid #edf2f7', borderRadius: 14, padding: '16px 20px', marginBottom: 20 }}>
       {/* Identité syndic */}
