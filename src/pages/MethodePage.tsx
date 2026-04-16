@@ -571,10 +571,10 @@ export default function MethodePage() {
                                   {cat.bad.map((item, i) => (
                                     <div key={i}>
                                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                                        <span style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>{item.l}</span>
+                                        <span style={{ fontSize: 16, color: '#374151', lineHeight: 1.5 }}>{item.l}</span>
                                         <span style={{ fontSize: 11, fontWeight: 800, color: '#dc2626', background: '#fee2e2', padding: '2px 7px', borderRadius: 5, flexShrink: 0 }}>{item.v}</span>
                                       </div>
-                                      {(item as any).tip && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3, lineHeight: 1.5 }}>{(item as any).tip}</div>}
+                                      {(item as any).tip && <div style={{ fontSize: 15, color: '#94a3b8', marginTop: 4, lineHeight: 1.6 }}>{(item as any).tip}</div>}
                                     </div>
                                   ))}
                                 </div>
@@ -589,10 +589,10 @@ export default function MethodePage() {
                                     {cat.good.map((item, i) => (
                                       <div key={i}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                                          <span style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>{item.l}</span>
+                                          <span style={{ fontSize: 16, color: '#374151', lineHeight: 1.5 }}>{item.l}</span>
                                           <span style={{ fontSize: 11, fontWeight: 800, color: '#16a34a', background: '#dcfce7', padding: '2px 7px', borderRadius: 5, flexShrink: 0 }}>{item.v}</span>
                                         </div>
-                                        {(item as any).tip && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3, lineHeight: 1.5 }}>{(item as any).tip}</div>}
+                                        {(item as any).tip && <div style={{ fontSize: 15, color: '#94a3b8', marginTop: 4, lineHeight: 1.6 }}>{(item as any).tip}</div>}
                                       </div>
                                     ))}
                                   </div>
@@ -606,8 +606,8 @@ export default function MethodePage() {
                                     <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                                       {(cat as any).info.map((item: any, i: number) => (
                                         <div key={i}>
-                                          <span style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>{item.l}</span>
-                                          {item.tip && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3, lineHeight: 1.5 }}>{item.tip}</div>}
+                                          <span style={{ fontSize: 16, color: '#64748b', lineHeight: 1.5 }}>{item.l}</span>
+                                          {item.tip && <div style={{ fontSize: 15, color: '#94a3b8', marginTop: 4, lineHeight: 1.6 }}>{item.tip}</div>}
                                         </div>
                                       ))}
                                     </div>
