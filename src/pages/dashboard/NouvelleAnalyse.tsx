@@ -628,12 +628,18 @@ export default function NouvelleAnalyse() {
   /* ── RESULT ANALYSE SIMPLE (DOCUMENT) */
   if (step === 'result' && result && type === 'document') {
     return (
-      <div style={{ maxWidth: 760, margin: '0 auto' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 14 }}>
+      <div className="dr-result-wrapper" style={{ maxWidth: 760, margin: '0 auto' }}>
+        <style>{`
+          @media (max-width: 640px) {
+            .dr-result-wrapper { margin: 0 !important; padding: 0 !important; }
+            .dr-result-topbar { padding: 10px 12px !important; margin-bottom: 12px !important; }
+            .dr-result-topbar > div:first-child { font-size: 9px !important; }
+          }
+        `}</style>
+        <div className="dr-result-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap' as const, gap: 10 }}>
           <div style={{ fontSize: 10, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.14em' }}>ANALYSE DOCUMENT — VERIMO</div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => { setStep('choice'); setType(null); setFiles([]); setResult(null); }} style={{ padding: '9px 18px', borderRadius: 10, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 13, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Nouvelle analyse</button>
-            <button style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}><Download size={13} /> PDF</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => { setStep('choice'); setType(null); setFiles([]); setResult(null); }} style={{ padding: '8px 14px', borderRadius: 9, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 12, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Nouvelle analyse</button>
           </div>
         </div>
         <DocumentRenderer result={{ ...result, _profil: profil || 'rp' }} />
