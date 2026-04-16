@@ -861,31 +861,46 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
 ══════════════════════════════════ */
 // Composant ? universel — fond sombre, position fixed, jamais rogné
 function TooltipBtn({ text, white = false }: { text: string; white?: boolean }) {
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [visible, setVisible] = useState(false);
+  const [mobile, setMobile] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const ref = useRef<HTMLSpanElement>(null);
+
   const show = () => {
-    if (!ref.current) return;
-    const mobile = window.innerWidth <= 640;
-    if (mobile) {
-      setPos({ top: -9999, left: -9999 }); // flag mobile
-    } else {
+    const isMob = window.innerWidth <= 640;
+    setMobile(isMob);
+    if (!isMob && ref.current) {
       const r = ref.current.getBoundingClientRect();
-      const left = Math.min(r.left, window.innerWidth - 290);
-      const top = r.bottom + 6;
-      setPos({ top, left });
+      setPos({ top: r.bottom + 6, left: Math.min(r.left, window.innerWidth - 290) });
     }
+    setVisible(true);
   };
-  const isMobilePos = pos && pos.top === -9999;
+
+  const hide = () => setVisible(false);
+
   return (
-    <span ref={ref}
-      onMouseEnter={show} onMouseLeave={() => setPos(null)}
-      onClick={e => { e.stopPropagation(); pos ? setPos(null) : show(); }}
-      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: white ? 'rgba(255,255,255,0.25)' : '#f1f5f9', border: white ? 'none' : '1px solid #e2e8f0', fontSize: 10, color: white ? '#fff' : '#94a3b8', fontWeight: 700, cursor: 'pointer', flexShrink: 0, position: 'relative' }}>
-      ?
-      {pos && (
-        <span className="tooltip-bubble" style={{ position: 'fixed', top: isMobilePos ? '50%' : pos.top, left: isMobilePos ? '50%' : pos.left, transform: isMobilePos ? 'translate(-50%, -50%)' : 'none', width: isMobilePos ? 'calc(100vw - 48px)' : 270, maxWidth: isMobilePos ? 340 : 270, background: '#0f172a', borderRadius: 12, padding: '14px 16px', fontSize: 13, color: '#fff', lineHeight: 1.65, zIndex: 9999, pointerEvents: 'none', whiteSpace: 'normal', fontWeight: 400 }}>{text}</span>
+    <>
+      <span ref={ref}
+        onMouseEnter={show} onMouseLeave={hide}
+        onClick={e => { e.stopPropagation(); visible ? hide() : show(); }}
+        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: white ? 'rgba(255,255,255,0.25)' : '#f1f5f9', border: white ? 'none' : '1px solid #e2e8f0', fontSize: 10, color: white ? '#fff' : '#94a3b8', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+        ?
+      </span>
+      {visible && mobile && (
+        <div onClick={hide} style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#0f172a', borderRadius: 14, padding: '16px 18px', fontSize: 14, color: '#fff', lineHeight: 1.7, maxWidth: 340, width: '100%', fontWeight: 400 }}>
+            <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.08em' }}>INFORMATION</span>
+              <span style={{ fontSize: 18, color: 'rgba(255,255,255,0.4)', cursor: 'pointer', lineHeight: 1 }} onClick={hide}>✕</span>
+            </div>
+            {text}
+          </div>
+        </div>
       )}
-    </span>
+      {visible && !mobile && (
+        <span className="tooltip-bubble" style={{ position: 'fixed', top: pos.top, left: pos.left, width: 270, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.6, zIndex: 9999, pointerEvents: 'none', whiteSpace: 'normal', fontWeight: 400 }}>{text}</span>
+      )}
+    </>
   );
 }
 
@@ -1738,7 +1753,6 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
             {/* Sommes à verser au vendeur */}
             {(fondsAlurNum || ped?.fonds_roulement_acheteur) && (
               <>
-                <SectionTitle emoji="💰" text="Sommes à verser au vendeur à la signature" />
                 <div style={{ border: '0.5px solid #fed7aa', borderRadius: 10, overflow: 'hidden', background: '#fffbeb' }}>
                   {fondsAlurNum && (
                     <div style={{ padding: '12px 16px', borderBottom: ped?.fonds_roulement_acheteur ? '0.5px solid #fde68a' : 'none' }}>
