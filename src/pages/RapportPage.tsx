@@ -1830,6 +1830,208 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
         )}
       </AccordionSection>
 
+      {/* ── PRÉ-ÉTAT DATÉ ── */}
+      {(() => {
+        type HistoT = { exercice?: string; annee?: number | null; budget_appele?: number | null; charges_reelles?: number | null };
+        type TravauxVT = { label?: string; montant?: number | null };
+        type PreEtatT = {
+          present?: boolean; date?: string | null; syndic?: string | null;
+          impayes_vendeur?: number; fonds_travaux_alur?: number | null;
+          fonds_roulement_acheteur?: number | null; fonds_roulement_modalite?: string | null;
+          honoraires_syndic?: number | null;
+          charges_futures?: { montant_trimestriel?: number | null; fonds_travaux_trimestriel?: number | null; montant_annuel?: number | null };
+          travaux_charge_vendeur?: TravauxVT[];
+          procedures_contre_vendeur?: string[];
+          procedures_copro?: string;
+          impayes_copro_global?: number | null;
+          dette_fournisseurs?: number | null;
+          fonds_travaux_copro_global?: number | null;
+          historique_charges?: HistoT[];
+        };
+        const ped = (rapport as Record<string, unknown>).pre_etat_date as PreEtatT | null;
+        if (!ped?.present) return null;
+        const totalAnnuel = ped.charges_futures?.montant_annuel
+          || ((Number(ped.charges_futures?.montant_trimestriel || 0) + Number(ped.charges_futures?.fonds_travaux_trimestriel || 0)) * 4);
+        return (
+          <AccordionSection
+            title="Pré-état daté" sub="Situation vendeur · charges futures · historique N-1/N-2" icon="📋"
+            status={Number(ped.impayes_vendeur) > 0 ? 'alert' : 'neutral'}
+            badge={ped.date ? `Établi le ${safeStr(ped.date)}` : 'Détecté'}
+            defaultOpen={true}
+            tooltip="Le pré-état daté est établi par le syndic avant la vente. Il récapitule la situation financière du vendeur vis-à-vis de la copropriété et les charges que l'acheteur devra régler.">
+
+            {/* Situation vendeur */}
+            <SectionTitle emoji="👤" text="Situation du vendeur" />
+            <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
+                <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Impayés de charges du vendeur</span>
+                <span style={{ fontSize: 14, fontWeight: 500, color: Number(ped.impayes_vendeur) === 0 ? '#16a34a' : '#dc2626' }}>
+                  {Number(ped.impayes_vendeur) === 0 ? '✓ Vendeur à jour' : `${Number(ped.impayes_vendeur).toLocaleString('fr-FR')} € impayés`}
+                </span>
+              </div>
+              {(ped.procedures_contre_vendeur ?? []).length === 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: ped.honoraires_syndic ? '0.5px solid var(--color-border-tertiary)' : 'none', background: 'var(--color-background-secondary)' }}>
+                  <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Procédures contre le vendeur</span>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: '#16a34a' }}>✓ Aucune</span>
+                </div>
+              )}
+              {ped.honoraires_syndic && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Frais d'établissement du document</div>
+                    <div style={{ fontSize: 12, color: '#16a34a', marginTop: 3 }}>✓ À la charge du vendeur — rien à payer pour vous</div>
+                  </div>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-secondary)', flexShrink: 0 }}>{Number(ped.honoraires_syndic).toLocaleString('fr-FR')} €</span>
+                </div>
+              )}
+            </div>
+
+            {/* Fonds à verser au vendeur */}
+            {(ped.fonds_travaux_alur || ped.fonds_roulement_acheteur) && (
+              <>
+                <SectionTitle emoji="💰" text="Sommes à verser au vendeur à la signature" tooltip="Ces montants sont attachés au lot. Ils vous seront transférés mais vous devrez les rembourser au vendeur en sus du prix de vente, lors de la signature de l'acte authentique." />
+                <div style={{ border: '0.5px solid #fed7aa', borderRadius: 10, overflow: 'hidden', background: '#fffbeb' }}>
+                  {ped.fonds_travaux_alur && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: ped.fonds_roulement_acheteur ? '0.5px solid #fde68a' : 'none', gap: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e' }}>Fonds travaux ALUR</div>
+                        <div style={{ fontSize: 12, color: '#a16207', marginTop: 3 }}>Part des fonds travaux constituée par le vendeur, attachée au lot</div>
+                      </div>
+                      <span style={{ fontSize: 16, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>{Number(ped.fonds_travaux_alur).toLocaleString('fr-FR')} €</span>
+                    </div>
+                  )}
+                  {ped.fonds_roulement_acheteur && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', gap: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e' }}>Fonds de roulement</div>
+                        <div style={{ fontSize: 12, color: '#a16207', marginTop: 3 }}>{ped.fonds_roulement_modalite === 'remboursement_vendeur' ? 'Remboursement au vendeur' : 'Reconstitution au syndicat'}</div>
+                      </div>
+                      <span style={{ fontSize: 16, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>{Number(ped.fonds_roulement_acheteur).toLocaleString('fr-FR')} €</span>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Charges futures */}
+            {(ped.charges_futures?.montant_trimestriel || ped.charges_futures?.fonds_travaux_trimestriel) && (
+              <>
+                <SectionTitle emoji="💸" text="Charges futures à prévoir" />
+                <div style={{ border: '0.5px solid #bfdbfe', borderRadius: 10, overflow: 'hidden' }}>
+                  <div style={{ padding: '10px 16px', background: '#eff6ff', borderBottom: '0.5px solid #bfdbfe', fontSize: 13, color: '#1e40af' }}>
+                    Ces montants seront à régler dès votre entrée dans la copropriété, chaque trimestre.
+                  </div>
+                  {ped.charges_futures.montant_trimestriel && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: ped.charges_futures.fonds_travaux_trimestriel ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
+                      <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Charges courantes (budget prévisionnel)</span>
+                      <span style={{ fontSize: 15, fontWeight: 500, color: '#1e40af' }}>{Number(ped.charges_futures.montant_trimestriel).toLocaleString('fr-FR')} € / trimestre</span>
+                    </div>
+                  )}
+                  {ped.charges_futures.fonds_travaux_trimestriel && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: totalAnnuel > 0 ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
+                      <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Cotisation fonds de travaux ALUR</span>
+                      <span style={{ fontSize: 15, fontWeight: 500, color: '#1e40af' }}>{Number(ped.charges_futures.fonds_travaux_trimestriel).toLocaleString('fr-FR')} € / trimestre</span>
+                    </div>
+                  )}
+                  {totalAnnuel > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--color-background-secondary)' }}>
+                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>Total annuel estimé</span>
+                      <span style={{ fontSize: 17, fontWeight: 500, color: '#1e40af' }}>{Number(totalAnnuel).toLocaleString('fr-FR')} € / an</span>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Travaux charge vendeur */}
+            {(ped.travaux_charge_vendeur ?? []).length > 0 && (
+              <>
+                <SectionTitle emoji="⚖️" text="Travaux votés à la charge du vendeur" />
+                <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
+                  <div style={{ padding: '10px 16px', background: '#eff6ff', borderBottom: '0.5px solid #bfdbfe', fontSize: 13, color: '#1e40af' }}>
+                    Ces travaux ont été votés avant le compromis — ils restent à la charge du vendeur, sans impact pour vous.
+                  </div>
+                  {ped.travaux_charge_vendeur!.map((t, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: i < ped.travaux_charge_vendeur!.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none', background: i % 2 === 0 ? 'var(--color-background-primary)' : 'var(--color-background-secondary)' }}>
+                      <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>{safeStr(t.label)}</span>
+                      {t.montant && <span style={{ fontSize: 14, fontWeight: 500, color: '#d97706', flexShrink: 0, marginLeft: 16 }}>{Number(t.montant).toLocaleString('fr-FR')} €</span>}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Santé financière copro */}
+            {(ped.impayes_copro_global != null || ped.dette_fournisseurs != null) && (
+              <>
+                <SectionTitle emoji="🏢" text="Santé financière de la copropriété" />
+                <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
+                  {ped.impayes_copro_global != null && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: ped.dette_fournisseurs != null ? '0.5px solid var(--color-border-tertiary)' : 'none', gap: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Impayés globaux copropriété</div>
+                        <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 3 }}>Charges en attente de régularisation à la date d'édition</div>
+                      </div>
+                      <span style={{ fontSize: 14, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>{Number(ped.impayes_copro_global).toLocaleString('fr-FR')} €</span>
+                    </div>
+                  )}
+                  {ped.dette_fournisseurs != null && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', gap: 12 }}>
+                      <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Dette fournisseurs</span>
+                      <span style={{ fontSize: 14, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>{Number(ped.dette_fournisseurs).toLocaleString('fr-FR')} €</span>
+                    </div>
+                  )}
+                  <div style={{ padding: '12px 16px', background: '#fff7ed', borderTop: '0.5px solid #fed7aa', fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>
+                    Les impayés globaux sont <strong>normaux dans toute copropriété</strong> — ils deviennent préoccupants uniquement s'ils dépassent significativement un trimestre de budget collectif.
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Historique charges N-1 / N-2 */}
+            {(ped.historique_charges ?? []).filter(h => h.budget_appele || h.charges_reelles).length > 0 && (
+              <>
+                <SectionTitle emoji="📊" text="Historique des charges du lot" tooltip="Le budget appelé correspond à ce qui était prévu. Les charges réelles sont ce qui a été effectivement dépensé. Un écart positif (réel > prévu) indique des dépenses imprévues." />
+                <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
+                  <div style={{ padding: '10px 16px', background: 'var(--color-background-secondary)', borderBottom: '0.5px solid var(--color-border-tertiary)', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+                    <strong>Comment lire ce tableau ?</strong> Le budget appelé = ce qui était prévu par la copropriété. Les charges réelles = ce qui a effectivement été dépensé. Un écart positif signifie des dépenses imprévues (appels exceptionnels).
+                  </div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--color-background-secondary)' }}>
+                        {['Exercice', 'Budget appelé', 'Charges réelles', 'Écart'].map((h, i) => (
+                          <th key={i} style={{ padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right' as const, fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ped.historique_charges!.filter(h => h.budget_appele || h.charges_reelles).map((h, i, arr) => {
+                        const ecart = h.charges_reelles && h.budget_appele ? Number(h.charges_reelles) - Number(h.budget_appele) : null;
+                        return (
+                          <tr key={i} style={{ borderBottom: i < arr.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none', background: i % 2 === 0 ? 'var(--color-background-primary)' : 'var(--color-background-secondary)' }}>
+                            <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--color-text-primary)', fontWeight: 500 }}>{safeStr(h.exercice)}{h.annee ? ` (${h.annee})` : ''}</td>
+                            <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--color-text-secondary)', textAlign: 'right' as const }}>{h.budget_appele ? `${Number(h.budget_appele).toLocaleString('fr-FR')} €` : '—'}</td>
+                            <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', textAlign: 'right' as const }}>{h.charges_reelles ? `${Number(h.charges_reelles).toLocaleString('fr-FR')} €` : '—'}</td>
+                            <td style={{ padding: '12px 16px', textAlign: 'right' as const }}>
+                              {ecart !== null && (
+                                <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 9px', borderRadius: 20, background: ecart > 0 ? '#fef2f2' : '#f0fdf4', color: ecart > 0 ? '#dc2626' : '#16a34a' }}>
+                                  {ecart > 0 ? '+' : ''}{ecart.toLocaleString('fr-FR')} €
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
+          </AccordionSection>
+        );
+      })()}
+
       {/* ── COMPROMIS ── */}
       {(compromisDoc || compromis) && (
         <AccordionSection
