@@ -107,7 +107,7 @@ function Topbar({ onMenuClick, title }: { onMenuClick:()=>void; title:string }) 
   return (
     <header style={{ height:68, background:'#fff', borderBottom:'1px solid #edf2f7', display:'flex', alignItems:'center', padding:'0 24px', gap:12, position:'sticky', top:0, zIndex:40, flexShrink:0 }}>
       <button className="mobile-menu-btn" onClick={onMenuClick} style={{ background:'none', border:'none', cursor:'pointer', color:'#0f2d3d', padding:4, display:'none' }}><Menu size={20}/></button>
-      <p style={{ flex:1, fontSize:17, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em', margin:0 }}>{title}</p>
+      <p className="topbar-title" style={{ flex:1, fontSize:17, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em', margin:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{title}</p>
       <button style={{ width:36, height:36, borderRadius:9, background:'#f8fafc', border:'1px solid #edf2f7', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#94a3b8' }}><Bell size={15}/></button>
       {isAdmin && (
         <button onClick={()=>navigate('/admin')} style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:9, background:'linear-gradient(135deg,#0f2d3d,#1a4a60)', border:'none', cursor:'pointer', color:'#fff', fontSize:12, fontWeight:700, whiteSpace:'nowrap' }}>
@@ -393,6 +393,8 @@ export default function DashboardPage() {
           .desktop-sidebar { display: none !important; }
           .mobile-menu-btn { display: flex !important; }
           .topbar-cta { display: none !important; }
+          .topbar-title { font-size: 14px !important; }
+          header { padding: 0 12px !important; height: 54px !important; }
           .stats-grid { grid-template-columns: 1fr 1fr !important; }
           .action-grid { grid-template-columns: 1fr !important; }
           .compare-grid { grid-template-columns: 1fr !important; }
