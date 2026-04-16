@@ -38,16 +38,6 @@ function getProfilLabel(profil: string) {
 function isCoproType(type: string) {
   return type === 'appartement' || type === 'maison_copro';
 }
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = React.useState(() => typeof window !== 'undefined' && window.innerWidth < 640);
-  React.useEffect(() => {
-    const fn = () => setIsMobile(window.innerWidth < 640);
-    window.addEventListener('resize', fn);
-    return () => window.removeEventListener('resize', fn);
-  }, []);
-  return isMobile;
-};
-
 
 function safeStr(val: unknown): string {
   if (val === null || val === undefined) return '';
