@@ -191,17 +191,18 @@ export default function HomeView() {
   const avgScore = completedComplete.length > 0 ? (completedComplete.reduce((s, a) => s + (a.score || 0), 0) / completedComplete.length).toFixed(1) : null;
 
   const penalties = [
-    { cat: 'Travaux', items: [{ l: 'Gros travaux évoqués non votés', v: '-2 à -3' }, { l: 'Travaux urgents non anticipés', v: '-3 à -4' }] },
-    { cat: 'Procédures', items: [{ l: 'Copro vs syndic', v: '-2 à -4' }, { l: 'Copro vs copropriétaire', v: '-0,5 à -1' }, { l: 'Copropriété en difficulté', v: '-3 à -4' }] },
-    { cat: 'Finances', items: [{ l: 'Écart budget >30%', v: '-3' }, { l: 'Écart budget 15-30%', v: '-2' }, { l: 'Fonds travaux nul', v: '-2' }, { l: 'Impayés charges', v: '-1 à -2' }] },
-    { cat: 'Diagnostics privatifs', items: [{ l: 'DPE F (résidence principale)', v: '-2' }, { l: 'DPE G (résidence principale)', v: '-3' }, { l: 'DPE F (investissement)', v: '-4' }, { l: 'DPE G (investissement)', v: '-6' }, { l: 'Électricité anomalies majeures', v: '-2' }, { l: 'Amiante accessible dégradé', v: '-2' }, { l: 'Termites non traités', v: '-2' }] },
-    { cat: 'Diagnostics communs', items: [{ l: 'Amiante parties communes dégradé', v: '-2' }, { l: 'Termites parties communes non traités', v: '-2' }] },
+    { cat: 'Travaux', items: [{ l: 'Travaux lourds évoqués non votés (toiture, ravalement, chaudière, ascenseur)', v: '-3' }, { l: 'Travaux légers évoqués non votés', v: '-1' }] },
+    { cat: 'Procédures', items: [{ l: 'Procédure significative (litige bloquant, admin provisoire)', v: '-3' }, { l: 'Procédure mineure (petit litige, mise en demeure)', v: '-1,5' }] },
+    { cat: 'Finances', items: [{ l: 'Fonds travaux nul ou absent', v: '-1' }, { l: 'Impayés anormaux (> 15% budget)', v: '-1' }] },
+    { cat: 'Diagnostics privatifs', items: [{ l: 'DPE F (résidence principale)', v: '-2' }, { l: 'DPE G (résidence principale)', v: '-3' }, { l: 'DPE F (investissement)', v: '-4' }, { l: 'DPE G (investissement)', v: '-6' }, { l: 'Électricité : anomalies majeures', v: '-2' }] },
+    { cat: 'Diagnostics communs', items: [{ l: 'Amiante parties communes dégradé', v: '-2' }, { l: 'Termites parties communes', v: '-2' }, { l: 'DTG état dégradé', v: '-2' }, { l: 'DTG budget urgent > 50 000 €', v: '-2' }, { l: 'DTG budget urgent < 50 000 €', v: '-1' }] },
   ];
   const bonuses = [
-    { l: 'Travaux votés (à la charge du vendeur)', v: '+0,5 à +1' }, { l: 'Garantie décennale sur travaux récents', v: '+0,5 à +1' },
-    { l: 'Fonds travaux conforme au minimum légal', v: '+0,5' }, { l: 'Fonds travaux au-dessus du minimum légal', v: '+1' },
-    { l: 'Certificat entretien chaudière/ramonage', v: '+0,5' }, { l: 'Immeuble bien entretenu', v: '+0,5' },
-    { l: 'DPE A', v: '+1' }, { l: 'DPE B ou C', v: '+0,5' },
+    { l: 'Travaux votés à charge du vendeur (petits/moyens)', v: '+2' }, { l: 'Gros travaux votés à charge du vendeur', v: '+3' },
+    { l: 'Garantie décennale récente', v: '+2' }, { l: 'Aucune procédure détectée', v: '+1' },
+    { l: 'Fonds travaux conforme légal (5%)', v: '+0,5' }, { l: 'Fonds travaux bien (6–9%)', v: '+1' }, { l: 'Fonds travaux excellent (≥ 10%)', v: '+1,5' },
+    { l: 'Entretien chaudière certifié', v: '+0,5' }, { l: 'Immeuble bien entretenu', v: '+0,5' }, { l: 'DTG état bon', v: '+1' },
+    { l: 'DPE A, B ou C', v: '+1,5' }, { l: 'DPE D', v: '+1' }, { l: 'Diagnostics complets sans anomalie (hors ERP) + DPE ≤ D', v: '+2' },
   ];
   const scale = [
     { r: '17 – 20', l: 'Bien irréprochable', c: '#15803d', bg: '#f0fdf4' }, { r: '14 – 16', l: 'Bien sain', c: '#16a34a', bg: '#f0fdf4' },
