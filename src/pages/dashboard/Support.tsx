@@ -74,7 +74,7 @@ export default function Support() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 24 }}>Support / Aide</h1>
+      
 
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 12 }}>Questions fréquentes</h2>
