@@ -1531,7 +1531,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
         return (
           <AccordionSection
             title="Votre lot" sub="Tantièmes · situation vendeur · historique charges · restrictions" icon="🏠"
-            status="neutral" badge={lot?.quote_part_tantiemes ? 'Informatif' : 'Informatif'}
+            status="neutral" badge='Informatif'
             defaultOpen={true}>
 
             {/* Identité du lot */}
@@ -1543,7 +1543,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: lot?.quote_part_tantiemes ? '0.5px solid var(--color-border-tertiary)' : 'none', gap: 16 }}>
                       <span style={{ fontSize: 14, color: 'var(--color-text-secondary)', flexShrink: 0 }}>Lots concernés</span>
                       <div style={{ textAlign: 'right' }}>
-                        {(lot.parties_privatives as unknown[]).map((p, i) => {
+                        {((lot as typeof lot | null)?.parties_privatives as unknown[] ?? []).map((p, i) => {
                           let label = safeStr(p);
                           if (label && label.startsWith('{')) { try { const obj = JSON.parse(label); label = obj.numero && obj.description ? `Lot ${obj.numero} — ${obj.description}` : obj.description ?? obj.label ?? label; } catch { /* keep */ } }
                           return <div key={i} style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: 2 }}>{label}</div>;
@@ -1556,7 +1556,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
                       <span style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>
                         <Tooltip text="Votre quote-part dans la copropriété. Détermine votre participation aux charges et votre poids lors des votes en AG.">Tantièmes</Tooltip>
                       </span>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', textAlign: 'right' }}>{safeStr(lot.quote_part_tantiemes)}</span>
+                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', textAlign: 'right' }}>{safeStr(lot?.quote_part_tantiemes)}</span>
                     </div>
                   )}
                 </div>
