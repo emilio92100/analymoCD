@@ -519,7 +519,7 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
           <div style={{ flex: 1 }} />
           <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
             {!isShared && <ShareButton analyseId={rapport.id} />}
-            <PdfButton rapportId={new URLSearchParams(window.location.search).get('id') || ''} />
+            <PdfButton rapportId={rapport.id} />
           </div>
         </div>
 
@@ -1554,20 +1554,11 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
    ONGLET VOTRE LOGEMENT
 ══════════════════════════════════ */
 function SectionTitle({ emoji, text, tooltip }: { emoji: string; text: string; tooltip?: string }) {
-  const [show, setShow] = useState(false);
   return (
     <div className="section-title-bar" style={{ background: '#2a7d9c', borderRadius: 8, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
       <span style={{ fontSize: 16 }}>{emoji}</span>
       <span style={{ fontSize: 14, fontWeight: 500, color: '#fff' }}>{text}</span>
-      {tooltip && (
-        <div style={{ position: 'relative', marginLeft: 2 }}
-          onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
-          <span style={{ width: 16, height: 16, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#fff', fontWeight: 700, cursor: 'help' }}>?</span>
-          {show && (
-            <div style={{ position: 'absolute', left: 22, top: -4, width: 280, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.6, zIndex: 200, boxShadow: '0 8px 24px rgba(0,0,0,0.2)', pointerEvents: 'none' }}>{tooltip}</div>
-          )}
-        </div>
-      )}
+      {tooltip && <TooltipBtn text={tooltip} white={true} />}
     </div>
   );
 }
