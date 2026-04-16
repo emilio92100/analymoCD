@@ -1975,31 +1975,31 @@ function TabProcedures({ rapport }: { rapport: RapportData }) {
   }
 
   const graviteStyle = (g: string) => {
-    if (g === 'elevee') return { bg: '#fef2f2', border: '#fecaca', color: '#991b1b', label: 'Élevée' };
-    if (g === 'moderee') return { bg: '#fffbeb', border: '#fde68a', color: '#d97706', label: 'Modérée' };
-    return { bg: '#f0fdf4', border: '#bbf7d0', color: '#16a34a', label: 'Faible' };
+    if (g === 'elevee') return { headerBg: '#7f1d1d', border: '#fecaca', label: 'Gravité élevée', icon: '⚖️' };
+    if (g === 'moderee') return { headerBg: '#78350f', border: '#fed7aa', label: 'Gravité modérée', icon: '📋' };
+    return { headerBg: '#14532d', border: '#bbf7d0', label: 'Gravité faible', icon: '📄' };
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ padding: '14px 20px', background: '#fef2f2', borderRadius: 12, border: '1px solid #fecaca', display: 'flex', gap: 12, alignItems: 'center' }}>
+      <div style={{ padding: '14px 20px', background: '#fef2f2', borderRadius: 12, border: '0.5px solid #fecaca', display: 'flex', gap: 12, alignItems: 'center' }}>
         <AlertTriangle size={18} style={{ color: '#dc2626', flexShrink: 0 }} />
-        <span style={{ fontSize: 15, fontWeight: 600, color: '#991b1b' }}>
+        <span style={{ fontSize: 15, fontWeight: 500, color: '#991b1b' }}>
           {rapport.procedures.length} procédure{rapport.procedures.length > 1 ? 's' : ''} détectée{rapport.procedures.length > 1 ? 's' : ''} dans les documents.
         </span>
       </div>
       {rapport.procedures.map((proc, i) => {
         const g = graviteStyle(safeStr(proc.gravite));
         return (
-          <div key={i} style={{ background: '#fff', borderRadius: 14, border: `1px solid ${g.border}`, overflow: 'hidden' }}>
-            <div style={{ padding: '16px 22px', background: g.bg, display: 'flex', alignItems: 'center', gap: 12 }}>
-              <Gavel size={18} style={{ color: g.color, flexShrink: 0 }} />
-              <span style={{ fontSize: 16, fontWeight: 700, color: g.color, flex: 1 }}>{safeStr(proc.label) || safeStr(proc.type) || 'Procédure détectée'}</span>
-              <span style={{ fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 100, background: 'rgba(255,255,255,0.6)', border: `1px solid ${g.border}`, color: g.color, flexShrink: 0 }}>Gravité : {g.label}</span>
+          <div key={i} style={{ borderRadius: 14, border: `0.5px solid ${g.border}`, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 22px', background: g.headerBg, display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 20, flexShrink: 0 }}>{g.icon}</span>
+              <span style={{ fontSize: 16, fontWeight: 500, color: '#fff', flex: 1 }}>{safeStr(proc.label) || safeStr(proc.type) || 'Procédure détectée'}</span>
+              <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 10px', borderRadius: 20, background: 'rgba(255,255,255,0.15)', color: '#fff', flexShrink: 0 }}>{g.label}</span>
             </div>
-            <div style={{ padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {proc.message && <p style={{ fontSize: 15, color: '#374151', lineHeight: 1.8, margin: 0 }}>{safeStr(proc.message)}</p>}
-              <div style={{ padding: '12px 16px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a', fontSize: 14, color: '#92400e', lineHeight: 1.6 }}>
+            <div style={{ padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: 12, background: 'var(--color-background-primary)' }}>
+              {proc.message && <p style={{ fontSize: 14, color: 'var(--color-text-primary)', lineHeight: 1.8, margin: 0 }}>{safeStr(proc.message)}</p>}
+              <div style={{ padding: '12px 16px', background: '#fff7ed', borderRadius: 10, border: '0.5px solid #fed7aa', fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>
                 ⚠️ Demandez des précisions au vendeur ou à votre notaire sur cette procédure avant de vous engager.
               </div>
             </div>
