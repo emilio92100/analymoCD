@@ -847,18 +847,6 @@ function TooltipBtn({ text, white = false }: { text: string; white?: boolean }) 
   );
 }
 
-function useTooltipPos() {
-  const ref = useRef<HTMLSpanElement>(null);
-  const getPos = () => {
-    if (!ref.current) return { top: 0, left: 0 };
-    const r = ref.current.getBoundingClientRect();
-    const left = Math.min(r.left, window.innerWidth - 280);
-    const top = r.bottom + 6;
-    return { top, left };
-  };
-  return { ref, getPos };
-}
-
 function Tooltip({ text, children }: { text: string; children: React.ReactNode }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
@@ -866,10 +854,6 @@ function Tooltip({ text, children }: { text: string; children: React.ReactNode }
       <TooltipBtn text={text} />
     </span>
   );
-}
-
-function TooltipWhite({ text }: { text: string }) {
-  return <TooltipBtn text={text} white={true} />;
 }
 
 function KpiBand({ items }: { items: { label: string; value: string; sub?: string; color?: string; bg?: string; border?: string; tooltip?: string; emoji?: string }[] }) {
@@ -1433,7 +1417,7 @@ function SectionTitle({ emoji, text, tooltip }: { emoji: string; text: string; t
   );
 }
 
-function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchTab?: (tab: string) => void }) {
+function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchTab?: (tab: TabId) => void }) {
   type LotT2 = {
     quote_part_tantiemes?: string; fonds_travaux_alur?: string;
     parties_privatives?: unknown[]; restrictions_usage?: string[];
@@ -1730,7 +1714,7 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e', marginBottom: 4 }}>{travauxEvoques.length} travaux évoqués sans vote dans la copropriété</div>
                   <div style={{ fontSize: 13, color: '#a16207', lineHeight: 1.6 }}>Si ces travaux sont votés en AG après votre acquisition, vous en supporterez une part proportionnelle à vos tantièmes — potentiellement plusieurs milliers d'euros.</div>
-                  <button onClick={() => onSwitchTab?.('copropriete')} style={{ marginTop: 8, fontSize: 13, color: '#2a7d9c', fontWeight: 500, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3, background: 'none', border: 'none', padding: 0, textAlign: 'left', fontFamily: 'inherit' }}>→ Voir les travaux évoqués dans l'onglet Copropriété</button>
+                  <button onClick={() => onSwitchTab?.('copropriete' as TabId)} style={{ marginTop: 8, fontSize: 13, color: '#2a7d9c', fontWeight: 500, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3, background: 'none', border: 'none', padding: 0, textAlign: 'left', fontFamily: 'inherit' }}>→ Voir les travaux évoqués dans l'onglet Copropriété</button>
                 </div>
               </div>
             )}
