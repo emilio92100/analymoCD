@@ -428,10 +428,10 @@ function ShareButton({ analyseId }: { analyseId: string }) {
 
   return (
     <div style={{ position: 'relative' }} ref={menuRef}>
-      <button onClick={() => setShowMenu(!showMenu)} disabled={loading}
-        style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.08)', color: copied ? '#4ade80' : 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}>
+      <button onClick={() => setShowMenu(!showMenu)} disabled={loading} className="topnav-share-btn"
+        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.08)', color: copied ? '#4ade80' : 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}>
         {copied ? <Check size={14} /> : <Copy size={14} />}
-        {copied ? 'Lien copié !' : loading ? 'Chargement…' : 'Partager'}
+        <span className="topnav-share-label">{copied ? 'Lien copié !' : loading ? '…' : 'Partager'}</span>
       </button>
       {showMenu && (
         <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.10)', zIndex: 100, overflow: 'hidden', minWidth: 200 }}>
@@ -476,59 +476,60 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
       {/* Hero header — full dark */}
       <div className="rapport-header" style={{ background: 'linear-gradient(135deg, #0f2d3d 0%, #1a4a5e 100%)', borderRadius: 16, overflow: 'hidden' }}>
         {/* Topbar nav */}
-        <div className="rapport-topnav" style={{ padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="rapport-topnav" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           {!isShared ? (
-            <Link to="/dashboard/analyses" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: '#fff', textDecoration: 'none', padding: '9px 18px', borderRadius: 9, background: '#2a7d9c', flexShrink: 0 }}>
-              <ChevronLeft size={15} /> Mes analyses
+            <Link to="/dashboard/analyses" className="topnav-back-btn" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#fff', textDecoration: 'none', padding: '8px 14px', borderRadius: 9, background: '#2a7d9c', flexShrink: 0, whiteSpace: 'nowrap' }}>
+              <ChevronLeft size={14} /> <span className="topnav-back-label">Mes analyses</span>
             </Link>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
-              <Shield size={13} /> Rapport partagé — Verimo
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
+              <Shield size={12} /> <span className="topnav-back-label">Rapport partagé</span>
             </div>
           )}
           <div style={{ flex: 1 }} />
-          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
             {!isShared && <ShareButton analyseId={rapport.id} />}
             <button onClick={() => { const params = new URLSearchParams(window.location.search); window.open(`/rapport/print?id=${params.get('id') || ''}`, '_blank'); }}
-              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, border: 'none', background: '#fff', color: '#0f2d3d', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-              <Download size={14} /> Télécharger PDF
+              className="topnav-dl-btn"
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, border: 'none', background: '#fff', color: '#0f2d3d', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+              <Download size={14} /> <span className="topnav-dl-label">Télécharger PDF</span>
             </button>
           </div>
         </div>
 
         {/* Hero content */}
         {isComplete && (
-          <div className="rapport-hero" style={{ padding: '22px 24px 24px', display: 'flex', alignItems: 'center', gap: 22, flexWrap: 'wrap' }}>
+          <div className="rapport-hero" style={{ padding: '20px 20px 22px', display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'nowrap' }}>
             {/* Score cercle */}
-            <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-              <div className="rapport-score-circle" style={{ position: 'relative', width: 88, height: 88 }}>
-                <svg width="88" height="88" style={{ transform: 'rotate(-90deg)' }}>
-                  <circle cx="44" cy="44" r="36" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="7" />
-                  <circle cx="44" cy="44" r="36" fill="none" stroke={scoreColor} strokeWidth="7"
-                    strokeDasharray={`${(rapport.score / 20) * 2 * Math.PI * 36} ${2 * Math.PI * 36}`} strokeLinecap="round" />
+            <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
+              <div className="rapport-score-circle" style={{ position: 'relative', width: 82, height: 82 }}>
+                <svg width="82" height="82" style={{ transform: 'rotate(-90deg)' }}>
+                  <circle cx="41" cy="41" r="34" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="6" />
+                  <circle cx="41" cy="41" r="34" fill="none" stroke={scoreColor} strokeWidth="6"
+                    strokeDasharray={`${(rapport.score / 20) * 2 * Math.PI * 34} ${2 * Math.PI * 34}`} strokeLinecap="round" />
                 </svg>
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: 24, fontWeight: 900, color: '#fff', lineHeight: 1 }}>{rapport.score.toFixed(1)}</span>
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>/20</span>
+                  <span style={{ fontSize: 22, fontWeight: 900, color: '#fff', lineHeight: 1 }}>{rapport.score.toFixed(1)}</span>
+                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>/20</span>
                 </div>
               </div>
-              <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 12px', borderRadius: 100, background: `${scoreColor}30`, border: `1px solid ${scoreColor}60`, color: '#fff' }}>
+              <span className="score-label-badge" style={{ fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 100, background: `${scoreColor}30`, border: `1px solid ${scoreColor}60`, color: '#fff', textAlign: 'center', whiteSpace: 'nowrap' }}>
                 {getScoreLabel(rapport.score)}
               </span>
             </div>
 
             {/* Adresse + infos */}
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.65)', letterSpacing: '0.12em', marginBottom: 6 }}>
-                {rapport.type_bien === 'maison' ? 'MAISON INDIVIDUELLE' : 'APPARTEMENT EN COPROPRIÉTÉ'} · {rapport.profil === 'invest' ? 'INVESTISSEMENT LOCATIF' : 'RÉSIDENCE PRINCIPALE'}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="hero-type-label" style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.1em', marginBottom: 5, textTransform: 'uppercase' as const }}>
+                {rapport.type_bien === 'maison' ? 'Maison individuelle' : 'Appartement en copro'} · {rapport.profil === 'invest' ? 'Investissement' : 'Résidence principale'}
               </div>
-              <h1 style={{ fontSize: 'clamp(15px,2.2vw,20px)', fontWeight: 800, color: '#fff', lineHeight: 1.3, marginBottom: 4 }}>{rapport.adresse}</h1>
-              {rapport.adresseSub && <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', marginBottom: 10 }}>{rapport.adresseSub}</div>}
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                <span style={{ fontSize: 10, padding: '3px 9px', borderRadius: 100, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.85)' }}>{getTypeBienLabel(rapport.type_bien)}</span>
-                <span style={{ fontSize: 10, padding: '3px 9px', borderRadius: 100, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.85)' }}>{getProfilLabel(rapport.profil)}</span>
-                {rapport.annee_construction && <span style={{ fontSize: 10, padding: '3px 9px', borderRadius: 100, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.85)' }}>Construit en {rapport.annee_construction}</span>}
-                <span style={{ fontSize: 10, padding: '3px 9px', borderRadius: 100, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.65)' }}>Analysé le {rapport.date}</span>
+              <h1 style={{ fontSize: 'clamp(14px,3.5vw,19px)', fontWeight: 800, color: '#fff', lineHeight: 1.25, marginBottom: 4, wordBreak: 'break-word' }}>{rapport.adresse}</h1>
+              {rapport.adresseSub && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginBottom: 8 }}>{rapport.adresseSub}</div>}
+              <div className="hero-tags" style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
+                <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 100, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.18)', color: 'rgba(255,255,255,0.85)' }}>{getTypeBienLabel(rapport.type_bien)}</span>
+                <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 100, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.18)', color: 'rgba(255,255,255,0.85)' }}>{getProfilLabel(rapport.profil)}</span>
+                {rapport.annee_construction && <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 100, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.18)', color: 'rgba(255,255,255,0.85)' }}>Construit en {rapport.annee_construction}</span>}
+                <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 100, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.6)' }}>Analysé le {rapport.date}</span>
               </div>
             </div>
           </div>
@@ -708,36 +709,36 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
           <span style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Synthèse de l'analyse</span>
           <div style={{ height: 2, background: 'linear-gradient(90deg, transparent, #2a7d9c, transparent)', marginTop: 8, borderRadius: 99 }} />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
-          <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, padding: '22px 24px' }}>
-            <div style={{ display: 'inline-block', background: '#2d6a2d', color: '#fff', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', padding: '6px 16px', borderRadius: 99, marginBottom: 20 }}>POINTS POSITIFS</div>
-            <div className="rapport-main" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="points-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
+          <div className="points-card" style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, padding: '18px 20px' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#2d6a2d', color: '#fff', fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', padding: '5px 12px', borderRadius: 99, marginBottom: 16 }}>✓ POINTS POSITIFS</div>
+            <div className="rapport-main" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {rapport.points_forts.length > 0 ? rapport.points_forts.map((p: string, i: number) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                  <div style={{ width: 22, height: 22, flexShrink: 0, marginTop: 2 }}>
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <div style={{ width: 18, height: 18, flexShrink: 0, marginTop: 2 }}>
                     <svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <circle cx="11" cy="11" r="10" stroke="#2d6a2d" strokeWidth="1.5"/>
                       <path d="M7 11.5l3 3 5-5" stroke="#2d6a2d" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </div>
-                  <span style={{ fontSize: 15, color: '#0f172a', lineHeight: 1.7 }}>{safeStr(p)}</span>
+                  <span className="points-text" style={{ fontSize: 14, color: '#0f172a', lineHeight: 1.65 }}>{safeStr(p)}</span>
                 </div>
               )) : <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun point positif identifié.</p>}
             </div>
           </div>
-          <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, padding: '22px 24px' }}>
-            <div style={{ display: 'inline-block', background: '#92400e', color: '#fff', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', padding: '6px 16px', borderRadius: 99, marginBottom: 20 }}>POINTS DE VIGILANCE</div>
-            <div className="rapport-main" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="points-card" style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, padding: '18px 20px' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#92400e', color: '#fff', fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', padding: '5px 12px', borderRadius: 99, marginBottom: 16 }}>⚠ POINTS DE VIGILANCE</div>
+            <div className="rapport-main" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {rapport.points_vigilance.length > 0 ? rapport.points_vigilance.map((p: string, i: number) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                  <div style={{ width: 22, height: 22, flexShrink: 0, marginTop: 2 }}>
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <div style={{ width: 18, height: 18, flexShrink: 0, marginTop: 2 }}>
                     <svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M11 2.5L2 19.5h18L11 2.5z" stroke="#92400e" strokeWidth="1.5" strokeLinejoin="round"/>
                       <path d="M11 9.5v4.5" stroke="#92400e" strokeWidth="1.5" strokeLinecap="round"/>
                       <circle cx="11" cy="16.5" r="0.8" fill="#92400e"/>
                     </svg>
                   </div>
-                  <span style={{ fontSize: 15, color: '#0f172a', lineHeight: 1.7 }}>{safeStr(p)}</span>
+                  <span className="points-text" style={{ fontSize: 14, color: '#0f172a', lineHeight: 1.65 }}>{safeStr(p)}</span>
                 </div>
               )) : <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun point de vigilance identifié.</p>}
             </div>
@@ -890,26 +891,26 @@ function SyndicBand({ syndic, nbLots, nbBatiments }: { syndic: Record<string, un
   const tensions = syndic.tensions_detectees === true;
   const Divider = () => <div style={{ width: 0.5, height: 40, background: '#edf2f7', flexShrink: 0 }} />;
   return (
-    <div style={{ background: '#fff', border: '0.5px solid #edf2f7', borderRadius: 14, padding: '16px 20px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-      <div style={{ width: 42, height: 42, borderRadius: 10, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 500, color: '#1e40af', flexShrink: 0 }}>
-        {safeStr(syndic.nom)?.substring(0, 2).toUpperCase() ?? 'SY'}
-      </div>
-      <div style={{ flex: 1, minWidth: 180 }}>
-        <div style={{ fontSize: 16, fontWeight: 500, color: '#0f172a' }}>{safeStr(syndic.nom)}</div>
-        <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          {type && <span>🏢 {type === 'professionnel' ? 'Cabinet professionnel' : 'Syndic bénévole'}</span>}
-          {gestionnaire && <span>👤 {gestionnaire}</span>}
+    <div className="syndic-band" style={{ background: '#fff', border: '0.5px solid #edf2f7', borderRadius: 14, padding: '16px 20px', marginBottom: 20 }}>
+      {/* Identité syndic */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
+        <div style={{ width: 42, height: 42, borderRadius: 10, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 500, color: '#1e40af', flexShrink: 0 }}>
+          {safeStr(syndic.nom)?.substring(0, 2).toUpperCase() ?? 'SY'}
+        </div>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: '#0f172a' }}>{safeStr(syndic.nom)}</div>
+          <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {type && <span>🏢 {type === 'professionnel' ? 'Cabinet professionnel' : 'Syndic bénévole'}</span>}
+            {gestionnaire && <span>👤 {gestionnaire}</span>}
+          </div>
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 0, alignItems: 'center', flexWrap: 'wrap' }}>
-        {nbLots && (<><Divider /><div style={{ textAlign: 'center', padding: '0 16px' }}><div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 3 }}>Lots</div><div style={{ fontSize: 15, fontWeight: 500, color: '#0f172a' }}>{nbLots}</div></div></>)}
-        {nbBatiments && (<><Divider /><div style={{ textAlign: 'center', padding: '0 16px' }}><div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 3 }}>Bâtiments</div><div style={{ fontSize: 15, fontWeight: 500, color: '#0f172a' }}>{nbBatiments}</div></div></>)}
-        {finMandat && (<><Divider /><div style={{ textAlign: 'center', padding: '0 16px' }}><div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 3 }}>Fin de mandat</div><div style={{ fontSize: 15, fontWeight: 500, color: '#a16207' }}>{finMandat}</div></div></>)}
-        <Divider />
-        <div style={{ textAlign: 'center', padding: '0 16px' }}>
-          <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 3 }}>Tensions</div>
-          <div style={{ fontSize: 14, fontWeight: 500, color: tensions ? '#dc2626' : '#16a34a' }}>{tensions ? '⚠ Détectées' : '✓ Aucune'}</div>
-        </div>
+      {/* Stats grille */}
+      <div className="syndic-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0, borderTop: '1px solid #f1f5f9', paddingTop: 12 }}>
+        {nbLots && <div style={{ textAlign: 'center', padding: '4px 8px' }}><div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>Lots</div><div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>{nbLots}</div></div>}
+        {nbBatiments && <div style={{ textAlign: 'center', padding: '4px 8px', borderLeft: '1px solid #f1f5f9' }}><div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>Bâtiments</div><div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>{nbBatiments}</div></div>}
+        {finMandat && <div style={{ textAlign: 'center', padding: '4px 8px', borderLeft: '1px solid #f1f5f9' }}><div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>Fin mandat</div><div style={{ fontSize: 13, fontWeight: 500, color: '#a16207' }}>{finMandat}</div></div>}
+        <div style={{ textAlign: 'center', padding: '4px 8px', borderLeft: '1px solid #f1f5f9' }}><div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>Tensions</div><div style={{ fontSize: 13, fontWeight: 500, color: tensions ? '#dc2626' : '#16a34a' }}>{tensions ? '⚠ Oui' : '✓ Non'}</div></div>
       </div>
     </div>
   );
@@ -1055,7 +1056,8 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
               <span style={{ fontSize: 16 }}>📊</span>
               <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>Participation aux assemblées générales</span>
             </div>
-            <div style={{ overflowX: 'auto' }}>
+            {/* Tableau desktop */}
+            <div className="ag-table-desktop" style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                 <thead>
                   <tr style={{ background: '#f8fafc' }}>
@@ -1090,6 +1092,40 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
                   })}
                 </tbody>
               </table>
+            </div>
+            {/* Cards mobiles AG */}
+            <div className="ag-cards-mobile" style={{ display: 'none', flexDirection: 'column', gap: 8 }}>
+              {participation.map((p: ParticT, i: number) => {
+                const q = p.quitus;
+                const qLabel = !q || q.soumis === false ? null : q.approuve ? '✓ Approuvé' : '✗ Refusé';
+                const qColor = q?.approuve ? '#16a34a' : '#dc2626';
+                const qBg = q?.approuve ? '#f0fdf4' : '#fef2f2';
+                const qBorder = q?.approuve ? '#bbf7d0' : '#fecaca';
+                return (
+                  <div key={i} style={{ background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 10, padding: '12px 14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>AG {safeStr(p.annee)}</span>
+                      {qLabel && <span style={{ fontSize: 11, fontWeight: 700, color: qColor, background: qBg, border: `1px solid ${qBorder}`, padding: '3px 10px', borderRadius: 100 }}>{qLabel}</span>}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>Présents / Représentés</div>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: '#374151' }}>{safeStr(p.copropietaires_presents_representes) || '—'}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>Taux tantièmes</div>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: '#374151' }}>{safeStr(p.taux_tantiemes_pct) || '—'}</div>
+                      </div>
+                    </div>
+                    {p.quorum_note && (
+                      <div style={{ padding: '8px 10px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, fontSize: 12, color: '#92400e', lineHeight: 1.5 }}>
+                        💬 {safeStr(p.quorum_note)}
+                      </div>
+                    )}
+                    {q?.detail && <div style={{ marginTop: 6, fontSize: 11, color: '#dc2626', lineHeight: 1.5 }}>{q.detail}</div>}
+                  </div>
+                );
+              })}
             </div>
             {quitusRefuse && (
               <div style={{ marginTop: 8, padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, fontSize: 12, color: '#991b1b', lineHeight: 1.6 }}>
@@ -1139,15 +1175,18 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
               const border = r.statut === 'interdit' ? '#fecaca' : r.statut === 'autorise' ? '#bbf7d0' : '#fed7aa';
               const label = r.statut === 'interdit' ? '✗ Interdit' : r.statut === 'autorise' ? '✓ Autorisé' : '~ Sous conditions';
               return (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #edf2f7', gap: 10 }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: '#0f172a' }}>{safeStr(r.label)}</div>
-                    <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                      {r.impact_rp && <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 20, background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe' }}>Vie quotidienne</span>}
-                      {r.impact_invest && <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 20, background: '#fdf4ff', color: '#7e22ce', border: '1px solid #e9d5ff' }}>Location</span>}
+                <div key={i} className="rcp-rule-row" style={{ padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #edf2f7' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: '#0f172a', lineHeight: 1.5 }}>{safeStr(r.label)}</div>
+                      <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+                        {r.impact_rp && <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 20, background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe' }}>Vie quotidienne</span>}
+                        {r.impact_invest && <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 20, background: '#fdf4ff', color: '#7e22ce', border: '1px solid #e9d5ff' }}>Location</span>}
+                      </div>
                     </div>
+                    <span className="rcp-badge-desktop" style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: bg, color, border: `1px solid ${border}`, flexShrink: 0, whiteSpace: 'nowrap' as const }}>{label}</span>
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 20, background: bg, color, border: `1px solid ${border}`, flexShrink: 0 }}>{label}</span>
+                  <span className="rcp-badge-mobile" style={{ display: 'none', marginTop: 8, fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 20, background: bg, color, border: `1px solid ${border}` }}>{label}</span>
                 </div>
               );
             })}
@@ -2876,62 +2915,99 @@ export default function RapportPage() {
 
       </div>
       <style>{`
+        /* ══════════════════════════════════
+           MOBILE — 640px et moins
+        ══════════════════════════════════ */
         @media (max-width: 640px) {
-          /* ── Page pleine largeur ── */
           html, body { overflow-x: hidden; }
+
+          /* ── Layout général ── */
           .rapport-wrapper { padding: 0 !important; }
-          .rapport-inner { padding: 8px 6px !important; gap: 8px !important; max-width: 100vw !important; }
-          .rapport-main { padding: 8px 4px !important; gap: 8px !important; }
+          .rapport-inner { padding: 6px 4px !important; gap: 6px !important; max-width: 100vw !important; }
+          .rapport-main { padding: 6px 4px !important; gap: 8px !important; }
 
-          /* ── Header score compact ── */
+          /* ── Header ── */
           .rapport-header { border-radius: 0 !important; margin: 0 !important; }
-          .rapport-score-bar { padding: 8px 12px !important; font-size: 12px !important; }
-          .rapport-header-content { padding: 12px 14px !important; }
+          .rapport-hero { padding: 14px 14px 16px !important; gap: 12px !important; }
+          .rapport-score-circle { width: 72px !important; height: 72px !important; }
+          .score-label-badge { font-size: 9px !important; padding: 2px 7px !important; max-width: 80px; white-space: normal !important; text-align: center; }
+          .hero-type-label { font-size: 8px !important; }
+          .hero-tags span { font-size: 8px !important; padding: 2px 6px !important; }
 
-          /* ── Navigation onglets ── */
+          /* ── Topnav ── */
+          .topnav-back-label { display: none !important; }
+          .topnav-share-label { display: none !important; }
+          .topnav-dl-label { display: none !important; }
+          .topnav-back-btn { padding: 8px 10px !important; }
+          .topnav-share-btn { padding: 8px 10px !important; }
+          .topnav-dl-btn { padding: 8px 10px !important; }
+
+          /* ── Onglets ── */
           .rapport-tabs-wrap { border-radius: 0 !important; margin: 0 !important; padding: 0 !important; }
-          .rapport-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; flex-wrap: nowrap !important; gap: 0 !important; border-radius: 0 !important; padding: 0 4px !important; }
+          .rapport-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; flex-wrap: nowrap !important; gap: 0 !important; border-radius: 0 !important; padding: 0 2px !important; }
           .rapport-tabs::-webkit-scrollbar { display: none; }
-          .rapport-tab-btn { font-size: 11px !important; padding: 10px 10px !important; white-space: nowrap !important; flex-shrink: 0; min-width: unset !important; }
+          .rapport-tab-btn { font-size: 10px !important; padding: 9px 8px !important; white-space: nowrap !important; flex-shrink: 0 !important; min-width: unset !important; flex: unset !important; gap: 3px !important; }
 
-          /* ── Contenu principal ── */
-          .rapport-main { padding: 8px !important; gap: 8px !important; }
+          /* ── KPI bands ── */
+          .kpi-band-grid { grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap: 6px !important; margin-bottom: 10px !important; }
+          .kpi-band-grid > div { padding: 10px 10px !important; border-radius: 10px !important; }
+          .kpi-band-grid > div > div:first-child { font-size: 18px !important; margin-bottom: 6px !important; }
+          .kpi-band-grid > div > div:nth-child(2) { font-size: 9px !important; margin-bottom: 3px !important; }
+          .kpi-value { font-size: 15px !important; }
+          .kpi-band-grid > div > div:last-child { font-size: 9px !important; }
 
-          /* ── KPI bands — 2 colonnes compactes ── */
-          .kpi-band-grid { grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap: 7px !important; margin-bottom: 10px !important; }
-          .kpi-band-grid > div { padding: 12px 12px !important; border-radius: 10px !important; }
-          .kpi-value { font-size: 16px !important; }
+          /* ── Accordéon ── */
+          .rapport-accordion-header { padding: 10px 12px !important; }
+          .rapport-accordion-header .accord-icon { width: 28px !important; height: 28px !important; font-size: 13px !important; }
+          .rapport-accordion-body { padding: 10px 10px !important; }
 
-          /* ── AccordionSection compact ── */
-          .rapport-accordion-header { padding: 11px 12px !important; }
-          .rapport-accordion-header .accord-icon { width: 28px !important; height: 28px !important; font-size: 14px !important; }
-          .rapport-accordion-body { padding: 10px 12px !important; }
-
-          /* ── SectionTitle compact ── */
-          .section-title-bar { padding: 8px 12px !important; border-radius: 6px !important; }
+          /* ── SectionTitle ── */
+          .section-title-bar { padding: 8px 10px !important; border-radius: 6px !important; }
           .section-title-bar span { font-size: 12px !important; }
 
-          /* ── Tables compactes ── */
-          table { font-size: 12px !important; }
-          th, td { padding: 7px 9px !important; }
+          /* ── Tables ── */
+          table { font-size: 11px !important; }
+          th, td { padding: 6px 8px !important; }
 
-          /* ── Grids forcés en 1 colonne ── */
+          /* ── AG : cacher table, montrer cards ── */
+          .ag-table-desktop { display: none !important; }
+          .ag-cards-mobile { display: flex !important; }
+
+          /* ── Règles copro mobile ── */
+          .rcp-badge-desktop { display: none !important; }
+          .rcp-badge-mobile { display: inline-block !important; }
+
+          /* ── SyndicBand mobile ── */
+          .syndic-stats { grid-template-columns: repeat(2, 1fr) !important; }
+          .syndic-stats > div { border-left: none !important; border-top: 1px solid #f1f5f9; padding: 6px 4px !important; }
+          .syndic-stats > div:nth-child(even) { border-left: 1px solid #f1f5f9 !important; }
+
+          /* ── Points positifs/vigilance ── */
+          .points-grid { grid-template-columns: 1fr !important; }
+          .points-card { padding: 14px 14px !important; }
+          .points-text { font-size: 13px !important; line-height: 1.55 !important; }
+
+          /* ── Grids généraux ── */
           .grid-2col { grid-template-columns: 1fr !important; }
           .grid-3col { grid-template-columns: 1fr !important; }
 
           /* ── Textes ── */
-          .rapport-main p, .rapport-main div { max-width: 100%; word-break: break-word; }
-          .rapport-header-content { padding: 12px 12px !important; }
-          .rapport-score-bar { padding: 8px 12px !important; font-size: 12px !important; }
+          .rapport-main p { font-size: 14px !important; line-height: 1.65 !important; }
 
-          /* ── Tooltip mobile — repositionné pour rester visible ── */
+          /* ── Tooltip ── */
           .tooltip-bubble { max-width: calc(100vw - 24px) !important; left: 12px !important; right: 12px !important; width: auto !important; }
         }
+
+        /* ══════════════════════════════════
+           TRÈS PETIT (≤ 390px — iPhone SE)
+        ══════════════════════════════════ */
         @media (max-width: 390px) {
-          .kpi-band-grid { gap: 5px !important; }
-          .kpi-band-grid > div { padding: 10px 10px !important; }
-          .kpi-value { font-size: 14px !important; }
-          .rapport-tab-btn { font-size: 10px !important; padding: 9px 8px !important; }
+          .kpi-band-grid { gap: 4px !important; }
+          .kpi-band-grid > div { padding: 8px 8px !important; }
+          .kpi-value { font-size: 13px !important; }
+          .rapport-tab-btn { font-size: 9px !important; padding: 8px 7px !important; }
+          .rapport-hero { padding: 12px 12px 14px !important; gap: 10px !important; }
+          .rapport-score-circle { width: 64px !important; height: 64px !important; }
         }
         @media print {
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
