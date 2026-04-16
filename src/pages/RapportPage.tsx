@@ -38,6 +38,17 @@ function getProfilLabel(profil: string) {
 function isCoproType(type: string) {
   return type === 'appartement' || type === 'maison_copro';
 }
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = React.useState(() => typeof window !== 'undefined' && window.innerWidth < 640);
+  React.useEffect(() => {
+    const fn = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', fn);
+    return () => window.removeEventListener('resize', fn);
+  }, []);
+  return isMobile;
+};
+
+
 function safeStr(val: unknown): string {
   if (val === null || val === undefined) return '';
   if (typeof val === 'string') return val;
@@ -98,7 +109,7 @@ function AccordionSection({
 
   return (
     <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, overflow: 'hidden' }}>
-      <button onClick={() => setOpen(!open)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+      <button onClick={() => setOpen(!open)} className="rapport-accordion-header" style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
         onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#f8fafc'}
         onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'none'}>
         <div style={{ width: 34, height: 34, borderRadius: 9, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>{icon}</div>
@@ -130,7 +141,7 @@ function AccordionSection({
         </div>
       </button>
       {open && (
-        <div style={{ borderTop: '1px solid #f1f5f9', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="rapport-accordion-body" style={{ borderTop: '1px solid #f1f5f9', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           {children}
         </div>
       )}
@@ -592,7 +603,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
 
   const kpis = buildKpis();
   const kpiCols = Math.min(kpis.length, 4);
-  const kpiGridStyle = { display: 'grid', gridTemplateColumns: `repeat(${kpiCols}, 1fr)`, gap: '12px' } as const;
+  const kpiGridStyle = { display: 'grid', gridTemplateColumns: `repeat(${kpiCols}, 1fr)`, gap: '10px' } as const;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -689,9 +700,9 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
       {isComplete && kpis.length > 0 && (() => {
         const bleus = ['#2a7d9c','#236b87','#1e5f77','#185166','#133d50','#0f3d4e','#0b2e3b'];
         return (
-          <div style={kpiGridStyle}>
+          <div style={kpiGridStyle} className="kpi-band-grid">
             {kpis.map((kpi, i) => (
-              <div key={i} style={{ background: bleus[Math.min(i, bleus.length-1)], borderRadius: 14, padding: '20px 22px' }}>
+              <div key={i} style={{ background: bleus[Math.min(i, bleus.length-1)], borderRadius: 12, padding: '16px 16px' }}>
                 <div style={{ fontSize: 26, marginBottom: 10 }}>{kpi.icon}</div>
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', marginBottom: 6, lineHeight: 1.3 }}>{kpi.label}</div>
                 <div style={{ fontSize: 24, fontWeight: 500, color: '#fff', lineHeight: 1.1 }}>{kpi.value}</div>
@@ -707,7 +718,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
           <span style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Synthèse de l'analyse</span>
           <div style={{ height: 2, background: 'linear-gradient(90deg, transparent, #2a7d9c, transparent)', marginTop: 8, borderRadius: 99 }} />
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
           <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, padding: '22px 24px' }}>
             <div style={{ display: 'inline-block', background: '#2d6a2d', color: '#fff', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', padding: '6px 16px', borderRadius: 99, marginBottom: 20 }}>POINTS POSITIFS</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -860,7 +871,7 @@ function KpiBand({ items }: { items: { label: string; value: string; sub?: strin
   // Palette bleu Verimo dégradée — plus clair à gauche, plus foncé à droite
   const bleus = ['#2a7d9c', '#236b87', '#1e5f77', '#185166', '#133d50'];
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(items.length, 5)}, minmax(0,1fr))`, gap: 10, marginBottom: 20 }}>
+    <div className="kpi-band-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(items.length, 5)}, minmax(0,1fr))`, gap: 10, marginBottom: 20 }}>
       {items.map((item, i) => {
         const bg = bleus[Math.min(i, bleus.length - 1)];
         return (
@@ -872,8 +883,8 @@ function KpiBand({ items }: { items: { label: string; value: string; sub?: strin
                 {item.tooltip && <TooltipBtn text={item.tooltip} white={true} />}
               </span>
             </div>
-            <div style={{ fontSize: 26, fontWeight: 500, color: '#fff', lineHeight: 1.1 }}>{item.value}</div>
-            {item.sub && <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 5 }}>{item.sub}</div>}
+            <div className="kpi-value" style={{ fontSize: 22, fontWeight: 500, color: '#fff', lineHeight: 1.1 }}>{item.value}</div>
+            {item.sub && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>{item.sub}</div>}
           </div>
         );
       })}
@@ -1401,7 +1412,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
 function SectionTitle({ emoji, text, tooltip }: { emoji: string; text: string; tooltip?: string }) {
   const [show, setShow] = useState(false);
   return (
-    <div style={{ background: '#2a7d9c', borderRadius: 8, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+    <div className="section-title-bar" style={{ background: '#2a7d9c', borderRadius: 8, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
       <span style={{ fontSize: 16 }}>{emoji}</span>
       <span style={{ fontSize: 14, fontWeight: 500, color: '#fff' }}>{text}</span>
       {tooltip && (
@@ -1913,7 +1924,7 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
         {taxeAnnuelle && (
           <>
             <SectionTitle emoji="🏛" text="Taxe foncière" tooltip="Impôt local annuel dû par le propriétaire du bien, calculé sur la valeur locative cadastrale. Elle est due même si le bien est loué et peut évoluer chaque année." />
-            <div style={{ display: 'grid', gridTemplateColumns: taxeEvol !== null ? '1fr 1fr 1fr' : '1fr 1fr', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: taxeEvol !== null ? 'repeat(3,minmax(0,1fr))' : 'repeat(2,minmax(0,1fr))', gap: 10 }}>
               <div style={{ background: 'var(--color-background-secondary)', borderRadius: 10, padding: '14px 16px', textAlign: 'center' }}>
                 <div style={{ fontSize: 22, fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: 5 }}>{taxeAnnuelle.toLocaleString('fr-FR')} €</div>
                 <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Montant annuel</div>
@@ -2819,7 +2830,7 @@ export default function RapportPage() {
             {tabs.map(tab => {
               const active = activeTab === tab.id;
               return (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)} className="rapport-tab-btn"
                   style={{ flex: 1, minWidth: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 10px', borderRadius: 8, border: 'none', background: active ? '#f8fafc' : 'transparent', color: active ? '#0f172a' : '#64748b', fontSize: 12.5, fontWeight: active ? 700 : 400, cursor: 'pointer', transition: 'all 0.15s', borderBottom: active ? `2px solid ${tab.dotColor}` : '2px solid transparent', whiteSpace: 'nowrap' }}>
                   {tab.icon}
                   {tab.label}
@@ -2876,7 +2887,39 @@ export default function RapportPage() {
       </div>
       <style>{`
         @media (max-width: 640px) {
-          .rapport-tabs button { font-size: 11px !important; padding: 8px 6px !important; }
+          /* ── Navigation onglets ── */
+          .rapport-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; flex-wrap: nowrap !important; gap: 0 !important; border-radius: 0 !important; }
+          .rapport-tabs::-webkit-scrollbar { display: none; }
+          .rapport-tab-btn { font-size: 11px !important; padding: 10px 12px !important; white-space: nowrap; flex-shrink: 0; }
+
+          /* ── KPI bands ── */
+          .kpi-band-grid { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+          .kpi-value { font-size: 18px !important; }
+
+          /* ── AccordionSection ── */
+          .rapport-accordion-header { padding: 12px 14px !important; }
+          .rapport-accordion-body { padding: 12px 14px !important; }
+
+          /* ── Grids 2 colonnes → 1 colonne ── */
+          .grid-2col { grid-template-columns: 1fr !important; }
+          .grid-3col { grid-template-columns: 1fr !important; }
+
+          /* ── Tables ── */
+          table { font-size: 12px !important; }
+          th, td { padding: 8px 10px !important; }
+
+          /* ── SectionTitle ── */
+          .section-title-bar { padding: 8px 12px !important; }
+          .section-title-bar span { font-size: 13px !important; }
+
+          /* ── Bandeau score top ── */
+          .rapport-score-bar { padding: 10px 14px !important; font-size: 13px !important; }
+
+          /* ── Textes généraux ── */
+          .rapport-main { padding: 12px !important; }
+        }
+        @media (max-width: 400px) {
+          .kpi-band-grid { grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap: 6px !important; }
         }
         @media print {
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
