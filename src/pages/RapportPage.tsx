@@ -99,7 +99,7 @@ function AccordionSection({
         <div style={{ width: 34, height: 34, borderRadius: 9, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>{icon}</div>
         <div style={{ flex: 1, textAlign: 'left' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a' }}>{title}</span>
+            <span style={{ fontSize: 15, fontWeight: 500, color: '#0f172a' }}>{title}</span>
             {tooltip && (
               <div style={{ position: 'relative', display: 'inline-flex' }}
                 onMouseEnter={() => setShowTooltip(true)}
@@ -116,10 +116,10 @@ function AccordionSection({
               </div>
             )}
           </div>
-          {sub && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{sub}</div>}
+          {sub && <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 3 }}>{sub}</div>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          {badge && <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 100, ...badgeStyle }}>{badge}</span>}
+          {badge && <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 10px', borderRadius: 100, ...badgeStyle }}>{badge}</span>}
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor }} />
           {open ? <ChevronUp size={14} color="#94a3b8" /> : <ChevronDown size={14} color="#94a3b8" />}
         </div>
@@ -317,7 +317,7 @@ function DiagRow({ d }: { d: any }) {
                   {carrezSolTotal && (
                     <div style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 9, border: '1px solid #edf2f7', textAlign: 'center' as const }}>
                       <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{carrezSolTotal[1].replace(',', '.')} m²</div>
-                      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Surface au sol</div>
+                      <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 3 }}>Surface au sol</div>
                     </div>
                   )}
                 </div>
@@ -367,7 +367,7 @@ function DiagRow({ d }: { d: any }) {
             <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 9, border: '1px solid #fde68a' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', marginBottom: 6 }}>🔧 Travaux recommandés</div>
               {d.travaux_preconises.map((t: string, i: number) => (
-                <div key={i} style={{ fontSize: 12, color: '#92400e', marginBottom: 4, lineHeight: 1.5 }}>• {t}</div>
+                <div key={i} style={{ fontSize: 13, color: '#92400e', marginBottom: 4, lineHeight: 1.5 }}>• {t}</div>
               ))}
             </div>
           )}
@@ -600,7 +600,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
             <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 3 }}>
               {docsIgnores.length} document{docsIgnores.length > 1 ? 's' : ''} non lisible{docsIgnores.length > 1 ? 's' : ''} — ignoré{docsIgnores.length > 1 ? 's' : ''}
             </div>
-            <div style={{ fontSize: 12, color: '#92400e', lineHeight: 1.5 }}>
+            <div style={{ fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>
               {avertissement || `Vérifiez que ces fichiers sont en format PDF non protégé : ${docsIgnores.join(', ')}`}
             </div>
           </div>
@@ -681,17 +681,20 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
       </div>
 
       {/* 2. KPIs — disposition intelligente */}
-      {isComplete && kpis.length > 0 && (
-        <div style={kpiGridStyle}>
-          {kpis.map((kpi, i) => (
-            <div key={i} style={{ background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 14, padding: '16px 18px' }}>
-              <div style={{ fontSize: 22, marginBottom: 10 }}>{kpi.icon}</div>
-              <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 6, lineHeight: 1.3 }}>{kpi.label}</div>
-              <div style={{ fontSize: 22, fontWeight: 500, color: kpi.color || 'var(--color-text-primary)', lineHeight: 1 }}>{kpi.value}</div>
-            </div>
-          ))}
-        </div>
-      )}
+      {isComplete && kpis.length > 0 && (() => {
+        const bleus = ['#2a7d9c','#236b87','#1e5f77','#185166','#133d50','#0f3d4e','#0b2e3b'];
+        return (
+          <div style={kpiGridStyle}>
+            {kpis.map((kpi, i) => (
+              <div key={i} style={{ background: bleus[Math.min(i, bleus.length-1)], borderRadius: 14, padding: '20px 22px' }}>
+                <div style={{ fontSize: 26, marginBottom: 10 }}>{kpi.icon}</div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', marginBottom: 6, lineHeight: 1.3 }}>{kpi.label}</div>
+                <div style={{ fontSize: 24, fontWeight: 500, color: '#fff', lineHeight: 1.1 }}>{kpi.value}</div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* 3. POINTS POSITIFS / VIGILANCE */}
       <div>
@@ -843,7 +846,10 @@ function KpiBand({ items }: { items: { label: string; value: string; sub?: strin
             {item.emoji && <div style={{ fontSize: 26, marginBottom: 10 }}>{item.emoji}</div>}
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', marginBottom: 6, lineHeight: 1.3 }}>
               {item.tooltip ? (
-                <span title={item.tooltip} style={{ cursor: 'help', borderBottom: '1px dotted rgba(255,255,255,0.4)' }}>{item.label}</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'default' }}>
+                  {item.label}
+                  <span title={item.tooltip} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 15, height: 15, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', fontSize: 9, color: '#fff', fontWeight: 700, cursor: 'help', flexShrink: 0 }}>?</span>
+                </span>
               ) : item.label}
             </div>
             <div style={{ fontSize: 26, fontWeight: 500, color: '#fff', lineHeight: 1.1 }}>{item.value}</div>
@@ -977,7 +983,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         {syndic?.tensions_detectees && syndic.tensions_detail && (
           <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', marginBottom: 4 }}>⚠ Tensions détectées au sein de la copropriété</div>
-            <div style={{ fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>{safeStr(syndic.tensions_detail)}</div>
+            <div style={{ fontSize: 14, color: '#92400e', lineHeight: 1.6 }}>{safeStr(syndic.tensions_detail)}</div>
           </div>
         )}
 
@@ -1178,7 +1184,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         tooltip="✅ Réalisés — déjà effectués, intégrés à l'immeuble.|🗳 Votés — décidés en AG. S'ils l'ont été avant le compromis, c'est la charge du vendeur.|⚠️ Évoqués — mentionnés sans vote. Si le vote a lieu après votre achat, vous en paierez une part.">
 
         {travaux_votes.length > 0 && (
-          <div style={{ padding: '10px 14px', background: '#fef2f2', borderRadius: 10, border: '1px solid #fecaca', fontSize: 13, color: '#991b1b', lineHeight: 1.6 }}>
+          <div style={{ padding: '10px 14px', background: '#fef2f2', borderRadius: 10, border: '1px solid #fecaca', fontSize: 14, color: '#991b1b', lineHeight: 1.6 }}>
             <strong>⚖️ Travaux votés avant le compromis = charge du vendeur.</strong> Tout travail voté en AG avant la signature de votre compromis de vente est légalement à la charge du vendeur, même si les appels interviennent après. Vérifiez avec votre notaire.
           </div>
         )}
@@ -1210,7 +1216,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
             <div style={{ fontSize: 11, fontWeight: 700, color: '#f97316', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#f97316' }} /> Évoqués — non encore votés
             </div>
-            <div style={{ padding: '8px 12px', background: '#fff7ed', borderRadius: 8, border: '1px solid #fed7aa', marginBottom: 8, fontSize: 12, color: '#92400e' }}>
+            <div style={{ padding: '8px 12px', background: '#fff7ed', borderRadius: 8, border: '1px solid #fed7aa', marginBottom: 8, fontSize: 13, color: '#92400e' }}>
               ⚠️ Ces travaux ont été mentionnés en réunion sans vote. Si le vote intervient après votre acquisition, vous en supporterez une part. Renseignez-vous auprès du vendeur.
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -1268,7 +1274,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
               <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 2, background: '#16a34a', opacity: 0.6 }} />
             </div>
             {fondsInsuffisant && (
-              <div style={{ marginTop: 8, fontSize: 12, color: '#a16207' }}>
+              <div style={{ marginTop: 8, fontSize: 13, color: '#a16207' }}>
                 La loi ALUR impose minimum 5% ({Math.round(budgetNum * 0.05).toLocaleString('fr-FR')} € requis). Un fonds insuffisant peut entraîner des <strong>appels de fonds exceptionnels imprévus</strong>.
               </div>
             )}
@@ -1319,7 +1325,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
               const obj = typeof a === 'string' ? { motif: a } : a as Record<string, unknown>;
               const montant: number | null = typeof obj.montant_total === 'number' ? obj.montant_total : typeof obj.montant === 'number' ? obj.montant : null;
               return (
-                <div key={i} style={{ fontSize: 13, color: '#92400e', padding: '9px 12px', background: '#fffbeb', borderRadius: 8, marginBottom: 6, border: '1px solid #fde68a', lineHeight: 1.5 }}>
+                <div key={i} style={{ fontSize: 14, color: '#92400e', padding: '9px 12px', background: '#fffbeb', borderRadius: 8, marginBottom: 6, border: '1px solid #fde68a', lineHeight: 1.5 }}>
                   <div style={{ fontWeight: 600, marginBottom: 2 }}>• {String(obj.motif ?? obj.description ?? obj.libelle ?? 'Appel de fonds exceptionnel')}</div>
                   {montant !== null && <div style={{ fontSize: 11, color: '#d97706' }}>Montant total copro : {montant.toLocaleString('fr-FR')} €</div>}
                   {obj.date != null && <div style={{ fontSize: 11, color: '#b45309' }}>Date : {String(obj.date)}</div>}
@@ -1338,7 +1344,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         badge={amiante_ac1 ? 'Amiante AC1 !' : hasDiagAlert ? 'Alerte' : diagsCommuns.length > 0 ? `${diagsCommuns.length} détecté${diagsCommuns.length > 1 ? 's' : ''}` : 'Non détectés'}>
 
         {amiante_ac1 && (
-          <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, fontSize: 13, color: '#991b1b', lineHeight: 1.6 }}>
+          <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, fontSize: 14, color: '#991b1b', lineHeight: 1.6 }}>
             <strong>⚠ Amiante AC1 détecté dans les parties communes.</strong> Des matériaux amiantés nécessitent une action corrective (AC1). Des travaux de désamiantage ou de confinement sont à prévoir dans les parties communes. Renseignez-vous sur le calendrier et le budget prévu.
           </div>
         )}
@@ -1377,7 +1383,7 @@ function SectionTitle({ emoji, text, tooltip }: { emoji: string; text: string; t
   return (
     <div style={{ background: '#2a7d9c', borderRadius: 8, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
       <span style={{ fontSize: 16 }}>{emoji}</span>
-      <span style={{ fontSize: 13, fontWeight: 500, color: '#fff' }}>{text}</span>
+      <span style={{ fontSize: 14, fontWeight: 500, color: '#fff' }}>{text}</span>
       {tooltip && (
         <div style={{ position: 'relative', marginLeft: 2 }}
           onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
@@ -1518,7 +1524,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
       {/* BANDEAU KPIs */}
       {kpiItems.length > 0 && (
         <>
-          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>Vue d'ensemble</div>
+          <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>Vue d'ensemble</div>
           <KpiBand items={kpiItems} />
         </>
       )}
@@ -1582,7 +1588,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', gap: 12 }}>
                       <div>
                         <div style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Frais d'établissement du document</div>
-                        <div style={{ fontSize: 12, color: '#16a34a', marginTop: 3 }}>✓ À la charge du vendeur uniquement — rien à payer pour vous</div>
+                        <div style={{ fontSize: 13, color: '#16a34a', marginTop: 3 }}>✓ À la charge du vendeur uniquement — rien à payer pour vous</div>
                       </div>
                       <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-secondary)', flexShrink: 0 }}>{Number(ped!.honoraires_syndic).toLocaleString('fr-FR')} €</span>
                     </div>
@@ -1600,7 +1606,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: ped?.fonds_roulement_acheteur ? '0.5px solid #fde68a' : 'none', gap: 12 }}>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e' }}><Tooltip text="Part des fonds de travaux constituée par le vendeur pendant sa détention du lot. Elle vous est transférée mais vous devez la rembourser au vendeur à la signature.">Fonds travaux ALUR</Tooltip></div>
-                        <div style={{ fontSize: 12, color: '#a16207', marginTop: 3 }}>Part constituée par le vendeur, attachée au lot</div>
+                        <div style={{ fontSize: 13, color: '#a16207', marginTop: 3 }}>Part constituée par le vendeur, attachée au lot</div>
                       </div>
                       <span style={{ fontSize: 16, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>{fondsAlurNum.toLocaleString('fr-FR')} €</span>
                     </div>
@@ -1609,7 +1615,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', gap: 12 }}>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e' }}>Fonds de roulement</div>
-                        <div style={{ fontSize: 12, color: '#a16207', marginTop: 3 }}>{ped.fonds_roulement_modalite === 'remboursement_vendeur' ? 'Remboursement au vendeur' : 'Reconstitution au syndicat'}</div>
+                        <div style={{ fontSize: 13, color: '#a16207', marginTop: 3 }}>{ped.fonds_roulement_modalite === 'remboursement_vendeur' ? 'Remboursement au vendeur' : 'Reconstitution au syndicat'}</div>
                       </div>
                       <span style={{ fontSize: 16, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>{Number(ped.fonds_roulement_acheteur).toLocaleString('fr-FR')} €</span>
                     </div>
@@ -1627,7 +1633,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
                     <thead>
                       <tr style={{ background: 'var(--color-background-secondary)' }}>
                         {['Exercice', 'Budget appelé', 'Charges réelles', 'Écart'].map((h, i) => (
-                          <th key={i} style={{ padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right' as const, fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>{h}</th>
+                          <th key={i} style={{ padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right' as const, fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -1652,8 +1658,8 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
                     </tbody>
                   </table>
                   <div style={{ padding: '14px 16px', background: 'var(--color-background-secondary)', borderTop: '0.5px solid var(--color-border-tertiary)' }}>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6 }}>💡 Comment lire ce tableau ?</div>
-                    <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.7 }}>Le <strong>budget appelé</strong> est ce que la copropriété a prévu de dépenser sur l'exercice. Les <strong>charges réelles</strong> sont ce qui a été effectivement dépensé après clôture. Un petit écart est tout à fait normal. C'est seulement un écart important et répété sur plusieurs exercices qui mérite attention.</div>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6 }}>💡 Comment lire ce tableau ?</div>
+                    <div style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.7 }}>Le <strong>budget appelé</strong> est ce que la copropriété a prévu de dépenser sur l'exercice. Les <strong>charges réelles</strong> sont ce qui a été effectivement dépensé après clôture. Un petit écart est tout à fait normal. C'est seulement un écart important et répété sur plusieurs exercices qui mérite attention.</div>
                   </div>
                 </div>
               </>
@@ -1706,7 +1712,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
           tooltip="Le DPE mesure la consommation d'énergie du logement de A (très performant) à G (passoire thermique). Les logements F sont interdits à la location dès 2028, G dès 2025.">
 
           {dpeBad && (
-            <div style={{ padding: '12px 16px', background: '#fef2f2', border: '0.5px solid #fecaca', borderRadius: 10, fontSize: 13, color: '#991b1b', lineHeight: 1.6 }}>
+            <div style={{ padding: '12px 16px', background: '#fef2f2', border: '0.5px solid #fecaca', borderRadius: 10, fontSize: 14, color: '#991b1b', lineHeight: 1.6 }}>
               ⚠️ <strong>DPE classe {dpeClasse} — passoire thermique.</strong> Ce logement ne pourra plus être mis en location à partir de {dpeClasse === 'G' ? '2025' : '2028'}. Des travaux de rénovation énergétique importants sont à prévoir.
             </div>
           )}
@@ -1717,7 +1723,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             {/* Énergie */}
             <div style={{ flex: 1, minWidth: 180, background: 'var(--color-background-secondary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, padding: 18 }}>
-              <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 14, fontWeight: 500 }}>Énergie primaire</div>
+              <div style={{ fontSize: 14, color: 'var(--color-text-secondary)', marginBottom: 14, fontWeight: 500 }}>Énergie primaire</div>
               <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end', height: 56, marginBottom: 12 }}>
                 {DPE_CLASSES.map((c, i) => {
                   const active = c === dpeClasse;
@@ -1737,7 +1743,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
             {/* GES */}
             {dpeGesClasse && (
               <div style={{ flex: 1, minWidth: 180, background: 'var(--color-background-secondary)', border: '0.5px solid var(--color-border-tertiary)', borderRadius: 12, padding: 18 }}>
-                <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 14, fontWeight: 500 }}>Émissions GES</div>
+                <div style={{ fontSize: 14, color: 'var(--color-text-secondary)', marginBottom: 14, fontWeight: 500 }}>Émissions GES</div>
                 <div style={{ display: 'flex', gap: 4, alignItems: 'flex-end', height: 56, marginBottom: 12 }}>
                   {DPE_CLASSES.map((c, i) => {
                     const active = c === dpeGesClasse;
@@ -1766,12 +1772,12 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
             return (
               <div style={{ background: 'var(--color-background-secondary)', borderRadius: 10, padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
                 <div>
-                  <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Coût énergétique annuel estimé</div>
+                  <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Coût énergétique annuel estimé</div>
                   <div style={{ fontSize: 22, fontWeight: 500, color: 'var(--color-text-primary)' }}>
                     {min && max ? `${min.toLocaleString('fr-FR')} – ${max.toLocaleString('fr-FR')} €` : min ? `${min.toLocaleString('fr-FR')} €` : `${max!.toLocaleString('fr-FR')} €`}
                   </div>
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontStyle: 'italic', textAlign: 'right' }}>Estimation indicative selon conditions climatiques<br/>et habitudes de consommation</div>
+                <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', fontStyle: 'italic', textAlign: 'right' }}>Estimation indicative selon conditions climatiques<br/>et habitudes de consommation</div>
               </div>
             );
           })()}
@@ -1795,7 +1801,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
                       <div key={i} style={{ background: 'var(--color-background-secondary)', borderRadius: 10, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                         <div>
                           <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{tLabel}</div>
-                          {tPriorite && <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>{tPriorite === 'prioritaire' ? '🔴 Prioritaire' : '🟡 Recommandé'}</div>}
+                          {tPriorite && <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 2 }}>{tPriorite === 'prioritaire' ? '🔴 Prioritaire' : '🟡 Recommandé'}</div>}
                         </div>
                         {(tMin || tMax) && (
                           <span style={{ fontSize: 13, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>
@@ -1837,7 +1843,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
                 <div style={{ background: 'var(--color-background-secondary)', borderRadius: 10, overflow: 'hidden' }}>
                   {surface && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: pieces ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
-                      <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Surface totale Carrez</span>
+                      <span style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Surface totale Carrez</span>
                       <span style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>{surface} m²</span>
                     </div>
                   )}
@@ -1890,11 +1896,11 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
             <div style={{ display: 'grid', gridTemplateColumns: taxeEvol !== null ? '1fr 1fr 1fr' : '1fr 1fr', gap: 10 }}>
               <div style={{ background: 'var(--color-background-secondary)', borderRadius: 10, padding: '14px 16px', textAlign: 'center' }}>
                 <div style={{ fontSize: 22, fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: 5 }}>{taxeAnnuelle.toLocaleString('fr-FR')} €</div>
-                <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Montant annuel</div>
+                <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Montant annuel</div>
               </div>
               <div style={{ background: 'var(--color-background-secondary)', borderRadius: 10, padding: '14px 16px', textAlign: 'center' }}>
                 <div style={{ fontSize: 22, fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: 5 }}>{taxeMensuelle!.toLocaleString('fr-FR')} €</div>
-                <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>Par mois</div>
+                <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Par mois</div>
               </div>
               {taxeEvol !== null && (
                 <div style={{ background: taxeEvol > 5 ? '#fff7ed' : '#f8fafc', border: taxeEvol > 5 ? '0.5px solid #fed7aa' : '0.5px solid var(--color-border-tertiary)', borderRadius: 10, padding: '14px 16px', textAlign: 'center' }}>
@@ -1908,14 +1914,14 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
 
         {/* Impayés */}
         {lot?.impayes_detectes && (
-          <div style={{ padding: '12px 16px', background: '#fef2f2', borderRadius: 10, border: '0.5px solid #fecaca', fontSize: 13, color: '#991b1b', lineHeight: 1.6 }}>
+          <div style={{ padding: '12px 16px', background: '#fef2f2', borderRadius: 10, border: '0.5px solid #fecaca', fontSize: 14, color: '#991b1b', lineHeight: 1.6 }}>
             ⚠️ <strong>Impayés détectés sur ce lot :</strong> {safeStr(lot.impayes_detectes)}. Le vendeur doit apurer cette dette avant la signature de l'acte authentique.
           </div>
         )}
 
         {chargesLotNum === 0 && !taxeAnnuelle && !lot?.impayes_detectes && (
           <div style={{ padding: '20px', textAlign: 'center' }}>
-            <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Uploadez un appel de charges et/ou votre taxe foncière pour obtenir ces informations.</p>
+            <p style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Uploadez un appel de charges et/ou votre taxe foncière pour obtenir ces informations.</p>
           </div>
         )}
       </AccordionSection>
@@ -1969,7 +1975,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', gap: 12 }}>
                   <div>
                     <div style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Frais d'établissement du document</div>
-                    <div style={{ fontSize: 12, color: '#16a34a', marginTop: 3 }}>✓ À la charge du vendeur — rien à payer pour vous</div>
+                    <div style={{ fontSize: 13, color: '#16a34a', marginTop: 3 }}>✓ À la charge du vendeur — rien à payer pour vous</div>
                   </div>
                   <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-secondary)', flexShrink: 0 }}>{Number(ped.honoraires_syndic).toLocaleString('fr-FR')} €</span>
                 </div>
@@ -1985,7 +1991,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: ped.fonds_roulement_acheteur ? '0.5px solid #fde68a' : 'none', gap: 12 }}>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e' }}>Fonds travaux ALUR</div>
-                        <div style={{ fontSize: 12, color: '#a16207', marginTop: 3 }}>Part des fonds travaux constituée par le vendeur, attachée au lot</div>
+                        <div style={{ fontSize: 13, color: '#a16207', marginTop: 3 }}>Part des fonds travaux constituée par le vendeur, attachée au lot</div>
                       </div>
                       <span style={{ fontSize: 16, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>{Number(ped.fonds_travaux_alur).toLocaleString('fr-FR')} €</span>
                     </div>
@@ -1994,7 +2000,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', gap: 12 }}>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e' }}>Fonds de roulement</div>
-                        <div style={{ fontSize: 12, color: '#a16207', marginTop: 3 }}>{ped.fonds_roulement_modalite === 'remboursement_vendeur' ? 'Remboursement au vendeur' : 'Reconstitution au syndicat'}</div>
+                        <div style={{ fontSize: 13, color: '#a16207', marginTop: 3 }}>{ped.fonds_roulement_modalite === 'remboursement_vendeur' ? 'Remboursement au vendeur' : 'Reconstitution au syndicat'}</div>
                       </div>
                       <span style={{ fontSize: 16, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>{Number(ped.fonds_roulement_acheteur).toLocaleString('fr-FR')} €</span>
                     </div>
@@ -2008,7 +2014,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
               <>
                 <SectionTitle emoji="💸" text="Charges futures à prévoir" />
                 <div style={{ border: '0.5px solid #bfdbfe', borderRadius: 10, overflow: 'hidden' }}>
-                  <div style={{ padding: '10px 16px', background: '#eff6ff', borderBottom: '0.5px solid #bfdbfe', fontSize: 13, color: '#1e40af' }}>
+                  <div style={{ padding: '10px 16px', background: '#eff6ff', borderBottom: '0.5px solid #bfdbfe', fontSize: 14, color: '#1e40af' }}>
                     Ces montants seront à régler dès votre entrée dans la copropriété, chaque trimestre.
                   </div>
                   {ped.charges_futures.montant_trimestriel && (
@@ -2038,7 +2044,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
               <>
                 <SectionTitle emoji="⚖️" text="Travaux votés à la charge du vendeur" />
                 <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
-                  <div style={{ padding: '10px 16px', background: '#eff6ff', borderBottom: '0.5px solid #bfdbfe', fontSize: 13, color: '#1e40af' }}>
+                  <div style={{ padding: '10px 16px', background: '#eff6ff', borderBottom: '0.5px solid #bfdbfe', fontSize: 14, color: '#1e40af' }}>
                     Ces travaux ont été votés avant le compromis — ils restent à la charge du vendeur, sans impact pour vous.
                   </div>
                   {ped.travaux_charge_vendeur!.map((t, i) => (
@@ -2060,7 +2066,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: ped.dette_fournisseurs != null ? '0.5px solid var(--color-border-tertiary)' : 'none', gap: 12 }}>
                       <div>
                         <div style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Impayés globaux copropriété</div>
-                        <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 3 }}>Charges en attente de régularisation à la date d'édition</div>
+                        <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 3 }}>Charges en attente de régularisation à la date d'édition</div>
                       </div>
                       <span style={{ fontSize: 14, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>{Number(ped.impayes_copro_global).toLocaleString('fr-FR')} €</span>
                     </div>
@@ -2071,7 +2077,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
                       <span style={{ fontSize: 14, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>{Number(ped.dette_fournisseurs).toLocaleString('fr-FR')} €</span>
                     </div>
                   )}
-                  <div style={{ padding: '12px 16px', background: '#fff7ed', borderTop: '0.5px solid #fed7aa', fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>
+                  <div style={{ padding: '12px 16px', background: '#fff7ed', borderTop: '0.5px solid #fed7aa', fontSize: 14, color: '#92400e', lineHeight: 1.6 }}>
                     Les impayés globaux sont <strong>normaux dans toute copropriété</strong> — ils deviennent préoccupants uniquement s'ils dépassent significativement un trimestre de budget collectif.
                   </div>
                 </div>
@@ -2083,14 +2089,14 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
               <>
                 <SectionTitle emoji="📊" text="Historique des charges du lot" tooltip="Le budget appelé correspond à ce qui était prévu. Les charges réelles sont ce qui a été effectivement dépensé. Un écart positif (réel > prévu) indique des dépenses imprévues." />
                 <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
-                  <div style={{ padding: '10px 16px', background: 'var(--color-background-secondary)', borderBottom: '0.5px solid var(--color-border-tertiary)', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
+                  <div style={{ padding: '10px 16px', background: 'var(--color-background-secondary)', borderBottom: '0.5px solid var(--color-border-tertiary)', fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
                     <strong>Comment lire ce tableau ?</strong> Le budget appelé = ce qui était prévu par la copropriété. Les charges réelles = ce qui a effectivement été dépensé. Un écart positif signifie des dépenses imprévues (appels exceptionnels).
                   </div>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: 'var(--color-background-secondary)' }}>
                         {['Exercice', 'Budget appelé', 'Charges réelles', 'Écart'].map((h, i) => (
-                          <th key={i} style={{ padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right' as const, fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>{h}</th>
+                          <th key={i} style={{ padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right' as const, fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -2154,25 +2160,25 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
               <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
                 {compromis.prix_net_vendeur && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
-                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Prix net vendeur</span>
+                    <span style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Prix net vendeur</span>
                     <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{Number(compromis.prix_net_vendeur).toLocaleString('fr-FR')} €</span>
                   </div>
                 )}
                 {compromis.honoraires_agence && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '0.5px solid var(--color-border-tertiary)', background: 'var(--color-background-secondary)' }}>
-                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Honoraires agence {compromis.honoraires_charge ? `(charge ${compromis.honoraires_charge})` : ''}</span>
+                    <span style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Honoraires agence {compromis.honoraires_charge ? `(charge ${compromis.honoraires_charge})` : ''}</span>
                     <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{Number(compromis.honoraires_agence).toLocaleString('fr-FR')} €</span>
                   </div>
                 )}
                 {compromis.prix_total && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderBottom: compromis.depot_garantie ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
-                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Prix total acheteur</span>
+                    <span style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Prix total acheteur</span>
                     <span style={{ fontSize: 18, fontWeight: 500, color: '#1e40af' }}>{Number(compromis.prix_total).toLocaleString('fr-FR')} €</span>
                   </div>
                 )}
                 {compromis.depot_garantie && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--color-background-secondary)' }}>
-                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Dépôt de garantie <span style={{ fontSize: 11, fontStyle: 'italic' }}>(séquestre notaire)</span></span>
+                    <span style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Dépôt de garantie <span style={{ fontSize: 11, fontStyle: 'italic' }}>(séquestre notaire)</span></span>
                     <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{Number(compromis.depot_garantie).toLocaleString('fr-FR')} €</span>
                   </div>
                 )}
@@ -2187,19 +2193,19 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
               <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
                 {compromis.date_signature && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
-                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Signature compromis</span>
+                    <span style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Signature compromis</span>
                     <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{safeStr(compromis.date_signature)}</span>
                   </div>
                 )}
                 {compromis.date_acte && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderBottom: compromis.bien_libre_a ? '0.5px solid var(--color-border-tertiary)' : 'none', background: 'var(--color-background-secondary)' }}>
-                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Acte définitif prévu</span>
+                    <span style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Acte définitif prévu</span>
                     <span style={{ fontSize: 14, fontWeight: 500, color: '#1e40af' }}>{safeStr(compromis.date_acte)}</span>
                   </div>
                 )}
                 {compromis.bien_libre_a && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px' }}>
-                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Disponibilité du bien</span>
+                    <span style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Disponibilité du bien</span>
                     <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{safeStr(compromis.bien_libre_a)}</span>
                   </div>
                 )}
@@ -2234,8 +2240,8 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
                           )}
                         </div>
                       </div>
-                      {cs.detail && <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6, marginLeft: 28 }}>{safeStr(cs.detail)}</div>}
-                      {cs.date_limite && !purge && <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginLeft: 28, marginTop: 4 }}>Date limite : <strong>{safeStr(cs.date_limite)}</strong></div>}
+                      {cs.detail && <div style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.6, marginLeft: 28 }}>{safeStr(cs.detail)}</div>}
+                      {cs.date_limite && !purge && <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginLeft: 28, marginTop: 4 }}>Date limite : <strong>{safeStr(cs.date_limite)}</strong></div>}
                     </div>
                   );
                 })}
@@ -2249,7 +2255,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
               <SectionTitle emoji="📋" text="Clauses particulières importantes" />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {compromis!.clauses_particulieres!.map((c, i) => (
-                  <div key={i} style={{ fontSize: 13, color: 'var(--color-text-primary)', padding: '10px 14px', background: 'var(--color-background-secondary)', borderRadius: 9, lineHeight: 1.6 }}>• {safeStr(c)}</div>
+                  <div key={i} style={{ fontSize: 14, color: 'var(--color-text-primary)', padding: '10px 14px', background: 'var(--color-background-secondary)', borderRadius: 9, lineHeight: 1.6 }}>• {safeStr(c)}</div>
                 ))}
               </div>
             </>
@@ -2261,7 +2267,7 @@ function TabLogement({ rapport }: { rapport: RapportData }) {
         <div style={{ padding: '32px 20px', background: 'var(--color-background-primary)', borderRadius: 16, border: '0.5px solid var(--color-border-tertiary)', textAlign: 'center' }}>
           <Shield size={28} style={{ color: '#94a3b8', margin: '0 auto 12px' }} />
           <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: 6 }}>Aucun document privatif détecté</p>
-          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Uploadez le DDT, un appel de charges, la taxe foncière ou le compromis pour enrichir cet onglet.</p>
+          <p style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Uploadez le DDT, un appel de charges, la taxe foncière ou le compromis pour enrichir cet onglet.</p>
         </div>
       )}
     </div>
@@ -2311,7 +2317,7 @@ function TabProcedures({ rapport }: { rapport: RapportData }) {
             </div>
             <div style={{ padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: 12, background: 'var(--color-background-primary)' }}>
               {proc.message && <p style={{ fontSize: 14, color: 'var(--color-text-primary)', lineHeight: 1.8, margin: 0 }}>{safeStr(proc.message)}</p>}
-              <div style={{ padding: '12px 16px', background: '#fff7ed', borderRadius: 10, border: '0.5px solid #fed7aa', fontSize: 13, color: '#92400e', lineHeight: 1.6 }}>
+              <div style={{ padding: '12px 16px', background: '#fff7ed', borderRadius: 10, border: '0.5px solid #fed7aa', fontSize: 14, color: '#92400e', lineHeight: 1.6 }}>
                 ⚠️ Demandez des précisions au vendeur ou à votre notaire sur cette procédure avant de vous engager.
               </div>
             </div>
@@ -2397,7 +2403,7 @@ function TabDocuments({ rapport }: { rapport: RapportData }) {
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 12 }}>ESSENTIELS</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {docsEssentielManquants.map((doc, i) => (
-                    <div key={i} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 99, background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 13, color: '#1e40af', fontWeight: 500, cursor: doc.tooltip ? 'help' : 'default' }}
+                    <div key={i} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 99, background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 14, color: '#1e40af', fontWeight: 500, cursor: doc.tooltip ? 'help' : 'default' }}
                       onMouseEnter={() => doc.tooltip && setTooltipDoc(`e${i}`)}
                       onMouseLeave={() => setTooltipDoc(null)}>
                       {doc.label}
@@ -2693,7 +2699,7 @@ export default function RapportPage() {
                 {(ap.points_vigilance as string[]).map((p, i) => (
                   <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 8 }}>
                     <AlertTriangle size={13} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
-                    <span style={{ fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>{p}</span>
+                    <span style={{ fontSize: 14, color: '#92400e', lineHeight: 1.5 }}>{p}</span>
                   </div>
                 ))}
               </div>
