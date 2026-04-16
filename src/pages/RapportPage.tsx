@@ -499,38 +499,39 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
 
         {/* Hero content */}
         {isComplete && (
-          <div className="rapport-hero" style={{ padding: '20px 20px 22px', display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'nowrap' }}>
-            {/* Score cercle */}
-            <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7 }}>
-              <div className="rapport-score-circle" style={{ position: 'relative', width: 82, height: 82 }}>
-                <svg width="82" height="82" style={{ transform: 'rotate(-90deg)' }}>
-                  <circle cx="41" cy="41" r="34" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="6" />
-                  <circle cx="41" cy="41" r="34" fill="none" stroke={scoreColor} strokeWidth="6"
-                    strokeDasharray={`${(rapport.score / 20) * 2 * Math.PI * 34} ${2 * Math.PI * 34}`} strokeLinecap="round" />
+          <div className="rapport-hero" style={{ padding: '18px 18px 20px' }}>
+            {/* Ligne score + label */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
+              {/* Cercle score — taille fixe, coordonnées cohérentes */}
+              <div className="rapport-score-circle" style={{ position: 'relative', width: 76, height: 76, flexShrink: 0 }}>
+                <svg width="76" height="76" viewBox="0 0 76 76" style={{ transform: 'rotate(-90deg)' }}>
+                  <circle cx="38" cy="38" r="30" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="6" />
+                  <circle cx="38" cy="38" r="30" fill="none" stroke={scoreColor} strokeWidth="6"
+                    strokeDasharray={`${(rapport.score / 20) * 2 * Math.PI * 30} ${2 * Math.PI * 30}`}
+                    strokeLinecap="round" />
                 </svg>
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: 22, fontWeight: 900, color: '#fff', lineHeight: 1 }}>{rapport.score.toFixed(1)}</span>
-                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>/20</span>
+                  <span style={{ fontSize: 20, fontWeight: 900, color: '#fff', lineHeight: 1 }}>{rapport.score.toFixed(1)}</span>
+                  <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', marginTop: 1 }}>/20</span>
                 </div>
               </div>
-              <span className="score-label-badge" style={{ fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 100, background: `${scoreColor}30`, border: `1px solid ${scoreColor}60`, color: '#fff', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                {getScoreLabel(rapport.score)}
-              </span>
+              {/* Adresse + label niveau */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.1em', marginBottom: 4, textTransform: 'uppercase' as const }}>
+                  {rapport.type_bien === 'maison' ? 'Maison' : 'Appart. copro'} · {rapport.profil === 'invest' ? 'Investissement' : 'Rés. principale'}
+                </div>
+                <div style={{ fontSize: 'clamp(13px,3.8vw,18px)', fontWeight: 800, color: '#fff', lineHeight: 1.2, wordBreak: 'break-word' as const, marginBottom: 6 }}>{rapport.adresse}</div>
+                <span className="score-label-badge" style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 100, background: `${scoreColor}35`, border: `1px solid ${scoreColor}70`, color: '#fff' }}>
+                  {getScoreLabel(rapport.score)}
+                </span>
+              </div>
             </div>
-
-            {/* Adresse + infos */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="hero-type-label" style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.1em', marginBottom: 5, textTransform: 'uppercase' as const }}>
-                {rapport.type_bien === 'maison' ? 'Maison individuelle' : 'Appartement en copro'} · {rapport.profil === 'invest' ? 'Investissement' : 'Résidence principale'}
-              </div>
-              <h1 style={{ fontSize: 'clamp(14px,3.5vw,19px)', fontWeight: 800, color: '#fff', lineHeight: 1.25, marginBottom: 4, wordBreak: 'break-word' }}>{rapport.adresse}</h1>
-              {rapport.adresseSub && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginBottom: 8 }}>{rapport.adresseSub}</div>}
-              <div className="hero-tags" style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
-                <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 100, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.18)', color: 'rgba(255,255,255,0.85)' }}>{getTypeBienLabel(rapport.type_bien)}</span>
-                <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 100, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.18)', color: 'rgba(255,255,255,0.85)' }}>{getProfilLabel(rapport.profil)}</span>
-                {rapport.annee_construction && <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 100, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.18)', color: 'rgba(255,255,255,0.85)' }}>Construit en {rapport.annee_construction}</span>}
-                <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 100, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.6)' }}>Analysé le {rapport.date}</span>
-              </div>
+            {/* Tags */}
+            <div className="hero-tags" style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 100, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)' }}>{getTypeBienLabel(rapport.type_bien)}</span>
+              <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 100, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)' }}>{getProfilLabel(rapport.profil)}</span>
+              {rapport.annee_construction && <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 100, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)' }}>Construit en {rapport.annee_construction}</span>}
+              <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 100, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.55)' }}>Analysé le {rapport.date}</span>
             </div>
           </div>
         )}
@@ -748,12 +749,12 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
 
       {/* 4. PISTES DE NÉGOCIATION */}
       {rapport.negociation?.applicable && rapport.negociation.elements.length > 0 && rapport.score < 14 && (
-        <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 14, padding: '18px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <TrendingDown size={16} style={{ color: '#d97706' }} />
-            <span style={{ fontSize: 15, fontWeight: 700, color: '#92400e' }}>Pistes de négociation</span>
+        <div className="nego-block" style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 14, padding: '16px 18px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <TrendingDown size={15} style={{ color: '#d97706' }} />
+            <span className="nego-title" style={{ fontSize: 14, fontWeight: 700, color: '#92400e' }}>Pistes de négociation</span>
           </div>
-          <p style={{ fontSize: 14, color: '#92400e', margin: '0 0 14px 0', lineHeight: 1.6, opacity: 0.85 }}>
+          <p className="nego-intro" style={{ fontSize: 13, color: '#92400e', margin: '0 0 12px 0', lineHeight: 1.55, opacity: 0.85 }}>
             Voici les arguments concrets sur lesquels vous appuyer pour défendre votre négociation auprès du vendeur.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -765,8 +766,8 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
               if (!texte) return null;
               const levier = typeof el !== 'string' ? safeStr(el?.levier) : '';
               return (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 16px', background: '#fff', borderRadius: 10, border: '1px solid #fde68a' }}>
-                  <div style={{ width: 22, height: 22, flexShrink: 0, marginTop: 2 }}>
+                <div key={i} className="nego-item" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', background: '#fff', borderRadius: 10, border: '1px solid #fde68a' }}>
+                  <div style={{ width: 18, height: 18, flexShrink: 0, marginTop: 2 }}>
                     <svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M11 2.5L2 19.5h18L11 2.5z" stroke="#d97706" strokeWidth="1.5" strokeLinejoin="round"/>
                       <path d="M11 9.5v4.5" stroke="#d97706" strokeWidth="1.5" strokeLinecap="round"/>
@@ -774,7 +775,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
                     </svg>
                   </div>
                   <div>
-                    <span style={{ fontSize: 14, color: '#92400e', lineHeight: 1.65 }}>{texte}</span>
+                    <span className="nego-text" style={{ fontSize: 13, color: '#92400e', lineHeight: 1.55 }}>{texte}</span>
                     {levier && levier !== texte && (
                       <span style={{ display: 'inline-block', marginTop: 6, fontSize: 12, fontWeight: 600, color: '#d97706', background: '#fef3c7', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 100 }}>
                         Levier : {levier}
@@ -789,15 +790,15 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
       )}
 
       {/* 5. AVIS VERIMO */}
-      <div style={{ background: '#0f2d3d', borderRadius: 16, overflow: 'hidden' }}>
-        <div style={{ padding: '24px 28px 20px', borderBottom: '0.5px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 22, flexShrink: 0 }}>⭐</span>
+      <div className="avis-verimo-block" style={{ background: '#0f2d3d', borderRadius: 16, overflow: 'hidden' }}>
+        <div className="avis-header" style={{ padding: '16px 20px 14px', borderBottom: '0.5px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 18, flexShrink: 0 }}>⭐</span>
           <div style={{ position: 'relative', display: 'inline-block' }}>
-            <span style={{ fontSize: 22, fontWeight: 500, color: '#fff', position: 'relative', zIndex: 1 }}>Avis Verimo</span>
-            <div style={{ position: 'absolute', bottom: 1, left: 0, right: 0, height: 8, background: 'rgba(91,184,212,0.45)', zIndex: 0, borderRadius: 2 }} />
+            <span className="avis-title" style={{ fontSize: 16, fontWeight: 600, color: '#fff', position: 'relative', zIndex: 1 }}>Avis Verimo</span>
+            <div style={{ position: 'absolute', bottom: 1, left: 0, right: 0, height: 6, background: 'rgba(91,184,212,0.45)', zIndex: 0, borderRadius: 2 }} />
           </div>
         </div>
-        <div style={{ padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 0 }}>
+        <div className="avis-body" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 0 }}>
           {(rapport.avis_verimo || '')
             .split(/\.\s+/)
             .filter(s => s.trim().length > 20)
@@ -808,7 +809,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
               return acc;
             }, [])
             .map((group, i) => (
-              <p key={i} style={{ fontSize: 15, color: i === 0 ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.75)', lineHeight: 1.85, margin: 0, marginTop: i > 0 ? 16 : 0, paddingTop: i > 0 ? 16 : 0, borderTop: i > 0 ? '0.5px solid rgba(255,255,255,0.1)' : 'none' }}>
+              <p key={i} className="avis-para" style={{ fontSize: 14, color: i === 0 ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.75)', lineHeight: 1.75, margin: 0, marginTop: i > 0 ? 12 : 0, paddingTop: i > 0 ? 12 : 0, borderTop: i > 0 ? '0.5px solid rgba(255,255,255,0.1)' : 'none' }}>
                 {group.join('. ').replace(/\.+$/, '')}.
               </p>
             ))}
@@ -859,27 +860,54 @@ function Tooltip({ text, children }: { text: string; children: React.ReactNode }
 }
 
 function KpiBand({ items }: { items: { label: string; value: string; sub?: string; color?: string; bg?: string; border?: string; tooltip?: string; emoji?: string }[] }) {
-  // Palette bleu Verimo dégradée — plus clair à gauche, plus foncé à droite
   const bleus = ['#2a7d9c', '#236b87', '#1e5f77', '#185166', '#133d50'];
   return (
-    <div className="kpi-band-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(items.length, 5)}, minmax(0,1fr))`, gap: 10, marginBottom: 20 }}>
-      {items.map((item, i) => {
-        const bg = bleus[Math.min(i, bleus.length - 1)];
-        return (
-          <div key={i} style={{ background: bg, borderRadius: 14, padding: '20px 22px' }}>
-            {item.emoji && <div style={{ fontSize: 26, marginBottom: 10 }}>{item.emoji}</div>}
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', marginBottom: 6, lineHeight: 1.3 }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <span>{item.label}</span>
-                {item.tooltip && <TooltipBtn text={item.tooltip} white={true} />}
-              </span>
+    <>
+      {/* Desktop — grille de blocs (inchangé) */}
+      <div className="kpi-band-grid kpi-desktop" style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(items.length, 5)}, minmax(0,1fr))`, gap: 10, marginBottom: 20 }}>
+        {items.map((item, i) => {
+          const bg = bleus[Math.min(i, bleus.length - 1)];
+          return (
+            <div key={i} style={{ background: bg, borderRadius: 14, padding: '18px 20px' }}>
+              {item.emoji && <div style={{ fontSize: 24, marginBottom: 8 }}>{item.emoji}</div>}
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', marginBottom: 5, lineHeight: 1.3 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <span>{item.label}</span>
+                  {item.tooltip && <TooltipBtn text={item.tooltip} white={true} />}
+                </span>
+              </div>
+              <div className="kpi-value" style={{ fontSize: 20, fontWeight: 600, color: '#fff', lineHeight: 1.1 }}>{item.value}</div>
+              {item.sub && <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', marginTop: 3 }}>{item.sub}</div>}
             </div>
-            <div className="kpi-value" style={{ fontSize: 22, fontWeight: 500, color: '#fff', lineHeight: 1.1 }}>{item.value}</div>
-            {item.sub && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>{item.sub}</div>}
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+      {/* Mobile — liste compacte */}
+      <div className="kpi-mobile" style={{ display: 'none', flexDirection: 'column', gap: 0, marginBottom: 14, background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, overflow: 'hidden' }}>
+        {items.map((item, i) => {
+          const bg = bleus[Math.min(i, bleus.length - 1)];
+          return (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: i < items.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>
+                {item.emoji ?? '•'}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    {item.label}
+                    {item.tooltip && <TooltipBtn text={item.tooltip} white={false} />}
+                  </span>
+                </div>
+                {item.sub && <div style={{ fontSize: 10, color: '#94a3b8' }}>{item.sub}</div>}
+              </div>
+              <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{item.value}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
 
@@ -1607,9 +1635,9 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
                 <SectionTitle emoji="🏠" text="Identité du lot" tooltip="Données issues du règlement de copropriété, du pré-état daté ou de l'état daté." />
                 <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
                   {(lot?.parties_privatives as unknown[] ?? []).length > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: lot?.quote_part_tantiemes ? '0.5px solid var(--color-border-tertiary)' : 'none', gap: 16 }}>
-                      <span style={{ fontSize: 14, color: 'var(--color-text-secondary)', flexShrink: 0 }}>Lots concernés</span>
-                      <div style={{ textAlign: 'right' }}>
+                    <div className="lot-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: lot?.quote_part_tantiemes ? '0.5px solid var(--color-border-tertiary)' : 'none', gap: 16 }}>
+                      <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', flexShrink: 0 }}>Lots concernés</span>
+                      <div className="lot-row-value" style={{ textAlign: 'right' }}>
                         {((lot as typeof lot | null)?.parties_privatives as unknown[] ?? []).map((p, i) => {
                           let label = safeStr(p);
                           if (label && label.startsWith('{')) { try { const obj = JSON.parse(label); label = obj.numero && obj.description ? `Lot ${obj.numero} — ${obj.description}` : obj.description ?? obj.label ?? label; } catch { /* keep */ } }
@@ -2852,7 +2880,7 @@ export default function RapportPage() {
           </div>
         )}
 
-        {/* Onglets */}
+        {/* Onglets desktop (cachés sur mobile) */}
         {isComplete && (
           <div className="rapport-tabs" style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, padding: '5px', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
             {tabs.map(tab => {
@@ -2875,6 +2903,28 @@ export default function RapportPage() {
         {activeTab === 'logement' && isComplete && <SafeTabBoundary><TabLogement rapport={rapport} onSwitchTab={setActiveTab} /></SafeTabBoundary>}
         {activeTab === 'procedures' && isComplete && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
         {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} /></SafeTabBoundary>}
+
+        {/* ══ BOTTOM TAB BAR — mobile uniquement ══ */}
+        {isComplete && (
+          <div className="bottom-tab-bar" style={{ display: 'none', position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200, background: '#fff', borderTop: '1px solid #edf2f7', padding: '0', boxShadow: '0 -4px 20px rgba(0,0,0,0.08)' }}>
+            <div style={{ display: 'flex', alignItems: 'stretch' }}>
+              {tabs.map(tab => {
+                const active = activeTab === tab.id;
+                return (
+                  <button key={tab.id} onClick={() => { setActiveTab(tab.id); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, padding: '8px 4px 10px', border: 'none', background: 'transparent', cursor: 'pointer', position: 'relative' as const }}>
+                    {active && <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 2, background: tab.dotColor, borderRadius: '0 0 2px 2px' }} />}
+                    <div style={{ color: active ? tab.dotColor : '#94a3b8', transition: 'color 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {tab.icon}
+                    </div>
+                    <span style={{ fontSize: 9, fontWeight: active ? 700 : 400, color: active ? '#0f172a' : '#94a3b8', whiteSpace: 'nowrap' as const, lineHeight: 1 }}>{tab.label}</span>
+                    <div style={{ width: 4, height: 4, borderRadius: '50%', background: tab.dotColor, opacity: active ? 1 : 0.4 }} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Bannière 7 jours */}
         {isComplete && !rapport.is_preview && rapport.regeneration_deadline && (() => {
@@ -2920,20 +2970,19 @@ export default function RapportPage() {
         @media (max-width: 640px) {
           html, body { overflow-x: hidden; }
 
-          /* ── Layout général ── */
+          /* ── Layout général — padding bottom pour bottom bar ── */
           .rapport-wrapper { padding: 0 !important; }
-          .rapport-inner { padding: 6px 4px !important; gap: 6px !important; max-width: 100vw !important; }
+          .rapport-inner { padding: 6px 4px 80px 4px !important; gap: 6px !important; max-width: 100vw !important; }
           .rapport-main { padding: 6px 4px !important; gap: 8px !important; }
 
           /* ── Header ── */
           .rapport-header { border-radius: 0 !important; margin: 0 !important; }
-          .rapport-hero { padding: 14px 14px 16px !important; gap: 12px !important; }
-          .rapport-score-circle { width: 72px !important; height: 72px !important; }
-          .score-label-badge { font-size: 9px !important; padding: 2px 7px !important; max-width: 80px; white-space: normal !important; text-align: center; }
-          .hero-type-label { font-size: 8px !important; }
+          .rapport-hero { padding: 14px 14px 16px !important; }
+          .rapport-score-circle { width: 70px !important; height: 70px !important; }
+          .score-label-badge { font-size: 9px !important; padding: 2px 8px !important; }
           .hero-tags span { font-size: 8px !important; padding: 2px 6px !important; }
 
-          /* ── Topnav ── */
+          /* ── Topnav — icônes seules ── */
           .topnav-back-label { display: none !important; }
           .topnav-share-label { display: none !important; }
           .topnav-dl-label { display: none !important; }
@@ -2941,19 +2990,15 @@ export default function RapportPage() {
           .topnav-share-btn { padding: 8px 10px !important; }
           .topnav-dl-btn { padding: 8px 10px !important; }
 
-          /* ── Onglets ── */
-          .rapport-tabs-wrap { border-radius: 0 !important; margin: 0 !important; padding: 0 !important; }
-          .rapport-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; flex-wrap: nowrap !important; gap: 0 !important; border-radius: 0 !important; padding: 0 2px !important; }
-          .rapport-tabs::-webkit-scrollbar { display: none; }
-          .rapport-tab-btn { font-size: 10px !important; padding: 9px 8px !important; white-space: nowrap !important; flex-shrink: 0 !important; min-width: unset !important; flex: unset !important; gap: 3px !important; }
+          /* ── Onglets desktop — cachés sur mobile ── */
+          .rapport-tabs { display: none !important; }
 
-          /* ── KPI bands ── */
-          .kpi-band-grid { grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap: 6px !important; margin-bottom: 10px !important; }
-          .kpi-band-grid > div { padding: 10px 10px !important; border-radius: 10px !important; }
-          .kpi-band-grid > div > div:first-child { font-size: 18px !important; margin-bottom: 6px !important; }
-          .kpi-band-grid > div > div:nth-child(2) { font-size: 9px !important; margin-bottom: 3px !important; }
-          .kpi-value { font-size: 15px !important; }
-          .kpi-band-grid > div > div:last-child { font-size: 9px !important; }
+          /* ── Bottom tab bar — visible sur mobile ── */
+          .bottom-tab-bar { display: block !important; }
+
+          /* ── KPI desktop → cacher, mobile → montrer ── */
+          .kpi-desktop { display: none !important; }
+          .kpi-mobile { display: flex !important; }
 
           /* ── Accordéon ── */
           .rapport-accordion-header { padding: 10px 12px !important; }
@@ -2986,12 +3031,28 @@ export default function RapportPage() {
           .points-card { padding: 14px 14px !important; }
           .points-text { font-size: 13px !important; line-height: 1.55 !important; }
 
+          /* ── Pistes négo + Avis Verimo ── */
+          .nego-block { padding: 14px 14px !important; }
+          .nego-title { font-size: 13px !important; }
+          .nego-intro { font-size: 12px !important; }
+          .nego-item { padding: 8px 10px !important; }
+          .nego-text { font-size: 12px !important; }
+          .avis-header { padding: 12px 14px 10px !important; }
+          .avis-title { font-size: 14px !important; }
+          .avis-body { padding: 12px 14px !important; }
+          .avis-para { font-size: 13px !important; line-height: 1.65 !important; }
+
+          /* ── Votre lot — colonne sur mobile ── */
+          .lot-row { flex-direction: column !important; gap: 4px !important; }
+          .lot-row-value { text-align: left !important; }
+          .lot-row-value div { font-size: 13px !important; text-align: left !important; }
+
           /* ── Grids généraux ── */
           .grid-2col { grid-template-columns: 1fr !important; }
           .grid-3col { grid-template-columns: 1fr !important; }
 
-          /* ── Textes ── */
-          .rapport-main p { font-size: 14px !important; line-height: 1.65 !important; }
+          /* ── Texte résumé ── */
+          .rapport-main p { font-size: 13px !important; line-height: 1.65 !important; }
 
           /* ── Tooltip ── */
           .tooltip-bubble { max-width: calc(100vw - 24px) !important; left: 12px !important; right: 12px !important; width: auto !important; }
@@ -3001,19 +3062,19 @@ export default function RapportPage() {
            TRÈS PETIT (≤ 390px — iPhone SE)
         ══════════════════════════════════ */
         @media (max-width: 390px) {
-          .kpi-band-grid { gap: 4px !important; }
-          .kpi-band-grid > div { padding: 8px 8px !important; }
-          .kpi-value { font-size: 13px !important; }
-          .rapport-tab-btn { font-size: 9px !important; padding: 8px 7px !important; }
-          .rapport-hero { padding: 12px 12px 14px !important; gap: 10px !important; }
-          .rapport-score-circle { width: 64px !important; height: 64px !important; }
+          .rapport-score-circle { width: 62px !important; height: 62px !important; }
+          .rapport-hero { padding: 12px 12px 14px !important; }
         }
+
         @media print {
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           body { background: white !important; font-size: 11px !important; }
           .no-print, header, .topbar-print-hide { display: none !important; }
           .print-show-all > div { display: flex !important; }
           .rapport-tabs { display: none !important; }
+          .bottom-tab-bar { display: none !important; }
+          .kpi-desktop { display: grid !important; }
+          .kpi-mobile { display: none !important; }
           .print-section { break-inside: avoid; margin-bottom: 16px; }
           @page { margin: 1.5cm; size: A4; }
         }
