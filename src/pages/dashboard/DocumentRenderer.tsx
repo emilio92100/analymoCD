@@ -612,7 +612,34 @@ function RendererPVAG({ r }: { r: any }) {
   return (
     <div>
       <Header type={typeAGLabel} titre={r.titre} sub={[formatDate(r.date_ag), r.lieu_ag].filter(Boolean).join(' · ')} />
-      <Resume text={r.resume} />
+      {r.resume && <Resume text={r.resume} />}
+      {/* KPI Syndic mobile — après résumé */}
+      {r.syndic && (
+        <div className="dr-syndic-mobile" style={{ display: 'none', background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
+          <div style={{ padding: '10px 14px', background: '#f0f7fb', borderBottom: '1px solid #edf2f7', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 14 }}>🏢</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.05em' }}>SYNDIC</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: '0.5px solid #edf2f7' }}>
+              <span style={{ fontSize: 13, color: '#64748b', flex: 1 }}>Nom</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{r.syndic}</span>
+            </div>
+            {r.syndic_gestionnaire && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: '0.5px solid #edf2f7' }}>
+                <span style={{ fontSize: 13, color: '#64748b', flex: 1 }}>Gestionnaire</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{r.syndic_gestionnaire}</span>
+              </div>
+            )}
+            {r.syndic_reconduit != null && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px' }}>
+                <span style={{ fontSize: 13, color: '#64748b', flex: 1 }}>Reconduction</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: r.syndic_reconduit ? '#16a34a' : '#dc2626' }}>{r.syndic_reconduit ? '✓ Reconduit' : '✗ Non reconduit'}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 3 encarts */}
       <div className="dr-kpi-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
@@ -681,12 +708,12 @@ function RendererPVAG({ r }: { r: any }) {
         <PBlock label="Travaux votés" borderColor="#B5D4F4" headerBg="#E6F1FB" dotColor="#185FA5" labelColor="#0C447C"
           note="ℹ Votés avant compromis = à la charge du vendeur. À vérifier avec votre notaire.">
           {r.travaux_votes.map((t: any, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: i < r.travaux_votes.length - 1 ? `0.5px solid ${C.border}` : 'none', background: C.bg }}>
-              <div>
-                <div style={{ fontSize: 14, color: C.text }}>{t.label}</div>
-                {t.echeance && <div style={{ fontSize: 14, color: C.textSec, marginTop: 4 }}>{t.echeance}</div>}
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '12px 16px', borderBottom: i < r.travaux_votes.length - 1 ? `0.5px solid ${C.border}` : 'none', background: C.bg, gap: 12 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5 }}>{t.label}</div>
+                {t.echeance && <div style={{ fontSize: 12, color: C.textSec, marginTop: 3 }}>{t.echeance}</div>}
               </div>
-              {t.montant && <div className="dr-montant-inline" style={{ fontSize: 15, fontWeight: 600, color: '#185FA5', whiteSpace: 'normal' as const }}>{Number(t.montant).toLocaleString('fr-FR')} €</div>}
+              {t.montant && <div style={{ fontSize: 14, fontWeight: 700, color: '#185FA5', flexShrink: 0, whiteSpace: 'nowrap' as const }}>{Number(t.montant).toLocaleString('fr-FR')} €</div>}
             </div>
           ))}
         </PBlock>
@@ -722,11 +749,16 @@ function RendererPVAG({ r }: { r: any }) {
       {/* Questions diverses — gris */}
       {r.questions_diverses?.length > 0 && (
         <PBlock label="Questions diverses notables" borderColor="#D3D1C7" headerBg="#F1EFE8" dotColor="#5F5E5A" labelColor="#444441">
-          {r.questions_diverses.map((q: any, i: number) => (
-            <div key={i} style={{ padding: '12px 20px', borderBottom: i < r.questions_diverses.length - 1 ? `0.5px solid ${C.border}` : 'none', fontSize: 14, color: C.text, background: C.bg }}>
-              {typeof q === 'string' ? q : q.label || q.detail || JSON.stringify(q)}
-            </div>
-          ))}
+          <div style={{ display: 'flex', flexDirection: 'column' as const }}>
+            {r.questions_diverses.map((q: any, i: number) => (
+              <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '11px 16px', borderBottom: i < r.questions_diverses.length - 1 ? `0.5px solid ${C.border}` : 'none', background: C.bg }}>
+                <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#2a7d9c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0, marginTop: 1 }}>{i + 1}</div>
+                <div style={{ flex: 1, fontSize: 13, color: C.text, lineHeight: 1.55 }}>
+                  {typeof q === 'string' ? q : q.label || q.detail || JSON.stringify(q)}
+                </div>
+              </div>
+            ))}
+          </div>
         </PBlock>
       )}
 
@@ -1832,14 +1864,18 @@ function RendererDiagCommunes({ r }: { r: any }) {
   return (
     <div>
       {/* ── HEADER ── */}
-      <div style={{ background: C.dark, borderRadius: 14, padding: '22px 28px', marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', marginBottom: 8, textTransform: 'uppercase' as const }}>{typeLabel}</div>
-        <div style={{ fontSize: 19, fontWeight: 600, color: '#fff', marginBottom: 6, lineHeight: 1.3 }}>{r.titre}</div>
-        {r.commanditaire && <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 4 }}>{r.commanditaire}</div>}
-        {r.adresse_bien && <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 4 }}>📍 {r.adresse_bien}</div>}
-        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6, marginTop: 10 }}>
+      <div className="dr-header" style={{ background: C.dark, borderRadius: 14, padding: '18px 20px', marginBottom: 14 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.12em', marginBottom: 7, textTransform: 'uppercase' as const }}>{typeLabel}</div>
+        <div className="dr-header-titre" style={{ fontSize: 17, fontWeight: 700, color: '#fff', marginBottom: 6, lineHeight: 1.3, wordBreak: 'break-word' as const }}>{r.titre}</div>
+        {/* Commanditaire + adresse masqués sur mobile — mis dans KPI en dessous */}
+        <div className="dr-diag-meta" style={{ display: 'flex', flexDirection: 'column' as const, gap: 3, marginBottom: 10 }}>
+          {r.commanditaire && <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>{r.commanditaire}</div>}
+          {r.adresse_bien && <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>📍 {r.adresse_bien}</div>}
+        </div>
+        {/* Badge amiante détecté — plus visible */}
+        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
           {headerBadges.map((b, i) => (
-            <span key={i} style={{ fontSize: 11, fontWeight: 600, padding: '4px 12px', borderRadius: 100, background: 'rgba(255,255,255,0.1)', border: '0.5px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.85)' }}>{b.label}</span>
+            <span key={i} style={{ fontSize: 12, fontWeight: 700, padding: '5px 14px', borderRadius: 8, background: i === 0 && !nonDetecte ? '#dc2626' : 'rgba(255,255,255,0.12)', border: `1px solid ${i === 0 && !nonDetecte ? '#ef4444' : 'rgba(255,255,255,0.2)'}`, color: '#fff' }}>{b.label}</span>
           ))}
         </div>
       </div>
@@ -1981,14 +2017,16 @@ function RendererDiagCommunes({ r }: { r: any }) {
             const zonesActives = groupe.zones?.filter((z: any) => z.action !== 'non_detecte') || [];
             const zonesNonDetecte = groupe.zones?.filter((z: any) => z.action === 'non_detecte') || [];
             const showND = showNonDetecte[key];
-            const zc = [
-              {bg:'#eff6ff',border:'#bfdbfe',header:'#dbeafe',dot:'#3b82f6',text:'#1e40af'},
-              {bg:'#f0fdf4',border:'#bbf7d0',header:'#dcfce7',dot:'#16a34a',text:'#15803d'},
-              {bg:'#fff7ed',border:'#fed7aa',header:'#ffedd5',dot:'#f97316',text:'#9a3412'},
-              {bg:'#fdf4ff',border:'#e9d5ff',header:'#f3e8ff',dot:'#9333ea',text:'#6b21a8'},
-              {bg:'#f0f9ff',border:'#bae6fd',header:'#e0f2fe',dot:'#0284c7',text:'#0c4a6e'},
-              {bg:'#fefce8',border:'#fde68a',header:'#fef9c3',dot:'#ca8a04',text:'#713f12'},
-            ][gi % 6];
+            // Couleur unique par zone — nuances de bleu Verimo différenciées
+            const ZONE_PALETTE = [
+              {bg:'#e8f4f8', border:'#b8d9e8', header:'#d4ecf5', dot:'#2a7d9c', text:'#1a5a73'},
+              {bg:'#dff0f7', border:'#a8d4e5', header:'#cce8f3', dot:'#236b87', text:'#165068'},
+              {bg:'#d5ecf5', border:'#98cede', header:'#c2e4f1', dot:'#1e5f77', text:'#12455c'},
+              {bg:'#cbe7f2', border:'#88c8d7', header:'#b8dfee', dot:'#185166', text:'#0e3d50'},
+              {bg:'#c1e2ef', border:'#78c2d0', header:'#aedaeb', dot:'#133d50', text:'#0a3040'},
+              {bg:'#b7ddec', border:'#68bcc9', header:'#a4d5e8', dot:'#0f3d4e', text:'#082b38'},
+            ];
+            const zc = ZONE_PALETTE[gi % ZONE_PALETTE.length];
             return (
               <div key={gi} style={{ borderBottom: gi < r.zones_par_localisation.length - 1 ? `0.5px solid ${C.border}` : 'none' }}>
                 <div onClick={() => toggleSection(key)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', background: zc.header }}>
@@ -2365,6 +2403,10 @@ export default function DocumentRenderer({ result }: { result: any }) {
           .dr-zone-header { display: none !important; }
           .dr-zone-row-desktop { display: none !important; }
           .dr-zone-row-mobile { display: flex !important; }
+          /* ── Syndic mobile PV AG ── */
+          .dr-syndic-mobile { display: block !important; }
+          /* ── Commanditaire/adresse diag masqués sur mobile ── */
+          .dr-diag-meta { display: none !important; }
 
         @media (max-width: 390px) {
           .dr-header-titre { font-size: 14px !important; }
