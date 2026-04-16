@@ -565,14 +565,14 @@ export default function MethodePage() {
                               <div style={{ background: '#fff', borderRadius: 11, border: '1px solid #fecaca', padding: '14px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
                                   <TrendingDown size={12} color="#dc2626" />
-                                  <span style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Pénalités</span>
+                                  <span style={{ fontSize: 12, fontWeight: 700, color: '#dc2626', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Pénalités</span>
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                                   {cat.bad.map((item, i) => (
                                     <div key={i}>
                                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                                         <span style={{ fontSize: 16, color: '#374151', lineHeight: 1.5 }}>{item.l}</span>
-                                        <span style={{ fontSize: 11, fontWeight: 800, color: '#dc2626', background: '#fee2e2', padding: '2px 7px', borderRadius: 5, flexShrink: 0 }}>{item.v}</span>
+                                        <span style={{ fontSize: 13, fontWeight: 800, color: '#dc2626', background: '#fee2e2', padding: '2px 7px', borderRadius: 5, flexShrink: 0 }}>{item.v}</span>
                                       </div>
                                       {(item as any).tip && <div style={{ fontSize: 15, color: '#94a3b8', marginTop: 4, lineHeight: 1.6 }}>{(item as any).tip}</div>}
                                     </div>
@@ -583,14 +583,14 @@ export default function MethodePage() {
                                 <div style={{ background: '#fff', borderRadius: 11, border: '1px solid #d1fae5', padding: '14px' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
                                     <TrendingUp size={12} color="#16a34a" />
-                                    <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Bonus</span>
+                                    <span style={{ fontSize: 12, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Bonus</span>
                                   </div>
                                   <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                                     {cat.good.map((item, i) => (
                                       <div key={i}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                                           <span style={{ fontSize: 16, color: '#374151', lineHeight: 1.5 }}>{item.l}</span>
-                                          <span style={{ fontSize: 11, fontWeight: 800, color: '#16a34a', background: '#dcfce7', padding: '2px 7px', borderRadius: 5, flexShrink: 0 }}>{item.v}</span>
+                                          <span style={{ fontSize: 13, fontWeight: 800, color: '#16a34a', background: '#dcfce7', padding: '2px 7px', borderRadius: 5, flexShrink: 0 }}>{item.v}</span>
                                         </div>
                                         {(item as any).tip && <div style={{ fontSize: 15, color: '#94a3b8', marginTop: 4, lineHeight: 1.6 }}>{(item as any).tip}</div>}
                                       </div>
@@ -601,7 +601,7 @@ export default function MethodePage() {
                                   <div style={{ background: '#fff', borderRadius: 11, border: '1px solid #e2e8f0', padding: '14px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 10 }}>
                                       <Info size={12} color="#64748b" />
-                                      <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Informatif</span>
+                                      <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' as const, letterSpacing: '0.07em' }}>Informatif</span>
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
                                       {(cat as any).info.map((item: any, i: number) => (
@@ -635,8 +635,8 @@ export default function MethodePage() {
               <div style={{ background: '#f8fafc', borderBottom: '1px solid #edf2f7', padding: '13px 20px', display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 16 }}>🏠</span>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>12 rue des Lilas — Appartement 4B, Lyon 6e</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8' }}>PV d'AG 2024 + DPE + Règlement copropriété analysés</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>12 rue des Lilas — Appartement 4B, Lyon 6e</div>
+                  <div style={{ fontSize: 13, color: '#94a3b8' }}>PV d'AG 2024 + DPE + Règlement copropriété analysés</div>
                 </div>
               </div>
               <div>
@@ -650,10 +650,10 @@ export default function MethodePage() {
                   <Reveal key={i} delay={i * 0.05}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '13px 20px', borderBottom: i < 4 ? '1px solid #f8fafc' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 13, fontWeight: row.sub ? 500 : 700, color: '#0f172a' }}>{row.label}</div>
-                        {row.sub && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>{row.note}</div>}
+                        <div style={{ fontSize: 16, fontWeight: row.sub ? 600 : 700, color: '#0f172a' }}>{row.label}</div>
+                        {row.sub && <div style={{ fontSize: 14, color: '#94a3b8', marginTop: 2 }}>{row.note}</div>}
                       </div>
-                      <span style={{ fontSize: row.sub ? 15 : 17, fontWeight: 900, color: row.color, flexShrink: 0 }}>{row.pts}</span>
+                      <span style={{ fontSize: row.sub ? 16 : 18, fontWeight: 900, color: row.color, flexShrink: 0 }}>{row.pts}</span>
                     </div>
                   </Reveal>
                 ))}
@@ -661,15 +661,15 @@ export default function MethodePage() {
               <Reveal delay={0.3}>
                 <div style={{ borderTop: '2px solid #edf2f7', padding: '16px 20px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 10 }}>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Score final</div>
-                    <div style={{ fontSize: 11, color: '#94a3b8' }}>Arrondi au 0,5 près</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>Score final</div>
+                    <div style={{ fontSize: 14, color: '#94a3b8' }}>Arrondi au 0,5 près</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
                       <span style={{ fontSize: 38, fontWeight: 900, color: '#15803d', letterSpacing: '-0.03em' }}>18,5</span>
                       <span style={{ fontSize: 18, fontWeight: 700, color: '#cbd5e1' }}>/20</span>
                     </div>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: '#15803d', background: '#f0fdf4', border: '1px solid #d1fae5', padding: '5px 14px', borderRadius: 10 }}>Bien irréprochable ✓</span>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: '#15803d', background: '#f0fdf4', border: '1px solid #d1fae5', padding: '5px 14px', borderRadius: 10 }}>Bien irréprochable ✓</span>
                   </div>
                 </div>
               </Reveal>
@@ -687,12 +687,12 @@ export default function MethodePage() {
                   <div style={{ borderRadius: 13, border: `1.5px solid ${level.border}`, background: level.bg, padding: '16px 20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 8, flexWrap: 'wrap' as const }}>
                       <div style={{ minWidth: 75 }}>
-                        <span style={{ fontSize: 18, fontWeight: 900, color: level.c }}>{level.r}</span>
-                        <span style={{ fontSize: 11, color: level.c, opacity: 0.6 }}>/20</span>
+                        <span style={{ fontSize: 20, fontWeight: 900, color: level.c }}>{level.r}</span>
+                        <span style={{ fontSize: 13, color: level.c, opacity: 0.6 }}>/20</span>
                       </div>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: level.c, marginBottom: 2 }}>{level.l}</div>
-                        <div style={{ fontSize: 13, color: '#64748b' }}>{level.desc}</div>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: level.c, marginBottom: 2 }}>{level.l}</div>
+                        <div style={{ fontSize: 15, color: '#64748b' }}>{level.desc}</div>
                       </div>
                     </div>
                     <ScoreBar pct={level.pct} color={level.bar} delay={i * 0.1 + 0.2} />
