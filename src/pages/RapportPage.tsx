@@ -81,6 +81,8 @@ function AccordionSection({
 }) {
   const [open, setOpen] = useState(defaultOpen ?? true);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number } | null>(null);
+  const tooltipBtnRef = useRef<HTMLDivElement>(null);
   const dotColor = status === 'alert' ? '#ef4444' : status === 'warning' ? '#f97316' : status === 'ok' ? '#22c55e' : '#94a3b8';
   const iconBg = status === 'alert' ? '#fef2f2' : status === 'warning' ? '#fff7ed' : status === 'ok' ? '#f0fdf4' : '#f8fafc';
   const badgeStyle = status === 'alert'
@@ -102,12 +104,12 @@ function AccordionSection({
             <span style={{ fontSize: 15, fontWeight: 500, color: '#0f172a' }}>{title}</span>
             {tooltip && (
               <div style={{ position: 'relative', display: 'inline-flex' }}
-                onMouseEnter={() => setShowTooltip(true)}
-                onMouseLeave={() => setShowTooltip(false)}
+                onMouseEnter={() => { if (tooltipBtnRef.current) { const r = tooltipBtnRef.current.getBoundingClientRect(); setTooltipPos({ top: r.bottom + 6, left: Math.min(r.left, window.innerWidth - 320) }); } setShowTooltip(true); }}
+                onMouseLeave={() => { setShowTooltip(false); setTooltipPos(null); }}
                 onClick={e => e.stopPropagation()}>
                 <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#f1f5f9', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>i</div>
-                {showTooltip && (
-                  <div style={{ position: 'absolute', left: 22, top: -4, width: 300, background: '#0f172a', borderRadius: 10, padding: '12px 14px', fontSize: 12, color: '#fff', lineHeight: 1.7, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
+                {showTooltip && tooltipPos && (
+                  <div style={{ position: 'fixed', top: tooltipPos.top, left: tooltipPos.left, width: 300, background: '#0f172a', borderRadius: 10, padding: '12px 14px', fontSize: 12, color: '#fff', lineHeight: 1.7, zIndex: 9999, boxShadow: '0 8px 24px rgba(0,0,0,0.3)', pointerEvents: 'none' }}>
                     {tooltip.split('|').map((part, i) => (
                       <div key={i} style={{ marginBottom: i < tooltip.split('|').length - 1 ? 8 : 0, paddingBottom: i < tooltip.split('|').length - 1 ? 8 : 0, borderBottom: i < tooltip.split('|').length - 1 ? '1px solid rgba(255,255,255,0.1)' : 'none' }}>{part.trim()}</div>
                     ))}
@@ -820,28 +822,42 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
 /* ══════════════════════════════════
    ONGLET COPROPRIÉTÉ
 ══════════════════════════════════ */
+function useTooltipPos() {
+  const ref = useRef<HTMLSpanElement>(null);
+  const getPos = () => {
+    if (!ref.current) return { top: 0, left: 0 };
+    const r = ref.current.getBoundingClientRect();
+    const left = Math.min(r.left, window.innerWidth - 280);
+    const top = r.bottom + 6;
+    return { top, left };
+  };
+  return { ref, getPos };
+}
+
 function Tooltip({ text, children }: { text: string; children: React.ReactNode }) {
-  const [show, setShow] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const { ref, getPos } = useTooltipPos();
   return (
     <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
-      onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+      onMouseEnter={() => setPos(getPos())} onMouseLeave={() => setPos(null)}>
       {children}
-      <span style={{ marginLeft: 4, width: 15, height: 15, borderRadius: '50%', background: '#f1f5f9', border: '1px solid #e2e8f0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#94a3b8', fontWeight: 700, cursor: 'help', flexShrink: 0 }}>?</span>
-      {show && (
-        <span style={{ position: 'absolute', left: 0, top: 22, width: 260, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.6, zIndex: 200, boxShadow: '0 8px 24px rgba(0,0,0,0.2)', pointerEvents: 'none' }}>{text}</span>
+      <span ref={ref} style={{ marginLeft: 4, width: 15, height: 15, borderRadius: '50%', background: '#f1f5f9', border: '1px solid #e2e8f0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#94a3b8', fontWeight: 700, cursor: 'help', flexShrink: 0 }}>?</span>
+      {pos && (
+        <span style={{ position: 'fixed', top: pos.top, left: pos.left, width: 260, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.6, zIndex: 9999, boxShadow: '0 8px 24px rgba(0,0,0,0.3)', pointerEvents: 'none' }}>{text}</span>
       )}
     </span>
   );
 }
 
 function TooltipWhite({ text }: { text: string }) {
-  const [show, setShow] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const { ref, getPos } = useTooltipPos();
   return (
     <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
-      onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
-      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 15, height: 15, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', fontSize: 9, color: '#fff', fontWeight: 700, cursor: 'help', flexShrink: 0 }}>?</span>
-      {show && (
-        <span style={{ position: 'absolute', left: 20, top: -4, width: 260, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.6, zIndex: 300, boxShadow: '0 8px 24px rgba(0,0,0,0.3)', pointerEvents: 'none', whiteSpace: 'normal' }}>{text}</span>
+      onMouseEnter={() => setPos(getPos())} onMouseLeave={() => setPos(null)}>
+      <span ref={ref} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 15, height: 15, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', fontSize: 9, color: '#fff', fontWeight: 700, cursor: 'help', flexShrink: 0 }}>?</span>
+      {pos && (
+        <span style={{ position: 'fixed', top: pos.top, left: pos.left, width: 260, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.6, zIndex: 9999, boxShadow: '0 8px 24px rgba(0,0,0,0.3)', pointerEvents: 'none', whiteSpace: 'normal' }}>{text}</span>
       )}
     </span>
   );
