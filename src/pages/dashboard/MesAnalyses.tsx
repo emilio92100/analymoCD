@@ -206,15 +206,20 @@ function AnalyseRow({ a, onDelete, selected, onToggleSelect, selectionMode }: {
 
       {/* ── MOBILE — layout 3 lignes ── */}
       <div className="ma-card-mobile" style={{ background: selected ? '#f0f7fb' : '#fff', borderRadius: 13, border: `1px solid ${selected ? '#2a7d9c' : '#edf2f7'}`, padding: '12px 14px', flexDirection: 'column', gap: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-        {/* Ligne 1 — Icône + Titre */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 9, flexShrink: 0, background: `${isComplete ? '#0f2d3d' : '#2a7d9c'}0d`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 2 }}>
+        {/* Ligne 1 — Icône + Titre (centré) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+          <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, background: `${isComplete ? '#0f2d3d' : '#2a7d9c'}12`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {a.status === 'processing'
-              ? <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid #2a7d9c', borderTopColor: 'transparent', animation: 'spin 0.85s linear infinite' }} />
-              : isComplete ? <Building2 size={15} style={{ color: '#0f2d3d' }} /> : <FileText size={15} style={{ color: '#2a7d9c' }} />}
+              ? <div style={{ width: 15, height: 15, borderRadius: '50%', border: '2px solid #2a7d9c', borderTopColor: 'transparent', animation: 'spin 0.85s linear infinite' }} />
+              : isComplete ? <Building2 size={16} style={{ color: '#0f2d3d' }} /> : <FileText size={16} style={{ color: '#2a7d9c' }} />}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', lineHeight: 1.35 }}>{shortTitle}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', lineHeight: 1.3 }}>{shortTitle}</div>
+            {/* Adresse du bien si analyse complète et différente du shortTitle */}
+            {isComplete && a.adresse_bien && (
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>📍 {a.adresse_bien}</div>
+            )}
+            {/* Pour doc simple : nom court déjà affiché, pas besoin d'adresse */}
           </div>
         </div>
         {/* Ligne 2 — Actions */}
