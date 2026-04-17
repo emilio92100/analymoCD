@@ -347,17 +347,22 @@ async function runAnalyseWithData(
 
     let msgCount = 0;
     const progressMessages = [
-      'Lecture des documents en cours...',
-      'Analyse des diagnostics et travaux...',
-      'Verification des procedures et finances...',
-      'Synthese des informations...',
-      'Redaction du rapport en cours...',
+      'Traitement sécurisé de vos documents...',
+      'Lecture approfondie en cours...',
+      'Lecture approfondie en cours...',
+      'Analyse des éléments clés...',
+      'Analyse des éléments clés...',
+      'Analyse des éléments clés...',
+      'Rédaction du rapport en cours...',
+      'Rédaction du rapport en cours...',
+      'Dernières vérifications...',
+      'Finalisation en cours...',
     ];
     const progressInterval = setInterval(async () => {
-      const msg = progressMessages[msgCount % progressMessages.length];
+      const msg = progressMessages[Math.min(msgCount, progressMessages.length - 1)];
       msgCount++;
       await supabaseAdmin.from('analyses').update({ progress_message: msg }).eq('id', analyseId);
-    }, 60_000);
+    }, 40_000);
 
     let result = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
     clearInterval(progressInterval);
@@ -450,17 +455,22 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
 
     let msgCount = 0;
     const progressMessages = [
-      'Lecture des documents en cours...',
-      'Analyse des diagnostics et travaux...',
-      'Verification des procedures et finances...',
-      'Synthese des informations...',
-      'Redaction du rapport en cours...',
+      'Traitement sécurisé de vos documents...',
+      'Lecture approfondie en cours...',
+      'Lecture approfondie en cours...',
+      'Analyse des éléments clés...',
+      'Analyse des éléments clés...',
+      'Analyse des éléments clés...',
+      'Rédaction du rapport en cours...',
+      'Rédaction du rapport en cours...',
+      'Dernières vérifications...',
+      'Finalisation en cours...',
     ];
     const progressInterval = setInterval(async () => {
-      const msg = progressMessages[msgCount % progressMessages.length];
+      const msg = progressMessages[Math.min(msgCount, progressMessages.length - 1)];
       msgCount++;
       await supabaseAdmin.from('analyses').update({ progress_message: msg }).eq('id', analyseId);
-    }, 60_000);
+    }, 40_000);
 
     let result = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
     clearInterval(progressInterval);
