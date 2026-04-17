@@ -495,10 +495,12 @@ export default function NouvelleAnalyse() {
       : 'Bientôt prêt…';
 
     const etapes = [
-      { id: 'upload',   label: 'Envoi des documents',   detail: 'Transfert sécurisé de vos fichiers',         seuil: 0,  fin: 45,  couleur: '#2a7d9c', icon: '📤' },
-      { id: 'analyse',  label: 'Analyse en cours',      detail: 'Verimo lit et analyse tous vos documents',   seuil: 45, fin: 85,  couleur: '#d97706', icon: '🔍' },
-      { id: 'synthese', label: 'Synthèse croisée',      detail: 'Croisement des informations entre documents', seuil: 85, fin: 95,  couleur: '#0891b2', icon: '⚡' },
-      { id: 'rapport',  label: 'Génération du rapport', detail: 'Rédaction de votre rapport personnalisé…',   seuil: 95, fin: 100, couleur: '#16a34a', icon: '✅' },
+      { id: 'upload',      label: 'Envoi des fichiers',         detail: 'Transfert sécurisé vers nos serveurs',           seuil: 0,  fin: 16,  couleur: '#2a7d9c', icon: '📤' },
+      { id: 'securise',    label: 'Traitement sécurisé',        detail: 'Vérification et préparation de vos documents',   seuil: 16, fin: 30,  couleur: '#0891b2', icon: '🔐' },
+      { id: 'lecture',     label: 'Lecture approfondie',        detail: 'Verimo lit et comprend vos documents',           seuil: 30, fin: 50,  couleur: '#7c3aed', icon: '📖' },
+      { id: 'analyse',     label: 'Analyse des éléments clés',  detail: 'Détection des points importants pour vous',      seuil: 50, fin: 70,  couleur: '#d97706', icon: '🔍' },
+      { id: 'redaction',   label: 'Rédaction du rapport',       detail: 'Mise en forme de vos conclusions',               seuil: 70, fin: 88,  couleur: '#db2777', icon: '✍️' },
+      { id: 'verification',label: 'Dernières vérifications',    detail: 'Contrôle qualité avant livraison',               seuil: 88, fin: 100, couleur: '#16a34a', icon: '✅' },
     ];
     const etapeActive = etapes.findLast(e => pct >= e.seuil) || etapes[0];
     const couleurActive = etapeActive.couleur;
