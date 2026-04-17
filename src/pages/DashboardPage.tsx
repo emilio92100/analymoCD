@@ -382,10 +382,8 @@ export default function DashboardPage() {
       <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0 }}>
         <Topbar onMenuClick={()=>setMobileOpen(true)} title={title}/>
         <DashboardBanner/>
-        <main style={{ flex:1, padding:'28px 20px', overflowX:'hidden' }}>
-          <div style={{ maxWidth:1040, margin:'0 auto' }}>
-            <DashboardContent path={location.pathname}/>
-          </div>
+        <main style={{ flex:1, padding:'28px 24px', overflowX:'hidden' }}>
+          <DashboardContent path={location.pathname}/>
         </main>
       </div>
       <style>{`
