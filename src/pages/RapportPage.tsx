@@ -99,8 +99,8 @@ function AccordionSection({
 
   return (
     <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, overflow: 'hidden' }}>
-      <button onClick={() => setOpen(!open)} className="rapport-accordion-header" style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
-        onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#f8fafc'}
+      <button onClick={e => { e.preventDefault(); setOpen(v => !v); }} className="rapport-accordion-header" style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+        onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#f0f7fb'}
         onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'none'}>
         <div className="accord-icon" style={{ width: 34, height: 34, borderRadius: 9, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>{icon}</div>
         <div style={{ flex: 1, textAlign: 'left' }}>
@@ -2927,7 +2927,7 @@ export default function RapportPage() {
             .doc-simple-back a { padding: 8px 14px !important; font-size: 13px !important; }
           }
         `}</style>
-        <div className="doc-simple-wrapper" style={{ maxWidth: 900, margin: '0 auto', padding: '20px 20px' }}>
+        <div className="doc-simple-wrapper" style={{ maxWidth: 1250, margin: '0 auto', padding: '20px 28px' }}>
           <div className="doc-simple-back" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
             <Link to="/dashboard/analyses" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: '#fff', textDecoration: 'none', padding: '9px 18px', borderRadius: 9, background: '#2a7d9c', flexShrink: 0 }}>
               <ChevronLeft size={15} /> Mes analyses
