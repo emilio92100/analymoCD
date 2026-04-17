@@ -2923,12 +2923,18 @@ export default function RapportPage() {
         <style>{`
           @media (max-width: 640px) {
             .doc-simple-wrapper { padding: 0 !important; }
-            .doc-simple-back { margin: 10px 12px 8px !important; }
-            .doc-simple-back a { padding: 8px 14px !important; font-size: 13px !important; }
+            .doc-back-desktop { display: none !important; }
+            .doc-back-sticky { display: block !important; }
           }
         `}</style>
+        {/* Bouton sticky mobile */}
+        <div className="doc-back-sticky" style={{ display: 'none', position: 'sticky', top: 0, zIndex: 100, background: '#f5f9fb', padding: '8px 12px', borderBottom: '1px solid #edf2f7' }}>
+          <Link to="/dashboard/analyses" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#fff', textDecoration: 'none', padding: '8px 14px', borderRadius: 9, background: '#2a7d9c' }}>
+            <ChevronLeft size={13} /> Mes analyses
+          </Link>
+        </div>
         <div className="doc-simple-wrapper" style={{ maxWidth: 1250, margin: '0 auto', padding: '20px 28px' }}>
-          <div className="doc-simple-back" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="doc-back-desktop" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
             <Link to="/dashboard/analyses" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: '#fff', textDecoration: 'none', padding: '9px 18px', borderRadius: 9, background: '#2a7d9c', flexShrink: 0 }}>
               <ChevronLeft size={15} /> Mes analyses
             </Link>
