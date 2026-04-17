@@ -132,12 +132,12 @@ function KpiGrid({ children }: { children: React.ReactNode }) {
 
 function SectionKpi({ icon, label, children }: { icon: string; label: string; children: React.ReactNode }) {
   return (
-    <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden' }}>
-      <div style={{ padding: '13px 18px', background: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 18 }}>{icon}</span>
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#fff', letterSpacing: '0.04em' }}>{label}</span>
+    <div className="dr-sectionkpi" style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden' }}>
+      <div style={{ padding: '11px 16px', background: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 16 }}>{icon}</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', letterSpacing: '0.04em' }}>{label}</span>
       </div>
-      <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+      <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
         {children}
       </div>
     </div>
@@ -432,43 +432,8 @@ function RendererDDT({ r }: { r: any }) {
       <Header type="Dossier de Diagnostic Technique" titre={r.titre} sub={sub} />
       {r.resume && <Resume text={r.resume} />}
 
-      {/* KPI mobile — lots + récap diagnostics sous le résumé */}
-      {lotsIdf.length > 0 && (
-        <div className="dr-lots-mobile" style={{ display: 'none', background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
-          <div style={{ padding: '8px 14px', background: '#f0f7fb', borderBottom: '1px solid #edf2f7' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.05em' }}>🏘 LOTS VISITÉS</span>
-          </div>
-          {lotsIdf.map((lot: any, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderBottom: i < lotsIdf.length - 1 ? '0.5px solid #edf2f7' : 'none' }}>
-              <span style={{ fontSize: 16 }}>{lotIcon(lot.type)}</span>
-              <div style={{ flex: 1 }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{lot.type.charAt(0).toUpperCase() + lot.type.slice(1)}{lot.numero ? ` n°${lot.numero}` : ''}</span>
-                {(lot.etage || lot.description) && <span style={{ fontSize: 12, color: '#64748b', marginLeft: 8 }}>{formatEtage(lot.etage) || lot.description}</span>}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      {/* Récap diagnostics mobile */}
-      <div className="dr-diag-recap-mobile" style={{ display: 'none', marginBottom: 12 }}>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {diagsOk.length > 0 && <div style={{ flex: 1, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '10px 12px', textAlign: 'center' as const }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#16a34a' }}>{diagsOk.length}</div>
-            <div style={{ fontSize: 11, color: '#15803d' }}>Conformes</div>
-          </div>}
-          {diagsBad.length > 0 && <div style={{ flex: 1, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '10px 12px', textAlign: 'center' as const }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#dc2626' }}>{diagsBad.length}</div>
-            <div style={{ fontSize: 11, color: '#991b1b' }}>Anomalie{diagsBad.length > 1 ? 's' : ''}</div>
-          </div>}
-          {diagsInfo.length > 0 && <div style={{ flex: 1, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 12px', textAlign: 'center' as const }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#64748b' }}>{diagsInfo.length}</div>
-            <div style={{ fontSize: 11, color: '#64748b' }}>Informatif{diagsInfo.length > 1 ? 's' : ''}</div>
-          </div>}
-        </div>
-      </div>
-
-      {/* 3 encarts d'info */}
-      <div className="dr-kpi-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
+      {/* 3 encarts d'info — responsive (1 col sur mobile) */}
+      <div className="dr-ddt-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
 
         {/* Encart 1 — Diagnostiqueur */}
         <SectionKpi icon="🔬" label="Diagnostiqueur">
@@ -2458,9 +2423,8 @@ export default function DocumentRenderer({ result }: { result: any }) {
           .dr-syndic-mobile { display: block !important; }
           /* ── Commanditaire/adresse diag masqués sur mobile ── */
           .dr-diag-meta { display: none !important; }
-          /* ── DDT lots + récap mobile ── */
-          .dr-lots-mobile { display: block !important; }
-          .dr-diag-recap-mobile { display: block !important; }
+          /* ── DDT grille 3 encarts → 1 col sur mobile ── */
+          .dr-ddt-grid { grid-template-columns: 1fr !important; }
 
         @media (max-width: 390px) {
           .dr-header-titre { font-size: 14px !important; }
