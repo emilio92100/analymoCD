@@ -542,12 +542,27 @@ function RendererDDT({ r }: { r: any }) {
         )}
       </div>
 
-      {/* DPE + GES — une ligne chacun */}
+      {/* DPE + GES — côte à côte sur PC, empilés sur mobile */}
       {r.dpe?.classe && (
-        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10, marginBottom: 14 }}>
-          <DpeJauge classe={r.dpe.classe} label="Énergie primaire (DPE)" valeur={r.dpe.kwh_m2 ? `${r.dpe.kwh_m2} kWh/m²/an` : ''} />
-          {r.dpe.ges_classe && <DpeJauge classe={r.dpe.ges_classe} label="Émissions GES" valeur={r.dpe.ges_kg_m2 ? `${r.dpe.ges_kg_m2} kg CO₂/m²/an` : ''} />}
-        </div>
+        <>
+          {/* Desktop */}
+          <div className="dr-dpe-desktop" style={{ display: 'flex', gap: 0, marginBottom: 14, background: '#fff', border: `0.5px solid ${C.border}`, borderRadius: 14, overflow: 'hidden' }}>
+            <div style={{ flex: 1, padding: '16px 20px' }}>
+              <DpeJauge classe={r.dpe.classe} label="Énergie primaire (DPE)" valeur={r.dpe.kwh_m2 ? `${r.dpe.kwh_m2} kWh/m²/an` : ''} />
+            </div>
+            {r.dpe.ges_classe && <>
+              <div style={{ width: 1, background: C.border, margin: '16px 0' }} />
+              <div style={{ flex: 1, padding: '16px 20px' }}>
+                <DpeJauge classe={r.dpe.ges_classe} label="Émissions GES" valeur={r.dpe.ges_kg_m2 ? `${r.dpe.ges_kg_m2} kg CO₂/m²/an` : ''} />
+              </div>
+            </>}
+          </div>
+          {/* Mobile */}
+          <div className="dr-dpe-mobile" style={{ display: 'none', flexDirection: 'column' as const, gap: 10, marginBottom: 14 }}>
+            <DpeJauge classe={r.dpe.classe} label="Énergie primaire (DPE)" valeur={r.dpe.kwh_m2 ? `${r.dpe.kwh_m2} kWh/m²/an` : ''} />
+            {r.dpe.ges_classe && <DpeJauge classe={r.dpe.ges_classe} label="Émissions GES" valeur={r.dpe.ges_kg_m2 ? `${r.dpe.ges_kg_m2} kg CO₂/m²/an` : ''} />}
+          </div>
+        </>
       )}
 
       {/* Surface Carrez */}
@@ -2010,37 +2025,34 @@ function RendererDiagCommunes({ r }: { r: any }) {
                 ))}
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 0 }}>
-                {/* Ligne 1 : Opérateur + Date */}
-                {(r.operateur || r.rapports?.[0]?.operateur || r.rapports?.[0]?.date) && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '10px 0', borderBottom: `0.5px solid ${C.border}`, gap: 16 }}>
-                    {(r.operateur || r.rapports?.[0]?.operateur) && (
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                        <span style={{ fontSize: 15 }}>👤</span>
-                        <div>
-                          <div style={{ fontSize: 11, color: C.textSec, marginBottom: 1 }}>Opérateur</div>
-                          <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{r.operateur || r.rapports?.[0]?.operateur}</div>
-                        </div>
-                      </div>
-                    )}
-                    {r.rapports?.[0]?.date && (
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', textAlign: 'right' as const }}>
-                        <span style={{ fontSize: 15 }}>📅</span>
-                        <div>
-                          <div style={{ fontSize: 11, color: C.textSec, marginBottom: 1 }}>Date</div>
-                          <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{formatDate(r.rapports[0].date)}</div>
-                        </div>
-                      </div>
-                    )}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+                {/* Bloc Opérateur */}
+                {(r.operateur || r.rapports?.[0]?.operateur) && (
+                  <div style={{ background: C.bgSecondary, borderRadius: 10, padding: '10px 14px', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 18 }}>👤</span>
+                    <div>
+                      <div style={{ fontSize: 10, color: C.textSec, marginBottom: 2, fontWeight: 600, letterSpacing: '0.06em' }}>OPÉRATEUR</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{r.operateur || r.rapports?.[0]?.operateur}</div>
+                    </div>
                   </div>
                 )}
-                {/* Ligne 2 : Entreprise */}
-                {(r.cabinet || r.rapports?.[0]?.cabinet) && (
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '10px 0', borderBottom: r.rapports?.[0]?.certification ? `0.5px solid ${C.border}` : 'none' }}>
-                    <span style={{ fontSize: 15 }}>🏢</span>
+                {/* Bloc Date */}
+                {r.rapports?.[0]?.date && (
+                  <div style={{ background: C.bgSecondary, borderRadius: 10, padding: '10px 14px', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 18 }}>📅</span>
                     <div>
-                      <div style={{ fontSize: 11, color: C.textSec, marginBottom: 1 }}>Entreprise</div>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: C.text, lineHeight: 1.5 }}>{r.cabinet || r.rapports?.[0]?.cabinet}</div>
+                      <div style={{ fontSize: 10, color: C.textSec, marginBottom: 2, fontWeight: 600, letterSpacing: '0.06em' }}>DATE</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{formatDate(r.rapports[0].date)}</div>
+                    </div>
+                  </div>
+                )}
+                {/* Bloc Entreprise */}
+                {(r.cabinet || r.rapports?.[0]?.cabinet) && (
+                  <div style={{ background: C.bgSecondary, borderRadius: 10, padding: '10px 14px', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 18 }}>🏢</span>
+                    <div>
+                      <div style={{ fontSize: 10, color: C.textSec, marginBottom: 2, fontWeight: 600, letterSpacing: '0.06em' }}>ENTREPRISE</div>
+                      <div style={{ fontSize: 12, fontWeight: 500, color: C.text, lineHeight: 1.4 }}>{r.cabinet || r.rapports?.[0]?.cabinet}</div>
                     </div>
                   </div>
                 )}
@@ -2442,11 +2454,15 @@ export default function DocumentRenderer({ result }: { result: any }) {
           /* ── Wrapper avec marges latérales légères ── */
           .dr-root > div { padding: 0 6px !important; }
 
-          /* ── KPI desktop → caché, mobile liste → visible ── */
-          .dr-kpi-grid { display: none !important; }
+          /* ── KpiGrid (Kpi component) → liste sur mobile ── */
           .dr-kpi-list { display: block !important; }
           .dr-kpi-block { display: none !important; }
           .dr-kpi-row { display: flex !important; }
+          /* ── SectionKpi grilles → 1 colonne sur mobile ── */
+          .dr-kpi-grid { grid-template-columns: 1fr !important; }
+          /* ── DPE : desktop masqué, mobile affiché ── */
+          .dr-dpe-desktop { display: none !important; }
+          .dr-dpe-mobile { display: flex !important; }
 
           /* ── Résumé avec clamp ── */
           .dr-resume-clamped { display: -webkit-box !important; -webkit-line-clamp: 4 !important; -webkit-box-orient: vertical !important; overflow: hidden !important; }
