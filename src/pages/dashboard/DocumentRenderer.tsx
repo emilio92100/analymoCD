@@ -376,25 +376,23 @@ function DiagnosticCardRow({ d }: { d: any }) {
 
   return (
     <div style={{ border: `0.5px solid ${rowBorder}`, borderRadius: 12, overflow: 'hidden', marginBottom: 8, background: rowBg }}>
-      {/* Ligne principale */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', gap: 12 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{d.label}</div>
-          {d.alerte && <div style={{ fontSize: 15, color: C.red.dot, marginTop: 4, fontWeight: 500 }}>⚠ {d.alerte}</div>}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: badgeColor, background: badgeBg, border: `0.5px solid ${badgeBorder}`, padding: '3px 12px', borderRadius: 100, whiteSpace: 'nowrap' as const }}>{badgeLabel}</span>
+      <div style={{ padding: '12px 14px' }}>
+        {/* Ligne 1 — Nom du diagnostic */}
+        <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 8 }}>{d.label}</div>
+        {d.alerte && <div style={{ fontSize: 13, color: C.red.dot, marginBottom: 8, fontWeight: 500 }}>⚠ {d.alerte}</div>}
+        {/* Ligne 2 — Badge statut + bouton détail */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: badgeColor, background: badgeBg, border: `0.5px solid ${badgeBorder}`, padding: '3px 10px', borderRadius: 6 }}>{badgeLabel}</span>
           {d.detail && (
-            <button onClick={() => setOpen(!open)} style={{ background: 'none', border: `0.5px solid ${C.border}`, borderRadius: 8, padding: '5px 12px', cursor: 'pointer', fontSize: 12, color: '#2a7d9c', fontFamily: 'inherit', fontWeight: 500, whiteSpace: 'nowrap' as const, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <button onClick={() => setOpen(!open)} style={{ background: 'none', border: `0.5px solid ${C.border}`, borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 12, color: '#2a7d9c', fontFamily: 'inherit', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', fontSize: 9 }}>▶</span>
               {open ? 'Masquer' : 'Voir le détail'}
             </button>
           )}
         </div>
       </div>
-      {/* Détail pleine largeur */}
       {open && d.detail && (
-        <div style={{ borderTop: `0.5px solid ${rowBorder}`, padding: '16px 20px', background: C.bg }}>
+        <div style={{ borderTop: `0.5px solid ${rowBorder}`, padding: '14px 14px', background: C.bg }}>
           <DiagnosticCardDetail d={d} />
         </div>
       )}
@@ -432,7 +430,42 @@ function RendererDDT({ r }: { r: any }) {
   return (
     <div>
       <Header type="Dossier de Diagnostic Technique" titre={r.titre} sub={sub} />
-      <Resume text={r.resume} />
+      {r.resume && <Resume text={r.resume} />}
+
+      {/* KPI mobile — lots + récap diagnostics sous le résumé */}
+      {lotsIdf.length > 0 && (
+        <div className="dr-lots-mobile" style={{ display: 'none', background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
+          <div style={{ padding: '8px 14px', background: '#f0f7fb', borderBottom: '1px solid #edf2f7' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.05em' }}>🏘 LOTS VISITÉS</span>
+          </div>
+          {lotsIdf.map((lot: any, i: number) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderBottom: i < lotsIdf.length - 1 ? '0.5px solid #edf2f7' : 'none' }}>
+              <span style={{ fontSize: 16 }}>{lotIcon(lot.type)}</span>
+              <div style={{ flex: 1 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{lot.type.charAt(0).toUpperCase() + lot.type.slice(1)}{lot.numero ? ` n°${lot.numero}` : ''}</span>
+                {(lot.etage || lot.description) && <span style={{ fontSize: 12, color: '#64748b', marginLeft: 8 }}>{formatEtage(lot.etage) || lot.description}</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {/* Récap diagnostics mobile */}
+      <div className="dr-diag-recap-mobile" style={{ display: 'none', marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {diagsOk.length > 0 && <div style={{ flex: 1, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '10px 12px', textAlign: 'center' as const }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#16a34a' }}>{diagsOk.length}</div>
+            <div style={{ fontSize: 11, color: '#15803d' }}>Conformes</div>
+          </div>}
+          {diagsBad.length > 0 && <div style={{ flex: 1, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '10px 12px', textAlign: 'center' as const }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#dc2626' }}>{diagsBad.length}</div>
+            <div style={{ fontSize: 11, color: '#991b1b' }}>Anomalie{diagsBad.length > 1 ? 's' : ''}</div>
+          </div>}
+          {diagsInfo.length > 0 && <div style={{ flex: 1, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 12px', textAlign: 'center' as const }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#64748b' }}>{diagsInfo.length}</div>
+            <div style={{ fontSize: 11, color: '#64748b' }}>Informatif{diagsInfo.length > 1 ? 's' : ''}</div>
+          </div>}
+        </div>
+      </div>
 
       {/* 3 encarts d'info */}
       <div className="dr-kpi-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
@@ -486,9 +519,9 @@ function RendererDDT({ r }: { r: any }) {
         </SectionKpi>
       </div>
 
-      {/* DPE + GES */}
+      {/* DPE + GES — une ligne chacun */}
       {r.dpe?.classe && (
-        <div style={{ display: 'flex', gap: 14, marginBottom: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10, marginBottom: 14 }}>
           <DpeJauge classe={r.dpe.classe} label="Énergie primaire (DPE)" valeur={r.dpe.kwh_m2 ? `${r.dpe.kwh_m2} kWh/m²/an` : ''} />
           {r.dpe.ges_classe && <DpeJauge classe={r.dpe.ges_classe} label="Émissions GES" valeur={r.dpe.ges_kg_m2 ? `${r.dpe.ges_kg_m2} kg CO₂/m²/an` : ''} />}
         </div>
@@ -556,27 +589,45 @@ function RendererDDT({ r }: { r: any }) {
 
       {/* Travaux préconisés — uniquement si DPE présent */}
       {r.travaux_preconises?.length > 0 && r.dpe?.classe && (
-        <Card>
-          <CardHeader label="TRAVAUX RECOMMANDÉS PAR LE DPE" color="#d97706" />
-          {r.travaux_preconises.map((t: any, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: i < r.travaux_preconises.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
-              <div>
-                <div style={{ fontSize: 14, color: C.text }}>{t.label}</div>
-                <div style={{ fontSize: 14, color: t.priorite === 'prioritaire' ? '#dc2626' : '#d97706', marginTop: 4 }}>{t.priorite === 'prioritaire' ? 'Prioritaire' : 'Recommandé'}</div>
-              </div>
-              {(t.cout_min || t.cout_max) && (
-                <div style={{ fontSize: 14, fontWeight: 600, color: C.text, whiteSpace: 'nowrap' as const, marginLeft: 20 }}>
-                  {t.cout_min && t.cout_max ? `${Number(t.cout_min).toLocaleString('fr-FR')} – ${Number(t.cout_max).toLocaleString('fr-FR')} €` : `${Number(t.cout_min || t.cout_max).toLocaleString('fr-FR')} €`}
+        <div style={{ background: '#fff', border: '1px solid #fed7aa', borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
+          <div style={{ padding: '12px 16px', background: 'linear-gradient(135deg, #d97706, #b45309)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 18 }}>🏗️</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>TRAVAUX RECOMMANDÉS PAR LE DPE</span>
+          </div>
+          {r.travaux_preconises.map((t: any, i: number) => {
+            const emoji = t.label?.toLowerCase().includes('isolation') ? '🧱'
+              : t.label?.toLowerCase().includes('chaudi') || t.label?.toLowerCase().includes('chaleur') ? '🔥'
+              : t.label?.toLowerCase().includes('fenêtre') || t.label?.toLowerCase().includes('vitrage') ? '🪟'
+              : t.label?.toLowerCase().includes('ventil') || t.label?.toLowerCase().includes('vmc') ? '💨'
+              : t.label?.toLowerCase().includes('panneaux') || t.label?.toLowerCase().includes('solaire') ? '☀️'
+              : '🔧';
+            return (
+              <div key={i} style={{ padding: '12px 14px', borderBottom: i < r.travaux_preconises.length - 1 ? `0.5px solid #fed7aa` : 'none', background: i % 2 === 0 ? '#fff' : '#fffbeb' }}>
+                {/* Ligne 1 — emoji + label */}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 6 }}>
+                  <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{emoji}</span>
+                  <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5, flex: 1 }}>{t.label}</div>
                 </div>
-              )}
-            </div>
-          ))}
+                {/* Ligne 2 — priorité + prix */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 24 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: t.priorite === 'prioritaire' ? '#dc2626' : '#d97706' }}>
+                    {t.priorite === 'prioritaire' ? '🔴 Prioritaire' : '🟡 Recommandé'}
+                  </span>
+                  {(t.cout_min || t.cout_max) && (
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#92400e', whiteSpace: 'nowrap' as const }}>
+                      {t.cout_min && t.cout_max ? `${Number(t.cout_min).toLocaleString('fr-FR')} – ${Number(t.cout_max).toLocaleString('fr-FR')} €` : `${Number(t.cout_min || t.cout_max).toLocaleString('fr-FR')} €`}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
           {r.gain_energetique && (
-            <div style={{ padding: '12px 20px', background: '#f0f9ff', borderTop: `0.5px solid #bae6fd`, fontSize: 15, color: '#0369a1' }}>
-              {r.gain_energetique}
+            <div style={{ padding: '12px 14px', background: '#f0f9ff', borderTop: `0.5px solid #bae6fd`, fontSize: 13, color: '#0369a1', lineHeight: 1.6 }}>
+              💡 {r.gain_energetique}
             </div>
           )}
-        </Card>
+        </div>
       )}
 
       <SeparateurSynthese />
@@ -2407,6 +2458,9 @@ export default function DocumentRenderer({ result }: { result: any }) {
           .dr-syndic-mobile { display: block !important; }
           /* ── Commanditaire/adresse diag masqués sur mobile ── */
           .dr-diag-meta { display: none !important; }
+          /* ── DDT lots + récap mobile ── */
+          .dr-lots-mobile { display: block !important; }
+          .dr-diag-recap-mobile { display: block !important; }
 
         @media (max-width: 390px) {
           .dr-header-titre { font-size: 14px !important; }
