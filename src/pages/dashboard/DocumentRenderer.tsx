@@ -731,7 +731,7 @@ function RendererPVAG({ r }: { r: any }) {
       )}
 
       {/* 3 encarts */}
-      <div className="dr-kpi-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+      <div className="dr-sectionkpi-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
 
         {/* Encart 1 — L'assemblée */}
         <SectionKpi icon="🏛" label="L'assemblée">
@@ -1186,7 +1186,7 @@ function RendererCarnetEntretien({ r }: { r: any }) {
       )}
 
       {/* 3 encarts fixes */}
-      <div className="dr-kpi-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+      <div className="dr-sectionkpi-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
 
         {/* Encart Syndic */}
         <SectionKpi icon="🏢" label="Syndic">
@@ -1402,7 +1402,7 @@ function RendererPreEtatDate({ r }: { r: any }) {
       <Resume text={r.resume} />
 
       {/* 3 encarts */}
-      <div className="dr-kpi-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+      <div className="dr-sectionkpi-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
         {/* Syndic */}
         <SectionKpi icon="🏢" label="Syndic">
           {r.syndic && <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>{r.syndic}</div>}
@@ -1644,7 +1644,7 @@ function RendererEtatDate({ r }: { r: any }) {
       <Resume text={r.resume} />
 
       {/* 3 encarts */}
-      <div className="dr-kpi-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+      <div className="dr-sectionkpi-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
         <SectionKpi icon="🏢" label="Syndic">
           {r.syndic && <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>{r.syndic}</div>}
           {r.syndic_adresse && <div style={{ fontSize: 14, color: C.textSec, marginBottom: 4 }}>📍 {r.syndic_adresse}</div>}
@@ -1972,24 +1972,85 @@ function RendererDiagCommunes({ r }: { r: any }) {
       {/* ── RÉSUMÉ ── */}
       {r.resume && <Resume text={r.resume} />}
 
-      {/* ── RÉSULTAT GLOBAL ── */}
+      {/* ── RÉSULTAT GLOBAL — Diagnostiqueur + KPIs sur une ligne PC ── */}
       {nonDetecte ? (
-        <div style={{ background: C.green.bg, border: `1px solid ${C.green.border}`, borderRadius: 14, padding: '24px 28px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 20 }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', background: C.green.dot, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <div style={{ background: C.green.bg, border: `1px solid ${C.green.border}`, borderRadius: 14, padding: '20px 24px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 20 }}>
+          <div style={{ width: 48, height: 48, borderRadius: '50%', background: C.green.dot, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: C.green.text, marginBottom: 4 }}>Aucun matériau amianté détecté</div>
-            <div style={{ fontSize: 14, color: C.green.text, opacity: 0.8, lineHeight: 1.6 }}>L'ensemble des parties communes visitées ne présente pas de matériaux contenant de l'amiante.</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.green.text, marginBottom: 3 }}>Aucun matériau amianté détecté</div>
+            <div style={{ fontSize: 13, color: C.green.text, opacity: 0.8, lineHeight: 1.6 }}>L'ensemble des parties communes visitées ne présente pas de matériaux contenant de l'amiante.</div>
           </div>
         </div>
       ) : (
-        <KpiGrid>
-          <Kpi label="Matériaux amiantés" value={String(nbDetectes)} color={nbDetectes > 0 ? C.red.dot : C.green.dot} />
-          <Kpi label="Action corrective (AC1)" value={String(nbAC1)} color={nbAC1 > 0 ? '#d97706' : C.green.dot} />
-          <Kpi label="Surveillance périodique" value={String(nbEP)} color={C.blue.dot} />
-          <Kpi label="Zones sans amiante" value={String(nbSaines)} color={C.green.dot} />
-        </KpiGrid>
+        <>
+          {/* Desktop — une ligne : diagnostiqueur à gauche + KPIs à droite */}
+          <div className="dr-diag-kpi-desktop" style={{ display: 'flex', gap: 12, marginBottom: 14, alignItems: 'stretch' }}>
+            {/* Bloc diagnostiqueur compact */}
+            {(r.rapports?.length > 0 || r.cabinet || r.operateur) && (
+              <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, overflow: 'hidden', minWidth: 220, flexShrink: 0 }}>
+                <div style={{ padding: '9px 14px', background: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 14 }}>🔬</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#fff' }}>Diagnostiqueur</span>
+                </div>
+                <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+                  {(r.operateur || r.rapports?.[0]?.operateur) && (
+                    <div style={{ display: 'flex', gap: 7, alignItems: 'flex-start' }}>
+                      <span style={{ fontSize: 14 }}>👤</span>
+                      <div>
+                        <div style={{ fontSize: 10, color: C.textSec, fontWeight: 600, letterSpacing: '0.05em' }}>OPÉRATEUR</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{r.operateur || r.rapports?.[0]?.operateur}</div>
+                      </div>
+                    </div>
+                  )}
+                  {r.rapports?.[0]?.date && (
+                    <div style={{ display: 'flex', gap: 7, alignItems: 'flex-start' }}>
+                      <span style={{ fontSize: 14 }}>📅</span>
+                      <div>
+                        <div style={{ fontSize: 10, color: C.textSec, fontWeight: 600, letterSpacing: '0.05em' }}>DATE</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{formatDate(r.rapports[0].date)}</div>
+                      </div>
+                    </div>
+                  )}
+                  {(r.cabinet || r.rapports?.[0]?.cabinet) && (
+                    <div style={{ display: 'flex', gap: 7, alignItems: 'flex-start' }}>
+                      <span style={{ fontSize: 14 }}>🏢</span>
+                      <div style={{ fontSize: 11, color: C.textSec, lineHeight: 1.4 }}>{r.cabinet || r.rapports?.[0]?.cabinet}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            {/* KPIs à droite */}
+            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+              {[
+                { label: 'Matériaux amiantés', value: nbDetectes, color: nbDetectes > 0 ? C.red.dot : C.green.dot },
+                { label: 'Action corrective (AC1)', value: nbAC1, color: nbAC1 > 0 ? '#d97706' : C.green.dot },
+                { label: 'Surveillance périodique', value: nbEP, color: C.blue.dot },
+                { label: 'Zones sans amiante', value: nbSaines, color: C.green.dot },
+              ].map((k, i) => (
+                <div key={i} style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+                  <div style={{ padding: '8px 12px', background: '#2a7d9c' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#fff' }}>{k.label}</div>
+                  </div>
+                  <div style={{ padding: '10px 14px' }}>
+                    <div style={{ fontSize: 26, fontWeight: 700, color: k.color }}>{k.value}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Mobile — liste KpiGrid */}
+          <div className="dr-diag-kpi-mobile" style={{ display: 'none' }}>
+            <KpiGrid>
+              <Kpi label="Matériaux amiantés" value={String(nbDetectes)} color={nbDetectes > 0 ? C.red.dot : C.green.dot} />
+              <Kpi label="Action corrective (AC1)" value={String(nbAC1)} color={nbAC1 > 0 ? '#d97706' : C.green.dot} />
+              <Kpi label="Surveillance périodique" value={String(nbEP)} color={C.blue.dot} />
+              <Kpi label="Zones sans amiante" value={String(nbSaines)} color={C.green.dot} />
+            </KpiGrid>
+          </div>
+        </>
       )}
 
       {/* ── DIAGNOSTIQUEUR(S) ── */}
@@ -2252,7 +2313,7 @@ function RendererModificatifRCP({ r }: { r: any }) {
       <Resume text={r.resume} />
 
       {/* 3 encarts */}
-      <div className="dr-kpi-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+      <div className="dr-sectionkpi-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
         <SectionKpi icon="⚖️" label="Notaire">
           <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
             {r.notaire?.nom && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>👤</span><span style={{ fontWeight: 600 }}>Me {r.notaire.nom}</span></div>}
@@ -2458,8 +2519,10 @@ export default function DocumentRenderer({ result }: { result: any }) {
           .dr-kpi-list { display: block !important; }
           .dr-kpi-block { display: none !important; }
           .dr-kpi-row { display: flex !important; }
-          /* ── SectionKpi grilles → 1 colonne sur mobile ── */
-          .dr-kpi-grid { grid-template-columns: 1fr !important; }
+          /* ── KpiGrid desktop → caché sur mobile (dr-kpi-list le remplace) ── */
+          .dr-kpi-grid { display: none !important; }
+          /* ── SectionKpi grilles (dr-kpi-grid utilisé aussi pour sections) → 1 colonne ── */
+          .dr-sectionkpi-grid { grid-template-columns: 1fr !important; }
           /* ── DPE : desktop masqué, mobile affiché ── */
           .dr-dpe-desktop { display: none !important; }
           .dr-dpe-mobile { display: flex !important; }
@@ -2496,6 +2559,9 @@ export default function DocumentRenderer({ result }: { result: any }) {
 
           /* ── Syndic mobile PV AG ── */
           .dr-syndic-mobile { display: block !important; }
+          /* ── DiagCommunes KPIs : desktop masqué, mobile affiché ── */
+          .dr-diag-kpi-desktop { display: none !important; }
+          .dr-diag-kpi-mobile { display: block !important; }
 
           /* ── Commanditaire/adresse diag masqués sur mobile ── */
           .dr-diag-meta { display: none !important; }
