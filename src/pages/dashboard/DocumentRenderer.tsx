@@ -2472,18 +2472,22 @@ export default function DocumentRenderer({ result }: { result: any }) {
 
           /* ── Badges nowrap ── */
           .dr-badge-nowrap { white-space: normal !important; word-break: break-word !important; }
-        }
+
           /* ── Zones localisation ── */
           .dr-zone-header { display: none !important; }
           .dr-zone-row-desktop { display: none !important; }
           .dr-zone-row-mobile { display: flex !important; }
+
           /* ── Syndic mobile PV AG ── */
           .dr-syndic-mobile { display: block !important; }
+
           /* ── Commanditaire/adresse diag masqués sur mobile ── */
           .dr-diag-meta { display: none !important; }
-          /* ── DDT — desktop masqué, mobile affiché ── */
+
+          /* ── DDT — grille desktop masquée, blocs mobile affichés ── */
           .dr-ddt-desktop { display: none !important; }
           .dr-ddt-mobile { display: flex !important; }
+        }
 
         @media (max-width: 390px) {
           .dr-header-titre { font-size: 14px !important; }
