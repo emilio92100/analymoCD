@@ -432,8 +432,8 @@ function RendererDDT({ r }: { r: any }) {
       <Header type="Dossier de Diagnostic Technique" titre={r.titre} sub={sub} />
       {r.resume && <Resume text={r.resume} />}
 
-      {/* 3 encarts d'info — responsive (1 col sur mobile) */}
-      <div className="dr-ddt-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
+      {/* 3 encarts d'info — DESKTOP uniquement */}
+      <div className="dr-ddt-desktop" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 20 }}>
 
         {/* Encart 1 — Diagnostiqueur */}
         <SectionKpi icon="🔬" label="Diagnostiqueur">
@@ -482,6 +482,64 @@ function RendererDDT({ r }: { r: any }) {
             })}
           </div>
         </SectionKpi>
+      </div>
+
+      {/* 3 encarts — MOBILE : liste compacte */}
+      <div className="dr-ddt-mobile" style={{ display: 'none', flexDirection: 'column' as const, gap: 10, marginBottom: 14 }}>
+        {/* Diagnostiqueur */}
+        {(r.diagnostiqueur?.nom || r.diagnostiqueur?.date) && (
+          <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+            <div style={{ padding: '9px 14px', background: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 7 }}>
+              <span style={{ fontSize: 14 }}>🔬</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#fff' }}>Diagnostiqueur</span>
+            </div>
+            <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column' as const, gap: 5 }}>
+              {r.diagnostiqueur?.nom && <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{r.diagnostiqueur.nom}</div>}
+              {r.diagnostiqueur?.date && <div style={{ fontSize: 12, color: C.textSec }}>📅 {formatDate(r.diagnostiqueur.date)}</div>}
+              {r.diagnostiqueur?.certification && <div style={{ fontSize: 11, color: C.textSec }}>🎖 {r.diagnostiqueur.certification}</div>}
+            </div>
+          </div>
+        )}
+        {/* Lots visités */}
+        {lotsIdf.length > 0 && (
+          <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+            <div style={{ padding: '9px 14px', background: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 7 }}>
+              <span style={{ fontSize: 14 }}>🏘</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#fff' }}>Lots visités</span>
+            </div>
+            <div style={{ padding: '8px 14px', display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+              {lotsIdf.map((lot: any, i: number) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', borderBottom: i < lotsIdf.length - 1 ? `0.5px solid ${C.border}` : 'none' }}>
+                  <span style={{ fontSize: 15 }}>{lotIcon(lot.type)}</span>
+                  <div>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{lot.type.charAt(0).toUpperCase() + lot.type.slice(1)}{lot.numero ? ` n°${lot.numero}` : ''}</span>
+                    {(lot.etage || lot.description) && <span style={{ fontSize: 11, color: C.textSec, marginLeft: 6 }}>{formatEtage(lot.etage) || lot.description}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* Diagnostics réalisés */}
+        {diags.length > 0 && (
+          <div style={{ background: C.bg, border: `0.5px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+            <div style={{ padding: '9px 14px', background: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 7 }}>
+              <span style={{ fontSize: 14 }}>📋</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#fff' }}>Diagnostics réalisés</span>
+            </div>
+            <div style={{ padding: '8px 14px', display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
+              {diags.map((d: any, i: number) => {
+                const s = diagStatut(d);
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '5px 0', borderBottom: i < diags.length - 1 ? `0.5px solid ${C.border}` : 'none' }}>
+                    <span style={{ fontSize: 12, color: C.text, flex: 1 }}>{d.label}</span>
+                    <span style={{ fontSize: 14, flexShrink: 0 }}>{s.icon}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* DPE + GES — une ligne chacun */}
@@ -2423,8 +2481,9 @@ export default function DocumentRenderer({ result }: { result: any }) {
           .dr-syndic-mobile { display: block !important; }
           /* ── Commanditaire/adresse diag masqués sur mobile ── */
           .dr-diag-meta { display: none !important; }
-          /* ── DDT grille 3 encarts → 1 col sur mobile ── */
-          .dr-ddt-grid { grid-template-columns: 1fr !important; }
+          /* ── DDT — desktop masqué, mobile affiché ── */
+          .dr-ddt-desktop { display: none !important; }
+          .dr-ddt-mobile { display: flex !important; }
 
         @media (max-width: 390px) {
           .dr-header-titre { font-size: 14px !important; }
