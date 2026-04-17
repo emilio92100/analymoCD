@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet complet — 16 avril 2026
+# VERIMO — Contexte projet complet — 17 avril 2026
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -23,22 +23,21 @@
 
 **Slogan :** *Vos documents décryptés, votre décision éclairée.*
 
-**Cible :** Acheteurs particuliers (primo-accédants et investisseurs, avant offre et après compromis), notaires, agents, syndics, marchands de biens.
+**Cible :** Acheteurs particuliers (primo-accédants et investisseurs), notaires, agents, syndics, marchands de biens.
 
 ### Logique crédits / prix
 - 4,90€ → 1 crédit analyse simple (1 seul document) — PAS de score /20
 - 19,90€ → 1 crédit analyse complète
-- 29,90€ → 2 crédits analyse complète (Pack 2 biens — comparaison incluse)
-- 39,90€ → 3 crédits analyse complète (Pack 3 biens — comparaison + classement)
-- Les crédits n'expirent jamais et s'accumulent
-- Nouveaux comptes arrivent à 0 crédit
+- 29,90€ → 2 crédits (Pack 2 biens)
+- 39,90€ → 3 crédits (Pack 3 biens)
+- Les crédits n'expirent jamais
 
 ### Stripe Price IDs (mode TEST — à passer en live)
 ```
-document : price_1TIb1LBO4ekMbwz0020eqcR0  (4,90€)
-complete : price_1TIb3XBO4ekMbwz0a7m7E7gD  (19,90€)
-pack2    : price_1TIb4KBO4ekMbwz0gGF2gI1S  (29,90€)
-pack3    : price_1TIb51BO4ekMbwz0mmEez47o  (39,90€)
+document : price_1TIb1LBO4ekMbwz0020eqcR0
+complete : price_1TIb3XBO4ekMbwz0a7m7E7gD
+pack2    : price_1TIb4KBO4ekMbwz0gGF2gI1S
+pack3    : price_1TIb51BO4ekMbwz0mmEez47o
 ```
 
 ---
@@ -46,8 +45,8 @@ pack3    : price_1TIb51BO4ekMbwz0mmEez47o  (39,90€)
 ## Stack technique
 - **Frontend** : React + Vite + TypeScript + Tailwind
 - **Backend** : Supabase Pro (auth + DB + Edge Functions Deno + Storage)
-- **IA** : Claude Sonnet 4.6 (`claude-sonnet-4-6`) via API Anthropic + Files API
-- **Paiement** : Stripe (mode TEST actuellement)
+- **IA** : Claude Sonnet 4.6 via API Anthropic + Files API
+- **Paiement** : Stripe (mode TEST)
 - **Déploiement** : Vercel (auto depuis GitHub)
 - **Repo** : `github.com/emilio92100/analymoCD`
 - **URL Supabase** : `veszrayromldfgetqaxb.supabase.co`
@@ -56,37 +55,18 @@ pack3    : price_1TIb51BO4ekMbwz0mmEez47o  (39,90€)
 
 ## Routes
 ```
-/                           → HomePage
-/notre-methode              → MethodePage
-/tarifs                     → TarifsPage
-/contact / /exemple         → pages publiques
-/connexion                  → LoginPage
-/inscription                → SignupPage
-/auth/callback              → AuthCallbackPage
-/mot-de-passe-oublie        → ForgotPasswordPage
-/auth/reset-password        → ResetPasswordPage
-/dashboard                  → DashboardPage (HomeView)
-/dashboard/nouvelle-analyse → DashboardPage (NouvelleAnalyse)
-/dashboard/analyses         → DashboardPage (MesAnalyses)
-/dashboard/compare          → DashboardPage (Compare)
-/dashboard/compte           → DashboardPage (Compte)
-/dashboard/support          → DashboardPage (Support)
-/dashboard/tarifs           → DashboardPage (Tarifs interne)
-/dashboard/rapport?id=XXX   → DashboardPage (RapportDashboard) ← APERÇUS GRATUITS
-/rapport?id=XXX             → RapportPage standalone ← RAPPORTS COMPLETS PAYANTS
+/dashboard                  → HomeView (tableau de bord)
+/dashboard/nouvelle-analyse → NouvelleAnalyse
+/dashboard/analyses         → MesAnalyses
+/dashboard/compare          → Compare (non travaillé)
+/dashboard/rapport?id=XXX   → Aperçus gratuits
+/rapport?id=XXX             → RapportPage standalone (rapports payants)
 ```
 
 ---
 
-## Règles de notation (IMPORTANTES)
+## Règles de notation — Score /20
 
-### Score /20 — principes
-- On **part de 20**, chaque risque détecté déduit des points
-- Les bons éléments ajoutent des points (bonus), plafonné à 20
-- Chaque catégorie a un **note_max** — si pas de risque dans cette catégorie, on obtient le max
-- Note haute = bien sain, note basse = risques importants
-
-### Catégories et points max
 | Catégorie | Max |
 |-----------|-----|
 | Travaux | 5 pts |
@@ -96,17 +76,9 @@ pack3    : price_1TIb51BO4ekMbwz0mmEez47o  (39,90€)
 | Diagnostics communs | 3 pts |
 | **TOTAL** | **20 pts** |
 
-### Déductions
-- Travaux urgents non anticipés : -3 à -4
-- Gros travaux évoqués non votés : -2 à -3
-- Fonds travaux nul : -2
-- DPE F (résidence principale) : -2 / G : -3
-- DPE F ou G (investissement) : -4 à -6
-- Procédures judiciaires : -2 à -4
-- DPE A : +1 / B-C : +0,5
-- Fonds travaux conforme 5% : +0,5 / bon (6-9%) : +1 / excellent (≥10%) : +1,5
+**Base 20/20** — on déduit les risques, on ajoute les éléments positifs.
 
-### Niveaux de score
+### Niveaux
 | Plage | Niveau |
 |-------|--------|
 | 17–20 | Bien irréprochable |
@@ -115,27 +87,47 @@ pack3    : price_1TIb51BO4ekMbwz0mmEez47o  (39,90€)
 | 7–9 | Bien risqué |
 | 0–6 | Bien à éviter |
 
+### Travaux (-/+ 5pts)
+- Travaux lourds évoqués non votés : **-3**
+- Travaux légers évoqués non votés : **-1**
+- Travaux votés charge vendeur petits/moyens : **+2**
+- Gros travaux votés charge vendeur : **+3**
+- Garantie décennale récente : **+2**
+
+### Procédures (-/+ 4pts)
+- Procédure significative : **-3**
+- Procédure mineure : **-1,5**
+- Aucune procédure : **+1**
+
+### Finances (-/+ 4pts)
+- Fonds travaux nul/absent : **-1**
+- Impayés > 15% budget : **-1**
+- Fonds travaux 5% : **+0,5** / 6-9% : **+1** / ≥10% : **+1,5**
+
+### Diagnostics privatifs (-/+ 4pts)
+- DPE F (RP) **-2** / G (RP) **-3** / F (invest) **-4** / G (invest) **-6**
+- Électricité anomalies majeures : **-2**
+- DPE A/B/C : **+1,5** / DPE D : **+1**
+- Diagnostics complets sans anomalie + DPE ≤ D : **+2**
+
+### Diagnostics communs (-/+ 3pts)
+- Amiante PC dégradé **-2** / Termites PC **-2** / DTG dégradé **-2**
+- DTG budget urgent < 50k€ **-1** / > 50k€ **-2**
+- Immeuble bien entretenu **+0,5** / Chaudière certifiée **+0,5** / DTG bon **+1**
+
 ---
 
-## Règles métier critiques (prompt analyser-run)
+## Règles métier critiques
 
-1. **Score /20** — note haute = bien, note basse = risque. On part de 20 et on déduit.
+1. **Fonds ALUR** — L'acheteur hérite ces montants MAIS DOIT LES REMBOURSER AU VENDEUR à la signature en sus du prix. JAMAIS "récupérable par l'acheteur".
 
-2. **Fonds ALUR / fonds de roulement** — Ces montants sont attachés au lot. L'acheteur les hérite MAIS DOIT LES REMBOURSER AU VENDEUR à la signature de l'acte authentique, en sus du prix de vente. Formuler : "X € de fonds travaux ALUR à rembourser au vendeur à la signature." **JAMAIS** "récupérable par l'acheteur".
+2. **Votes deux tours** — Art. 25 insuffisant + ≥ 1/3 voix → 2ème tour art. 24. Si adopté → ADOPTÉE. Vrai refus = rejeté sans 2ème tour.
 
-3. **Votes en deux tours (art. 25 → art. 24)** — Si une résolution ne recueille pas la majorité art. 25 au 1er tour mais obtient au moins 1/3 des voix, un 2ème tour à la majorité art. 24 est organisé immédiatement. Si adopté au 2ème tour → résolution **ADOPTÉE**. Ne jamais marquer comme refusée. Vrai refus = résolution rejetée sans 2ème tour ou 2ème tour également rejeté. S'applique à TOUTES les résolutions.
+3. **Honoraires syndic pré-état daté** — Toujours à la charge du vendeur.
 
-4. **Honoraires syndic pré-état daté** — Frais d'établissement du document, **toujours à la charge du vendeur**.
+4. **DPE D** = bonne performance, jamais dans vigilances.
 
-5. **DPE D** = bonne performance, jamais dans vigilances.
-
-6. **Quitus refusé** — expliquer clairement : les copropriétaires ont voté contre la validation de la gestion financière du syndic, traduit désaccord ou méfiance.
-
-7. **Carrez** — ne pas afficher dans les diags si section Surface Carrez dédiée (éviter les doublons).
-
-8. **Anomalies diagnostics** — toujours triées en premier, ERP informatif en dernier.
-
-9. **`pre_etat_date.present = true`** — extraire TOUS les champs : impayes_vendeur, fonds_travaux_alur, fonds_roulement_acheteur, honoraires_syndic, charges_futures, historique_charges N-1/N-2, travaux_charge_vendeur, procedures_contre_vendeur, impayes_copro_global, dette_fournisseurs.
+5. **Carrez** — ne pas afficher dans les diags si section Surface Carrez dédiée.
 
 ---
 
@@ -143,223 +135,163 @@ pack3    : price_1TIb51BO4ekMbwz0mmEez47o  (39,90€)
 
 ```
 src/pages/
-  RapportPage.tsx          ← Page rapport standalone (PRINCIPALE — très longue)
-  DashboardPage.tsx        ← Shell dashboard + sidebar + topbar
-  TarifsPage.tsx           ← Page tarifs publique
-  MethodePage.tsx          ← Page Notre méthode
+  RapportPage.tsx           ← Rapport standalone (analyse complète + simple)
+  DashboardPage.tsx         ← Shell dashboard + sidebar + topbar
   dashboard/
-    Compte.tsx             ← Mon compte
-    MesAnalyses.tsx        ← Listing analyses
-    Support.tsx            ← Support / Aide
-    DocumentRenderer.tsx   ← Rendu analyse simple (par type de document)
-    HomeView.tsx           ← Tableau de bord
-    Tarifs.tsx             ← Tarifs internes dashboard
+    MesAnalyses.tsx         ← Listing analyses
+    HomeView.tsx            ← Tableau de bord
+    NouvelleAnalyse.tsx     ← Upload + barre progression
+    DocumentRenderer.tsx    ← Rendu analyse simple (par type de doc)
+
+src/lib/
+  supabase.ts               ← Client Supabase
+  analyse-client.ts         ← Upload Storage + polling
 
 supabase/functions/
-  analyser-run/index.ts    ← Edge function principale (prompt Claude + JSON)
+  analyser/index.ts         ← Étape 1 : upload fichiers → Files API
+  analyser-run/index.ts     ← Étape 2 : Claude + JSON rapport
 ```
 
 ---
 
-## RapportPage.tsx — Architecture interne
+## RapportPage.tsx — Composants clés
 
-### Composants transversaux
-- **`TooltipBtn`** — composant `?` universel : `position: fixed`, `zIndex: 9999`, instantané au survol. `white={true}` pour fond bleu, `white={false}` pour fond gris. **Remplace tous les anciens Tooltip, TooltipWhite et `title=` natifs**.
-- **`Tooltip`** — wrapper léger autour de `TooltipBtn` (avec texte enfant)
-- **`KpiBand`** — grille de KPIs bleu Verimo dégradé `['#2a7d9c','#236b87','#1e5f77','#185166','#133d50']`, emoji 26px, label blanc 65%, valeur blanche 22px
-- **`SectionTitle`** — barre bleue `#2a7d9c` avec emoji + texte blanc + `TooltipBtn` optionnel
-- **`AccordionSection`** — accordéon avec `useEffect(() => setOpen(defaultOpen), [defaultOpen])` pour réagir au bouton "Tout déplier"
+- **`TooltipBtn`** — composant `?` universel. Mobile : overlay sombre centré (tap dehors ferme). Desktop : `position: fixed`. `white={true}` pour fond bleu.
+- **`SectionTitle`** — fond `#2a7d9c` + emoji + `TooltipBtn`. Pas de tooltip custom.
+- **`KpiBand`** — bleu dégradé. Desktop : blocs. Mobile : liste compacte.
+- **`AccordionSection`** — `e.preventDefault()` sur click (évite scroll). `useEffect` sur `defaultOpen`.
+- **`ResumeBlock`** — clamp 5 lignes mobile + "Lire la suite".
+- **`PdfButton`** — desktop : `window.open`. Mobile : toast "disponible sur PC".
 
-### Onglets (analyse complète)
-- **Synthèse** — score, KPIs globaux (bleu Verimo dégradé), points forts/vigilances, avis Verimo, catégories /20
-- **Copropriété** — bandeau syndic, KPIs copro, vie copro (participation AG + quitus), règles RCP, DTG, travaux, finances (budget + fonds ALUR + historique AG)
-- **Votre logement** — KPIs logement (DPE, charges, surface Carrez, fonds ALUR), bloc "Votre lot" unifié avec pré-état daté intégré, DPE, diagnostics privatifs, finances
-- **Procédures** — headers foncés par gravité : rouge `#7f1d1d` / marron `#78350f` / vert `#14532d`, titre blanc, badge semi-transparent
-- **Documents** — liste docs analysés + docs manquants avec `TooltipBtn`
+### Bottom tab bar mobile
+Option A : fond blanc, icônes 26px colorées/grayscale, pill actif `flex: 1.7`, `safe-area-inset-bottom`.
 
-### Bloc "Votre lot" (TabLogement) — Structure unifiée
-1. **Identité du lot** — lots parsés proprement (plus de JSON brut), tantièmes
-2. **Situation du vendeur** (si `pre_etat_date.present`) — impayés ✓/✗, procédures ✓/✗, honoraires syndic rassurant
-3. **Sommes à verser au vendeur** — fonds ALUR + fonds de roulement en orange avec tooltip
-4. **Historique N-1/N-2** — tableau Budget appelé / Charges réelles / Écart coloré + encart "💡 Comment lire ce tableau ?"
-5. **Règles RCP** + rappel travaux évoqués avec lien → onglet Copropriété (`onSwitchTab`)
+### Labels visuels validés
+- Résumé : badge pill `#0f2d3d` + 📋
+- Vue d'ensemble : badge pill `#0f2d3d` + 🏢
+- Règles copro : icône thème auto (🐾🔑🔨🪟🚗🏠…) + badge statut inline
+- Questions diverses RapportPage : numéros cerclés bleu Verimo
+- Fonds ALUR : montant bold + encart ℹ️ orange (pas de SectionTitle redondant)
 
 ---
 
-## analyser-run/index.ts — JSON complete
+## DocumentRenderer.tsx — Analyse simple
 
-### Champs JSON complets
-Le JSON `complete` contient notamment :
-- `vie_copropriete.syndic` : nom, type (professionnel/bénévole), gestionnaire, fin_mandat, tensions
-- `vie_copropriete.participation_ag[].quitus` : {soumis, approuve, detail}
-- `vie_copropriete.dtg` : present, etat_general, budget_urgent_3ans, budget_total_10ans, travaux_prioritaires
-- `vie_copropriete.regles_copro` : règles RCP avec statut autorisé/interdit/sous_conditions
-- `pre_etat_date` : bloc complet (impayes_vendeur, fonds_travaux_alur, fonds_roulement_acheteur, honoraires_syndic, charges_futures, historique_charges N-1/N-2, travaux_charge_vendeur, procedures_contre_vendeur, impayes_copro_global, dette_fournisseurs, fonds_travaux_copro_global)
-- `lot_achete.compromis` : vendeur, acheteur, notaires, agence, prix, dates, conditions_suspensives, clauses
-- `categories` : {travaux, procedures, finances, diags_privatifs, diags_communs} × {note, note_max}
+### Composants communs (responsive)
+- **`Kpi`** : `dr-kpi-block` (desktop) / `dr-kpi-row` (mobile ligne)
+- **`KpiGrid`** : `dr-kpi-grid` (caché mobile) / `dr-kpi-list` (mobile card liste)
+- **`SectionKpi`** : grille `dr-sectionkpi-grid` (1 col mobile)
+- **`DiagnosticCardRow`** : 2 lignes (nom / badge + bouton)
+- **`Header`** : `borderRadius: 14` conservé sur mobile, `padding: 14px 16px`
+- **`Resume`** : badge 📋 RÉSUMÉ, clamp 4 lignes + "Lire la suite"
 
----
+### CSS mobile (règles toutes dans @media max-width:640px)
+```css
+.dr-kpi-grid { display: none }        /* remplacé par dr-kpi-list */
+.dr-kpi-list { display: block }
+.dr-kpi-block { display: none }       /* remplacé par dr-kpi-row */
+.dr-kpi-row { display: flex }
+.dr-sectionkpi-grid { grid-template-columns: 1fr }
+.dr-ddt-desktop { display: none }     /* DDT 3 cols → blocs empilés */
+.dr-ddt-mobile { display: flex }
+.dr-dpe-desktop { display: none }     /* DPE côte à côte → empilé */
+.dr-dpe-mobile { display: flex }
+.dr-diag-kpi-desktop { display: none } /* Amiante ligne PC → liste mobile */
+.dr-diag-kpi-mobile { display: block }
+.dr-zone-row-desktop { display: none }
+.dr-zone-row-mobile { display: flex }
+.dr-syndic-mobile { display: block }  /* PV AG syndic après résumé */
+.dr-diag-meta { display: none }       /* Commanditaire masqué header */
+```
 
-## Sessions de travail — 16 avril 2026
-
-### Ce qui a été fait dans cette session
-
-#### 1. TabProcédures — Design headers foncés
-- Headers colorés par gravité : rouge `#7f1d1d` (élevée) / marron `#78350f` (modérée) / vert `#14532d` (faible)
-- Titre blanc, badge semi-transparent `rgba(255,255,255,0.15)`, icône emoji
-
-#### 2. Badge gaz "Détecté" → "✓ Conforme"
-- Quand `presence === 'detecte'` sans alerte → badge vert "✓ Conforme" au lieu d'orange "Détecté"
-- `isConforme` calculé dans `DiagRow`
-
-#### 3. Carrez en double — filtré
-- `autresDiags` filtre désormais `d.type !== 'CARREZ'` (section dédiée existe)
-
-#### 4. Tri diagnostics
-- Anomalies toujours en premier (score 3), détectés sans alerte (1), ERP informatif (0), absences (-1)
-
-#### 5. "Tout déplier" Copropriété — corrigé
-- `useEffect(() => setOpen(defaultOpen), [defaultOpen])` dans `AccordionSection`
-- `defaultOpen={allOpen}` passé à toutes les `AccordionSection` de `TabCopropriete`
-
-#### 6. Parties privatives — parser JSON brut
-- `{"numero":"17","description":"..."}` → affiché proprement comme "Lot 17 — Appartement dit porte n°2..."
-
-#### 7. KpiBand — Design bleu Verimo dégradé option B
-- Bleu dégradé `#2a7d9c → #236b87 → #1e5f77 → #185166 → #133d50` de gauche à droite
-- Emoji 26px, label blanc 65%, valeur blanche 22px
-
-#### 8. KPIs Synthèse — même design bleu Verimo
-- Même palette dégradée que Copro et Logement
-
-#### 9. TooltipBtn universel — position:fixed, instantané
-- Remplace tous les anciens tooltips (`Tooltip`, `TooltipWhite`, `title=` natif, accordéon, `SectionTitle`, conditions suspensives, `TabDocuments`)
-- `position: fixed` + `zIndex: 9999` → jamais rogné par les parents
-- `white={true}` pour fond bleu, `white={false}` pour fond gris
-- Tous les `?` en `fontWeight: 700` pour cohérence
-
-#### 10. Bloc "Votre lot" — refonte complète + pré-état daté intégré
-- L'accordéon "Pré-état daté" séparé est supprimé
-- Tout est dans "Votre lot" : identité, situation vendeur, sommes à verser, historique N-1/N-2, règles RCP
-- Tableau N-1/N-2 avec encart "💡 Comment lire ce tableau ?" identique à l'analyse simple
-
-#### 11. KPIs Logement — option A (Cards colorées fondées)
-- Tantièmes retirés des KPIs (trop long) → remplacés par Surface Carrez
-- Fonds ALUR avec `sub: 'À rembourser au vendeur'`
-
-#### 12. KPIs Logement — redesign final option B bleu Verimo
-- Même palette bleu dégradé que les autres onglets
-- Emoji 26px sur fond bleu
-
-#### 13. Règle vote en deux tours — prompt analyser-run
-- Ajoutée dans `buildDocumentPrompt` (mode simple) ET prompt `complete`
-- Couvre toutes les résolutions, pas seulement fonds de travaux
-- Indices : "second tour", "art. 24", "adoptée à la majorité art. 24"
-
-#### 14. Règle fonds ALUR — prompt analyser-run corrigé
-- "SERONT REMBOURSÉS AU VENDEUR par l'acheteur à la signature de l'acte authentique, en sus du prix de vente"
-- "Ne jamais dire que ce montant est 'récupérable' ou 'restitué à l'acheteur'"
-
-#### 15. Compromis dans JSON complete
-- `lot_achete.compromis` : vendeur, acheteur, notaires, prix, dates, conditions suspensives, clauses
-
-#### 16. pre_etat_date dans JSON complete
-- Nouveau bloc avec tous les champs du pré-état daté
-- Règle d'extraction explicite dans le prompt
-
-#### 17. Lien "Voir travaux évoqués" — corrigé
-- `button` avec `onSwitchTab?.('copropriete' as TabId)` — navigue réellement vers l'onglet Copropriété
-- `setActiveTab` passé depuis `RapportPage` via prop `onSwitchTab`
-
-#### 18. Finances logement — bloc "Charges de copro" conditionnel
-- S'affiche uniquement si pas de taxe foncière (évite doublon avec KPI charges)
-
-#### 19. MethodePage.tsx — mise à jour complète
-- **Documents reclassifiés** :
-  - ✓ Indispensables (4) : PV AG (3 derniers), DDT complet, Appels de charges, RCP
-  - + Complémentaires (3) : Pré-état daté / État daté, DTG / PPT, Taxe foncière
-  - ★ Recommandés (2) : Compromis de vente, Carnet d'entretien
-- **Score /20** — nouveau bloc explicatif "Comment lire la note par catégorie ?" avec 4 exemples
-- **Textes agrandis** : 25+ occurrences, 13→14px, 13.5→16px, 12→13px
-
-#### 20. Doublons titres dashboard — corrigés
-- `Compte.tsx` : `<h1>Mon compte</h1>` supprimé
-- `MesAnalyses.tsx` : `<h1>Mes analyses</h1>` supprimé
-- `Support.tsx` : `<h1>Support / Aide</h1>` supprimé
-- Le topbar `DashboardPage` affiche déjà le titre actif
-
-#### 21. TarifsPage.tsx — fix mobile
-- `whiteSpace: 'nowrap'` supprimé sur le slogan sous-titre
-- `maxWidth: 520` + `padding: '0 16px'` → le texte se coupe proprement sur mobile
-
-#### 22. RapportPage — première passe responsive mobile
-- Container principal : `padding: 20px 28px` → `8px 6px` sur mobile (`< 640px`)
-- KPI band : 5 colonnes → 2 colonnes sur mobile, valeur `16px`
-- Onglets : scrollables horizontalement (`overflow-x: auto`, `nowrap`, sans scrollbar visible)
-- Accordéons : padding réduit sur mobile
-- Tables : `font-size: 12px`, `padding: 7px 9px` sur mobile
-- Header dark : `border-radius: 8px`, topnav compact, hero compact
-- Cercle score : `88px` → `72px` sur mobile
-- Tooltips : `max-width: calc(100vw - 24px)`, `left: 12px` → jamais hors écran
-- DashboardPage topbar : `font-size: 14px` + `ellipsis` sur mobile
+### Spécificités par type
+- **DDT** : desktop 3 cols (Diagnostiqueur/Lots/Diagnostics), mobile blocs. DPE+GES côte à côte PC (séparateur), empilés mobile. Travaux DPE : gradient orange 🏗️ + emoji type + prix.
+- **PV_AG** : 3 encarts desktop. Syndic mobile KPI après résumé. Questions diverses numéros cerclés. Montants `whiteSpace: nowrap`.
+- **DIAGNOSTIC_PARTIES_COMMUNES** : PC — diagnostiqueur gauche + 4 KPIs droite sur une ligne. Zones : nuances bleu Verimo par zone, cards mobile empilées.
 
 ---
 
-## ⚠️ PRIORITÉ ABSOLUE — À FAIRE EN PROCHAINE SESSION
+## MesAnalyses.tsx
 
-### Responsive mobile RapportPage — chantier à terminer
-Le responsive a été amorcé mais **n'est pas terminé**. Il faut une refonte profonde pour une expérience premium sur mobile :
+### Mobile — 3 lignes distinctes
+1. Icône + titre court intelligent
+2. Boutons Rapport / Partager / Poubelle
+3. Badge type + date + score à droite
 
-**Ce qui reste à faire :**
-1. **Header** — réduire davantage, mettre le bouton PDF en icône seule, les tags en scroll horizontal
-2. **KPIs** — les valeurs longues ("2 mentionnés", "Classe D") débordent encore sur petits écrans — réduire fontSize dynamiquement
-3. **Blocs de texte** — les descriptions de travaux, procédures, diagnostics sont trop longues sur mobile → ajouter `line-clamp` avec "Lire plus"
-4. **Tableaux N-1/N-2** — les colonnes se tassent trop → transformer en cards empilées sur mobile
-5. **DiagRow** — le layout badge + texte déborde → passer en colonne sur mobile
-6. **RCP règles** — le layout `flex justify-between` avec badge déborde → empiler
-7. **SyndicBand** — les séparateurs verticaux cassent le layout → passer en grille 2×2
-8. **Finances graphique** — les barres horizontales ne s'adaptent pas bien
-9. **Bottom sheet navigation** — idéalement remplacer les onglets par une navigation bottom sheet native mobile
-10. **Test sur vrai mobile** — faire une session dédiée avec screenshots depuis iPhone
-
-**Approche recommandée pour la prochaine session :**
-- Utiliser `className` + CSS media queries (déjà en place)
-- Ou ajouter un hook `useIsMobile()` et conditionner le rendu JSX directement
-- Tester avec Chrome DevTools mobile (iPhone SE = 375px, iPhone 14 = 390px)
+### Titre court (analyse simple)
+Détecté par mots-clés : "amiante" → "Dossier Technique Amiante", "procès-verbal" → "PV Assemblée Générale", etc. Fallback : avant le premier "—".
 
 ---
 
-## Ce qui reste à faire (backlog général)
+## NouvelleAnalyse.tsx — Progression
 
-- [ ] **Responsive mobile RapportPage** — PRIORITÉ ABSOLUE (voir section ci-dessus)
-- [ ] **Dashboard navigation** — redesign proposé (3 options A/B/C montrées), utilisateur n'a pas aimé → à reproposer
-- [ ] **Listing analyses MesAnalyses** — redesign à faire (options A/B/C montrées, utilisateur n'a pas aimé → à reproposer)
-- [ ] **Stripe TEST → production** — changer les Price IDs
-- [ ] **Timeout analyses bloquées > 20 min** — afficher badge "Échoué"
-- [ ] **Compare.tsx** — présent mais non testé
-- [ ] **context.md** — ce fichier (fait ✓)
+### 6 étapes Option B (validées)
+```
+📤 Envoi des fichiers        0→16%
+🔐 Traitement sécurisé       16→30%
+📖 Lecture approfondie       30→50%
+🔍 Analyse des éléments clés 50→70%
+✍️ Rédaction du rapport      70→88%
+✅ Dernières vérifications   88→100%
+```
+
+### Upload mobile
+- `<label htmlFor>` natif (Safari iOS fix)
+- `arrayBuffer()` forcé avant upload (iCloud/Google Drive fix)
+- Texte "Appuyez pour sélectionner" sur mobile
 
 ---
 
-## Décisions de design définitives
+## analyser-run/index.ts
 
-### Palette couleurs
+### Messages progression (10 messages, toutes les 40s, progressifs — pas de boucle)
+```
+'Traitement sécurisé de vos documents...'
+'Lecture approfondie en cours...' ×2
+'Analyse des éléments clés...' ×3
+'Rédaction du rapport en cours...' ×2
+'Dernières vérifications...'
+'Finalisation en cours...'
+```
+
+---
+
+## supabase.ts
+```ts
+createClient(url, key, {
+  auth: { persistSession: true, storageKey: 'verimo-auth', autoRefreshToken: true, detectSessionInUrl: true }
+})
+```
+
+---
+
+## DashboardPage.tsx
+- Main : `padding: 28px 24px`, **pas de maxWidth ni margin auto** → collé à gauche
+- Sidebar : `width: 260px`, fixed
+
+---
+
+## Palette couleurs
 - **Bleu Verimo** : `#2a7d9c`
 - **Bleu dégradé KPIs** : `['#2a7d9c', '#236b87', '#1e5f77', '#185166', '#133d50']`
-- **Header dark** : `linear-gradient(135deg, #0f2d3d, #1a4a5e)`
+- **Header dark** : `#0f2d3d`
 - **Procédures** : rouge `#7f1d1d` / marron `#78350f` / vert `#14532d`
 
-### Composants UI
-- **`TooltipBtn`** — seul composant `?` à utiliser partout (position:fixed, instantané)
-- **`KpiBand`** — bleu dégradé, toujours avec emoji
-- **`SectionTitle`** — fond `#2a7d9c`, emoji + texte blanc + `TooltipBtn` optionnel
-- **`AccordionSection`** — `useEffect` pour réagir à `defaultOpen`
-- **Parties privatives** — toujours parsées (pas de JSON brut affiché)
-- **Badge gaz conforme** — "✓ Conforme" (vert) si pas d'alerte, pas "Détecté" (orange)
+---
 
-### Règles d'affichage
-- **Tantièmes** — dans bloc "Votre lot", pas dans les KPIs (trop long)
-- **Surface Carrez** — dans les KPIs Logement (remplace tantièmes)
-- **Charges de copro** — uniquement dans l'onglet Logement, pas dans Copro
-- **Carrez** — filtré des `autresDiags` (section dédiée)
-- **Pré-état daté** — intégré dans "Votre lot", pas d'accordéon séparé
+## Backlog
+
+### 🔴 Priorité haute
+- [ ] Vérifier affichage mobile tous types docs simples (RCP, Appel charges, Taxe foncière, Compromis, DTG, Carnet entretien)
+- [ ] Corriger texte NouvelleAnalyse : supprimer "Word ou images" → PDF uniquement
+- [ ] Conseil Verimo HomeView : déplacer en haut sous forme de bandeau
+- [ ] Onglet **Comparaison de biens** : à construire
+- [ ] Bouton PDF → message "service non disponible" (au lieu d'erreur)
+- [ ] Page Support : agrandir le texte
+- [ ] HomeView : retravailler présentation générale
+
+### 🟡 Priorité normale
+- [ ] Stripe TEST → production (changer Price IDs)
+- [ ] Analyses bloquées > 20 min → badge "Échoué"
+- [ ] Système dossiers par bien (table `biens` + FK `bien_id`)
+- [ ] Compare.tsx : présent mais non travaillé
