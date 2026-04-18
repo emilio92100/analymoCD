@@ -170,6 +170,7 @@ export default function AdminPage() {
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
   const [toast, setToast] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
+  const [proUnreadCount, setProUnreadCount] = useState(0);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg); setTimeout(() => setToast(''), 3000);
@@ -191,6 +192,9 @@ export default function AdminPage() {
       // Unread messages count
       const { count } = await supabase.from('contact_messages').select('*', { count: 'exact', head: true }).eq('read', false);
       setUnreadCount(count || 0);
+      // Unread pro demands count
+      const { count: proCount } = await supabase.from('contact_pro').select('*', { count: 'exact', head: true }).eq('read', false);
+      setProUnreadCount(proCount || 0);
     };
     check();
   }, [navigate]);
@@ -216,7 +220,7 @@ export default function AdminPage() {
     { id: 'users', label: 'Utilisateurs', icon: Users },
     { id: 'analyses', label: 'Analyses', icon: FileText },
     { id: 'messages', label: 'Messages', icon: Mail, badge: unreadCount },
-    { id: 'demandes_pro', label: 'Demandes Pro', icon: Briefcase },
+    { id: 'demandes_pro', label: 'Demandes Pro', icon: Briefcase, badge: proUnreadCount },
     { id: 'promos', label: 'Codes promo', icon: Tag },
     { id: 'banner', label: 'Bannière', icon: Bell },
     { id: 'logs', label: 'Historique', icon: Bell },
@@ -388,7 +392,7 @@ export default function AdminPage() {
               {activeTab === 'users' && <UsersTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} />}
               {activeTab === 'analyses' && <AnalysesTab />}
               {activeTab === 'messages' && <MessagesTab onConfirm={setConfirm} showToast={showToast} onReadChange={setUnreadCount} />}
-              {activeTab === 'demandes_pro' && <DemandesProTab onConfirm={setConfirm} showToast={showToast} />}
+              {activeTab === 'demandes_pro' && <DemandesProTab onConfirm={setConfirm} showToast={showToast} onReadChange={setProUnreadCount} />}
               {activeTab === 'promos' && <PromosTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} />}
               {activeTab === 'banner' && <BannerTab showToast={showToast} logAction={logAction} />}
               {activeTab === 'logs' && <LogsTab />}
@@ -1593,7 +1597,7 @@ const proTypeBadge: Record<string, { label: string; color: string; bg: string; b
   autre: { label: '💼 Autre', color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' },
 };
 
-function DemandesProTab({ onConfirm, showToast }: { onConfirm: (a: ConfirmAction) => void; showToast: (m: string) => void }) {
+function DemandesProTab({ onConfirm, showToast, onReadChange }: { onConfirm: (a: ConfirmAction) => void; showToast: (m: string) => void; onReadChange: (n: number) => void }) {
   const [demandes, setDemandes] = useState<ContactPro[]>([]);
   const [selected, setSelected] = useState<ContactPro | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1603,8 +1607,10 @@ function DemandesProTab({ onConfirm, showToast }: { onConfirm: (a: ConfirmAction
     setLoading(true);
     const { data } = await supabase.from('contact_pro').select('*').order('created_at', { ascending: false });
     setDemandes(data || []);
+    const unread = (data || []).filter((d: ContactPro) => !d.read).length;
+    onReadChange(unread);
     setLoading(false);
-  }, []);
+  }, [onReadChange]);
 
   useEffect(() => { loadDemandes(); }, [loadDemandes]);
 
@@ -1637,6 +1643,8 @@ function DemandesProTab({ onConfirm, showToast }: { onConfirm: (a: ConfirmAction
     if (!d.read) {
       await supabase.from('contact_pro').update({ read: true }).eq('id', d.id);
       setDemandes(prev => prev.map(x => x.id === d.id ? { ...x, read: true } : x));
+      const newUnread = demandes.filter(x => !x.read && x.id !== d.id).length;
+      onReadChange(newUnread);
     }
     setSelected({ ...d, read: true });
   };
