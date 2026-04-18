@@ -26,6 +26,7 @@ const ConfidentialitePage = lazy(() => import('./pages/ConfidentialitePage'));
 const CGUPage = lazy(() => import('./pages/CGUPage'));
 const MentionsLegalesPage = lazy(() => import('./pages/MentionsLegalesPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
+const ProPage = lazy(() => import('./pages/ProPage'));
 
 // ─── Écran de chargement premium ─────────────────────────────
 function LoadingScreen() {
@@ -219,6 +220,7 @@ export default function App() {
           <Route path="/confidentialite" element={<PublicLayout><ConfidentialitePage /></PublicLayout>} />
           <Route path="/cgu" element={<PublicLayout><CGUPage /></PublicLayout>} />
           <Route path="/mentions-legales" element={<PublicLayout><MentionsLegalesPage /></PublicLayout>} />
+          <Route path="/pro" element={<PublicLayout><ProPage /></PublicLayout>} />
           <Route path="/connexion" element={<LoginPage />} />
           <Route path="/start" element={<StartPage />} />
           <Route path="/inscription" element={<SignupPage />} />
