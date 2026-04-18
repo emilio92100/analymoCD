@@ -206,8 +206,13 @@ export default function ContactProPage() {
       <section style={{ padding: '56px 28px 40px', background: 'linear-gradient(150deg, #0f2d3d 0%, #1a4a5e 50%, #2a7d9c 100%)', textAlign: 'center' }}>
         <motion.h1 initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
           style={{ fontSize: 'clamp(26px,4vw,44px)', fontWeight: 900, color: '#fff', marginBottom: 10, letterSpacing: '-0.025em' }}>
-          Parlons de votre{' '}
-          <span style={{ color: '#7dd3fc' }}>projet.</span>
+          Parlons de{' '}
+          <span style={{ position: 'relative', display: 'inline-block' }}>
+            <span style={{ color: '#7dd3fc' }}>votre projet.</span>
+            <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }}
+              transition={{ delay: 0.8, duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
+              style={{ position: 'absolute', bottom: -3, left: 0, right: 0, height: 4, background: 'rgba(125,211,252,0.3)', borderRadius: 4, transformOrigin: 'left', display: 'block' }} />
+          </span>
         </motion.h1>
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
           style={{ fontSize: 16, color: 'rgba(255,255,255,0.6)', maxWidth: 600, margin: '0 auto', lineHeight: 1.7 }}>
