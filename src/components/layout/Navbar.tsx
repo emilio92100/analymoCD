@@ -210,6 +210,15 @@ export default function Navbar() {
                 })}
               </div>
 
+              {/* Offre Pro mobile */}
+              <div className="px-2.5 pb-2">
+                <Link to="/pro" onClick={() => setOpen(false)}
+                  className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-white transition-all"
+                  style={{ background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' }}>
+                  Offre Pro
+                </Link>
+              </div>
+
               {/* CTA */}
               <div className="px-2.5 pb-3 pt-2 border-t border-slate-100 flex gap-2">
                 {user ? (
