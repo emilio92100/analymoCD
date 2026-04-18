@@ -7,7 +7,7 @@ import {
   Search, X, Check, AlertTriangle, Shield, CreditCard,
   Trash2, RefreshCw, Eye, EyeOff, TrendingUp, ArrowRight,
   LogOut, Send, UserPlus, CheckCircle, Download, Tag,
-  Bell, ChevronLeft, Plus, Copy,
+  Bell, ChevronLeft, Plus, Copy, Briefcase,
 } from 'lucide-react';
 
 /* ══════════════════════════════════════════
@@ -159,7 +159,7 @@ function ActionBtn({ icon, label, color = '#64748b', bg = '#f8fafc', border = '#
 /* ══════════════════════════════════════════
    ADMIN PAGE ROOT
 ══════════════════════════════════════════ */
-type TabId = 'dashboard' | 'users' | 'analyses' | 'messages' | 'stats' | 'promos' | 'logs' | 'banner';
+type TabId = 'dashboard' | 'users' | 'analyses' | 'messages' | 'demandes_pro' | 'stats' | 'promos' | 'logs' | 'banner';
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -216,6 +216,7 @@ export default function AdminPage() {
     { id: 'users', label: 'Utilisateurs', icon: Users },
     { id: 'analyses', label: 'Analyses', icon: FileText },
     { id: 'messages', label: 'Messages', icon: Mail, badge: unreadCount },
+    { id: 'demandes_pro', label: 'Demandes Pro', icon: Briefcase },
     { id: 'promos', label: 'Codes promo', icon: Tag },
     { id: 'banner', label: 'Bannière', icon: Bell },
     { id: 'logs', label: 'Historique', icon: Bell },
@@ -387,6 +388,7 @@ export default function AdminPage() {
               {activeTab === 'users' && <UsersTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} />}
               {activeTab === 'analyses' && <AnalysesTab />}
               {activeTab === 'messages' && <MessagesTab onConfirm={setConfirm} showToast={showToast} onReadChange={setUnreadCount} />}
+              {activeTab === 'demandes_pro' && <DemandesProTab onConfirm={setConfirm} showToast={showToast} />}
               {activeTab === 'promos' && <PromosTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} />}
               {activeTab === 'banner' && <BannerTab showToast={showToast} logAction={logAction} />}
               {activeTab === 'logs' && <LogsTab />}
@@ -1569,6 +1571,197 @@ function LogsTab() {
               </div>
             );
           })}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   DEMANDES PRO TAB
+══════════════════════════════════════════ */
+type ContactPro = {
+  id: string; profile_type: string; nom: string; prenom: string; email: string;
+  telephone?: string; ville?: string; volume?: string; message?: string;
+  profile_data: Record<string, unknown>; rgpd_consent: boolean; read: boolean;
+  notes_admin?: string; created_at: string;
+};
+
+const proTypeBadge: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  agent: { label: '🏢 Agent', color: '#2a7d9c', bg: '#f0f7fb', border: '#d0e8f0' },
+  investisseur: { label: '📈 Investisseur', color: '#7c3aed', bg: '#f5f3ff', border: '#e0d6ff' },
+  notaire: { label: '⚖️ Notaire', color: '#0f2d3d', bg: '#f4f7f9', border: '#d8e2e8' },
+  autre: { label: '💼 Autre', color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' },
+};
+
+function DemandesProTab({ onConfirm, showToast }: { onConfirm: (a: ConfirmAction) => void; showToast: (m: string) => void }) {
+  const [demandes, setDemandes] = useState<ContactPro[]>([]);
+  const [selected, setSelected] = useState<ContactPro | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [filterType, setFilterType] = useState<string>('all');
+
+  const loadDemandes = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase.from('contact_pro').select('*').order('created_at', { ascending: false });
+    setDemandes(data || []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadDemandes(); }, [loadDemandes]);
+
+  // Temps réel
+  useEffect(() => {
+    const channel = supabase.channel('contact_pro_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'contact_pro' }, () => {
+        loadDemandes();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [loadDemandes]);
+
+  const deleteDemande = (d: ContactPro) => {
+    onConfirm({
+      title: 'Supprimer la demande',
+      message: `Supprimer la demande de ${d.prenom} ${d.nom} (${proTypeBadge[d.profile_type]?.label || d.profile_type}) ?`,
+      confirmLabel: 'Supprimer',
+      variant: 'danger',
+      onConfirm: async () => {
+        await supabase.from('contact_pro').delete().eq('id', d.id);
+        if (selected?.id === d.id) setSelected(null);
+        loadDemandes();
+        showToast('Demande supprimée');
+      },
+    });
+  };
+
+  const markRead = async (d: ContactPro) => {
+    if (!d.read) {
+      await supabase.from('contact_pro').update({ read: true }).eq('id', d.id);
+      setDemandes(prev => prev.map(x => x.id === d.id ? { ...x, read: true } : x));
+    }
+    setSelected({ ...d, read: true });
+  };
+
+  const filtered = filterType === 'all' ? demandes : demandes.filter(d => d.profile_type === filterType);
+  const unreadCount = demandes.filter(d => !d.read).length;
+
+  const renderProfileData = (d: ContactPro) => {
+    const pd = d.profile_data || {};
+    const entries = Object.entries(pd).filter(([, v]) => v !== null && v !== '' && !(Array.isArray(v) && v.length === 0));
+    if (entries.length === 0) return null;
+    const labelMap: Record<string, string> = {
+      nomAgence: 'Agence', adresseAgence: 'Adresse agence', reseau: 'Réseau', tailleAgence: 'Taille agence',
+      transactionsParMois: 'Transactions/mois', rsac: 'RSAC/Carte T', dejaAnalyse: 'Service analyse existant', interets: 'Intérêts',
+      nomSociete: 'Société', statut: 'Statut', siret: 'SIRET', acquisitionsParAn: 'Acquisitions/an',
+      typeBien: 'Type de biens', strategie: 'Stratégie', avecCourtier: 'Avec courtier/agent',
+      nomEtude: 'Étude', adresseEtude: 'Adresse étude', fonction: 'Fonction', tailleEtude: 'Taille étude',
+      dejaOutils: 'Outils existants', profession: 'Profession', nomStructure: 'Structure',
+    };
+    return (
+      <div style={{ marginTop: 16, padding: 14, background: '#f8fafc', borderRadius: 12, border: '1px solid #edf2f7' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 10 }}>Infos spécifiques</div>
+        {entries.map(([key, val]) => (
+          <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '6px 0', borderBottom: '1px solid #f1f5f9', gap: 12 }}>
+            <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600, minWidth: 120, flexShrink: 0 }}>{labelMap[key] || key}</span>
+            <span style={{ fontSize: 12, color: '#0f172a', textAlign: 'right' as const }}>{Array.isArray(val) ? (val as string[]).join(', ') : String(val)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap' as const, gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Demandes Pro</h1>
+          <p style={{ fontSize: 13, color: '#94a3b8' }}>{unreadCount} nouvelle{unreadCount > 1 ? 's' : ''} · {demandes.length} total</p>
+        </div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+          {[{ id: 'all', label: 'Tous' }, { id: 'agent', label: '🏢 Agents' }, { id: 'investisseur', label: '📈 Invest.' }, { id: 'notaire', label: '⚖️ Notaires' }, { id: 'autre', label: '💼 Autres' }].map(f => (
+            <button key={f.id} onClick={() => setFilterType(f.id)}
+              style={{ padding: '7px 12px', borderRadius: 10, border: `1.5px solid ${filterType === f.id ? '#2a7d9c' : '#edf2f7'}`, background: filterType === f.id ? '#f0f7fb' : '#fff', color: filterType === f.id ? '#2a7d9c' : '#64748b', fontSize: 12, fontWeight: filterType === f.id ? 700 : 500, cursor: 'pointer' }}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="admin-messages-grid" style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 1fr' : '1fr', gap: 16 }}>
+        <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
+          {loading ? <div style={{ padding: 40, textAlign: 'center' as const, color: '#94a3b8' }}>Chargement...</div>
+            : filtered.length === 0 ? (
+              <div style={{ padding: '52px 32px', textAlign: 'center' as const, color: '#94a3b8' }}>
+                <Briefcase size={36} style={{ color: '#e2e8f0', margin: '0 auto 14px', display: 'block' }} />
+                <div style={{ fontSize: 14, fontWeight: 600 }}>Aucune demande pro</div>
+              </div>
+            ) : filtered.map((d, i) => {
+              const badge = proTypeBadge[d.profile_type] || proTypeBadge.autre;
+              return (
+                <div key={d.id} onClick={() => markRead(d)}
+                  style={{ padding: '14px 18px', borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none', cursor: 'pointer', background: selected?.id === d.id ? '#f0f7fb' : d.read ? '#fff' : '#fffef0', transition: 'background 0.15s' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {!d.read && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#f0a500', flexShrink: 0 }} />}
+                      <span style={{ fontSize: 14, fontWeight: d.read ? 600 : 800, color: '#0f172a' }}>{d.prenom} {d.nom}</span>
+                    </div>
+                    <span style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDate(d.created_at)}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: badge.color, background: badge.bg, border: `1px solid ${badge.border}`, padding: '2px 8px', borderRadius: 6 }}>{badge.label}</span>
+                    <span style={{ fontSize: 12, color: '#2a7d9c' }}>{d.email}</span>
+                  </div>
+                  {d.volume && <div style={{ fontSize: 12, color: '#94a3b8' }}>{d.volume}</div>}
+                </div>
+              );
+            })}
+        </div>
+
+        {selected && (
+          <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}
+            style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: 24, height: 'fit-content' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 18 }}>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>{selected.prenom} {selected.nom}</div>
+                <a href={`mailto:${selected.email}`} style={{ fontSize: 13, color: '#2a7d9c', textDecoration: 'none', fontWeight: 600 }}>{selected.email}</a>
+              </div>
+              <button onClick={() => setSelected(null)} style={{ background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 8, cursor: 'pointer', color: '#94a3b8', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+            </div>
+            {(() => { const b = proTypeBadge[selected.profile_type] || proTypeBadge.autre; return (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, background: b.bg, border: `1px solid ${b.border}`, marginBottom: 16 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: b.color }}>{b.label}</span>
+              </div>
+            ); })()}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', marginBottom: 16 }}>
+              {selected.telephone && (<div><div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, marginBottom: 2 }}>Téléphone</div><div style={{ fontSize: 13, color: '#0f172a', fontWeight: 600 }}>{selected.telephone}</div></div>)}
+              {selected.ville && (<div><div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, marginBottom: 2 }}>Ville / Région</div><div style={{ fontSize: 13, color: '#0f172a', fontWeight: 600 }}>{selected.ville}</div></div>)}
+              {selected.volume && (<div><div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, marginBottom: 2 }}>Volume estimé</div><div style={{ fontSize: 13, color: '#0f172a', fontWeight: 600 }}>{selected.volume}</div></div>)}
+            </div>
+            {renderProfileData(selected)}
+            {selected.message && (
+              <div style={{ marginTop: 16, padding: 14, background: '#f8fafc', borderRadius: 12, border: '1px solid #edf2f7' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 8 }}>Message</div>
+                <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.7, whiteSpace: 'pre-wrap' as const }}>{selected.message}</div>
+              </div>
+            )}
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 16, marginBottom: 20 }}>Reçu le {fmtDateTime(selected.created_at)}</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+              <a href={`mailto:${selected.email}?subject=Verimo Pro — Votre demande`}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
+                <Send size={13} /> Répondre
+              </a>
+              {selected.telephone && (
+                <a href={`tel:${selected.telephone}`}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: '#f0fdf4', border: '1px solid #d1fae5', color: '#16a34a', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
+                  Appeler
+                </a>
+              )}
+              <button onClick={() => deleteDemande(selected)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                <Trash2 size={13} /> Supprimer
+              </button>
+            </div>
+          </motion.div>
+        )}
       </div>
     </div>
   );
