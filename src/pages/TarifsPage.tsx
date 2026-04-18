@@ -12,83 +12,81 @@ const isLowPerf = () => isIOS() || (typeof window !== 'undefined' && window.inne
 const plans = [
   {
     id: 'document',
-    name: 'Analyse Simple',
+    name: 'Simple',
     price: '4,90',
-    badge: null,
-    color: '#64748b',
-    borderColor: '#e2e8f0',
-    accentBg: '#f8fafc',
-    desc: 'Un document à déchiffrer rapidement avant d\'aller plus loin.',
+    sub: '1 document analysé',
+    perUnit: null,
     cta: 'Analyser un document',
+    popular: false,
+    badge: null,
+    badgeColor: '',
+    badgeBg: '',
     features: [
-      "Analyse d'un seul document",
-      'Points forts et vigilances détectés',
+      'Points forts et vigilances',
       'Avis Verimo personnalisé',
       'Résultat en 30 secondes*',
     ],
     missing: [
-      'Score /20 global du bien',
-      'Rapport PDF complet',
-      'Comparaison de biens',
+      'Score /20 du bien',
+      'Rapport PDF',
     ],
   },
   {
     id: 'complete',
-    name: 'Analyse Complète',
+    name: 'Complète',
     price: '19,90',
-    badge: '⭐ Recommandée',
-    color: '#2a7d9c',
-    borderColor: '#2a7d9c',
-    accentBg: '#f0f7fb',
-    desc: 'Tout comprendre sur un bien avant de faire une offre.',
+    sub: 'Jusqu\'à 15 documents',
+    perUnit: null,
     cta: 'Analyser mon bien',
+    popular: true,
+    badge: 'Recommandée',
+    badgeColor: '#0c447c',
+    badgeBg: '#e6f1fb',
     features: [
-      'Jusqu\'à 15 documents analysés ensemble',
-      'Score global /20 avec recommandation',
-      'Travaux votés et à prévoir',
-      'Santé financière de la copropriété',
+      'Score /20 + recommandation',
+      'Travaux, finances, diagnostics',
       'Pistes de négociation',
       'Avis Verimo personnalisé',
-      'Rapport PDF complet téléchargeable',
-      'Compléter le dossier sous 7 jours',
+      'Rapport PDF téléchargeable',
+      'Compléter sous 7 jours',
     ],
     missing: [
-      'Comparaison de biens (dès le Pack 2)',
+      'Comparaison de biens',
     ],
   },
   {
     id: 'pack2',
-    name: 'Pack 2 Biens',
+    name: 'Pack 2',
     price: '29,90',
-    badge: 'Économique',
-    color: '#0f2d3d',
-    borderColor: '#0f2d3d',
-    accentBg: '#f4f7f9',
-    desc: 'Hésitez entre deux biens ? Analysez et comparez-les.',
+    sub: 'Comparez 2 biens',
+    perUnit: '14,95€ / bien',
     cta: 'Comparer 2 biens',
+    popular: false,
+    badge: '−25%',
+    badgeColor: '#92400e',
+    badgeBg: '#fef3c7',
     features: [
-      '2 analyses complètes indépendantes',
+      '2 analyses complètes',
       'Comparaison côte à côte',
-      'Score, travaux, finances des 2 biens',
-      'Économisez 10€ vs 2 achats séparés',
+      'Économisez 10€',
     ],
     missing: [],
   },
   {
     id: 'pack3',
-    name: 'Pack 3 Biens',
+    name: 'Pack 3',
     price: '39,90',
-    badge: 'Meilleure valeur',
-    color: '#7c3aed',
-    borderColor: '#7c3aed',
-    accentBg: '#f5f3ff',
-    desc: '3 biens à analyser, comparer et classer ensemble.',
+    sub: 'Analysez et classez',
+    perUnit: '13,30€ / bien',
     cta: 'Comparer 3 biens',
+    popular: false,
+    badge: '−33%',
+    badgeColor: '#3C3489',
+    badgeBg: '#EEEDFE',
     features: [
-      '3 analyses complètes indépendantes',
-      'Comparaison et classement des biens',
-      'Score, travaux, finances des 3 biens',
-      'Économisez 20€ vs 3 achats séparés',
+      '3 analyses complètes',
+      'Comparaison et classement',
+      'Économisez 20€',
     ],
     missing: [],
   },
@@ -230,76 +228,73 @@ export default function TarifsPage() {
 
       {/* ── CARTES ── */}
       <section style={{ padding: 'clamp(32px,5vw,52px) 20px 0', maxWidth: 1100, margin: '0 auto' }}>
-        <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 }}>
+        <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, alignItems: 'start' }}>
           {plans.map((plan, i) => (
             <motion.div key={plan.id}
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              whileHover={{ y: -4, boxShadow: '0 16px 48px rgba(15,45,61,0.12)' }}
               style={{
                 background: '#fff',
-                borderRadius: 18,
-                border: `2px solid ${plan.badge ? plan.borderColor : '#edf2f7'}`,
-                boxShadow: plan.badge ? `0 8px 32px ${plan.color}18` : '0 1px 4px rgba(0,0,0,0.05)',
+                borderRadius: 16,
+                border: plan.popular ? '2px solid #2a7d9c' : '1.5px solid #edf2f7',
                 display: 'flex',
                 flexDirection: 'column' as const,
                 position: 'relative' as const,
                 overflow: 'visible',
+                boxShadow: plan.popular ? '0 8px 32px rgba(42,125,156,0.12)' : '0 1px 4px rgba(0,0,0,0.04)',
+                transition: 'box-shadow 0.3s, border-color 0.3s',
               }}>
-
-              {/* Barre colorée en haut */}
-              <div style={{ height: 4, background: plan.badge ? plan.color : '#edf2f7', borderRadius: '16px 16px 0 0', flexShrink: 0 }} />
 
               {/* Badge */}
               {plan.badge && (
                 <div style={{
-                  position: 'absolute' as const, top: -13, left: '50%', transform: 'translateX(-50%)',
-                  padding: '4px 14px', borderRadius: 100, fontSize: 11, fontWeight: 700,
-                  background: plan.color, color: '#fff', whiteSpace: 'nowrap' as const,
-                  boxShadow: `0 4px 12px ${plan.color}40`,
+                  position: 'absolute' as const, top: -11, left: '50%', transform: 'translateX(-50%)',
+                  padding: '4px 16px', borderRadius: 100, fontSize: 12, fontWeight: 700,
+                  background: plan.badgeBg, color: plan.badgeColor, whiteSpace: 'nowrap' as const,
+                  border: `1px solid ${plan.badgeColor}20`,
                 }}>
                   {plan.badge}
                 </div>
               )}
 
-              <div style={{ padding: '24px 22px 22px', display: 'flex', flexDirection: 'column' as const, flex: 1 }}>
+              <div style={{ padding: '28px 22px 24px', display: 'flex', flexDirection: 'column' as const, flex: 1 }}>
 
-                {/* Nom */}
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: '#94a3b8', marginBottom: 14, paddingTop: plan.badge ? 8 : 0, textAlign: 'center' as const }}>
-                  {plan.name}
-                </div>
+                {/* Nom + sous-titre */}
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 3, marginTop: plan.badge ? 4 : 0 }}>{plan.name}</div>
+                <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 20 }}>{plan.sub}</div>
 
                 {/* Prix */}
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 1, marginBottom: 3, justifyContent: 'center' }}>
-                  <span style={{ fontSize: 'clamp(34px,3.5vw,46px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.04em', lineHeight: 1 }}>{plan.price}</span>
-                  <span style={{ fontSize: 18, fontWeight: 700, color: '#cbd5e1', marginBottom: 1 }}>€</span>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 2, marginBottom: 3 }}>
+                  <span style={{ fontSize: 'clamp(34px,3.5vw,42px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.04em', lineHeight: 1 }}>{plan.price}</span>
+                  <span style={{ fontSize: 16, fontWeight: 600, color: '#cbd5e1' }}>€</span>
                 </div>
-                <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 18, textAlign: 'center' as const }}>TTC · paiement unique</div>
-
-                {/* Description */}
-                <div style={{ padding: '10px 12px', borderRadius: 10, background: plan.accentBg, marginBottom: 20, minHeight: 52, display: 'flex', alignItems: 'center' }}>
-                  <p style={{ fontSize: 12.5, color: '#374151', lineHeight: 1.6, margin: 0 }}>{plan.desc}</p>
+                <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 22 }}>
+                  {plan.perUnit ? `${plan.perUnit} · paiement unique` : 'TTC · paiement unique'}
                 </div>
 
                 {/* Séparateur */}
-                <div style={{ height: 1, background: '#f1f5f9', marginBottom: 16 }} />
+                <div style={{ height: 1, background: '#f1f5f9', marginBottom: 18 }} />
 
-                {/* Features incluses */}
-                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 9, flex: 1, marginBottom: 20 }}>
+                {/* Features */}
+                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 11, flex: 1, marginBottom: 22 }}>
                   {plan.features.map((f, fi) => (
-                    <div key={fi} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                      <div style={{ width: 16, height: 16, borderRadius: '50%', background: `${plan.color}14`, border: `1.5px solid ${plan.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
-                        <Check size={9} color={plan.color} strokeWidth={3} />
-                      </div>
-                      <span style={{ fontSize: 12.5, color: '#374151', lineHeight: 1.45, fontWeight: 500 }}>{f}</span>
+                    <div key={fi} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                      <svg width="16" height="16" viewBox="0 0 16 16" style={{ flexShrink: 0, marginTop: 1 }}>
+                        <circle cx="8" cy="8" r="7" fill={plan.popular ? '#e6f7ed' : '#f0fdf4'} stroke={plan.popular ? '#22c55e' : '#bbf7d0'} strokeWidth="1.2" />
+                        <path d="M5 8.2l2 2 4-4.4" stroke="#16a34a" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.45 }}>{f}</span>
                     </div>
                   ))}
                   {plan.missing.map((f, fi) => (
-                    <div key={fi} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, opacity: 0.4 }}>
-                      <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
-                        <X size={8} color="#94a3b8" />
-                      </div>
-                      <span style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.4 }}>{f}</span>
+                    <div key={`m${fi}`} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, opacity: 0.35 }}>
+                      <svg width="16" height="16" viewBox="0 0 16 16" style={{ flexShrink: 0, marginTop: 1 }}>
+                        <circle cx="8" cy="8" r="7" fill="#f8fafc" stroke="#e2e8f0" strokeWidth="1" />
+                        <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#cbd5e1" strokeWidth="1.2" strokeLinecap="round" />
+                      </svg>
+                      <span style={{ fontSize: 12.5, color: '#94a3b8', lineHeight: 1.4 }}>{f}</span>
                     </div>
                   ))}
                 </div>
@@ -307,16 +302,18 @@ export default function TarifsPage() {
                 {/* CTA */}
                 <Link to={`/start?plan=${plan.id}`}
                   style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                    padding: '12px 16px', borderRadius: 11, boxSizing: 'border-box' as const,
-                    background: plan.badge ? plan.color : '#f4f7f9',
-                    color: plan.badge ? '#fff' : '#0f172a',
-                    border: plan.badge ? 'none' : '1.5px solid #e2e8f0',
-                    fontSize: 13, fontWeight: 700, textDecoration: 'none',
-                    boxShadow: plan.badge ? `0 4px 16px ${plan.color}30` : 'none',
-                    transition: 'all 0.18s',
-                  }}>
-                  {plan.cta} <ArrowRight size={13} />
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                    padding: '13px 16px', borderRadius: 12, boxSizing: 'border-box' as const,
+                    background: plan.popular ? 'linear-gradient(135deg, #0f2d3d, #1a5068)' : '#fff',
+                    color: plan.popular ? '#fff' : '#0f172a',
+                    border: plan.popular ? 'none' : '1.5px solid #e2e8f0',
+                    fontSize: 14, fontWeight: 700, textDecoration: 'none',
+                    boxShadow: plan.popular ? '0 4px 16px rgba(15,45,61,0.25)' : 'none',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseOver={e => { if (plan.popular) (e.currentTarget as HTMLElement).style.filter = 'brightness(1.15)'; else { (e.currentTarget as HTMLElement).style.background = '#f8fafc'; (e.currentTarget as HTMLElement).style.borderColor = '#2a7d9c'; } }}
+                  onMouseOut={e => { if (plan.popular) (e.currentTarget as HTMLElement).style.filter = 'brightness(1)'; else { (e.currentTarget as HTMLElement).style.background = '#fff'; (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0'; } }}>
+                  {plan.cta} <ArrowRight size={14} />
                 </Link>
               </div>
             </motion.div>
@@ -342,7 +339,7 @@ export default function TarifsPage() {
                   <th style={{ padding: '12px 20px', textAlign: 'left' as const, fontSize: 12, fontWeight: 700, color: '#94a3b8', width: '35%' }} />
                   {plans.map((p, i) => (
                     <th key={p.id} style={{ padding: '12px 8px', textAlign: 'center' as const, fontSize: 12, fontWeight: 800, color: i === 1 ? '#2a7d9c' : '#0f172a', background: i === 1 ? 'rgba(42,125,156,0.04)' : 'transparent', borderLeft: '1px solid #f1f5f9' }}>
-                      {p.name.replace('Analyse ', '')}
+                      {p.name}
                       <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', marginTop: 1 }}>{p.price}€</div>
                     </th>
                   ))}
