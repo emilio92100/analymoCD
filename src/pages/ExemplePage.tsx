@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import {
@@ -109,10 +109,34 @@ const rapport = {
    COMPOSANTS
 ══════════════════════════════════════════ */
 function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: isLowPerf() ? '0px' : '-30px' });
+  const ref = useRef<HTMLDivElement>(null);
+  const _lp = isLowPerf();
+
+  if (_lp) {
+    const [visible, setVisible] = useState(false);
+    useEffect(() => {
+      const el = ref.current;
+      if (!el) return;
+      const obs = new IntersectionObserver(([e]) => {
+        if (e.isIntersecting) { setVisible(true); obs.disconnect(); }
+      }, { threshold: 0.1 });
+      obs.observe(el);
+      return () => obs.disconnect();
+    }, []);
+    return (
+      <div ref={ref} style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? 'translateY(0)' : 'translateY(6px)',
+        transition: `opacity 0.25s ease ${Math.min(delay, 0.05)}s, transform 0.25s ease ${Math.min(delay, 0.05)}s`,
+      }}>
+        {children}
+      </div>
+    );
+  }
+
+  const inView = useInView(ref, { once: true, margin: '-30px' });
   return (
-    <motion.div ref={ref} initial={{ opacity: 0, y: isLowPerf() ? 6 : 14 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ duration: isLowPerf() ? 0.18 : 0.45, delay: isLowPerf() ? Math.min(delay, 0.05) : delay, ease: [0.22, 1, 0.36, 1] }}>
+    <motion.div ref={ref} initial={{ opacity: 0, y: 14 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.45, delay, ease: [0.22, 1, 0.36, 1] }}>
       {children}
     </motion.div>
   );
