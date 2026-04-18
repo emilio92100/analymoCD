@@ -532,18 +532,19 @@ function BannerTab({ showToast, logAction }: { showToast: (m: string) => void; l
   );
 }
 function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
-  const [kpis, setKpis] = useState({ users: 0, analyses: 0, messages: 0, ca: 0 });
+  const [kpis, setKpis] = useState({ users: 0, analyses: 0, messages: 0, pro: 0, ca: 0 });
 
   useEffect(() => {
     const load = async () => {
-      const [{ count: u }, { count: a }, { count: m }, { data: anal }] = await Promise.all([
+      const [{ count: u }, { count: a }, { count: m }, { count: p }, { data: anal }] = await Promise.all([
         supabase.from('profiles').select('*', { count: 'exact', head: true }),
         supabase.from('analyses').select('*', { count: 'exact', head: true }),
         supabase.from('contact_messages').select('*', { count: 'exact', head: true }).eq('read', false),
+        supabase.from('contact_pro').select('*', { count: 'exact', head: true }).eq('read', false),
         supabase.from('analyses').select('type').eq('paid', true).not('stripe_payment_id', 'is', null),
       ]);
       const ca = (anal || []).reduce((s, a) => s + (PLAN_PRICES[a.type] || 0), 0);
-      setKpis({ users: u || 0, analyses: a || 0, messages: m || 0, ca });
+      setKpis({ users: u || 0, analyses: a || 0, messages: m || 0, pro: p || 0, ca });
     };
     load();
   }, []);
@@ -558,6 +559,7 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         <KpiCard label="Utilisateurs" value={kpis.users} color="#2a7d9c" icon={<Users size={16} color="#2a7d9c" />} delay={0} />
         <KpiCard label="Analyses" value={kpis.analyses} color="#7c3aed" icon={<FileText size={16} color="#7c3aed" />} delay={0.05} />
         <KpiCard label="Messages non lus" value={kpis.messages} color="#f0a500" icon={<Mail size={16} color="#f0a500" />} delay={0.1} />
+        <KpiCard label="Demandes Pro" value={kpis.pro} color="#0f2d3d" icon={<Briefcase size={16} color="#0f2d3d" />} delay={0.12} />
         <KpiCard label="CA estimé" value={`${kpis.ca.toFixed(0)}€`} sub="Analyses complétées" color="#16a34a" icon={<TrendingUp size={16} color="#16a34a" />} delay={0.15} />
       </div>
       <div className="admin-overview-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -567,6 +569,7 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
             {([
               { label: 'Gérer les utilisateurs', icon: Users, color: '#2a7d9c', tab: 'users' },
               { label: 'Voir les messages', icon: Mail, color: '#f0a500', tab: 'messages' },
+              { label: 'Demandes Pro', icon: Briefcase, color: '#0f2d3d', tab: 'demandes_pro' },
               { label: 'Voir les analyses', icon: FileText, color: '#7c3aed', tab: 'analyses' },
               { label: 'Codes promo', icon: Tag, color: '#16a34a', tab: 'promos' },
               { label: 'Statistiques', icon: BarChart2, color: '#2a7d9c', tab: 'stats' },
@@ -591,7 +594,7 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 6 }}>Basé sur les analyses complétées</div>
           </div>
           <div style={{ display: 'flex', gap: 20, marginTop: 24 }}>
-            {[{ l: 'Users', v: kpis.users }, { l: 'Analyses', v: kpis.analyses }, { l: 'Messages', v: kpis.messages }].map((s, i) => (
+            {[{ l: 'Users', v: kpis.users }, { l: 'Analyses', v: kpis.analyses }, { l: 'Messages', v: kpis.messages }, { l: 'Pro', v: kpis.pro }].map((s, i) => (
               <div key={i}>
                 <div style={{ fontSize: 22, fontWeight: 900, color: '#fff' }}>{s.v}</div>
                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>{s.l}</div>
