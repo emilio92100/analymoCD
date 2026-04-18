@@ -1005,98 +1005,105 @@ function SecuriteSection() {
 
 /* ═══ FOR WHO ══════════════════════════════════════════════ */
 function ForWhoSection() {
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-
-  const benefits = [
-    { emoji: '📋', title: 'PV d\'AG décryptés', desc: 'Travaux votés, procédures, budget — tout est extrait et expliqué simplement.', color: '#2a7d9c' },
-    { emoji: '🔍', title: 'Risques identifiés', desc: 'Impayés, travaux lourds, procédures judiciaires — détectés avant votre offre.', color: '#dc2626' },
-    { emoji: '⚡', title: 'Diagnostics clairs', desc: 'DPE, amiante, électricité, gaz — chaque diagnostic analysé et noté.', color: '#f0a500' },
-    { emoji: '💰', title: 'Budget anticipé', desc: 'Charges, fonds travaux, appels de fonds — votre vrai budget sans surprise.', color: '#16a34a' },
-    { emoji: '🎯', title: 'Score /20', desc: 'Un score objectif pour savoir si le bien est sain, correct ou risqué.', color: '#7c3aed' },
-    { emoji: '📤', title: 'Rapport partageable', desc: 'Envoyez le rapport à votre notaire, banquier ou famille en un clic.', color: '#0f2d3d' },
-  ];
-
   return (
     <section className="py-14 md:py-24 px-4 md:px-6 bg-[#f4f7f9]">
       <div className="max-w-6xl mx-auto">
-        <SectionTitle label="Pour qui" title="Fait pour" accent="vous." sub="Vous achetez un bien immobilier ? Verimo analyse vos documents et vous donne l'essentiel avant de signer." />
+        <SectionTitle label="Pour qui" title="Fait pour" accent="vous." />
 
-        {/* ─── ACHETEURS — grille premium ─── */}
-        <Reveal>
-          <div className="rounded-3xl overflow-hidden border border-slate-100 shadow-lg bg-white">
-            {/* Header */}
-            <div className="relative overflow-hidden px-8 md:px-12 pt-10 pb-8"
-              style={{ background: 'linear-gradient(135deg, #0f2d3d 0%, #1a4a5e 60%, #2a7d9c 100%)' }}>
-              <div className="absolute inset-0 pointer-events-none" style={{ opacity: 0.3 }}>
-                <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0)', backgroundSize: '28px 28px' }} />
+        {/* ─── DEUX PROFILS ACHETEURS ─── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+
+          {/* PRIMO-ACCÉDANT */}
+          <Reveal>
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden h-full flex flex-col">
+              {/* Header */}
+              <div className="px-7 pt-7 pb-5" style={{ background: 'linear-gradient(135deg, #f0f7fb 0%, #e4f2f8 100%)' }}>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-[#2a7d9c]/15 shadow-sm mb-4">
+                  <span className="text-base">🏠</span>
+                  <span className="text-xs font-bold text-[#2a7d9c] uppercase tracking-wide">Primo-accédant</span>
+                </div>
+                <h3 className="text-xl md:text-[22px] font-black text-[#0f172a] leading-tight">
+                  Vous achetez pour la première fois ?<br />
+                  <span className="text-[#2a7d9c]">On simplifie tout pour vous.</span>
+                </h3>
               </div>
-              <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
-                <div>
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4"
-                    style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
-                    <span className="w-2 h-2 rounded-full bg-[#22c55e]" style={{ animation: 'pulse 2s ease-in-out infinite' }} />
-                    <span className="text-white/80 text-xs font-bold tracking-wide uppercase">Pour les acheteurs</span>
-                  </div>
-                  <h3 className="text-[clamp(20px,2.5vw,30px)] font-black text-white leading-tight">
-                    Comprenez ce que vous achetez,<br className="hidden md:block" />{' '}
-                    <span style={{ color: '#7dd3fc' }}>avant de signer.</span>
-                  </h3>
+
+              {/* Contenu */}
+              <div className="px-7 py-6 flex-1 flex flex-col">
+                <p className="text-sm text-slate-500 leading-relaxed mb-5">
+                  PV d'assemblée générale, règlement de copropriété, diagnostics techniques… Ces documents sont complexes et vous ne les avez jamais lus. C'est normal. Verimo les analyse à votre place et vous explique l'essentiel en langage clair.
+                </p>
+                <div className="flex flex-col gap-3 mb-6 flex-1">
+                  {[
+                    { emoji: '📋', text: 'PV d\'AG traduits en français simple — fini le jargon juridique' },
+                    { emoji: '🔍', text: 'Travaux votés, procédures, impayés — tout est détecté pour vous' },
+                    { emoji: '⚡', text: 'DPE, amiante, électricité — chaque diagnostic expliqué clairement' },
+                    { emoji: '🎯', text: 'Un score /20 pour savoir si le bien est sain ou risqué' },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <span className="text-base shrink-0 mt-0.5">{item.emoji}</span>
+                      <span className="text-sm text-slate-600 leading-snug">{item.text}</span>
+                    </div>
+                  ))}
                 </div>
                 <Link to="/start"
-                  className="inline-flex self-start md:self-center items-center gap-2 px-7 py-3.5 rounded-xl text-sm font-bold shrink-0 hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200"
-                  style={{ background: '#fff', color: '#0f2d3d' }}>
-                  Lancer mon analyse <ArrowRight size={15} />
+                  className="inline-flex self-start items-center gap-2 px-6 py-3 rounded-xl bg-[#0f2d3d] text-white text-sm font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
+                  Lancer mon analyse <ArrowRight size={14} />
                 </Link>
               </div>
             </div>
+          </Reveal>
 
-            {/* Grille bénéfices */}
-            <div className="px-6 md:px-10 py-8 md:py-10">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {benefits.map((item, i) => (
-                  <motion.div key={i}
-                    initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.05 }}
-                    onMouseEnter={() => setHoveredIdx(i)}
-                    onMouseLeave={() => setHoveredIdx(null)}
-                    className="relative p-5 rounded-2xl border transition-all duration-250 cursor-default"
-                    style={{
-                      borderColor: hoveredIdx === i ? `${item.color}30` : '#f1f5f9',
-                      background: hoveredIdx === i ? `${item.color}06` : '#fff',
-                      transform: hoveredIdx === i ? 'translateY(-2px)' : 'translateY(0)',
-                      boxShadow: hoveredIdx === i ? `0 8px 24px ${item.color}12` : 'none',
-                    }}>
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-                        style={{ background: `${item.color}10`, border: `1.5px solid ${item.color}18` }}>
-                        {item.emoji}
-                      </div>
-                      <h4 className="text-[15px] font-bold text-[#0f172a]">{item.title}</h4>
+          {/* ACHETEUR EXPÉRIMENTÉ */}
+          <Reveal delay={1}>
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden h-full flex flex-col">
+              {/* Header */}
+              <div className="px-7 pt-7 pb-5" style={{ background: 'linear-gradient(135deg, #f4f7f9 0%, #edf2f7 100%)' }}>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-slate-200 shadow-sm mb-4">
+                  <span className="text-base">🔑</span>
+                  <span className="text-xs font-bold text-[#0f2d3d] uppercase tracking-wide">Acheteur expérimenté</span>
+                </div>
+                <h3 className="text-xl md:text-[22px] font-black text-[#0f172a] leading-tight">
+                  Vous avez déjà acheté ?<br />
+                  <span className="text-[#2a7d9c]">Allez plus loin cette fois.</span>
+                </h3>
+              </div>
+
+              {/* Contenu */}
+              <div className="px-7 py-6 flex-1 flex flex-col">
+                <p className="text-sm text-slate-500 leading-relaxed mb-5">
+                  Vous connaissez le process, mais vous savez aussi que chaque bien cache des surprises. Travaux non anticipés, charges sous-estimées, DPE trompeur… Verimo vous donne les chiffres réels et les risques concrets pour négocier en position de force.
+                </p>
+                <div className="flex flex-col gap-3 mb-6 flex-1">
+                  {[
+                    { emoji: '💰', text: 'Charges réelles, fonds travaux, appels de fonds — votre vrai budget' },
+                    { emoji: '🏗️', text: 'Travaux votés non encore réalisés — anticipez l\'impact financier' },
+                    { emoji: '⚖️', text: 'Procédures judiciaires en cours — sachez avant de signer' },
+                    { emoji: '📤', text: 'Rapport partageable avec votre notaire pour négocier le prix' },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <span className="text-base shrink-0 mt-0.5">{item.emoji}</span>
+                      <span className="text-sm text-slate-600 leading-snug">{item.text}</span>
                     </div>
-                    <p className="text-sm text-slate-400 leading-relaxed">{item.desc}</p>
-                  </motion.div>
-                ))}
-              </div>
-
-              {/* Bas — lien exemple */}
-              <div className="flex items-center justify-center gap-6 mt-8 pt-7 border-t border-slate-100">
-                <Link to="/exemple"
-                  className="inline-flex items-center gap-2 text-sm font-semibold text-[#2a7d9c] hover:underline">
-                  Voir un exemple de rapport <ArrowRight size={14} />
-                </Link>
-                <span className="hidden sm:block text-slate-200">|</span>
-                <Link to="/methode"
-                  className="hidden sm:inline-flex items-center gap-2 text-sm font-semibold text-slate-400 hover:text-[#0f172a] hover:underline">
-                  Comment ça marche ? <ArrowRight size={14} />
-                </Link>
+                  ))}
+                </div>
+                <div className="flex items-center gap-4">
+                  <Link to="/start"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#0f2d3d] text-white text-sm font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
+                    Lancer mon analyse <ArrowRight size={14} />
+                  </Link>
+                  <Link to="/exemple"
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-[#2a7d9c] hover:underline">
+                    Voir un exemple <ArrowRight size={13} />
+                  </Link>
+                </div>
               </div>
             </div>
-          </div>
-        </Reveal>
+          </Reveal>
+        </div>
 
         {/* ─── PRO — bandeau compact ─── */}
-        <Reveal className="mt-8">
+        <Reveal className="mt-2">
           <div className="rounded-2xl overflow-hidden flex flex-col md:flex-row items-center gap-6 px-7 py-6 md:px-10 md:py-7"
             style={{ background: 'linear-gradient(135deg, #0f2d3d, #1a4a5e)' }}>
             <div className="flex items-center gap-3 shrink-0">
