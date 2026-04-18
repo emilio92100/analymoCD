@@ -6,7 +6,7 @@ import {
   ArrowRight, CheckCircle, AlertTriangle, FileText,
   TrendingUp, Clock, Check, X, ChevronRight,
   ShieldCheck, Trash2,
-  Download, Lock, Eye, ChevronDown,
+  Download, Lock, Eye, ChevronDown, Briefcase,
 } from "lucide-react";
 
 // Détection iOS Safari — animations 3D et boucles infinies désactivées
@@ -1005,139 +1005,129 @@ function SecuriteSection() {
 
 /* ═══ FOR WHO ══════════════════════════════════════════════ */
 function ForWhoSection() {
-  const [activeTab, setActiveTab] = useState(0);
-
-  const profiles = [
+  const particuliers = [
     {
-      id: 'first',
-      label: 'Acheteur particulier',
       emoji: '🏠',
-      headline: 'Vous achetez, et vous méritez de comprendre ce que vous signez.',
-      sub: 'Copropriété, diagnostics, charges… des dizaines de pages complexes à déchiffrer seul. Verimo les lit à votre place et vous donne l\'essentiel en français simple.',
+      label: 'Primo-accédant',
+      headline: 'Vous achetez pour la première fois ? On vous aide à comprendre.',
       points: [
         'Comprenez un PV d\'AG sans formation juridique',
-        'Découvrez les travaux cachés avant de signer',
-        'Obtenez une recommandation claire : achetez ou négociez',
+        'Découvrez les travaux votés avant de signer',
+        'Recevez un score /20 clair sur l\'état du bien',
         'Partagez le rapport avec votre notaire ou banquier',
       ],
-      color: '#2a7d9c',
-      bg: '#f0f7fb',
     },
     {
-      id: 'seller',
-      label: 'Vendeur',
       emoji: '🔑',
-      headline: 'Vendez mieux en rassurant votre acheteur dès le départ.',
-      sub: 'Un rapport Verimo sur votre bien, c\'est la preuve que vous n\'avez rien à cacher. Vous accélérez la vente et évitez les négociations de dernière minute.',
+      label: 'Acheteur résidence principale',
+      headline: 'Votre futur chez vous mérite une analyse sérieuse.',
       points: [
-        'Anticipez les questions et objections de l\'acheteur',
-        'Valorisez votre bien avec un rapport transparent',
-        'Réduisez les délais de vente et les rétractations',
-        'Offrez une expérience d\'achat rassurante et professionnelle',
+        'Identifiez les charges cachées et les impayés',
+        'Vérifiez l\'état réel des diagnostics (DPE, amiante…)',
+        'Anticipez les travaux à venir et leur coût',
+        'Prenez votre décision en toute confiance',
       ],
-      color: '#0f2d3d',
-      bg: '#f4f7f9',
-    },
-    {
-      id: 'invest',
-      label: 'Investisseur',
-      emoji: '📈',
-      headline: 'Chaque bien est une opportunité. Ou un piège.',
-      sub: 'Les charges, les impayés, les travaux votés — tout impacte votre rentabilité. Verimo les lit et les chiffre en moins de 30 secondes*.',
-      points: [
-        'Calculez l\'impact des charges sur votre rendement',
-        'Détectez les travaux qui grèveront votre ROI',
-        'Score /20 par bien pour comparer objectivement',
-        'Analysez plusieurs biens avec les packs 2 et 3',
-      ],
-      color: '#7c3aed',
-      bg: '#f5f3ff',
-    },
-    {
-      id: 'pro',
-      label: 'Professionnel',
-      emoji: '💼',
-      headline: 'Vos clients méritent mieux qu\'un avis à l\'œil.',
-      sub: 'Notaires, agents, syndics — Verimo s\'intègre dans votre process pour apporter un niveau d\'objectivité et de transparence qui rassure.',
-      points: [
-        'Préparez des dossiers complets et objectifs',
-        'Valorisez votre conseil avec un rapport structuré',
-        'Identifiez les risques avant qu\'ils ne posent problème',
-        'Offre professionnelle avec tarification dédiée',
-      ],
-      color: '#f0a500',
-      bg: '#fffbeb',
     },
   ];
 
-  const active = profiles[activeTab];
+  const pros = [
+    { emoji: '🏢', label: 'Agents immobiliers', desc: 'Différenciez-vous avec un rapport d\'analyse qui rassure vos acquéreurs.' },
+    { emoji: '📈', label: 'Investisseurs', desc: 'Comparez vos opportunités avec un score objectif et des risques chiffrés.' },
+    { emoji: '⚖️', label: 'Notaires', desc: 'Accélérez le pré-screening de vos dossiers et renforcez votre conseil.' },
+  ];
 
   return (
     <section className="py-12 md:py-20 px-4 md:px-6 bg-[#f4f7f9]">
       <div className="max-w-5xl mx-auto">
         <SectionTitle label="Pour qui" title="Fait pour" accent="vous." />
 
-        {/* Onglets */}
-        <Reveal className="flex justify-center mb-10">
-          <div className="inline-flex bg-white rounded-2xl p-1.5 shadow-sm border border-slate-100 gap-1 flex-wrap justify-center">
-            {profiles.map((p, i) => (
-              <button key={i} onClick={() => setActiveTab(i)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all duration-200 ${activeTab === i ? 'bg-[#0f2d3d] text-white shadow-sm' : 'text-slate-500 hover:text-[#0f172a]'}`}>
-                <span>{p.emoji}</span> {p.label}
-              </button>
-            ))}
+        {/* ─── PARTICULIERS ─── */}
+        <Reveal className="mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-slate-100 shadow-sm mb-6">
+            <span className="w-2 h-2 rounded-full bg-[#2a7d9c]" />
+            <span className="text-sm font-bold text-[#0f172a]">Vous achetez un bien ?</span>
           </div>
         </Reveal>
 
-        <AnimatePresence mode="wait">
-          <motion.div key={activeTab}
-            initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.28 }}>
-            <div className="rounded-2xl md:rounded-3xl overflow-hidden shadow-xl grid grid-cols-1 lg:grid-cols-2">
-
-              {/* Gauche — contexte */}
-              <div className="p-8 md:p-10" style={{ background: '#0f2d3d' }}>
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-6" style={{ background: `${active.color}20`, border: `1px solid ${active.color}40` }}>
-                  <span style={{ fontSize: 16 }}>{active.emoji}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: active.color, letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>{active.label}</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
+          {particuliers.map((p, i) => (
+            <Reveal key={i} delay={i}>
+              <div className="bg-white rounded-2xl p-7 border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 h-full">
+                <div className="flex items-center gap-3 mb-5">
+                  <span className="text-2xl">{p.emoji}</span>
+                  <span className="text-sm font-bold text-[#2a7d9c] uppercase tracking-wide">{p.label}</span>
                 </div>
-                <h3 className="text-[clamp(20px,2.5vw,30px)] font-black text-white mb-4 leading-tight">
-                  {active.headline}
-                </h3>
-                <p className="text-slate-400 text-sm md:text-base leading-relaxed mb-8">
-                  {active.sub}
-                </p>
-                <Link to="/start"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm md:text-base font-bold transition-colors"
-                  style={{ background: active.color, color: '#fff' }}>
-                  Commencer <ArrowRight size={15} />
-                </Link>
-              </div>
-
-              {/* Droite — ce que Verimo fait */}
-              <div className="bg-white p-8 md:p-10">
-                <div className="flex items-center gap-2 mb-6">
-                  <div className="w-2 h-2 rounded-full" style={{ background: active.color }} />
-                  <span className="text-sm font-bold text-[#0f172a]">Ce que Verimo fait pour vous</span>
-                </div>
-                <div className="flex flex-col gap-3">
-                  {active.points.map((point, i) => (
-                    <motion.div key={i}
-                      initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}
-                      className="flex items-start gap-3 p-3.5 rounded-xl"
-                      style={{ background: active.bg }}>
-                      <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-                        style={{ background: `${active.color}15`, border: `1.5px solid ${active.color}30` }}>
-                        <Check size={11} style={{ color: active.color }} />
+                <h3 className="text-lg font-black text-[#0f172a] mb-4 leading-tight">{p.headline}</h3>
+                <div className="flex flex-col gap-2.5">
+                  {p.points.map((point, j) => (
+                    <div key={j} className="flex items-start gap-3">
+                      <div className="w-5 h-5 rounded-full bg-[#2a7d9c]/10 flex items-center justify-center shrink-0 mt-0.5">
+                        <Check size={11} className="text-[#2a7d9c]" />
                       </div>
-                      <span className="text-sm text-[#0f172a] font-medium leading-snug">{point}</span>
-                    </motion.div>
+                      <span className="text-sm text-slate-600 leading-snug">{point}</span>
+                    </div>
                   ))}
                 </div>
               </div>
+            </Reveal>
+          ))}
+        </div>
+
+        <Reveal className="text-center mb-16">
+          <Link to="/start"
+            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-[#0f2d3d] text-white text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
+            Lancer mon analyse <ArrowRight size={16} />
+          </Link>
+        </Reveal>
+
+        {/* ─── PROS ─── */}
+        <Reveal>
+          <div className="rounded-3xl overflow-hidden shadow-xl"
+            style={{ background: 'linear-gradient(160deg, #0f2d3d 0%, #1a4a5e 50%, #2a7d9c 100%)' }}>
+            <div className="p-8 md:p-12">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-6"
+                style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                <Briefcase size={13} className="text-white/80" />
+                <span className="text-white/90 text-xs font-bold tracking-wide uppercase">Offre professionnelle</span>
+              </div>
+
+              <h3 className="text-[clamp(20px,3vw,32px)] font-black text-white mb-3 leading-tight">
+                Vous êtes un professionnel de l'immobilier ?
+              </h3>
+              <p className="text-white/60 text-base leading-relaxed mb-8 max-w-2xl">
+                Verimo s'adapte à votre métier avec une offre dédiée, des tarifs volume et un accompagnement personnalisé.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+                {pros.map((pro, i) => (
+                  <motion.div key={i}
+                    initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.08 }}
+                    className="rounded-2xl p-5"
+                    style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <span className="text-2xl mb-3 block">{pro.emoji}</span>
+                    <h4 className="text-base font-bold text-white mb-2">{pro.label}</h4>
+                    <p className="text-sm text-white/50 leading-relaxed">{pro.desc}</p>
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link to="/pro"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl text-base font-bold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+                  style={{ background: '#fff', color: '#0f2d3d' }}>
+                  Découvrir les offres pro <ArrowRight size={15} />
+                </Link>
+                <Link to="/contact-pro"
+                  className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-base font-semibold transition-all duration-200"
+                  style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
+                  Être recontacté
+                </Link>
+              </div>
             </div>
-          </motion.div>
-        </AnimatePresence>
+          </div>
+        </Reveal>
       </div>
     </section>
   );
