@@ -6,7 +6,7 @@ import {
   ArrowRight, Building2, TrendingUp, Scale,
   ShieldCheck, Clock, FileText, BarChart3, Users,
   Zap, Eye, Lock, ChevronDown, Star, Target,
-  Briefcase, PieChart, BadgeCheck, Handshake,
+  PieChart, BadgeCheck, Handshake,
   Sparkles,
 } from 'lucide-react';
 
