@@ -249,13 +249,13 @@ function ProfilesSection() {
         </Reveal>
 
         <Reveal delay={1} className="flex justify-center mb-14">
-          <div className="inline-flex bg-[#f4f7f9] rounded-2xl p-1.5 gap-1 flex-wrap justify-center border border-slate-100/80">
+          <div className="grid grid-cols-3 sm:inline-flex bg-[#f4f7f9] rounded-2xl p-1.5 gap-1.5 sm:gap-1 border border-slate-100/80 w-full sm:w-auto max-w-md sm:max-w-none mx-auto">
             {profiles.map((p, i) => (
               <button key={p.id} onClick={() => setActiveIdx(i)}
-                className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-bold transition-all duration-250"
+                className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-3 sm:px-5 py-3 sm:py-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-250"
                 style={{ background: activeIdx === i ? '#0f2d3d' : 'transparent', color: activeIdx === i ? '#fff' : '#64748b', boxShadow: activeIdx === i ? '0 4px 16px rgba(15,45,61,0.2)' : 'none' }}>
-                <span className="text-base">{p.emoji}</span>
-                <span className="hidden sm:inline">{p.label}</span>
+                <span className="text-lg sm:text-base">{p.emoji}</span>
+                <span className="leading-tight text-center sm:text-left">{p.label}</span>
               </button>
             ))}
           </div>
