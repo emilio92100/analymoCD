@@ -20,19 +20,31 @@ html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
 body { background-color: var(--bg-primary); color: var(--text-primary); font-family: 'DM Sans', system-ui, sans-serif; }
 
 @media (max-width: 768px) {
-  [style*="floatA"], [style*="floatB"], [style*="floatC"] {
+  /* Désactiver toutes les animations infinite sur mobile */
+  .animate-float, .animate-scan, .animate-pulse {
     animation: none !important;
-    transform: none !important;
   }
-  [style*="transform"], [style*="opacity"] {
+  /* Transitions ultra-courtes */
+  .card-hover {
     transition-duration: 0.15s !important;
   }
-  .animate-scan-phone, .animate-scan {
-    animation-duration: 2s !important;
-  }
-  .animate-float, .animate-fade-up {
-    will-change: transform, opacity;
+  /* GPU acceleration pour les éléments animés en CSS */
+  [data-reveal] {
+    will-change: opacity, transform;
     transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+  }
+}
+
+/* iOS Safari : désactiver backdrop-blur partout sur mobile */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 768px) {
+    .backdrop-blur-xl,
+    .backdrop-blur-md,
+    .backdrop-blur-sm {
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+    }
   }
 }
 
