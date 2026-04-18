@@ -371,7 +371,7 @@ export default function DashboardPage() {
       <AnimatePresence>
         {mobileOpen && (
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} style={{ position:'fixed', inset:0, zIndex:200 }}>
-            <div onClick={()=>setMobileOpen(false)} style={{ position:'absolute', inset:0, background:'rgba(15,45,61,0.35)', backdropFilter:'blur(4px)' }}/>
+            <div onClick={()=>setMobileOpen(false)} style={{ position:'absolute', inset:0, background:'rgba(15,45,61,0.45)' }}/>
             <motion.div initial={{ x:-260 }} animate={{ x:0 }} exit={{ x:-260 }} transition={{ type:'spring', stiffness:320, damping:32 }}
               style={{ position:'absolute', left:0, top:0, bottom:0, width:260 }}>
               <Sidebar onClose={()=>setMobileOpen(false)}/>
