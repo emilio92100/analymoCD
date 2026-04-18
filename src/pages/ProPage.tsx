@@ -176,7 +176,7 @@ function HeroSection() {
 
         <motion.div variants={up} initial="hidden" animate="show" custom={3}
           className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
-          <Link to="/contact"
+          <Link to="/contact-pro"
             className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-base font-bold shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200"
             style={{ background: '#fff', color: '#0f2d3d' }}>
             Demander une démo <ArrowRight size={16} />
@@ -282,7 +282,7 @@ function ProfilesSection() {
                       </motion.div>
                     ))}
                   </div>
-                  <Link to="/contact"
+                  <Link to={`/contact-pro?type=${active.id === 'investor' ? 'investisseur' : active.id}`}
                     className="inline-flex self-start items-center gap-2 px-7 py-3.5 rounded-xl text-sm font-bold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
                     style={{ background: active.color, color: '#fff' }}>
                     Être recontacté <ArrowRight size={15} />
@@ -524,7 +524,7 @@ function CtaFinalSection() {
         </Reveal>
         <Reveal delay={3}>
           <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
-            <Link to="/contact"
+            <Link to="/contact-pro"
               className="inline-flex items-center justify-center gap-2 px-9 py-4 rounded-2xl text-base font-bold shadow-xl hover:-translate-y-0.5 hover:shadow-2xl transition-all duration-200"
               style={{ background: '#fff', color: '#0f2d3d' }}>
               Demander une démo <ArrowRight size={16} />
