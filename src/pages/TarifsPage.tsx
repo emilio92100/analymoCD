@@ -228,7 +228,7 @@ export default function TarifsPage() {
 
       {/* ── CARTES ── */}
       <section style={{ padding: 'clamp(32px,5vw,52px) 20px 0', maxWidth: 1100, margin: '0 auto' }}>
-        <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, alignItems: 'start' }}>
+        <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, alignItems: 'stretch' }}>
           {plans.map((plan, i) => (
             <motion.div key={plan.id}
               initial={{ opacity: 0, y: 24 }}
