@@ -117,7 +117,7 @@ export default function NouvelleAnalyse() {
 
   const plans = {
     document: { label: "Analyse d'un document", price: '4,90€', max: 1, desc: "Un seul fichier PDF — PV d'AG, règlement, diagnostic, appel de charges.", creditsKey: 'document' as keyof Credits },
-    complete: { label: "Analyse complète d'un logement", price: '19,90€', max: 20, desc: 'Tous les documents du bien — score /20, risques, recommandation Verimo.', creditsKey: 'complete' as keyof Credits },
+    complete: { label: "Analyse complète d'un logement", price: '19,90€', max: 15, desc: 'Tous les documents du bien — score /20, risques, recommandation Verimo.', creditsKey: 'complete' as keyof Credits },
   };
   const plan = type ? plans[type] : null;
 
