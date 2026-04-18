@@ -463,29 +463,38 @@ function ShareButton({ analyseId }: { analyseId: string }) {
 }
 
 /* ══════════════════════════════════
-   BOUTON PDF — desktop : nouvelle fenêtre / mobile : toast explicatif
+   BOUTON PDF — popup "fonctionnalité en cours"
 ══════════════════════════════════ */
-function PdfButton({ rapportId }: { rapportId: string }) {
-  const [showToast, setShowToast] = useState(false);
-  const handleClick = () => {
-    const isMobile = window.innerWidth <= 640;
-    if (isMobile) {
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 4000);
-    } else {
-      window.open(`/rapport/print?id=${rapportId}`, '_blank');
-    }
-  };
+function PdfButton({ rapportId: _rapportId }: { rapportId: string }) {
+  const [showModal, setShowModal] = useState(false);
   return (
     <>
-      <button onClick={handleClick} className="topnav-dl-btn"
+      <button onClick={() => setShowModal(true)} className="topnav-dl-btn"
         style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, border: 'none', background: '#fff', color: '#0f2d3d', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
         <Download size={14} /> <span className="topnav-dl-label">PDF</span>
       </button>
-      {showToast && (
-        <div style={{ position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)', zIndex: 9999, background: '#0f172a', color: '#fff', borderRadius: 12, padding: '12px 18px', fontSize: 13, lineHeight: 1.5, maxWidth: 'calc(100vw - 40px)', textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
-          📥 Le PDF est disponible sur ordinateur uniquement.<br/>
-          <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>Ouvrez ce rapport sur votre PC pour le télécharger.</span>
+      {showModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={() => setShowModal(false)}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,45,61,0.55)', backdropFilter: 'blur(4px)' }} />
+          <div onClick={e => e.stopPropagation()} style={{ position: 'relative', background: '#fff', borderRadius: 22, padding: '36px 32px 28px', maxWidth: 400, width: '100%', textAlign: 'center', boxShadow: '0 20px 60px rgba(15,45,61,0.25)', animation: 'fadeUp 0.25s ease both' }}>
+            <button onClick={() => setShowModal(false)} style={{ position: 'absolute', top: 14, right: 14, width: 30, height: 30, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 16, fontWeight: 700 }}>×</button>
+            <div style={{ width: 64, height: 64, borderRadius: 18, background: 'linear-gradient(135deg, #e0f2fe, #f0f9ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
+              <Download size={28} style={{ color: '#2a7d9c' }} />
+            </div>
+            <h3 style={{ fontSize: 19, fontWeight: 900, color: '#0f172a', marginBottom: 8, letterSpacing: '-0.02em' }}>Export PDF bientôt disponible</h3>
+            <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, marginBottom: 20 }}>
+              Nous travaillons activement sur cette fonctionnalité pour vous permettre de télécharger vos rapports au format PDF.
+            </p>
+            <div style={{ padding: '12px 16px', borderRadius: 12, background: '#f0f9ff', border: '1px solid #e0f2fe', marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#2a7d9c', animation: 'vr-pulse 1.5s ease-in-out infinite' }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#2a7d9c' }}>En cours de développement</span>
+              </div>
+            </div>
+            <button onClick={() => setShowModal(false)} style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 14px rgba(15,45,61,0.18)' }}>
+              J'ai compris
+            </button>
+          </div>
         </div>
       )}
     </>
@@ -3201,6 +3210,7 @@ export default function RapportPage() {
           @page { margin: 1.5cm; size: A4; }
         }
         @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes vr-pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.6; transform:scale(0.9); } }
       `}</style>
     </div>
   );
