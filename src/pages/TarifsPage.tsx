@@ -43,7 +43,7 @@ const plans = [
     desc: 'Tout comprendre sur un bien avant de faire une offre.',
     cta: 'Analyser mon bien',
     features: [
-      'Documents illimités analysés ensemble',
+      'Jusqu\'à 15 documents analysés ensemble',
       'Score global /20 avec recommandation',
       'Travaux votés + estimation financière',
       'Santé financière de la copropriété',
@@ -98,7 +98,7 @@ const plans = [
 ];
 
 const tableRows = [
-  { label: 'Documents analysés', vals: ['1 doc', 'Illimités', '2 × illimités', '3 × illimités'], type: 'text' },
+  { label: 'Documents analysés', vals: ['1 doc', 'Jusqu\'à 15', '2 × 15', '3 × 15'], type: 'text' },
   { label: 'Score /20 du bien', vals: [false, true, true, true], type: 'bool' },
   { label: 'Rapport PDF complet', vals: [false, true, true, true], type: 'bool' },
   { label: 'Travaux + estimation', vals: [false, true, true, true], type: 'bool' },
