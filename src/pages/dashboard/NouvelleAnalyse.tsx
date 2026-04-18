@@ -57,6 +57,42 @@ async function isPdfPasswordProtected(file: File): Promise<boolean> {
   }
 }
 
+// ─── Bouton PDF avec popup "en cours de développement" ───────
+function PdfButtonInline() {
+  const [showModal, setShowModal] = useState(false);
+  return (
+    <>
+      <button onClick={() => setShowModal(true)} style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Download size={13} /> PDF
+      </button>
+      {showModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={() => setShowModal(false)}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,45,61,0.55)', backdropFilter: 'blur(4px)' }} />
+          <div onClick={e => e.stopPropagation()} style={{ position: 'relative', background: '#fff', borderRadius: 22, padding: '36px 32px 28px', maxWidth: 400, width: '100%', textAlign: 'center', boxShadow: '0 20px 60px rgba(15,45,61,0.25)', animation: 'fadeUp 0.25s ease both' }}>
+            <button onClick={() => setShowModal(false)} style={{ position: 'absolute', top: 14, right: 14, width: 30, height: 30, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 16, fontWeight: 700 }}>×</button>
+            <div style={{ width: 64, height: 64, borderRadius: 18, background: 'linear-gradient(135deg, #e0f2fe, #f0f9ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
+              <Download size={28} style={{ color: '#2a7d9c' }} />
+            </div>
+            <h3 style={{ fontSize: 19, fontWeight: 900, color: '#0f172a', marginBottom: 8, letterSpacing: '-0.02em' }}>Export PDF bientôt disponible</h3>
+            <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, marginBottom: 20 }}>
+              Nous travaillons activement sur cette fonctionnalité pour vous permettre de télécharger vos rapports au format PDF.
+            </p>
+            <div style={{ padding: '12px 16px', borderRadius: 12, background: '#f0f9ff', border: '1px solid #e0f2fe', marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#2a7d9c', animation: 'vr-pulse 1.5s ease-in-out infinite' }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#2a7d9c' }}>En cours de développement</span>
+              </div>
+            </div>
+            <button onClick={() => setShowModal(false)} style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 14px rgba(15,45,61,0.18)' }}>
+              J'ai compris
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function NouvelleAnalyse() {
   const { credits, deductCredit } = useCredits();
   const [searchParams] = useSearchParams();
@@ -388,31 +424,6 @@ export default function NouvelleAnalyse() {
 
       </div>
 
-      {/* Fichiers uploadés — en haut, bien visibles */}
-      {files.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            {files.length} fichier{files.length > 1 ? 's' : ''} sélectionné{files.length > 1 ? 's' : ''}
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {files.map((f, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 12, background: '#f0f9ff', border: '2px solid #bae6fd', boxShadow: '0 2px 8px rgba(42,125,156,0.08)' }}>
-                <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fff', border: '1px solid #bae6fd', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <FileText size={18} color="#2a7d9c" />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</div>
-                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{(f.size / 1024 / 1024).toFixed(2)} Mo · PDF</div>
-                </div>
-                <CheckCircle size={16} color="#16a34a" style={{ flexShrink: 0 }} />
-                <button onClick={() => setFiles(prev => prev.filter((_, idx) => idx !== i))}
-                  style={{ width: 28, height: 28, borderRadius: 8, background: '#fee2e2', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', flexShrink: 0, fontSize: 16, fontWeight: 700 }}>×</button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Erreur bloquante */}
       {error && (
         <div style={{ padding: '14px 16px', borderRadius: 12, background: '#fef2f2', border: '1px solid #fecaca', marginBottom: 16 }}>
@@ -455,9 +466,39 @@ export default function NouvelleAnalyse() {
         🔒 Les PDF protégés par mot de passe doivent être déverrouillés avant l'upload
       </div>
 
-
-
-      {!freePreviewUsed && (
+      {/* Fichiers sélectionnés — blocs en bas */}
+      {files.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 22, height: 22, borderRadius: 7, background: '#2a7d9c', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 800 }}>{files.length}</div>
+              Document{files.length > 1 ? 's' : ''} prêt{files.length > 1 ? 's' : ''}
+            </div>
+            {files.length > 1 && (
+              <button onClick={() => setFiles([])} style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}>Tout retirer</button>
+            )}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: files.length === 1 ? '1fr' : 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+            {files.map((f, i) => (
+              <div key={i} style={{ position: 'relative', padding: '16px', borderRadius: 14, background: '#fff', border: '1.5px solid #e0f2fe', boxShadow: '0 2px 10px rgba(42,125,156,0.06)', transition: 'all 0.15s', overflow: 'hidden' }}
+                onMouseOver={e => { (e.currentTarget as HTMLElement).style.borderColor = '#7dd3fc'; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 16px rgba(42,125,156,0.12)'; }}
+                onMouseOut={e => { (e.currentTarget as HTMLElement).style.borderColor = '#e0f2fe'; (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 10px rgba(42,125,156,0.06)'; }}>
+                <button onClick={() => setFiles(prev => prev.filter((_, idx) => idx !== i))}
+                  style={{ position: 'absolute', top: 8, right: 8, width: 22, height: 22, borderRadius: 6, background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', fontSize: 13, fontWeight: 700, lineHeight: 1, padding: 0 }}>×</button>
+                <div style={{ width: 42, height: 42, borderRadius: 11, background: 'linear-gradient(135deg, #e0f2fe, #f0f9ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+                  <FileText size={20} color="#2a7d9c" />
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 4, paddingRight: 20 }}>{f.name}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 11, color: '#94a3b8' }}>{(f.size / 1024 / 1024).toFixed(1)} Mo</span>
+                  <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#d1d5db' }} />
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '1px 6px', borderRadius: 4, border: '1px solid #bbf7d0' }}>PDF ✓</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
         <div style={{ padding: '12px 16px', borderRadius: 12, background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
           <Sparkles size={13} style={{ color: '#fff', flexShrink: 0 }} />
           <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.9)' }}>Votre analyse offerte — aperçu du rapport généré gratuitement.</span>
@@ -663,7 +704,7 @@ export default function NouvelleAnalyse() {
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={() => { setStep('choice'); setType(null); setFiles([]); setResult(null); }} style={{ padding: '9px 18px', borderRadius: 10, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 13, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Nouvelle analyse</button>
-            <button style={{ padding: '9px 18px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}><Download size={13} /> PDF</button>
+            <PdfButtonInline />
           </div>
         </div>
         {result.score != null && (
