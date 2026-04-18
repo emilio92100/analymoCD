@@ -222,7 +222,7 @@ export default function ContactProPage() {
 
       {/* Formulaire */}
       <section style={{ padding: '48px 20px 80px' }}>
-        <div style={{ maxWidth: 720, margin: '0 auto' }}>
+        <div style={{ maxWidth: 920, margin: '0 auto' }}>
 
           {/* ── Étape 1 : Choix du profil ── */}
           <div style={{ marginBottom: 40 }}>
