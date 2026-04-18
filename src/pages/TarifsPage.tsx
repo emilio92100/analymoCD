@@ -419,7 +419,7 @@ export default function TarifsPage() {
                 <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>Notaires, agents, syndics — volumes illimités, tarif dédié.</div>
               </div>
             </div>
-            <Link to="/contact" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 10, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' as const }}>
+            <Link to="/contact-pro" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 10, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' as const }}>
               <Mail size={12} /> Nous contacter
             </Link>
           </div>
