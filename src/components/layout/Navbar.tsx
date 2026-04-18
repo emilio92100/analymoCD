@@ -101,6 +101,11 @@ export default function Navbar() {
 
             {/* Auth desktop */}
             <div className="hidden md:flex items-center gap-2">
+              <Link to="/pro"
+                className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 hover:-translate-y-px"
+                style={{ background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', letterSpacing: '0.03em' }}>
+                Offre Pro
+              </Link>
               <div className="w-px h-5 bg-slate-200 mx-1" />
               {user ? (
                 <div style={{ position: 'relative' }}>
