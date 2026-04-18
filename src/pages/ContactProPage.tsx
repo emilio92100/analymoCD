@@ -7,9 +7,6 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
-const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-const isLowPerf = () => isIOS() || (typeof window !== 'undefined' && window.innerWidth <= 768);
-
 /* ═══ TYPES DE PROFILS ═══════════════════════════════════════ */
 const profileTypes = [
   { id: 'agent', label: 'Agent immobilier', emoji: '🏢', icon: Building2, color: '#2a7d9c', bg: '#f0f7fb' },
