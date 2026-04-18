@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import {
-  ArrowRight, Check, Building2, TrendingUp, Scale,
+  ArrowRight, Building2, TrendingUp, Scale,
   ShieldCheck, Clock, FileText, BarChart3, Users,
   Zap, Eye, Lock, ChevronDown, Star, Target,
   Briefcase, PieChart, BadgeCheck, Handshake,
