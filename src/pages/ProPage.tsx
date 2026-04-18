@@ -7,7 +7,7 @@ import {
   ShieldCheck, Clock, FileText, BarChart3, Users,
   Zap, Eye, Lock, ChevronDown, Star, Target,
   PieChart, BadgeCheck, Handshake,
-  Sparkles, HelpCircle,
+  Sparkles,
 } from 'lucide-react';
 
 const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
@@ -130,13 +130,13 @@ function HeroSection() {
     if (nav) {
       nav.style.backgroundColor = 'rgba(255,255,255,0.97)';
       nav.style.backdropFilter = 'none';
-      nav.style.WebkitBackdropFilter = 'none';
+      (nav.style as any).webkitBackdropFilter = 'none';
     }
     return () => {
       if (nav) {
         nav.style.backgroundColor = '';
         nav.style.backdropFilter = '';
-        nav.style.WebkitBackdropFilter = '';
+        (nav.style as any).webkitBackdropFilter = '';
       }
     };
   }, []);
