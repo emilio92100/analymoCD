@@ -284,11 +284,11 @@ export default function Tarifs() {
           const hasCredits = credits[plan.creditType] > 0;
           const showTip = tooltip === plan.id;
           return (
-            <div key={plan.id} style={{ background: '#fff', borderRadius: 16, border: plan.popular ? '2px solid #0f2d3d' : '1.5px solid #edf2f7', overflow: 'hidden', boxShadow: plan.popular ? '0 8px 28px rgba(15,45,61,0.12)' : '0 1px 6px rgba(0,0,0,0.04)', transition: 'box-shadow 0.2s, transform 0.2s' }}
+            <div key={plan.id} style={{ background: '#fff', borderRadius: 16, border: plan.popular ? '2px solid #0f2d3d' : '1.5px solid #edf2f7', boxShadow: plan.popular ? '0 8px 28px rgba(15,45,61,0.12)' : '0 1px 6px rgba(0,0,0,0.04)', transition: 'box-shadow 0.2s, transform 0.2s', position: 'relative' }}
               onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.boxShadow = plan.popular ? '0 14px 44px rgba(15,45,61,0.18)' : '0 6px 20px rgba(0,0,0,0.08)'; el.style.transform = 'translateY(-2px)'; }}
               onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.boxShadow = plan.popular ? '0 8px 28px rgba(15,45,61,0.12)' : '0 1px 6px rgba(0,0,0,0.04)'; el.style.transform = 'translateY(0)'; }}>
               {plan.popular && (
-                <div style={{ background: 'linear-gradient(90deg, #0f2d3d, #1a5068)', padding: '7px 20px', display: 'flex', alignItems: 'center', gap: 7 }}>
+                <div style={{ background: 'linear-gradient(90deg, #0f2d3d, #1a5068)', padding: '7px 20px', display: 'flex', alignItems: 'center', gap: 7, borderRadius: '14px 14px 0 0' }}>
                   <Star size={11} style={{ color: '#fbbf24' }} />
                   <span style={{ fontSize: 10, fontWeight: 800, color: '#fff', letterSpacing: '0.1em' }}>LE PLUS POPULAIRE</span>
                   <span style={{ marginLeft: 'auto', fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>Recommandé par Verimo</span>
@@ -338,7 +338,7 @@ export default function Tarifs() {
                 </button>
               </div>
               {hasCredits && (
-                <div style={{ padding: '9px 22px', background: '#f0fdf4', borderTop: '1px solid #dcfce7', display: 'flex', alignItems: 'center', gap: 7 }}>
+                <div style={{ padding: '9px 22px', background: '#f0fdf4', borderTop: '1px solid #dcfce7', display: 'flex', alignItems: 'center', gap: 7, borderRadius: '0 0 14px 14px' }}>
                   <CheckCircle size={12} style={{ color: '#16a34a' }} />
                   <span style={{ fontSize: 12, fontWeight: 600, color: '#16a34a' }}>{credits[plan.creditType]} crédit{credits[plan.creditType] > 1 ? 's' : ''} disponible{credits[plan.creditType] > 1 ? 's' : ''} — utilisez-les depuis "Nouvelle analyse"</span>
                 </div>
