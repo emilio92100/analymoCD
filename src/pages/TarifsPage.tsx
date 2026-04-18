@@ -98,15 +98,16 @@ const plans = [
 ];
 
 const tableRows = [
+  { label: 'Avis Verimo personnalisé', vals: [true, true, true, true], type: 'bool' },
   { label: 'Documents analysés', vals: ['1 doc', 'Jusqu\'à 15', '2 × 15', '3 × 15'], type: 'text' },
   { label: 'Score /20 du bien', vals: [false, true, true, true], type: 'bool' },
-  { label: 'Rapport PDF complet', vals: [false, true, true, true], type: 'bool' },
-  { label: 'Travaux + estimation', vals: [false, true, true, true], type: 'bool' },
+  { label: 'Recommandation d\'achat', vals: [false, true, true, true], type: 'bool' },
+  { label: 'Travaux votés et à prévoir', vals: [false, true, true, true], type: 'bool' },
+  { label: 'Santé financière copro', vals: [false, true, true, true], type: 'bool' },
   { label: 'Pistes de négociation', vals: [false, true, true, true], type: 'bool' },
+  { label: 'Compléter le dossier (7j)', vals: [false, true, true, true], type: 'bool' },
+  { label: 'Rapport PDF téléchargeable', vals: [false, true, true, true], type: 'bool' },
   { label: 'Comparaison de biens', vals: [false, false, true, true], type: 'bool' },
-  { label: 'Rapport comparatif détaillé', vals: [false, false, true, true], type: 'bool' },
-  { label: 'Verdict Verimo', vals: [false, false, true, true], type: 'bool' },
-  { label: 'Classement final 3 biens', vals: [false, false, false, true], type: 'bool' },
   { label: 'Économie vs achats séparés', vals: ['—', '—', '−10€', '−20€'], type: 'text' },
 ];
 
