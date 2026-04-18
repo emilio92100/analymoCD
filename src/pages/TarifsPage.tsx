@@ -23,8 +23,8 @@ const plans = [
     features: [
       "Analyse d'un seul document",
       'Points forts et vigilances détectés',
-      'Recommandation adaptée au contenu',
-      'Identification et explication du doc',
+      'Avis Verimo personnalisé',
+      'Résultat en moins de 2 minutes',
     ],
     missing: [
       'Score /20 global du bien',
@@ -45,10 +45,10 @@ const plans = [
     features: [
       'Jusqu\'à 15 documents analysés ensemble',
       'Score global /20 avec recommandation',
-      'Travaux votés + estimation financière',
+      'Travaux votés et à prévoir',
       'Santé financière de la copropriété',
-      'Procédures judiciaires détectées',
-      'Pistes de négociation si score < 14',
+      'Pistes de négociation',
+      'Avis Verimo personnalisé',
       'Rapport PDF complet téléchargeable',
       'Compléter le dossier sous 7 jours',
     ],
@@ -68,9 +68,8 @@ const plans = [
     cta: 'Comparer 2 biens',
     features: [
       '2 analyses complètes indépendantes',
-      'Comparaison côte à côte débloquée',
+      'Comparaison côte à côte',
       'Score, travaux, finances des 2 biens',
-      'Verdict Verimo : quel bien choisir ?',
       'Économisez 10€ vs 2 achats séparés',
     ],
     missing: [],
@@ -87,10 +86,8 @@ const plans = [
     cta: 'Comparer 3 biens',
     features: [
       '3 analyses complètes indépendantes',
-      'Comparaison de 2 ou 3 biens librement',
-      'Rapport comparatif : score, travaux, finances',
-      'Verdict Verimo : quel bien est le meilleur',
-      'Classement final automatique des 3 biens',
+      'Comparaison et classement des biens',
+      'Score, travaux, finances des 3 biens',
       'Économisez 20€ vs 3 achats séparés',
     ],
     missing: [],
