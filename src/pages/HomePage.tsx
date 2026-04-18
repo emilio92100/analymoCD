@@ -1005,60 +1005,90 @@ function SecuriteSection() {
 
 /* ═══ FOR WHO ══════════════════════════════════════════════ */
 function ForWhoSection() {
-  return (
-    <section className="py-12 md:py-20 px-4 md:px-6 bg-[#f4f7f9]">
-      <div className="max-w-5xl mx-auto">
-        <SectionTitle label="Pour qui" title="Fait pour" accent="vous." />
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
-        {/* ─── ACHETEURS — grande carte immersive ─── */}
+  const benefits = [
+    { emoji: '📋', title: 'PV d\'AG décryptés', desc: 'Travaux votés, procédures, budget — tout est extrait et expliqué simplement.', color: '#2a7d9c' },
+    { emoji: '🔍', title: 'Risques identifiés', desc: 'Impayés, travaux lourds, procédures judiciaires — détectés avant votre offre.', color: '#dc2626' },
+    { emoji: '⚡', title: 'Diagnostics clairs', desc: 'DPE, amiante, électricité, gaz — chaque diagnostic analysé et noté.', color: '#f0a500' },
+    { emoji: '💰', title: 'Budget anticipé', desc: 'Charges, fonds travaux, appels de fonds — votre vrai budget sans surprise.', color: '#16a34a' },
+    { emoji: '🎯', title: 'Score /20', desc: 'Un score objectif pour savoir si le bien est sain, correct ou risqué.', color: '#7c3aed' },
+    { emoji: '📤', title: 'Rapport partageable', desc: 'Envoyez le rapport à votre notaire, banquier ou famille en un clic.', color: '#0f2d3d' },
+  ];
+
+  return (
+    <section className="py-14 md:py-24 px-4 md:px-6 bg-[#f4f7f9]">
+      <div className="max-w-6xl mx-auto">
+        <SectionTitle label="Pour qui" title="Fait pour" accent="vous." sub="Vous achetez un bien immobilier ? Verimo analyse vos documents et vous donne l'essentiel avant de signer." />
+
+        {/* ─── ACHETEURS — grille premium ─── */}
         <Reveal>
-          <div className="rounded-3xl overflow-hidden shadow-lg border border-slate-100 bg-white mb-8">
-            {/* Header visuel */}
-            <div className="px-8 md:px-10 pt-8 md:pt-10 pb-6" style={{ background: 'linear-gradient(135deg, #f0f7fb 0%, #e4f2f8 100%)' }}>
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#2a7d9c]/15 shadow-sm mb-5">
-                <span className="w-2 h-2 rounded-full bg-[#22c55e]" style={{ animation: 'pulse 2s ease-in-out infinite' }} />
-                <span className="text-sm font-bold text-[#0f172a]">Pour les acheteurs particuliers</span>
+          <div className="rounded-3xl overflow-hidden border border-slate-100 shadow-lg bg-white">
+            {/* Header */}
+            <div className="relative overflow-hidden px-8 md:px-12 pt-10 pb-8"
+              style={{ background: 'linear-gradient(135deg, #0f2d3d 0%, #1a4a5e 60%, #2a7d9c 100%)' }}>
+              <div className="absolute inset-0 pointer-events-none" style={{ opacity: 0.3 }}>
+                <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0)', backgroundSize: '28px 28px' }} />
               </div>
-              <h3 className="text-[clamp(22px,3vw,32px)] font-black text-[#0f172a] leading-tight mb-3">
-                Vous achetez un bien ? Comprenez ce que vous signez{' '}
-                <span className="text-[#2a7d9c]">avant de signer.</span>
-              </h3>
-              <p className="text-base text-slate-500 leading-relaxed max-w-2xl">
-                PV d'AG, diagnostics, charges, travaux votés… Des dizaines de pages complexes. Verimo les analyse et vous donne l'essentiel en 30 secondes.
-              </p>
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4"
+                    style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                    <span className="w-2 h-2 rounded-full bg-[#22c55e]" style={{ animation: 'pulse 2s ease-in-out infinite' }} />
+                    <span className="text-white/80 text-xs font-bold tracking-wide uppercase">Pour les acheteurs</span>
+                  </div>
+                  <h3 className="text-[clamp(20px,2.5vw,30px)] font-black text-white leading-tight">
+                    Comprenez ce que vous achetez,<br className="hidden md:block" />{' '}
+                    <span style={{ color: '#7dd3fc' }}>avant de signer.</span>
+                  </h3>
+                </div>
+                <Link to="/start"
+                  className="inline-flex self-start md:self-center items-center gap-2 px-7 py-3.5 rounded-xl text-sm font-bold shrink-0 hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200"
+                  style={{ background: '#fff', color: '#0f2d3d' }}>
+                  Lancer mon analyse <ArrowRight size={15} />
+                </Link>
+              </div>
             </div>
 
-            {/* Grille de bénéfices */}
-            <div className="px-8 md:px-10 py-8 md:py-10">
+            {/* Grille bénéfices */}
+            <div className="px-6 md:px-10 py-8 md:py-10">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[
-                  { emoji: '📋', title: 'PV d\'AG décryptés', desc: 'Comprenez les décisions votées, les travaux prévus et les procédures sans jargon juridique.' },
-                  { emoji: '🔍', title: 'Risques détectés', desc: 'Travaux lourds, impayés, procédures judiciaires — tout est identifié avant votre offre.' },
-                  { emoji: '⚡', title: 'DPE & diagnostics clairs', desc: 'Performance énergétique, amiante, électricité — chaque diagnostic expliqué simplement.' },
-                  { emoji: '💰', title: 'Charges anticipées', desc: 'Charges mensuelles, fonds travaux, appels de fonds — votre vrai budget, sans surprise.' },
-                  { emoji: '🎯', title: 'Score /20 objectif', desc: 'Un score clair pour savoir si le bien est sain, correct ou risqué. Comparez en un coup d\'œil.' },
-                  { emoji: '📤', title: 'Rapport partageable', desc: 'Envoyez le rapport à votre notaire, banquier ou famille pour décider ensemble.' },
-                ].map((item, i) => (
+                {benefits.map((item, i) => (
                   <motion.div key={i}
                     initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ delay: i * 0.06 }}
-                    className="p-5 rounded-2xl border border-slate-100 hover:border-[#2a7d9c]/20 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 bg-white">
-                    <span className="text-2xl block mb-3">{item.emoji}</span>
-                    <h4 className="text-sm font-bold text-[#0f172a] mb-1.5">{item.title}</h4>
+                    transition={{ delay: i * 0.05 }}
+                    onMouseEnter={() => setHoveredIdx(i)}
+                    onMouseLeave={() => setHoveredIdx(null)}
+                    className="relative p-5 rounded-2xl border transition-all duration-250 cursor-default"
+                    style={{
+                      borderColor: hoveredIdx === i ? `${item.color}30` : '#f1f5f9',
+                      background: hoveredIdx === i ? `${item.color}06` : '#fff',
+                      transform: hoveredIdx === i ? 'translateY(-2px)' : 'translateY(0)',
+                      boxShadow: hoveredIdx === i ? `0 8px 24px ${item.color}12` : 'none',
+                    }}>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+                        style={{ background: `${item.color}10`, border: `1.5px solid ${item.color}18` }}>
+                        {item.emoji}
+                      </div>
+                      <h4 className="text-[15px] font-bold text-[#0f172a]">{item.title}</h4>
+                    </div>
                     <p className="text-sm text-slate-400 leading-relaxed">{item.desc}</p>
                   </motion.div>
                 ))}
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center gap-4 mt-8 pt-8 border-t border-slate-100">
-                <Link to="/start"
-                  className="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-[#0f2d3d] text-white text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
-                  Lancer mon analyse <ArrowRight size={16} />
-                </Link>
+              {/* Bas — lien exemple */}
+              <div className="flex items-center justify-center gap-6 mt-8 pt-7 border-t border-slate-100">
                 <Link to="/exemple"
                   className="inline-flex items-center gap-2 text-sm font-semibold text-[#2a7d9c] hover:underline">
                   Voir un exemple de rapport <ArrowRight size={14} />
+                </Link>
+                <span className="hidden sm:block text-slate-200">|</span>
+                <Link to="/methode"
+                  className="hidden sm:inline-flex items-center gap-2 text-sm font-semibold text-slate-400 hover:text-[#0f172a] hover:underline">
+                  Comment ça marche ? <ArrowRight size={14} />
                 </Link>
               </div>
             </div>
@@ -1066,7 +1096,7 @@ function ForWhoSection() {
         </Reveal>
 
         {/* ─── PRO — bandeau compact ─── */}
-        <Reveal>
+        <Reveal className="mt-8">
           <div className="rounded-2xl overflow-hidden flex flex-col md:flex-row items-center gap-6 px-7 py-6 md:px-10 md:py-7"
             style={{ background: 'linear-gradient(135deg, #0f2d3d, #1a4a5e)' }}>
             <div className="flex items-center gap-3 shrink-0">
