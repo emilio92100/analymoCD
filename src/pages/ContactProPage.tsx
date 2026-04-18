@@ -188,7 +188,7 @@ export default function ContactProPage() {
             </div>
             <h1 style={{ fontSize: 'clamp(24px,4vw,36px)', fontWeight: 900, color: '#0f172a', marginBottom: 12 }}>Demande envoyée !</h1>
             <p style={{ fontSize: 16, color: '#64748b', lineHeight: 1.7, marginBottom: 32 }}>
-              Merci pour votre intérêt. Notre équipe vous recontactera sous 24 heures pour discuter de votre offre personnalisée.
+              Merci pour votre intérêt. Notre équipe vous recontactera sous 24h pour discuter de votre offre personnalisée.
             </p>
             <a href="/pro" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '13px 28px', borderRadius: 14, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', textDecoration: 'none', fontWeight: 700, fontSize: 15 }}>
               Retour à l'offre pro <ArrowRight size={15} />
