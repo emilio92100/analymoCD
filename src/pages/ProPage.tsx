@@ -142,12 +142,13 @@ function HeroSection() {
   }, []);
 
   return (
-    <section className="relative overflow-hidden px-5 sm:px-10 lg:px-20 pt-32 pb-20 md:pt-44 md:pb-32">
+    <section className="relative overflow-hidden px-5 sm:px-10 lg:px-20 pt-32 pb-20 md:pt-44 md:pb-28">
       <div className="absolute inset-0" style={{ background: 'linear-gradient(170deg, #0a1f2d 0%, #0f2d3d 30%, #1a4a5e 65%, #2a7d9c 100%)' }} />
       <div className="absolute inset-0 pointer-events-none" style={{ opacity: 0.4 }}>
         <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.07) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
       </div>
       <div className="absolute top-[-10%] left-[50%] w-[600px] h-[600px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(42,125,156,0.15) 0%, transparent 65%)', transform: 'translateX(-50%)' }} />
+      <div className="absolute bottom-[-15%] right-[-5%] w-[400px] h-[400px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(125,211,252,0.06) 0%, transparent 65%)' }} />
 
       <div className="relative z-10 max-w-6xl mx-auto text-center">
         <motion.div variants={up} initial="hidden" animate="show" custom={0}
@@ -173,6 +174,23 @@ function HeroSection() {
           className="text-base md:text-xl text-white/55 leading-relaxed max-w-5xl mx-auto mb-10">
           Agents immobiliers, investisseurs, notaires — intégrez un outil d'analyse documentaire intelligent à votre activité. Score /20, risques chiffrés, rapport en 30 secondes.
         </motion.p>
+
+        {/* 3 profils en cartes */}
+        <motion.div variants={up} initial="hidden" animate="show" custom={2.5}
+          className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 max-w-3xl mx-auto mb-10">
+          {[
+            { emoji: '🏢', label: 'Agents immobiliers', desc: 'Rassurez vos acquéreurs' },
+            { emoji: '📈', label: 'Investisseurs', desc: 'Comparez vos opportunités' },
+            { emoji: '⚖️', label: 'Notaires', desc: 'Accélérez vos dossiers' },
+          ].map((p, i) => (
+            <div key={i} className="rounded-2xl px-5 py-4 text-center"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <span className="text-2xl block mb-2">{p.emoji}</span>
+              <div className="text-sm font-bold text-white mb-1">{p.label}</div>
+              <div className="text-xs text-white/40">{p.desc}</div>
+            </div>
+          ))}
+        </motion.div>
 
         <motion.div variants={up} initial="hidden" animate="show" custom={3}
           className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
