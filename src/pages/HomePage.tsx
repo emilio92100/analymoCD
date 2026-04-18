@@ -13,22 +13,53 @@ import {
 const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
 const isMobile = () => typeof window !== 'undefined' && window.innerWidth <= 768;
 const isLowPerf = () => isIOS() || isMobile();
+const _lowPerf = isLowPerf();
 
 const up: Variants = {
-  hidden: { opacity: 0, y: isLowPerf() ? 6 : 20 },
+  hidden: { opacity: 0, y: _lowPerf ? 6 : 20 },
   show: (i: number = 0) => ({
     opacity: 1, y: 0,
     transition: {
-      duration: isLowPerf() ? 0.18 : 0.45,
-      delay: isLowPerf() ? Math.min(i * 0.02, 0.06) : i * 0.09,
+      duration: _lowPerf ? 0.18 : 0.45,
+      delay: _lowPerf ? Math.min(i * 0.02, 0.06) : i * 0.09,
       ease: [0.22, 1, 0.36, 1],
     },
   }),
 };
 
+// Sur mobile/iOS : animation CSS native (GPU) au lieu de framer-motion (JS/CPU)
 function Reveal({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: isLowPerf() ? "0px" : "-50px" });
+  const ref = useRef<HTMLDivElement>(null);
+
+  if (_lowPerf) {
+    // Version CSS pure — un seul IntersectionObserver natif, animation GPU
+    const [visible, setVisible] = useState(false);
+    useEffect(() => {
+      const el = ref.current;
+      if (!el) return;
+      const obs = new IntersectionObserver(([e]) => {
+        if (e.isIntersecting) { setVisible(true); obs.disconnect(); }
+      }, { threshold: 0.1 });
+      obs.observe(el);
+      return () => obs.disconnect();
+    }, []);
+    return (
+      <div
+        ref={ref}
+        className={className}
+        style={{
+          opacity: visible ? 1 : 0,
+          transform: visible ? 'translateY(0)' : 'translateY(6px)',
+          transition: `opacity 0.25s ease ${delay * 0.02}s, transform 0.25s ease ${delay * 0.02}s`,
+          willChange: visible ? 'auto' : 'opacity, transform',
+        }}>
+        {children}
+      </div>
+    );
+  }
+
+  // Desktop : framer-motion classique
+  const inView = useInView(ref, { once: true, margin: "-50px" });
   return (
     <motion.div ref={ref} variants={up} initial="hidden" animate={inView ? "show" : "hidden"} custom={delay} className={className}>
       {children}
@@ -37,7 +68,40 @@ function Reveal({ children, delay = 0, className = "" }: { children: React.React
 }
 
 function SectionTitle({ label, title, accent, sub }: { label: string; title: string; accent: string; sub?: string }) {
-  const ref = useRef(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  if (_lowPerf) {
+    const [visible, setVisible] = useState(false);
+    useEffect(() => {
+      const el = ref.current;
+      if (!el) return;
+      const obs = new IntersectionObserver(([e]) => {
+        if (e.isIntersecting) { setVisible(true); obs.disconnect(); }
+      }, { threshold: 0.1 });
+      obs.observe(el);
+      return () => obs.disconnect();
+    }, []);
+    const base: React.CSSProperties = {
+      opacity: visible ? 1 : 0,
+      transform: visible ? 'translateY(0)' : 'translateY(8px)',
+      transition: 'opacity 0.3s ease, transform 0.3s ease',
+    };
+    return (
+      <div ref={ref} className="text-center mb-8 md:mb-12 px-2">
+        <p style={base} className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.22em] mb-4">{label}</p>
+        <h2 style={{ ...base, transitionDelay: '0.05s' }} className="text-[clamp(26px,4vw,52px)] font-black tracking-[-0.03em] leading-[1.1] text-[#0f172a] mb-4">
+          {title}{' '}
+          <span className="relative inline-block max-w-fit">
+            <span className="text-[#2a7d9c]">{accent}</span>
+            <span style={{ ...base, transitionDelay: '0.15s', position: 'absolute', bottom: -1, left: 0, right: 0, height: 4, background: 'rgba(42,125,156,0.25)', borderRadius: 9999, transformOrigin: 'left', transform: visible ? 'scaleX(1)' : 'scaleX(0)' }}
+              className="block" />
+          </span>
+        </h2>
+        {sub && <p style={{ ...base, transitionDelay: '0.1s' }} className="text-base md:text-lg text-slate-500 max-w-sm md:max-w-3xl mx-auto leading-relaxed">{sub}</p>}
+      </div>
+    );
+  }
+
   const inView = useInView(ref, { once: true, margin: "-50px" });
   return (
     <div ref={ref} className="text-center mb-8 md:mb-12 px-2">
@@ -120,7 +184,7 @@ function HeroSection() {
                 {/* Colonne de badges */}
                 <div className="flex flex-col gap-3">
                   <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.8 }}
-                    style={{ animation: "floatA 4.5s ease-in-out 0.8s infinite" }}
+                    style={_lowPerf ? {} : { animation: "floatA 4.5s ease-in-out 0.8s infinite" }}
                     className="bg-white rounded-xl px-3 py-2.5 shadow-md border border-slate-100 flex items-center gap-2 w-[138px]">
                     <div className="w-6 h-6 rounded-lg bg-[#2a7d9c]/10 flex items-center justify-center shrink-0">
                       <ShieldCheck size={12} className="text-[#2a7d9c]" />
@@ -132,7 +196,7 @@ function HeroSection() {
                   </motion.div>
 
                   <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.3 }}
-                    style={{ animation: "floatB 5s ease-in-out 1.3s infinite" }}
+                    style={_lowPerf ? {} : { animation: "floatB 5s ease-in-out 1.3s infinite" }}
                     className="bg-white rounded-xl px-3 py-2.5 shadow-md border border-slate-100 flex items-center gap-2 w-[138px]">
                     <div className="w-6 h-6 rounded-lg bg-green-50 flex items-center justify-center shrink-0">
                       <TrendingUp size={12} className="text-green-500" />
@@ -144,7 +208,7 @@ function HeroSection() {
                   </motion.div>
 
                   <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.8 }}
-                    style={{ animation: "floatC 4s ease-in-out 1.8s infinite" }}
+                    style={_lowPerf ? {} : { animation: "floatC 4s ease-in-out 1.8s infinite" }}
                     className="bg-white rounded-xl px-3 py-2.5 shadow-md border border-slate-100 flex items-center gap-2 w-[138px]">
                     <div className="w-6 h-6 rounded-lg bg-[#f0a500]/10 flex items-center justify-center shrink-0">
                       <FileText size={12} className="text-[#f0a500]" />
@@ -268,11 +332,17 @@ type PhoneStep = 0 | 1 | 2;
 function usePhoneSteps() {
   const [step, setStep] = useState<PhoneStep>(0);
   useEffect(() => {
+    if (_lowPerf) {
+      // Sur mobile : un seul cycle, pas de boucle infinie
+      const t1 = setTimeout(() => setStep(1), 3200);
+      const t2 = setTimeout(() => setStep(2), 6800);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
     const t1 = setTimeout(() => setStep(1), 3200);
     const t2 = setTimeout(() => setStep(2), 6800);
     const t3 = setTimeout(() => setStep(0), 13000);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, [step]);
+  }, _lowPerf ? [] : [step]);
   return step;
 }
 
