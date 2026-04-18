@@ -58,6 +58,17 @@ function Reveal({ children, delay = 0, className = '' }: { children: React.React
   );
 }
 
+/* Soulignement animé bleu — comme les autres pages */
+function AccentUnderline() {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true });
+  return (
+    <motion.span ref={ref} initial={{ scaleX: 0 }} animate={inView ? { scaleX: 1 } : {}}
+      transition={{ duration: 2.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+      className="absolute -bottom-1 left-0 right-0 h-[4px] bg-[#2a7d9c]/25 rounded-full origin-left block" />
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════════
    DATA
 ═══════════════════════════════════════════════════════════════ */
@@ -72,10 +83,10 @@ const profiles = [
     headline: 'Un service premium qui vous différencie de la concurrence.',
     description: 'Intégrez Verimo à votre process de vente. Vos acquéreurs reçoivent une analyse claire des documents avant même la visite. Résultat : décisions plus rapides, moins de rétractations, et des clients qui vous recommandent.',
     benefits: [
-      { icon: Handshake, text: 'Argument différenciant en prise de mandat' },
-      { icon: Zap, text: 'Moins de rétractations, signatures accélérées' },
-      { icon: Star, text: 'Service premium qui génère du bouche-à-oreille' },
-      { icon: BarChart3, text: 'Rapport partageable avec votre branding' },
+      { icon: Handshake, title: 'Prise de mandat', text: 'Un argument différenciant face à vos concurrents lors de la prise de mandat.' },
+      { icon: Zap, title: 'Signatures accélérées', text: 'Vos acquéreurs comprennent le bien dès le départ. Moins de doutes, moins de rétractations.' },
+      { icon: Star, title: 'Bouche-à-oreille', text: 'Un service premium que vos clients recommandent autour d\'eux.' },
+      { icon: BarChart3, title: 'Rapport co-brandable', text: 'Partagez le rapport Verimo avec votre identité visuelle.' },
     ],
     stats: [
       { value: '-40%', label: 'rétractations' },
@@ -94,10 +105,10 @@ const profiles = [
     headline: 'Chaque bien est une opportunité — ou un gouffre financier.',
     description: 'Vous analysez des dizaines de biens. Verimo extrait automatiquement charges, travaux votés, impayés et risques cachés. Le score /20 vous permet de comparer objectivement vos opportunités.',
     benefits: [
-      { icon: Target, text: 'Score /20 pour comparer vos opportunités' },
-      { icon: PieChart, text: 'Charges, travaux et impayés chiffrés' },
-      { icon: Clock, text: '30 secondes au lieu de 2 heures par dossier' },
-      { icon: Eye, text: 'Risques cachés détectés automatiquement' },
+      { icon: Target, title: 'Comparaison objective', text: 'Score /20 par bien pour identifier les meilleures opportunités en un coup d\'œil.' },
+      { icon: PieChart, title: 'Impact chiffré', text: 'Charges, fonds travaux, impayés — tout est chiffré pour calculer votre vraie rentabilité.' },
+      { icon: Clock, title: 'Gain de temps', text: '30 secondes au lieu de 2 heures par dossier. Multipliez vos acquisitions.' },
+      { icon: Eye, title: 'Risques détectés', text: 'Procédures judiciaires, travaux lourds, DPE F/G — repérez ce que le vendeur ne dit pas.' },
     ],
     stats: [
       { value: '10x', label: 'plus rapide' },
@@ -114,12 +125,12 @@ const profiles = [
     label: 'Notaire',
     tagline: 'Sécurisez vos transactions. Gagnez du temps.',
     headline: 'Un pré-screening intelligent, en complément de votre expertise.',
-    description: 'Verimo ne remplace pas votre analyse — il l\'accélère. En quelques secondes, obtenez une synthèse structurée des PV d\'AG, diagnostics et documents financiers. Identifiez immédiatement les points à approfondir.',
+    description: 'Verimo ne remplace pas votre analyse — il l\'accélère. En quelques secondes, obtenez une synthèse structurée des PV d\'AG, diagnostics et documents financiers.',
     benefits: [
-      { icon: FileText, text: 'Synthèse immédiate de 80+ pages de PV' },
-      { icon: ShieldCheck, text: 'Devoir de conseil renforcé, rien ne passe entre les mailles' },
-      { icon: Users, text: 'Vos clients reçoivent un rapport clair en complément' },
-      { icon: BadgeCheck, text: 'Conforme RGPD, chiffré, suppression automatique' },
+      { icon: FileText, title: 'Synthèse immédiate', text: 'Plus besoin de lire 80 pages de PV pour identifier les travaux et procédures.' },
+      { icon: ShieldCheck, title: 'Devoir de conseil', text: 'Un outil complémentaire pour ne rien laisser passer et alerter vos clients.' },
+      { icon: Users, title: 'Satisfaction client', text: 'Vos clients reçoivent un rapport clair en complément de votre accompagnement.' },
+      { icon: BadgeCheck, title: 'Conforme & sécurisé', text: 'Documents chiffrés, supprimés automatiquement, hébergés en Europe.' },
     ],
     stats: [
       { value: '-70%', label: 'temps de lecture' },
@@ -132,26 +143,11 @@ const profiles = [
 ];
 
 const faqPro = [
-  {
-    q: 'Verimo remplace-t-il le travail d\'un notaire ou d\'un agent ?',
-    a: 'Non. Verimo est un outil complémentaire qui accélère la lecture et l\'analyse des documents immobiliers. Il ne fournit ni conseil juridique, ni avis de valeur. Il structure et synthétise les informations pour que le professionnel puisse se concentrer sur son expertise.',
-  },
-  {
-    q: 'Les documents de mes clients sont-ils en sécurité ?',
-    a: 'Absolument. Tous les documents sont chiffrés en transit et au repos, hébergés en Europe, et supprimés automatiquement après traitement. Aucun document n\'est conservé ni utilisé à d\'autres fins.',
-  },
-  {
-    q: 'Existe-t-il des tarifs volume pour les professionnels ?',
-    a: 'Oui, nous proposons des offres adaptées au volume et aux besoins spécifiques de chaque professionnel. Contactez-nous via le formulaire pour recevoir une proposition personnalisée.',
-  },
-  {
-    q: 'Puis-je partager les rapports avec mes clients ?',
-    a: 'Oui. Chaque rapport peut être partagé via un lien sécurisé ou exporté en PDF. Pour les agents immobiliers, nous travaillons sur une option co-branding avec votre identité visuelle.',
-  },
-  {
-    q: 'Quels types de documents peut-on analyser ?',
-    a: 'PV d\'assemblée générale, règlements de copropriété, diagnostics techniques (DPE, amiante, électricité, gaz…), appels de charges, compromis de vente, états datés, DTG, carnets d\'entretien, et bien d\'autres.',
-  },
+  { q: 'Verimo remplace-t-il le travail d\'un notaire ou d\'un agent ?', a: 'Non. Verimo est un outil complémentaire qui accélère la lecture et l\'analyse des documents immobiliers. Il ne fournit ni conseil juridique, ni avis de valeur. Il structure et synthétise les informations pour que le professionnel puisse se concentrer sur son expertise.' },
+  { q: 'Les documents de mes clients sont-ils en sécurité ?', a: 'Absolument. Tous les documents sont chiffrés en transit et au repos, hébergés en Europe, et supprimés automatiquement après traitement. Aucun document n\'est conservé ni utilisé à d\'autres fins.' },
+  { q: 'Existe-t-il des tarifs volume pour les professionnels ?', a: 'Oui, nous proposons des offres adaptées au volume et aux besoins spécifiques de chaque professionnel. Contactez-nous via le formulaire pour recevoir une proposition personnalisée.' },
+  { q: 'Puis-je partager les rapports avec mes clients ?', a: 'Oui. Chaque rapport peut être partagé via un lien sécurisé ou exporté en PDF. Pour les agents immobiliers, nous travaillons sur une option co-branding avec votre identité visuelle.' },
+  { q: 'Quels types de documents peut-on analyser ?', a: 'PV d\'assemblée générale, règlements de copropriété, diagnostics techniques (DPE, amiante, électricité, gaz…), appels de charges, compromis de vente, états datés, DTG, carnets d\'entretien, et bien d\'autres.' },
 ];
 
 
@@ -174,10 +170,10 @@ export default function ProPage() {
 }
 
 
-/* ═══ HERO ═══════════════════════════════════════════════════ */
+/* ═══ HERO — titre sur 2 lignes, navbar visible ═════════════ */
 function HeroSection() {
   return (
-    <section className="relative overflow-hidden px-5 pt-32 pb-20 md:pt-40 md:pb-28">
+    <section className="relative overflow-hidden px-5 sm:px-10 lg:px-20 pt-32 pb-20 md:pt-44 md:pb-32">
       <div className="absolute inset-0" style={{ background: 'linear-gradient(170deg, #0a1f2d 0%, #0f2d3d 30%, #1a4a5e 65%, #2a7d9c 100%)' }} />
       <div className="absolute inset-0 pointer-events-none" style={{ opacity: 0.4 }}>
         <div className="absolute inset-0" style={{
@@ -187,7 +183,7 @@ function HeroSection() {
       </div>
       <div className="absolute top-[-10%] left-[50%] w-[600px] h-[600px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(42,125,156,0.15) 0%, transparent 65%)', transform: 'translateX(-50%)' }} />
 
-      <div className="relative z-10 max-w-4xl mx-auto text-center">
+      <div className="relative z-10 max-w-6xl mx-auto text-center">
         <motion.div variants={up} initial="hidden" animate="show" custom={0}
           className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full mb-8"
           style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
@@ -196,10 +192,9 @@ function HeroSection() {
         </motion.div>
 
         <motion.h1 variants={up} initial="hidden" animate="show" custom={1}
-          className="text-[clamp(30px,5.5vw,60px)] font-black leading-[1.06] tracking-[-0.035em] text-white mb-7">
-          L'analyse immobilière<br />
-          qui fait la différence<br />
-          <span className="relative inline-block">
+          className="text-[clamp(28px,5vw,56px)] font-black leading-[1.08] tracking-[-0.035em] text-white mb-7">
+          L'analyse immobilière qui fait la différence{' '}
+          <span className="relative inline-block whitespace-nowrap">
             <span style={{ color: '#7dd3fc' }}>pour les pros.</span>
             <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }}
               transition={{ delay: 1.0, duration: 1.6, ease: [0.22, 1, 0.36, 1] }}
@@ -209,9 +204,8 @@ function HeroSection() {
         </motion.h1>
 
         <motion.p variants={up} initial="hidden" animate="show" custom={2}
-          className="text-base md:text-xl text-white/55 leading-relaxed max-w-2xl mx-auto mb-10">
-          Agents immobiliers, investisseurs, notaires — intégrez un outil d'analyse documentaire intelligent à votre activité.
-          Score /20, risques chiffrés, rapport en 30 secondes.
+          className="text-base md:text-xl text-white/55 leading-relaxed max-w-4xl mx-auto mb-10">
+          Agents immobiliers, investisseurs, notaires — intégrez un outil d'analyse documentaire intelligent à votre activité. Score /20, risques chiffrés, rapport en 30 secondes.
         </motion.p>
 
         <motion.div variants={up} initial="hidden" animate="show" custom={3}
@@ -268,29 +262,31 @@ function StatsRibbon() {
 }
 
 
-/* ═══ PROFILS MÉTIERS ════════════════════════════════════════ */
+/* ═══ PROFILS — layout gauche/droite, plus large ═════════════ */
 function ProfilesSection() {
   const [activeIdx, setActiveIdx] = useState(0);
   const active = profiles[activeIdx];
 
   return (
     <section id="profils" className="py-20 md:py-28 px-4 md:px-6 bg-white">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-6xl mx-auto">
 
+        {/* Titre */}
         <Reveal className="text-center mb-5">
           <p className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.22em] mb-4">Solutions par métier</p>
           <h2 className="text-[clamp(26px,4vw,48px)] font-black tracking-[-0.03em] leading-[1.1] text-[#0f172a] mb-4">
             Une offre adaptée à{' '}
             <span className="relative inline-block">
               <span className="text-[#2a7d9c]">votre réalité.</span>
-              <span className="absolute -bottom-1 left-0 right-0 h-[3px] bg-[#2a7d9c]/20 rounded-full block" />
+              <AccentUnderline />
             </span>
           </h2>
-          <p className="text-base md:text-lg text-slate-400 max-w-xl mx-auto leading-relaxed">
+          <p className="text-base md:text-lg text-slate-400 max-w-3xl mx-auto leading-relaxed">
             Chaque professionnel a des besoins différents. Découvrez ce que Verimo peut faire pour vous.
           </p>
         </Reveal>
 
+        {/* Sélecteur */}
         <Reveal delay={1} className="flex justify-center mb-14">
           <div className="inline-flex bg-[#f4f7f9] rounded-2xl p-1.5 gap-1 flex-wrap justify-center border border-slate-100/80">
             {profiles.map((p, i) => (
@@ -308,58 +304,76 @@ function ProfilesSection() {
           </div>
         </Reveal>
 
+        {/* Contenu — layout en 2 colonnes sur desktop */}
         <AnimatePresence mode="wait">
           <motion.div key={active.id}
             initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}>
 
-            <div className="text-center mb-10">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-5"
-                style={{ background: active.lightBg, border: `1px solid ${active.color}20` }}>
-                <active.icon size={14} style={{ color: active.color }} />
-                <span className="text-xs font-bold uppercase tracking-wide" style={{ color: active.color }}>{active.tagline}</span>
-              </div>
-              <h3 className="text-[clamp(22px,3vw,36px)] font-black text-[#0f172a] leading-tight max-w-2xl mx-auto mb-4">
-                {active.headline}
-              </h3>
-              <p className="text-base text-slate-400 leading-relaxed max-w-2xl mx-auto">
-                {active.description}
-              </p>
-            </div>
+            <div className="rounded-3xl overflow-hidden border border-slate-100 shadow-lg">
+              <div className="grid grid-cols-1 lg:grid-cols-2">
 
-            <div className="grid grid-cols-3 gap-3 md:gap-4 mb-10 max-w-lg mx-auto">
-              {active.stats.map((s, i) => (
-                <motion.div key={i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.08 + 0.15 }}
-                  className="text-center rounded-2xl py-5 px-3"
-                  style={{ background: active.lightBg, border: `1px solid ${active.color}12` }}>
-                  <div className="text-2xl md:text-3xl font-black mb-0.5" style={{ color: active.color }}>{s.value}</div>
-                  <div className="text-[11px] text-slate-400 font-semibold">{s.label}</div>
-                </motion.div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto">
-              {active.benefits.map((b, i) => (
-                <motion.div key={i}
-                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.07 + 0.2 }}
-                  className="flex items-center gap-4 rounded-2xl px-5 py-4 border border-slate-100 bg-white shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: `${active.color}10`, border: `1.5px solid ${active.color}18` }}>
-                    <b.icon size={18} style={{ color: active.color }} />
+                {/* Gauche — contexte + stats */}
+                <div className="p-8 md:p-10 lg:p-12 flex flex-col justify-center" style={{ background: active.lightBg }}>
+                  <div className="inline-flex self-start items-center gap-2 px-4 py-2 rounded-full mb-6"
+                    style={{ background: '#fff', border: `1px solid ${active.color}20` }}>
+                    <active.icon size={14} style={{ color: active.color }} />
+                    <span className="text-xs font-bold uppercase tracking-wide" style={{ color: active.color }}>{active.tagline}</span>
                   </div>
-                  <span className="text-sm font-semibold text-[#0f172a] leading-snug">{b.text}</span>
-                </motion.div>
-              ))}
-            </div>
+                  <h3 className="text-[clamp(22px,2.8vw,34px)] font-black text-[#0f172a] leading-tight mb-4">
+                    {active.headline}
+                  </h3>
+                  <p className="text-base text-slate-500 leading-relaxed mb-8">
+                    {active.description}
+                  </p>
 
-            <div className="text-center mt-10">
-              <Link to="/contact-pro"
-                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl text-sm font-bold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
-                style={{ background: active.color, color: '#fff' }}>
-                Être recontacté <ArrowRight size={15} />
-              </Link>
+                  {/* Stats */}
+                  <div className="grid grid-cols-3 gap-3 mb-8">
+                    {active.stats.map((s, i) => (
+                      <motion.div key={i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: i * 0.08 + 0.15 }}
+                        className="text-center rounded-2xl py-4 px-3 bg-white shadow-sm"
+                        style={{ border: `1px solid ${active.color}12` }}>
+                        <div className="text-xl md:text-2xl font-black mb-0.5" style={{ color: active.color }}>{s.value}</div>
+                        <div className="text-[10px] text-slate-400 font-semibold">{s.label}</div>
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  <Link to="/contact-pro"
+                    className="inline-flex self-start items-center gap-2 px-7 py-3.5 rounded-xl text-sm font-bold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+                    style={{ background: active.color, color: '#fff' }}>
+                    Être recontacté <ArrowRight size={15} />
+                  </Link>
+                </div>
+
+                {/* Droite — bénéfices */}
+                <div className="p-8 md:p-10 lg:p-12 bg-white flex flex-col justify-center">
+                  <div className="flex items-center gap-2 mb-7">
+                    <div className="w-2 h-2 rounded-full" style={{ background: active.color }} />
+                    <span className="text-sm font-bold text-[#0f172a]">Ce que Verimo fait pour vous</span>
+                  </div>
+                  <div className="flex flex-col gap-4">
+                    {active.benefits.map((b, i) => (
+                      <motion.div key={i}
+                        initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.08 + 0.15 }}
+                        className="flex items-start gap-4 p-4 rounded-2xl hover:shadow-md transition-all duration-200"
+                        style={{ background: active.lightBg }}>
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ background: `${active.color}15`, border: `1.5px solid ${active.color}22` }}>
+                          <b.icon size={18} style={{ color: active.color }} />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-[#0f172a] mb-1">{b.title}</h4>
+                          <p className="text-sm text-slate-400 leading-relaxed">{b.text}</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
             </div>
 
           </motion.div>
@@ -380,14 +394,17 @@ function HowItWorksProSection() {
 
   return (
     <section className="py-20 md:py-28 px-4 md:px-6" style={{ background: '#f8fafc' }}>
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <Reveal className="text-center mb-16">
           <p className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.22em] mb-4">Mise en route</p>
           <h2 className="text-[clamp(26px,4vw,44px)] font-black tracking-[-0.03em] leading-[1.1] text-[#0f172a] mb-4">
             Opérationnel en{' '}
-            <span className="text-[#2a7d9c]">48 heures.</span>
+            <span className="relative inline-block">
+              <span className="text-[#2a7d9c]">48 heures.</span>
+              <AccentUnderline />
+            </span>
           </h2>
-          <p className="text-base text-slate-400 max-w-lg mx-auto leading-relaxed">
+          <p className="text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
             Pas d'intégration technique, pas de formation. Vous créez votre compte et vous commencez.
           </p>
         </Reveal>
@@ -421,37 +438,22 @@ function HowItWorksProSection() {
 /* ═══ TÉMOIGNAGES ════════════════════════════════════════════ */
 function TestimonialsSection() {
   const testimonials = [
-    {
-      quote: 'Verimo a changé notre façon de préparer les dossiers acquéreurs. On gagne un temps fou et nos clients sont rassurés dès la première visite.',
-      name: 'Sophie M.',
-      role: 'Directrice d\'agence',
-      city: 'Lyon',
-      type: '🏢 Agent',
-    },
-    {
-      quote: 'J\'analyse 8 à 10 biens par mois. Avant, je passais 2h par dossier. Avec Verimo, c\'est 30 secondes et je ne rate rien.',
-      name: 'Thomas R.',
-      role: 'Investisseur',
-      city: 'Paris',
-      type: '📈 Investisseur',
-    },
-    {
-      quote: 'Un excellent complément à notre analyse. Le rapport synthétise les PV d\'AG de manière remarquable. Mes clercs adorent.',
-      name: 'Maître L.',
-      role: 'Notaire associé',
-      city: 'Bordeaux',
-      type: '⚖️ Notaire',
-    },
+    { quote: 'Verimo a changé notre façon de préparer les dossiers acquéreurs. On gagne un temps fou et nos clients sont rassurés dès la première visite.', name: 'Sophie M.', role: 'Directrice d\'agence', city: 'Lyon', type: '🏢 Agent' },
+    { quote: 'J\'analyse 8 à 10 biens par mois. Avant, je passais 2h par dossier. Avec Verimo, c\'est 30 secondes et je ne rate rien.', name: 'Thomas R.', role: 'Investisseur', city: 'Paris', type: '📈 Investisseur' },
+    { quote: 'Un excellent complément à notre analyse. Le rapport synthétise les PV d\'AG de manière remarquable. Mes clercs adorent.', name: 'Maître L.', role: 'Notaire associé', city: 'Bordeaux', type: '⚖️ Notaire' },
   ];
 
   return (
     <section className="py-20 md:py-28 px-4 md:px-6 bg-white">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <Reveal className="text-center mb-14">
           <p className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.22em] mb-4">Témoignages</p>
           <h2 className="text-[clamp(26px,4vw,44px)] font-black tracking-[-0.03em] leading-[1.1] text-[#0f172a]">
             Ils font confiance à{' '}
-            <span className="text-[#2a7d9c]">Verimo.</span>
+            <span className="relative inline-block">
+              <span className="text-[#2a7d9c]">Verimo.</span>
+              <AccentUnderline />
+            </span>
           </h2>
         </Reveal>
 
@@ -500,14 +502,17 @@ function SecuritySection() {
 
   return (
     <section className="py-16 md:py-24 px-4 md:px-6" style={{ background: '#f8fafc' }}>
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <Reveal className="text-center mb-12">
           <p className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.22em] mb-4">Sécurité & conformité</p>
           <h2 className="text-[clamp(24px,3.5vw,40px)] font-black tracking-[-0.03em] leading-[1.1] text-[#0f172a] mb-4">
             Vos données sont{' '}
-            <span className="text-[#2a7d9c]">en sécurité.</span>
+            <span className="relative inline-block">
+              <span className="text-[#2a7d9c]">en sécurité.</span>
+              <AccentUnderline />
+            </span>
           </h2>
-          <p className="text-base text-slate-400 max-w-lg mx-auto leading-relaxed">
+          <p className="text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
             La confiance de vos clients commence par la sécurité de leurs documents.
           </p>
         </Reveal>
@@ -532,17 +537,21 @@ function SecuritySection() {
 }
 
 
-/* ═══ FAQ PRO ════════════════════════════════════════════════ */
+/* ═══ FAQ — plus large ═══════════════════════════════════════ */
 function FaqProSection() {
   const [openIdx, setOpenIdx] = useState<number | null>(null);
 
   return (
     <section className="py-20 md:py-28 px-4 md:px-6 bg-white">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <Reveal className="text-center mb-12">
           <p className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.22em] mb-4">FAQ</p>
           <h2 className="text-[clamp(24px,3.5vw,40px)] font-black tracking-[-0.03em] leading-[1.1] text-[#0f172a]">
-            Questions fréquentes
+            <span className="relative inline-block">
+              <span className="text-[#2a7d9c]">Questions</span>
+              <AccentUnderline />
+            </span>{' '}
+            fréquentes
           </h2>
         </Reveal>
 
@@ -579,7 +588,7 @@ function FaqProSection() {
 }
 
 
-/* ═══ CTA FINAL ══════════════════════════════════════════════ */
+/* ═══ CTA FINAL — titre sur 1 ligne, plus large ═════════════ */
 function CtaFinalSection() {
   return (
     <section className="relative overflow-hidden py-24 md:py-32 px-4 md:px-6">
@@ -592,7 +601,7 @@ function CtaFinalSection() {
       </div>
       <div className="absolute top-[50%] left-[50%] w-[500px] h-[500px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(125,211,252,0.08) 0%, transparent 65%)', transform: 'translate(-50%,-50%)' }} />
 
-      <div className="relative z-10 max-w-3xl mx-auto text-center">
+      <div className="relative z-10 max-w-5xl mx-auto text-center">
         <Reveal>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8"
             style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
@@ -603,13 +612,19 @@ function CtaFinalSection() {
 
         <Reveal delay={1}>
           <h2 className="text-[clamp(26px,4.5vw,50px)] font-black text-white leading-[1.08] tracking-[-0.03em] mb-6">
-            Rejoignez les pros qui<br />
-            font confiance à <span style={{ color: '#7dd3fc' }}>Verimo.</span>
+            Rejoignez les pros qui font confiance à{' '}
+            <span className="relative inline-block">
+              <span style={{ color: '#7dd3fc' }}>Verimo.</span>
+              <motion.span initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }}
+                transition={{ duration: 2, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute -bottom-1 left-0 right-0 h-[4px] rounded-full origin-left block"
+                style={{ background: 'rgba(125,211,252,0.3)' }} />
+            </span>
           </h2>
         </Reveal>
 
         <Reveal delay={2}>
-          <p className="text-lg text-white/45 leading-relaxed max-w-xl mx-auto mb-10">
+          <p className="text-lg text-white/45 leading-relaxed max-w-3xl mx-auto mb-10">
             Démo personnalisée, offre sur mesure, accompagnement dédié. Réponse garantie sous 24 heures.
           </p>
         </Reveal>
