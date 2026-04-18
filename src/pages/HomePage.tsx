@@ -1005,127 +1005,88 @@ function SecuriteSection() {
 
 /* ═══ FOR WHO ══════════════════════════════════════════════ */
 function ForWhoSection() {
-  const particuliers = [
-    {
-      emoji: '🏠',
-      label: 'Primo-accédant',
-      headline: 'Vous achetez pour la première fois ? On vous aide à comprendre.',
-      points: [
-        'Comprenez un PV d\'AG sans formation juridique',
-        'Découvrez les travaux votés avant de signer',
-        'Recevez un score /20 clair sur l\'état du bien',
-        'Partagez le rapport avec votre notaire ou banquier',
-      ],
-    },
-    {
-      emoji: '🔑',
-      label: 'Acheteur résidence principale',
-      headline: 'Votre futur chez vous mérite une analyse sérieuse.',
-      points: [
-        'Identifiez les charges cachées et les impayés',
-        'Vérifiez l\'état réel des diagnostics (DPE, amiante…)',
-        'Anticipez les travaux à venir et leur coût',
-        'Prenez votre décision en toute confiance',
-      ],
-    },
-  ];
-
-  const pros = [
-    { emoji: '🏢', label: 'Agents immobiliers', desc: 'Différenciez-vous avec un rapport d\'analyse qui rassure vos acquéreurs.' },
-    { emoji: '📈', label: 'Investisseurs', desc: 'Comparez vos opportunités avec un score objectif et des risques chiffrés.' },
-    { emoji: '⚖️', label: 'Notaires', desc: 'Accélérez le pré-screening de vos dossiers et renforcez votre conseil.' },
-  ];
-
   return (
     <section className="py-12 md:py-20 px-4 md:px-6 bg-[#f4f7f9]">
       <div className="max-w-5xl mx-auto">
         <SectionTitle label="Pour qui" title="Fait pour" accent="vous." />
 
-        {/* ─── PARTICULIERS ─── */}
-        <Reveal className="mb-6">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-slate-100 shadow-sm mb-6">
-            <span className="w-2 h-2 rounded-full bg-[#2a7d9c]" />
-            <span className="text-sm font-bold text-[#0f172a]">Vous achetez un bien ?</span>
-          </div>
-        </Reveal>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
-          {particuliers.map((p, i) => (
-            <Reveal key={i} delay={i}>
-              <div className="bg-white rounded-2xl p-7 border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 h-full">
-                <div className="flex items-center gap-3 mb-5">
-                  <span className="text-2xl">{p.emoji}</span>
-                  <span className="text-sm font-bold text-[#2a7d9c] uppercase tracking-wide">{p.label}</span>
-                </div>
-                <h3 className="text-lg font-black text-[#0f172a] mb-4 leading-tight">{p.headline}</h3>
-                <div className="flex flex-col gap-2.5">
-                  {p.points.map((point, j) => (
-                    <div key={j} className="flex items-start gap-3">
-                      <div className="w-5 h-5 rounded-full bg-[#2a7d9c]/10 flex items-center justify-center shrink-0 mt-0.5">
-                        <Check size={11} className="text-[#2a7d9c]" />
-                      </div>
-                      <span className="text-sm text-slate-600 leading-snug">{point}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-
-        <Reveal className="text-center mb-16">
-          <Link to="/start"
-            className="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-[#0f2d3d] text-white text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
-            Lancer mon analyse <ArrowRight size={16} />
-          </Link>
-        </Reveal>
-
-        {/* ─── PROS ─── */}
+        {/* ─── ACHETEURS — grande carte immersive ─── */}
         <Reveal>
-          <div className="rounded-3xl overflow-hidden shadow-xl"
-            style={{ background: 'linear-gradient(160deg, #0f2d3d 0%, #1a4a5e 50%, #2a7d9c 100%)' }}>
-            <div className="p-8 md:p-12">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-6"
-                style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
-                <Briefcase size={13} className="text-white/80" />
-                <span className="text-white/90 text-xs font-bold tracking-wide uppercase">Offre professionnelle</span>
+          <div className="rounded-3xl overflow-hidden shadow-lg border border-slate-100 bg-white mb-8">
+            {/* Header visuel */}
+            <div className="px-8 md:px-10 pt-8 md:pt-10 pb-6" style={{ background: 'linear-gradient(135deg, #f0f7fb 0%, #e4f2f8 100%)' }}>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#2a7d9c]/15 shadow-sm mb-5">
+                <span className="w-2 h-2 rounded-full bg-[#22c55e]" style={{ animation: 'pulse 2s ease-in-out infinite' }} />
+                <span className="text-sm font-bold text-[#0f172a]">Pour les acheteurs particuliers</span>
               </div>
-
-              <h3 className="text-[clamp(20px,3vw,32px)] font-black text-white mb-3 leading-tight">
-                Vous êtes un professionnel de l'immobilier ?
+              <h3 className="text-[clamp(22px,3vw,32px)] font-black text-[#0f172a] leading-tight mb-3">
+                Vous achetez un bien ? Comprenez ce que vous signez{' '}
+                <span className="text-[#2a7d9c]">avant de signer.</span>
               </h3>
-              <p className="text-white/60 text-base leading-relaxed mb-8 max-w-2xl">
-                Verimo s'adapte à votre métier avec une offre dédiée, des tarifs volume et un accompagnement personnalisé.
+              <p className="text-base text-slate-500 leading-relaxed max-w-2xl">
+                PV d'AG, diagnostics, charges, travaux votés… Des dizaines de pages complexes. Verimo les analyse et vous donne l'essentiel en 30 secondes.
               </p>
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-                {pros.map((pro, i) => (
+            {/* Grille de bénéfices */}
+            <div className="px-8 md:px-10 py-8 md:py-10">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[
+                  { emoji: '📋', title: 'PV d\'AG décryptés', desc: 'Comprenez les décisions votées, les travaux prévus et les procédures sans jargon juridique.' },
+                  { emoji: '🔍', title: 'Risques détectés', desc: 'Travaux lourds, impayés, procédures judiciaires — tout est identifié avant votre offre.' },
+                  { emoji: '⚡', title: 'DPE & diagnostics clairs', desc: 'Performance énergétique, amiante, électricité — chaque diagnostic expliqué simplement.' },
+                  { emoji: '💰', title: 'Charges anticipées', desc: 'Charges mensuelles, fonds travaux, appels de fonds — votre vrai budget, sans surprise.' },
+                  { emoji: '🎯', title: 'Score /20 objectif', desc: 'Un score clair pour savoir si le bien est sain, correct ou risqué. Comparez en un coup d\'œil.' },
+                  { emoji: '📤', title: 'Rapport partageable', desc: 'Envoyez le rapport à votre notaire, banquier ou famille pour décider ensemble.' },
+                ].map((item, i) => (
                   <motion.div key={i}
                     initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ delay: i * 0.08 }}
-                    className="rounded-2xl p-5"
-                    style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                    <span className="text-2xl mb-3 block">{pro.emoji}</span>
-                    <h4 className="text-base font-bold text-white mb-2">{pro.label}</h4>
-                    <p className="text-sm text-white/50 leading-relaxed">{pro.desc}</p>
+                    transition={{ delay: i * 0.06 }}
+                    className="p-5 rounded-2xl border border-slate-100 hover:border-[#2a7d9c]/20 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 bg-white">
+                    <span className="text-2xl block mb-3">{item.emoji}</span>
+                    <h4 className="text-sm font-bold text-[#0f172a] mb-1.5">{item.title}</h4>
+                    <p className="text-sm text-slate-400 leading-relaxed">{item.desc}</p>
                   </motion.div>
                 ))}
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Link to="/pro"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl text-base font-bold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
-                  style={{ background: '#fff', color: '#0f2d3d' }}>
-                  Découvrir les offres pro <ArrowRight size={15} />
+              <div className="flex flex-col sm:flex-row items-center gap-4 mt-8 pt-8 border-t border-slate-100">
+                <Link to="/start"
+                  className="inline-flex items-center gap-2 px-8 py-3.5 rounded-2xl bg-[#0f2d3d] text-white text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
+                  Lancer mon analyse <ArrowRight size={16} />
                 </Link>
-                <Link to="/contact-pro"
-                  className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-base font-semibold transition-all duration-200"
-                  style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
-                  Être recontacté
+                <Link to="/exemple"
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-[#2a7d9c] hover:underline">
+                  Voir un exemple de rapport <ArrowRight size={14} />
                 </Link>
               </div>
             </div>
+          </div>
+        </Reveal>
+
+        {/* ─── PRO — bandeau compact ─── */}
+        <Reveal>
+          <div className="rounded-2xl overflow-hidden flex flex-col md:flex-row items-center gap-6 px-7 py-6 md:px-10 md:py-7"
+            style={{ background: 'linear-gradient(135deg, #0f2d3d, #1a4a5e)' }}>
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                <Briefcase size={18} className="text-white/80" />
+              </div>
+              <div>
+                <h4 className="text-base font-bold text-white">Offre Professionnelle</h4>
+                <p className="text-xs text-white/50">Agents, investisseurs, notaires</p>
+              </div>
+            </div>
+            <p className="text-sm text-white/50 leading-relaxed flex-1 text-center md:text-left">
+              Tarifs volume, rapport co-brandable, accompagnement dédié — une offre adaptée à votre métier.
+            </p>
+            <Link to="/pro"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold shrink-0 hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200"
+              style={{ background: '#fff', color: '#0f2d3d' }}>
+              Découvrir <ArrowRight size={14} />
+            </Link>
           </div>
         </Reveal>
       </div>
