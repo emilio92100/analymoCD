@@ -32,8 +32,17 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 16);
-    window.addEventListener('scroll', fn);
+    let ticking = false;
+    const fn = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(() => {
+          setScrolled(window.scrollY > 16);
+          ticking = false;
+        });
+      }
+    };
+    window.addEventListener('scroll', fn, { passive: true });
     return () => window.removeEventListener('scroll', fn);
   }, []);
 
@@ -53,9 +62,17 @@ export default function Navbar() {
         <div className="max-w-5xl mx-auto px-4">
           <nav className={`flex items-center justify-between rounded-2xl px-4 py-2.5 transition-all duration-300 ${
             scrolled
-              ? 'bg-white/95 backdrop-blur-xl shadow-lg shadow-slate-900/8 border border-slate-200/60'
-              : 'bg-white/70 backdrop-blur-md border border-slate-200/40 shadow-sm'
-          }`}>
+              ? 'bg-white/95 md:backdrop-blur-xl shadow-lg shadow-slate-900/8 border border-slate-200/60'
+              : 'bg-white/70 md:backdrop-blur-md border border-slate-200/40 shadow-sm'
+          }`}
+          style={{
+            // iOS: fond opaque sur mobile au lieu de backdrop-blur (perf GPU)
+            ...(typeof window !== 'undefined' && window.innerWidth < 768 ? {
+              backgroundColor: scrolled ? 'rgba(255,255,255,0.98)' : 'rgba(255,255,255,0.95)',
+              WebkitBackdropFilter: 'none',
+              backdropFilter: 'none',
+            } : {}),
+          }}>
 
             {/* Logo */}
             <Link to="/" className="flex items-center shrink-0">
@@ -151,7 +168,7 @@ export default function Navbar() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[99] md:hidden"
             onClick={() => setOpen(false)}>
-            <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
+            <div className="absolute inset-0 bg-black/25" />
             <motion.div
               initial={{ opacity: 0, y: -12, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
