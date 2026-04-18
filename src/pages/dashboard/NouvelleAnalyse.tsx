@@ -499,6 +499,8 @@ export default function NouvelleAnalyse() {
           </div>
         </div>
       )}
+
+      {!freePreviewUsed && (
         <div style={{ padding: '12px 16px', borderRadius: 12, background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
           <Sparkles size={13} style={{ color: '#fff', flexShrink: 0 }} />
           <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.9)' }}>Votre analyse offerte — aperçu du rapport généré gratuitement.</span>
