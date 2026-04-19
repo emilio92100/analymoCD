@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitCompare, ShieldCheck, Building2, CheckCircle, FileText, Shield, ArrowRight, TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react';
+import { GitCompare, ShieldCheck, Building2, CheckCircle, FileText, Shield, ArrowRight, TrendingUp, TrendingDown, Minus, AlertTriangle, Trash2, Clock, Eye } from 'lucide-react';
 import { useAnalyses, type Analyse } from '../../hooks/useAnalyses';
 import { supabase } from '../../lib/supabase';
 
@@ -68,6 +68,13 @@ type VerdictIA = {
   points_attention: string[];
   conseil: string;
   alerte_documents: string | null;
+};
+
+type ComparaisonSaved = {
+  id: string;
+  analyse_ids: string;
+  verdict: VerdictIA;
+  created_at: string;
 };
 
 // Données enrichies depuis le résultat JSON de Claude (stocké dans result)
@@ -151,6 +158,47 @@ export default function Compare() {
   const [verdictLoading, setVerdictLoading] = useState(false);
   const [verdictError, setVerdictError] = useState(false);
 
+  // Historique
+  const [historique, setHistorique] = useState<ComparaisonSaved[]>([]);
+  const [historiqueLoading, setHistoriqueLoading] = useState(true);
+
+  const loadHistorique = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from('comparaisons')
+        .select('id, analyse_ids, verdict, created_at')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (data) setHistorique(data as ComparaisonSaved[]);
+    } catch { /* ignore */ }
+    setHistoriqueLoading(false);
+  }, []);
+
+  useEffect(() => { loadHistorique(); }, [loadHistorique]);
+
+  const deleteComparaison = async (id: string) => {
+    if (!confirm('Supprimer cette comparaison ?')) return;
+    await supabase.from('comparaisons').delete().eq('id', id);
+    setHistorique(prev => prev.filter(c => c.id !== id));
+    if (launched && verdictIA) {
+      // Si on était en train de voir cette comparaison, revenir à la sélection
+      const currentSorted = [...selected].sort().join(',');
+      const deleted = historique.find(c => c.id === id);
+      if (deleted && deleted.analyse_ids === currentSorted) {
+        setLaunched(false); setVerdictIA(null);
+      }
+    }
+  };
+
+  const viewComparaison = (comp: ComparaisonSaved) => {
+    const ids = comp.analyse_ids.split(',');
+    setSelected(ids);
+    setVerdictIA(comp.verdict);
+    setVerdictError(false);
+    setVerdictLoading(false);
+    setLaunched(true);
+  };
+
   const toggleSelect = (id: string) => {
     if (launched) return;
     setSelected(prev => prev.includes(id) ? prev.filter(s => s !== id) : prev.length < 3 ? [...prev, id] : prev);
@@ -186,6 +234,8 @@ export default function Compare() {
       const data = await res.json();
       if (data.success && data.verdict) {
         setVerdictIA(data.verdict as VerdictIA);
+        // Recharger l'historique pour inclure cette nouvelle comparaison
+        loadHistorique();
       } else {
         setVerdictError(true);
       }
@@ -769,6 +819,76 @@ export default function Compare() {
           </AnimatePresence>
         );
       })()}
+
+      {/* ─── Historique des comparaisons ─── */}
+      {!launched && historique.length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+            <Clock size={15} style={{ color: '#94a3b8' }} />
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Comparaisons précédentes</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', background: '#f4f7f9', padding: '2px 8px', borderRadius: 6 }}>{historique.length}</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {historique.map((comp) => {
+              const ids = comp.analyse_ids.split(',');
+              const biens = ids.map(id => {
+                const a = completedAnalyses.find(an => an.id === id);
+                return a ? { titre: a.adresse_bien || a.title || 'Bien sans titre', score: a.score } : { titre: 'Bien supprimé', score: null };
+              });
+              const date = new Date(comp.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+
+              return (
+                <motion.div key={comp.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                  style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', padding: '14px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', gap: 14 }}>
+
+                  {/* Icône */}
+                  <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(42,125,156,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <GitCompare size={18} style={{ color: '#2a7d9c' }} />
+                  </div>
+
+                  {/* Contenu */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {biens.map(b => b.titre).join(' vs ')}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 11, color: '#94a3b8' }}>{date}</span>
+                      {biens.map((b, bi) => b.score != null && (
+                        <span key={bi} style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: b.score >= 14 ? '#f0fdf4' : b.score >= 10 ? '#fffbeb' : '#fef2f2', color: getScoreColor(b.score), border: `1px solid ${b.score >= 14 ? '#bbf7d0' : b.score >= 10 ? '#fde68a' : '#fecaca'}` }}>
+                          {b.score.toFixed(1)}/20
+                        </span>
+                      ))}
+                      {comp.verdict?.titre_verdict && (
+                        <span style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 250 }}>
+                          {comp.verdict.titre_verdict}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    <button onClick={() => viewComparaison(comp)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 9, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.15)', color: '#2a7d9c', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+                      <Eye size={12} /> Voir
+                    </button>
+                    <button onClick={() => deleteComparaison(comp.id)}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 9, background: '#fff', border: '1px solid #fecaca', color: '#dc2626', cursor: 'pointer' }}>
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {!launched && !historiqueLoading && historique.length === 0 && completedAnalyses.length >= 2 && (
+        <div style={{ textAlign: 'center', padding: '16px', color: '#94a3b8', fontSize: 13 }}>
+          Aucune comparaison précédente — sélectionnez des biens ci-dessus pour commencer.
+        </div>
+      )}
 
       <style>{`
         @media (max-width: 640px) { .compare-grid { grid-template-columns: 1fr !important; } }
