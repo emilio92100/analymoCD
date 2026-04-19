@@ -1020,67 +1020,95 @@ function ForWhoSection() {
           </p>
         </Reveal>
 
-        {/* ─── 3 profils en ligne — minimaliste ─── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 md:gap-8 mb-10 md:mb-12">
-          {[
-            {
-              emoji: '🏠',
-              title: 'Primo-accédant',
-              desc: 'Vous ne savez pas lire un PV d\'AG ? Normal. On traduit tout pour vous.',
-            },
-            {
-              emoji: '🔑',
-              title: 'Acheteur confirmé',
-              desc: 'Vous connaissez le process — mais chaque copro cache ses propres surprises.',
-            },
-            {
-              emoji: '📊',
-              title: 'Investisseur',
-              desc: 'Charges, DPE, travaux votés — les chiffres qui comptent, sans le superflu.',
-            },
-          ].map((p, i) => (
-            <Reveal key={i} delay={i}>
-              <div className="text-center">
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4 bg-white border border-slate-100 shadow-sm">
-                  {p.emoji}
+        {/* ─── Bloc particuliers — icônes en grille ─── */}
+        <Reveal>
+          <div className="rounded-2xl bg-white border border-slate-100 shadow-sm p-6 md:p-10 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+              {[
+                {
+                  icon: (<svg viewBox="0 0 24 24" fill="none" strokeWidth="1.6" stroke="#2a7d9c" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>),
+                  title: 'Documents décryptés',
+                  desc: 'PV d\'AG, règlement, diagnostics — traduits en langage clair',
+                },
+                {
+                  icon: (<svg viewBox="0 0 24 24" fill="none" strokeWidth="1.6" stroke="#2a7d9c" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>),
+                  title: 'Risques identifiés',
+                  desc: 'Travaux, impayés, procédures — rien ne passe inaperçu',
+                },
+                {
+                  icon: (<svg viewBox="0 0 24 24" fill="none" strokeWidth="1.6" stroke="#2a7d9c" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" /></svg>),
+                  title: 'Score objectif /20',
+                  desc: 'Une note claire pour savoir où vous mettez les pieds',
+                },
+                {
+                  icon: (<svg viewBox="0 0 24 24" fill="none" strokeWidth="1.6" stroke="#2a7d9c" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" /></svg>),
+                  title: 'Décision sereine',
+                  desc: 'Vous signez en sachant exactement ce que vous achetez',
+                },
+              ].map((item, i) => (
+                <div key={i} className="flex flex-col items-center text-center gap-3 p-3 md:p-4 rounded-xl hover:bg-[#f4f7f9] transition-colors duration-200">
+                  <div className="w-12 h-12 rounded-xl bg-[#2a7d9c]/8 border border-[#2a7d9c]/12 flex items-center justify-center">
+                    {item.icon}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-[#0f172a] mb-1">{item.title}</h3>
+                    <p className="text-xs text-slate-400 leading-relaxed">{item.desc}</p>
+                  </div>
                 </div>
-                <h3 className="text-sm font-bold text-[#0f172a] mb-2">{p.title}</h3>
-                <p className="text-sm text-slate-500 leading-relaxed">{p.desc}</p>
-              </div>
-            </Reveal>
-          ))}
-        </div>
+              ))}
+            </div>
 
-        {/* ─── CTA ─── */}
-        <Reveal className="text-center mb-10 md:mb-12">
-          <Link to="/start"
-            className="inline-flex items-center gap-2 px-7 md:px-9 py-3.5 md:py-4 rounded-2xl bg-[#0f2d3d] text-white text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
-            Lancer mon analyse <ArrowRight size={16} />
-          </Link>
+            {/* CTA centré */}
+            <div className="text-center mt-8">
+              <Link to="/start"
+                className="inline-flex items-center gap-2 px-7 md:px-9 py-3.5 md:py-4 rounded-2xl bg-[#0f2d3d] text-white text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
+                Lancer mon analyse <ArrowRight size={16} />
+              </Link>
+            </div>
+          </div>
         </Reveal>
 
-        {/* ─── PRO — bandeau compact ─── */}
+        {/* ─── PRO — bandeau retravaillé avec 4 profils ─── */}
         <Reveal className="mt-2">
-          <div className="rounded-2xl overflow-hidden flex flex-col md:flex-row items-center gap-6 px-7 py-6 md:px-10 md:py-7"
+          <div className="rounded-2xl overflow-hidden"
             style={{ background: 'linear-gradient(135deg, #0f2d3d, #1a4a5e)' }}>
-            <div className="flex items-center gap-3 shrink-0">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
-                <Briefcase size={18} className="text-white/80" />
+
+            {/* Header */}
+            <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 px-7 pt-7 pb-5 md:px-10 md:pt-8 md:pb-5">
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center"
+                  style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                  <Briefcase size={20} className="text-white/80" />
+                </div>
+                <div>
+                  <h4 className="text-lg font-black text-white">Offre Professionnelle</h4>
+                  <p className="text-xs text-white/40">Tarifs volume · Rapport co-brandable · Accompagnement dédié</p>
+                </div>
               </div>
-              <div>
-                <h4 className="text-base font-bold text-white">Offre Professionnelle</h4>
-                <p className="text-xs text-white/50">Agents, investisseurs, notaires</p>
-              </div>
+              <div className="flex-1" />
+              <Link to="/pro"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold shrink-0 hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200"
+                style={{ background: '#fff', color: '#0f2d3d' }}>
+                Découvrir l'offre Pro <ArrowRight size={14} />
+              </Link>
             </div>
-            <p className="text-sm text-white/50 leading-relaxed flex-1 text-center md:text-left">
-              Tarifs volume, rapport co-brandable, accompagnement dédié — une offre adaptée à votre métier.
-            </p>
-            <Link to="/pro"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold shrink-0 hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200"
-              style={{ background: '#fff', color: '#0f2d3d' }}>
-              Découvrir <ArrowRight size={14} />
-            </Link>
+
+            {/* 4 profils */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-7 pb-7 md:px-10 md:pb-8">
+              {[
+                { emoji: '🏢', label: 'Agent immobilier' },
+                { emoji: '📈', label: 'Investisseur' },
+                { emoji: '🔑', label: 'Marchand de bien' },
+                { emoji: '⚖️', label: 'Notaire' },
+              ].map((p, i) => (
+                <Link to={`/contact-pro?type=${['agent','investisseur','marchand','notaire'][i]}`} key={i}
+                  className="flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+                  style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <span className="text-xl">{p.emoji}</span>
+                  <span className="text-sm font-bold text-white/90">{p.label}</span>
+                </Link>
+              ))}
+            </div>
           </div>
         </Reveal>
       </div>
