@@ -1006,88 +1006,58 @@ function SecuriteSection() {
 
 /* ═══ FOR WHO ══════════════════════════════════════════════ */
 function ForWhoSection() {
-  const profils = [
-    {
-      emoji: '🏠',
-      label: 'Primo-accédant',
-      accroche: 'On simplifie tout pour vous.',
-      points: [
-        'PV d\'AG traduits en langage clair',
-        'Travaux, impayés, procédures — tout est détecté',
-        'Un score /20 pour décider sereinement',
-      ],
-      color: '#2a7d9c',
-      bg: 'rgba(42,125,156,0.06)',
-      border: 'rgba(42,125,156,0.15)',
-    },
-    {
-      emoji: '🔑',
-      label: 'Acheteur expérimenté',
-      accroche: 'Allez plus loin cette fois.',
-      points: [
-        'Charges réelles, fonds travaux, appels de fonds',
-        'Travaux votés non réalisés — anticipez l\'impact',
-        'Rapport partageable avec votre notaire',
-      ],
-      color: '#0f2d3d',
-      bg: 'rgba(15,45,61,0.04)',
-      border: 'rgba(15,45,61,0.12)',
-    },
-  ];
-
   return (
     <section className="py-14 md:py-24 px-4 md:px-6 bg-[#f4f7f9]">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <SectionTitle label="Pour qui" title="Fait pour" accent="vous." />
 
-        {/* ─── DEUX PROFILS — design compact ─── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-8">
-          {profils.map((p, idx) => (
-            <Reveal key={idx} delay={idx}>
-              <div
-                className="rounded-2xl p-6 md:p-7 border transition-all duration-300 hover:-translate-y-1 hover:shadow-md cursor-default h-full flex flex-col"
-                style={{ background: p.bg, borderColor: p.border }}>
+        {/* ─── Accroche unique ─── */}
+        <Reveal>
+          <p className="text-center text-base md:text-lg text-slate-500 leading-relaxed max-w-2xl mx-auto mb-10 md:mb-14">
+            Que ce soit votre premier achat ou votre dixième, les documents restent les mêmes —
+            et les risques aussi.{' '}
+            <span className="font-semibold text-[#0f172a]">Verimo les analyse pour que vous décidiez en confiance.</span>
+          </p>
+        </Reveal>
 
-                {/* Badge + accroche */}
-                <div className="flex items-center gap-3 mb-4">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
-                    style={{ background: 'white', border: `1px solid ${p.border}` }}>
-                    {p.emoji}
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold uppercase tracking-wide" style={{ color: p.color }}>
-                      {p.label}
-                    </span>
-                    <p className="text-base md:text-lg font-black text-[#0f172a] leading-tight mt-0.5">
-                      {p.accroche}
-                    </p>
-                  </div>
+        {/* ─── 3 profils en ligne — minimaliste ─── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 md:gap-8 mb-10 md:mb-12">
+          {[
+            {
+              emoji: '🏠',
+              title: 'Primo-accédant',
+              desc: 'Vous ne savez pas lire un PV d\'AG ? Normal. On traduit tout pour vous.',
+            },
+            {
+              emoji: '🔑',
+              title: 'Acheteur confirmé',
+              desc: 'Vous connaissez le process — mais chaque copro cache ses propres surprises.',
+            },
+            {
+              emoji: '📊',
+              title: 'Investisseur',
+              desc: 'Charges, DPE, travaux votés — les chiffres qui comptent, sans le superflu.',
+            },
+          ].map((p, i) => (
+            <Reveal key={i} delay={i}>
+              <div className="text-center">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4 bg-white border border-slate-100 shadow-sm">
+                  {p.emoji}
                 </div>
-
-                {/* Points clés */}
-                <div className="flex flex-col gap-2.5 mb-5 flex-1">
-                  {p.points.map((point, i) => (
-                    <div key={i} className="flex items-start gap-2.5">
-                      <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-                        style={{ background: p.color }}>
-                        <Check size={10} className="text-white" strokeWidth={3} />
-                      </div>
-                      <span className="text-sm text-slate-600 leading-snug">{point}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* CTA */}
-                <Link to="/start"
-                  className="inline-flex self-start items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200"
-                  style={{ background: p.color }}>
-                  Lancer mon analyse <ArrowRight size={13} />
-                </Link>
+                <h3 className="text-sm font-bold text-[#0f172a] mb-2">{p.title}</h3>
+                <p className="text-sm text-slate-500 leading-relaxed">{p.desc}</p>
               </div>
             </Reveal>
           ))}
         </div>
+
+        {/* ─── CTA ─── */}
+        <Reveal className="text-center mb-10 md:mb-12">
+          <Link to="/start"
+            className="inline-flex items-center gap-2 px-7 md:px-9 py-3.5 md:py-4 rounded-2xl bg-[#0f2d3d] text-white text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
+            Lancer mon analyse <ArrowRight size={16} />
+          </Link>
+        </Reveal>
 
         {/* ─── PRO — bandeau compact ─── */}
         <Reveal className="mt-2">
