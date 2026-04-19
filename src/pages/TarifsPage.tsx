@@ -9,86 +9,78 @@ const isLowPerf = () => isIOS() || (typeof window !== 'undefined' && window.inne
 /* ══════════════════════════════════════════
    DATA
 ══════════════════════════════════════════ */
+const allFeatures = [
+  { label: 'Avis Verimo personnalisé', simple: true, complete: true, pack2: true, pack3: true },
+  { label: 'Score /20 du bien', simple: false, complete: true, pack2: true, pack3: true },
+  { label: 'Recommandation d\'achat', simple: false, complete: true, pack2: true, pack3: true },
+  { label: 'Travaux votés et à prévoir', simple: false, complete: true, pack2: true, pack3: true },
+  { label: 'Santé financière copro', simple: false, complete: true, pack2: true, pack3: true },
+  { label: 'Pistes de négociation', simple: false, complete: true, pack2: true, pack3: true },
+  { label: 'Rapport PDF téléchargeable', simple: false, complete: true, pack2: true, pack3: true },
+  { label: 'Compléter sous 7 jours', simple: false, complete: true, pack2: true, pack3: true },
+  { label: 'Comparaison de biens', simple: false, complete: false, pack2: true, pack3: true },
+];
+
 const plans = [
   {
     id: 'document',
+    key: 'simple' as const,
     name: 'Simple',
-    price: '4,90',
     sub: '1 document analysé',
+    price: '4,90',
     perUnit: null,
+    docsLabel: '1 fichier PDF',
     cta: 'Analyser un document',
     popular: false,
     badge: null,
     badgeColor: '',
     badgeBg: '',
-    features: [
-      'Points forts et vigilances',
-      'Avis Verimo personnalisé',
-      'Résultat en 30 secondes*',
-    ],
-    missing: [
-      'Score /20 du bien',
-      'Rapport PDF',
-    ],
+    bonus: null,
   },
   {
     id: 'complete',
+    key: 'complete' as const,
     name: 'Complète',
+    sub: 'Jusqu\'à 15 documents en une fois',
     price: '19,90',
-    sub: 'Jusqu\'à 15 documents',
     perUnit: null,
+    docsLabel: 'Jusqu\'à 15 fichiers simultanés',
     cta: 'Analyser mon bien',
     popular: true,
     badge: 'Recommandée',
     badgeColor: '#0c447c',
     badgeBg: '#e6f1fb',
-    features: [
-      'Score /20 + recommandation',
-      'Travaux, finances, diagnostics',
-      'Pistes de négociation',
-      'Avis Verimo personnalisé',
-      'Rapport PDF téléchargeable',
-      'Compléter sous 7 jours',
-    ],
-    missing: [
-      'Comparaison de biens',
-    ],
+    bonus: null,
   },
   {
     id: 'pack2',
+    key: 'pack2' as const,
     name: 'Pack 2',
-    price: '29,90',
     sub: 'Comparez 2 biens',
+    price: '29,90',
     perUnit: '14,95€ / bien',
+    docsLabel: '2 × 15 fichiers simultanés',
     cta: 'Comparer 2 biens',
     popular: false,
     badge: '−25%',
     badgeColor: '#92400e',
     badgeBg: '#fef3c7',
-    features: [
-      '2 analyses complètes',
-      'Comparaison côte à côte',
-      'Économisez 10€',
-    ],
-    missing: [],
+    bonus: 'Économisez 10€',
   },
   {
     id: 'pack3',
+    key: 'pack3' as const,
     name: 'Pack 3',
-    price: '39,90',
     sub: 'Analysez et classez',
+    price: '39,90',
     perUnit: '13,30€ / bien',
+    docsLabel: '3 × 15 fichiers simultanés',
     cta: 'Comparer 3 biens',
     popular: false,
     badge: '−33%',
     badgeColor: '#3C3489',
     badgeBg: '#EEEDFE',
-    features: [
-      '3 analyses complètes',
-      'Comparaison et classement',
-      'Économisez 20€',
-    ],
-    missing: [],
+    bonus: 'Économisez 20€',
   },
 ];
 
@@ -244,7 +236,7 @@ export default function TarifsPage() {
                 position: 'relative' as const,
                 overflow: 'visible',
                 boxShadow: plan.popular ? '0 8px 32px rgba(42,125,156,0.12)' : '0 1px 4px rgba(0,0,0,0.04)',
-                transition: 'box-shadow 0.3s, border-color 0.3s',
+                transition: 'box-shadow 0.3s',
               }}>
 
               {/* Badge */}
@@ -277,26 +269,43 @@ export default function TarifsPage() {
                 {/* Séparateur */}
                 <div style={{ height: 1, background: '#f1f5f9', marginBottom: 18 }} />
 
-                {/* Features */}
+                {/* Documents */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+                  <svg width="18" height="18" viewBox="0 0 16 16" style={{ flexShrink: 0, marginTop: 1 }}>
+                    <circle cx="8" cy="8" r="7" fill={plan.popular ? '#e6f7ed' : '#f0fdf4'} stroke={plan.popular ? '#22c55e' : '#bbf7d0'} strokeWidth="1.2" />
+                    <path d="M5 8.2l2 2 4-4.4" stroke="#16a34a" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span style={{ fontSize: 13.5, color: '#0f172a', lineHeight: 1.45, fontWeight: 600 }}>{plan.docsLabel}</span>
+                </div>
+
+                {/* Features liste complète */}
                 <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 11, flex: 1, marginBottom: 22 }}>
-                  {plan.features.map((f, fi) => (
-                    <div key={fi} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                      <svg width="16" height="16" viewBox="0 0 16 16" style={{ flexShrink: 0, marginTop: 1 }}>
-                        <circle cx="8" cy="8" r="7" fill={plan.popular ? '#e6f7ed' : '#f0fdf4'} stroke={plan.popular ? '#22c55e' : '#bbf7d0'} strokeWidth="1.2" />
-                        <path d="M5 8.2l2 2 4-4.4" stroke="#16a34a" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <span style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.45 }}>{f}</span>
+                  {allFeatures.map((feat, fi) => {
+                    const included = feat[plan.key];
+                    return (
+                      <div key={fi} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, opacity: included ? 1 : 0.3 }}>
+                        {included ? (
+                          <svg width="18" height="18" viewBox="0 0 16 16" style={{ flexShrink: 0, marginTop: 1 }}>
+                            <circle cx="8" cy="8" r="7" fill={plan.popular ? '#e6f7ed' : '#f0fdf4'} stroke={plan.popular ? '#22c55e' : '#bbf7d0'} strokeWidth="1.2" />
+                            <path d="M5 8.2l2 2 4-4.4" stroke="#16a34a" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        ) : (
+                          <svg width="18" height="18" viewBox="0 0 16 16" style={{ flexShrink: 0, marginTop: 1 }}>
+                            <circle cx="8" cy="8" r="7" fill="#f8fafc" stroke="#e2e8f0" strokeWidth="1" />
+                            <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#cbd5e1" strokeWidth="1.2" strokeLinecap="round" />
+                          </svg>
+                        )}
+                        <span style={{ fontSize: 13.5, color: included ? '#374151' : '#94a3b8', lineHeight: 1.45 }}>{feat.label}</span>
+                      </div>
+                    );
+                  })}
+                  {/* Bonus économie */}
+                  {plan.bonus && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 2 }}>
+                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: '#f0fdf4', border: '1.5px solid #86efac', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 10, color: '#16a34a', fontWeight: 700 }}>★</div>
+                      <span style={{ fontSize: 13.5, color: '#16a34a', lineHeight: 1.45, fontWeight: 700 }}>{plan.bonus}</span>
                     </div>
-                  ))}
-                  {plan.missing.map((f, fi) => (
-                    <div key={`m${fi}`} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, opacity: 0.35 }}>
-                      <svg width="16" height="16" viewBox="0 0 16 16" style={{ flexShrink: 0, marginTop: 1 }}>
-                        <circle cx="8" cy="8" r="7" fill="#f8fafc" stroke="#e2e8f0" strokeWidth="1" />
-                        <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#cbd5e1" strokeWidth="1.2" strokeLinecap="round" />
-                      </svg>
-                      <span style={{ fontSize: 12.5, color: '#94a3b8', lineHeight: 1.4 }}>{f}</span>
-                    </div>
-                  ))}
+                  )}
                 </div>
 
                 {/* CTA */}
