@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet complet — 19 avril 2026
+# VERIMO — Contexte projet complet — 19 avril 2026 (session 2)
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -11,19 +11,20 @@
 - Vercel redéploie automatiquement après chaque push GitHub
 - Claude peut cloner le repo : `https://github.com/emilio92100/analymoCD.git`
 - Claude doit **toujours re-cloner** avant de modifier : `git clone https://github.com/emilio92100/analymoCD.git`
-- Claude livre les fichiers via `present_files` depuis `/mnt/user-data/outputs/`
+- Claude livre les fichiers **complets** via `present_files` depuis `/mnt/user-data/outputs/`
 - L'utilisateur push manuellement sur GitHub
+- **Pour chaque fichier modifié, Claude doit le générer à nouveau dans sa totalité** — l'utilisateur remplace le fichier entier sur GitHub (pas de modification ligne par ligne)
 - **Ne jamais coder sans accord préalable** — toujours échanger et valider avant de toucher au code
 
 ---
 
 ## Le produit
 
-**Verimo** — SaaS d'analyse de documents immobiliers (PV d'AG, règlements copro, diagnostics, appels de charges, DPE...). Rapport clair avec score /20, risques, recommandations.
+**Verimo** — SaaS d'analyse de documents immobiliers (PV d'AG, règlements copro, diagnostics, appels de charges, DPE, compromis, carnet d'entretien, DTG, pré-état daté, état daté, taxe foncière...). Rapport clair avec score /20, risques, recommandations. Fonctionne pour **appartements et maisons**.
 
 **Slogan :** *Vos documents décryptés, votre décision éclairée.*
 
-**Cible :** Acheteurs particuliers (primo-accédants et résidence principale), et professionnels (agents immobiliers, investisseurs, notaires).
+**Cible :** Acheteurs particuliers (primo-accédants et résidence principale), et professionnels (agents immobiliers, investisseurs, marchands de bien, notaires).
 
 ### Logique crédits / prix
 - 4,90€ → 1 crédit analyse simple (1 seul document) — PAS de score /20
@@ -57,8 +58,8 @@ pack3    : price_1TIb51BO4ekMbwz0mmEez47o
 ## Routes
 ```
 /                           → HomePage
-/pro                        → ProPage (landing page offre professionnelle)
-/contact-pro                → ContactProPage (formulaire qualifié pros)
+/pro                        → ProPage (landing page offre professionnelle — 4 profils)
+/contact-pro                → ContactProPage (formulaire qualifié pros — 5 profils)
 /tarifs                     → TarifsPage
 /contact                    → ContactPage
 /exemple                    → ExemplePage (À REFAIRE — désynchronisée du vrai rapport)
@@ -73,35 +74,93 @@ pack3    : price_1TIb51BO4ekMbwz0mmEez47o
 /dashboard                  → HomeView (tableau de bord)
 /dashboard/nouvelle-analyse → NouvelleAnalyse
 /dashboard/analyses         → MesAnalyses
-/dashboard/compare          → Compare (non travaillé)
+/dashboard/compare          → Compare (comparaison de biens — FAIT)
 /dashboard/rapport?id=XXX   → Aperçus gratuits
 /rapport?id=XXX             → RapportPage standalone (rapports payants)
 ```
 
 ---
 
-## Pages ajoutées (session 19 avril 2026)
+## Modifications session 19 avril 2026 — session 2
+
+### HomePage.tsx — Section "Pour Qui" (refaite intégralement)
+- **Bloc interactif** : 4 boutons cliquables (Premier achat 🔑, Coup de cœur ❤️, J'hésite 🤔, Je négocie 💪)
+- Au clic, un message personnalisé apparaît avec animation (AnimatePresence) + des pills badges
+- Textes spécifiques et concrets pour chaque situation (pas de blabla générique)
+- Sous-titre sur 2 lignes forcées (`whitespace-nowrap` sur la 1ère ligne)
+- Pas de bouton CTA dans cette section
+- **Bandeau Pro** en dessous : 4 profils **non cliquables** (Agent immobilier, Investisseur, Marchand de bien, Notaire) + seul le bouton "Découvrir l'offre Pro" est interactif
+- "Cliquez sur votre situation" = badge pill blanc avec bordure bleue + point vert animé
+- Message d'invitation en bas = encadré blanc avec icône flèche
+
+### HomePage.tsx — Section "Comment ça marche" (refaite — timeline)
+- Remplace l'ancienne section "Quatre étapes, c'est tout"
+- Titre : "Votre parcours simplifié."
+- 4 étapes : Vous visitez → Vous uploadez → Vous comprenez → Vous décidez
+- **Desktop** : timeline horizontale avec ligne animée, emojis dans des carrés, texte directement sous chaque icône (lié visuellement)
+- **Mobile** : vertical avec connecteurs
+- Texte "Vous visitez" : "Vous ne comprenez pas tout — c'est normal" (pas "vous n'y comprenez rien")
+- "30 secondes" sur la 2ème ligne dans "Vous uploadez"
+
+### ProPage.tsx — Ajout profil "Marchand de bien"
+- 4ème onglet dans la section Profils (couleur ambre `#d97706`, emoji 🔑, icône Key)
+- Hero : 4 cartes au lieu de 3, texte mis à jour avec "marchands de bien"
+- Sélecteur d'onglets : grille 4 colonnes
+- Contenu marchand : tagline, headline, description, 4 bénéfices, 3 stats
+- Témoignage ajouté : Karim B., Marchand de bien, Marseille
+- Grille témoignages : 2×2 au lieu de 3 colonnes
+
+### ContactProPage.tsx — Ajout profil "Marchand de bien"
+- 5ème profil dans le sélecteur (emoji 🔑, icône Key, couleur `#d97706`, bg `#fffbeb`)
+- Formulaire spécifique : société, SIRET, opérations/an, type de biens, stratégie (achat-revente/division/rénovation/transformation/mixte), zone géographique
+- 4 intérêts spécifiques : restrictions RCP, travaux à prévoir, gain de temps sourcing, sécuriser les marges
+- Options : `strategiesMarchand`, `operationsAn`
+- Données envoyées dans `contact_pro` avec `profile_type: 'marchand'`
+
+### TarifsPage.tsx — Corrections
+- **Tableau comparatif** : "Travaux votés" et "Santé financière copro" affichent **"Selon le doc"** en ambre (`#d97706`) pour l'analyse simple (au lieu d'une croix). Dans les cartes, cercle ambre avec tiret + astérisque
+- **Bandeau Pro** : "Agents immobiliers, investisseurs, marchands de bien, notaires — tarif dédié."
+- **Sous-titre** : "Sans abonnement. Sans engagement." (supprimé "Vos crédits n'expirent jamais")
+- **FAQ** : "Quels documents puis-je analyser" → réponse élargie : "appartements comme maisons", ajout compromis, carnet d'entretien, DTG, pré-état daté
+
+### Compare.tsx — Comparaison de biens (refait intégralement)
+Fonctionnalités ajoutées :
+- **Radar des 5 catégories** : barres horizontales animées (travaux /5, procédures /4, finances /4, diag. privatifs /4, diag. communs /3). Winner en vert avec ✓
+- **Résumé financier année 1** : tableau charges annuelles + cotisation fonds travaux + fonds ALUR signature + fonds roulement signature = total. Bien le moins cher en vert. Astérisque disclaimer
+- **Travaux évoqués non votés** : bloc alerte ambre listant les travaux évoqués par bien, avec montant si disponible
+- **Documents analysés par bien** : liste des docs fournis avec compteur
+- **Verdict IA** : appel à la edge function `comparer` (Claude Sonnet). Verdict structuré : titre, synthèse, forces, points d'attention, conseil nuancé. Ton factuel et bienveillant — Verimo ne dit jamais "n'achetez pas"
+- **Historique des comparaisons** : liste des comparaisons précédentes avec bouton "Voir" (recharge instantanée sans appel API) et bouton "Supprimer" (corbeille rouge avec confirmation)
+- **Fallback local** : si l'appel API échoue, verdict simplifié basé sur les scores
+
+### Edge Function `comparer/index.ts` (NOUVELLE)
+- Reçoit 2-3 IDs d'analyses complètes
+- Vérifie l'auth et que les analyses appartiennent à l'utilisateur
+- Lit les rapports JSON depuis Supabase
+- Vérifie si un verdict existe déjà en cache (table `comparaisons`)
+- Appelle Claude Sonnet avec un prompt calibré pour un ton nuancé
+- Stocke le verdict dans la table `comparaisons` (upsert sur user_id + analyse_ids)
+- Coût : ~0.02-0.05€ par comparaison
+- JWT verification désactivée dans les settings (auth gérée dans le code)
+
+### Table Supabase `comparaisons` (NOUVELLE)
+```sql
+comparaisons (
+  id UUID, user_id UUID, analyse_ids TEXT, verdict JSONB, created_at TIMESTAMPTZ,
+  UNIQUE(user_id, analyse_ids)
+)
+```
+Policies RLS : SELECT/INSERT/DELETE pour l'utilisateur + full access service role.
+
+---
+
+## Pages existantes (session 19 avril 2026 — session 1)
 
 ### ProPage.tsx (`/pro`)
-Landing page offre professionnelle. Hero sombre avec 3 cartes profils (agent, investisseur, notaire), ruban de stats, section profils avec sélecteur à onglets + layout gauche/droite, "Comment ça marche" en 3 étapes, témoignages, sécurité, FAQ (8 questions en grille 2 colonnes), CTA final.
-- Navbar forcée en blanc opaque via `useEffect` (fond sombre du hero)
-- Sélecteur de profils : grille 3 colonnes sur mobile, inline sur desktop
-- Tous les CTA renvoient vers `/contact-pro` avec `?type=agent|investisseur|notaire` pré-sélectionné
-- Soulignement animé (`AccentUnderline`) sur chaque mot bleu accent
+Landing page offre professionnelle. Hero sombre avec 4 cartes profils (agent, investisseur, marchand de bien, notaire), ruban de stats, section profils avec sélecteur à 4 onglets + layout gauche/droite, "Comment ça marche" en 3 étapes, témoignages (4, grille 2×2), sécurité, FAQ (8 questions en grille 2 colonnes), CTA final.
 
 ### ContactProPage.tsx (`/contact-pro`)
-Formulaire qualifié en 4 étapes :
-1. Choix du profil (4 cartes : Agent, Investisseur, Notaire, Autre)
-2. Coordonnées communes (nom, prénom, email, téléphone, ville)
-3. Champs spécifiques au profil sélectionné :
-   - **Agent** : agence, adresse, réseau, taille, transactions/mois, RSAC, service existant, intérêts
-   - **Investisseur** : société, SIRET, statut, acquisitions/an, type biens, stratégie, courtier, intérêts
-   - **Notaire** : étude, adresse, fonction, taille, transactions/mois, outils existants, intérêts
-   - **Autre** : profession, structure
-4. Volume estimé + message libre + consentement RGPD
-- Pré-sélection via `?type=agent` dans l'URL
-- Soumission → table Supabase `contact_pro` (JSONB `profile_data`)
-- Formulaire élargi à 920px sur desktop
+Formulaire qualifié en 4 étapes avec 5 profils : Agent, Investisseur, Marchand de bien, Notaire, Autre.
 
 ### Table Supabase `contact_pro`
 ```sql
@@ -110,28 +169,16 @@ contact_pro (
   profile_data JSONB, rgpd_consent BOOLEAN, read BOOLEAN, notes_admin TEXT, created_at
 )
 ```
-Policies RLS : INSERT public, SELECT/UPDATE/DELETE ouvertes.
 
 ---
 
 ## Optimisations iOS (session 19 avril 2026) — À TESTER SUR IPHONE
-
-### Corrections appliquées
 - **Navbar** : `backdrop-blur` → fond opaque sur mobile, scroll listener `passive + rAF`
 - **HomePage** : `Reveal` et `SectionTitle` → CSS natif sur mobile (IntersectionObserver + transitions GPU)
 - **HomePage** : badges float infinite désactivés, `usePhoneSteps` un seul cycle
 - **MethodePage, ExemplePage, TarifsPage** : Reveal CSS natif sur mobile
 - **DashboardPage** : overlay sidebar sans backdrop-blur
 - **index.css** : `@supports (-webkit-touch-callout: none)` pour iOS Safari
-
----
-
-## HomePage — Section "Fait pour vous"
-
-Deux cartes côte à côte :
-- **Primo-accédant 🏠** : "On simplifie tout pour vous"
-- **Acheteur expérimenté 🔑** : "Allez plus loin cette fois"
-- **Bandeau pro compact** en dessous avec CTA vers `/pro`
 
 ---
 
@@ -208,6 +255,8 @@ Deux cartes côte à côte :
 3. **Honoraires syndic pré-état daté** — Toujours à la charge du vendeur.
 4. **DPE D** = bonne performance, jamais dans vigilances.
 5. **Carrez** — ne pas afficher dans les diags si section Surface Carrez dédiée.
+6. **Travaux votés avant la vente** = charge vendeur, même si pas encore réalisés. NE PAS compter comme risque pour l'acheteur.
+7. **Travaux évoqués non votés** = vrai risque pour l'acheteur (il paiera si voté après la signature).
 
 ---
 
@@ -215,9 +264,9 @@ Deux cartes côte à côte :
 
 ```
 src/pages/
-  HomePage.tsx              ← Page d'accueil (optimisée iOS)
-  ProPage.tsx               ← Landing page offre pro
-  ContactProPage.tsx        ← Formulaire contact pro qualifié
+  HomePage.tsx              ← Page d'accueil (section "Pour Qui" interactive + timeline)
+  ProPage.tsx               ← Landing page offre pro (4 profils dont marchand de bien)
+  ContactProPage.tsx        ← Formulaire contact pro (5 profils dont marchand de bien)
   RapportPage.tsx           ← Rapport standalone (3200 lignes)
   ExemplePage.tsx           ← Exemple de rapport (À REFAIRE)
   DashboardPage.tsx         ← Shell dashboard + sidebar + topbar
@@ -227,6 +276,7 @@ src/pages/
     HomeView.tsx            ← Tableau de bord
     NouvelleAnalyse.tsx     ← Upload + barre progression
     DocumentRenderer.tsx    ← Rendu analyse simple (par type de doc)
+    Compare.tsx             ← Comparaison de biens (radar, financier, verdict IA, historique)
 
 src/components/layout/
   Navbar.tsx                ← Navbar + badge "Offre Pro" + optim iOS
@@ -237,8 +287,9 @@ src/lib/
   analyse-client.ts
 
 supabase/functions/
-  analyser/index.ts
-  analyser-run/index.ts
+  analyser/index.ts         ← Upload PDFs → Files API → déclenche analyser-run
+  analyser-run/index.ts     ← Appel Claude avec file_ids → rapport JSON → suppression RGPD
+  comparer/index.ts         ← Comparaison IA : lit rapports JSON → appel Claude → verdict
 ```
 
 ---
@@ -248,23 +299,111 @@ supabase/functions/
 - **Header dark** : `#0f2d3d`
 - **Accent bleu ciel (Pro)** : `#7dd3fc`
 - **Investisseur violet** : `#7c3aed`
+- **Marchand de bien ambre** : `#d97706`
+
+---
+
+## Flux technique — Comment fonctionne une analyse
+
+1. L'utilisateur uploade ses PDFs dans Supabase Storage (bucket `analyse-temp`)
+2. Le frontend appelle la edge function `analyser` avec les paths Storage + l'ID analyse
+3. `analyser` télécharge les PDFs depuis Storage, les uploade vers l'API Anthropic Files, obtient des `file_ids`
+4. `analyser` supprime les PDFs de Supabase Storage
+5. `analyser` passe le status à `files_ready` et appelle `analyser-run` via `EdgeRuntime.waitUntil`
+6. `analyser-run` appelle Claude Sonnet avec les `file_ids` et le prompt système
+7. Claude analyse tous les documents et retourne un JSON structuré (rapport complet ou analyse simple)
+8. `analyser-run` supprime les `file_ids` de l'API Anthropic Files (RGPD)
+9. Le rapport JSON est stocké dans `analyses.result` dans Supabase
+10. **IMPORTANT** : après le rapport, les documents originaux n'existent plus nulle part (ni Storage, ni Files API). Seul le JSON résultat est conservé.
 
 ---
 
 ## Backlog
 
-### 🔴 Priorité haute
+### 🔴 Priorité haute — À FAIRE EN PROCHAINE SESSION
+- [ ] **Compléter le dossier (7 jours)** — voir section dédiée ci-dessous
+- [ ] **Pistes de négociation** — changer la règle `applicable=true UNIQUEMENT si score < 14` → applicable dès qu'un élément chiffrable est détecté (travaux évoqués non votés, DPE E/F/G, impayés, fonds travaux insuffisant). Travaux votés = charge vendeur, donc PAS dans les pistes de négo.
 - [ ] **ExemplePage** — refaire complètement pour matcher le vrai RapportPage
-- [ ] Vérifier optimisations iOS sur un vrai iPhone
-- [ ] Vérifier affichage mobile tous types docs simples
-- [ ] Corriger texte NouvelleAnalyse : supprimer "Word ou images" → PDF uniquement
-- [ ] Onglet **Comparaison de biens** : à construire
-- [ ] Bouton PDF → message "service non disponible"
-- [ ] HomeView : retravailler présentation générale
 
 ### 🟡 Priorité normale
+- [ ] Vérifier optimisations iOS sur un vrai iPhone
+- [ ] Vérifier affichage mobile tous types docs simples
+- [ ] HomeView : retravailler présentation générale
 - [ ] Stripe TEST → production
 - [ ] Analyses bloquées > 20 min → badge "Échoué"
 - [ ] Système dossiers par bien
-- [ ] Compare.tsx : à construire
 - [ ] App.css : vestige Vite, peut être supprimé
+
+### ✅ Fait (session 2 — 19 avril 2026)
+- [x] HomePage — Section "Pour Qui" interactive (4 boutons + messages personnalisés)
+- [x] HomePage — Section "Comment ça marche" refaite en timeline
+- [x] ProPage — Ajout profil "Marchand de bien" (4ème onglet)
+- [x] ContactProPage — Ajout profil "Marchand de bien" (5ème carte)
+- [x] TarifsPage — Tableau comparatif : "Selon le doc" en ambre pour analyse simple
+- [x] TarifsPage — Bandeau Pro mis à jour (4 profils, supprimé "volumes illimités")
+- [x] TarifsPage — Sous-titre simplifié
+- [x] TarifsPage — FAQ élargie (appartements + maisons)
+- [x] Compare.tsx — Radar des 5 catégories
+- [x] Compare.tsx — Résumé financier année 1
+- [x] Compare.tsx — Travaux évoqués non votés
+- [x] Compare.tsx — Documents analysés par bien
+- [x] Compare.tsx — Verdict IA via edge function comparer
+- [x] Compare.tsx — Historique des comparaisons + suppression
+- [x] Edge function `comparer` déployée sur Supabase
+- [x] Table `comparaisons` créée dans Supabase
+- [x] NouvelleAnalyse — texte corrigé (déjà fait par l'utilisateur)
+- [x] Bouton PDF — message "en développement" (déjà fait par l'utilisateur)
+
+---
+
+## 📋 Spécifications — Compléter le dossier (7 jours)
+
+### Contexte
+Après une analyse complète, l'utilisateur a **7 jours** pour ajouter des documents oubliés et obtenir un rapport mis à jour gratuitement. La deadline est stockée dans `analyses.regeneration_deadline`.
+
+### Contrainte technique critique
+Les documents originaux (PDFs) **n'existent plus** après l'analyse. Ils sont supprimés de Supabase Storage et de l'API Anthropic Files (RGPD). On ne peut PAS les récupérer.
+
+### Approche retenue — "Approche 2"
+L'utilisateur uploade **SEULEMENT les nouveaux documents**. L'IA reçoit :
+1. Le **JSON du rapport existant** (stocké dans `analyses.result` dans Supabase)
+2. Les **nouveaux PDFs** (via Files API)
+
+L'IA fusionne les deux : elle garde les données existantes du rapport et les enrichit/corrige avec les informations des nouveaux documents. Le résultat est un **nouveau rapport complet** au même format JSON qui remplace l'ancien.
+
+### Pourquoi ça marche
+Le rapport JSON existant contient déjà toutes les données extraites des anciens documents (travaux, finances, diagnostics, etc.). L'IA n'a pas besoin de relire les PDFs originaux. Elle peut :
+- Compléter les champs qui étaient `null` (ex: charges annuelles absentes → l'appel de charges les fournit)
+- Corriger des données (ex: le PV d'AG mentionnait un ravalement, l'état daté le confirme avec un montant précis)
+- Croiser les informations (ex: "le PV d'AG mentionnait un ravalement évoqué, l'appel de charges confirme un poste ravalement provisionné")
+- Recalculer le score /20 avec les nouvelles données
+
+### Ce qu'il faut coder
+
+#### 1. Backend — Edge function `analyser` + `analyser-run`
+- Ajouter un mode `complement` dans `analyser`
+- `analyser` reçoit : `{ analyseId, mode: 'complement', storagePaths, fileNames }`
+- `analyser` lit le rapport JSON existant depuis Supabase (`analyses.result`)
+- `analyser` uploade les nouveaux PDFs vers Files API (comme aujourd'hui)
+- `analyser` passe le JSON existant + les nouveaux file_ids à `analyser-run`
+- `analyser-run` construit un prompt spécifique "complement" : "Voici le rapport précédent (JSON) et de nouveaux documents. Mets à jour le rapport en intégrant les nouvelles informations. Produis le même format JSON complet."
+- Le nouveau rapport remplace l'ancien dans `analyses.result`
+- La `regeneration_deadline` est conservée (pas remise à zéro)
+
+#### 2. Frontend — Modal "Compléter le dossier"
+- **Où** : depuis la bannière 7 jours dans `RapportPage.tsx` (bouton "Compléter" qui existe déjà et redirige vers `?action=complement`)
+- **UX recommandée** : popup/modal (pas une nouvelle page) avec :
+  - Zone d'upload PDF (même composant que NouvelleAnalyse)
+  - Liste des documents déjà analysés (rappel)
+  - Bouton "Mettre à jour l'analyse"
+  - Barre de progression pendant le traitement
+- Après mise à jour : le rapport se recharge avec les nouvelles données
+
+#### 3. Timer amélioré dans la bannière 7 jours
+- J-7 à J-2 : afficher "X jours restants"
+- J-1 : afficher un compte à rebours en **heures/minutes/secondes** (live, `setInterval` chaque seconde)
+- J+0 et après : bannière grisée avec message "Délai des 7 jours dépassé"
+- Le texte du timer doit être plus visible (urgent en rouge/ambre)
+
+#### 4. Pas d'affichage de diff
+Le nouveau rapport remplace entièrement l'ancien. Pas besoin d'afficher ce qui a changé — c'est trop complexe et l'utilisateur veut juste le rapport le plus complet possible. Éventuellement ajouter un badge "Mis à jour le XX" sur le rapport.
