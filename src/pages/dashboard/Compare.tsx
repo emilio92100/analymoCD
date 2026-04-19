@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GitCompare, ShieldCheck, Building2, CheckCircle, FileText, Shield, ArrowRight, TrendingUp, TrendingDown, Minus } from 'lucide-react';
@@ -50,9 +50,29 @@ function getResultData(a: Analyse) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const r = (a as any).result as Record<string, unknown> | null;
   if (!r) return null;
+
+  const cats = r.categories as Record<string, { note: number; note_max: number }> | null;
+  const fin = r.finances as Record<string, unknown> | null;
+  const preEtat = r.pre_etat_date as Record<string, unknown> | null;
+  const lotAchete = r.lot_achete as Record<string, unknown> | null;
+  const chargesFutures = preEtat?.charges_futures as Record<string, unknown> | null;
+
+  const parseNum = (v: unknown): number | null => {
+    if (typeof v === 'number') return v;
+    if (typeof v === 'string') { const n = parseFloat(v.replace(/[^0-9.,-]/g, '').replace(',', '.')); return isNaN(n) ? null : n; }
+    return null;
+  };
+
+  const chargesAnnuelles = parseNum(fin?.charges_annuelles_lot) || (parseNum(chargesFutures?.montant_trimestriel) ? parseNum(chargesFutures?.montant_trimestriel)! * 4 : null) || (parseNum(chargesFutures?.montant_annuel));
+  const fondsTravTrimestriel = parseNum(chargesFutures?.fonds_travaux_trimestriel);
+  const fondsTravAnnuel = fondsTravTrimestriel ? fondsTravTrimestriel * 4 : null;
+  const fondsAlurSignature = parseNum(preEtat?.fonds_travaux_alur) || parseNum(lotAchete?.fonds_travaux_alur);
+  const fondsRoulementSignature = parseNum(preEtat?.fonds_roulement_acheteur);
+
   return {
     travaux_votes: ((r.travaux as Record<string, unknown>)?.votes as unknown[] || []).length,
     travaux_evoques: ((r.travaux as Record<string, unknown>)?.evoques as unknown[] || []).length,
+    travaux_evoques_list: ((r.travaux as Record<string, unknown>)?.evoques as Array<{ label: string; montant_estime?: number | null }> || []),
     procedures: (r.procedures as unknown[] || []).length,
     dpe: (() => {
       const diags = r.diagnostics as Array<Record<string, unknown>> || [];
@@ -61,15 +81,26 @@ function getResultData(a: Analyse) {
       return (dpe.resultat as string)?.match(/Classe ([A-G])/i)?.[1]?.toUpperCase() || null;
     })(),
     fonds_travaux_statut: (r.finances as Record<string, unknown>)?.fonds_travaux_statut as string || 'non_mentionne',
-    charges_annuelles: (() => {
-      const c = (r.finances as Record<string, unknown>)?.charges_annuelles_lot;
-      if (typeof c === 'number') return c;
-      if (typeof c === 'string') return parseFloat(c.replace(/[^0-9.]/g, '')) || null;
-      return null;
-    })(),
+    charges_annuelles: chargesAnnuelles,
     impayes: !!((r.lot_achete as Record<string, unknown>)?.impayes_detectes),
-    points_forts: (r.points_forts as string[] || []).slice(0, 2),
-    points_vigilance: (r.points_vigilance as string[] || []).slice(0, 2),
+    points_forts: (r.points_forts as string[] || []).slice(0, 3),
+    points_vigilance: (r.points_vigilance as string[] || []).slice(0, 3),
+    categories: cats ? {
+      travaux: cats.travaux || { note: 0, note_max: 5 },
+      procedures: cats.procedures || { note: 0, note_max: 4 },
+      finances: cats.finances || { note: 0, note_max: 4 },
+      diags_privatifs: cats.diags_privatifs || { note: 0, note_max: 4 },
+      diags_communs: cats.diags_communs || { note: 0, note_max: 3 },
+    } : null,
+    documents_analyses: (r.documents_analyses as Array<{ type: string; nom: string; annee?: string | null }> || []),
+    financier: {
+      charges_annuelles: chargesAnnuelles,
+      fonds_travaux_annuel: fondsTravAnnuel,
+      fonds_alur_signature: fondsAlurSignature,
+      fonds_roulement_signature: fondsRoulementSignature,
+      total_annee_1: (chargesAnnuelles || 0) + (fondsTravAnnuel || 0) + (fondsAlurSignature || 0) + (fondsRoulementSignature || 0),
+      has_data: !!(chargesAnnuelles || fondsTravAnnuel || fondsAlurSignature || fondsRoulementSignature),
+    },
   };
 }
 
@@ -334,7 +365,11 @@ export default function Compare() {
                       return <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><TendanceIcon val={d.charges_annuelles} best={bestVal} /><span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{d.charges_annuelles.toLocaleString('fr-FR')}€</span></div>;
                     }
                   },
-                ].map((row, ri) => (
+                ].map((row, ri) => {
+                  // Déterminer le winner pour cette ligne
+                  const vals = selectedAnalyses.map((a, j) => row.render(a, j));
+                  void vals; // utilisé pour le rendu
+                  return (
                   <div key={ri} style={{ display: 'grid', gridTemplateColumns: `180px repeat(${cols}, 1fr)`, borderBottom: ri < 8 ? '1px solid #f8fafc' : 'none', background: ri % 2 === 0 ? '#fff' : '#fafbfc' }}>
                     <div style={{ padding: '12px 16px', fontSize: 12, color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center' }}>{row.label}</div>
                     {selectedAnalyses.map((a, j) => (
@@ -343,9 +378,181 @@ export default function Compare() {
                       </div>
                     ))}
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
+              {/* Radar des 5 catégories */}
+              {resultsData.some(d => d?.categories) && (
+                <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+                  <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>📊</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Scores par catégorie</span>
+                  </div>
+                  <div style={{ padding: '20px' }}>
+                    {/* Barres horizontales comparatives */}
+                    {[
+                      { key: 'travaux', label: 'Travaux', emoji: '🏗️', max: 5 },
+                      { key: 'procedures', label: 'Procédures', emoji: '⚖️', max: 4 },
+                      { key: 'finances', label: 'Finances', emoji: '💰', max: 4 },
+                      { key: 'diags_privatifs', label: 'Diag. privatifs', emoji: '🏠', max: 4 },
+                      { key: 'diags_communs', label: 'Diag. communs', emoji: '🏢', max: 3 },
+                    ].map((cat) => {
+                      const scores = resultsData.map(d => d?.categories?.[cat.key as keyof NonNullable<NonNullable<ReturnType<typeof getResultData>>['categories']>]?.note ?? 0);
+                      const bestScore = Math.max(...scores);
+                      const bienColors = ['#2a7d9c', '#7c3aed', '#d97706'];
+                      return (
+                        <div key={cat.key} style={{ marginBottom: 16 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: 14 }}>{cat.emoji}</span>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{cat.label}</span>
+                            </div>
+                            <span style={{ fontSize: 11, color: '#94a3b8' }}>/{cat.max}</span>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {selectedAnalyses.map((a, i) => {
+                              const score = scores[i];
+                              const pct = (score / cat.max) * 100;
+                              const isWinner = score === bestScore && scores.filter(s => s === bestScore).length === 1;
+                              return (
+                                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', minWidth: 50 }}>Bien {i + 1}</span>
+                                  <div style={{ flex: 1, height: 8, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
+                                    <motion.div
+                                      initial={{ width: 0 }}
+                                      animate={{ width: `${pct}%` }}
+                                      transition={{ duration: 1, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
+                                      style={{ height: '100%', borderRadius: 99, background: isWinner ? '#16a34a' : bienColors[i] || '#2a7d9c' }} />
+                                  </div>
+                                  <span style={{ fontSize: 12, fontWeight: 800, color: isWinner ? '#16a34a' : '#0f172a', minWidth: 32, textAlign: 'right' }}>
+                                    {score.toFixed(1)}
+                                  </span>
+                                  {isWinner && <span style={{ fontSize: 9, color: '#16a34a', fontWeight: 700 }}>✓</span>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Résumé financier année 1 */}
+              {resultsData.some(d => d?.financier?.has_data) && (
+                <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+                  <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>💶</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Résumé financier — 1ère année</span>
+                  </div>
+                  <div style={{ overflowX: 'auto' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: `180px repeat(${cols}, 1fr)`, minWidth: cols === 3 ? 640 : 400 }}>
+                      {/* En-têtes */}
+                      <div style={{ padding: '10px 16px', fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', borderBottom: '2px solid #f1f5f9', background: '#fafbfc' }}>Poste</div>
+                      {selectedAnalyses.map((a, i) => (
+                        <div key={i} style={{ padding: '10px 16px', borderLeft: '1px solid #f1f5f9', borderBottom: '2px solid #f1f5f9', background: '#fafbfc', fontSize: 12, fontWeight: 700, color: '#0f172a' }}>
+                          Bien {i + 1} {a.id === best.id ? '⭐' : ''}
+                        </div>
+                      ))}
+
+                      {/* Lignes */}
+                      {[
+                        { label: 'Charges annuelles', get: (d: NonNullable<ReturnType<typeof getResultData>>) => d.financier.charges_annuelles },
+                        { label: 'Cotisation fonds travaux', get: (d: NonNullable<ReturnType<typeof getResultData>>) => d.financier.fonds_travaux_annuel },
+                        { label: 'Fonds ALUR (signature)', get: (d: NonNullable<ReturnType<typeof getResultData>>) => d.financier.fonds_alur_signature },
+                        { label: 'Fonds roulement (signature)', get: (d: NonNullable<ReturnType<typeof getResultData>>) => d.financier.fonds_roulement_signature },
+                      ].map((row, ri) => (
+                        <React.Fragment key={ri}>
+                          <div style={{ padding: '10px 16px', fontSize: 12, color: '#64748b', fontWeight: 600, borderBottom: '1px solid #f8fafc', background: ri % 2 === 0 ? '#fff' : '#fafbfc' }}>{row.label}</div>
+                          {resultsData.map((d, j) => {
+                            const val = d ? row.get(d) : null;
+                            return (
+                              <div key={j} style={{ padding: '10px 16px', borderLeft: '1px solid #f1f5f9', borderBottom: '1px solid #f8fafc', background: ri % 2 === 0 ? '#fff' : '#fafbfc', fontSize: 13, fontWeight: 600, color: val ? '#0f172a' : '#94a3b8' }}>
+                                {val ? `${Math.round(val).toLocaleString('fr-FR')}€` : '—'}
+                              </div>
+                            );
+                          })}
+                        </React.Fragment>
+                      ))}
+
+                      {/* Total année 1 */}
+                      <div style={{ padding: '12px 16px', fontSize: 13, fontWeight: 800, color: '#0f172a', borderTop: '2px solid #2a7d9c', background: '#f0f7fb' }}>Total estimé année 1</div>
+                      {resultsData.map((d, j) => {
+                        const total = d?.financier?.total_annee_1 || 0;
+                        const allTotals = resultsData.filter(r => r?.financier?.has_data).map(r => r!.financier.total_annee_1);
+                        const isBestFinancier = total > 0 && total === Math.min(...allTotals.filter(t => t > 0));
+                        return (
+                          <div key={j} style={{ padding: '12px 16px', borderLeft: '1px solid #f1f5f9', borderTop: '2px solid #2a7d9c', background: isBestFinancier ? '#f0fdf4' : '#f0f7fb', fontSize: 15, fontWeight: 900, color: isBestFinancier ? '#16a34a' : '#0f172a' }}>
+                            {total > 0 ? `${Math.round(total).toLocaleString('fr-FR')}€` : '—'}
+                            {isBestFinancier && <span style={{ fontSize: 10, marginLeft: 6 }}>✓ le moins cher</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div style={{ padding: '12px 20px', background: '#fafbfc', borderTop: '1px solid #f1f5f9' }}>
+                    <p style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic', lineHeight: 1.6, margin: 0 }}>
+                      * Estimation basée sur les éléments présents dans vos documents. Les travaux évoqués non votés et les éventuels appels de fonds exceptionnels ne sont pas inclus dans ce calcul.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Travaux évoqués non votés — alertes qualitatives */}
+              {resultsData.some(d => d && d.travaux_evoques_list.length > 0) && (
+                <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #fde68a', overflow: 'hidden' }}>
+                  <div style={{ padding: '14px 20px', borderBottom: '1px solid #fde68a', background: '#fffbeb', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>⚠️</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>Travaux évoqués non votés — à anticiper</span>
+                  </div>
+                  <div className="compare-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 0 }}>
+                    {selectedAnalyses.map((a, i) => {
+                      const d = resultsData[i];
+                      return (
+                        <div key={a.id} style={{ padding: '14px 18px', borderLeft: i > 0 ? '1px solid #f1f5f9' : 'none' }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 8 }}>BIEN {i + 1}</div>
+                          {d && d.travaux_evoques_list.length > 0 ? d.travaux_evoques_list.map((t, ti) => (
+                            <div key={ti} style={{ fontSize: 12, color: '#92400e', padding: '6px 10px', borderRadius: 8, background: '#fffbeb', border: '1px solid #fde68a', marginBottom: 4, lineHeight: 1.4 }}>
+                              {t.label}{t.montant_estime ? ` — ~${Math.round(t.montant_estime).toLocaleString('fr-FR')}€` : ' — montant non déterminé'}
+                            </div>
+                          )) : <p style={{ fontSize: 12, color: '#16a34a' }}>✓ Aucun travaux évoqué</p>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Documents analysés par bien */}
+              <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
+                <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 16 }}>📁</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Documents analysés par bien</span>
+                </div>
+                <div className="compare-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 0 }}>
+                  {selectedAnalyses.map((a, i) => {
+                    const d = resultsData[i];
+                    const docs = d?.documents_analyses || [];
+                    return (
+                      <div key={a.id} style={{ padding: '14px 18px', borderLeft: i > 0 ? '1px solid #f1f5f9' : 'none' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em' }}>BIEN {i + 1}</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: 'rgba(42,125,156,0.08)', padding: '2px 8px', borderRadius: 6 }}>{docs.length} doc{docs.length > 1 ? 's' : ''}</span>
+                        </div>
+                        {docs.length > 0 ? docs.map((doc, di) => (
+                          <div key={di} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: di < docs.length - 1 ? '1px solid #f8fafc' : 'none' }}>
+                            <FileText size={11} style={{ color: '#94a3b8', flexShrink: 0 }} />
+                            <span style={{ fontSize: 11.5, color: '#374151', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.nom}</span>
+                            {doc.annee && <span style={{ fontSize: 10, color: '#94a3b8' }}>{doc.annee}</span>}
+                          </div>
+                        )) : <p style={{ fontSize: 12, color: '#94a3b8' }}>Non disponible</p>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
               {/* Points forts / vigilances par bien */}
               <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
                 <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
