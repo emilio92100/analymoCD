@@ -1003,103 +1003,90 @@ function SecuriteSection() {
   );
 }
 
+
 /* ═══ FOR WHO ══════════════════════════════════════════════ */
 function ForWhoSection() {
+  const profils = [
+    {
+      emoji: '🏠',
+      label: 'Primo-accédant',
+      accroche: 'On simplifie tout pour vous.',
+      points: [
+        'PV d\'AG traduits en langage clair',
+        'Travaux, impayés, procédures — tout est détecté',
+        'Un score /20 pour décider sereinement',
+      ],
+      color: '#2a7d9c',
+      bg: 'rgba(42,125,156,0.06)',
+      border: 'rgba(42,125,156,0.15)',
+    },
+    {
+      emoji: '🔑',
+      label: 'Acheteur expérimenté',
+      accroche: 'Allez plus loin cette fois.',
+      points: [
+        'Charges réelles, fonds travaux, appels de fonds',
+        'Travaux votés non réalisés — anticipez l\'impact',
+        'Rapport partageable avec votre notaire',
+      ],
+      color: '#0f2d3d',
+      bg: 'rgba(15,45,61,0.04)',
+      border: 'rgba(15,45,61,0.12)',
+    },
+  ];
+
   return (
     <section className="py-14 md:py-24 px-4 md:px-6 bg-[#f4f7f9]">
       <div className="max-w-6xl mx-auto">
         <SectionTitle label="Pour qui" title="Fait pour" accent="vous." />
 
-        {/* ─── DEUX PROFILS ACHETEURS ─── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* ─── DEUX PROFILS — design compact ─── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-8">
+          {profils.map((p, idx) => (
+            <Reveal key={idx} delay={idx}>
+              <div
+                className="rounded-2xl p-6 md:p-7 border transition-all duration-300 hover:-translate-y-1 hover:shadow-md cursor-default h-full flex flex-col"
+                style={{ background: p.bg, borderColor: p.border }}>
 
-          {/* PRIMO-ACCÉDANT */}
-          <Reveal>
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden h-full flex flex-col">
-              {/* Header */}
-              <div className="px-7 pt-7 pb-5" style={{ background: 'linear-gradient(135deg, #f0f7fb 0%, #e4f2f8 100%)' }}>
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-[#2a7d9c]/15 shadow-sm mb-4">
-                  <span className="text-base">🏠</span>
-                  <span className="text-xs font-bold text-[#2a7d9c] uppercase tracking-wide">Primo-accédant</span>
+                {/* Badge + accroche */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
+                    style={{ background: 'white', border: `1px solid ${p.border}` }}>
+                    {p.emoji}
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wide" style={{ color: p.color }}>
+                      {p.label}
+                    </span>
+                    <p className="text-base md:text-lg font-black text-[#0f172a] leading-tight mt-0.5">
+                      {p.accroche}
+                    </p>
+                  </div>
                 </div>
-                <h3 className="text-xl md:text-[22px] font-black text-[#0f172a] leading-tight">
-                  Vous achetez pour la première fois ?<br />
-                  <span className="text-[#2a7d9c]">On simplifie tout pour vous.</span>
-                </h3>
-              </div>
 
-              {/* Contenu */}
-              <div className="px-7 py-6 flex-1 flex flex-col">
-                <p className="text-sm text-slate-500 leading-relaxed mb-5">
-                  PV d'assemblée générale, règlement de copropriété, diagnostics techniques… Ces documents sont complexes et vous ne les avez jamais lus. C'est normal. Verimo les analyse à votre place et vous explique l'essentiel en langage clair.
-                </p>
-                <div className="flex flex-col gap-3 mb-6 flex-1">
-                  {[
-                    { emoji: '📋', text: 'PV d\'AG traduits en français simple — fini le jargon juridique' },
-                    { emoji: '🔍', text: 'Travaux votés, procédures, impayés — tout est détecté pour vous' },
-                    { emoji: '⚡', text: 'DPE, amiante, électricité — chaque diagnostic expliqué clairement' },
-                    { emoji: '🎯', text: 'Un score /20 pour savoir si le bien est sain ou risqué' },
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-start gap-3">
-                      <span className="text-base shrink-0 mt-0.5">{item.emoji}</span>
-                      <span className="text-sm text-slate-600 leading-snug">{item.text}</span>
+                {/* Points clés */}
+                <div className="flex flex-col gap-2.5 mb-5 flex-1">
+                  {p.points.map((point, i) => (
+                    <div key={i} className="flex items-start gap-2.5">
+                      <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+                        style={{ background: p.color }}>
+                        <Check size={10} className="text-white" strokeWidth={3} />
+                      </div>
+                      <span className="text-sm text-slate-600 leading-snug">{point}</span>
                     </div>
                   ))}
                 </div>
+
+                {/* CTA */}
                 <Link to="/start"
-                  className="inline-flex self-start items-center gap-2 px-6 py-3 rounded-xl bg-[#0f2d3d] text-white text-sm font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
-                  Lancer mon analyse <ArrowRight size={14} />
+                  className="inline-flex self-start items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200"
+                  style={{ background: p.color }}>
+                  Lancer mon analyse <ArrowRight size={13} />
                 </Link>
               </div>
-            </div>
-          </Reveal>
-
-          {/* ACHETEUR EXPÉRIMENTÉ */}
-          <Reveal delay={1}>
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden h-full flex flex-col">
-              {/* Header */}
-              <div className="px-7 pt-7 pb-5" style={{ background: 'linear-gradient(135deg, #f4f7f9 0%, #edf2f7 100%)' }}>
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-slate-200 shadow-sm mb-4">
-                  <span className="text-base">🔑</span>
-                  <span className="text-xs font-bold text-[#0f2d3d] uppercase tracking-wide">Acheteur expérimenté</span>
-                </div>
-                <h3 className="text-xl md:text-[22px] font-black text-[#0f172a] leading-tight">
-                  Vous avez déjà acheté ?<br />
-                  <span className="text-[#2a7d9c]">Allez plus loin cette fois.</span>
-                </h3>
-              </div>
-
-              {/* Contenu */}
-              <div className="px-7 py-6 flex-1 flex flex-col">
-                <p className="text-sm text-slate-500 leading-relaxed mb-5">
-                  Vous connaissez le process, mais vous savez aussi que chaque bien cache des surprises. Travaux non anticipés, charges sous-estimées, DPE trompeur… Verimo vous donne les chiffres réels et les risques concrets pour négocier en position de force.
-                </p>
-                <div className="flex flex-col gap-3 mb-6 flex-1">
-                  {[
-                    { emoji: '💰', text: 'Charges réelles, fonds travaux, appels de fonds — votre vrai budget' },
-                    { emoji: '🏗️', text: 'Travaux votés non encore réalisés — anticipez l\'impact financier' },
-                    { emoji: '⚖️', text: 'Procédures judiciaires en cours — sachez avant de signer' },
-                    { emoji: '📤', text: 'Rapport partageable avec votre notaire pour négocier le prix' },
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-start gap-3">
-                      <span className="text-base shrink-0 mt-0.5">{item.emoji}</span>
-                      <span className="text-sm text-slate-600 leading-snug">{item.text}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex items-center gap-4">
-                  <Link to="/start"
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#0f2d3d] text-white text-sm font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
-                    Lancer mon analyse <ArrowRight size={14} />
-                  </Link>
-                  <Link to="/exemple"
-                    className="inline-flex items-center gap-2 text-sm font-semibold text-[#2a7d9c] hover:underline">
-                    Voir un exemple <ArrowRight size={13} />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </Reveal>
+            </Reveal>
+          ))}
         </div>
 
         {/* ─── PRO — bandeau compact ─── */}
@@ -1130,7 +1117,6 @@ function ForWhoSection() {
     </section>
   );
 }
-
 /* ═══ HOW IT WORKS ══════════════════════════════════════════ */
 function HowItWorksSection() {
   const refMobile = useRef(null);
