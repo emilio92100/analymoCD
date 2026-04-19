@@ -10,15 +10,14 @@ const isLowPerf = () => isIOS() || (typeof window !== 'undefined' && window.inne
    DATA
 ══════════════════════════════════════════ */
 const allFeatures = [
-  { label: 'Avis Verimo personnalisé', simple: true, complete: true, pack2: true, pack3: true },
-  { label: 'Score /20 du bien', simple: false, complete: true, pack2: true, pack3: true },
-  { label: 'Recommandation d\'achat', simple: false, complete: true, pack2: true, pack3: true },
-  { label: 'Travaux votés et à prévoir', simple: false, complete: true, pack2: true, pack3: true },
-  { label: 'Santé financière copro', simple: false, complete: true, pack2: true, pack3: true },
-  { label: 'Pistes de négociation', simple: false, complete: true, pack2: true, pack3: true },
-  { label: 'Rapport PDF téléchargeable', simple: false, complete: true, pack2: true, pack3: true },
-  { label: 'Compléter sous 7 jours', simple: false, complete: true, pack2: true, pack3: true },
-  { label: 'Comparaison de biens', simple: false, complete: false, pack2: true, pack3: true },
+  { label: 'Avis Verimo personnalisé', tip: 'Conclusion rédigée par Verimo adaptée à votre profil d\'acheteur', simple: true, complete: true, pack2: true, pack3: true },
+  { label: 'Score /20 + verdict d\'achat', tip: 'Note globale sur 20 avec verdict clair : Acheter, Négocier ou Risqué', simple: false, complete: true, pack2: true, pack3: true },
+  { label: 'Travaux votés et à prévoir', tip: 'Travaux décidés en AG et travaux à anticiper détectés dans vos documents', simple: false, complete: true, pack2: true, pack3: true },
+  { label: 'Santé financière copro', tip: 'Charges, fonds travaux, impayés et budget de la copropriété', simple: false, complete: true, pack2: true, pack3: true },
+  { label: 'Pistes de négociation', tip: 'Arguments concrets pour négocier le prix, affichés si le score est inférieur à 14/20', simple: false, complete: true, pack2: true, pack3: true },
+  { label: 'Rapport PDF téléchargeable', tip: 'Téléchargez votre rapport complet au format PDF', simple: false, complete: true, pack2: true, pack3: true },
+  { label: 'Compléter sous 7 jours', tip: 'Ajoutez des documents oubliés dans les 7 jours — le rapport est recalculé gratuitement', simple: false, complete: true, pack2: true, pack3: true },
+  { label: 'Comparaison de biens', tip: 'Comparez vos analyses côte à côte pour choisir le meilleur bien', simple: false, complete: false, pack2: true, pack3: true },
 ];
 
 const plans = [
@@ -85,17 +84,16 @@ const plans = [
 ];
 
 const tableRows = [
-  { label: 'Avis Verimo personnalisé', vals: [true, true, true, true], type: 'bool' },
-  { label: 'Documents analysés', vals: ['1 doc', 'Jusqu\'à 15', '2 × 15', '3 × 15'], type: 'text' },
-  { label: 'Score /20 du bien', vals: [false, true, true, true], type: 'bool' },
-  { label: 'Recommandation d\'achat', vals: [false, true, true, true], type: 'bool' },
-  { label: 'Travaux votés et à prévoir', vals: [false, true, true, true], type: 'bool' },
-  { label: 'Santé financière copro', vals: [false, true, true, true], type: 'bool' },
-  { label: 'Pistes de négociation', vals: [false, true, true, true], type: 'bool' },
-  { label: 'Compléter le dossier (7j)', vals: [false, true, true, true], type: 'bool' },
-  { label: 'Rapport PDF téléchargeable', vals: [false, true, true, true], type: 'bool' },
-  { label: 'Comparaison de biens', vals: [false, false, true, true], type: 'bool' },
-  { label: 'Économie vs achats séparés', vals: ['—', '—', '−10€', '−20€'], type: 'text' },
+  { label: 'Avis Verimo personnalisé', tip: 'Conclusion rédigée par Verimo adaptée à votre profil d\'acheteur', vals: [true, true, true, true], type: 'bool' },
+  { label: 'Documents analysés', tip: 'Nombre de fichiers PDF analysables simultanément pour un même bien', vals: ['1 doc', 'Jusqu\'à 15', '2 × 15', '3 × 15'], type: 'text' },
+  { label: 'Score /20 + verdict d\'achat', tip: 'Note globale sur 20 avec verdict clair : Acheter, Négocier ou Risqué', vals: [false, true, true, true], type: 'bool' },
+  { label: 'Travaux votés et à prévoir', tip: 'Travaux décidés en AG et travaux à anticiper détectés dans vos documents', vals: [false, true, true, true], type: 'bool' },
+  { label: 'Santé financière copro', tip: 'Charges, fonds travaux, impayés et budget de la copropriété', vals: [false, true, true, true], type: 'bool' },
+  { label: 'Pistes de négociation', tip: 'Arguments pour négocier le prix, affichés si le score est inférieur à 14/20', vals: [false, true, true, true], type: 'bool' },
+  { label: 'Compléter le dossier (7j)', tip: 'Ajoutez des documents oubliés dans les 7 jours — rapport recalculé gratuitement', vals: [false, true, true, true], type: 'bool' },
+  { label: 'Rapport PDF téléchargeable', tip: 'Téléchargez votre rapport complet au format PDF', vals: [false, true, true, true], type: 'bool' },
+  { label: 'Comparaison de biens', tip: 'Comparez vos analyses côte à côte pour choisir le meilleur bien', vals: [false, false, true, true], type: 'bool' },
+  { label: 'Économie vs achats séparés', tip: 'Réduction par rapport à l\'achat de chaque analyse individuellement', vals: ['—', '—', '−10€', '−20€'], type: 'text' },
 ];
 
 const faqs = [
@@ -182,6 +180,7 @@ function TableCell({ val, isHighlight }: { val: boolean | string; isHighlight: b
 export default function TarifsPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [openAccordion, setOpenAccordion] = useState<number | null>(null);
+  const [hoveredTip, setHoveredTip] = useState<number | null>(null);
 
   return (
     <main style={{ fontFamily: "'DM Sans', system-ui, sans-serif", background: '#f4f7f9', paddingTop: 72, minHeight: '100vh' }}>
@@ -341,7 +340,7 @@ export default function TarifsPage() {
         {/* Desktop : tableau */}
         <Reveal delay={0.05} className="table-desktop">
           <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' as any }}>
-          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.04)', minWidth: 560 }}>
+          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', boxShadow: '0 2px 12px rgba(0,0,0,0.04)', minWidth: 560 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' as const }}>
               <thead>
                 <tr style={{ borderBottom: '1.5px solid #edf2f7' }}>
@@ -357,7 +356,25 @@ export default function TarifsPage() {
               <tbody>
                 {tableRows.map((row, i) => (
                   <tr key={i} style={{ borderBottom: i < tableRows.length - 1 ? '1px solid #f8fafc' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
-                    <td style={{ padding: '11px 20px', fontSize: 13, color: '#374151', fontWeight: 500 }}>{row.label}</td>
+                    <td style={{ padding: '11px 20px', fontSize: 13, color: '#374151', fontWeight: 500, position: 'relative' as const }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        {row.label}
+                        {row.tip && (
+                          <div style={{ position: 'relative', display: 'inline-flex' }}
+                            onMouseEnter={() => setHoveredTip(i)} onMouseLeave={() => setHoveredTip(null)}>
+                            <div style={{ width: 16, height: 16, borderRadius: '50%', background: hoveredTip === i ? '#2a7d9c' : '#edf2f7', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', transition: 'all 0.15s', flexShrink: 0 }}>
+                              <span style={{ fontSize: 10, fontWeight: 700, color: hoveredTip === i ? '#fff' : '#94a3b8', lineHeight: 1 }}>i</span>
+                            </div>
+                            {hoveredTip === i && (
+                              <div style={{ position: 'absolute', left: 24, top: '50%', transform: 'translateY(-50%)', zIndex: 500, background: '#0f172a', borderRadius: 10, padding: '10px 14px', width: 240, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', pointerEvents: 'none' }}>
+                                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 }}>{row.tip}</span>
+                                <div style={{ position: 'absolute', left: -4, top: '50%', transform: 'translateY(-50%) rotate(45deg)', width: 8, height: 8, background: '#0f172a', borderRadius: 1 }} />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </td>
                     {row.vals.map((val, j) => (
                       <TableCell key={j} val={val} isHighlight={j === 1} />
                     ))}
