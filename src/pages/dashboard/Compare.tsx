@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitCompare, ShieldCheck, Building2, CheckCircle, FileText, Shield, ArrowRight, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { GitCompare, ShieldCheck, Building2, CheckCircle, FileText, Shield, ArrowRight, TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react';
 import { useAnalyses, type Analyse } from '../../hooks/useAnalyses';
+import { supabase } from '../../lib/supabase';
 
 function ScoreBadge({ score, size = 'sm' }: { score: number; size?: 'sm' | 'md' }) {
   const color = score >= 14 ? '#16a34a' : score >= 10 ? '#d97706' : '#dc2626';
@@ -30,20 +31,44 @@ function getScoreBorder(s: number) {
   if (s >= 17) return '#bbf7d0'; if (s >= 14) return '#d1fae5'; if (s >= 10) return '#fde68a'; if (s >= 7) return '#fed7aa'; return '#fecaca';
 }
 
-function buildVerdict(analyses: Analyse[]) {
+function buildVerdict(analyses: Analyse[], resultsData: (ReturnType<typeof getResultData>)[]) {
+  // Verdict local de fallback — utilisé pendant le chargement ou en cas d'erreur API
   const sorted = [...analyses].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
   const best = sorted[0];
-  const worst = sorted[sorted.length - 1];
-  const diff = (best.score ?? 0) - (worst.score ?? 0);
-  const raisons: string[] = [];
+  const bestIdx = analyses.findIndex(a => a.id === best.id);
+  const bestData = resultsData[bestIdx];
   const bestScore = best.score ?? 0;
-  const worstScore = worst.score ?? 0;
+
+  const raisons: string[] = [];
   if (bestScore >= 14) raisons.push('Score solide — bien globalement sain selon les documents analysés');
-  if (diff >= 3) raisons.push(`Écart significatif de ${diff.toFixed(1)} points avec le bien le moins bien noté`);
-  if (bestScore >= 14 && worstScore < 10) raisons.push("L'autre bien présente des risques financiers ou juridiques identifiés");
-  if (raisons.length === 0) raisons.push('Meilleure note globale sur les 5 catégories analysées');
+  else if (bestScore >= 10) raisons.push('Score correct — quelques réserves identifiées');
+  else raisons.push('Attention — des risques significatifs ont été identifiés');
+
+  const diff = (sorted[0].score ?? 0) - (sorted[sorted.length - 1].score ?? 0);
+  if (diff >= 3) raisons.push(`Écart de ${diff.toFixed(1)} points avec le bien le moins bien noté`);
+  if (bestData?.categories) {
+    const cats = bestData.categories;
+    const forces: string[] = [];
+    if (cats.travaux.note >= 4) forces.push('travaux');
+    if (cats.finances.note >= 3.5) forces.push('finances');
+    if (forces.length > 0) raisons.push(`Points forts : ${forces.join(', ')}`);
+  }
+
   return { best, raisons };
 }
+
+const COMPARER_URL = 'https://veszrayromldfgetqaxb.supabase.co/functions/v1/comparer';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlc3pyYXlyb21sZGZnZXRxYXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MzI5NTUsImV4cCI6MjA2MTAwODk1NX0.XsqzBPDMfHRFKgMhJxoLhgVWZMdV5YnFKM3VCBe9hOk';
+
+type VerdictIA = {
+  bien_recommande_idx: number;
+  titre_verdict: string;
+  synthese: string;
+  forces_bien_recommande: string[];
+  points_attention: string[];
+  conseil: string;
+  alerte_documents: string | null;
+};
 
 // Données enrichies depuis le résultat JSON de Claude (stocké dans result)
 function getResultData(a: Analyse) {
@@ -122,6 +147,9 @@ export default function Compare() {
   const completedAnalyses = analyses.filter((a: Analyse) => a.type === 'complete' && a.status === 'completed');
   const [selected, setSelected] = useState<string[]>([]);
   const [launched, setLaunched] = useState(false);
+  const [verdictIA, setVerdictIA] = useState<VerdictIA | null>(null);
+  const [verdictLoading, setVerdictLoading] = useState(false);
+  const [verdictError, setVerdictError] = useState(false);
 
   const toggleSelect = (id: string) => {
     if (launched) return;
@@ -131,8 +159,41 @@ export default function Compare() {
   const selectedAnalyses = completedAnalyses.filter(a => selected.includes(a.id));
   const canLaunch = selected.length >= 2;
 
-  const handleReset = () => { setSelected([]); setLaunched(false); };
-  const handleLaunch = () => { if (canLaunch) setLaunched(true); };
+  const handleReset = () => { setSelected([]); setLaunched(false); setVerdictIA(null); setVerdictError(false); };
+  const handleLaunch = async () => {
+    if (!canLaunch) return;
+    setLaunched(true);
+    setVerdictLoading(true);
+    setVerdictError(false);
+    setVerdictIA(null);
+
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      if (!session) { setVerdictLoading(false); setVerdictError(true); return; }
+
+      const res = await fetch(COMPARER_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ analyseIds: selected }),
+      });
+
+      if (!res.ok) { setVerdictLoading(false); setVerdictError(true); return; }
+
+      const data = await res.json();
+      if (data.success && data.verdict) {
+        setVerdictIA(data.verdict as VerdictIA);
+      } else {
+        setVerdictError(true);
+      }
+    } catch {
+      setVerdictError(true);
+    }
+    setVerdictLoading(false);
+  };
 
   if (completedAnalyses.length === 0) return (
     <div>
@@ -248,7 +309,7 @@ export default function Compare() {
 
       {/* Résultat comparaison */}
       {launched && selectedAnalyses.length >= 2 && (() => {
-        const { best, raisons } = buildVerdict(selectedAnalyses);
+        const { best } = buildVerdict(selectedAnalyses, resultsData);
         const cols = selectedAnalyses.length;
         const gridCols = cols === 2 ? '1fr 1fr' : '1fr 1fr 1fr';
         const resultsData = selectedAnalyses.map(a => getResultData(a));
@@ -589,25 +650,105 @@ export default function Compare() {
               </div>
 
               {/* Verdict */}
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
-                style={{ padding: '22px 24px', borderRadius: 16, background: 'linear-gradient(135deg, #f0f7fb, #e8f4fa)', border: '1.5px solid #bae3f5', boxShadow: '0 4px 16px rgba(42,125,156,0.08)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                  <Shield size={16} color="#2a7d9c" style={{ flexShrink: 0 }} />
-                  <div style={{ fontSize: 11, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Verdict Verimo</div>
-                </div>
-                <p style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 10, lineHeight: 1.5 }}>
-                  Notre recommandation : <span style={{ color: getScoreColor(best.score ?? 0) }}>"{best.adresse_bien}"</span>
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
-                  {raisons.map((r, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                      <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'rgba(42,125,156,0.12)', border: '1px solid rgba(42,125,156,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}><CheckCircle size={10} color="#2a7d9c" /></div>
-                      <span style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>{r}</span>
+              {verdictLoading && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                  style={{ padding: '32px 24px', borderRadius: 16, background: 'linear-gradient(135deg, #f0f7fb, #e8f4fa)', border: '1.5px solid #bae3f5', textAlign: 'center' }}>
+                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid #2a7d9c', borderTopColor: 'transparent', margin: '0 auto 16px' }} />
+                  <p style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Analyse comparative en cours...</p>
+                  <p style={{ fontSize: 12, color: '#64748b' }}>Verimo compare vos biens en profondeur</p>
+                </motion.div>
+              )}
+
+              {verdictError && !verdictIA && !verdictLoading && (() => {
+                const { best, raisons } = buildVerdict(selectedAnalyses, resultsData);
+                return (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                    style={{ padding: '22px 24px', borderRadius: 16, background: 'linear-gradient(135deg, #f0f7fb, #e8f4fa)', border: '1.5px solid #bae3f5' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                      <Shield size={16} color="#2a7d9c" style={{ flexShrink: 0 }} />
+                      <div style={{ fontSize: 11, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Verdict Verimo</div>
                     </div>
-                  ))}
-                </div>
-                <p style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic', lineHeight: 1.6 }}>Ce verdict est établi uniquement à partir des données disponibles dans vos rapports et ne remplace pas l'avis d'un professionnel de l'immobilier.</p>
-              </motion.div>
+                    <p style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>
+                      D'après les scores : <span style={{ color: getScoreColor(best.score ?? 0) }}>"{best.adresse_bien}"</span> présente le profil le plus équilibré
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                      {raisons.map((r, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                          <CheckCircle size={14} color="#2a7d9c" style={{ flexShrink: 0, marginTop: 2 }} />
+                          <span style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>{r}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p style={{ fontSize: 11, color: '#d97706', fontStyle: 'italic' }}>Le verdict détaillé n'a pas pu être généré. Voici une analyse simplifiée basée sur les scores.</p>
+                  </motion.div>
+                );
+              })()}
+
+              {verdictIA && !verdictLoading && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+                  style={{ padding: '22px 24px', borderRadius: 16, background: 'linear-gradient(135deg, #f0f7fb, #e8f4fa)', border: '1.5px solid #bae3f5', boxShadow: '0 4px 16px rgba(42,125,156,0.08)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                    <Shield size={16} color="#2a7d9c" style={{ flexShrink: 0 }} />
+                    <div style={{ fontSize: 11, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Verdict Verimo</div>
+                  </div>
+
+                  {/* Titre verdict */}
+                  <p style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', marginBottom: 14, lineHeight: 1.5 }}>
+                    {verdictIA.titre_verdict}
+                  </p>
+
+                  {/* Synthèse */}
+                  <p style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.7, marginBottom: 16 }}>
+                    {verdictIA.synthese}
+                  </p>
+
+                  {/* Forces */}
+                  {verdictIA.forces_bien_recommande?.length > 0 && (
+                    <div style={{ marginBottom: 14 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>✓ Forces identifiées</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                        {verdictIA.forces_bien_recommande.map((f, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                            <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'rgba(22,163,74,0.12)', border: '1px solid rgba(22,163,74,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}><CheckCircle size={10} color="#16a34a" /></div>
+                            <span style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>{f}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Points d'attention */}
+                  {verdictIA.points_attention?.length > 0 && (
+                    <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(217,119,6,0.06)', border: '1px solid rgba(217,119,6,0.15)', marginBottom: 14 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>⚠ Points d'attention</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                        {verdictIA.points_attention.map((a, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                            <AlertTriangle size={13} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
+                            <span style={{ fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>{a}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Alerte documents */}
+                  {verdictIA.alerte_documents && (
+                    <div style={{ padding: '10px 14px', borderRadius: 10, background: '#fff7ed', border: '1px solid #fed7aa', marginBottom: 14, fontSize: 12, color: '#9a3412', lineHeight: 1.6 }}>
+                      📁 {verdictIA.alerte_documents}
+                    </div>
+                  )}
+
+                  {/* Conseil */}
+                  <div style={{ padding: '14px 16px', borderRadius: 12, background: '#fff', border: '1px solid rgba(42,125,156,0.15)', marginBottom: 14 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>💡 Notre conseil</div>
+                    <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.65, margin: 0 }}>{verdictIA.conseil}</p>
+                  </div>
+
+                  <p style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic', lineHeight: 1.6 }}>Ce verdict est établi uniquement à partir des données disponibles dans vos rapports et ne remplace pas l'avis d'un professionnel de l'immobilier.</p>
+                </motion.div>
+              )}
 
               {/* Liens rapports */}
               <div style={{ padding: '16px 20px', borderRadius: 14, background: '#fff', border: '1px solid #edf2f7', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
