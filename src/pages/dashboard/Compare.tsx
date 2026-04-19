@@ -359,10 +359,10 @@ export default function Compare() {
 
       {/* Résultat comparaison */}
       {launched && selectedAnalyses.length >= 2 && (() => {
+        const resultsData = selectedAnalyses.map(a => getResultData(a));
         const { best } = buildVerdict(selectedAnalyses, resultsData);
         const cols = selectedAnalyses.length;
         const gridCols = cols === 2 ? '1fr 1fr' : '1fr 1fr 1fr';
-        const resultsData = selectedAnalyses.map(a => getResultData(a));
 
         return (
           <AnimatePresence mode="wait">
@@ -833,7 +833,7 @@ export default function Compare() {
               const ids = comp.analyse_ids.split(',');
               const biens = ids.map(id => {
                 const a = completedAnalyses.find(an => an.id === id);
-                return a ? { titre: a.adresse_bien || a.title || 'Bien sans titre', score: a.score } : { titre: 'Bien supprimé', score: null };
+                return a ? { titre: a.adresse_bien || a.nom_document || 'Bien sans titre', score: a.score } : { titre: 'Bien supprimé', score: null };
               });
               const date = new Date(comp.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 
