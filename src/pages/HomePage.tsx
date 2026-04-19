@@ -1137,20 +1137,6 @@ function ForWhoSection() {
           </div>
         )}
 
-        {/* ─── CTA ─── */}
-        <Reveal className="text-center mb-8">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link to="/start"
-              className="inline-flex items-center gap-2 px-7 md:px-9 py-3.5 md:py-4 rounded-2xl bg-[#0f2d3d] text-white text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
-              Lancer mon analyse — dès 4,90€ <ArrowRight size={16} />
-            </Link>
-            <Link to="/exemple"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-[#2a7d9c] hover:underline">
-              Voir un exemple de rapport <ArrowRight size={13} />
-            </Link>
-          </div>
-        </Reveal>
-
         {/* ─── PRO — bandeau avec 4 profils (non cliquables) ─── */}
         <Reveal className="mt-2">
           <div className="rounded-2xl overflow-hidden"
