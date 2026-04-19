@@ -1006,26 +1006,44 @@ function SecuriteSection() {
 
 /* ═══ FOR WHO ══════════════════════════════════════════════ */
 function ForWhoSection() {
+  const [activeIdx, setActiveIdx] = useState<number | null>(null);
+
   const situations = [
     {
-      emoji: '🔎',
-      qui: 'Vous visitez un appartement ce week-end',
-      situation: 'L\'agent vous a envoyé le PV d\'AG et les diagnostics. Vous n\'avez ni le temps ni les compétences pour tout lire. Verimo vous dit en 30 secondes si le bien est sain ou risqué.',
+      emoji: '🔑',
+      label: 'Premier achat',
+      micro: 'Je débute',
+      icon: '🔑',
+      title: "C'est votre premier achat — et c'est stressant.",
+      text: "PV d'assemblée générale, tantièmes, fonds ALUR, quitus syndic… Vous découvrez un monde que personne ne vous a expliqué. Verimo lit tout à votre place et vous livre un rapport en langage simple : ce qui va, ce qui ne va pas, et ce que ça coûte vraiment.",
+      pills: ['Documents décryptés', 'Score /20', 'Zéro jargon', 'Rapport en 30s'],
     },
     {
-      emoji: '📑',
-      qui: 'Vous hésitez avant de faire une offre',
-      situation: 'Travaux votés ? Impayés dans la copro ? DPE dégradé ? Vous voulez savoir exactement ce qui vous attend financièrement avant de vous engager.',
+      emoji: '❤️',
+      label: 'Coup de cœur',
+      micro: "J'ai trouvé",
+      icon: '❤️',
+      title: "Vous avez trouvé LE bien — ne le perdez pas pour un détail.",
+      text: "L'appartement est parfait, le quartier aussi. Mais le PV d'AG mentionne un ravalement à 45 000€ évoqué depuis 2 ans sans vote. Qui paiera quand ce sera voté ? Vous. Verimo détecte ces risques avant que vous ne signiez.",
+      pills: ['Travaux détectés', 'Charges réelles', 'DPE vérifié', 'Impayés copro'],
     },
     {
-      emoji: '⚖️',
-      qui: 'Vous voulez négocier le prix',
-      situation: 'Le rapport Verimo chiffre les risques détectés et vous donne des arguments concrets à présenter au vendeur ou à son agent pour justifier une baisse de prix.',
+      emoji: '🤔',
+      label: "J'hésite",
+      micro: 'Plusieurs biens',
+      icon: '🤔',
+      title: "Deux biens, un seul choix — lequel est le plus sain ?",
+      text: "L'un a un meilleur DPE mais des travaux évoqués en AG. L'autre a des charges basses mais un syndic sous tension. Verimo score chaque bien sur 20 et vous les compare côte à côte : finances, travaux, procédures, diagnostics.",
+      pills: ['Comparaison /20', 'Côte à côte', 'Pack 2 biens 29,90€', 'Classement objectif'],
     },
     {
-      emoji: '🏠',
-      qui: 'C\'est votre premier achat',
-      situation: 'Règlement de copropriété, tantièmes, fonds ALUR, quitus syndic… Vous ne comprenez rien et c\'est normal. Verimo traduit tout en langage simple et vous guide.',
+      emoji: '💪',
+      label: 'Je négocie',
+      micro: 'Baisser le prix',
+      icon: '💪',
+      title: "Vous voulez 5 000€ de moins — il vous faut des preuves.",
+      text: "« Un ravalement est évoqué depuis 2 AG sans vote », « les impayés copro atteignent 12% du budget », « le DPE classe E impose des travaux d'isolation ». Verimo détecte et chiffre chaque risque pour vous donner des arguments concrets face au vendeur.",
+      pills: ['Arguments chiffrés', 'Risques valorisés', 'Rapport partageable', 'Prêt pour le notaire'],
     },
   ];
 
@@ -1034,10 +1052,10 @@ function ForWhoSection() {
       <div className="max-w-5xl mx-auto">
         <SectionTitle label="Pour qui" title="Fait pour" accent="vous." />
 
-        {/* ─── Sous-titre sur 2 lignes forcées ─── */}
+        {/* ─── Sous-titre sur 2 lignes ─── */}
         <Reveal>
-          <div className="text-center mb-10 md:mb-14 max-w-3xl mx-auto">
-            <p className="text-base md:text-lg text-slate-500 leading-relaxed" style={{ whiteSpace: 'nowrap' }}>
+          <div className="text-center mb-10 md:mb-14 max-w-4xl mx-auto">
+            <p className="text-base md:text-lg text-slate-500 leading-relaxed whitespace-nowrap">
               Que ce soit votre premier achat ou votre dixième, les documents restent les mêmes — et les risques aussi.
             </p>
             <p className="text-base md:text-lg font-semibold text-[#0f172a] leading-relaxed mt-1">
@@ -1046,20 +1064,72 @@ function ForWhoSection() {
           </div>
         </Reveal>
 
-        {/* ─── 4 situations concrètes ─── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-8">
-          {situations.map((s, i) => (
-            <Reveal key={i} delay={i}>
-              <div className="bg-white rounded-2xl p-6 md:p-7 border border-slate-100 shadow-sm hover:-translate-y-1 hover:shadow-md transition-all duration-300 h-full flex flex-col">
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="text-2xl">{s.emoji}</span>
-                  <h3 className="text-[15px] font-black text-[#0f172a] leading-snug">{s.qui}</h3>
+        {/* ─── 4 boutons interactifs ─── */}
+        <Reveal>
+          <div className="text-center mb-3">
+            <p className="text-sm text-slate-400 italic">Cliquez sur votre situation</p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+            {situations.map((s, i) => (
+              <button key={i} onClick={() => setActiveIdx(activeIdx === i ? null : i)}
+                className={`rounded-2xl p-5 text-center border-[1.5px] transition-all duration-300 cursor-pointer group ${
+                  activeIdx === i
+                    ? 'border-[#2a7d9c] bg-[#f0f7fb] -translate-y-1 shadow-lg'
+                    : 'border-slate-100 bg-white hover:border-[#2a7d9c] hover:-translate-y-1 hover:shadow-md'
+                }`}>
+                <span className={`text-[28px] block mb-2.5 transition-transform duration-300 ${activeIdx === i ? 'scale-110' : 'group-hover:scale-110'}`}>{s.emoji}</span>
+                <span className={`text-[13px] font-bold block leading-tight ${activeIdx === i ? 'text-[#2a7d9c]' : 'text-[#0f172a]'}`}>{s.label}</span>
+                <span className="text-[11px] text-slate-400 block mt-1">{s.micro}</span>
+              </button>
+            ))}
+          </div>
+        </Reveal>
+
+        {/* ─── Résultat animé ─── */}
+        <AnimatePresence mode="wait">
+          {activeIdx !== null && (
+            <motion.div
+              key={activeIdx}
+              initial={{ opacity: 0, y: 12, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: 'auto' }}
+              exit={{ opacity: 0, y: -8, height: 0 }}
+              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+              className="overflow-hidden mb-6">
+              <div className="bg-white rounded-2xl border-[1.5px] border-[#2a7d9c]/20 p-6 md:p-8 flex flex-col md:flex-row gap-5 md:gap-6 items-start">
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-[22px] shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #0f2d3d, #2a7d9c)' }}>
+                  {situations[activeIdx].icon}
                 </div>
-                <p className="text-sm text-slate-500 leading-relaxed flex-1">{s.situation}</p>
+                <div className="flex-1">
+                  <h3 className="text-base md:text-lg font-black text-[#0f172a] mb-2 leading-snug">
+                    {situations[activeIdx].title}
+                  </h3>
+                  <p className="text-sm text-slate-500 leading-relaxed mb-4">
+                    {situations[activeIdx].text}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {situations[activeIdx].pills.map((pill, j) => (
+                      <motion.span key={j}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: j * 0.06 }}
+                        className="text-[11px] font-semibold px-3 py-1.5 rounded-full bg-[#f0f7fb] text-[#185a73] border border-[#2a7d9c]/15">
+                        {pill}
+                      </motion.span>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </Reveal>
-          ))}
-        </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ─── Invite si rien sélectionné ─── */}
+        {activeIdx === null && (
+          <div className="text-center py-4 mb-6">
+            <p className="text-sm text-slate-300 animate-pulse">↑ Sélectionnez votre situation pour voir comment Verimo vous aide</p>
+          </div>
+        )}
 
         {/* ─── CTA ─── */}
         <Reveal className="text-center mb-8">
@@ -1079,8 +1149,6 @@ function ForWhoSection() {
         <Reveal className="mt-2">
           <div className="rounded-2xl overflow-hidden"
             style={{ background: 'linear-gradient(135deg, #0f2d3d, #1a4a5e)' }}>
-
-            {/* Header + CTA */}
             <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 px-7 pt-7 pb-2 md:px-10 md:pt-8 md:pb-3">
               <div className="flex items-center gap-3 shrink-0">
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center"
@@ -1099,8 +1167,6 @@ function ForWhoSection() {
                 Découvrir l'offre Pro <ArrowRight size={14} />
               </Link>
             </div>
-
-            {/* 4 profils — décoratifs, non cliquables */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-7 pb-7 md:px-10 md:pb-8 pt-3">
               {[
                 { emoji: '🏢', label: 'Agent immobilier' },
@@ -1122,7 +1188,8 @@ function ForWhoSection() {
     </section>
   );
 }
-/* ═══ HOW IT WORKS ══════════════════════════════════════════ */
+
+/* ═══ HOW IT WORKS — Timeline parcours d'achat ════════════ */
 function HowItWorksSection() {
   const refMobile = useRef(null);
   const refDesktop = useRef(null);
@@ -1131,37 +1198,34 @@ function HowItWorksSection() {
 
   const steps = [
     {
-      n: "01", color: "#2a7d9c", bg: "rgba(42,125,156,0.08)", border: "rgba(42,125,156,0.18)",
-      title: "Déposez vos documents",
-      desc: "Tout document lié à votre futur logement : PV d'AG, diagnostics, règlement, DPE, compromis… en quelques clics.",
-      icon: (<svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M12 16v-8m0 0-3 3m3-3 3 3M6.5 20h11A2.5 2.5 0 0 0 20 17.5v-11A2.5 2.5 0 0 0 17.5 4h-7L6 8.5V17.5A2.5 2.5 0 0 0 8.5 20Z" /></svg>),
+      emoji: '🔎',
+      title: 'Vous visitez',
+      desc: "L'agent vous envoie les documents. Vous ne comprenez pas tout — c'est normal.",
     },
     {
-      n: "02", color: "#2a7d9c", bg: "rgba(42,125,156,0.08)", border: "rgba(42,125,156,0.18)",
-      title: "Notre outil traite tout",
-      desc: "Chaque page lue, chaque risque détecté, chaque charge estimée. Rapide et automatique.",
-      icon: (<svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>),
+      emoji: '📄',
+      title: 'Vous uploadez',
+      desc: "Déposez vos PDF sur Verimo.\n30 secondes, c'est analysé.",
     },
     {
-      n: "03", color: "#2a7d9c", bg: "rgba(42,125,156,0.08)", border: "rgba(42,125,156,0.18)",
-      title: "Rapport clair & actionnable",
-      desc: "Score /20, points de vigilance, travaux votés, impact financier. Disponible dans votre espace.",
-      icon: (<svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z" /></svg>),
+      emoji: '✅',
+      title: 'Vous comprenez',
+      desc: "Score /20, risques, budget réel — tout est clair et actionnable.",
     },
     {
-      n: "04", color: "#2a7d9c", bg: "rgba(42,125,156,0.08)", border: "rgba(42,125,156,0.18)",
-      title: "Téléchargez en PDF",
-      desc: "Exportez votre rapport complet et partagez-le avec votre agent, notaire ou banque.",
-      icon: (<svg viewBox="0 0 24 24" fill="none" strokeWidth="1.7" stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>),
+      emoji: '🎯',
+      title: 'Vous décidez',
+      desc: "Offre, négociation ou renoncement — en toute confiance.",
     },
   ];
 
   return (
-    <section className="py-12 md:py-18 px-4 md:px-6 bg-white">
+    <section className="py-12 md:py-20 px-4 md:px-6 bg-white">
       <div className="max-w-6xl mx-auto">
-        <SectionTitle label="Comment ça marche" title="Quatre étapes," accent="c'est tout."
-          sub="Pas de formation, pas de jargon. Vous déposez vos fichiers — on fait le reste." />
+        <SectionTitle label="Comment ça marche" title="Votre parcours" accent="simplifié."
+          sub="De la visite à la décision — Verimo vous accompagne à chaque étape." />
 
+        {/* ─── Mobile : vertical ─── */}
         <div className="flex flex-col md:hidden" ref={refMobile}>
           {steps.map((s, i) => (
             <motion.div key={i}
@@ -1170,9 +1234,8 @@ function HowItWorksSection() {
               transition={{ delay: i * 0.12, duration: 0.45 }}
               className="flex gap-4">
               <div className="flex flex-col items-center shrink-0">
-                <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border"
-                  style={{ background: s.bg, borderColor: s.border }}>
-                  <span className="text-sm font-black" style={{ color: s.color }}>{s.n}</span>
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 bg-[#f0f7fb] border-2 border-[#2a7d9c]/20">
+                  {s.emoji}
                 </div>
                 {i < steps.length - 1 && (
                   <motion.div className="w-px min-h-[36px] flex-1 mt-1.5 mb-1.5 rounded-full"
@@ -1182,52 +1245,50 @@ function HowItWorksSection() {
                     transition={{ delay: i * 0.12 + 0.2, duration: 0.35 }} />
                 )}
               </div>
-              <div className="pb-6 pt-1 flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <div style={{ color: s.color }}>{s.icon}</div>
-                  <h3 className="text-base font-bold text-[#0f172a]">{s.title}</h3>
-                </div>
-                <p className="text-sm text-slate-500 leading-relaxed">{s.desc}</p>
+              <div className="pb-6 pt-2 flex-1">
+                <h3 className="text-base font-bold text-[#0f172a] mb-1">{s.title}</h3>
+                <p className="text-sm text-slate-500 leading-relaxed whitespace-pre-line">{s.desc}</p>
               </div>
             </motion.div>
           ))}
         </div>
 
+        {/* ─── Desktop : timeline horizontale ─── */}
         <div className="hidden md:block" ref={refDesktop}>
-          <div className="relative flex items-center justify-between mb-8 px-[56px]">
-            <div className="absolute inset-x-[56px] top-1/2 -translate-y-1/2 h-px bg-slate-200" />
+          {/* Ligne + ronds */}
+          <div className="relative flex items-center justify-between mb-10 px-[70px]">
+            <div className="absolute inset-x-[70px] top-1/2 -translate-y-1/2 h-px bg-slate-200" />
             <motion.div
-              className="absolute left-[56px] top-1/2 -translate-y-1/2 h-[2px] rounded-full bg-[#2a7d9c]/40"
+              className="absolute left-[70px] top-1/2 -translate-y-1/2 h-[2px] rounded-full bg-[#2a7d9c]/40"
               initial={{ width: 0 }}
-              animate={inViewDesktop ? { width: "calc(100% - 112px)" } : {}}
-              transition={{ duration: 1.2, delay: 0.2, ease: [0.22, 1, 0.36, 1] }} />
+              animate={inViewDesktop ? { width: "calc(100% - 140px)" } : {}}
+              transition={{ duration: 1.4, delay: 0.2, ease: [0.22, 1, 0.36, 1] }} />
             {steps.map((s, i) => (
               <motion.div key={i}
-                initial={{ opacity: 0, scale: 0.6 }}
+                initial={{ opacity: 0, scale: 0.5 }}
                 animate={inViewDesktop ? { opacity: 1, scale: 1 } : {}}
-                transition={{ delay: i * 0.15 + 0.15, duration: 0.35, ease: "backOut" }}
-                className="relative z-10 flex flex-col items-center gap-2.5">
-                <div className="w-14 h-14 rounded-2xl border-2 flex items-center justify-center bg-white shadow-md"
-                  style={{ borderColor: s.border, color: s.color }}>
-                  {s.icon}
+                transition={{ delay: i * 0.18 + 0.15, duration: 0.4, ease: "backOut" }}
+                className="relative z-10">
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl bg-white shadow-lg border-2 ${i === steps.length - 1 ? 'border-[#0f2d3d] bg-[#0f2d3d]' : 'border-[#2a7d9c]/25'}`}>
+                  {s.emoji}
                 </div>
-                <span className="text-xs font-black text-[#2a7d9c] bg-[#2a7d9c]/8 px-2.5 py-0.5 rounded-full">{s.n}</span>
               </motion.div>
             ))}
           </div>
+
+          {/* Cartes texte */}
           <div className="grid grid-cols-4 gap-5">
             {steps.map((s, i) => (
               <motion.div key={i}
                 initial={{ opacity: 0, y: 16 }}
                 animate={inViewDesktop ? { opacity: 1, y: 0 } : {}}
-                transition={{ delay: i * 0.12 + 0.4, duration: 0.45 }}
-                className="rounded-2xl p-6 bg-[#f4f7f9] border border-slate-100 hover:border-[#2a7d9c]/20 hover:bg-[#eef6fb] hover:-translate-y-1 transition-all duration-200 cursor-default">
-                <div className="flex items-center gap-2 mb-3" style={{ color: s.color }}>
-                  {s.icon}
-                  <span className="text-xs font-black text-[#2a7d9c]">{s.n}</span>
-                </div>
+                transition={{ delay: i * 0.12 + 0.5, duration: 0.45 }}
+                className="rounded-2xl p-6 bg-[#f4f7f9] border border-slate-100 hover:border-[#2a7d9c]/20 hover:bg-[#eef6fb] hover:-translate-y-1 transition-all duration-200 cursor-default text-center">
+                <span className="text-xs font-black text-[#2a7d9c] bg-[#2a7d9c]/8 px-2.5 py-0.5 rounded-full inline-block mb-3">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
                 <h3 className="text-base font-bold text-[#0f172a] mb-2">{s.title}</h3>
-                <p className="text-sm text-slate-500 leading-relaxed">{s.desc}</p>
+                <p className="text-sm text-slate-500 leading-relaxed whitespace-pre-line">{s.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -1243,7 +1304,6 @@ function HowItWorksSection() {
     </section>
   );
 }
-
 /* ═══ APERÇU DU RAPPORT ═════════════════════════════════════ */
 function ApercuRapportSection() {
   const points = [
