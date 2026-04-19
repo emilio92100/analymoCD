@@ -215,7 +215,7 @@ function CheckoutModal({ plan, onClose }: {
 export default function Tarifs() {
   const [creditsToast, setCreditsToast] = useState<string | null>(null);
   const { credits, fetchCredits } = useCredits();
-  const [tooltip, setTooltip] = useState<string | null>(null);
+  const [detailPlan, setDetailPlan] = useState<string | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<null | { id: string; label: string; price: string; priceNum: number; color: string; creditLabel: string }>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
@@ -282,7 +282,6 @@ export default function Tarifs() {
         {plans.map(plan => {
           const Icon = plan.icon;
           const hasCredits = credits[plan.creditType] > 0;
-          const showTip = tooltip === plan.id;
           return (
             <div key={plan.id} style={{ background: '#fff', borderRadius: 16, border: plan.popular ? '2px solid #0f2d3d' : '1.5px solid #edf2f7', boxShadow: plan.popular ? '0 8px 28px rgba(15,45,61,0.12)' : '0 1px 6px rgba(0,0,0,0.04)', transition: 'box-shadow 0.2s, transform 0.2s', position: 'relative' }}
               onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.boxShadow = plan.popular ? '0 14px 44px rgba(15,45,61,0.18)' : '0 6px 20px rgba(0,0,0,0.08)'; el.style.transform = 'translateY(-2px)'; }}
@@ -308,27 +307,11 @@ export default function Tarifs() {
                   <div style={{ fontSize: 30, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em', lineHeight: 1 }}>{plan.price}</div>
                   <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 3 }}>paiement unique</div>
                 </div>
-                <div style={{ position: 'relative', flexShrink: 0 }}>
-                  <button onMouseEnter={() => setTooltip(plan.id)} onMouseLeave={() => setTooltip(null)}
-                    style={{ width: 30, height: 30, borderRadius: '50%', background: '#f8fafc', border: '1.5px solid #edf2f7', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#94a3b8', transition: 'all 0.15s' }}
-                    onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.background = `${plan.color}10`; el.style.borderColor = `${plan.color}30`; el.style.color = plan.color; }}
-                    onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.background = '#f8fafc'; el.style.borderColor = '#edf2f7'; el.style.color = '#94a3b8'; }}>
+                <div style={{ flexShrink: 0 }}>
+                  <button onClick={() => setDetailPlan(detailPlan === plan.id ? null : plan.id)}
+                    style={{ width: 30, height: 30, borderRadius: '50%', background: detailPlan === plan.id ? `${plan.color}15` : '#f8fafc', border: `1.5px solid ${detailPlan === plan.id ? `${plan.color}40` : '#edf2f7'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: detailPlan === plan.id ? plan.color : '#94a3b8', transition: 'all 0.15s' }}>
                     <Info size={13} />
                   </button>
-                  {showTip && (
-                    <div style={{ position: 'absolute', right: 0, top: 38, zIndex: 200, background: '#0f172a', borderRadius: 13, padding: '14px 16px', width: 240, boxShadow: '0 16px 48px rgba(0,0,0,0.28)', animation: 'fadeUp 0.15s ease both', pointerEvents: 'none' }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', marginBottom: 10 }}>INCLUS DANS CE PACK</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                        {plan.details.map((d, i) => (
-                          <div key={i} style={{ display: 'flex', gap: 7, alignItems: 'flex-start' }}>
-                            <CheckCircle size={11} style={{ color: '#4ade80', flexShrink: 0, marginTop: 2 }} />
-                            <span style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.72)', lineHeight: 1.4 }}>{d}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <div style={{ position: 'absolute', top: -5, right: 10, width: 10, height: 10, background: '#0f172a', transform: 'rotate(45deg)', borderRadius: 2 }} />
-                    </div>
-                  )}
                 </div>
                 <button onClick={() => setCheckoutPlan({ id: plan.id, label: plan.label, price: plan.price, priceNum: plan.priceNum, color: plan.color, creditLabel: plan.creditLabel })}
                   style={{ flexShrink: 0, padding: '11px 22px', borderRadius: 11, border: 'none', background: `linear-gradient(135deg, ${plan.color}, ${plan.color}cc)`, color: '#fff', fontSize: 13.5, fontWeight: 800, cursor: 'pointer', boxShadow: `0 4px 14px ${plan.color}30`, display: 'flex', alignItems: 'center', gap: 7, transition: 'all 0.15s', whiteSpace: 'nowrap' }}
@@ -356,6 +339,41 @@ export default function Tarifs() {
           </div>
         ))}
       </div>
+
+      {detailPlan && (() => {
+        const plan = plans.find(p => p.id === detailPlan);
+        if (!plan) return null;
+        const Icon = plan.icon;
+        return (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={() => setDetailPlan(null)}>
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,45,61,0.45)', backdropFilter: 'blur(3px)' }} />
+            <div onClick={e => e.stopPropagation()} style={{ position: 'relative', background: '#fff', borderRadius: 20, padding: '28px 26px 24px', maxWidth: 380, width: '100%', boxShadow: '0 20px 60px rgba(15,45,61,0.25)', animation: 'fadeUp 0.2s ease both' }}>
+              <button onClick={() => setDetailPlan(null)} style={{ position: 'absolute', top: 14, right: 14, width: 28, height: 28, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 15, fontWeight: 700 }}>×</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+                <div style={{ width: 42, height: 42, borderRadius: 12, background: `${plan.color}0e`, border: `1.5px solid ${plan.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Icon size={20} style={{ color: plan.color }} /></div>
+                <div>
+                  <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>{plan.label}</div>
+                  <div style={{ fontSize: 12, color: '#94a3b8' }}>{plan.creditLabel} · {plan.price}</div>
+                </div>
+              </div>
+              <div style={{ height: 1, background: '#f1f5f9', marginBottom: 16 }} />
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 12 }}>INCLUS DANS CETTE OFFRE</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {plan.details.map((d, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <CheckCircle size={14} style={{ color: '#16a34a', flexShrink: 0, marginTop: 2 }} />
+                    <span style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.5 }}>{d}</span>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => { setDetailPlan(null); setCheckoutPlan({ id: plan.id, label: plan.label, price: plan.price, priceNum: plan.priceNum, color: plan.color, creditLabel: plan.creditLabel }); }}
+                style={{ width: '100%', marginTop: 20, padding: '12px', borderRadius: 11, border: 'none', background: `linear-gradient(135deg, ${plan.color}, ${plan.color}cc)`, color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer', boxShadow: `0 4px 14px ${plan.color}25` }}>
+                Acheter
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {checkoutPlan && <CheckoutModal plan={checkoutPlan} onClose={(type, count, creditType) => {
         setCheckoutPlan(null);
