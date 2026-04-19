@@ -1015,7 +1015,7 @@ function ForWhoSection() {
         <Reveal>
           <p className="text-center text-base md:text-lg text-slate-500 leading-relaxed max-w-2xl mx-auto mb-10 md:mb-14">
             Que ce soit votre premier achat ou votre dixième, les documents restent les mêmes —
-            et les risques aussi.{' '}
+            et les risques aussi.<br />
             <span className="font-semibold text-[#0f172a]">Verimo les analyse pour que vous décidiez en confiance.</span>
           </p>
         </Reveal>
@@ -1051,7 +1051,7 @@ function ForWhoSection() {
                 <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mb-5">Ce que Verimo fait pour vous</p>
                 <div className="flex flex-col gap-4">
                   {[
-                    { emoji: '📋', title: 'Vos documents traduits', desc: 'PV d\'AG, règlement de copro, diagnostics — on décrypte le jargon juridique en langage simple.' },
+                    { emoji: '📋', title: 'Vos documents traduits', desc: 'PV d\'AG, règlement de copro, diagnostics, appels de charges, compromis et tout document lié à votre achat — décryptés en langage simple.' },
                     { emoji: '🔍', title: 'Les risques détectés', desc: 'Travaux votés, impayés, procédures judiciaires, DPE dégradé — rien ne passe entre les mailles.' },
                     { emoji: '💰', title: 'Votre budget réel chiffré', desc: 'Charges mensuelles, fonds travaux, appels de fonds exceptionnels — vous savez combien ça coûte vraiment.' },
                   ].map((item, i) => (
