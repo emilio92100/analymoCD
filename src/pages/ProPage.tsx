@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import {
-  ArrowRight, Building2, TrendingUp, Scale,
+  ArrowRight, Building2, TrendingUp, Scale, Key,
   ShieldCheck, Clock, FileText, BarChart3, Users,
   Zap, Eye, Lock, ChevronDown, Star, Target,
   PieChart, BadgeCheck, Handshake,
@@ -76,6 +76,20 @@ const profiles = [
     ],
     stats: [{ value: '10x', label: 'plus rapide' }, { value: '/20', label: 'score objectif' }, { value: '∞', label: 'sans expiration' }],
     color: '#7c3aed', lightBg: '#f5f3ff',
+  },
+  {
+    id: 'marchand', icon: Key, emoji: '🔑', label: 'Marchand de bien',
+    tagline: 'Achetez, transformez, revendez — sans surprises.',
+    headline: 'Chaque lot caché, chaque risque non détecté, c\'est de la marge perdue.',
+    description: 'Division, rénovation, revente en bloc — votre rentabilité dépend de la précision de votre analyse documentaire. Verimo extrait en 30 secondes les travaux votés, les restrictions du règlement de copropriété, les procédures en cours et les charges réelles.',
+    benefits: [
+      { icon: Target, title: 'Due diligence express', text: 'Travaux votés, impayés, procédures, DPE — tout ce qui impacte votre prix de revient en un rapport.' },
+      { icon: PieChart, title: 'Marge chiffrée', text: 'Charges réelles, fonds travaux, appels de fonds exceptionnels — calculez votre rentabilité nette.' },
+      { icon: Eye, title: 'Restrictions détectées', text: 'Interdiction de division, usage commercial limité, servitudes — repéré avant la signature.' },
+      { icon: Zap, title: 'Volume & rapidité', text: 'Analysez 10 dossiers par jour. 30 secondes par bien, zéro page lue.' },
+    ],
+    stats: [{ value: '30s', label: 'par dossier' }, { value: '/20', label: 'score objectif' }, { value: '10+', label: 'biens / jour' }],
+    color: '#d97706', lightBg: '#fffbeb',
   },
   {
     id: 'notaire', icon: Scale, emoji: '⚖️', label: 'Notaire',
@@ -172,15 +186,16 @@ function HeroSection() {
 
         <motion.p variants={up} initial="hidden" animate="show" custom={2}
           className="text-base md:text-xl text-white/55 leading-relaxed max-w-5xl mx-auto mb-10">
-          Agents immobiliers, investisseurs, notaires — intégrez un outil d'analyse documentaire intelligent à votre activité. Score /20, risques chiffrés, rapport en 30 secondes.
+          Agents immobiliers, investisseurs, marchands de bien, notaires — intégrez un outil d'analyse documentaire intelligent à votre activité. Score /20, risques chiffrés, rapport en 30 secondes.
         </motion.p>
 
         {/* 3 profils en cartes */}
         <motion.div variants={up} initial="hidden" animate="show" custom={2.5}
-          className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 max-w-3xl mx-auto mb-10">
+          className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 max-w-4xl mx-auto mb-10">
           {[
             { emoji: '🏢', label: 'Agents immobiliers', desc: 'Rassurez vos acquéreurs' },
             { emoji: '📈', label: 'Investisseurs', desc: 'Comparez vos opportunités' },
+            { emoji: '🔑', label: 'Marchands de bien', desc: 'Sécurisez vos opérations' },
             { emoji: '⚖️', label: 'Notaires', desc: 'Accélérez vos dossiers' },
           ].map((p, i) => (
             <div key={i} className="rounded-2xl px-5 py-4 text-center"
@@ -267,7 +282,7 @@ function ProfilesSection() {
         </Reveal>
 
         <Reveal delay={1} className="flex justify-center mb-14">
-          <div className="grid grid-cols-3 sm:inline-flex bg-[#f4f7f9] rounded-2xl p-1.5 gap-1.5 sm:gap-1 border border-slate-100/80 w-full sm:w-auto max-w-md sm:max-w-none mx-auto">
+          <div className="grid grid-cols-4 sm:inline-flex bg-[#f4f7f9] rounded-2xl p-1.5 gap-1.5 sm:gap-1 border border-slate-100/80 w-full sm:w-auto max-w-lg sm:max-w-none mx-auto">
             {profiles.map((p, i) => (
               <button key={p.id} onClick={() => setActiveIdx(i)}
                 className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 px-3 sm:px-5 py-3 sm:py-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-250"
@@ -300,7 +315,7 @@ function ProfilesSection() {
                       </motion.div>
                     ))}
                   </div>
-                  <Link to={`/contact-pro?type=${active.id === 'investor' ? 'investisseur' : active.id}`}
+                  <Link to={`/contact-pro?type=${active.id === 'investor' ? 'investisseur' : active.id === 'marchand' ? 'marchand' : active.id}`}
                     className="inline-flex self-start items-center gap-2 px-7 py-3.5 rounded-xl text-sm font-bold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
                     style={{ background: active.color, color: '#fff' }}>
                     Être recontacté <ArrowRight size={15} />
@@ -384,6 +399,7 @@ function TestimonialsSection() {
   const testimonials = [
     { quote: 'Verimo a changé notre façon de préparer les dossiers acquéreurs. On gagne un temps fou et nos clients sont rassurés dès la première visite.', name: 'Sophie M.', role: 'Directrice d\'agence', city: 'Lyon', type: '🏢 Agent' },
     { quote: 'J\'analyse 8 à 10 biens par mois. Avant, je passais 2h par dossier. Avec Verimo, c\'est 30 secondes et je ne rate rien.', name: 'Thomas R.', role: 'Investisseur', city: 'Paris', type: '📈 Investisseur' },
+    { quote: 'Sur mes opérations de division, Verimo m\'a évité deux mauvaises surprises : une interdiction de diviser dans le RCP et des travaux votés non réalisés. Indispensable pour sécuriser mes marges.', name: 'Karim B.', role: 'Marchand de bien', city: 'Marseille', type: '🔑 Marchand' },
     { quote: 'Un excellent complément à notre analyse. Le rapport synthétise les PV d\'AG de manière remarquable. Mes clercs adorent.', name: 'Maître L.', role: 'Notaire associé', city: 'Bordeaux', type: '⚖️ Notaire' },
   ];
   return (
@@ -395,7 +411,7 @@ function TestimonialsSection() {
             Ils font confiance à{' '}<span className="relative inline-block"><span className="text-[#2a7d9c]">Verimo.</span><AccentUnderline /></span>
           </h2>
         </Reveal>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {testimonials.map((t, i) => (
             <Reveal key={i} delay={i}>
               <div className="relative bg-[#f8fafc] rounded-2xl p-7 border border-slate-100 h-full flex flex-col">
