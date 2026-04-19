@@ -1066,8 +1066,11 @@ function ForWhoSection() {
 
         {/* ─── 4 boutons interactifs ─── */}
         <Reveal>
-          <div className="text-center mb-3">
-            <p className="text-sm text-slate-400 italic">Cliquez sur votre situation</p>
+          <div className="text-center mb-4">
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#2a7d9c]/20 shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-[#2a7d9c] shrink-0 animate-pulse" />
+              <span className="text-sm font-semibold text-[#2a7d9c]">Cliquez sur votre situation</span>
+            </span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
             {situations.map((s, i) => (
@@ -1126,8 +1129,11 @@ function ForWhoSection() {
 
         {/* ─── Invite si rien sélectionné ─── */}
         {activeIdx === null && (
-          <div className="text-center py-4 mb-6">
-            <p className="text-sm text-slate-300 animate-pulse">↑ Sélectionnez votre situation pour voir comment Verimo vous aide</p>
+          <div className="text-center py-5 mb-6">
+            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white border border-slate-200 shadow-sm">
+              <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" stroke="#2a7d9c" className="w-4 h-4 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5 12 3m0 0 7.5 7.5M12 3v18" /></svg>
+              <span className="text-sm font-medium text-[#0f172a]">Sélectionnez votre situation pour découvrir comment Verimo vous aide</span>
+            </div>
           </div>
         )}
 
@@ -1253,42 +1259,38 @@ function HowItWorksSection() {
           ))}
         </div>
 
-        {/* ─── Desktop : timeline horizontale ─── */}
+        {/* ─── Desktop : timeline horizontale — icône + texte liés ─── */}
         <div className="hidden md:block" ref={refDesktop}>
-          {/* Ligne + ronds */}
-          <div className="relative flex items-center justify-between mb-10 px-[70px]">
-            <div className="absolute inset-x-[70px] top-1/2 -translate-y-1/2 h-px bg-slate-200" />
+          <div className="relative flex justify-between items-start">
+            {/* Ligne horizontale de fond */}
+            <div className="absolute left-[calc(12.5%)] right-[calc(12.5%)] top-[32px] h-px bg-slate-200" />
             <motion.div
-              className="absolute left-[70px] top-1/2 -translate-y-1/2 h-[2px] rounded-full bg-[#2a7d9c]/40"
-              initial={{ width: 0 }}
-              animate={inViewDesktop ? { width: "calc(100% - 140px)" } : {}}
+              className="absolute left-[calc(12.5%)] top-[32px] h-[2px] rounded-full bg-[#2a7d9c]/40"
+              style={{ right: 'calc(12.5%)' }}
+              initial={{ scaleX: 0, transformOrigin: 'left' }}
+              animate={inViewDesktop ? { scaleX: 1 } : {}}
               transition={{ duration: 1.4, delay: 0.2, ease: [0.22, 1, 0.36, 1] }} />
+
             {steps.map((s, i) => (
               <motion.div key={i}
-                initial={{ opacity: 0, scale: 0.5 }}
-                animate={inViewDesktop ? { opacity: 1, scale: 1 } : {}}
-                transition={{ delay: i * 0.18 + 0.15, duration: 0.4, ease: "backOut" }}
-                className="relative z-10">
-                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl bg-white shadow-lg border-2 ${i === steps.length - 1 ? 'border-[#0f2d3d] bg-[#0f2d3d]' : 'border-[#2a7d9c]/25'}`}>
+                initial={{ opacity: 0, y: 20 }}
+                animate={inViewDesktop ? { opacity: 1, y: 0 } : {}}
+                transition={{ delay: i * 0.18 + 0.15, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                className="flex flex-col items-center text-center"
+                style={{ width: '25%' }}>
+                {/* Icône */}
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl bg-white shadow-lg border-2 mb-5 relative z-10 ${i === steps.length - 1 ? 'border-[#0f2d3d]' : 'border-[#2a7d9c]/25'}`}
+                  style={i === steps.length - 1 ? { background: '#0f2d3d' } : {}}>
                   {s.emoji}
                 </div>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Cartes texte */}
-          <div className="grid grid-cols-4 gap-5">
-            {steps.map((s, i) => (
-              <motion.div key={i}
-                initial={{ opacity: 0, y: 16 }}
-                animate={inViewDesktop ? { opacity: 1, y: 0 } : {}}
-                transition={{ delay: i * 0.12 + 0.5, duration: 0.45 }}
-                className="rounded-2xl p-6 bg-[#f4f7f9] border border-slate-100 hover:border-[#2a7d9c]/20 hover:bg-[#eef6fb] hover:-translate-y-1 transition-all duration-200 cursor-default text-center">
+                {/* Numéro */}
                 <span className="text-xs font-black text-[#2a7d9c] bg-[#2a7d9c]/8 px-2.5 py-0.5 rounded-full inline-block mb-3">
                   {String(i + 1).padStart(2, '0')}
                 </span>
+                {/* Titre */}
                 <h3 className="text-base font-bold text-[#0f172a] mb-2">{s.title}</h3>
-                <p className="text-sm text-slate-500 leading-relaxed whitespace-pre-line">{s.desc}</p>
+                {/* Description */}
+                <p className="text-sm text-slate-500 leading-relaxed whitespace-pre-line max-w-[200px]">{s.desc}</p>
               </motion.div>
             ))}
           </div>
