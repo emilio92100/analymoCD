@@ -12,8 +12,8 @@ const isLowPerf = () => isIOS() || (typeof window !== 'undefined' && window.inne
 const allFeatures = [
   { label: 'Avis Verimo personnalisé', tip: 'Conclusion rédigée par Verimo adaptée à votre profil d\'acheteur', simple: true, complete: true, pack2: true, pack3: true },
   { label: 'Score /20 + verdict d\'achat', tip: 'Note globale sur 20 avec verdict clair : Acheter, Négocier ou Risqué', simple: false, complete: true, pack2: true, pack3: true },
-  { label: 'Travaux votés et à prévoir', tip: 'Travaux décidés en AG et travaux à anticiper détectés dans vos documents', simple: false, complete: true, pack2: true, pack3: true },
-  { label: 'Santé financière copro', tip: 'Charges, fonds travaux, impayés et budget de la copropriété', simple: false, complete: true, pack2: true, pack3: true },
+  { label: 'Travaux votés et à prévoir', tip: 'Travaux décidés en AG et travaux à anticiper détectés dans vos documents', simple: 'partial', complete: true, pack2: true, pack3: true },
+  { label: 'Santé financière copro', tip: 'Charges, fonds travaux, impayés et budget de la copropriété', simple: 'partial', complete: true, pack2: true, pack3: true },
   { label: 'Pistes de négociation', tip: 'Arguments concrets pour négocier le prix, affichés si le score est inférieur à 14/20', simple: false, complete: true, pack2: true, pack3: true },
   { label: 'Rapport PDF téléchargeable', tip: 'Téléchargez votre rapport complet au format PDF', simple: false, complete: true, pack2: true, pack3: true },
   { label: 'Compléter sous 7 jours', tip: 'Ajoutez des documents oubliés dans les 7 jours — le rapport est recalculé gratuitement', simple: false, complete: true, pack2: true, pack3: true },
@@ -87,8 +87,8 @@ const tableRows = [
   { label: 'Avis Verimo personnalisé', tip: 'Conclusion rédigée par Verimo adaptée à votre profil d\'acheteur', vals: [true, true, true, true], type: 'bool' },
   { label: 'Documents analysés', tip: 'Nombre de fichiers PDF analysables simultanément pour un même bien', vals: ['1 doc', 'Jusqu\'à 15', '2 × 15', '3 × 15'], type: 'text' },
   { label: 'Score /20 + verdict d\'achat', tip: 'Note globale sur 20 avec verdict clair : Acheter, Négocier ou Risqué', vals: [false, true, true, true], type: 'bool' },
-  { label: 'Travaux votés et à prévoir', tip: 'Travaux décidés en AG et travaux à anticiper détectés dans vos documents', vals: [false, true, true, true], type: 'bool' },
-  { label: 'Santé financière copro', tip: 'Charges, fonds travaux, impayés et budget de la copropriété', vals: [false, true, true, true], type: 'bool' },
+  { label: 'Travaux votés et à prévoir', tip: 'Travaux décidés en AG et travaux à anticiper détectés dans vos documents', vals: ['Selon le doc', true, true, true], type: 'text_or_bool' },
+  { label: 'Santé financière copro', tip: 'Charges, fonds travaux, impayés et budget de la copropriété', vals: ['Selon le doc', true, true, true], type: 'text_or_bool' },
   { label: 'Pistes de négociation', tip: 'Arguments pour négocier le prix, affichés si le score est inférieur à 14/20', vals: [false, true, true, true], type: 'bool' },
   { label: 'Compléter le dossier (7j)', tip: 'Ajoutez des documents oubliés dans les 7 jours — rapport recalculé gratuitement', vals: [false, true, true, true], type: 'bool' },
   { label: 'Rapport PDF téléchargeable', tip: 'Téléchargez votre rapport complet au format PDF', vals: [false, true, true, true], type: 'bool' },
@@ -166,10 +166,11 @@ function TableCell({ val, isHighlight }: { val: boolean | string; isHighlight: b
       </div>
     </td>
   );
-  const isGreen = val !== '—' && val !== '1 doc';
+  const isAmber = typeof val === 'string' && val === 'Selon le doc';
+  const isGreen = val !== '—' && val !== '1 doc' && !isAmber;
   return (
     <td style={{ textAlign: 'center', padding: '12px 8px', background: bg, borderLeft: '1px solid #f1f5f9' }}>
-      <span style={{ fontSize: 12.5, fontWeight: 700, color: val === '—' ? '#e2e8f0' : isGreen ? '#16a34a' : '#2a7d9c' }}>{val as string}</span>
+      <span style={{ fontSize: isAmber ? 11 : 12.5, fontWeight: 700, color: val === '—' ? '#e2e8f0' : isAmber ? '#d97706' : isGreen ? '#16a34a' : '#2a7d9c' }}>{val as string}</span>
     </td>
   );
 }
@@ -204,7 +205,7 @@ export default function TarifsPage() {
 
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.13 }}
           style={{ fontSize: 16, color: '#64748b', maxWidth: 520, margin: '0 auto 28px', lineHeight: 1.65, textAlign: 'center', padding: '0 16px' }}>
-          Sans abonnement. Sans engagement. Payez une fois, gardez votre rapport.
+          Sans abonnement. Sans engagement. Vos crédits n'expirent jamais.
         </motion.p>
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.18 }}
@@ -281,9 +282,15 @@ export default function TarifsPage() {
                 <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 11, flex: 1, marginBottom: 22 }}>
                   {allFeatures.map((feat, fi) => {
                     const included = feat[plan.key];
+                    const isPartial = included === 'partial';
                     return (
                       <div key={fi} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, opacity: included ? 1 : 0.3 }}>
-                        {included ? (
+                        {isPartial ? (
+                          <svg width="18" height="18" viewBox="0 0 16 16" style={{ flexShrink: 0, marginTop: 1 }}>
+                            <circle cx="8" cy="8" r="7" fill="#fffbeb" stroke="#fde68a" strokeWidth="1.2" />
+                            <path d="M5.5 8h5" stroke="#d97706" strokeWidth="1.6" strokeLinecap="round" />
+                          </svg>
+                        ) : included ? (
                           <svg width="18" height="18" viewBox="0 0 16 16" style={{ flexShrink: 0, marginTop: 1 }}>
                             <circle cx="8" cy="8" r="7" fill={plan.popular ? '#e6f7ed' : '#f0fdf4'} stroke={plan.popular ? '#22c55e' : '#bbf7d0'} strokeWidth="1.2" />
                             <path d="M5 8.2l2 2 4-4.4" stroke="#16a34a" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
@@ -294,7 +301,7 @@ export default function TarifsPage() {
                             <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#cbd5e1" strokeWidth="1.2" strokeLinecap="round" />
                           </svg>
                         )}
-                        <span style={{ fontSize: 13.5, color: included ? '#374151' : '#94a3b8', lineHeight: 1.45 }}>{feat.label}</span>
+                        <span style={{ fontSize: 13.5, color: isPartial ? '#92400e' : included ? '#374151' : '#94a3b8', lineHeight: 1.45 }}>{isPartial ? `${feat.label} *` : feat.label}</span>
                       </div>
                     );
                   })}
@@ -414,7 +421,7 @@ export default function TarifsPage() {
                             </div>
                             {val === true && <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#f0fdf4', border: '1.5px solid #86efac', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Check size={11} color="#16a34a" strokeWidth={2.5} /></div>}
                             {val === false && <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={10} color="#cbd5e1" /></div>}
-                            {typeof val === 'string' && <span style={{ fontSize: 12, fontWeight: 700, color: val === '—' ? '#e2e8f0' : '#16a34a' }}>{val}</span>}
+                            {typeof val === 'string' && <span style={{ fontSize: 12, fontWeight: 700, color: val === '—' ? '#e2e8f0' : val === 'Selon le doc' ? '#d97706' : '#16a34a' }}>{val}</span>}
                           </div>
                         );
                       })}
@@ -444,7 +451,7 @@ export default function TarifsPage() {
               <Crown size={18} color="#f0a500" style={{ flexShrink: 0 }} />
               <div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>Offre Professionnelle</div>
-                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>Notaires, agents, syndics — volumes illimités, tarif dédié.</div>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>Agents immobiliers, investisseurs, marchands de bien, notaires — tarif dédié.</div>
               </div>
             </div>
             <Link to="/contact-pro" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 10, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' as const }}>
