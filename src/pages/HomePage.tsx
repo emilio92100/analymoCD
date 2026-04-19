@@ -1006,104 +1006,72 @@ function SecuriteSection() {
 
 /* ═══ FOR WHO ══════════════════════════════════════════════ */
 function ForWhoSection() {
+  const situations = [
+    {
+      emoji: '🔎',
+      qui: 'Vous visitez un appartement ce week-end',
+      situation: 'L\'agent vous a envoyé le PV d\'AG et les diagnostics. Vous n\'avez ni le temps ni les compétences pour tout lire. Verimo vous dit en 30 secondes si le bien est sain ou risqué.',
+    },
+    {
+      emoji: '📑',
+      qui: 'Vous hésitez avant de faire une offre',
+      situation: 'Travaux votés ? Impayés dans la copro ? DPE dégradé ? Vous voulez savoir exactement ce qui vous attend financièrement avant de vous engager.',
+    },
+    {
+      emoji: '⚖️',
+      qui: 'Vous voulez négocier le prix',
+      situation: 'Le rapport Verimo chiffre les risques détectés et vous donne des arguments concrets à présenter au vendeur ou à son agent pour justifier une baisse de prix.',
+    },
+    {
+      emoji: '🏠',
+      qui: 'C\'est votre premier achat',
+      situation: 'Règlement de copropriété, tantièmes, fonds ALUR, quitus syndic… Vous ne comprenez rien et c\'est normal. Verimo traduit tout en langage simple et vous guide.',
+    },
+  ];
+
   return (
     <section className="py-14 md:py-24 px-4 md:px-6 bg-[#f4f7f9]">
       <div className="max-w-5xl mx-auto">
         <SectionTitle label="Pour qui" title="Fait pour" accent="vous." />
 
-        {/* ─── Accroche ─── */}
+        {/* ─── Sous-titre sur 2 lignes forcées ─── */}
         <Reveal>
-          <p className="text-center text-base md:text-lg text-slate-500 leading-relaxed max-w-2xl mx-auto mb-10 md:mb-14">
-            Que ce soit votre premier achat ou votre dixième, les documents restent les mêmes —
-            et les risques aussi.<br />
-            <span className="font-semibold text-[#0f172a]">Verimo les analyse pour que vous décidiez en confiance.</span>
-          </p>
+          <div className="text-center mb-10 md:mb-14 max-w-3xl mx-auto">
+            <p className="text-base md:text-lg text-slate-500 leading-relaxed" style={{ whiteSpace: 'nowrap' }}>
+              Que ce soit votre premier achat ou votre dixième, les documents restent les mêmes — et les risques aussi.
+            </p>
+            <p className="text-base md:text-lg font-semibold text-[#0f172a] leading-relaxed mt-1">
+              Verimo les analyse pour que vous décidiez en confiance.
+            </p>
+          </div>
         </Reveal>
 
-        {/* ─── Bloc acheteurs particuliers ─── */}
-        <Reveal>
-          <div className="rounded-3xl overflow-hidden border border-slate-100 shadow-lg mb-6">
-
-            {/* Header acheteurs */}
-            <div className="px-7 md:px-10 py-6 md:py-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-              style={{ background: 'linear-gradient(135deg, #f0f7fb 0%, #e4f2f8 100%)' }}>
-              <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-[#2a7d9c]/15 shadow-sm mb-3">
-                  <span className="text-sm">🏠</span>
-                  <span className="text-xs font-bold text-[#2a7d9c] uppercase tracking-wide">Acheteurs particuliers</span>
+        {/* ─── 4 situations concrètes ─── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-8">
+          {situations.map((s, i) => (
+            <Reveal key={i} delay={i}>
+              <div className="bg-white rounded-2xl p-6 md:p-7 border border-slate-100 shadow-sm hover:-translate-y-1 hover:shadow-md transition-all duration-300 h-full flex flex-col">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-2xl">{s.emoji}</span>
+                  <h3 className="text-[15px] font-black text-[#0f172a] leading-snug">{s.qui}</h3>
                 </div>
-                <h3 className="text-xl md:text-2xl font-black text-[#0f172a] leading-tight">
-                  Vous achetez un bien ?{' '}
-                  <span className="text-[#2a7d9c]">On vous aide à y voir clair.</span>
-                </h3>
+                <p className="text-sm text-slate-500 leading-relaxed flex-1">{s.situation}</p>
               </div>
-              <Link to="/start"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#0f2d3d] text-white text-sm font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 shrink-0">
-                Lancer mon analyse <ArrowRight size={14} />
-              </Link>
-            </div>
+            </Reveal>
+          ))}
+        </div>
 
-            {/* Contenu — 2 colonnes */}
-            <div className="grid grid-cols-1 md:grid-cols-2">
-
-              {/* Colonne gauche — ce qu'on fait */}
-              <div className="px-7 md:px-10 py-7 md:py-9 bg-white">
-                <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mb-5">Ce que Verimo fait pour vous</p>
-                <div className="flex flex-col gap-4">
-                  {[
-                    { emoji: '📋', title: 'Vos documents traduits', desc: 'PV d\'AG, règlement de copro, diagnostics, appels de charges, compromis et tout document lié à votre achat — décryptés en langage simple.' },
-                    { emoji: '🔍', title: 'Les risques détectés', desc: 'Travaux votés, impayés, procédures judiciaires, DPE dégradé — rien ne passe entre les mailles.' },
-                    { emoji: '💰', title: 'Votre budget réel chiffré', desc: 'Charges mensuelles, fonds travaux, appels de fonds exceptionnels — vous savez combien ça coûte vraiment.' },
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 bg-[#f4f7f9] border border-slate-100">
-                        {item.emoji}
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-[#0f172a] mb-1">{item.title}</h4>
-                        <p className="text-sm text-slate-500 leading-relaxed">{item.desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Colonne droite — ce que vous obtenez */}
-              <div className="px-7 md:px-10 py-7 md:py-9 border-t md:border-t-0 md:border-l border-slate-100 bg-[#fafcfd]">
-                <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mb-5">Ce que vous obtenez</p>
-                <div className="flex flex-col gap-3">
-                  {[
-                    { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50', text: 'Un score /20 clair et objectif sur votre bien' },
-                    { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50', text: 'Les points forts et les vigilances en un coup d\'œil' },
-                    { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50', text: 'Les données financières clés de la copropriété' },
-                    { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50', text: 'Un avis structuré pour décider ou négocier' },
-                    { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50', text: 'Un rapport partageable avec votre notaire ou banquier' },
-                  ].map((item, i) => (
-                    <div key={i} className={`flex items-center gap-3 p-3 rounded-xl ${item.bg} border border-green-100`}>
-                      <item.icon size={16} className={`${item.color} shrink-0`} />
-                      <span className="text-sm font-medium text-[#0f172a]">{item.text}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-6 flex items-center gap-3">
-                  <Link to="/exemple"
-                    className="inline-flex items-center gap-2 text-sm font-semibold text-[#2a7d9c] hover:underline">
-                    Voir un exemple de rapport <ArrowRight size={13} />
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-            {/* Bandeau prix */}
-            <div className="px-7 md:px-10 py-4 bg-[#f4f7f9] border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <p className="text-sm text-slate-500">
-                <span className="font-bold text-[#0f172a]">Dès 4,90€</span> pour une analyse de document ·{' '}
-                <span className="font-bold text-[#0f172a]">19,90€</span> pour l'analyse complète d'un bien
-              </p>
-              <Link to="/tarifs" className="text-sm font-semibold text-[#2a7d9c] hover:underline shrink-0">
-                Voir les tarifs →
-              </Link>
-            </div>
+        {/* ─── CTA ─── */}
+        <Reveal className="text-center mb-8">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link to="/start"
+              className="inline-flex items-center gap-2 px-7 md:px-9 py-3.5 md:py-4 rounded-2xl bg-[#0f2d3d] text-white text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
+              Lancer mon analyse — dès 4,90€ <ArrowRight size={16} />
+            </Link>
+            <Link to="/exemple"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-[#2a7d9c] hover:underline">
+              Voir un exemple de rapport <ArrowRight size={13} />
+            </Link>
           </div>
         </Reveal>
 
