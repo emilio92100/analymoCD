@@ -1011,7 +1011,7 @@ function ForWhoSection() {
       <div className="max-w-5xl mx-auto">
         <SectionTitle label="Pour qui" title="Fait pour" accent="vous." />
 
-        {/* ─── Accroche unique ─── */}
+        {/* ─── Accroche ─── */}
         <Reveal>
           <p className="text-center text-base md:text-lg text-slate-500 leading-relaxed max-w-2xl mx-auto mb-10 md:mb-14">
             Que ce soit votre premier achat ou votre dixième, les documents restent les mêmes —
@@ -1020,61 +1020,100 @@ function ForWhoSection() {
           </p>
         </Reveal>
 
-        {/* ─── Bloc particuliers — icônes en grille ─── */}
+        {/* ─── Bloc acheteurs particuliers ─── */}
         <Reveal>
-          <div className="rounded-2xl bg-white border border-slate-100 shadow-sm p-6 md:p-10 mb-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-              {[
-                {
-                  icon: (<svg viewBox="0 0 24 24" fill="none" strokeWidth="1.6" stroke="#2a7d9c" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>),
-                  title: 'Documents décryptés',
-                  desc: 'PV d\'AG, règlement, diagnostics — traduits en langage clair',
-                },
-                {
-                  icon: (<svg viewBox="0 0 24 24" fill="none" strokeWidth="1.6" stroke="#2a7d9c" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>),
-                  title: 'Risques identifiés',
-                  desc: 'Travaux, impayés, procédures — rien ne passe inaperçu',
-                },
-                {
-                  icon: (<svg viewBox="0 0 24 24" fill="none" strokeWidth="1.6" stroke="#2a7d9c" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" /></svg>),
-                  title: 'Score objectif /20',
-                  desc: 'Une note claire pour savoir où vous mettez les pieds',
-                },
-                {
-                  icon: (<svg viewBox="0 0 24 24" fill="none" strokeWidth="1.6" stroke="#2a7d9c" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" /></svg>),
-                  title: 'Décision sereine',
-                  desc: 'Vous signez en sachant exactement ce que vous achetez',
-                },
-              ].map((item, i) => (
-                <div key={i} className="flex flex-col items-center text-center gap-3 p-3 md:p-4 rounded-xl hover:bg-[#f4f7f9] transition-colors duration-200">
-                  <div className="w-12 h-12 rounded-xl bg-[#2a7d9c]/8 border border-[#2a7d9c]/12 flex items-center justify-center">
-                    {item.icon}
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-[#0f172a] mb-1">{item.title}</h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">{item.desc}</p>
-                  </div>
+          <div className="rounded-3xl overflow-hidden border border-slate-100 shadow-lg mb-6">
+
+            {/* Header acheteurs */}
+            <div className="px-7 md:px-10 py-6 md:py-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+              style={{ background: 'linear-gradient(135deg, #f0f7fb 0%, #e4f2f8 100%)' }}>
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-[#2a7d9c]/15 shadow-sm mb-3">
+                  <span className="text-sm">🏠</span>
+                  <span className="text-xs font-bold text-[#2a7d9c] uppercase tracking-wide">Acheteurs particuliers</span>
                 </div>
-              ))}
+                <h3 className="text-xl md:text-2xl font-black text-[#0f172a] leading-tight">
+                  Vous achetez un bien ?{' '}
+                  <span className="text-[#2a7d9c]">On vous aide à y voir clair.</span>
+                </h3>
+              </div>
+              <Link to="/start"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#0f2d3d] text-white text-sm font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 shrink-0">
+                Lancer mon analyse <ArrowRight size={14} />
+              </Link>
             </div>
 
-            {/* CTA centré */}
-            <div className="text-center mt-8">
-              <Link to="/start"
-                className="inline-flex items-center gap-2 px-7 md:px-9 py-3.5 md:py-4 rounded-2xl bg-[#0f2d3d] text-white text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
-                Lancer mon analyse <ArrowRight size={16} />
+            {/* Contenu — 2 colonnes */}
+            <div className="grid grid-cols-1 md:grid-cols-2">
+
+              {/* Colonne gauche — ce qu'on fait */}
+              <div className="px-7 md:px-10 py-7 md:py-9 bg-white">
+                <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mb-5">Ce que Verimo fait pour vous</p>
+                <div className="flex flex-col gap-4">
+                  {[
+                    { emoji: '📋', title: 'Vos documents traduits', desc: 'PV d\'AG, règlement de copro, diagnostics — on décrypte le jargon juridique en langage simple.' },
+                    { emoji: '🔍', title: 'Les risques détectés', desc: 'Travaux votés, impayés, procédures judiciaires, DPE dégradé — rien ne passe entre les mailles.' },
+                    { emoji: '💰', title: 'Votre budget réel chiffré', desc: 'Charges mensuelles, fonds travaux, appels de fonds exceptionnels — vous savez combien ça coûte vraiment.' },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 bg-[#f4f7f9] border border-slate-100">
+                        {item.emoji}
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-[#0f172a] mb-1">{item.title}</h4>
+                        <p className="text-sm text-slate-500 leading-relaxed">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Colonne droite — ce que vous obtenez */}
+              <div className="px-7 md:px-10 py-7 md:py-9 border-t md:border-t-0 md:border-l border-slate-100 bg-[#fafcfd]">
+                <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mb-5">Ce que vous obtenez</p>
+                <div className="flex flex-col gap-3">
+                  {[
+                    { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50', text: 'Un score /20 clair et objectif sur votre bien' },
+                    { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50', text: 'Les points forts et les vigilances en un coup d\'œil' },
+                    { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50', text: 'Les données financières clés de la copropriété' },
+                    { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50', text: 'Un avis structuré pour décider ou négocier' },
+                    { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50', text: 'Un rapport partageable avec votre notaire ou banquier' },
+                  ].map((item, i) => (
+                    <div key={i} className={`flex items-center gap-3 p-3 rounded-xl ${item.bg} border border-green-100`}>
+                      <item.icon size={16} className={`${item.color} shrink-0`} />
+                      <span className="text-sm font-medium text-[#0f172a]">{item.text}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-6 flex items-center gap-3">
+                  <Link to="/exemple"
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-[#2a7d9c] hover:underline">
+                    Voir un exemple de rapport <ArrowRight size={13} />
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            {/* Bandeau prix */}
+            <div className="px-7 md:px-10 py-4 bg-[#f4f7f9] border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <p className="text-sm text-slate-500">
+                <span className="font-bold text-[#0f172a]">Dès 4,90€</span> pour une analyse de document ·{' '}
+                <span className="font-bold text-[#0f172a]">19,90€</span> pour l'analyse complète d'un bien
+              </p>
+              <Link to="/tarifs" className="text-sm font-semibold text-[#2a7d9c] hover:underline shrink-0">
+                Voir les tarifs →
               </Link>
             </div>
           </div>
         </Reveal>
 
-        {/* ─── PRO — bandeau retravaillé avec 4 profils ─── */}
+        {/* ─── PRO — bandeau avec 4 profils (non cliquables) ─── */}
         <Reveal className="mt-2">
           <div className="rounded-2xl overflow-hidden"
             style={{ background: 'linear-gradient(135deg, #0f2d3d, #1a4a5e)' }}>
 
-            {/* Header */}
-            <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 px-7 pt-7 pb-5 md:px-10 md:pt-8 md:pb-5">
+            {/* Header + CTA */}
+            <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 px-7 pt-7 pb-2 md:px-10 md:pt-8 md:pb-3">
               <div className="flex items-center gap-3 shrink-0">
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center"
                   style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
@@ -1093,20 +1132,20 @@ function ForWhoSection() {
               </Link>
             </div>
 
-            {/* 4 profils */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-7 pb-7 md:px-10 md:pb-8">
+            {/* 4 profils — décoratifs, non cliquables */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-7 pb-7 md:px-10 md:pb-8 pt-3">
               {[
                 { emoji: '🏢', label: 'Agent immobilier' },
                 { emoji: '📈', label: 'Investisseur' },
                 { emoji: '🔑', label: 'Marchand de bien' },
                 { emoji: '⚖️', label: 'Notaire' },
               ].map((p, i) => (
-                <Link to={`/contact-pro?type=${['agent','investisseur','marchand','notaire'][i]}`} key={i}
-                  className="flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
-                  style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                <div key={i}
+                  className="flex items-center gap-3 px-4 py-3.5 rounded-xl"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
                   <span className="text-xl">{p.emoji}</span>
-                  <span className="text-sm font-bold text-white/90">{p.label}</span>
-                </Link>
+                  <span className="text-sm font-semibold text-white/70">{p.label}</span>
+                </div>
               ))}
             </div>
           </div>
