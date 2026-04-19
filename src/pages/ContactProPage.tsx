@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Building2, TrendingUp, Scale, HelpCircle,
+  Building2, TrendingUp, Scale, HelpCircle, Key,
   Send, CheckCircle, ArrowRight, ShieldCheck, Lock,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase';
 const profileTypes = [
   { id: 'agent', label: 'Agent immobilier', emoji: '🏢', icon: Building2, color: '#2a7d9c', bg: '#f0f7fb' },
   { id: 'investisseur', label: 'Investisseur', emoji: '📈', icon: TrendingUp, color: '#7c3aed', bg: '#f5f3ff' },
+  { id: 'marchand', label: 'Marchand de bien', emoji: '🔑', icon: Key, color: '#d97706', bg: '#fffbeb' },
   { id: 'notaire', label: 'Notaire', emoji: '⚖️', icon: Scale, color: '#0f2d3d', bg: '#f4f7f9' },
   { id: 'autre', label: 'Autre professionnel', emoji: '💼', icon: HelpCircle, color: '#64748b', bg: '#f8fafc' },
 ];
@@ -23,6 +24,9 @@ const statutsInvestisseur = ['Particulier investisseur', 'SCI', 'SAS / SARL', 'M
 const acquisitionsAn = ['1-3 / an', '4-10 / an', '10-25 / an', '25+ / an'];
 const typesBiens = ['Résidentiel', 'Commercial', 'Mixte', 'Immeuble de rapport'];
 const strategies = ['Résidence locative', 'Achat-revente', 'Division', 'Colocation', 'Courte durée', 'Autre'];
+
+const strategiesMarchand = ['Achat-revente', 'Division', 'Rénovation complète', 'Transformation d\'usage', 'Mixte'];
+const operationsAn = ['1-3 / an', '4-10 / an', '10-20 / an', '20+ / an'];
 
 const fonctionsNotaire = ['Notaire titulaire', 'Notaire associé', 'Notaire salarié', 'Clerc de notaire', 'Autre collaborateur'];
 const taillesEtude = ['1 notaire', '2-3 notaires', '4-10 notaires', '10+'];
@@ -119,6 +123,15 @@ export default function ContactProPage() {
   const [avecCourtier, setAvecCourtier] = useState('');
   const [interetsInvest, setInteretsInvest] = useState<string[]>([]);
 
+  // Marchand de bien
+  const [nomSocieteMarchand, setNomSocieteMarchand] = useState('');
+  const [siretMarchand, setSiretMarchand] = useState('');
+  const [operationsMarchand, setOperationsMarchand] = useState('');
+  const [typeBienMarchand, setTypeBienMarchand] = useState('');
+  const [strategieMarchand, setStrategieMarchand] = useState('');
+  const [zoneMarchand, setZoneMarchand] = useState('');
+  const [interetsMarchand, setInteretsMarchand] = useState<string[]>([]);
+
   // Notaire
   const [nomEtude, setNomEtude] = useState('');
   const [adresseEtude, setAdresseEtude] = useState('');
@@ -148,6 +161,8 @@ export default function ContactProPage() {
       Object.assign(profileData, { nomAgence, adresseAgence, reseau, tailleAgence, transactionsParMois: transAgent, rsac, dejaAnalyse, interets: interetsAgent });
     } else if (profileType === 'investisseur') {
       Object.assign(profileData, { nomSociete, statut, siret, acquisitionsParAn: acquisitions, typeBien, strategie, avecCourtier, interets: interetsInvest });
+    } else if (profileType === 'marchand') {
+      Object.assign(profileData, { nomSociete: nomSocieteMarchand, siret: siretMarchand, operationsParAn: operationsMarchand, typeBien: typeBienMarchand, strategie: strategieMarchand, zoneGeographique: zoneMarchand, interets: interetsMarchand });
     } else if (profileType === 'notaire') {
       Object.assign(profileData, { nomEtude, adresseEtude, fonction, tailleEtude, transactionsParMois: transNotaire, dejaOutils, interets: interetsNotaire });
     } else {
@@ -324,6 +339,30 @@ export default function ContactProPage() {
                           {['Comparer plusieurs biens', 'Détecter les risques', 'Gagner du temps', 'Score objectif'].map(i => (
                             <button key={i} type="button" onClick={() => toggleInterest(interetsInvest, setInteretsInvest, i)}
                               style={{ padding: '8px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: interetsInvest.includes(i) ? '2px solid #7c3aed' : '1.5px solid #e2e8f0', background: interetsInvest.includes(i) ? '#f5f3ff' : '#fff', color: interetsInvest.includes(i) ? '#7c3aed' : '#64748b', cursor: 'pointer', transition: 'all 0.15s', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+                              {i}
+                            </button>
+                          ))}
+                        </div>
+                      </Field>
+                    </>)}
+
+                    {/* ── MARCHAND DE BIEN ── */}
+                    {profileType === 'marchand' && (<>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }} className="form-grid-2">
+                        <Field label="Nom de la société"><input style={inputStyle} value={nomSocieteMarchand} onChange={e => setNomSocieteMarchand(e.target.value)} placeholder="SAS Immo Revente" /></Field>
+                        <Field label="SIRET (optionnel)"><input style={inputStyle} value={siretMarchand} onChange={e => setSiretMarchand(e.target.value)} placeholder="123 456 789 00012" /></Field>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }} className="form-grid-2">
+                        <Field label="Opérations par an"><SelectField value={operationsMarchand} onChange={setOperationsMarchand} options={operationsAn} placeholder="Sélectionner..." /></Field>
+                        <Field label="Type de biens ciblés"><SelectField value={typeBienMarchand} onChange={setTypeBienMarchand} options={typesBiens} placeholder="Sélectionner..." /></Field>
+                      </div>
+                      <Field label="Stratégie principale"><SelectField value={strategieMarchand} onChange={setStrategieMarchand} options={strategiesMarchand} placeholder="Sélectionner..." /></Field>
+                      <Field label="Zone géographique principale"><input style={inputStyle} value={zoneMarchand} onChange={e => setZoneMarchand(e.target.value)} placeholder="Île-de-France, PACA, Rhône-Alpes..." /></Field>
+                      <Field label="Ce qui vous intéresse le plus">
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                          {['Détecter les restrictions RCP', 'Chiffrer les travaux à prévoir', 'Gagner du temps sur le sourcing', 'Sécuriser mes marges'].map(i => (
+                            <button key={i} type="button" onClick={() => toggleInterest(interetsMarchand, setInteretsMarchand, i)}
+                              style={{ padding: '8px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: interetsMarchand.includes(i) ? '2px solid #d97706' : '1.5px solid #e2e8f0', background: interetsMarchand.includes(i) ? '#fffbeb' : '#fff', color: interetsMarchand.includes(i) ? '#d97706' : '#64748b', cursor: 'pointer', transition: 'all 0.15s', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
                               {i}
                             </button>
                           ))}
