@@ -399,6 +399,11 @@ export default function TarifsPage() {
                 {openAccordion === i && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
                     <div style={{ padding: '0 16px 14px', borderTop: '1px solid #f0f5f9', display: 'flex', flexDirection: 'column' as const, gap: 8, paddingTop: 12 }}>
+                      {row.tip && (
+                        <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6, padding: '8px 12px', background: '#f8fafc', borderRadius: 8, marginBottom: 4 }}>
+                          {row.tip}
+                        </div>
+                      )}
                       {plans.map((p, j) => {
                         const val = row.vals[j];
                         return (
