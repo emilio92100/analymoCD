@@ -1028,6 +1028,63 @@ function SyndicBand({ syndic, nbLots, nbBatiments }: { syndic: Record<string, un
   const gestionnaire = safeStr(syndic.gestionnaire);
   const type = safeStr(syndic.type);
   const tensions = syndic.tensions_detectees === true;
+
+  // ⭐ Session 4 — Nouveaux champs statut syndic multi-PV
+  const statut = safeStr(syndic.statut);
+  const sortant = safeStr(syndic.sortant);
+  const anneeChangement = safeStr(syndic.annee_changement);
+  const nbAgs = typeof syndic.nb_ags_analysees === 'number' ? (syndic.nb_ags_analysees as number) : null;
+  const historique = Array.isArray(syndic.historique_changements) ? (syndic.historique_changements as Array<{ annee?: string; syndic?: string }>) : [];
+
+  // Détermine l'affichage du statut
+  type StatutDisplay = { icon: string; color: string; bg: string; border: string; label: string; sub?: string } | null;
+  const statutDisplay: StatutDisplay = (() => {
+    if (statut === 'stable' && nbAgs && nbAgs >= 2) {
+      return {
+        icon: '✅', color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0',
+        label: 'Syndic stable',
+        sub: `Reconduit sur les ${nbAgs} dernières AGs analysées.`,
+      };
+    }
+    if (statut === 'reconduit') {
+      return {
+        icon: '✅', color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0',
+        label: 'Syndic reconduit',
+        sub: 'Le syndic en place a été renouvelé à cette AG.',
+      };
+    }
+    if (statut === 'nouveau_elu') {
+      return {
+        icon: '🔄', color: '#2a7d9c', bg: '#eff6ff', border: '#bfdbfe',
+        label: `Nouveau syndic élu${anneeChangement ? ` en ${anneeChangement}` : ''}`,
+        sub: sortant ? `A remplacé ${sortant}.` : 'Nouvelle gouvernance en place.',
+      };
+    }
+    if (statut === 'rotation_frequente') {
+      const changesCount = historique.length || nbAgs || 0;
+      return {
+        icon: '⚠️', color: '#c2410c', bg: '#fff7ed', border: '#fed7aa',
+        label: 'Rotation fréquente des syndics',
+        sub: `${changesCount} syndics différents identifiés — signal d'instabilité dans la gouvernance.`,
+      };
+    }
+    if (statut === 'recherche') {
+      return {
+        icon: '🔄', color: '#c2410c', bg: '#fff7ed', border: '#fed7aa',
+        label: "Recherche d'un nouveau syndic en cours",
+        sub: sortant ? `${sortant} sortant — aucune désignation adoptée à ce jour.` : 'Aucune désignation adoptée à ce jour.',
+      };
+    }
+    if (statut === 'carence') {
+      return {
+        icon: '⚠️', color: '#991b1b', bg: '#fef2f2', border: '#fecaca',
+        label: 'Carence de syndic détectée',
+        sub: 'Situation à clarifier avec votre notaire avant toute offre.',
+      };
+    }
+    return null;
+  })();
+
   return (
     <div className="syndic-band" style={{ background: '#fff', border: '0.5px solid #edf2f7', borderRadius: 14, padding: '16px 20px', marginBottom: 20 }}>
       {/* Identité syndic */}
@@ -1043,6 +1100,35 @@ function SyndicBand({ syndic, nbLots, nbBatiments }: { syndic: Record<string, un
           </div>
         </div>
       </div>
+
+      {/* ⭐ Session 4 — Bloc statut syndic intelligent (affiché uniquement si info pertinente) */}
+      {statutDisplay && (
+        <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 10, background: statutDisplay.bg, border: `1px solid ${statutDisplay.border}` }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1.2 }}>{statutDisplay.icon}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: statutDisplay.color, lineHeight: 1.4 }}>{statutDisplay.label}</div>
+              {statutDisplay.sub && <div style={{ fontSize: 13, color: statutDisplay.color, opacity: 0.85, marginTop: 3, lineHeight: 1.55 }}>{statutDisplay.sub}</div>}
+              {/* Historique affiché uniquement si rotation_frequente */}
+              {statut === 'rotation_frequente' && historique.length > 0 && (
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${statutDisplay.border}` }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: statutDisplay.color, marginBottom: 6, letterSpacing: '0.04em' }}>HISTORIQUE</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {historique.map((h, i) => (
+                      <div key={i} style={{ fontSize: 13, color: statutDisplay.color, display: 'flex', gap: 8 }}>
+                        <span style={{ fontWeight: 600, minWidth: 50 }}>{safeStr(h.annee)}</span>
+                        <span>•</span>
+                        <span>{safeStr(h.syndic)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats grille */}
       <div className="syndic-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0, borderTop: '1px solid #f1f5f9', paddingTop: 12 }}>
         {nbLots && <div style={{ textAlign: 'center', padding: '4px 8px' }}><div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>Lots</div><div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>{nbLots}</div></div>}
