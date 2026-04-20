@@ -97,6 +97,26 @@ function buildDocumentPrompt(p: string): string {
   parts.push('REGLE DPE vigilances DDT : NE JAMAIS inclure DPE classe A B C D E dans points_vigilance. Seuls F et G sont des points de vigilance. DPE D = bonne performance energetique, ne pas le signaler negativement.');
   parts.push('REGLE travaux_preconises DDT : Ne remplir travaux_preconises QUE si un DPE est présent dans le document et que dpe.classe est non null. Si le document est uniquement un CREP plomb, amiante, termites, carrez, ERP ou tout autre diagnostic sans DPE, laisser travaux_preconises = [] vide. Les recommandations spécifiques à ces diagnostics vont dans le champ alerte du diagnostic concerné, pas dans travaux_preconises.');
   parts.push('');
+  // ══════════════════════════════════════════════════════════════
+  // AJOUT — Règles Climat & Résilience + DPE petites surfaces (analyse simple DDT)
+  // ══════════════════════════════════════════════════════════════
+  parts.push('REGLES LOI CLIMAT ET RESILIENCE — DDT (profil ' + p + ') :');
+  parts.push('- DPE G : logement INTERDIT A LA LOCATION depuis le 1er janvier 2025 (loi Climat et Resilience du 22 aout 2021).');
+  parts.push('- DPE F : logement INTERDIT A LA LOCATION a compter du 1er janvier 2028.');
+  parts.push('- DPE E : logement INTERDIT A LA LOCATION a compter du 1er janvier 2034.');
+  parts.push('- DPE F et G : GEL DES LOYERS depuis le 24 aout 2022 — il est interdit d augmenter le loyer lors du renouvellement du bail ou de la remise en location.');
+  if (p === 'investissement locatif') {
+    parts.push('- PROFIL INVESTISSEUR : si DPE E, F ou G, TOUJOURS mentionner dans points_vigilance l interdiction de location applicable (actuelle ou a venir) avec la date precise et l impact sur la rentabilite locative. Mentionner aussi le gel des loyers pour F et G dans avis_verimo.');
+  } else {
+    parts.push('- PROFIL RESIDENCE PRINCIPALE : les interdictions de location ne concernent pas directement l acheteur. Ne PAS les mentionner dans points_vigilance. Mentionner uniquement dans avis_verimo si DPE F ou G : "En cas de revente ou de mise en location future, des travaux de renovation energetique seraient necessaires."');
+  }
+  parts.push('');
+  parts.push('REGLE DPE PETITES SURFACES (arrete du 25 mars 2024) :');
+  parts.push('- Depuis le 1er juillet 2024, les seuils DPE sont ajustes pour les logements de moins de 40 m2.');
+  parts.push('- Si surface Carrez < 40 m2 ET DPE classe F ou G ET date du DPE anterieure au 1er juillet 2024 : ajouter dans points_forts "Le DPE de ce logement a ete realise avant la reforme des petites surfaces (juillet 2024). Les nouveaux seuils pourraient ameliorer la classe energetique — un nouveau DPE est recommande."');
+  parts.push('- Ne PAS modifier le diagnostic pour autant — analyser sur la base du DPE tel que fourni.');
+  parts.push('');
+  // ══════════════════════════════════════════════════════════════
   parts.push('PV_AG : {"document_type":"PV_AG","titre":"...","resume":"...","date_ag":null,"lieu_ag":null,"type_ag":"ordinaire|extraordinaire|mixte","syndic":null,"president_seance":null,"nb_resolutions":null,"syndic_reconduit":null,"quorum":{"presents":null,"total":null,"tantiemes_pct":null},"budget_vote":{"annee":null,"montant":null,"fonds_travaux":null},"budget_precedent":{"annee":null,"montant":null},"travaux_votes":[{"label":"...","montant":null,"echeance":null}],"travaux_evoques":[{"label":"...","precision":null,"concerne_lot_prive":false}],"questions_diverses":[],"procedures":[],"points_forts":[],"points_vigilance":[],"avis_verimo":"..."}');
   parts.push('REGLES PV_AG nouveaux champs :');
   parts.push('- lieu_ag : ville ou adresse où se tient l\'AG si mentionnée.');
@@ -293,6 +313,27 @@ REGLES IMPORTANTES :
 - pre_etat_date : si un pré-état daté ou état daté est fourni, remplir pre_etat_date.present=true et extraire TOUS les champs : impayes_vendeur (0 si vendeur à jour), fonds_travaux_alur (montant fonds travaux à verser AU vendeur), fonds_roulement_acheteur (montant fonds de roulement à verser AU vendeur), honoraires_syndic (frais d établissement du document, TOUJOURS à la charge du vendeur), charges_futures (montants trimestriels), historique_charges N-1 et N-2, travaux_charge_vendeur, procedures_contre_vendeur, impayes_copro_global, dette_fournisseurs. RAPPEL FONDS : fonds_travaux_alur et fonds_roulement_acheteur sont à VERSER AU VENDEUR par l acheteur à la signature, en sus du prix.
 - compromis : si un compromis ou une promesse de vente est fourni, extraire dans lot_achete.compromis : { vendeur, acheteur, notaire_vendeur, notaire_acheteur, agence, prix_net_vendeur, honoraires_agence, honoraires_charge, prix_total, depot_garantie, date_signature, date_acte, bien_libre_a, conditions_suspensives: [{label, detail, date_limite, statut}], clauses_particulieres: [] } INCLURE : travaux urgents chiffres / DPE F ou G uniquement (pas D ou E) / impayes vendeur / procedures judiciaires / gros travaux votes / travaux evoques sans vote depuis plusieurs AG. EXCLURE : DPE A/B/C/D / travaux charge vendeur / constats sans impact financier. Si aucun element ne justifie une negociation, applicable=false et elements=[].
 
+REGLES LOI CLIMAT ET RESILIENCE (profil ${p}) :
+- DPE G : logement INTERDIT A LA LOCATION depuis le 1er janvier 2025 (loi Climat et Resilience du 22 aout 2021). Baux en cours : interdiction au renouvellement ou reconduction tacite.
+- DPE F : logement INTERDIT A LA LOCATION a compter du 1er janvier 2028.
+- DPE E : logement INTERDIT A LA LOCATION a compter du 1er janvier 2034.
+- DPE F et G : GEL DES LOYERS depuis le 24 aout 2022 — il est interdit d augmenter le loyer lors du renouvellement du bail ou de la remise en location.
+- Si profil = investissement locatif ET DPE E, F ou G : TOUJOURS mentionner dans points_vigilance l interdiction de location applicable (actuelle ou a venir) avec la date precise. TOUJOURS mentionner dans avis_verimo l impact concret sur la rentabilite locative (interdiction, gel des loyers, obligation de travaux avant mise en location). Ne pas juste penaliser le score — expliquer pourquoi.
+- Si profil = residence principale : ces interdictions de location ne concernent pas l acheteur directement. Ne PAS les mentionner dans points_vigilance. Mentionner uniquement dans avis_verimo si le DPE est F ou G : "En cas de revente ou de mise en location future, des travaux de renovation energetique seraient necessaires."
+
+REGLE DPE PETITES SURFACES (arrete du 25 mars 2024) :
+- Depuis le 1er juillet 2024, les seuils DPE sont ajustes pour les logements de moins de 40 m2 (coefficient de ponderation sur eau chaude sanitaire et chauffage).
+- Si surface du lot < 40 m2 ET DPE classe F ou G ET date du DPE anterieure au 1er juillet 2024 : ajouter dans points_forts "Le DPE de ce logement a ete realise avant la reforme des petites surfaces (juillet 2024). Les nouveaux seuils pourraient ameliorer la classe energetique — un nouveau DPE est recommande."
+- Ne PAS modifier le score pour autant — le score est base sur le DPE tel que fourni.
+
+REGLE AUDIT ENERGETIQUE OBLIGATOIRE A LA VENTE :
+- Depuis le 1er avril 2023 : audit energetique obligatoire pour la vente de maisons individuelles et immeubles en monopropriete classes F ou G.
+- Depuis le 1er janvier 2025 : etendu aux classes E.
+- A partir du 1er janvier 2034 : etendu aux classes D.
+- NE CONCERNE PAS les appartements en copropriete (lots isoles).
+- Si type_bien = "maison" ET DPE E, F ou G : verifier si un audit energetique est present dans les documents fournis. Si absent, ajouter "Audit energetique reglementaire (obligatoire pour la vente d une maison classee ${profil === 'invest' ? 'E/F/G' : 'E/F/G'})" dans documents_manquants.
+- Si type_bien = "appartement" : ne PAS demander d audit energetique — les coproprietes ne sont pas concernees.
+
 Reponds UNIQUEMENT en JSON strict, sans texte avant ou apres :
 {"titre":"adresse complete","type_bien":"appartement|maison|maison_copro","annee_construction":null,"score":14.5,"score_niveau":"Bien sain","resume":"4-5 phrases","points_forts":[],"points_vigilance":[],"travaux":{"realises":[{"label":"desc","annee":"2021","montant_estime":35000,"justificatif":true}],"votes":[{"label":"desc","annee":"2027","montant_estime":4500,"charge_vendeur":false}],"evoques":[{"label":"desc","annee":null,"montant_estime":null,"precision":"contexte"}],"estimation_totale":null},"finances":{"budget_total_copro":null,"charges_annuelles_lot":null,"fonds_travaux":null,"fonds_travaux_statut":"non_mentionne|insuffisant|conforme|bien|excellent|absent","impayes":null,"type_chauffage":null,"budgets_historique":null},"procedures":[{"label":"Type","type":"copro_vs_syndic|impayes|contentieux|autre","gravite":"faible|moderee|elevee","message":"Explication claire 2-3 phrases"}],"diagnostics_resume":"resume global","diagnostics":[{"type":"DPE|ELECTRICITE|GAZ|AMIANTE|PLOMB|TERMITES|ERP|CARREZ|AUTRE","label":"nom complet","perimetre":"lot_privatif|parties_communes","localisation":"localisation","resultat":"resultat avec GES si DPE","presence":"detectee|absence|non_realise","alerte":null,"pieces_detail":null}],"documents_analyses":[{"type":"PV_AG|REGLEMENT_COPRO|APPEL_CHARGES|DPE|DDT|DIAGNOSTIC|COMPROMIS|ETAT_DATE|TAXE_FONCIERE|CARNET_ENTRETIEN|AUTRE","annee":null,"nom":"nom fichier"}],"documents_manquants":[],"negociation":{"applicable":false,"elements":[]},"vie_copropriete":{"syndic":{"nom":null,"type":"professionnel|benevole","gestionnaire":null,"fin_mandat":null,"tensions_detectees":false,"tensions_detail":null},"nb_lots_total":null,"nb_lots_detail":{"logements":null,"parkings":null,"caves":null,"commerces":null},"nb_batiments":null,"participation_ag":[{"annee":"2024","copropietaires_presents_representes":"18/24","taux_tantiemes_pct":"72%","quorum_note":null,"quitus":{"soumis":true,"approuve":true,"detail":null}}],"tendance_participation":"Non determinable","analyse_participation":"analyse","travaux_votes_non_realises":[],"appels_fonds_exceptionnels":[],"questions_diverses_notables":[],"dtg":{"present":false,"etat_general":null,"budget_urgent_3ans":null,"budget_total_10ans":null,"travaux_prioritaires":[]},"regles_copro":[{"label":"...","statut":"autorise|interdit|sous_conditions","impact_rp":false,"impact_invest":false}]},"lot_achete":{"quote_part_tantiemes":null,"parties_privatives":[],"impayes_detectes":null,"fonds_travaux_alur":null,"travaux_votes_charge_vendeur":[],"restrictions_usage":[],"points_specifiques":[]},"pre_etat_date":{"present":false,"date":null,"syndic":null,"impayes_vendeur":0,"fonds_travaux_alur":null,"fonds_roulement_acheteur":null,"fonds_roulement_modalite":"remboursement_vendeur|reconstitution_syndicat","honoraires_syndic":null,"charges_futures":{"montant_trimestriel":null,"fonds_travaux_trimestriel":null,"montant_annuel":null},"travaux_charge_vendeur":[],"procedures_contre_vendeur":[],"procedures_copro":"neant|en_cours","impayes_copro_global":null,"dette_fournisseurs":null,"fonds_travaux_copro_global":null,"historique_charges":[{"exercice":"N-1","annee":null,"budget_appele":null,"charges_reelles":null}]},"categories":{"travaux":{"note":4,"note_max":5},"procedures":{"note":4,"note_max":4},"finances":{"note":3,"note_max":4},"diags_privatifs":{"note":2,"note_max":4},"diags_communs":{"note":1.5,"note_max":3}},"avis_verimo":"Avis structure en 2-3 paragraphes. Ce rapport est etabli uniquement a partir des documents analyses et ne remplace pas l avis d un professionnel de l immobilier."}`;
 }
@@ -404,13 +445,14 @@ async function runAnalyseWithData(
 
     const { error: updateError } = await supabaseAdmin.from('analyses').update(updateData).eq('id', analyseId);
     if (updateError) {
+      console.error('[analyser-run] ERREUR UPDATE:', updateError.message);
       await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: 'Erreur sauvegarde. Contactez le support.' }).eq('id', analyseId);
     } else {
       console.log(`[analyser-run] ${analyseId} termin\u00e9e avec succ\u00e8s.`);
     }
   } catch (err) {
     console.error('[analyser-run] Erreur:', err);
-    await Promise.all(fileIds.map(id => deleteFromFilesAPI(id, apiKey)));
+    if (fileIds.length > 0) await Promise.all(fileIds.map(id => deleteFromFilesAPI(id, apiKey)));
     await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: 'Erreur inattendue. Contactez le support.' }).eq('id', analyseId);
   }
 }
