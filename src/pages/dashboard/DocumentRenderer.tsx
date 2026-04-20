@@ -720,10 +720,30 @@ function RendererPVAG({ r }: { r: any }) {
                 <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{r.syndic_gestionnaire}</span>
               </div>
             )}
-            {r.syndic_reconduit != null && (
+            {(r.syndic_statut || r.syndic_reconduit != null) && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px' }}>
-                <span style={{ fontSize: 13, color: '#64748b', flex: 1 }}>Reconduction</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: r.syndic_reconduit ? '#16a34a' : '#dc2626' }}>{r.syndic_reconduit ? '✓ Reconduit' : '✗ Non reconduit'}</span>
+                <span style={{ fontSize: 13, color: '#64748b', flex: 1 }}>Statut syndic</span>
+                {(() => {
+                  const statut = r.syndic_statut;
+                  const reconduit = r.syndic_reconduit;
+                  const entrant = r.syndic_entrant;
+                  if (statut === 'nouveau_elu' || (reconduit === false && entrant)) {
+                    return <span style={{ fontSize: 13, fontWeight: 700, color: '#2a7d9c' }}>🔄 Nouveau syndic{entrant ? ` : ${entrant}` : ''}</span>;
+                  }
+                  if (statut === 'recherche') {
+                    return <span style={{ fontSize: 13, fontWeight: 700, color: '#d97706' }}>🔄 Recherche en cours</span>;
+                  }
+                  if (statut === 'carence') {
+                    return <span style={{ fontSize: 13, fontWeight: 700, color: '#dc2626' }}>⚠️ Carence de syndic</span>;
+                  }
+                  if (statut === 'reconduit' || reconduit === true) {
+                    return <span style={{ fontSize: 13, fontWeight: 700, color: '#16a34a' }}>✓ Reconduit</span>;
+                  }
+                  if (reconduit === false) {
+                    return <span style={{ fontSize: 13, fontWeight: 700, color: '#2a7d9c' }}>🔄 Changement de syndic</span>;
+                  }
+                  return null;
+                })()}
               </div>
             )}
           </div>
@@ -740,12 +760,52 @@ function RendererPVAG({ r }: { r: any }) {
             {r.date_ag && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📅</span><span>{formatDate(r.date_ag)}</span></div>}
             {r.lieu_ag && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>📍</span><span>{r.lieu_ag}</span></div>}
             {r.syndic && <div style={{ display: 'flex', gap: 8, fontSize: 15, color: C.text }}><span>🏢</span><span>{r.syndic}</span></div>}
-            {r.syndic_reconduit != null && (
-              <div style={{ display: 'flex', gap: 8, fontSize: 15, color: r.syndic_reconduit ? '#16a34a' : '#dc2626' }}>
-                <span>{r.syndic_reconduit ? '✅' : '❌'}</span>
-                <span>{r.syndic_reconduit ? 'Syndic reconduit' : 'Syndic non reconduit'}</span>
-              </div>
-            )}
+            {/* Affichage intelligent du statut syndic : rassurant si nouveau élu, alerte uniquement en cas de carence réelle */}
+            {(() => {
+              const statut = r.syndic_statut; // nouveau champ : reconduit | nouveau_elu | recherche | carence | null
+              const sortant = r.syndic_sortant;
+              const entrant = r.syndic_entrant;
+              const reconduit = r.syndic_reconduit;
+
+              // 1) Nouveau syndic élu — message rassurant, couleur bleue
+              if (statut === 'nouveau_elu' || (reconduit === false && entrant)) {
+                return (
+                  <div style={{ display: 'flex', gap: 8, fontSize: 15, color: '#2a7d9c' }}>
+                    <span>🔄</span>
+                    <span>Nouveau syndic élu{entrant ? ` : ${entrant}` : ''}{sortant ? ` (remplace ${sortant})` : ''}</span>
+                  </div>
+                );
+              }
+              // 2) Recherche en cours — neutre orange discret
+              if (statut === 'recherche') {
+                return (
+                  <div style={{ display: 'flex', gap: 8, fontSize: 15, color: '#d97706' }}>
+                    <span>🔄</span>
+                    <span>Recherche d&apos;un nouveau syndic en cours{sortant ? ` (${sortant} sortant)` : ''}</span>
+                  </div>
+                );
+              }
+              // 3) Carence réelle — alerte rouge (cas rare)
+              if (statut === 'carence') {
+                return (
+                  <div style={{ display: 'flex', gap: 8, fontSize: 15, color: '#dc2626' }}>
+                    <span>⚠️</span>
+                    <span>Carence de syndic détectée — à vérifier avec le notaire</span>
+                  </div>
+                );
+              }
+              // 4) Reconduit explicitement
+              if (statut === 'reconduit' || reconduit === true) {
+                return (
+                  <div style={{ display: 'flex', gap: 8, fontSize: 15, color: '#16a34a' }}>
+                    <span>✅</span>
+                    <span>Syndic reconduit{r.syndic ? ` : ${r.syndic}` : ''}</span>
+                  </div>
+                );
+              }
+              // 5) Fallback ancien format (rétrocompatibilité) — rien si null
+              return null;
+            })()}
           </div>
         </SectionKpi>
 
