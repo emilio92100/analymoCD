@@ -2737,18 +2737,18 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
   const [progress, setProgress] = useState<AnalyseProgress | null>(null);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tooltipId, setTooltipId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const autoCloseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const MAX_FILES = 5;
 
-  // ── Documents déjà analysés (noms lisibles) ──
   const docTypeLabel: Record<string, string> = {
     PV_AG: "PV d'AG", REGLEMENT_COPRO: 'Règlement copro', APPEL_CHARGES: 'Appel de charges',
     DPE: 'DPE', DIAGNOSTIC: 'Diagnostic', DDT: 'DDT', COMPROMIS: 'Compromis',
     ETAT_DATE: 'État daté', TAXE_FONCIERE: 'Taxe foncière', CARNET_ENTRETIEN: "Carnet d'entretien",
     AUTRE: 'Autre', MODIFICATIF_RCP: 'Modificatif RCP', PRE_ETAT_DATE: 'Pré-état daté',
-    DIAGNOSTIC_PARTIES_COMMUNES: 'Diag. PC',
+    DIAGNOSTIC_PARTIES_COMMUNES: 'Diag. parties communes',
   };
   const docTypeIcon: Record<string, string> = {
     PV_AG: '📋', REGLEMENT_COPRO: '📜', APPEL_CHARGES: '💶', DPE: '⚡',
@@ -2765,23 +2765,26 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
   const isCopro = typeBien === 'appartement' || typeBien === 'maison_copro';
   const anneeNum = rapport.annee_construction ? parseInt(safeStr(rapport.annee_construction)) : null;
 
-  // ── Documents manquants (essentiels + secondaires) ──
+  // Identiques à TabDocuments
   const docsEssentielsManquants = isCopro ? [
-    !hasDoc(['PV_AG']) ? { emoji: '📋', label: 'PV d\'Assemblée Générale' } : null,
-    !hasDoc(['REGLEMENT_COPRO', 'MODIFICATIF_RCP']) ? { emoji: '📜', label: 'Règlement de copropriété' } : null,
-    !hasDoc(['CARNET_ENTRETIEN']) ? { emoji: '📓', label: 'Carnet d\'entretien' } : null,
-    !hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']) ? { emoji: '🗂', label: `DDT${anneeNum ? ` (immeuble de ${anneeNum})` : ''}` } : null,
-    !hasDoc(['APPEL_CHARGES']) ? { emoji: '💶', label: 'Appel de charges' } : null,
-  ].filter(Boolean) : [
-    !hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']) ? { emoji: '🗂', label: 'DDT complet' } : null,
-    !hasDoc(['TAXE_FONCIERE']) ? { emoji: '🏛', label: 'Taxe foncière' } : null,
-  ].filter(Boolean);
+    !hasDoc(['PV_AG']) ? { emoji: '📋', label: '3 derniers PV d\'Assemblée Générale', tooltip: null } : null,
+    !hasDoc(['REGLEMENT_COPRO', 'MODIFICATIF_RCP']) ? { emoji: '📜', label: 'Règlement de copropriété + modificatifs', tooltip: null } : null,
+    !hasDoc(['CARNET_ENTRETIEN']) ? { emoji: '📓', label: 'Carnet d\'entretien de l\'immeuble', tooltip: 'Document tenu par le syndic qui retrace l\'historique des travaux réalisés, les contrats d\'entretien en cours et les diagnostics effectués sur l\'immeuble.' } : null,
+    !hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']) ? { emoji: '🗂', label: `Diagnostics privatifs (DDT)`, tooltip: `Selon l'année de construction${anneeNum ? ` (${anneeNum})` : ''}, certains diagnostics peuvent ne pas être obligatoires.` } : null,
+    !hasDoc(['APPEL_CHARGES']) ? { emoji: '💶', label: 'Appel de charges / Appel de fonds', tooltip: null } : null,
+  ].filter(Boolean) as { emoji: string; label: string; tooltip: string | null }[] : [
+    !hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']) ? { emoji: '🗂', label: 'DDT complet (Dossier Diagnostic Technique)', tooltip: 'DPE, électricité, gaz, amiante, plomb, termites…' } : null,
+    !hasDoc(['TAXE_FONCIERE']) ? { emoji: '🏛', label: 'Taxe foncière', tooltip: null } : null,
+  ].filter(Boolean) as { emoji: string; label: string; tooltip: string | null }[];
 
   const docsSecondairesManquants = isCopro ? [
-    !hasDoc(['DIAGNOSTIC_PARTIES_COMMUNES']) ? { emoji: '🏗', label: 'Diagnostics parties communes' } : null,
-    !hasDoc(['PRE_ETAT_DATE']) ? { emoji: '📋', label: 'Pré-état daté' } : null,
-    { emoji: '📊', label: 'DTG / PPT' },
-  ].filter(Boolean) : [];
+    !hasDoc(['DIAGNOSTIC_PARTIES_COMMUNES']) ? { emoji: '🏗', label: 'Diagnostics parties communes', tooltip: 'Amiante, plomb et risques environnementaux sur les parties communes de l\'immeuble.' } : null,
+    { emoji: '📊', label: 'DTG — Diagnostic Technique Global', tooltip: 'Bilan complet de l\'état de l\'immeuble. Permet d\'anticiper les grands travaux.' },
+    { emoji: '📋', label: 'PPT — Plan Pluriannuel de Travaux', tooltip: 'Planning des travaux prévus sur 10 ans.' },
+    !hasDoc(['PRE_ETAT_DATE']) ? { emoji: '📋', label: 'Pré-état daté', tooltip: 'Récapitule les sommes dues, les procédures en cours et les charges à venir.' } : null,
+  ].filter(Boolean) as { emoji: string; label: string; tooltip: string | null }[] : [];
+
+  const hasManquants = docsEssentielsManquants.length > 0 || docsSecondairesManquants.length > 0;
 
   const addFiles = (newFiles: FileList | File[]) => {
     const pdfs = Array.from(newFiles).filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
@@ -2801,18 +2804,13 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
     setProgress({ step: 'extracting', current: 0, total: files.length, percent: 5, message: 'Préparation...' });
 
     const result = await lancerAnalyseEdge({
-      files,
-      mode: 'complement',
-      analyseId,
-      profil,
+      files, mode: 'complement', analyseId, profil,
       onProgress: (p) => setProgress(p),
     });
 
     if (result.success) {
       setDone(true);
-      autoCloseRef.current = setTimeout(() => {
-        onSuccess();
-      }, 10_000);
+      autoCloseRef.current = setTimeout(() => onSuccess(), 10_000);
     } else {
       setError(result.errorMessage || 'Une erreur est survenue. Réessayez.');
       setUploading(false);
@@ -2825,14 +2823,27 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
 
   const progressPercent = progress?.percent || 0;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const TooltipBubble = ({ id, text }: { id: string; text: string }) => (
+    <div style={{ position: 'relative', display: 'inline-flex' }}
+      onMouseEnter={() => setTooltipId(id)} onMouseLeave={() => setTooltipId(null)}>
+      <div style={{ width: 15, height: 15, borderRadius: '50%', background: '#f1f5f9', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: 9, color: '#94a3b8', fontWeight: 700 }}>?</div>
+      {tooltipId === id && (
+        <div style={{ position: 'absolute', left: 20, top: -6, width: 220, background: '#0f172a', borderRadius: 8, padding: '8px 11px', fontSize: 11, color: '#fff', lineHeight: 1.6, zIndex: 100, boxShadow: '0 6px 20px rgba(0,0,0,0.25)' }}>
+          {text}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div onClick={!uploading ? onClose : undefined} style={{ position: 'absolute', inset: 0, background: 'rgba(15,45,61,0.6)', backdropFilter: 'blur(4px)' }} />
 
-      <div style={{ position: 'relative', width: '100%', maxWidth: 520, background: '#fff', borderRadius: 20, boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div style={{ position: 'relative', width: '100%', maxWidth: 680, background: '#fff', borderRadius: 20, boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden', maxHeight: '90vh', overflowY: 'auto' }}>
 
         {/* Header */}
-        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '18px 24px 14px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>Compléter le dossier</div>
             <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Ajoutez jusqu'à 5 documents oubliés</div>
@@ -2846,182 +2857,162 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
 
         <div style={{ padding: '20px 24px' }}>
 
-          {/* État : Terminé */}
+          {/* ══ État : Terminé ══ */}
           {done && (
-            <div style={{ textAlign: 'center', padding: '32px 0' }}>
-              <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#f0fdf4', border: '2px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                <CheckCircle size={28} color="#16a34a" />
+            <div style={{ textAlign: 'center', padding: '28px 0' }}>
+              <div style={{ width: 60, height: 60, borderRadius: '50%', background: '#f0fdf4', border: '2px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                <CheckCircle size={26} color="#16a34a" />
               </div>
               <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Rapport mis à jour</div>
               <div style={{ fontSize: 14, color: '#64748b', marginBottom: 24, lineHeight: 1.5 }}>
                 Votre rapport a été enrichi avec {files.length} nouveau{files.length > 1 ? 'x' : ''} document{files.length > 1 ? 's' : ''}. Le score a été recalculé.
               </div>
-              <button
-                onClick={() => { if (autoCloseRef.current) clearTimeout(autoCloseRef.current); onSuccess(); }}
-                style={{ padding: '13px 28px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(42,125,156,0.25)' }}
-              >
+              <button onClick={() => { if (autoCloseRef.current) clearTimeout(autoCloseRef.current); onSuccess(); }}
+                style={{ padding: '13px 28px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(42,125,156,0.25)' }}>
                 Voir le rapport mis à jour
               </button>
               <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 12 }}>Fermeture automatique dans quelques secondes…</div>
             </div>
           )}
 
-          {/* État : Upload en cours */}
+          {/* ══ État : Upload en cours ══ */}
           {uploading && !done && (
             <div style={{ textAlign: 'center', padding: '24px 0' }}>
-              <div style={{ position: 'relative', width: 80, height: 80, margin: '0 auto 20px' }}>
+              <div style={{ position: 'relative', width: 76, height: 76, margin: '0 auto 18px' }}>
                 <svg viewBox="0 0 80 80" style={{ transform: 'rotate(-90deg)' }}>
                   <circle cx="40" cy="40" r="34" fill="none" stroke="#edf2f7" strokeWidth="6" />
                   <circle cx="40" cy="40" r="34" fill="none" stroke="#2a7d9c" strokeWidth="6"
                     strokeDasharray={`${2 * Math.PI * 34}`}
                     strokeDashoffset={`${2 * Math.PI * 34 * (1 - progressPercent / 100)}`}
-                    strokeLinecap="round"
-                    style={{ transition: 'stroke-dashoffset 0.5s ease' }}
-                  />
+                    strokeLinecap="round" style={{ transition: 'stroke-dashoffset 0.5s ease' }} />
                 </svg>
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: '#0f172a' }}>
-                  {progressPercent}%
-                </div>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, color: '#0f172a' }}>{progressPercent}%</div>
               </div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>
-                {progress?.message || 'Mise à jour en cours…'}
-              </div>
-              <div style={{ fontSize: 12, color: '#94a3b8' }}>Ne fermez pas cette fenêtre</div>
-              <div style={{ margin: '20px 0 0', height: 6, borderRadius: 3, background: '#edf2f7', overflow: 'hidden' }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>{progress?.message || 'Mise à jour en cours…'}</div>
+              <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>Ne fermez pas cette fenêtre</div>
+              <div style={{ height: 6, borderRadius: 3, background: '#edf2f7', overflow: 'hidden' }}>
                 <div style={{ height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #2a7d9c, #5bb8d4)', width: `${progressPercent}%`, transition: 'width 0.5s ease' }} />
               </div>
             </div>
           )}
 
-          {/* État : Sélection des fichiers */}
+          {/* ══ État : Sélection ══ */}
           {!uploading && !done && (
             <>
-              {/* ── Documents déjà analysés (noms lisibles) ── */}
-              {docsAnalyses.length > 0 && (
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', letterSpacing: '0.08em', marginBottom: 8 }}>✓ DOCUMENTS DÉJÀ ANALYSÉS</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {docsAnalyses.map((doc, i) => {
-                      const type = safeStr(doc.type);
-                      const nom = safeStr(doc.nom || doc.name);
-                      const annee = safeStr(doc.annee);
-                      const icon = docTypeIcon[type] || '📄';
-                      const label = nom || docTypeLabel[type] || type;
-                      return (
-                        <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #d1fae5', fontSize: 12, color: '#166534' }}>
-                          <span>{icon}</span> {label}{annee ? ` (${annee})` : ''}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* ── Documents suggérés (manquants) ── */}
-              {(docsEssentielsManquants.length > 0 || docsSecondairesManquants.length > 0) && (
-                <div style={{ marginBottom: 20, padding: '14px 16px', borderRadius: 12, background: '#fffbeb', border: '1px solid #fde68a' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', letterSpacing: '0.08em', marginBottom: 10 }}>📌 DOCUMENTS SUGGÉRÉS</div>
-                  {docsEssentielsManquants.length > 0 && (
-                    <div style={{ marginBottom: docsSecondairesManquants.length > 0 ? 10 : 0 }}>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: '#b45309', letterSpacing: '0.06em', marginBottom: 6 }}>ESSENTIELS</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                        {docsEssentielsManquants.map((doc: any, i: number) => (
-                          <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 7, background: '#fff', border: '1px solid #fde68a', fontSize: 12, color: '#92400e' }}>
-                            <span>{doc.emoji}</span> {doc.label}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {docsSecondairesManquants.length > 0 && (
-                    <div>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: '#b45309', letterSpacing: '0.06em', marginBottom: 6 }}>SECONDAIRES</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                        {docsSecondairesManquants.map((doc: any, i: number) => (
-                          <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 7, background: '#fff', border: '1px solid #f3e8c8', fontSize: 12, color: '#a16207' }}>
-                            <span>{doc.emoji}</span> {doc.label}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Zone de drop */}
+              {/* ── HAUT : Upload + bouton ── */}
               <div
                 onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
                 onDragLeave={() => setDragging(false)}
                 onDrop={(e) => { e.preventDefault(); setDragging(false); if (e.dataTransfer.files) addFiles(e.dataTransfer.files); }}
                 onClick={() => fileInputRef.current?.click()}
                 style={{
-                  border: `2px dashed ${dragging ? '#2a7d9c' : '#d1d5db'}`,
-                  borderRadius: 14,
-                  padding: '28px 20px',
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  background: dragging ? '#f0f7fb' : '#fafbfc',
-                  transition: 'all 0.2s ease',
-                  marginBottom: 16,
-                }}
-              >
-                <Upload size={28} color={dragging ? '#2a7d9c' : '#94a3b8'} style={{ marginBottom: 10 }} />
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
-                  Glissez vos PDF ici ou cliquez pour parcourir
-                </div>
-                <div style={{ fontSize: 12, color: '#94a3b8' }}>
-                  Maximum {MAX_FILES} documents · PDF uniquement
-                </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf,application/pdf"
-                  multiple
+                  border: `2px dashed ${dragging ? '#2a7d9c' : '#d1d5db'}`, borderRadius: 14,
+                  padding: '22px 20px', textAlign: 'center', cursor: 'pointer',
+                  background: dragging ? '#f0f7fb' : '#fafbfc', transition: 'all 0.2s ease', marginBottom: 12,
+                }}>
+                <Upload size={24} color={dragging ? '#2a7d9c' : '#94a3b8'} style={{ marginBottom: 8 }} />
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 3 }}>Glissez vos PDF ici ou cliquez pour parcourir</div>
+                <div style={{ fontSize: 12, color: '#94a3b8' }}>Maximum {MAX_FILES} documents · PDF uniquement</div>
+                <input ref={fileInputRef} type="file" accept=".pdf,application/pdf" multiple
                   onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ''; }}
-                  style={{ display: 'none' }}
-                />
+                  style={{ display: 'none' }} />
               </div>
 
               {/* Fichiers sélectionnés */}
               {files.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
                   {files.map((f, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #d1fae5' }}>
-                      <FileText size={16} color="#16a34a" />
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #d1fae5' }}>
+                      <FileText size={15} color="#16a34a" />
                       <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
                       <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{(f.size / 1024 / 1024).toFixed(1)} Mo</span>
-                      <button onClick={() => removeFile(i)} style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <X size={14} color="#94a3b8" />
+                      <button onClick={() => removeFile(i)} style={{ width: 22, height: 22, borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <X size={13} color="#94a3b8" />
                       </button>
                     </div>
                   ))}
                 </div>
               )}
 
-              {/* Erreur */}
               {error && (
-                <div style={{ padding: '10px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 13, color: '#dc2626', marginBottom: 16 }}>
-                  {error}
-                </div>
+                <div style={{ padding: '10px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 13, color: '#dc2626', marginBottom: 12 }}>{error}</div>
               )}
 
               {/* Bouton */}
-              <button
-                onClick={handleSubmit}
-                disabled={files.length === 0}
+              <button onClick={handleSubmit} disabled={files.length === 0}
                 style={{
-                  width: '100%', padding: '14px 24px', borderRadius: 12, border: 'none',
+                  width: '100%', padding: '13px 24px', borderRadius: 12, border: 'none',
                   background: files.length > 0 ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#e2e8f0',
-                  color: files.length > 0 ? '#fff' : '#94a3b8',
-                  fontSize: 15, fontWeight: 700,
+                  color: files.length > 0 ? '#fff' : '#94a3b8', fontSize: 15, fontWeight: 700,
                   cursor: files.length > 0 ? 'pointer' : 'not-allowed',
                   boxShadow: files.length > 0 ? '0 4px 16px rgba(42,125,156,0.25)' : 'none',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                }}
-              >
-                <RefreshCw size={16} />
-                Mettre à jour l'analyse
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 20,
+                }}>
+                <RefreshCw size={16} /> Mettre à jour l'analyse
               </button>
+
+              {/* ── Séparateur ── */}
+              <div style={{ height: 1, background: '#edf2f7', marginBottom: 18 }} />
+
+              {/* ── BAS : 2 colonnes — Docs suggérés + Docs déjà analysés ── */}
+              <div style={{ display: 'grid', gridTemplateColumns: hasManquants ? '1fr 1fr' : '1fr', gap: 16 }}>
+
+                {/* Col 1 : Documents suggérés */}
+                {hasManquants && (
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', letterSpacing: '0.08em', marginBottom: 10 }}>📌 DOCUMENTS SUGGÉRÉS</div>
+
+                    {docsEssentielsManquants.length > 0 && (
+                      <div style={{ marginBottom: 12 }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: '#1e40af', letterSpacing: '0.06em', marginBottom: 6 }}>ESSENTIELS</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                          {docsEssentielsManquants.map((doc, i) => (
+                            <div key={`e${i}`} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 8, background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 12, color: '#1e40af' }}>
+                              <span>{doc.emoji}</span> <span style={{ flex: 1 }}>{doc.label}</span>
+                              {doc.tooltip && <TooltipBubble id={`e${i}`} text={doc.tooltip} />}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {docsSecondairesManquants.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: '#64748b', letterSpacing: '0.06em', marginBottom: 6 }}>SECONDAIRES</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                          {docsSecondairesManquants.map((doc, i) => (
+                            <div key={`s${i}`} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: 12, color: '#475569' }}>
+                              <span>{doc.emoji}</span> <span style={{ flex: 1 }}>{doc.label}</span>
+                              {doc.tooltip && <TooltipBubble id={`s${i}`} text={doc.tooltip} />}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Col 2 : Documents déjà analysés */}
+                {docsAnalyses.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', letterSpacing: '0.08em', marginBottom: 10 }}>✓ DOCUMENTS DÉJÀ ANALYSÉS</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      {docsAnalyses.map((doc, i) => {
+                        const type = safeStr(doc.type);
+                        const nom = safeStr(doc.nom || doc.name);
+                        const annee = safeStr(doc.annee);
+                        const icon = docTypeIcon[type] || '📄';
+                        const label = nom || docTypeLabel[type] || type;
+                        return (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #d1fae5', fontSize: 12, color: '#166534' }}>
+                            <span>{icon}</span> {label}{annee ? ` (${annee})` : ''}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
