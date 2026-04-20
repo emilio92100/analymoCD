@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet complet — 19 avril 2026 (session 2)
+# VERIMO — Contexte projet complet — 20 avril 2026 (session 3)
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -9,6 +9,7 @@
 - Modifie les fichiers directement sur **GitHub.com** (crayon ✏️ → Ctrl+A → colle → Commit)
 - Pour créer un nouveau fichier : GitHub → dossier cible → "Add file" → "Create new file"
 - Vercel redéploie automatiquement après chaque push GitHub
+- Edge Functions Supabase : modifiées aussi directement dans le dashboard Supabase (en plus de GitHub)
 - Claude peut cloner le repo : `https://github.com/emilio92100/analymoCD.git`
 - Claude doit **toujours re-cloner** avant de modifier : `git clone https://github.com/emilio92100/analymoCD.git`
 - Claude livre les fichiers **complets** via `present_files` depuis `/mnt/user-data/outputs/`
@@ -28,7 +29,7 @@
 
 ### Logique crédits / prix
 - 4,90€ → 1 crédit analyse simple (1 seul document) — PAS de score /20
-- 19,90€ → 1 crédit analyse complète
+- 19,90€ → 1 crédit analyse complète (jusqu'à 15 documents)
 - 29,90€ → 2 crédits (Pack 2 biens)
 - 39,90€ → 3 crédits (Pack 3 biens)
 - Les crédits n'expirent jamais
@@ -49,7 +50,7 @@ pack3    : price_1TIb51BO4ekMbwz0mmEez47o
 - **Backend** : Supabase Pro (auth + DB + Edge Functions Deno + Storage)
 - **IA** : Claude Sonnet 4.6 via API Anthropic + Files API
 - **Paiement** : Stripe (mode TEST)
-- **Déploiement** : Vercel (auto depuis GitHub)
+- **Déploiement** : Vercel (frontend auto depuis GitHub) + Supabase (edge functions manuelles)
 - **Repo** : `github.com/emilio92100/analymoCD`
 - **URL Supabase** : `veszrayromldfgetqaxb.supabase.co`
 
@@ -78,6 +79,64 @@ pack3    : price_1TIb51BO4ekMbwz0mmEez47o
 /dashboard/rapport?id=XXX   → Aperçus gratuits
 /rapport?id=XXX             → RapportPage standalone (rapports payants)
 ```
+
+---
+
+## Modifications session 20 avril 2026 — session 3
+
+### Enrichissement du prompt IA (analyser-run/index.ts)
+Ajout de règles juridiques à jour dans le prompt d'analyse (simple + complète) :
+
+**Loi Climat & Résilience :**
+- DPE G : interdit à la location depuis le 1er janvier 2025
+- DPE F : interdit à la location au 1er janvier 2028
+- DPE E : interdit à la location au 1er janvier 2034
+- Gel des loyers F et G depuis le 24 août 2022
+- Profil investisseur : mention dans points_vigilance + avis_verimo avec impact rentabilité
+- Profil résidence principale : mention dans avis_verimo uniquement ("en cas de revente ou location future")
+
+**DPE petites surfaces (arrêté du 25 mars 2024) :**
+- Seuils ajustés pour logements < 40 m² depuis juillet 2024
+- Si DPE F/G + surface < 40 m² + DPE avant juillet 2024 → mention dans points_forts qu'un nouveau DPE pourrait améliorer la classe
+
+**Audit énergétique obligatoire à la vente :**
+- Maisons individuelles et monopropriétés classées E/F/G → audit obligatoire
+- Ajouté dans documents_manquants si type_bien = "maison" et DPE E/F/G sans audit fourni
+- Ne concerne PAS les appartements en copropriété
+
+### Compléter le dossier (7 jours) — IMPLÉMENTÉ
+
+**Fonctionnement :**
+Après une analyse complète, l'utilisateur a 7 jours pour ajouter jusqu'à 5 documents oubliés. L'IA fusionne le rapport existant (JSON) avec les nouveaux PDFs et produit un rapport mis à jour.
+
+**Backend déployé :**
+- `analyser/index.ts` (v6) : mode `complement` avec vérification deadline, limite 5 docs, lecture rapport existant, passage à analyser-run
+- `analyser-run/index.ts` (v6) : prompt `buildComplementPrompt` pour fusion JSON + nouveaux docs, stockage `complement_date` + `complement_doc_names`, stockage `regeneration_deadline` (now + 7 jours) à la fin de chaque analyse complète
+- SQL : colonnes `complement_date` (TIMESTAMPTZ) et `complement_doc_names` (TEXT[]) ajoutées à la table `analyses`
+
+**Frontend déployé :**
+- `RapportPage.tsx` : popup ComplementModal (680px large, layout 2 colonnes)
+  - Haut : zone drag & drop PDF (max 5 docs) + fichiers sélectionnés + bouton "Mettre à jour l'analyse"
+  - Bas : 2 colonnes — documents suggérés (essentiels en bleu, secondaires en gris, avec tooltips identiques à l'onglet Documents) + documents déjà analysés (noms lisibles avec emojis)
+  - Barre de progression circulaire + linéaire pendant l'analyse ("Croisement avec le rapport existant…")
+  - Écran succès "Rapport mis à jour" + bouton "Voir le rapport mis à jour" + auto-fermeture 10s
+- Bouton "Compléter mon dossier" dans l'onglet Documents : actif dans les 7 jours, grisé après avec tooltip "Le délai de 7 jours pour ajouter des documents est dépassé"
+- CountdownTimer : compte à rebours live (heures/minutes/secondes) le dernier jour
+- Badge "📎 Dossier mis à jour le XX — X documents ajoutés" en haut de l'onglet Documents
+- Badges "📎 Ajouté le XX" à côté des documents ajoutés en complément dans la liste Documents Analysés
+- `analyses.ts` : type AnalyseDB mis à jour avec `complement_date` et `complement_doc_names`
+- `analyse-client.ts` : type AnalyseMode mis à jour avec `'complement'`
+
+**Flux RGPD identique :** les nouveaux PDFs sont supprimés de Storage et de l'API Files après traitement.
+
+### MethodePage.tsx — Corrections textuelles
+- "autant de documents que vous voulez" → "jusqu'à 15 documents"
+- DDT : "impacte directement le score" → "un dossier sans anomalie renforce votre score"
+- Section score : "Contrairement à votre prof de maths..." → "Votre bien démarre avec la note maximale. Chaque risque détecté dans vos documents fait baisser le curseur. Mais chaque point positif le remonte. L'objectif : une note juste, pas une note pessimiste."
+
+### App.tsx — Préchargement HomePage
+- Préchargement en arrière-plan de HomePage 2 secondes après le chargement initial de n'importe quelle page
+- Résout le problème de lenteur au retour vers l'accueil sur iOS/iPhone
 
 ---
 
@@ -172,13 +231,15 @@ contact_pro (
 
 ---
 
-## Optimisations iOS (session 19 avril 2026) — À TESTER SUR IPHONE
+## Optimisations iOS (session 19 avril 2026) — TESTÉ SUR IPHONE
 - **Navbar** : `backdrop-blur` → fond opaque sur mobile, scroll listener `passive + rAF`
 - **HomePage** : `Reveal` et `SectionTitle` → CSS natif sur mobile (IntersectionObserver + transitions GPU)
 - **HomePage** : badges float infinite désactivés, `usePhoneSteps` un seul cycle
 - **MethodePage, ExemplePage, TarifsPage** : Reveal CSS natif sur mobile
 - **DashboardPage** : overlay sidebar sans backdrop-blur
 - **index.css** : `@supports (-webkit-touch-callout: none)` pour iOS Safari
+- **App.tsx** : préchargement HomePage en arrière-plan (2s après load) pour retour instantané
+- **Retour utilisateur (session 3)** : nette amélioration, pages fluides, menu sans scintillement. Seul le retour vers l'accueil avait un petit chargement → résolu par le préchargement
 
 ---
 
@@ -257,6 +318,35 @@ contact_pro (
 5. **Carrez** — ne pas afficher dans les diags si section Surface Carrez dédiée.
 6. **Travaux votés avant la vente** = charge vendeur, même si pas encore réalisés. NE PAS compter comme risque pour l'acheteur.
 7. **Travaux évoqués non votés** = vrai risque pour l'acheteur (il paiera si voté après la signature).
+8. **Loi Climat & Résilience** — DPE G interdit location depuis 2025, F en 2028, E en 2034. Gel loyers F/G depuis 2022.
+9. **DPE petites surfaces** — Seuils ajustés pour < 40 m² depuis juillet 2024 (arrêté 25 mars 2024).
+10. **Audit énergétique** — Obligatoire pour vente maisons/monopropriétés E/F/G. Pas les appartements en copro.
+
+---
+
+## Flux technique — Comment fonctionne une analyse
+
+1. L'utilisateur uploade ses PDFs dans Supabase Storage (bucket `analyse-temp`)
+2. Le frontend appelle la edge function `analyser` avec les paths Storage + l'ID analyse
+3. `analyser` télécharge les PDFs depuis Storage, les uploade vers l'API Anthropic Files, obtient des `file_ids`
+4. `analyser` supprime les PDFs de Supabase Storage
+5. `analyser` passe le status à `files_ready` et appelle `analyser-run` via `EdgeRuntime.waitUntil`
+6. `analyser-run` appelle Claude Sonnet avec les `file_ids` et le prompt système
+7. Claude analyse tous les documents et retourne un JSON structuré (rapport complet ou analyse simple)
+8. `analyser-run` supprime les `file_ids` de l'API Anthropic Files (RGPD)
+9. Le rapport JSON est stocké dans `analyses.result` dans Supabase
+10. `analyser-run` stocke `regeneration_deadline` = now + 7 jours (analyses complètes uniquement)
+11. **IMPORTANT** : après le rapport, les documents originaux n'existent plus nulle part (ni Storage, ni Files API). Seul le JSON résultat est conservé.
+
+### Flux complément (nouveau — session 3)
+1. L'utilisateur clique "Compléter mon dossier" dans l'onglet Documents (dans les 7 jours)
+2. Popup : upload de 1 à 5 PDFs
+3. `analyser` en mode `complement` : vérifie deadline, limite 5 docs, lit le rapport existant, uploade les nouveaux PDFs
+4. `analyser-run` en mode `complement` : reçoit le rapport JSON existant + les nouveaux file_ids, prompt de fusion
+5. Claude fusionne les données et produit un nouveau rapport complet au même format
+6. Les nouveaux PDFs sont supprimés (RGPD identique)
+7. Le nouveau rapport remplace l'ancien, `complement_date` et `complement_doc_names` sont stockés
+8. La `regeneration_deadline` n'est PAS remise à zéro
 
 ---
 
@@ -266,8 +356,11 @@ contact_pro (
 src/pages/
   HomePage.tsx              ← Page d'accueil (section "Pour Qui" interactive + timeline)
   ProPage.tsx               ← Landing page offre pro (4 profils dont marchand de bien)
+  TarifsPage.tsx            ← Tarifs + FAQ + comparatif
+  MethodePage.tsx           ← Notre méthode (score /20, types de docs)
+  ContactPage.tsx           ← Formulaire contact général
   ContactProPage.tsx        ← Formulaire contact pro (5 profils dont marchand de bien)
-  RapportPage.tsx           ← Rapport standalone (3200 lignes)
+  RapportPage.tsx           ← Rapport standalone (~3580 lignes) + popup Compléter le dossier
   ExemplePage.tsx           ← Exemple de rapport (À REFAIRE)
   DashboardPage.tsx         ← Shell dashboard + sidebar + topbar
   AdminPage.tsx             ← Admin (users, analyses, messages, demandes pro, promos, logs)
@@ -284,11 +377,12 @@ src/components/layout/
 
 src/lib/
   supabase.ts
-  analyse-client.ts
+  analyse-client.ts         ← Upload PDFs + polling (modes: complete, document, apercu, complement)
+  analyses.ts               ← Types AnalyseDB + CRUD Supabase (complement_date, complement_doc_names)
 
 supabase/functions/
-  analyser/index.ts         ← Upload PDFs → Files API → déclenche analyser-run
-  analyser-run/index.ts     ← Appel Claude avec file_ids → rapport JSON → suppression RGPD
+  analyser/index.ts         ← Upload PDFs → Files API → déclenche analyser-run (+ mode complement)
+  analyser-run/index.ts     ← Appel Claude → rapport JSON → suppression RGPD (+ prompt complement + règles juridiques)
   comparer/index.ts         ← Comparaison IA : lit rapports JSON → appel Claude → verdict
 ```
 
@@ -303,36 +397,30 @@ supabase/functions/
 
 ---
 
-## Flux technique — Comment fonctionne une analyse
-
-1. L'utilisateur uploade ses PDFs dans Supabase Storage (bucket `analyse-temp`)
-2. Le frontend appelle la edge function `analyser` avec les paths Storage + l'ID analyse
-3. `analyser` télécharge les PDFs depuis Storage, les uploade vers l'API Anthropic Files, obtient des `file_ids`
-4. `analyser` supprime les PDFs de Supabase Storage
-5. `analyser` passe le status à `files_ready` et appelle `analyser-run` via `EdgeRuntime.waitUntil`
-6. `analyser-run` appelle Claude Sonnet avec les `file_ids` et le prompt système
-7. Claude analyse tous les documents et retourne un JSON structuré (rapport complet ou analyse simple)
-8. `analyser-run` supprime les `file_ids` de l'API Anthropic Files (RGPD)
-9. Le rapport JSON est stocké dans `analyses.result` dans Supabase
-10. **IMPORTANT** : après le rapport, les documents originaux n'existent plus nulle part (ni Storage, ni Files API). Seul le JSON résultat est conservé.
-
----
-
 ## Backlog
 
-### 🔴 Priorité haute — À FAIRE EN PROCHAINE SESSION
-- [ ] **Compléter le dossier (7 jours)** — voir section dédiée ci-dessous
+### 🔴 Priorité haute
+- [ ] **Tester compléter le dossier** — flux complet en vrai (upload → edge function → Claude fusionne → rapport mis à jour). Non testé en conditions réelles.
 - [ ] **Pistes de négociation** — changer la règle `applicable=true UNIQUEMENT si score < 14` → applicable dès qu'un élément chiffrable est détecté (travaux évoqués non votés, DPE E/F/G, impayés, fonds travaux insuffisant). Travaux votés = charge vendeur, donc PAS dans les pistes de négo.
 - [ ] **ExemplePage** — refaire complètement pour matcher le vrai RapportPage
 
 ### 🟡 Priorité normale
-- [ ] Vérifier optimisations iOS sur un vrai iPhone
+- [ ] Tester RapportPage sur iPhone (performances)
+- [ ] Tester retour accueil sur iPhone après préchargement App.tsx
 - [ ] Vérifier affichage mobile tous types docs simples
 - [ ] HomeView : retravailler présentation générale
 - [ ] Stripe TEST → production
 - [ ] Analyses bloquées > 20 min → badge "Échoué"
 - [ ] Système dossiers par bien
 - [ ] App.css : vestige Vite, peut être supprimé
+
+### ✅ Fait (session 3 — 20 avril 2026)
+- [x] Prompt IA enrichi : loi Climat & Résilience, DPE petites surfaces, audit énergétique
+- [x] Compléter le dossier — backend complet (analyser + analyser-run + SQL)
+- [x] Compléter le dossier — frontend complet (popup, timer, badges, bouton grisé)
+- [x] regeneration_deadline stockée dans analyser-run
+- [x] MethodePage — textes corrigés (15 docs, DDT, score)
+- [x] App.tsx — préchargement HomePage pour iOS
 
 ### ✅ Fait (session 2 — 19 avril 2026)
 - [x] HomePage — Section "Pour Qui" interactive (4 boutons + messages personnalisés)
@@ -351,59 +439,4 @@ supabase/functions/
 - [x] Compare.tsx — Historique des comparaisons + suppression
 - [x] Edge function `comparer` déployée sur Supabase
 - [x] Table `comparaisons` créée dans Supabase
-- [x] NouvelleAnalyse — texte corrigé (déjà fait par l'utilisateur)
-- [x] Bouton PDF — message "en développement" (déjà fait par l'utilisateur)
-
----
-
-## 📋 Spécifications — Compléter le dossier (7 jours)
-
-### Contexte
-Après une analyse complète, l'utilisateur a **7 jours** pour ajouter des documents oubliés et obtenir un rapport mis à jour gratuitement. La deadline est stockée dans `analyses.regeneration_deadline`.
-
-### Contrainte technique critique
-Les documents originaux (PDFs) **n'existent plus** après l'analyse. Ils sont supprimés de Supabase Storage et de l'API Anthropic Files (RGPD). On ne peut PAS les récupérer.
-
-### Approche retenue — "Approche 2"
-L'utilisateur uploade **SEULEMENT les nouveaux documents**. L'IA reçoit :
-1. Le **JSON du rapport existant** (stocké dans `analyses.result` dans Supabase)
-2. Les **nouveaux PDFs** (via Files API)
-
-L'IA fusionne les deux : elle garde les données existantes du rapport et les enrichit/corrige avec les informations des nouveaux documents. Le résultat est un **nouveau rapport complet** au même format JSON qui remplace l'ancien.
-
-### Pourquoi ça marche
-Le rapport JSON existant contient déjà toutes les données extraites des anciens documents (travaux, finances, diagnostics, etc.). L'IA n'a pas besoin de relire les PDFs originaux. Elle peut :
-- Compléter les champs qui étaient `null` (ex: charges annuelles absentes → l'appel de charges les fournit)
-- Corriger des données (ex: le PV d'AG mentionnait un ravalement, l'état daté le confirme avec un montant précis)
-- Croiser les informations (ex: "le PV d'AG mentionnait un ravalement évoqué, l'appel de charges confirme un poste ravalement provisionné")
-- Recalculer le score /20 avec les nouvelles données
-
-### Ce qu'il faut coder
-
-#### 1. Backend — Edge function `analyser` + `analyser-run`
-- Ajouter un mode `complement` dans `analyser`
-- `analyser` reçoit : `{ analyseId, mode: 'complement', storagePaths, fileNames }`
-- `analyser` lit le rapport JSON existant depuis Supabase (`analyses.result`)
-- `analyser` uploade les nouveaux PDFs vers Files API (comme aujourd'hui)
-- `analyser` passe le JSON existant + les nouveaux file_ids à `analyser-run`
-- `analyser-run` construit un prompt spécifique "complement" : "Voici le rapport précédent (JSON) et de nouveaux documents. Mets à jour le rapport en intégrant les nouvelles informations. Produis le même format JSON complet."
-- Le nouveau rapport remplace l'ancien dans `analyses.result`
-- La `regeneration_deadline` est conservée (pas remise à zéro)
-
-#### 2. Frontend — Modal "Compléter le dossier"
-- **Où** : depuis la bannière 7 jours dans `RapportPage.tsx` (bouton "Compléter" qui existe déjà et redirige vers `?action=complement`)
-- **UX recommandée** : popup/modal (pas une nouvelle page) avec :
-  - Zone d'upload PDF (même composant que NouvelleAnalyse)
-  - Liste des documents déjà analysés (rappel)
-  - Bouton "Mettre à jour l'analyse"
-  - Barre de progression pendant le traitement
-- Après mise à jour : le rapport se recharge avec les nouvelles données
-
-#### 3. Timer amélioré dans la bannière 7 jours
-- J-7 à J-2 : afficher "X jours restants"
-- J-1 : afficher un compte à rebours en **heures/minutes/secondes** (live, `setInterval` chaque seconde)
-- J+0 et après : bannière grisée avec message "Délai des 7 jours dépassé"
-- Le texte du timer doit être plus visible (urgent en rouge/ambre)
-
-#### 4. Pas d'affichage de diff
-Le nouveau rapport remplace entièrement l'ancien. Pas besoin d'afficher ce qui a changé — c'est trop complexe et l'utilisateur veut juste le rapport le plus complet possible. Éventuellement ajouter un badge "Mis à jour le XX" sur le rapport.
+- [x] Optimisations iOS déployées et testées
