@@ -1,7 +1,9 @@
 // ══════════════════════════════════════════════════════════════
-// EDGE FUNCTION — analyser-run (v6 — complement support)
+// EDGE FUNCTION — analyser-run (v7 — complement + typeBienDeclare)
 // Étape 2 : Appel Claude avec file_ids → rapport → suppression RGPD
 // Mode complement : fusionne rapport existant + nouveaux docs
+// Session 4 : reçoit type_bien_declare (appart/maison/maison_copro/indetermine)
+//             et l'injecte dans le prompt pour fiabiliser le rendu
 // Pas de limite HTTP → peut durer 10+ minutes
 // ══════════════════════════════════════════════════════════════
 
@@ -217,10 +219,19 @@ function buildDocumentPrompt(p: string): string {
   return parts.join('\n');
 }
 
-function buildComplementPrompt(profil: string): string {
+function buildComplementPrompt(profil: string, typeBienDeclare?: string | null): string {
   const p = profil === 'invest' ? 'investissement locatif' : 'residence principale';
+  let typeBienHint = '';
+  if (typeBienDeclare && typeBienDeclare !== 'indetermine') {
+    const labelBien =
+      typeBienDeclare === 'appartement' ? 'un appartement en copropriété' :
+      typeBienDeclare === 'maison' ? 'une maison individuelle' :
+      typeBienDeclare === 'maison_copro' ? 'une maison en copropriété (lotissement, ASL)' :
+      'un bien immobilier';
+    typeBienHint = `\n\nTYPE DE BIEN : ${labelBien}. Conserve type_bien = "${typeBienDeclare}" dans le JSON.`;
+  }
   return `Tu es le moteur d analyse de documents immobiliers de Verimo. Profil acheteur : ${p}.
-Tu n utilises jamais les mots Claude, Anthropic ou IA.
+Tu n utilises jamais les mots Claude, Anthropic ou IA.${typeBienHint}
 
 MODE COMPLEMENT : Tu recois un rapport d analyse existant (JSON) et de NOUVEAUX documents PDF.
 Ta mission : produire un NOUVEAU rapport complet qui FUSIONNE les donnees existantes avec les nouvelles informations.
@@ -243,7 +254,7 @@ IMPORTANT :
 Reponds UNIQUEMENT en JSON strict, sans texte avant ou apres. Le JSON doit avoir EXACTEMENT la meme structure que le rapport existant.`;
 }
 
-function buildSystemPrompt(mode: string, profil: string): string {
+function buildSystemPrompt(mode: string, profil: string, typeBienDeclare?: string | null): string {
   const p = profil === 'invest' ? 'investissement locatif' : 'residence principale';
   if (mode === 'apercu_complete' || mode === 'apercu_document') {
     return `Tu es le moteur d analyse de documents immobiliers de Verimo. Profil : ${p}. Tu n utilises jamais les mots Claude, Anthropic ou IA.
@@ -253,9 +264,38 @@ Reponds UNIQUEMENT en JSON strict : {"titre": "adresse ou Votre bien", "recomman
     return buildDocumentPrompt(p);
   }
   if (mode === 'complement') {
-    return buildComplementPrompt(profil);
+    return buildComplementPrompt(profil, typeBienDeclare);
   }
-  return `Tu es le moteur d analyse de documents immobiliers de Verimo. Profil acheteur : ${p}.
+
+  // ══════════════════════════════════════════════════════════
+  // BLOC TYPE DE BIEN DÉCLARÉ — Inséré en tête du prompt complet
+  // ══════════════════════════════════════════════════════════
+  let typeBienBlock = '';
+  if (typeBienDeclare && typeBienDeclare !== 'indetermine') {
+    const labelBien =
+      typeBienDeclare === 'appartement' ? 'un appartement en copropriété' :
+      typeBienDeclare === 'maison' ? 'une maison individuelle' :
+      typeBienDeclare === 'maison_copro' ? 'une maison en copropriété (lotissement, ASL)' :
+      'un bien immobilier';
+
+    typeBienBlock = `
+TYPE DE BIEN DECLARE PAR L UTILISATEUR : ${labelBien}
+REGLE IMPORTANTE : l utilisateur a indique que le bien analyse est ${labelBien}. Tu dois utiliser cette information comme reference principale pour le champ type_bien dans le JSON de sortie (valeur attendue : "${typeBienDeclare}").
+Exception : si les documents fournis contredisent fermement cette declaration (ex : l utilisateur a dit "maison" mais tu vois clairement un PV d AG + reglement de copropriete mentionnant un immeuble collectif, ou inversement), alors utilise le type_bien correct selon les documents ET mentionne dans points_vigilance : "Attention : le type de bien declare initialement (${labelBien}) semble different de ce qui apparait dans les documents. Verifiez avec votre notaire."
+Si les documents ne permettent PAS de conclure, fais confiance a la declaration de l utilisateur.
+
+`;
+  } else if (typeBienDeclare === 'indetermine' || !typeBienDeclare) {
+    typeBienBlock = `
+TYPE DE BIEN NON DECLARE : Determine toi-meme le type_bien a partir des documents fournis.
+Indices pour appartement : PV d AG, reglement de copropriete, syndic, tantiemes, appel de charges copro, pre-etat date, surface Carrez, mention d immeuble ou d etage.
+Indices pour maison : DDT maison individuelle sans document copro, taxe fonciere habitation individuelle, parcelle cadastrale dediee, absence totale de syndic ou tantiemes.
+Indices pour maison_copro : maison dans un lotissement avec ASL, reglement de lotissement, charges collectives sans syndic professionnel.
+Si les documents ne permettent pas de trancher avec certitude, prends "appartement" par defaut (cas le plus courant) et mentionne dans points_vigilance que le type exact doit etre verifie aupres du notaire.
+
+`;
+  }
+  return `${typeBienBlock}Tu es le moteur d analyse de documents immobiliers de Verimo. Profil acheteur : ${p}.
 Tu informes, tu n orientes jamais la decision finale. Tu n utilises jamais les mots Claude, Anthropic ou IA.
 Si une information est absente, tu le signales clairement.
 
@@ -394,10 +434,11 @@ async function runAnalyseWithData(
   apiKey: string,
   existingReport?: Record<string, unknown>,
   complementDocNames?: string[],
+  typeBienDeclare?: string | null,
 ): Promise<void> {
   const fileIds = files.map(f => f.id);
   try {
-    console.log(`[analyser-run] Analyse ${analyseId} — ${files.length} docs | mode:${mode}`);
+    console.log(`[analyser-run] Analyse ${analyseId} — ${files.length} docs | mode:${mode} | typeDeclare:${typeBienDeclare || 'null'}`);
 
     const userContent: unknown[] = [];
 
@@ -472,14 +513,14 @@ async function runAnalyseWithData(
       await supabaseAdmin.from('analyses').update({ progress_message: msg }).eq('id', analyseId);
     }, 40_000);
 
-    let result = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
+    let result = await callAI({ system: buildSystemPrompt(mode, profil, typeBienDeclare), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
     clearInterval(progressInterval);
     let report = result.error ? null : parseJson<Record<string, unknown>>(result.text);
 
     if (!result.error && !report) {
       console.warn('[analyser-run] JSON invalide — retry 5s');
       await sleep(5000);
-      result = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
+      result = await callAI({ system: buildSystemPrompt(mode, profil, typeBienDeclare), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
       report = result.error ? null : parseJson<Record<string, unknown>>(result.text);
     }
 
@@ -543,7 +584,7 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
   try {
     const { data: analyse, error } = await supabaseAdmin
       .from('analyses')
-      .select('file_ids, mode, profil')
+      .select('file_ids, mode, profil, type_bien_declare')
       .eq('id', analyseId)
       .single();
 
@@ -552,6 +593,7 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
     const files = (analyse.file_ids as Array<{ id: string; name: string }>) || [];
     const mode = (analyse.mode as string) || 'complete';
     const profil = (analyse.profil as string) || 'rp';
+    const typeBienDeclare = (analyse.type_bien_declare as string) || null;
 
     if (files.length === 0) {
       await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: 'Aucun fichier trouv\u00e9.' }).eq('id', analyseId);
@@ -595,14 +637,14 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
       await supabaseAdmin.from('analyses').update({ progress_message: msg }).eq('id', analyseId);
     }, 40_000);
 
-    let result = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
+    let result = await callAI({ system: buildSystemPrompt(mode, profil, typeBienDeclare), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
     clearInterval(progressInterval);
     let report = result.error ? null : parseJson<Record<string, unknown>>(result.text);
 
     if (!result.error && !report) {
       console.warn('[analyser-run] JSON invalide — retry 5s');
       await sleep(5000);
-      result = await callAI({ system: buildSystemPrompt(mode, profil), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
+      result = await callAI({ system: buildSystemPrompt(mode, profil, typeBienDeclare), userContent, maxTokens: MAX_TOKENS_OUTPUT, apiKey });
       report = result.error ? null : parseJson<Record<string, unknown>>(result.text);
     }
 
@@ -682,6 +724,7 @@ Deno.serve(async (req) => {
     const fileIds = body?.fileIds as Array<{ id: string; name: string }> || [];
     const mode = body?.mode as string || 'complete';
     const profil = body?.profil as string || 'rp';
+    const typeBienDeclare = (body?.typeBienDeclare as string) || null;
     const existingReport = body?.existingReport as Record<string, unknown> | undefined;
     const complementDocNames = body?.complementDocNames as string[] | undefined;
 
@@ -690,8 +733,8 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'no_file_ids' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    console.log(`[analyser-run] Lancement — ${fileIds.length} docs | mode:${mode}`);
-    EdgeRuntime.waitUntil(runAnalyseWithData(analyseId, fileIds, mode, profil, supabaseAdmin, apiKey, existingReport, complementDocNames));
+    console.log(`[analyser-run] Lancement — ${fileIds.length} docs | mode:${mode} | typeDeclare:${typeBienDeclare || 'null'}`);
+    EdgeRuntime.waitUntil(runAnalyseWithData(analyseId, fileIds, mode, profil, supabaseAdmin, apiKey, existingReport, complementDocNames, typeBienDeclare));
 
     return new Response(JSON.stringify({ success: true, analyseId }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
   } catch (err) {
