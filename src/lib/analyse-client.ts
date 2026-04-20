@@ -5,6 +5,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const STORAGE_BUCKET = 'analyse-temp';
 
 export type AnalyseMode = 'complete' | 'document' | 'apercu_complete' | 'apercu_document' | 'complement';
+export type TypeBienDeclare = 'appartement' | 'maison' | 'maison_copro' | 'indetermine';
 
 export type AnalyseProgress = {
   step: 'extracting' | 'analysing' | 'reducing' | 'done' | 'error';
@@ -26,9 +27,10 @@ export async function lancerAnalyseEdge(params: {
   mode: AnalyseMode;
   analyseId: string;
   profil: 'rp' | 'invest';
+  typeBienDeclare?: TypeBienDeclare | null;
   onProgress?: (p: AnalyseProgress) => void;
 }): Promise<AnalyseClientResult> {
-  const { files, mode, analyseId, profil, onProgress } = params;
+  const { files, mode, analyseId, profil, typeBienDeclare, onProgress } = params;
 
   try {
     // Tenter getSession, puis getUser en fallback (mobile Safari peut perdre la session localStorage)
@@ -89,8 +91,6 @@ export async function lancerAnalyseEdge(params: {
     onProgress?.({ step: 'analysing', current: 0, total: files.length, percent: 30, message: 'Lancement de l\'analyse…' });
 
     // ── 2. Déclencher l'Edge Function (fire & forget — pas d'await sur la réponse longue) ──
-    // On utilise fetch avec un timeout court juste pour vérifier que la fonction démarre.
-    // L'Edge Function travaille en arrière-plan, on poll Supabase pour le résultat.
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10_000); // 10s max pour démarrer
 
@@ -102,7 +102,14 @@ export async function lancerAnalyseEdge(params: {
           'Authorization': `Bearer ${session.access_token}`,
           'apikey': SUPABASE_ANON_KEY,
         },
-        body: JSON.stringify({ analyseId, mode, profil, storagePaths, fileNames: files.map(f => f.name) }),
+        body: JSON.stringify({
+          analyseId,
+          mode,
+          profil,
+          typeBienDeclare: typeBienDeclare || null,
+          storagePaths,
+          fileNames: files.map(f => f.name),
+        }),
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
@@ -124,7 +131,6 @@ export async function lancerAnalyseEdge(params: {
     } catch (fetchErr) {
       clearTimeout(timeoutId);
       // AbortError = timeout ou coupure réseau — l'Edge Function tourne probablement encore
-      // On continue vers le polling
       console.warn('[Verimo] Fetch interrompu (timeout ou réseau), on poll Supabase:', fetchErr);
     }
 
