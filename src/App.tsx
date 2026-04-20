@@ -9,6 +9,16 @@ import Footer from './components/layout/Footer';
 // Réduit drastiquement le bundle initial → chargement beaucoup plus rapide sur mobile
 const HomePage = lazy(() => import('./pages/HomePage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
+
+// Précharger HomePage + framer-motion en arrière-plan après le premier rendu
+// → quand l'utilisateur revient sur l'accueil depuis une autre page, c'est instantané
+if (typeof window !== 'undefined') {
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      import('./pages/HomePage');
+    }, 2000); // 2s après le chargement initial
+  }, { once: true });
+}
 const SignupPage = lazy(() => import('./pages/SignupPage'));
 const TarifsPage = lazy(() => import('./pages/TarifsPage'));
 const ContactPage = lazy(() => import('./pages/ContactPage'));
