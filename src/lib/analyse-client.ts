@@ -4,7 +4,7 @@ const EDGE_FUNCTION_URL = 'https://veszrayromldfgetqaxb.supabase.co/functions/v1
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlc3pyYXlyb21sZGZnZXRxYXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MzI5NTUsImV4cCI6MjA2MTAwODk1NX0.XsqzBPDMfHRFKgMhJxoLhgVWZMdV5YnFKM3VCBe9hOk';
 const STORAGE_BUCKET = 'analyse-temp';
 
-export type AnalyseMode = 'complete' | 'document' | 'apercu_complete' | 'apercu_document';
+export type AnalyseMode = 'complete' | 'document' | 'apercu_complete' | 'apercu_document' | 'complement';
 
 export type AnalyseProgress = {
   step: 'extracting' | 'analysing' | 'reducing' | 'done' | 'error';
