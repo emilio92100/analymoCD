@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet complet — 20 avril 2026 (session 3)
+# VERIMO — Contexte projet complet — 20 avril 2026 (session 4 partie 1)
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -78,6 +78,71 @@ pack3    : price_1TIb51BO4ekMbwz0mmEez47o
 /dashboard/compare          → Compare (comparaison de biens — FAIT)
 /dashboard/rapport?id=XXX   → Aperçus gratuits
 /rapport?id=XXX             → RapportPage standalone (rapports payants)
+```
+
+---
+
+## Modifications session 20 avril 2026 — session 4 partie 1
+
+### Sélecteur "Type de bien" dans NouvelleAnalyse (NOUVELLE ÉTAPE)
+Entre `choice` et `profil`, nouvelle étape où l'utilisateur déclare le type de bien :
+- Appartement en copropriété (bleu)
+- Maison individuelle (vert)
+- Maison en copropriété / lotissement / ASL (ambre)
+- Je ne suis pas sûr → Verimo détermine (violet)
+
+Nouveau parcours complet :
+```
+1. choice       → Simple (4,90€) / Complète (19,90€)
+2. type_bien ⭐  → 4 options
+3. profil       → Résidence principale / Investissement
+4. upload       → PDFs + bouton "Lancer l'analyse"
+5. analyse      → Progression
+6. result       → Rapport
+```
+
+### Infrastructure type_bien
+- Nouvelle colonne `type_bien_declare` dans la table `analyses` (SQL migration idempotente)
+- Type `TypeBien = 'appartement' | 'maison' | 'maison_copro' | 'indetermine'` dans `analyses.ts`
+- Passage du `typeBienDeclare` de NouvelleAnalyse → analyses.ts → analyse-client.ts → edge `analyser` → edge `analyser-run`
+- Règle prompt IA : si `typeBienDeclare` fourni et cohérent avec les docs → utilise cette valeur ; si contradiction flagrante → warning dans `points_vigilance`
+- Fallback détection IA si `indetermine` ou non fourni (rétrocompatible avec les analyses antérieures)
+
+### Fiabilisation du statut syndic (analyse simple ET complète)
+**Problème résolu** : avant, un changement de syndic affichait "❌ Syndic non reconduit" en rouge alarmiste alors que c'est une situation normale et courante.
+
+**Schéma enrichi PV_AG (analyse simple)** : nouveaux champs `syndic_statut`, `syndic_sortant`, `syndic_entrant`, `syndic_fin_mandat` (en plus de `syndic_reconduit` conservé pour rétrocompat).
+
+**Schéma enrichi `vie_copropriete.syndic` (analyse complète multi-PV)** : nouveaux champs `statut`, `sortant`, `entrant`, `annee_changement`, `nb_ags_analysees`, `historique_changements`.
+
+**Règles de détection (prompt IA)** :
+- `stable` : même syndic sur 2+ AGs → ✅ "Syndic stable" (vert)
+- `reconduit` : reconduction explicite → ✅ "Syndic reconduit" (vert)
+- `nouveau_elu` : 1 changement unique → 🔄 "Nouveau syndic élu en XXXX — a remplacé YYY" (bleu, neutre/positif)
+- `rotation_frequente` : 2+ changements sur 3 AGs → ⚠️ "Rotation fréquente des syndics" (orange) + **historique déplié** (SEUL cas d'alerte)
+- `recherche` : mandat à terme sans désignation → 🔄 orange
+- `carence` : absence/administration provisoire explicite → ⚠️ rouge (rare)
+
+**Règle prompt anti-alarmisme** : un changement de syndic unique est NORMAL, ne JAMAIS le mettre dans `points_vigilance` sauf si combiné avec quitus refusé OU procédure contre le syndic sortant.
+
+**Affichage** :
+- `DocumentRenderer.tsx` : carte "L'assemblée" dans l'analyse simple avec affichage conditionnel coloré
+- `RapportPage.tsx` → `SyndicBand` : bloc statut conditionnel avec historique déplié uniquement en cas de rotation fréquente
+
+### Page NouvelleAnalyse — améliorations UX
+- **Largeur 900px centrée** sur les 4 étapes (`choice`, `type_bien`, `profil`, `upload`) — fini le rendu trop serré sur PC
+- **Bouton "Lancer l'analyse"** renommé (avant : "Analyser") et remonté juste sous la zone d'upload, au-dessus de la liste des documents
+
+### Fichiers modifiés session 4 partie 1
+```
+1. supabase-schema.sql                       → ajout type_bien_declare + index + contrainte CHECK
+2. src/lib/analyses.ts                       → type TypeBien, params createAnalyse/createApercu
+3. src/lib/analyse-client.ts                 → param typeBienDeclare dans lancerAnalyseEdge
+4. supabase/functions/analyser/index.ts      → v7 (reçoit + transmet typeBienDeclare)
+5. supabase/functions/analyser-run/index.ts  → v7 (prompt type_bien + syndic multi-PV)
+6. src/pages/dashboard/NouvelleAnalyse.tsx   → étape type_bien + maxWidth 900 + bouton remonté
+7. src/pages/dashboard/DocumentRenderer.tsx  → affichage syndic intelligent (analyse simple)
+8. src/pages/RapportPage.tsx                 → SyndicBand enrichi (analyse complète multi-PV)
 ```
 
 ---
@@ -399,10 +464,26 @@ supabase/functions/
 
 ## Backlog
 
-### 🔴 Priorité haute
+### 🔴 Priorité haute — Session 4 partie 2 (prochaine conversation)
+- [ ] **RapportPage.tsx — rendu adaptatif maison** :
+  - Onglet "Logement" → renommer en **"Votre futur chez-vous"** quand `type_bien = maison`
+  - Onglet "Procédures" → renommer en **"Litiges"** quand `type_bien = maison`
+  - Fallback onglet Litiges maison : si aucun litige détecté → afficher liste d'exemples (servitudes mitoyenneté/passage/vue, bornage voisins, urbanisme/permis, malfaçons) avec mention "Rien détecté selon les documents fournis"
+  - Enrichir prompt IA pour chercher activement ces litiges spécifiques maison dans compromis/acte
+- [ ] **Fix règle pistes de négociation** : changer `applicable=true UNIQUEMENT si score < 14` → `applicable` seul (sans gate au score). L'IA décide déjà si `applicable` en fonction d'éléments chiffrables (travaux évoqués non votés, DPE E/F/G, impayés, fonds travaux insuffisant). Travaux votés = charge vendeur → PAS dans les pistes de négo.
+- [ ] **ExemplePage — refonte complète** :
+  - Toggle appart (5 onglets) / maison (4 onglets) pour démontrer les 2 rendus
+  - Exemple analyse simple : **PV d'AG** (le plus édifiant)
+  - Cas appart : **Lyon 6e, score 14,8/20** (garder cas existant)
+  - Cas maison : **Villeurbanne, 4P 95m², score 12,5/20** (avec DPE E, audit énergétique obligatoire)
+  - Navigation interactive des onglets (immersif)
+  - Comparatif Simple vs Complète
+  - CTA final
+
+### 🔴 Priorité haute — hors session 4
 - [ ] **Tester compléter le dossier** — flux complet en vrai (upload → edge function → Claude fusionne → rapport mis à jour). Non testé en conditions réelles.
-- [ ] **Pistes de négociation** — changer la règle `applicable=true UNIQUEMENT si score < 14` → applicable dès qu'un élément chiffrable est détecté (travaux évoqués non votés, DPE E/F/G, impayés, fonds travaux insuffisant). Travaux votés = charge vendeur, donc PAS dans les pistes de négo.
-- [ ] **ExemplePage** — refaire complètement pour matcher le vrai RapportPage
+- [ ] **Tester le sélecteur type_bien en production** — vérifier que les 4 options fonctionnent, que l'IA respecte bien `typeBienDeclare`, et que le warning apparaît en cas de contradiction avec les docs
+- [ ] **Tester le syndic multi-PV** — lancer une analyse complète avec 2-3 PV d'AG successifs pour vérifier les cas stable / nouveau_elu / rotation_frequente
 
 ### 🟡 Priorité normale
 - [ ] Tester RapportPage sur iPhone (performances)
@@ -413,6 +494,17 @@ supabase/functions/
 - [ ] Analyses bloquées > 20 min → badge "Échoué"
 - [ ] Système dossiers par bien
 - [ ] App.css : vestige Vite, peut être supprimé
+
+### ✅ Fait (session 4 partie 1 — 20 avril 2026)
+- [x] Nouvelle étape "Type de bien" dans NouvelleAnalyse (4 options)
+- [x] Colonne `type_bien_declare` dans table analyses (SQL migration)
+- [x] Type `TypeBien` + propagation param dans toute la chaîne frontend → edge functions
+- [x] Prompt IA enrichi pour respecter `typeBienDeclare` (avec fallback si contradictoire)
+- [x] Fiabilisation statut syndic — analyse simple (DocumentRenderer + prompt PV_AG)
+- [x] Fiabilisation statut syndic — analyse complète multi-PV (RapportPage SyndicBand + prompt rapport complet)
+- [x] Règles anti-alarmisme : changement de syndic = neutre/positif sauf rotation fréquente
+- [x] NouvelleAnalyse — largeur 900px centrée sur toutes les étapes
+- [x] NouvelleAnalyse — bouton "Lancer l'analyse" renommé + remonté sous zone upload
 
 ### ✅ Fait (session 3 — 20 avril 2026)
 - [x] Prompt IA enrichi : loi Climat & Résilience, DPE petites surfaces, audit énergétique
