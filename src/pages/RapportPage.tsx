@@ -2578,6 +2578,18 @@ function TabDocuments({ rapport, onComplement }: { rapport: RapportData; onCompl
   const isCopro = rapport.type_bien === 'appartement' || rapport.type_bien === 'maison_copro';
   const anneeNum = rapport.annee_construction ? parseInt(rapport.annee_construction) : null;
 
+  // Deadline 7 jours
+  const deadlineStr = rapport.regeneration_deadline;
+  const deadline = deadlineStr ? new Date(deadlineStr) : null;
+  const diffMs = deadline ? deadline.getTime() - Date.now() : 0;
+  const diffDays = deadline ? Math.ceil(diffMs / (1000 * 60 * 60 * 24)) : 0;
+  const expired = deadline ? diffMs <= 0 : false;
+  const lastDay = diffDays === 1 && !expired;
+
+  // Complement info
+  const complementDate = rapport.complement_date;
+  const complementDocNames = rapport.complement_doc_names;
+
   // Docs essentiels
   const docsEssentiels = isCopro ? [
     { label: '3 derniers PV d\'Assemblée Générale', present: hasDoc(['PV_AG']), tooltip: null },
@@ -2606,17 +2618,48 @@ function TabDocuments({ rapport, onComplement }: { rapport: RapportData; onCompl
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
+      {/* Badge mis à jour si complément effectué */}
+      {complementDate && (
+        <div style={{ padding: '12px 18px', borderRadius: 12, background: '#f0f7fb', border: '1px solid #bae6fd', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#0c4a6e' }}>
+          <Paperclip size={14} />
+          <span>
+            <strong>Dossier mis à jour le {new Date(complementDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
+            {complementDocNames && complementDocNames.length > 0 && (
+              <span style={{ color: '#64748b' }}> — {complementDocNames.length} document{complementDocNames.length > 1 ? 's' : ''} ajouté{complementDocNames.length > 1 ? 's' : ''}</span>
+            )}
+          </span>
+        </div>
+      )}
+
       {/* Section docs manquants EN HAUT */}
       {(docsEssentielManquants.length > 0 || docsSecondairesManquants.length > 0) && (
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
             <div>
               <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>Pour améliorer votre score et mieux comprendre votre achat</div>
-              <div style={{ fontSize: 13, color: '#64748b' }}>Ajoutez ces documents dans les 7 jours suivant la date de ce rapport</div>
+              <div style={{ fontSize: 13, color: expired ? '#94a3b8' : '#64748b' }}>
+                {expired
+                  ? 'Le délai de 7 jours pour ajouter des documents est dépassé.'
+                  : lastDay && deadline
+                    ? <CountdownTimer deadline={deadline} />
+                    : deadline
+                      ? `Encore ${diffDays} jour${diffDays > 1 ? 's' : ''} pour compléter ce dossier`
+                      : 'Ajoutez ces documents pour compléter votre analyse'
+                }
+              </div>
             </div>
             <button
-              onClick={() => onComplement?.()}
-              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 10, border: 'none', background: '#2a7d9c', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+              onClick={expired ? undefined : () => onComplement?.()}
+              disabled={expired}
+              title={expired ? 'Le délai de 7 jours pour ajouter des documents est dépassé' : undefined}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 10, border: 'none',
+                background: expired ? '#e2e8f0' : '#2a7d9c',
+                color: expired ? '#94a3b8' : '#fff',
+                fontSize: 13, fontWeight: 600,
+                cursor: expired ? 'not-allowed' : 'pointer', flexShrink: 0,
+                opacity: expired ? 0.7 : 1,
+              }}>
               <RefreshCw size={13} /> Compléter mon dossier
             </button>
           </div>
@@ -3381,50 +3424,6 @@ export default function RapportPage() {
           </div>
         )}
 
-        {/* Bannière 7 jours */}
-        {isComplete && !rapport.is_preview && rapport.regeneration_deadline && (() => {
-          const deadline = new Date(rapport.regeneration_deadline);
-          const diffMs = deadline.getTime() - Date.now();
-          const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-          const expired = diffMs <= 0;
-          const urgent = diffDays <= 2 && !expired;
-          const lastDay = diffDays === 1 && !expired;
-          return (
-            <div style={{ marginTop: 6, padding: '14px 18px', borderRadius: 12, background: expired ? '#f8fafc' : urgent ? '#fffbeb' : '#f0fdf4', border: `1px solid ${expired ? '#e2e8f0' : urgent ? '#fde68a' : '#bbf7d0'}`, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              {expired ? <Lock size={15} style={{ color: '#94a3b8', flexShrink: 0 }} /> : <RefreshCw size={15} style={{ color: urgent ? '#d97706' : '#16a34a', flexShrink: 0 }} />}
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: expired ? '#94a3b8' : urgent ? '#92400e' : '#166534', marginBottom: 2 }}>
-                  {expired
-                    ? 'Délai expiré'
-                    : lastDay
-                      ? <CountdownTimer deadline={deadline} />
-                      : `Vous pouvez compléter ce dossier — encore ${diffDays} jour${diffDays > 1 ? 's' : ''}`
-                  }
-                </div>
-                <div style={{ fontSize: 12, color: expired ? '#cbd5e1' : '#64748b' }}>
-                  {expired ? 'Le délai de 7 jours pour ajouter des documents est dépassé.' : 'Ajoutez des documents oubliés et obtenez un rapport mis à jour gratuitement.'}
-                </div>
-              </div>
-              <div style={{ position: 'relative' }} className="complement-btn-wrapper">
-                <button
-                  onClick={expired ? undefined : () => setShowComplement(true)}
-                  disabled={expired}
-                  title={expired ? 'Le délai de 7 jours pour ajouter des documents est dépassé' : undefined}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 9, border: 'none',
-                    background: expired ? '#e2e8f0' : urgent ? '#d97706' : '#16a34a',
-                    color: expired ? '#94a3b8' : '#fff',
-                    fontSize: 12, fontWeight: 700,
-                    cursor: expired ? 'not-allowed' : 'pointer', flexShrink: 0,
-                    opacity: expired ? 0.7 : 1,
-                  }}>
-                  <RefreshCw size={12} /> Compléter
-                </button>
-              </div>
-            </div>
-          );
-        })()}
-
         {/* Popup Compléter le dossier */}
         {showComplement && rapport && (
           <ComplementModal
@@ -3434,19 +3433,6 @@ export default function RapportPage() {
             onClose={() => setShowComplement(false)}
             onSuccess={() => { setShowComplement(false); loadRapport(); }}
           />
-        )}
-
-        {/* Badge mis à jour */}
-        {rapport.complement_date && (
-          <div style={{ marginTop: 6, padding: '10px 16px', borderRadius: 10, background: '#f0f7fb', border: '1px solid #bae6fd', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#0c4a6e' }}>
-            <Paperclip size={13} />
-            <span>
-              <strong>Mis à jour le {new Date(rapport.complement_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
-              {rapport.complement_doc_names && rapport.complement_doc_names.length > 0 && (
-                <span style={{ color: '#64748b' }}> — {rapport.complement_doc_names.length} document{rapport.complement_doc_names.length > 1 ? 's' : ''} ajouté{rapport.complement_doc_names.length > 1 ? 's' : ''}</span>
-              )}
-            </span>
-          </div>
         )}
 
         {/* Footer */}
