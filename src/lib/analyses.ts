@@ -1,8 +1,11 @@
 /* ══════════════════════════════════════════
    ANALYSES — Fonctions Supabase
    Lecture et sauvegarde des analyses
+   Session 4 — Ajout type_bien_declare
 ══════════════════════════════════════════ */
 import { supabase } from './supabase';
+
+export type TypeBien = 'appartement' | 'maison' | 'maison_copro' | 'indetermine';
 
 export type AnalyseDB = {
   id: string;
@@ -15,6 +18,7 @@ export type AnalyseDB = {
   score_couleur: string | null;
   profil: 'rp' | 'invest' | null;
   type_bien: 'appartement' | 'maison' | 'maison_copro' | 'indetermine' | null;
+  type_bien_declare: TypeBien | null;
   result: Record<string, unknown> | null;
   apercu: Record<string, unknown> | null;
   is_preview: boolean;
@@ -96,7 +100,8 @@ export async function createAnalyse(
   type: AnalyseDB['type'],
   title: string,
   profil: 'rp' | 'invest',
-  documentNames?: string[]
+  documentNames?: string[],
+  typeBienDeclare?: TypeBien | null,
 ): Promise<AnalyseDB | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -112,6 +117,7 @@ export async function createAnalyse(
       is_preview: false,
       paid: true,
       document_names: documentNames || [],
+      type_bien_declare: typeBienDeclare || null,
     })
     .select()
     .single();
@@ -128,7 +134,8 @@ export async function createApercu(
   type: AnalyseDB['type'],
   title: string,
   profil: 'rp' | 'invest',
-  documentNames: string[]
+  documentNames: string[],
+  typeBienDeclare?: TypeBien | null,
 ): Promise<AnalyseDB | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -144,6 +151,7 @@ export async function createApercu(
       is_preview: true,
       paid: false,
       document_names: documentNames,
+      type_bien_declare: typeBienDeclare || null,
     })
     .select()
     .single();
