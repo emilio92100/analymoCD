@@ -1,8 +1,9 @@
 // ══════════════════════════════════════════════════════════════
-// EDGE FUNCTION — analyser (v6 — 2 étapes + mode complement)
+// EDGE FUNCTION — analyser (v7 — 2 étapes + mode complement + typeBienDeclare)
 // Étape 1 : Upload PDFs vers Files API → stocke file_ids dans Supabase
 // Répond immédiatement → appelle analyser-run
 // Mode complement : lit le rapport existant + uploade les nouveaux docs
+// Session 4 : transmet le type_bien déclaré par l'utilisateur à analyser-run
 // ══════════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -74,24 +75,26 @@ Deno.serve(async (req) => {
 
     const body = await req.json() as {
       analyseId: string; mode: string; profil: 'rp' | 'invest';
+      typeBienDeclare?: 'appartement' | 'maison' | 'maison_copro' | 'indetermine' | null;
       storagePaths?: string[]; fileNames?: string[];
     };
 
-    const { analyseId, mode, profil } = body;
+    const { analyseId, mode, profil, typeBienDeclare } = body;
     if (!analyseId || !mode) return new Response(JSON.stringify({ error: 'missing_params' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
-    console.log(`[analyser] Requête — id:${analyseId} mode:${mode} docs:${body.storagePaths?.length || 0}`);
+    console.log(`[analyser] Requête — id:${analyseId} mode:${mode} typeDeclare:${typeBienDeclare || 'null'} docs:${body.storagePaths?.length || 0}`);
 
     // ══════════════════════════════════════════════════════════
     // MODE COMPLEMENT — Vérifications supplémentaires
     // ══════════════════════════════════════════════════════════
     let existingReport: Record<string, unknown> | null = null;
+    let storedTypeBienDeclare: string | null = null;
 
     if (mode === 'complement') {
       // Vérifier que l'analyse existe et a un rapport
       const { data: analyse, error: fetchErr } = await supabaseAdmin
         .from('analyses')
-        .select('result, regeneration_deadline, type')
+        .select('result, regeneration_deadline, type, type_bien_declare')
         .eq('id', analyseId)
         .single();
 
@@ -113,11 +116,14 @@ Deno.serve(async (req) => {
       }
 
       existingReport = analyse.result as Record<string, unknown>;
-      console.log(`[analyser] Mode complement — rapport existant trouvé`);
+      storedTypeBienDeclare = (analyse.type_bien_declare as string) || null;
+      console.log(`[analyser] Mode complement — rapport existant trouvé (typeDeclare:${storedTypeBienDeclare || 'null'})`);
     }
 
-    // Marquer en cours
-    await supabaseAdmin.from('analyses').update({ status: 'processing', mode, profil }).eq('id', analyseId);
+    // Marquer en cours + stocker le type_bien déclaré s'il est fourni
+    const updateFields: Record<string, unknown> = { status: 'processing', mode, profil };
+    if (typeBienDeclare) updateFields.type_bien_declare = typeBienDeclare;
+    await supabaseAdmin.from('analyses').update(updateFields).eq('id', analyseId);
 
     // Télécharger depuis Storage + upload vers Files API
     const fileIds: Array<{ id: string; name: string }> = [];
@@ -166,9 +172,20 @@ Deno.serve(async (req) => {
 
     console.log(`[analyser] ${fileIds.length} fichiers uploadés → status=files_ready`);
 
+    // Type de bien à passer : pour complement, on utilise celui stocké ; sinon celui du body
+    const effectiveTypeBienDeclare = mode === 'complement'
+      ? storedTypeBienDeclare
+      : (typeBienDeclare || null);
+
     // Appel direct vers analyser-run
     const runUrl = `${supabaseUrl}/functions/v1/analyser-run`;
-    const runPayload: Record<string, unknown> = { analyseId, fileIds, mode, profil };
+    const runPayload: Record<string, unknown> = {
+      analyseId,
+      fileIds,
+      mode,
+      profil,
+      typeBienDeclare: effectiveTypeBienDeclare,
+    };
 
     // En mode complement, on passe le rapport existant à analyser-run
     if (mode === 'complement' && existingReport) {
@@ -189,7 +206,7 @@ Deno.serve(async (req) => {
         .catch(err => console.error('[analyser] Erreur appel analyser-run:', err))
     );
 
-    console.log(`[analyser] analyser-run déclenché pour ${analyseId} (mode: ${mode})`);
+    console.log(`[analyser] analyser-run déclenché pour ${analyseId} (mode: ${mode}, typeDeclare: ${effectiveTypeBienDeclare})`);
 
     return new Response(JSON.stringify({ success: true, analyseId, filesUploaded: fileIds.length }), {
       headers: { ...CORS, 'Content-Type': 'application/json' },
