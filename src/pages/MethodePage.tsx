@@ -31,7 +31,7 @@ const docTypes = [
     id: 'ddt',
     emoji: '⚡',
     label: 'Dossier de Diagnostic Technique (DDT)',
-    what: "L'ensemble des diagnostics obligatoires du logement : DPE, électricité, gaz, amiante, plomb, termites, ERP… Chacun analyse un risque spécifique. Le DDT complet est exigé pour toute vente et impacte directement le score.",
+    what: "L'ensemble des diagnostics obligatoires du logement : DPE, électricité, gaz, amiante, plomb, termites, ERP… Chacun analyse un risque spécifique. Le DDT complet est exigé pour toute vente — un dossier sans anomalie renforce votre score.",
     extracts: [
       'Classe énergétique DPE (A à G) et consommation kWh/an',
       'Conformité de l\'installation électrique',
@@ -447,7 +447,7 @@ export default function MethodePage() {
                   <div style={{ fontSize: 28, marginBottom: 12 }}>📊</div>
                   <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Analyse complète</div>
                   <div style={{ fontSize: 14, color: '#374151', marginBottom: 18, lineHeight: 1.6 }}>
-                    Vous uploadez <strong style={{ color: '#0f172a' }}>autant de documents que vous voulez</strong>. Notre outil les croise et génère un score /20 global du bien avec rapport complet.
+                    Vous uploadez <strong style={{ color: '#0f172a' }}>jusqu'à 15 documents</strong>. Notre outil les croise et génère un score /20 global du bien avec rapport complet.
                   </div>
                   <div style={{ padding: '12px 14px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #d1fae5' }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: '#16a34a', marginBottom: 2 }}>✓ Score /20 + rapport PDF</div>
@@ -537,11 +537,10 @@ export default function MethodePage() {
             <Reveal delay={0.05}>
               <div style={{ background: '#f8fafc', borderRadius: 16, border: '1px solid #edf2f7', padding: '22px 26px', marginBottom: 20 }}>
                 <p style={{ fontSize: 15, color: '#374151', lineHeight: 1.8, margin: 0 }}>
-                  Contrairement à votre prof de maths qui commençait à zéro,{' '}
-                  <strong style={{ color: '#0f172a' }}>on part du principe que votre bien est parfait.</strong>{' '}
-                  Puis on lit vos documents et on retire des points pour chaque risque détecté. 😅
+                  <strong style={{ color: '#0f172a' }}>Votre bien démarre avec la note maximale.</strong>{' '}
+                  Chaque risque détecté dans vos documents fait baisser le curseur. Mais chaque point positif le remonte.
                   <br /><br />
-                  Les bons éléments ? On en ajoute aussi. Fair-play.
+                  L'objectif : une note juste, pas une note pessimiste.
                 </p>
               </div>
             </Reveal>
