@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { fetchAnalyseById, fetchAnalyseByShareToken, getOrCreateShareToken } from '../lib/analyses';
+import { lancerAnalyseEdge } from '../lib/analyse-client';
+import type { AnalyseProgress } from '../lib/analyse-client';
 import { supabase } from '../lib/supabase';
 import DocumentRenderer from './dashboard/DocumentRenderer';
 import {
   ChevronLeft, Download, Building2, AlertTriangle, CheckCircle,
   Shield, FileText, Gavel, Info, Star, Paperclip,
   RefreshCw, Lock, ChevronDown, ChevronUp, Copy, Check,
-  Home, TrendingDown,
+  Home, TrendingDown, Upload, X, Clock,
 } from 'lucide-react';
 
 /* ══════════════════════════════════
@@ -45,6 +47,26 @@ function safeStr(val: unknown): string {
   if (typeof val === 'number' || typeof val === 'boolean') return String(val);
   if (typeof val === 'object') return JSON.stringify(val);
   return String(val);
+}
+
+/* ── Compte à rebours live pour le dernier jour ── */
+function CountdownTimer({ deadline }: { deadline: Date }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+  const diff = Math.max(0, deadline.getTime() - now);
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+  if (diff <= 0) return <span>Délai expiré</span>;
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <Clock size={13} />
+      Dernier jour — encore {hours}h {String(minutes).padStart(2, '0')}min {String(seconds).padStart(2, '0')}s
+    </span>
+  );
 }
 
 /* ══════════════════════════════════
@@ -2593,7 +2615,7 @@ function TabDocuments({ rapport }: { rapport: RapportData }) {
               <div style={{ fontSize: 13, color: '#64748b' }}>Ajoutez ces documents dans les 7 jours suivant la date de ce rapport</div>
             </div>
             <button
-              onClick={() => window.location.href = `/dashboard/rapport?id=${rapport.id}&action=complement`}
+              onClick={() => setShowComplement(true)}
               style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 10, border: 'none', background: '#2a7d9c', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
               <RefreshCw size={13} /> Compléter mon dossier
             </button>
@@ -2642,13 +2664,23 @@ function TabDocuments({ rapport }: { rapport: RapportData }) {
               const annee = safeStr((doc as Record<string, unknown>).annee);
               const nom = safeStr((doc as Record<string, unknown>).nom || (doc as Record<string, unknown>).name);
               const arr = docsAnalyses.length > 0 ? docsAnalyses : rapport.documents_detectes;
+              const complementDocNames = (rapport as Record<string, unknown>).complement_doc_names as string[] | null;
+              const complementDate = (rapport as Record<string, unknown>).complement_date as string | null;
+              const isComplement = complementDocNames && nom && complementDocNames.some(cn => nom.toLowerCase().includes(cn.replace(/\.pdf$/i, '').toLowerCase()) || cn.replace(/\.pdf$/i, '').toLowerCase().includes(nom.toLowerCase()));
               return (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px', borderBottom: i < arr.length - 1 ? '1px solid #f8fafc' : 'none' }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 9, background: '#f8fafc', border: '1px solid #edf2f7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 9, background: isComplement ? '#f0f7fb' : '#f8fafc', border: `1px solid ${isComplement ? '#bae6fd' : '#edf2f7'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
                     {docTypeIcon[type] || '📄'}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', wordBreak: 'break-word' as const, overflowWrap: 'break-word' as const }}>{nom || docTypeLabel[type] || type}</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', wordBreak: 'break-word' as const, overflowWrap: 'break-word' as const, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      {nom || docTypeLabel[type] || type}
+                      {isComplement && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: '#0c4a6e', background: '#e0f2fe', padding: '2px 8px', borderRadius: 99 }}>
+                          📎 Ajouté{complementDate ? ` le ${new Date(complementDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}` : ''}
+                        </span>
+                      )}
+                    </div>
                     {annee && <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{annee}</div>}
                   </div>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', flexShrink: 0 }} />
@@ -2689,7 +2721,247 @@ function toTravaux(arr: unknown[]): any[] {
   }).filter(Boolean);
 }
 
-function buildRapport(data: Record<string, unknown>, dbData: { id: string; type: string; profil: string | null; created_at: string; document_names: string[] | null; regeneration_deadline: string | null; is_preview: boolean }) {
+/* ══════════════════════════════════
+   POPUP COMPLÉTER LE DOSSIER
+══════════════════════════════════ */
+function ComplementModal({ analyseId, profil, documentNames, onClose, onSuccess }: {
+  analyseId: string;
+  profil: 'rp' | 'invest';
+  documentNames: string[];
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [files, setFiles] = useState<File[]>([]);
+  const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState<AnalyseProgress | null>(null);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const autoCloseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const MAX_FILES = 5;
+
+  const addFiles = (newFiles: FileList | File[]) => {
+    const pdfs = Array.from(newFiles).filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+    if (pdfs.length === 0) { setError('Seuls les fichiers PDF sont acceptés.'); return; }
+    const total = files.length + pdfs.length;
+    if (total > MAX_FILES) { setError(`Maximum ${MAX_FILES} documents. Vous en avez déjà ${files.length}.`); return; }
+    setError(null);
+    setFiles(prev => [...prev, ...pdfs]);
+  };
+
+  const removeFile = (idx: number) => setFiles(prev => prev.filter((_, i) => i !== idx));
+
+  const handleSubmit = async () => {
+    if (files.length === 0 || uploading) return;
+    setUploading(true);
+    setError(null);
+    setProgress({ step: 'extracting', current: 0, total: files.length, percent: 5, message: 'Préparation...' });
+
+    const result = await lancerAnalyseEdge({
+      files,
+      mode: 'complement',
+      analyseId,
+      profil,
+      onProgress: (p) => setProgress(p),
+    });
+
+    if (result.success) {
+      setDone(true);
+      // Auto-close après 10 secondes
+      autoCloseRef.current = setTimeout(() => {
+        onSuccess();
+      }, 10_000);
+    } else {
+      setError(result.errorMessage || 'Une erreur est survenue. Réessayez.');
+      setUploading(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => { if (autoCloseRef.current) clearTimeout(autoCloseRef.current); };
+  }, []);
+
+  const progressPercent = progress?.percent || 0;
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      {/* Overlay */}
+      <div onClick={!uploading ? onClose : undefined} style={{ position: 'absolute', inset: 0, background: 'rgba(15,45,61,0.6)', backdropFilter: 'blur(4px)' }} />
+
+      {/* Modal */}
+      <div style={{ position: 'relative', width: '100%', maxWidth: 520, background: '#fff', borderRadius: 20, boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden', maxHeight: '90vh', overflowY: 'auto' }}>
+
+        {/* Header */}
+        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>Compléter le dossier</div>
+            <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Ajoutez jusqu'à 5 documents oubliés</div>
+          </div>
+          {!uploading && (
+            <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+              <X size={16} color="#64748b" />
+            </button>
+          )}
+        </div>
+
+        {/* Contenu */}
+        <div style={{ padding: '20px 24px' }}>
+
+          {/* État : Terminé avec succès */}
+          {done && (
+            <div style={{ textAlign: 'center', padding: '32px 0' }}>
+              <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#f0fdf4', border: '2px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                <CheckCircle size={28} color="#16a34a" />
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Rapport mis à jour</div>
+              <div style={{ fontSize: 14, color: '#64748b', marginBottom: 24, lineHeight: 1.5 }}>
+                Votre rapport a été enrichi avec {files.length} nouveau{files.length > 1 ? 'x' : ''} document{files.length > 1 ? 's' : ''}. Le score a été recalculé.
+              </div>
+              <button
+                onClick={() => { if (autoCloseRef.current) clearTimeout(autoCloseRef.current); onSuccess(); }}
+                style={{ padding: '13px 28px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(42,125,156,0.25)' }}
+              >
+                Voir le rapport mis à jour
+              </button>
+              <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 12 }}>Fermeture automatique dans quelques secondes…</div>
+            </div>
+          )}
+
+          {/* État : Upload/Analyse en cours */}
+          {uploading && !done && (
+            <div style={{ textAlign: 'center', padding: '24px 0' }}>
+              <div style={{ position: 'relative', width: 80, height: 80, margin: '0 auto 20px' }}>
+                <svg viewBox="0 0 80 80" style={{ transform: 'rotate(-90deg)' }}>
+                  <circle cx="40" cy="40" r="34" fill="none" stroke="#edf2f7" strokeWidth="6" />
+                  <circle cx="40" cy="40" r="34" fill="none" stroke="#2a7d9c" strokeWidth="6"
+                    strokeDasharray={`${2 * Math.PI * 34}`}
+                    strokeDashoffset={`${2 * Math.PI * 34 * (1 - progressPercent / 100)}`}
+                    strokeLinecap="round"
+                    style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+                  />
+                </svg>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: '#0f172a' }}>
+                  {progressPercent}%
+                </div>
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>
+                {progress?.message || 'Mise à jour en cours…'}
+              </div>
+              <div style={{ fontSize: 12, color: '#94a3b8' }}>Ne fermez pas cette fenêtre</div>
+
+              {/* Barre de progression linéaire */}
+              <div style={{ margin: '20px 0 0', height: 6, borderRadius: 3, background: '#edf2f7', overflow: 'hidden' }}>
+                <div style={{ height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #2a7d9c, #5bb8d4)', width: `${progressPercent}%`, transition: 'width 0.5s ease' }} />
+              </div>
+            </div>
+          )}
+
+          {/* État : Sélection des fichiers */}
+          {!uploading && !done && (
+            <>
+              {/* Documents déjà analysés */}
+              {documentNames.length > 0 && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 8 }}>DOCUMENTS DÉJÀ ANALYSÉS</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {documentNames.map((name, i) => (
+                      <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: 12, color: '#64748b' }}>
+                        <FileText size={11} /> {name.replace(/\.pdf$/i, '')}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Zone de drop */}
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={(e) => { e.preventDefault(); setDragging(false); if (e.dataTransfer.files) addFiles(e.dataTransfer.files); }}
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  border: `2px dashed ${dragging ? '#2a7d9c' : '#d1d5db'}`,
+                  borderRadius: 14,
+                  padding: '28px 20px',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  background: dragging ? '#f0f7fb' : '#fafbfc',
+                  transition: 'all 0.2s ease',
+                  marginBottom: 16,
+                }}
+              >
+                <Upload size={28} color={dragging ? '#2a7d9c' : '#94a3b8'} style={{ marginBottom: 10 }} />
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                  Glissez vos PDF ici ou cliquez pour parcourir
+                </div>
+                <div style={{ fontSize: 12, color: '#94a3b8' }}>
+                  Maximum {MAX_FILES} documents · PDF uniquement
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  multiple
+                  onChange={(e) => { if (e.target.files) addFiles(e.target.files); e.target.value = ''; }}
+                  style={{ display: 'none' }}
+                />
+              </div>
+
+              {/* Fichiers sélectionnés */}
+              {files.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+                  {files.map((f, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #d1fae5' }}>
+                      <FileText size={16} color="#16a34a" />
+                      <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                      <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{(f.size / 1024 / 1024).toFixed(1)} Mo</span>
+                      <button onClick={() => removeFile(i)} style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <X size={14} color="#94a3b8" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Erreur */}
+              {error && (
+                <div style={{ padding: '10px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 13, color: '#dc2626', marginBottom: 16 }}>
+                  {error}
+                </div>
+              )}
+
+              {/* Bouton lancer */}
+              <button
+                onClick={handleSubmit}
+                disabled={files.length === 0}
+                style={{
+                  width: '100%',
+                  padding: '14px 24px',
+                  borderRadius: 12,
+                  border: 'none',
+                  background: files.length > 0 ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#e2e8f0',
+                  color: files.length > 0 ? '#fff' : '#94a3b8',
+                  fontSize: 15,
+                  fontWeight: 700,
+                  cursor: files.length > 0 ? 'pointer' : 'not-allowed',
+                  boxShadow: files.length > 0 ? '0 4px 16px rgba(42,125,156,0.25)' : 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}
+              >
+                <RefreshCw size={16} />
+                Mettre à jour l'analyse
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function buildRapport(data: Record<string, unknown>, dbData: { id: string; type: string; profil: string | null; created_at: string; document_names: string[] | null; regeneration_deadline: string | null; complement_date: string | null; complement_doc_names: string[] | null; is_preview: boolean }) {
   const r = data;
   const travauxObj = (r.travaux as Record<string, unknown>) || {};
   const financesObj = (r.finances as Record<string, unknown>) || {};
@@ -2753,6 +3025,8 @@ function buildRapport(data: Record<string, unknown>, dbData: { id: string; type:
     negociation: (r.negociation as { applicable: boolean; elements: unknown[] }) || { applicable: false, elements: [] },
     document_names: (dbData.document_names as string[]) || [],
     regeneration_deadline: dbData.regeneration_deadline || null,
+    complement_date: dbData.complement_date || null,
+    complement_doc_names: dbData.complement_doc_names || null,
     is_preview: dbData.is_preview ?? false,
     vie_copropriete: (() => {
       const vie = r.vie_copropriete as Record<string, unknown> | null;
@@ -2787,6 +3061,7 @@ export default function RapportPage() {
   const isShared = !!shareToken;
 
   const [showReupload, setShowReupload] = useState(action === 'reupload');
+  const [showComplement, setShowComplement] = useState(action === 'complement');
   const [activeTab, setActiveTab] = useState<TabId>('synthese');
   const [loading, setLoading] = useState(true);
   const [rapport, setRapport] = useState<RapportData | null>(null);
@@ -2803,7 +3078,7 @@ export default function RapportPage() {
         setRapport(buildRapport(data.result as Record<string, unknown>, {
           id: data.id, type: data.type, profil: data.profil,
           created_at: data.created_at, document_names: data.document_names,
-          regeneration_deadline: data.regeneration_deadline, is_preview: false,
+          regeneration_deadline: data.regeneration_deadline, complement_date: data.complement_date || null, complement_doc_names: data.complement_doc_names || null, is_preview: false,
         }));
       }
       setLoading(false);
@@ -2830,7 +3105,7 @@ export default function RapportPage() {
         setRapport(buildRapport(result, {
           id: data.id, type: data.type, profil: data.profil,
           created_at: data.created_at, document_names: data.document_names,
-          regeneration_deadline: data.regeneration_deadline, is_preview: data.is_preview ?? false,
+          regeneration_deadline: data.regeneration_deadline, complement_date: data.complement_date || null, complement_doc_names: data.complement_doc_names || null, is_preview: data.is_preview ?? false,
         }));
         setLoading(false); return;
       }
@@ -3049,29 +3324,70 @@ export default function RapportPage() {
         {/* Bannière 7 jours */}
         {isComplete && !rapport.is_preview && rapport.regeneration_deadline && (() => {
           const deadline = new Date(rapport.regeneration_deadline);
-          const diffDays = Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-          const expired = diffDays <= 0;
+          const diffMs = deadline.getTime() - Date.now();
+          const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+          const expired = diffMs <= 0;
           const urgent = diffDays <= 2 && !expired;
+          const lastDay = diffDays === 1 && !expired;
           return (
             <div style={{ marginTop: 6, padding: '14px 18px', borderRadius: 12, background: expired ? '#f8fafc' : urgent ? '#fffbeb' : '#f0fdf4', border: `1px solid ${expired ? '#e2e8f0' : urgent ? '#fde68a' : '#bbf7d0'}`, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <RefreshCw size={15} style={{ color: expired ? '#94a3b8' : urgent ? '#d97706' : '#16a34a', flexShrink: 0 }} />
+              {expired ? <Lock size={15} style={{ color: '#94a3b8', flexShrink: 0 }} /> : <RefreshCw size={15} style={{ color: urgent ? '#d97706' : '#16a34a', flexShrink: 0 }} />}
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: expired ? '#94a3b8' : urgent ? '#92400e' : '#166534', marginBottom: 2 }}>
-                  {expired ? 'Délai de complétion expiré' : `Vous pouvez compléter ce dossier — encore ${diffDays} jour${diffDays > 1 ? 's' : ''}`}
+                  {expired
+                    ? 'Délai expiré'
+                    : lastDay
+                      ? <CountdownTimer deadline={deadline} />
+                      : `Vous pouvez compléter ce dossier — encore ${diffDays} jour${diffDays > 1 ? 's' : ''}`
+                  }
                 </div>
                 <div style={{ fontSize: 12, color: expired ? '#cbd5e1' : '#64748b' }}>
                   {expired ? 'Le délai de 7 jours pour ajouter des documents est dépassé.' : 'Ajoutez des documents oubliés et obtenez un rapport mis à jour gratuitement.'}
                 </div>
               </div>
-              {!expired && (
-                <button onClick={() => window.location.href = `/dashboard/rapport?id=${id}&action=complement`}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 9, border: 'none', background: urgent ? '#d97706' : '#16a34a', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+              <div style={{ position: 'relative' }} className="complement-btn-wrapper">
+                <button
+                  onClick={expired ? undefined : () => setShowComplement(true)}
+                  disabled={expired}
+                  title={expired ? 'Le délai de 7 jours pour ajouter des documents est dépassé' : undefined}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 9, border: 'none',
+                    background: expired ? '#e2e8f0' : urgent ? '#d97706' : '#16a34a',
+                    color: expired ? '#94a3b8' : '#fff',
+                    fontSize: 12, fontWeight: 700,
+                    cursor: expired ? 'not-allowed' : 'pointer', flexShrink: 0,
+                    opacity: expired ? 0.7 : 1,
+                  }}>
                   <RefreshCw size={12} /> Compléter
                 </button>
-              )}
+              </div>
             </div>
           );
         })()}
+
+        {/* Popup Compléter le dossier */}
+        {showComplement && rapport && (
+          <ComplementModal
+            analyseId={rapport.id}
+            profil={(rapport.profil as 'rp' | 'invest') || 'rp'}
+            documentNames={rapport.document_names || []}
+            onClose={() => setShowComplement(false)}
+            onSuccess={() => { setShowComplement(false); loadRapport(); }}
+          />
+        )}
+
+        {/* Badge mis à jour */}
+        {rapport.complement_date && (
+          <div style={{ marginTop: 6, padding: '10px 16px', borderRadius: 10, background: '#f0f7fb', border: '1px solid #bae6fd', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#0c4a6e' }}>
+            <Paperclip size={13} />
+            <span>
+              <strong>Mis à jour le {new Date(rapport.complement_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
+              {rapport.complement_doc_names && rapport.complement_doc_names.length > 0 && (
+                <span style={{ color: '#64748b' }}> — {rapport.complement_doc_names.length} document{rapport.complement_doc_names.length > 1 ? 's' : ''} ajouté{rapport.complement_doc_names.length > 1 ? 's' : ''}</span>
+              )}
+            </span>
+          </div>
+        )}
 
         {/* Footer */}
         <div style={{ padding: '14px 18px', background: '#fff', borderRadius: 12, border: '1px solid #edf2f7', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
