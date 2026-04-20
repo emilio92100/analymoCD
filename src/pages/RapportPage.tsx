@@ -2554,7 +2554,7 @@ function TabProcedures({ rapport }: { rapport: RapportData }) {
 /* ══════════════════════════════════
    ONGLET DOCUMENTS
 ══════════════════════════════════ */
-function TabDocuments({ rapport }: { rapport: RapportData }) {
+function TabDocuments({ rapport, onComplement }: { rapport: RapportData; onComplement?: () => void }) {
 
   const docTypeLabel: Record<string, string> = {
     PV_AG: "PV d'Assemblée Générale", REGLEMENT_COPRO: 'Règlement de copropriété',
@@ -2615,7 +2615,7 @@ function TabDocuments({ rapport }: { rapport: RapportData }) {
               <div style={{ fontSize: 13, color: '#64748b' }}>Ajoutez ces documents dans les 7 jours suivant la date de ce rapport</div>
             </div>
             <button
-              onClick={() => setShowComplement(true)}
+              onClick={() => onComplement?.()}
               style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 10, border: 'none', background: '#2a7d9c', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
               <RefreshCw size={13} /> Compléter mon dossier
             </button>
@@ -3299,7 +3299,7 @@ export default function RapportPage() {
         {activeTab === 'copropriete' && isComplete && hasCopro && <SafeTabBoundary><TabCopropriete rapport={rapport} /></SafeTabBoundary>}
         {activeTab === 'logement' && isComplete && <SafeTabBoundary><TabLogement rapport={rapport} onSwitchTab={setActiveTab} /></SafeTabBoundary>}
         {activeTab === 'procedures' && isComplete && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
-        {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} /></SafeTabBoundary>}
+        {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} onComplement={() => setShowComplement(true)} /></SafeTabBoundary>}
 
         {/* ══ BOTTOM TAB BAR — mobile uniquement — Option C pill ══ */}
         {isComplete && (
