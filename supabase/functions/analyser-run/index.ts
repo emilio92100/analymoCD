@@ -1,6 +1,7 @@
 // ══════════════════════════════════════════════════════════════
-// EDGE FUNCTION — analyser-run (déclenchée par webhook Supabase)
+// EDGE FUNCTION — analyser-run (v6 — complement support)
 // Étape 2 : Appel Claude avec file_ids → rapport → suppression RGPD
+// Mode complement : fusionne rapport existant + nouveaux docs
 // Pas de limite HTTP → peut durer 10+ minutes
 // ══════════════════════════════════════════════════════════════
 
@@ -97,9 +98,6 @@ function buildDocumentPrompt(p: string): string {
   parts.push('REGLE DPE vigilances DDT : NE JAMAIS inclure DPE classe A B C D E dans points_vigilance. Seuls F et G sont des points de vigilance. DPE D = bonne performance energetique, ne pas le signaler negativement.');
   parts.push('REGLE travaux_preconises DDT : Ne remplir travaux_preconises QUE si un DPE est présent dans le document et que dpe.classe est non null. Si le document est uniquement un CREP plomb, amiante, termites, carrez, ERP ou tout autre diagnostic sans DPE, laisser travaux_preconises = [] vide. Les recommandations spécifiques à ces diagnostics vont dans le champ alerte du diagnostic concerné, pas dans travaux_preconises.');
   parts.push('');
-  // ══════════════════════════════════════════════════════════════
-  // AJOUT — Règles Climat & Résilience + DPE petites surfaces (analyse simple DDT)
-  // ══════════════════════════════════════════════════════════════
   parts.push('REGLES LOI CLIMAT ET RESILIENCE — DDT (profil ' + p + ') :');
   parts.push('- DPE G : logement INTERDIT A LA LOCATION depuis le 1er janvier 2025 (loi Climat et Resilience du 22 aout 2021).');
   parts.push('- DPE F : logement INTERDIT A LA LOCATION a compter du 1er janvier 2028.');
@@ -116,7 +114,6 @@ function buildDocumentPrompt(p: string): string {
   parts.push('- Si surface Carrez < 40 m2 ET DPE classe F ou G ET date du DPE anterieure au 1er juillet 2024 : ajouter dans points_forts "Le DPE de ce logement a ete realise avant la reforme des petites surfaces (juillet 2024). Les nouveaux seuils pourraient ameliorer la classe energetique — un nouveau DPE est recommande."');
   parts.push('- Ne PAS modifier le diagnostic pour autant — analyser sur la base du DPE tel que fourni.');
   parts.push('');
-  // ══════════════════════════════════════════════════════════════
   parts.push('PV_AG : {"document_type":"PV_AG","titre":"...","resume":"...","date_ag":null,"lieu_ag":null,"type_ag":"ordinaire|extraordinaire|mixte","syndic":null,"president_seance":null,"nb_resolutions":null,"syndic_reconduit":null,"quorum":{"presents":null,"total":null,"tantiemes_pct":null},"budget_vote":{"annee":null,"montant":null,"fonds_travaux":null},"budget_precedent":{"annee":null,"montant":null},"travaux_votes":[{"label":"...","montant":null,"echeance":null}],"travaux_evoques":[{"label":"...","precision":null,"concerne_lot_prive":false}],"questions_diverses":[],"procedures":[],"points_forts":[],"points_vigilance":[],"avis_verimo":"..."}');
   parts.push('REGLES PV_AG nouveaux champs :');
   parts.push('- lieu_ag : ville ou adresse où se tient l\'AG si mentionnée.');
@@ -220,6 +217,32 @@ function buildDocumentPrompt(p: string): string {
   return parts.join('\n');
 }
 
+function buildComplementPrompt(profil: string): string {
+  const p = profil === 'invest' ? 'investissement locatif' : 'residence principale';
+  return `Tu es le moteur d analyse de documents immobiliers de Verimo. Profil acheteur : ${p}.
+Tu n utilises jamais les mots Claude, Anthropic ou IA.
+
+MODE COMPLEMENT : Tu recois un rapport d analyse existant (JSON) et de NOUVEAUX documents PDF.
+Ta mission : produire un NOUVEAU rapport complet qui FUSIONNE les donnees existantes avec les nouvelles informations.
+
+REGLES DE FUSION :
+1. CONSERVER toutes les donnees du rapport existant qui ne sont pas contredites par les nouveaux documents.
+2. COMPLETER les champs qui etaient null ou vides si les nouveaux documents apportent l information.
+3. CORRIGER les donnees si un nouveau document apporte une information plus precise ou plus recente.
+4. CROISER les informations : si le rapport existant mentionnait un ravalement evoque et qu un nouvel appel de charges confirme un poste ravalement provisionne, le noter.
+5. RECALCULER le score /20 en tenant compte de TOUTES les donnees (anciennes + nouvelles).
+6. METTRE A JOUR documents_analyses pour inclure les anciens ET les nouveaux documents.
+7. METTRE A JOUR documents_manquants en retirant ceux qui viennent d etre fournis.
+8. Le format JSON de sortie est STRICTEMENT IDENTIQUE au format du rapport existant — meme structure, memes champs.
+
+IMPORTANT :
+- Ne JAMAIS perdre de donnees du rapport existant. Si un champ avait une valeur et que le nouveau document ne le mentionne pas, GARDER la valeur existante.
+- Les documents originaux de l analyse initiale n existent plus. Tu ne peux pas les relire. Tu te bases sur le JSON existant pour les donnees anterieures.
+- Applique les memes regles de notation /20 que pour une analyse complete standard.
+
+Reponds UNIQUEMENT en JSON strict, sans texte avant ou apres. Le JSON doit avoir EXACTEMENT la meme structure que le rapport existant.`;
+}
+
 function buildSystemPrompt(mode: string, profil: string): string {
   const p = profil === 'invest' ? 'investissement locatif' : 'residence principale';
   if (mode === 'apercu_complete' || mode === 'apercu_document') {
@@ -228,6 +251,9 @@ Reponds UNIQUEMENT en JSON strict : {"titre": "adresse ou Votre bien", "recomman
   }
   if (mode === 'document') {
     return buildDocumentPrompt(p);
+  }
+  if (mode === 'complement') {
+    return buildComplementPrompt(profil);
   }
   return `Tu es le moteur d analyse de documents immobiliers de Verimo. Profil acheteur : ${p}.
 Tu informes, tu n orientes jamais la decision finale. Tu n utilises jamais les mots Claude, Anthropic ou IA.
@@ -331,7 +357,7 @@ REGLE AUDIT ENERGETIQUE OBLIGATOIRE A LA VENTE :
 - Depuis le 1er janvier 2025 : etendu aux classes E.
 - A partir du 1er janvier 2034 : etendu aux classes D.
 - NE CONCERNE PAS les appartements en copropriete (lots isoles).
-- Si type_bien = "maison" ET DPE E, F ou G : verifier si un audit energetique est present dans les documents fournis. Si absent, ajouter "Audit energetique reglementaire (obligatoire pour la vente d une maison classee ${profil === 'invest' ? 'E/F/G' : 'E/F/G'})" dans documents_manquants.
+- Si type_bien = "maison" ET DPE E, F ou G : verifier si un audit energetique est present dans les documents fournis. Si absent, ajouter "Audit energetique reglementaire (obligatoire pour la vente d une maison classee E/F/G)" dans documents_manquants.
 - Si type_bien = "appartement" : ne PAS demander d audit energetique — les coproprietes ne sont pas concernees.
 
 Reponds UNIQUEMENT en JSON strict, sans texte avant ou apres :
@@ -365,40 +391,81 @@ async function runAnalyseWithData(
   mode: string,
   profil: string,
   supabaseAdmin: SupabaseClient,
-  apiKey: string
+  apiKey: string,
+  existingReport?: Record<string, unknown>,
+  complementDocNames?: string[],
 ): Promise<void> {
   const fileIds = files.map(f => f.id);
   try {
     console.log(`[analyser-run] Analyse ${analyseId} — ${files.length} docs | mode:${mode}`);
 
     const userContent: unknown[] = [];
+
+    // ══════════════════════════════════════════════════════════
+    // MODE COMPLEMENT : injecter le rapport existant en premier
+    // ══════════════════════════════════════════════════════════
+    if (mode === 'complement' && existingReport) {
+      userContent.push({
+        type: 'text',
+        text: `RAPPORT EXISTANT (JSON) — Ce rapport a été généré à partir de documents que tu ne peux plus lire. Utilise ces données comme base et fusionne-les avec les nouveaux documents ci-dessous.\n\n${JSON.stringify(existingReport)}`,
+      });
+      userContent.push({
+        type: 'text',
+        text: `\n--- NOUVEAUX DOCUMENTS À INTÉGRER (${files.length}) ---\n`,
+      });
+    }
+
     for (let i = 0; i < files.length; i++) {
       userContent.push({ type: 'document', source: { type: 'file', file_id: files[i].id } });
       userContent.push({ type: 'text', text: `[Document ${i + 1}/${files.length} : ${files[i].name}]` });
     }
-    userContent.push({
-      type: 'text',
-      text: files.length === 1
-        ? 'Analyse ce document en profondeur. JSON COMPLET et valide, sans troncature.'
-        : `Voici les ${files.length} documents du dossier. Analyse-les ensemble de facon exhaustive. JSON COMPLET et valide, sans troncature.`,
-    });
 
-    await supabaseAdmin.from('analyses').update({ progress_message: 'Analyse approfondie en cours...' }).eq('id', analyseId);
-    console.log(`[analyser-run] Appel Claude — ${files.length} doc(s)`);
+    if (mode === 'complement') {
+      userContent.push({
+        type: 'text',
+        text: `Fusionne le rapport existant avec ces ${files.length} nouveau(x) document(s). Produis un rapport complet mis à jour au même format JSON. CONSERVE toutes les données existantes et ENRICHIS-les avec les nouvelles informations. Recalcule le score /20. JSON COMPLET et valide, sans troncature.`,
+      });
+    } else {
+      userContent.push({
+        type: 'text',
+        text: files.length === 1
+          ? 'Analyse ce document en profondeur. JSON COMPLET et valide, sans troncature.'
+          : `Voici les ${files.length} documents du dossier. Analyse-les ensemble de facon exhaustive. JSON COMPLET et valide, sans troncature.`,
+      });
+    }
+
+    const progressMsg = mode === 'complement'
+      ? 'Mise à jour du rapport en cours...'
+      : 'Analyse approfondie en cours...';
+    await supabaseAdmin.from('analyses').update({ progress_message: progressMsg }).eq('id', analyseId);
+    console.log(`[analyser-run] Appel Claude — ${files.length} doc(s) | mode:${mode}`);
 
     let msgCount = 0;
-    const progressMessages = [
-      'Traitement sécurisé de vos documents...',
-      'Lecture approfondie en cours...',
-      'Lecture approfondie en cours...',
-      'Analyse des éléments clés...',
-      'Analyse des éléments clés...',
-      'Analyse des éléments clés...',
-      'Rédaction du rapport en cours...',
-      'Rédaction du rapport en cours...',
-      'Dernières vérifications...',
-      'Finalisation en cours...',
-    ];
+    const progressMessages = mode === 'complement'
+      ? [
+          'Lecture des nouveaux documents...',
+          'Croisement avec le rapport existant...',
+          'Croisement avec le rapport existant...',
+          'Mise à jour des données...',
+          'Mise à jour des données...',
+          'Recalcul du score...',
+          'Rédaction du rapport mis à jour...',
+          'Rédaction du rapport mis à jour...',
+          'Dernières vérifications...',
+          'Finalisation...',
+        ]
+      : [
+          'Traitement sécurisé de vos documents...',
+          'Lecture approfondie en cours...',
+          'Lecture approfondie en cours...',
+          'Analyse des éléments clés...',
+          'Analyse des éléments clés...',
+          'Analyse des éléments clés...',
+          'Rédaction du rapport en cours...',
+          'Rédaction du rapport en cours...',
+          'Dernières vérifications...',
+          'Finalisation en cours...',
+        ];
     const progressInterval = setInterval(async () => {
       const msg = progressMessages[Math.min(msgCount, progressMessages.length - 1)];
       msgCount++;
@@ -434,7 +501,7 @@ async function runAnalyseWithData(
       status: 'completed',
       progress_current: files.length,
       progress_total: files.length,
-      progress_message: 'Rapport pr\u00eat !',
+      progress_message: mode === 'complement' ? 'Rapport mis \u00e0 jour !' : 'Rapport pr\u00eat !',
       file_ids: [],
       title: (report.titre as string) || 'Analyse immobili\u00e8re',
       score: (report.score as number) ?? null,
@@ -443,12 +510,20 @@ async function runAnalyseWithData(
     if (isApercu) { updateData.apercu = report; updateData.is_preview = true; }
     else { updateData.result = report; updateData.paid = true; }
 
+    // ══════════════════════════════════════════════════════════
+    // MODE COMPLEMENT : stocker la date et les noms des docs ajoutés
+    // ══════════════════════════════════════════════════════════
+    if (mode === 'complement') {
+      updateData.complement_date = new Date().toISOString();
+      updateData.complement_doc_names = complementDocNames || files.map(f => f.name);
+    }
+
     const { error: updateError } = await supabaseAdmin.from('analyses').update(updateData).eq('id', analyseId);
     if (updateError) {
       console.error('[analyser-run] ERREUR UPDATE:', updateError.message);
       await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: 'Erreur sauvegarde. Contactez le support.' }).eq('id', analyseId);
     } else {
-      console.log(`[analyser-run] ${analyseId} termin\u00e9e avec succ\u00e8s.`);
+      console.log(`[analyser-run] ${analyseId} termin\u00e9e avec succ\u00e8s (mode: ${mode}).`);
     }
   } catch (err) {
     console.error('[analyser-run] Erreur:', err);
@@ -595,6 +670,8 @@ Deno.serve(async (req) => {
     const fileIds = body?.fileIds as Array<{ id: string; name: string }> || [];
     const mode = body?.mode as string || 'complete';
     const profil = body?.profil as string || 'rp';
+    const existingReport = body?.existingReport as Record<string, unknown> | undefined;
+    const complementDocNames = body?.complementDocNames as string[] | undefined;
 
     if (!fileIds.length) {
       console.error(`[analyser-run] Pas de fileIds dans le payload`);
@@ -602,7 +679,7 @@ Deno.serve(async (req) => {
     }
 
     console.log(`[analyser-run] Lancement — ${fileIds.length} docs | mode:${mode}`);
-    EdgeRuntime.waitUntil(runAnalyseWithData(analyseId, fileIds, mode, profil, supabaseAdmin, apiKey));
+    EdgeRuntime.waitUntil(runAnalyseWithData(analyseId, fileIds, mode, profil, supabaseAdmin, apiKey, existingReport, complementDocNames));
 
     return new Response(JSON.stringify({ success: true, analyseId }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
   } catch (err) {
