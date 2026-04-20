@@ -526,7 +526,7 @@ function PdfButton({ rapportId: _rapportId }: { rapportId: string }) {
 /* ══════════════════════════════════
    HEADER RAPPORT
 ══════════════════════════════════ */
-type RapportData = ReturnType<typeof buildRapport>;
+export type RapportData = ReturnType<typeof buildRapport>;
 
 function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: boolean }) {
   const scoreColor = getScoreColor(rapport.score);
@@ -3240,7 +3240,64 @@ function buildRapport(data: Record<string, unknown>, dbData: { id: string; type:
 /* ══════════════════════════════════
    PAGE PRINCIPALE
 ══════════════════════════════════ */
-type TabId = 'synthese' | 'copropriete' | 'logement' | 'procedures' | 'documents';
+export type TabId = 'synthese' | 'copropriete' | 'logement' | 'procedures' | 'documents';
+
+/* ══════════════════════════════════
+   COMPOSANT RÉUTILISABLE — pour ExemplePage
+   (rendu identique au vrai rapport, sans auth/polling/paiement)
+══════════════════════════════════ */
+export function buildRapportExemple(
+  data: Record<string, unknown>,
+  dbData: { id: string; type: string; profil: string | null; created_at: string; document_names: string[] | null; regeneration_deadline: string | null; complement_date: string | null; complement_doc_names: string[] | null; is_preview: boolean }
+): RapportData {
+  return buildRapport(data, dbData);
+}
+
+export function RapportViewExemple({ rapport, defaultTab = 'synthese' }: { rapport: RapportData; defaultTab?: TabId }) {
+  const [activeTab, setActiveTab] = useState<TabId>(defaultTab);
+  const isComplete = rapport.type === 'complete';
+  const hasCopro = isCoproType(rapport.type_bien);
+  const logementLabel = rapport.type_bien === 'maison' ? 'Ma maison' : 'Logement';
+  const logementIcon = rapport.type_bien === 'maison' ? <Home size={14} /> : <Building2 size={14} />;
+
+  const tabs: { id: TabId; label: string; icon: React.ReactNode; dotColor: string }[] = [
+    { id: 'synthese', label: 'Synthèse', icon: <Star size={14} />, dotColor: '#22c55e' },
+    ...(hasCopro ? [{ id: 'copropriete' as TabId, label: 'Copropriété', icon: <Building2 size={14} />, dotColor: rapport.travaux_a_prevoir.length > 0 ? '#f97316' : '#22c55e' }] : []),
+    { id: 'logement', label: logementLabel, icon: logementIcon, dotColor: rapport.diagnostics.some((d: Record<string, unknown>) => d.alerte && d.perimetre === 'lot_privatif') ? '#ef4444' : '#22c55e' },
+    { id: 'procedures', label: 'Procédures', icon: <Gavel size={14} />, dotColor: rapport.procedures_en_cours ? '#ef4444' : '#22c55e' },
+    { id: 'documents', label: 'Documents', icon: <FileText size={14} />, dotColor: '#94a3b8' },
+  ];
+
+  return (
+    <div className="rapport-wrapper" style={{ background: '#f5f9fb', fontFamily: "'DM Sans', system-ui, sans-serif", borderRadius: 12 }}>
+      <div className="rapport-inner" style={{ maxWidth: 1250, margin: '0 auto', padding: '12px 0', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <RapportHeader rapport={rapport} isShared={true} />
+
+        {isComplete && (
+          <div className="rapport-tabs" style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, padding: '5px', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            {tabs.map(tab => {
+              const active = activeTab === tab.id;
+              return (
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)} className="rapport-tab-btn"
+                  style={{ flex: 1, minWidth: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 10px', borderRadius: 8, border: 'none', background: active ? '#f8fafc' : 'transparent', color: active ? '#0f172a' : '#64748b', fontSize: 12.5, fontWeight: active ? 700 : 400, cursor: 'pointer', transition: 'all 0.15s', borderBottom: active ? `2px solid ${tab.dotColor}` : '2px solid transparent', whiteSpace: 'nowrap' }}>
+                  {tab.icon}
+                  {tab.label}
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: tab.dotColor, flexShrink: 0 }} />
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {(activeTab === 'synthese' || !isComplete) && <SafeTabBoundary><TabSynthese rapport={rapport} /></SafeTabBoundary>}
+        {activeTab === 'copropriete' && isComplete && hasCopro && <SafeTabBoundary><TabCopropriete rapport={rapport} /></SafeTabBoundary>}
+        {activeTab === 'logement' && isComplete && <SafeTabBoundary><TabLogement rapport={rapport} onSwitchTab={setActiveTab} /></SafeTabBoundary>}
+        {activeTab === 'procedures' && isComplete && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
+        {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} /></SafeTabBoundary>}
+      </div>
+    </div>
+  );
+}
 
 export default function RapportPage() {
   const [searchParams] = useSearchParams();
