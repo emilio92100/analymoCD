@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { FileText, ShieldCheck, Upload, CheckCircle, AlertTriangle, ChevronLeft, Sparkles, ArrowRight, Lock, Download } from 'lucide-react';
+import { FileText, ShieldCheck, Upload, CheckCircle, AlertTriangle, ChevronLeft, Sparkles, ArrowRight, Lock, Download, Home, Building2, HelpCircle } from 'lucide-react';
 import { lancerAnalyseEdge, type AnalyseProgress } from '../../lib/analyse-client';
 import DocumentRenderer from './DocumentRenderer';
-import { createAnalyse, createApercu, markAnalyseFailed, markFreePreviewUsed, unmarkFreePreviewUsed, checkFreePreviewUsedSync } from '../../lib/analyses';
+import { createAnalyse, createApercu, markAnalyseFailed, markFreePreviewUsed, unmarkFreePreviewUsed, checkFreePreviewUsedSync, type TypeBien } from '../../lib/analyses';
 import { supabase } from '../../lib/supabase';
 import { useCredits, type Credits } from '../../hooks/useCredits';
 
@@ -96,8 +96,9 @@ function PdfButtonInline() {
 export default function NouvelleAnalyse() {
   const { credits, deductCredit } = useCredits();
   const [searchParams] = useSearchParams();
-  const [step, setStep] = useState<'choice' | 'profil' | 'upload' | 'analyse' | 'apercu' | 'result'>('choice');
+  const [step, setStep] = useState<'choice' | 'type_bien' | 'profil' | 'upload' | 'analyse' | 'apercu' | 'result'>('choice');
   const [type, setType] = useState<'document' | 'complete' | null>(null);
+  const [typeBienDeclare, setTypeBienDeclare] = useState<TypeBien | null>(null);
   const [files, setFiles] = useState<File[]>([]);
 
   const [progress, setProgress] = useState(0);
@@ -248,7 +249,7 @@ export default function NouvelleAnalyse() {
     setStep('analyse'); setError(''); setFileWarnings([]); setProgress(5);
     setProgressMsg('Préparation des documents…'); setProgressDoc({ current: 0, total: files.length });
     const docNames = files.map(f => f.name);
-    const analyseDB = await createApercu(type, files[0].name, profil || 'rp', docNames);
+    const analyseDB = await createApercu(type, files[0].name, profil || 'rp', docNames, typeBienDeclare);
     const analyseId = analyseDB?.id || null;
     if (!analyseId) {
       setError("Impossible de créer l'analyse. Veuillez réessayer.");
@@ -258,7 +259,7 @@ export default function NouvelleAnalyse() {
     await markFreePreviewUsed();
     setFreePreviewUsed(true);
     const mode = type === 'complete' ? 'apercu_complete' : 'apercu_document';
-    const result = await lancerAnalyseEdge({ files, mode, analyseId, profil: profil || 'rp', onProgress: handleProgress });
+    const result = await lancerAnalyseEdge({ files, mode, analyseId, profil: profil || 'rp', typeBienDeclare, onProgress: handleProgress });
     if (!result.success) {
       await markAnalyseFailed(analyseId);
       await unmarkFreePreviewUsed(); // Rendre l'offre gratuite si l'analyse échoue
@@ -290,14 +291,14 @@ export default function NouvelleAnalyse() {
     setStep('analyse'); setError(''); setFileWarnings([]); setProgress(5);
     setProgressMsg('Préparation des documents…'); setProgressDoc({ current: 0, total: files.length });
     const docNames = files.map(f => f.name);
-    const analyseDB = await createAnalyse(type, files[0].name, profil || 'rp', docNames);
+    const analyseDB = await createAnalyse(type, files[0].name, profil || 'rp', docNames, typeBienDeclare);
     const analyseId = analyseDB?.id || null;
     if (!analyseId) {
       await refundCredit(creditType);
       setError("Impossible de créer l'analyse. Votre crédit a été remboursé. Veuillez réessayer.");
       setStep('upload'); resetUpload(); setIsAnalysing(false); return;
     }
-    const result = await lancerAnalyseEdge({ files, mode: type, analyseId, profil: profil || 'rp', onProgress: handleProgress });
+    const result = await lancerAnalyseEdge({ files, mode: type, analyseId, profil: profil || 'rp', typeBienDeclare, onProgress: handleProgress });
     if (!result.success) {
       await refundCredit(creditType);
       await markAnalyseFailed(analyseId);
@@ -329,7 +330,7 @@ export default function NouvelleAnalyse() {
         </div>
       )}
       <div className="type-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        <button onClick={() => { if (freePreviewUsed && credits.document === 0) { window.location.href = '/dashboard/tarifs'; return; } setType('document'); setStep('profil'); }}
+        <button onClick={() => { if (freePreviewUsed && credits.document === 0) { window.location.href = '/dashboard/tarifs'; return; } setType('document'); setStep('type_bien'); }}
           style={{ padding: '28px 24px', borderRadius: 20, border: '1.5px solid #edf2f7', background: '#fff', cursor: 'pointer', textAlign: 'left', transition: 'all 0.18s', position: 'relative', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
           onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.boxShadow = '0 8px 28px rgba(42,125,156,0.1)'; el.style.transform = 'translateY(-2px)'; }}
           onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'; el.style.transform = 'translateY(0)'; }}>
@@ -348,7 +349,7 @@ export default function NouvelleAnalyse() {
             {freePreviewUsed && <span style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>4,90€</span>}
           </div>
         </button>
-        <button onClick={() => { if (freePreviewUsed && credits.complete === 0) { window.location.href = '/dashboard/tarifs'; return; } setType('complete'); setStep('profil'); }}
+        <button onClick={() => { if (freePreviewUsed && credits.complete === 0) { window.location.href = '/dashboard/tarifs'; return; } setType('complete'); setStep('type_bien'); }}
           style={{ padding: '28px 24px', borderRadius: 20, border: '1.5px solid transparent', background: 'linear-gradient(145deg, #0f2d3d, #1a5068)', cursor: 'pointer', textAlign: 'left', transition: 'all 0.18s', position: 'relative', overflow: 'hidden', boxShadow: '0 4px 20px rgba(15,45,61,0.15)' }}
           onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.boxShadow = '0 12px 40px rgba(15,45,61,0.28)'; el.style.transform = 'translateY(-2px)'; }}
           onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.boxShadow = '0 4px 20px rgba(15,45,61,0.15)'; el.style.transform = 'translateY(0)'; }}>
@@ -374,10 +375,86 @@ export default function NouvelleAnalyse() {
   );
 
 
+  /* ── TYPE DE BIEN (nouvelle étape — session 4) */
+  if (step === 'type_bien' && type) return (
+    <div style={{ maxWidth: 700 }}>
+      <button onClick={() => { setStep('choice'); setTypeBienDeclare(null); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
+      <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 8 }}>Quel type de bien analysez-vous ?</h1>
+      <p style={{ fontSize: 14, color: '#64748b', marginBottom: 28, lineHeight: 1.6 }}>Verimo adapte son analyse aux spécificités de votre bien — une copropriété et une maison n'ont pas les mêmes risques.</p>
+
+      {/* 2 cartes principales côte à côte */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, marginBottom: 14 }}>
+        <button onClick={() => { setTypeBienDeclare('appartement'); setStep('profil'); }}
+          style={{ padding: '28px 24px', borderRadius: 18, border: '2px solid #edf2f7', background: '#fff', cursor: 'pointer', textAlign: 'left', transition: 'all 0.18s', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+          onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.boxShadow = '0 8px 28px rgba(42,125,156,0.1)'; el.style.transform = 'translateY(-2px)'; }}
+          onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'; el.style.transform = 'translateY(0)'; }}>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+            <Building2 size={24} style={{ color: '#2a7d9c' }} />
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Appartement</div>
+          <div style={{ fontSize: 12, color: '#2a7d9c', fontWeight: 600, marginBottom: 10 }}>en copropriété</div>
+          <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>PV d'AG, syndic, charges, travaux votés, état daté, fonds travaux…</div>
+          <div style={{ marginTop: 16, fontSize: 13, fontWeight: 700, color: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <ArrowRight size={14} /> Choisir
+          </div>
+        </button>
+
+        <button onClick={() => { setTypeBienDeclare('maison'); setStep('profil'); }}
+          style={{ padding: '28px 24px', borderRadius: 18, border: '2px solid #edf2f7', background: '#fff', cursor: 'pointer', textAlign: 'left', transition: 'all 0.18s', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+          onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#16a34a'; el.style.boxShadow = '0 8px 28px rgba(22,163,74,0.1)'; el.style.transform = 'translateY(-2px)'; }}
+          onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'; el.style.transform = 'translateY(0)'; }}>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(22,163,74,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+            <Home size={24} style={{ color: '#16a34a' }} />
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Maison individuelle</div>
+          <div style={{ fontSize: 12, color: '#16a34a', fontWeight: 600, marginBottom: 10 }}>hors copropriété</div>
+          <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>DDT, diagnostics, taxe foncière, audit énergétique, compromis…</div>
+          <div style={{ marginTop: 16, fontSize: 13, fontWeight: 700, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <ArrowRight size={14} /> Choisir
+          </div>
+        </button>
+      </div>
+
+      {/* 2 options secondaires */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <button onClick={() => { setTypeBienDeclare('maison_copro'); setStep('profil'); }}
+          style={{ padding: '16px 20px', borderRadius: 14, border: '1.5px solid #edf2f7', background: '#fff', cursor: 'pointer', textAlign: 'left', transition: 'all 0.18s', display: 'flex', alignItems: 'center', gap: 14 }}
+          onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#d97706'; el.style.background = '#fffbeb'; }}
+          onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.background = '#fff'; }}>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(217,119,6,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 20 }}>🏘️</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 2 }}>Maison en copropriété</div>
+            <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>Lotissement, ASL, règlement de copropriété horizontale</div>
+          </div>
+          <ArrowRight size={16} style={{ color: '#d97706', flexShrink: 0 }} />
+        </button>
+
+        <button onClick={() => { setTypeBienDeclare('indetermine'); setStep('profil'); }}
+          style={{ padding: '16px 20px', borderRadius: 14, border: '1.5px solid #edf2f7', background: '#fff', cursor: 'pointer', textAlign: 'left', transition: 'all 0.18s', display: 'flex', alignItems: 'center', gap: 14 }}
+          onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#7c3aed'; el.style.background = '#faf5ff'; }}
+          onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.background = '#fff'; }}>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(124,58,237,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <HelpCircle size={18} style={{ color: '#7c3aed' }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 2 }}>Je ne suis pas sûr</div>
+            <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>Verimo déterminera le type d'après vos documents</div>
+          </div>
+          <ArrowRight size={16} style={{ color: '#7c3aed', flexShrink: 0 }} />
+        </button>
+      </div>
+
+      <p style={{ fontSize: 11, color: '#cbd5e1', marginTop: 20, textAlign: 'center', lineHeight: 1.5 }}>
+        Ce choix adapte la présentation du rapport et les règles d'analyse appliquées à votre bien.
+      </p>
+    </div>
+  );
+
+
   /* ── PROFIL */
   if (step === 'profil' && type) return (
     <div style={{ maxWidth: 600 }}>
-      <button onClick={() => { setStep('choice'); setProfil(null); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
+      <button onClick={() => { setStep('type_bien'); setProfil(null); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
       <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 8 }}>Ce bien, c'est pour vous ?</h1>
       <p style={{ fontSize: 14, color: '#64748b', marginBottom: 32, lineHeight: 1.6 }}>Votre profil d'achat influence la notation du bien — notamment sur le DPE et les charges.</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -684,7 +761,7 @@ export default function NouvelleAnalyse() {
         <div className="dr-result-topbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap' as const, gap: 10 }}>
           <div style={{ fontSize: 10, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.14em' }}>ANALYSE DOCUMENT — VERIMO</div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => { setStep('choice'); setType(null); setFiles([]); setResult(null); }} style={{ padding: '8px 14px', borderRadius: 9, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 12, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Nouvelle analyse</button>
+            <button onClick={() => { setStep('choice'); setType(null); setTypeBienDeclare(null); setFiles([]); setResult(null); }} style={{ padding: '8px 14px', borderRadius: 9, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 12, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Nouvelle analyse</button>
           </div>
         </div>
         <DocumentRenderer result={{ ...result, _profil: profil || 'rp' }} />
@@ -705,7 +782,7 @@ export default function NouvelleAnalyse() {
             <h1 style={{ fontSize: 'clamp(16px,2.5vw,22px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em' }}>{result.titre}</h1>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={() => { setStep('choice'); setType(null); setFiles([]); setResult(null); }} style={{ padding: '9px 18px', borderRadius: 10, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 13, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Nouvelle analyse</button>
+            <button onClick={() => { setStep('choice'); setType(null); setTypeBienDeclare(null); setFiles([]); setResult(null); }} style={{ padding: '9px 18px', borderRadius: 10, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 13, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Nouvelle analyse</button>
             <PdfButtonInline />
           </div>
         </div>
@@ -820,7 +897,7 @@ export default function NouvelleAnalyse() {
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px', borderRadius: 12, background: '#fff', color: '#0f2d3d', fontSize: 14, fontWeight: 800, border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,0,0,0.15)', width: '100%', marginBottom: 10 }}>
                   <Sparkles size={15} /> Débloquer — {isComplete ? '19,90€' : '4,90€'}
                 </button>
-                <button onClick={() => { setStep('choice'); setType(null); setFiles([]); setApercu(null); }}
+                <button onClick={() => { setStep('choice'); setType(null); setTypeBienDeclare(null); setFiles([]); setApercu(null); }}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '11px', borderRadius: 12, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer', width: '100%' }}>
                   Nouvelle analyse
                 </button>
