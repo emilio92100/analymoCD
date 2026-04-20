@@ -1,7 +1,8 @@
 // ══════════════════════════════════════════════════════════════
-// EDGE FUNCTION — analyser (v5 — 2 étapes)
+// EDGE FUNCTION — analyser (v6 — 2 étapes + mode complement)
 // Étape 1 : Upload PDFs vers Files API → stocke file_ids dans Supabase
-// Répond immédiatement → le webhook déclenche analyser-run
+// Répond immédiatement → appelle analyser-run
+// Mode complement : lit le rapport existant + uploade les nouveaux docs
 // ══════════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -81,6 +82,40 @@ Deno.serve(async (req) => {
 
     console.log(`[analyser] Requête — id:${analyseId} mode:${mode} docs:${body.storagePaths?.length || 0}`);
 
+    // ══════════════════════════════════════════════════════════
+    // MODE COMPLEMENT — Vérifications supplémentaires
+    // ══════════════════════════════════════════════════════════
+    let existingReport: Record<string, unknown> | null = null;
+
+    if (mode === 'complement') {
+      // Vérifier que l'analyse existe et a un rapport
+      const { data: analyse, error: fetchErr } = await supabaseAdmin
+        .from('analyses')
+        .select('result, regeneration_deadline, type')
+        .eq('id', analyseId)
+        .single();
+
+      if (fetchErr || !analyse?.result) {
+        return new Response(JSON.stringify({ error: 'no_existing_report' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
+      }
+
+      // Vérifier le délai de 7 jours
+      if (analyse.regeneration_deadline) {
+        const deadline = new Date(analyse.regeneration_deadline);
+        if (Date.now() > deadline.getTime()) {
+          return new Response(JSON.stringify({ error: 'deadline_expired' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
+        }
+      }
+
+      // Vérifier la limite de 5 documents
+      if (body.storagePaths && body.storagePaths.length > 5) {
+        return new Response(JSON.stringify({ error: 'too_many_docs', max: 5 }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
+      }
+
+      existingReport = analyse.result as Record<string, unknown>;
+      console.log(`[analyser] Mode complement — rapport existant trouvé`);
+    }
+
     // Marquer en cours
     await supabaseAdmin.from('analyses').update({ status: 'processing', mode, profil }).eq('id', analyseId);
 
@@ -124,14 +159,23 @@ Deno.serve(async (req) => {
       file_ids: fileIds,
       progress_current: fileIds.length,
       progress_total: fileIds.length,
-      progress_message: `${fileIds.length} document(s) prêts — analyse en cours...`,
+      progress_message: mode === 'complement'
+        ? `${fileIds.length} nouveau(x) document(s) prêts — mise à jour en cours...`
+        : `${fileIds.length} document(s) prêts — analyse en cours...`,
     }).eq('id', analyseId);
 
     console.log(`[analyser] ${fileIds.length} fichiers uploadés → status=files_ready`);
 
-    // Appel direct vers analyser-run — EdgeRuntime.waitUntil garantit que le fetch
-    // survit après que analyser ait répondu au client
+    // Appel direct vers analyser-run
     const runUrl = `${supabaseUrl}/functions/v1/analyser-run`;
+    const runPayload: Record<string, unknown> = { analyseId, fileIds, mode, profil };
+
+    // En mode complement, on passe le rapport existant à analyser-run
+    if (mode === 'complement' && existingReport) {
+      runPayload.existingReport = existingReport;
+      runPayload.complementDocNames = fileIds.map(f => f.name);
+    }
+
     EdgeRuntime.waitUntil(
       fetch(runUrl, {
         method: 'POST',
@@ -139,13 +183,13 @@ Deno.serve(async (req) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${supabaseServiceKey}`,
         },
-        body: JSON.stringify({ analyseId, fileIds, mode, profil }),
+        body: JSON.stringify(runPayload),
       })
         .then(r => console.log(`[analyser] analyser-run réponse HTTP: ${r.status}`))
         .catch(err => console.error('[analyser] Erreur appel analyser-run:', err))
     );
 
-    console.log(`[analyser] analyser-run déclenché pour ${analyseId}`);
+    console.log(`[analyser] analyser-run déclenché pour ${analyseId} (mode: ${mode})`);
 
     return new Response(JSON.stringify({ success: true, analyseId, filesUploaded: fileIds.length }), {
       headers: { ...CORS, 'Content-Type': 'application/json' },
