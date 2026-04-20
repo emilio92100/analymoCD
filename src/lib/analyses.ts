@@ -23,6 +23,8 @@ export type AnalyseDB = {
   regeneration_deadline: string | null;
   avis_verimo: string | null;
   share_token: string | null;
+  complement_date: string | null;
+  complement_doc_names: string[] | null;
   created_at: string;
 };
 
