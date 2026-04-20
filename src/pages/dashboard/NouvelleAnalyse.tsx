@@ -315,7 +315,7 @@ export default function NouvelleAnalyse() {
 
   /* ── CHOICE */
   if (step === 'choice') return (
-    <div>
+    <div style={{ maxWidth: 900, margin: '0 auto' }}>
       <Link to="/dashboard" style={{ fontSize: 13, color: '#94a3b8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</Link>
       <h1 style={{ fontSize: 'clamp(22px,3vw,28px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 6 }}>Que souhaitez-vous analyser ?</h1>
       <p style={{ fontSize: 14, color: '#64748b', marginBottom: !freePreviewUsed ? 16 : 32 }}>Choisissez le mode d'analyse adapté à votre besoin.</p>
@@ -377,7 +377,7 @@ export default function NouvelleAnalyse() {
 
   /* ── TYPE DE BIEN (nouvelle étape — session 4) */
   if (step === 'type_bien' && type) return (
-    <div style={{ maxWidth: 700 }}>
+    <div style={{ maxWidth: 900, margin: '0 auto' }}>
       <button onClick={() => { setStep('choice'); setTypeBienDeclare(null); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
       <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 8 }}>Quel type de bien analysez-vous ?</h1>
       <p style={{ fontSize: 14, color: '#64748b', marginBottom: 28, lineHeight: 1.6 }}>Verimo adapte son analyse aux spécificités de votre bien — une copropriété et une maison n'ont pas les mêmes risques.</p>
@@ -453,7 +453,7 @@ export default function NouvelleAnalyse() {
 
   /* ── PROFIL */
   if (step === 'profil' && type) return (
-    <div style={{ maxWidth: 600 }}>
+    <div style={{ maxWidth: 900, margin: '0 auto' }}>
       <button onClick={() => { setStep('type_bien'); setProfil(null); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
       <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 8 }}>Ce bien, c'est pour vous ?</h1>
       <p style={{ fontSize: 14, color: '#64748b', marginBottom: 32, lineHeight: 1.6 }}>Votre profil d'achat influence la notation du bien — notamment sur le DPE et les charges.</p>
@@ -490,8 +490,9 @@ export default function NouvelleAnalyse() {
   );
 
   /* ── UPLOAD */
+  /* ── UPLOAD */
   if (step === 'upload' && plan) return (
-    <div>
+    <div style={{ maxWidth: 900, margin: '0 auto' }}>
       <button onClick={() => { setStep('profil'); resetUpload(); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24, padding: '16px 18px', background: '#fff', borderRadius: 14, border: '1px solid #edf2f7' }}>
         <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -536,7 +537,29 @@ export default function NouvelleAnalyse() {
         </div>
       </label>
 
-      {/* Formats acceptés */}
+      {/* Bandeau offre gratuite (juste avant le CTA, pour maximiser la visibilité) */}
+      {!freePreviewUsed && (
+        <div style={{ padding: '12px 16px', borderRadius: 12, background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <Sparkles size={13} style={{ color: '#fff', flexShrink: 0 }} />
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.9)' }}>Votre analyse offerte — aperçu du rapport généré gratuitement.</span>
+        </div>
+      )}
+
+      {/* ⭐ BOUTON PRINCIPAL — Lancer l'analyse (session 4 : remonté juste sous la zone d'upload) */}
+      <button onClick={() => {
+        // Aperçu gratuit seulement si offre dispo ET 0 crédit du bon type
+        const creditType = type === 'document' ? credits.document : credits.complete;
+        if (!freePreviewUsed && creditType === 0) {
+          lancerApercu();
+        } else {
+          lancer();
+        }
+      }} disabled={files.length === 0 || isAnalysing}
+        style={{ width: '100%', padding: '16px', borderRadius: 12, border: 'none', background: files.length > 0 ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#e2e8f0', color: files.length > 0 ? '#fff' : '#94a3b8', fontSize: 15, fontWeight: 800, cursor: files.length > 0 ? 'pointer' : 'default', boxShadow: files.length > 0 ? '0 4px 18px rgba(15,45,61,0.2)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.15s', marginBottom: 20 }}>
+        <Sparkles size={16} /> {!freePreviewUsed ? 'Générer mon aperçu gratuit' : "Lancer l'analyse"} {files.length > 0 ? `(${files.length} fichier${files.length > 1 ? 's' : ''})` : ''}
+      </button>
+
+      {/* Formats acceptés — déplacé après le bouton pour ne pas encombrer */}
       <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16, padding: '10px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #f1f5f9' }}>
         ✅ <strong>Formats acceptés :</strong> PDF natif ou scanné<br />
         ❌ <strong>Non supportés :</strong> Word (.doc/.docx) — convertissez-les en PDF d'abord<br />
@@ -576,26 +599,6 @@ export default function NouvelleAnalyse() {
           </div>
         </div>
       )}
-
-      {!freePreviewUsed && (
-        <div style={{ padding: '12px 16px', borderRadius: 12, background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-          <Sparkles size={13} style={{ color: '#fff', flexShrink: 0 }} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.9)' }}>Votre analyse offerte — aperçu du rapport généré gratuitement.</span>
-        </div>
-      )}
-
-      <button onClick={() => {
-        // Aperçu gratuit seulement si offre dispo ET 0 crédit du bon type
-        const creditType = type === 'document' ? credits.document : credits.complete;
-        if (!freePreviewUsed && creditType === 0) {
-          lancerApercu();
-        } else {
-          lancer();
-        }
-      }} disabled={files.length === 0 || isAnalysing}
-        style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: files.length > 0 ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#e2e8f0', color: files.length > 0 ? '#fff' : '#94a3b8', fontSize: 15, fontWeight: 800, cursor: files.length > 0 ? 'pointer' : 'default', boxShadow: files.length > 0 ? '0 4px 18px rgba(15,45,61,0.2)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.15s' }}>
-        <Sparkles size={16} /> {!freePreviewUsed ? 'Générer mon aperçu gratuit' : 'Analyser'} {files.length > 0 ? `(${files.length} fichier${files.length > 1 ? 's' : ''})` : ''}
-      </button>
     </div>
   );
 
