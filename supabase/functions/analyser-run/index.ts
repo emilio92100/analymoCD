@@ -510,6 +510,12 @@ async function runAnalyseWithData(
     if (isApercu) { updateData.apercu = report; updateData.is_preview = true; }
     else { updateData.result = report; updateData.paid = true; }
 
+    // Deadline 7 jours pour compléter le dossier (analyses complètes uniquement)
+    if (!isApercu && mode !== 'complement' && mode !== 'document') {
+      const dl = new Date(); dl.setDate(dl.getDate() + 7);
+      updateData.regeneration_deadline = dl.toISOString();
+    }
+
     // ══════════════════════════════════════════════════════════
     // MODE COMPLEMENT : stocker la date et les noms des docs ajoutés
     // ══════════════════════════════════════════════════════════
@@ -626,6 +632,12 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
     };
     if (isApercu) { updateData.apercu = report; updateData.is_preview = true; }
     else { updateData.result = report; updateData.paid = true; }
+
+    // Deadline 7 jours pour compléter le dossier
+    if (!isApercu && mode !== 'document') {
+      const dl = new Date(); dl.setDate(dl.getDate() + 7);
+      updateData.regeneration_deadline = dl.toISOString();
+    }
 
     const { error: updateError } = await supabaseAdmin.from('analyses').update(updateData).eq('id', analyseId);
     if (updateError) {
