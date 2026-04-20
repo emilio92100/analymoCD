@@ -2724,10 +2724,10 @@ function toTravaux(arr: unknown[]): any[] {
 /* ══════════════════════════════════
    POPUP COMPLÉTER LE DOSSIER
 ══════════════════════════════════ */
-function ComplementModal({ analyseId, profil, documentNames, onClose, onSuccess }: {
+function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
   analyseId: string;
   profil: 'rp' | 'invest';
-  documentNames: string[];
+  rapport: Record<string, unknown>;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -2741,6 +2741,47 @@ function ComplementModal({ analyseId, profil, documentNames, onClose, onSuccess 
   const autoCloseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const MAX_FILES = 5;
+
+  // ── Documents déjà analysés (noms lisibles) ──
+  const docTypeLabel: Record<string, string> = {
+    PV_AG: "PV d'AG", REGLEMENT_COPRO: 'Règlement copro', APPEL_CHARGES: 'Appel de charges',
+    DPE: 'DPE', DIAGNOSTIC: 'Diagnostic', DDT: 'DDT', COMPROMIS: 'Compromis',
+    ETAT_DATE: 'État daté', TAXE_FONCIERE: 'Taxe foncière', CARNET_ENTRETIEN: "Carnet d'entretien",
+    AUTRE: 'Autre', MODIFICATIF_RCP: 'Modificatif RCP', PRE_ETAT_DATE: 'Pré-état daté',
+    DIAGNOSTIC_PARTIES_COMMUNES: 'Diag. PC',
+  };
+  const docTypeIcon: Record<string, string> = {
+    PV_AG: '📋', REGLEMENT_COPRO: '📜', APPEL_CHARGES: '💶', DPE: '⚡',
+    DIAGNOSTIC: '🔍', DDT: '🗂', COMPROMIS: '✍️', ETAT_DATE: '📊',
+    TAXE_FONCIERE: '🏛', AUTRE: '📄', CARNET_ENTRETIEN: '📓',
+    MODIFICATIF_RCP: '📜', PRE_ETAT_DATE: '📋', DIAGNOSTIC_PARTIES_COMMUNES: '🏗',
+  };
+
+  const docsAnalyses = (rapport.documents_analyses as Array<Record<string, unknown>>) || [];
+  const docsAnalysesTypes = docsAnalyses.map(d => safeStr(d.type));
+  const hasDoc = (types: string[]) => types.some(t => docsAnalysesTypes.includes(t));
+
+  const typeBien = safeStr(rapport.type_bien);
+  const isCopro = typeBien === 'appartement' || typeBien === 'maison_copro';
+  const anneeNum = rapport.annee_construction ? parseInt(safeStr(rapport.annee_construction)) : null;
+
+  // ── Documents manquants (essentiels + secondaires) ──
+  const docsEssentielsManquants = isCopro ? [
+    !hasDoc(['PV_AG']) ? { emoji: '📋', label: 'PV d\'Assemblée Générale' } : null,
+    !hasDoc(['REGLEMENT_COPRO', 'MODIFICATIF_RCP']) ? { emoji: '📜', label: 'Règlement de copropriété' } : null,
+    !hasDoc(['CARNET_ENTRETIEN']) ? { emoji: '📓', label: 'Carnet d\'entretien' } : null,
+    !hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']) ? { emoji: '🗂', label: `DDT${anneeNum ? ` (immeuble de ${anneeNum})` : ''}` } : null,
+    !hasDoc(['APPEL_CHARGES']) ? { emoji: '💶', label: 'Appel de charges' } : null,
+  ].filter(Boolean) : [
+    !hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']) ? { emoji: '🗂', label: 'DDT complet' } : null,
+    !hasDoc(['TAXE_FONCIERE']) ? { emoji: '🏛', label: 'Taxe foncière' } : null,
+  ].filter(Boolean);
+
+  const docsSecondairesManquants = isCopro ? [
+    !hasDoc(['DIAGNOSTIC_PARTIES_COMMUNES']) ? { emoji: '🏗', label: 'Diagnostics parties communes' } : null,
+    !hasDoc(['PRE_ETAT_DATE']) ? { emoji: '📋', label: 'Pré-état daté' } : null,
+    { emoji: '📊', label: 'DTG / PPT' },
+  ].filter(Boolean) : [];
 
   const addFiles = (newFiles: FileList | File[]) => {
     const pdfs = Array.from(newFiles).filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
@@ -2769,7 +2810,6 @@ function ComplementModal({ analyseId, profil, documentNames, onClose, onSuccess 
 
     if (result.success) {
       setDone(true);
-      // Auto-close après 10 secondes
       autoCloseRef.current = setTimeout(() => {
         onSuccess();
       }, 10_000);
@@ -2787,10 +2827,8 @@ function ComplementModal({ analyseId, profil, documentNames, onClose, onSuccess 
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      {/* Overlay */}
       <div onClick={!uploading ? onClose : undefined} style={{ position: 'absolute', inset: 0, background: 'rgba(15,45,61,0.6)', backdropFilter: 'blur(4px)' }} />
 
-      {/* Modal */}
       <div style={{ position: 'relative', width: '100%', maxWidth: 520, background: '#fff', borderRadius: 20, boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden', maxHeight: '90vh', overflowY: 'auto' }}>
 
         {/* Header */}
@@ -2806,10 +2844,9 @@ function ComplementModal({ analyseId, profil, documentNames, onClose, onSuccess 
           )}
         </div>
 
-        {/* Contenu */}
         <div style={{ padding: '20px 24px' }}>
 
-          {/* État : Terminé avec succès */}
+          {/* État : Terminé */}
           {done && (
             <div style={{ textAlign: 'center', padding: '32px 0' }}>
               <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#f0fdf4', border: '2px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
@@ -2829,7 +2866,7 @@ function ComplementModal({ analyseId, profil, documentNames, onClose, onSuccess 
             </div>
           )}
 
-          {/* État : Upload/Analyse en cours */}
+          {/* État : Upload en cours */}
           {uploading && !done && (
             <div style={{ textAlign: 'center', padding: '24px 0' }}>
               <div style={{ position: 'relative', width: 80, height: 80, margin: '0 auto 20px' }}>
@@ -2850,8 +2887,6 @@ function ComplementModal({ analyseId, profil, documentNames, onClose, onSuccess 
                 {progress?.message || 'Mise à jour en cours…'}
               </div>
               <div style={{ fontSize: 12, color: '#94a3b8' }}>Ne fermez pas cette fenêtre</div>
-
-              {/* Barre de progression linéaire */}
               <div style={{ margin: '20px 0 0', height: 6, borderRadius: 3, background: '#edf2f7', overflow: 'hidden' }}>
                 <div style={{ height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #2a7d9c, #5bb8d4)', width: `${progressPercent}%`, transition: 'width 0.5s ease' }} />
               </div>
@@ -2861,17 +2896,55 @@ function ComplementModal({ analyseId, profil, documentNames, onClose, onSuccess 
           {/* État : Sélection des fichiers */}
           {!uploading && !done && (
             <>
-              {/* Documents déjà analysés */}
-              {documentNames.length > 0 && (
-                <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 8 }}>DOCUMENTS DÉJÀ ANALYSÉS</div>
+              {/* ── Documents déjà analysés (noms lisibles) ── */}
+              {docsAnalyses.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', letterSpacing: '0.08em', marginBottom: 8 }}>✓ DOCUMENTS DÉJÀ ANALYSÉS</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {documentNames.map((name, i) => (
-                      <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: 12, color: '#64748b' }}>
-                        <FileText size={11} /> {name.replace(/\.pdf$/i, '')}
-                      </div>
-                    ))}
+                    {docsAnalyses.map((doc, i) => {
+                      const type = safeStr(doc.type);
+                      const nom = safeStr(doc.nom || doc.name);
+                      const annee = safeStr(doc.annee);
+                      const icon = docTypeIcon[type] || '📄';
+                      const label = nom || docTypeLabel[type] || type;
+                      return (
+                        <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #d1fae5', fontSize: 12, color: '#166534' }}>
+                          <span>{icon}</span> {label}{annee ? ` (${annee})` : ''}
+                        </div>
+                      );
+                    })}
                   </div>
+                </div>
+              )}
+
+              {/* ── Documents suggérés (manquants) ── */}
+              {(docsEssentielsManquants.length > 0 || docsSecondairesManquants.length > 0) && (
+                <div style={{ marginBottom: 20, padding: '14px 16px', borderRadius: 12, background: '#fffbeb', border: '1px solid #fde68a' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#92400e', letterSpacing: '0.08em', marginBottom: 10 }}>📌 DOCUMENTS SUGGÉRÉS</div>
+                  {docsEssentielsManquants.length > 0 && (
+                    <div style={{ marginBottom: docsSecondairesManquants.length > 0 ? 10 : 0 }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: '#b45309', letterSpacing: '0.06em', marginBottom: 6 }}>ESSENTIELS</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                        {docsEssentielsManquants.map((doc: any, i: number) => (
+                          <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 7, background: '#fff', border: '1px solid #fde68a', fontSize: 12, color: '#92400e' }}>
+                            <span>{doc.emoji}</span> {doc.label}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {docsSecondairesManquants.length > 0 && (
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: '#b45309', letterSpacing: '0.06em', marginBottom: 6 }}>SECONDAIRES</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                        {docsSecondairesManquants.map((doc: any, i: number) => (
+                          <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 7, background: '#fff', border: '1px solid #f3e8c8', fontSize: 12, color: '#a16207' }}>
+                            <span>{doc.emoji}</span> {doc.label}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -2932,19 +3005,15 @@ function ComplementModal({ analyseId, profil, documentNames, onClose, onSuccess 
                 </div>
               )}
 
-              {/* Bouton lancer */}
+              {/* Bouton */}
               <button
                 onClick={handleSubmit}
                 disabled={files.length === 0}
                 style={{
-                  width: '100%',
-                  padding: '14px 24px',
-                  borderRadius: 12,
-                  border: 'none',
+                  width: '100%', padding: '14px 24px', borderRadius: 12, border: 'none',
                   background: files.length > 0 ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#e2e8f0',
                   color: files.length > 0 ? '#fff' : '#94a3b8',
-                  fontSize: 15,
-                  fontWeight: 700,
+                  fontSize: 15, fontWeight: 700,
                   cursor: files.length > 0 ? 'pointer' : 'not-allowed',
                   boxShadow: files.length > 0 ? '0 4px 16px rgba(42,125,156,0.25)' : 'none',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -3370,7 +3439,7 @@ export default function RapportPage() {
           <ComplementModal
             analyseId={rapport.id}
             profil={(rapport.profil as 'rp' | 'invest') || 'rp'}
-            documentNames={rapport.document_names || []}
+            rapport={rapport as unknown as Record<string, unknown>}
             onClose={() => setShowComplement(false)}
             onSuccess={() => { setShowComplement(false); loadRapport(); }}
           />
