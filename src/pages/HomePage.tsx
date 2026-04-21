@@ -1293,7 +1293,24 @@ function HowItWorksSection() {
   );
 }
 /* ═══ APERÇU DU RAPPORT ═════════════════════════════════════ */
+/* Réplique le design exact d'un vrai rapport Verimo (cohérence parfaite avec /exemple) */
 function ApercuRapportSection() {
+  const kpis = [
+    { emoji: '🏢', label: 'Nombre de lots', value: '42', severity: 'neutral' },
+    { emoji: '📅', label: 'Construction', value: '1978', severity: 'neutral' },
+    { emoji: '💰', label: 'Charges annuelles', value: '2 160 €/an', severity: 'neutral' },
+    { emoji: '⚠️', label: 'Travaux évoqués', value: '2 mentionnés', severity: 'warn' },
+    { emoji: '⚡', label: 'Classe DPE', value: 'Classe C', severity: 'ok' },
+    { emoji: '⚖️', label: 'Procédures', value: '1 détectée', severity: 'danger' },
+  ];
+
+  const kpiStyles: Record<string, { bg: string; border: string; iconBg: string; iconColor: string; labelColor: string; valueColor: string }> = {
+    neutral: { bg: '#fff',     border: '#e2edf3', iconBg: '#f1f5f9', iconColor: '#475569', labelColor: '#6b8a96', valueColor: '#0f2d3d' },
+    ok:      { bg: '#f0fdf4', border: '#bbf7d0', iconBg: '#dcfce7', iconColor: '#15803d', labelColor: '#166534', valueColor: '#14532d' },
+    warn:    { bg: '#fff7ed', border: '#fed7aa', iconBg: '#ffedd5', iconColor: '#9a3412', labelColor: '#9a3412', valueColor: '#7c2d12' },
+    danger:  { bg: '#fef2f2', border: '#fecaca', iconBg: '#fee2e2', iconColor: '#991b1b', labelColor: '#991b1b', valueColor: '#7f1d1d' },
+  };
+
   return (
     <section className="py-12 md:py-20 px-4 md:px-6 bg-[#f4f7f9]">
       <div className="max-w-5xl mx-auto">
@@ -1301,78 +1318,133 @@ function ApercuRapportSection() {
           sub="Voici ce que Verimo vous fournit en moins de 30 secondes*." />
 
         <Reveal>
-          <div className="bg-white rounded-2xl md:rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+          <div className="bg-white rounded-2xl md:rounded-3xl shadow-xl border border-slate-100 overflow-hidden" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
 
-            {/* Header rapport */}
-            <div className="bg-[#0f2d3d] px-6 md:px-10 py-6 md:py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
-              <div>
-                <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-2">Rapport Verimo — Analyse complète</p>
-                <p className="text-white font-black text-xl md:text-2xl">12 rue des Lilas, 69003 Lyon</p>
-                <p className="text-white/40 text-sm mt-1">Analysé le 28 mars 2026 · 3 documents</p>
-              </div>
-              <div className="flex items-center gap-4 shrink-0">
-                <div className="relative w-20 h-20 md:w-24 md:h-24 shrink-0">
-                  <svg className="w-full h-full -rotate-90" viewBox="0 0 80 80">
-                    <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="6" />
-                    <motion.circle cx="40" cy="40" r="32" fill="none" stroke="#16a34a" strokeWidth="6" strokeLinecap="round"
-                      strokeDasharray={201} initial={{ strokeDashoffset: 201 }}
-                      whileInView={{ strokeDashoffset: 201 - 201 * 0.75 }} viewport={{ once: true }}
-                      transition={{ duration: 1.4, delay: 0.3 }} />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-2xl md:text-3xl font-black text-white leading-none">15</span>
-                    <span className="text-[11px] text-white/50 mt-0.5">/20</span>
+            {/* Header rapport — identique au vrai rapport */}
+            <div style={{ background: 'linear-gradient(135deg, #0f2d3d 0%, #1a5e78 50%, #2a7d9c 100%)', padding: 'clamp(20px,4vw,32px) clamp(20px,4vw,40px)', color: '#fff' }}>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.6)', marginBottom: 8 }}>
+                    RAPPORT VERIMO · ANALYSE COMPLÈTE
+                  </div>
+                  <div style={{ fontSize: 'clamp(18px,3vw,24px)', fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1.2, marginBottom: 6 }}>
+                    24 rue des Lilas, Lyon 6e
+                  </div>
+                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)' }}>
+                    Appartement T3 · Analysé le 28 mars 2026
                   </div>
                 </div>
-                <div>
-                  <span className="inline-block px-3 py-1.5 rounded-full bg-green-500/15 text-green-400 text-xs font-bold mb-1.5">✓ Bien sain</span>
-                  <p className="text-white/60 text-xs">Recommandé</p>
+                {/* Score circulaire */}
+                <div className="flex items-center gap-3 shrink-0">
+                  <div style={{ position: 'relative', width: 88, height: 88 }}>
+                    <svg className="-rotate-90" width="88" height="88" viewBox="0 0 88 88">
+                      <circle cx="44" cy="44" r="36" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="7" />
+                      <motion.circle cx="44" cy="44" r="36" fill="none" stroke="#16a34a" strokeWidth="7" strokeLinecap="round"
+                        strokeDasharray={226} initial={{ strokeDashoffset: 226 }}
+                        whileInView={{ strokeDashoffset: 226 - 226 * 0.74 }} viewport={{ once: true }}
+                        transition={{ duration: 1.4, delay: 0.3 }} />
+                    </svg>
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: 26, fontWeight: 900, color: '#fff', lineHeight: 1 }}>14.8</span>
+                      <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>/ 20</span>
+                    </div>
+                  </div>
+                  <div>
+                    <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: 100, background: 'rgba(34,197,94,0.2)', color: '#4ade80', fontSize: 11, fontWeight: 700, marginBottom: 4 }}>✓ Bien sain</span>
+                    <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', margin: 0 }}>Recommandé</p>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Stats clés — bandeau compact */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-0 border-b border-slate-100">
+            {/* Onglets — mimique visuelle */}
+            <div className="hidden md:flex border-b border-slate-100 px-8 bg-white">
               {[
-                { value: '8', label: 'Catégories analysées', color: '#2a7d9c' },
-                { value: '3', label: 'Documents décryptés', color: '#2a7d9c' },
-                { value: '15/20', label: 'Score global', color: '#16a34a' },
-                { value: '30s*', label: 'Temps d\'analyse', color: '#f59e0b' },
-              ].map((stat, i) => (
-                <div key={i} className={`px-4 md:px-6 py-5 text-center ${i < 3 ? 'border-r border-slate-100' : ''} ${i < 2 ? 'border-b md:border-b-0' : ''} ${i === 2 ? 'md:border-r' : ''}`}>
-                  <div className="text-2xl md:text-3xl font-black mb-1" style={{ color: stat.color }}>{stat.value}</div>
-                  <div className="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">{stat.label}</div>
+                { label: 'Synthèse', active: true, dot: '#22c55e' },
+                { label: 'Copropriété', dot: '#f97316' },
+                { label: 'Logement', dot: '#ef4444' },
+                { label: 'Procédures', dot: '#ef4444' },
+                { label: 'Documents', dot: '#94a3b8' },
+              ].map((tab, i) => (
+                <div key={i} style={{
+                  padding: '16px 20px',
+                  fontSize: 14,
+                  fontWeight: tab.active ? 700 : 500,
+                  color: tab.active ? '#0f172a' : '#94a3b8',
+                  borderBottom: tab.active ? '2px solid #f97316' : '2px solid transparent',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                }}>
+                  {tab.label}
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: tab.dot }} />
                 </div>
               ))}
             </div>
 
-            {/* Aperçu catégories */}
-            <div className="p-6 md:p-10">
-              <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-5">Aperçu des catégories analysées</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {[
-                  { emoji: '🏢', label: 'Copropriété', desc: 'Syndic · participation AG · lots', score: '16/20', color: '#16a34a' },
-                  { emoji: '💰', label: 'Finances', desc: 'Charges · fonds travaux · impayés', score: '15/20', color: '#16a34a' },
-                  { emoji: '🏗', label: 'Travaux', desc: 'Votés · évoqués · charge vendeur', score: '13/20', color: '#f59e0b' },
-                  { emoji: '⚖️', label: 'Procédures & règles', desc: 'Procédures · restrictions · usage', score: '17/20', color: '#16a34a' },
-                ].map((cat, i) => (
-                  <motion.div key={i}
-                    initial={{ opacity: 0, y: 8 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.1 }}
-                    className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 border border-slate-100">
-                    <span className="text-2xl shrink-0">{cat.emoji}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-[#0f2d3d]">{cat.label}</p>
-                      <p className="text-xs text-slate-500 truncate">{cat.desc}</p>
-                    </div>
-                    <div className="text-sm font-black shrink-0" style={{ color: cat.color }}>{cat.score}</div>
-                  </motion.div>
-                ))}
+            {/* Corps : bandeau VUE D'ENSEMBLE + KPI + points */}
+            <div style={{ padding: 'clamp(20px,4vw,32px)', background: '#f4f7f9' }}>
+              {/* Bandeau */}
+              <div style={{ marginBottom: 16 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#0f2d3d', color: '#fff', fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 99, letterSpacing: '0.06em' }}>
+                  🏢 VUE D'ENSEMBLE
+                </span>
+              </div>
+
+              {/* KPI grille — même style hybride A+B que le vrai rapport */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 mb-6">
+                {kpis.map((k, i) => {
+                  const s = kpiStyles[k.severity];
+                  return (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, y: 10 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: i * 0.06 }}
+                      style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: 12, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 11 }}
+                    >
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: s.iconBg, color: s.iconColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>
+                        {k.emoji}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                        <span style={{ fontSize: 10, color: s.labelColor, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{k.label}</span>
+                        <span style={{ fontSize: 15, color: s.valueColor, fontWeight: 700, lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{k.value}</span>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {/* Synthèse de l'analyse */}
+              <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: 'clamp(16px,3vw,22px)' }}>
+                <div style={{ textAlign: 'center', marginBottom: 14 }}>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>Synthèse de l'analyse</span>
+                </div>
+                {/* Points positifs */}
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#15803d', color: '#fff', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', padding: '4px 11px', borderRadius: 99, marginBottom: 10 }}>✓ POINTS POSITIFS</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {['Fonds travaux bien dotés (93.3% du budget ALUR)', 'Syndic stable sur les 3 dernières AGs analysées', 'Aucune procédure judiciaire de la copropriété'].map((t, i) => (
+                      <div key={i} style={{ fontSize: 13, color: '#334155', lineHeight: 1.55, display: 'flex', gap: 8 }}>
+                        <span style={{ color: '#16a34a', flexShrink: 0 }}>✓</span>
+                        <span>{t}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {/* Points de vigilance */}
+                <div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#92400e', color: '#fff', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.06em', padding: '4px 11px', borderRadius: 99, marginBottom: 10 }}>⚠ POINTS DE VIGILANCE</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {["Procédure d'impayés en cours sur le lot 12 (8 400€)", 'Travaux de ravalement évoqués — non chiffrés à ce jour'].map((t, i) => (
+                      <div key={i} style={{ fontSize: 13, color: '#334155', lineHeight: 1.55, display: 'flex', gap: 8 }}>
+                        <span style={{ color: '#f59e0b', flexShrink: 0 }}>⚠</span>
+                        <span>{t}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
-
           </div>
         </Reveal>
 
