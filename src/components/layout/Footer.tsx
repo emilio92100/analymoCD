@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Mail, MapPin } from 'lucide-react';
+import { Mail, MapPin, ArrowRight } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -48,6 +48,12 @@ export default function Footer() {
           <div className="text-sm text-slate-400 flex items-center gap-2">
             <MapPin size={13} className="shrink-0" /> France
           </div>
+          <Link
+            to="/contact"
+            className="mt-2 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 text-sm font-semibold text-white transition-colors w-fit"
+          >
+            Envoyer un message <ArrowRight size={14} />
+          </Link>
         </div>
 
       </div>
