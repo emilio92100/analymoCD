@@ -3317,11 +3317,18 @@ export function RapportViewExemple({ rapport, defaultTab = 'synthese', onComplem
             {tabs.map(tab => {
               const active = activeTab === tab.id;
               return (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id)} className="rapport-tab-btn"
-                  style={{ flex: 1, minWidth: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 10px', borderRadius: 8, border: 'none', background: active ? '#f8fafc' : 'transparent', color: active ? '#0f172a' : '#64748b', fontSize: 12.5, fontWeight: active ? 700 : 400, cursor: 'pointer', transition: 'all 0.15s', borderBottom: active ? `2px solid ${tab.dotColor}` : '2px solid transparent', whiteSpace: 'nowrap' }}>
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`rapport-tab-btn${active ? ' rapport-tab-btn-active' : ''}`}
+                  data-color={tab.dotColor}
+                  style={{
+                    flex: 1, minWidth: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px 12px', borderRadius: 8, border: 'none',
+                    background: active ? tab.dotColor : 'transparent',
+                    color: active ? '#fff' : '#64748b',
+                    fontSize: 12.5, fontWeight: active ? 700 : 500, cursor: 'pointer', transition: 'all 0.2s ease', whiteSpace: 'nowrap',
+                    boxShadow: active ? `0 2px 8px ${tab.dotColor}40` : 'none',
+                  }}>
                   {tab.icon}
                   {tab.label}
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: tab.dotColor, flexShrink: 0 }} />
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: active ? 'rgba(255,255,255,0.85)' : tab.dotColor, flexShrink: 0 }} />
                 </button>
               );
             })}
@@ -3568,11 +3575,18 @@ export default function RapportPage() {
             {tabs.map(tab => {
               const active = activeTab === tab.id;
               return (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id)} className="rapport-tab-btn"
-                  style={{ flex: 1, minWidth: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 10px', borderRadius: 8, border: 'none', background: active ? '#f8fafc' : 'transparent', color: active ? '#0f172a' : '#64748b', fontSize: 12.5, fontWeight: active ? 700 : 400, cursor: 'pointer', transition: 'all 0.15s', borderBottom: active ? `2px solid ${tab.dotColor}` : '2px solid transparent', whiteSpace: 'nowrap' }}>
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`rapport-tab-btn${active ? ' rapport-tab-btn-active' : ''}`}
+                  data-color={tab.dotColor}
+                  style={{
+                    flex: 1, minWidth: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px 12px', borderRadius: 8, border: 'none',
+                    background: active ? tab.dotColor : 'transparent',
+                    color: active ? '#fff' : '#64748b',
+                    fontSize: 12.5, fontWeight: active ? 700 : 500, cursor: 'pointer', transition: 'all 0.2s ease', whiteSpace: 'nowrap',
+                    boxShadow: active ? `0 2px 8px ${tab.dotColor}40` : 'none',
+                  }}>
                   {tab.icon}
                   {tab.label}
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: tab.dotColor, flexShrink: 0 }} />
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: active ? 'rgba(255,255,255,0.85)' : tab.dotColor, flexShrink: 0 }} />
                 </button>
               );
             })}
