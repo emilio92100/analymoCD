@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { ArrowRight, ChevronDown, TrendingDown, TrendingUp, AlertTriangle, Shield, Check, Info } from 'lucide-react';
+import { useSEO } from '../hooks/useSEO';
 
 const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
 const isLowPerf = () => isIOS() || (typeof window !== 'undefined' && window.innerWidth <= 768);
@@ -343,6 +344,12 @@ function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
    PAGE
 ══════════════════════════════════════════ */
 export default function MethodePage() {
+  useSEO({
+    title: 'Méthode Verimo — Comment nous analysons vos documents immobiliers',
+    description: "Découvrez la méthode Verimo : documents analysés, points vérifiés, calcul du score et garde-fous. Transparence totale sur notre analyse immobilière.",
+    canonical: '/methode',
+  });
+
   const [openDoc, setOpenDoc] = useState<string | null>(null);
   const [openCat, setOpenCat] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
