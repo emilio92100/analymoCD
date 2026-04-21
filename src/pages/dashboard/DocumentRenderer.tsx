@@ -314,35 +314,45 @@ function CarrezAccordeon({ pieces, piecesHorsCarrez, annexes }: { pieces: any[];
         <span style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', fontSize: 10 }}>▶</span>
         {open ? 'Masquer le détail' : 'Voir le détail par pièce'}
       </button>
-      {open && (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <tbody>
-            {pieces.map((p: any, i: number) => (
-              <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}`, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
-                <td style={{ padding: '10px 20px', fontSize: 14, color: C.text }}>{p.piece}</td>
-                <td style={{ padding: '10px 20px', fontSize: 14, fontWeight: 500, color: C.text, textAlign: 'right' as const }}>{p.surface} m²</td>
-              </tr>
-            ))}
-            {hasExtras && (
-              <tr style={{ background: C.bgSecondary }}>
-                <td colSpan={2} style={{ padding: '8px 20px', fontSize: 11, fontWeight: 600, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>Surfaces non comptabilisées dans la surface {pieces.length > 0 ? 'Carrez' : ''}</td>
-              </tr>
-            )}
-            {piecesHorsCarrez?.map((p: any, i: number) => (
-              <tr key={`hc-${i}`} style={{ borderBottom: `0.5px solid ${C.border}`, background: C.bgSecondary }}>
-                <td style={{ padding: '10px 20px', fontSize: 14, color: C.textSec, fontStyle: 'italic' as const }}>{p.piece} <span style={{ fontSize: 11 }}>(hors surface légale)</span></td>
-                <td style={{ padding: '10px 20px', fontSize: 14, color: C.textSec, textAlign: 'right' as const, fontStyle: 'italic' as const }}>{p.surface} m²</td>
-              </tr>
-            ))}
-            {annexes?.map((a: any, i: number) => (
-              <tr key={`ann-${i}`} style={{ borderBottom: i < (annexes.length - 1) ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bgSecondary : C.bg }}>
-                <td style={{ padding: '10px 20px', fontSize: 14, color: C.textSec }}>{annexeIcon(a.type)} {a.type.charAt(0).toUpperCase() + a.type.slice(1)}</td>
-                <td style={{ padding: '10px 20px', fontSize: 14, color: C.textSec, textAlign: 'right' as const }}>{a.surface ? `${a.surface} m²` : '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateRows: open ? '1fr' : '0fr',
+          transition: 'grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
+        <div style={{ overflow: 'hidden', minHeight: 0 }}>
+          <div style={{ opacity: open ? 1 : 0, transform: open ? 'translateY(0)' : 'translateY(-4px)', transition: 'opacity 0.3s ease 0.05s, transform 0.3s ease 0.05s' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <tbody>
+                {pieces.map((p: any, i: number) => (
+                  <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}`, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+                    <td style={{ padding: '10px 20px', fontSize: 14, color: C.text }}>{p.piece}</td>
+                    <td style={{ padding: '10px 20px', fontSize: 14, fontWeight: 500, color: C.text, textAlign: 'right' as const }}>{p.surface} m²</td>
+                  </tr>
+                ))}
+                {hasExtras && (
+                  <tr style={{ background: C.bgSecondary }}>
+                    <td colSpan={2} style={{ padding: '8px 20px', fontSize: 11, fontWeight: 600, color: C.textSec, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>Surfaces non comptabilisées dans la surface {pieces.length > 0 ? 'Carrez' : ''}</td>
+                  </tr>
+                )}
+                {piecesHorsCarrez?.map((p: any, i: number) => (
+                  <tr key={`hc-${i}`} style={{ borderBottom: `0.5px solid ${C.border}`, background: C.bgSecondary }}>
+                    <td style={{ padding: '10px 20px', fontSize: 14, color: C.textSec, fontStyle: 'italic' as const }}>{p.piece} <span style={{ fontSize: 11 }}>(hors surface légale)</span></td>
+                    <td style={{ padding: '10px 20px', fontSize: 14, color: C.textSec, textAlign: 'right' as const, fontStyle: 'italic' as const }}>{p.surface} m²</td>
+                  </tr>
+                ))}
+                {annexes?.map((a: any, i: number) => (
+                  <tr key={`ann-${i}`} style={{ borderBottom: i < (annexes.length - 1) ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bgSecondary : C.bg }}>
+                    <td style={{ padding: '10px 20px', fontSize: 14, color: C.textSec }}>{annexeIcon(a.type)} {a.type.charAt(0).toUpperCase() + a.type.slice(1)}</td>
+                    <td style={{ padding: '10px 20px', fontSize: 14, color: C.textSec, textAlign: 'right' as const }}>{a.surface ? `${a.surface} m²` : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -391,9 +401,28 @@ function DiagnosticCardRow({ d }: { d: any }) {
           )}
         </div>
       </div>
-      {open && d.detail && (
-        <div style={{ borderTop: `0.5px solid ${rowBorder}`, padding: '14px 14px', background: C.bg }}>
-          <DiagnosticCardDetail d={d} />
+      {d.detail && (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateRows: open ? '1fr' : '0fr',
+            transition: 'grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        >
+          <div style={{ overflow: 'hidden', minHeight: 0 }}>
+            <div
+              style={{
+                borderTop: `0.5px solid ${rowBorder}`,
+                padding: '14px 14px',
+                background: C.bg,
+                opacity: open ? 1 : 0,
+                transform: open ? 'translateY(0)' : 'translateY(-4px)',
+                transition: 'opacity 0.3s ease 0.05s, transform 0.3s ease 0.05s',
+              }}
+            >
+              <DiagnosticCardDetail d={d} />
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -2244,10 +2273,25 @@ function RendererDiagCommunes({ r }: { r: any }) {
                     {groupe.rapport_annee && <span style={{ fontSize: 11, color: zc.text, opacity: 0.7 }}>· {groupe.cabinet || ''} {groupe.rapport_annee}</span>}
                     {hasAC1 && <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 100, background: C.red.bg, color: C.red.text, border: `0.5px solid ${C.red.border}` }}>⚠ AC1</span>}
                   </div>
-                  <span style={{ fontSize: 11, color: zc.dot, transform: open ? 'none' : 'rotate(-90deg)', display: 'inline-block', transition: 'transform 0.2s', flexShrink: 0 }}>▾</span>
+                  <span style={{ fontSize: 11, color: zc.dot, transform: open ? 'rotate(0deg)' : 'rotate(-90deg)', display: 'inline-block', transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)', flexShrink: 0 }}>▾</span>
                 </div>
-                {open && (
-                  <div style={{ background: C.bgSecondary, borderTop: `0.5px solid ${C.border}` }}>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateRows: open ? '1fr' : '0fr',
+                    transition: 'grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
+                >
+                  <div style={{ overflow: 'hidden', minHeight: 0 }}>
+                    <div
+                      style={{
+                        background: C.bgSecondary,
+                        borderTop: `0.5px solid ${C.border}`,
+                        opacity: open ? 1 : 0,
+                        transform: open ? 'translateY(0)' : 'translateY(-4px)',
+                        transition: 'opacity 0.3s ease 0.05s, transform 0.3s ease 0.05s',
+                      }}
+                    >
                     {/* Header colonnes — masqué mobile */}
                     <div className="dr-zone-header" style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1.5fr', gap: 8, padding: '8px 20px', fontSize: 10, fontWeight: 700, color: C.textSec, letterSpacing: '0.07em', textTransform: 'uppercase' as const, borderBottom: `0.5px solid ${C.border}` }}>
                       <span>Localisation précise</span><span>Matériau</span><span>Action</span>
@@ -2299,8 +2343,9 @@ function RendererDiagCommunes({ r }: { r: any }) {
                       </>
                     )}
                     {groupe.plus && <div style={{ padding: '9px 20px', fontSize: 13, color: C.textSec, fontStyle: 'italic' as const, borderTop: `0.5px solid ${C.border}` }}>{groupe.plus}</div>}
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
             );
           })}
