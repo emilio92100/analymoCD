@@ -104,6 +104,7 @@ const MOCK_COMPLETE_PAYLOAD = {
       nom: 'Cabinet Immo Lyon Gestion',
       type: 'professionnel',
       gestionnaire: 'Marie Dupont',
+      gestionnaire_fonction: 'Gestionnaire de copropriété',
       fin_mandat: 'Juin 2026',
       tensions_detectees: false,
       tensions_detail: null,
