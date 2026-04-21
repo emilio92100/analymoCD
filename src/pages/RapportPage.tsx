@@ -3212,31 +3212,38 @@ function TabDocuments({ rapport, onComplement }: { rapport: RapportData; onCompl
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>Pour améliorer votre score et mieux comprendre votre achat</div>
-              <div style={{ fontSize: 13, color: expired ? '#94a3b8' : '#64748b' }}>
-                {expired
-                  ? 'Le délai de 7 jours pour ajouter des documents est dépassé.'
-                  : deadline
-                    ? 'Ajoutez des documents oubliés — le rapport sera recalculé gratuitement.'
-                    : 'Ajoutez ces documents pour compléter votre analyse'
+              <div style={{ fontSize: 13, color: (expired || complementDate) ? '#94a3b8' : '#64748b' }}>
+                {complementDate
+                  ? 'Votre dossier a été complété — le rapport a été recalculé.'
+                  : expired
+                    ? 'Le délai de 7 jours pour ajouter des documents est dépassé.'
+                    : deadline
+                      ? 'Ajoutez des documents manquants — le rapport sera recalculé gratuitement.'
+                      : 'Ajoutez ces documents pour compléter votre analyse'
                 }
               </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, flexWrap: 'wrap' }}>
               <button
-                onClick={expired ? undefined : () => onComplement?.()}
-                disabled={expired}
-                title={expired ? 'Le délai de 7 jours pour ajouter des documents est dépassé' : undefined}
+                onClick={(expired || complementDate) ? undefined : () => onComplement?.()}
+                disabled={expired || !!complementDate}
+                title={complementDate ? 'Dossier déjà complété' : expired ? 'Le délai de 7 jours pour ajouter des documents est dépassé' : undefined}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 10, border: 'none',
-                  background: expired ? '#e2e8f0' : '#2a7d9c',
-                  color: expired ? '#94a3b8' : '#fff',
+                  background: (expired || complementDate) ? '#e2e8f0' : '#2a7d9c',
+                  color: (expired || complementDate) ? '#94a3b8' : '#fff',
                   fontSize: 13, fontWeight: 600,
-                  cursor: expired ? 'not-allowed' : 'pointer',
-                  opacity: expired ? 0.7 : 1,
+                  cursor: (expired || complementDate) ? 'not-allowed' : 'pointer',
+                  opacity: (expired || complementDate) ? 0.7 : 1,
                 }}>
                 <RefreshCw size={13} /> Compléter mon dossier
               </button>
-              {!expired && deadline && (
+              {complementDate ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#16a34a', fontWeight: 600 }}>
+                  <CheckCircle size={14} />
+                  <span>Dossier complété le {new Date(complementDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                </div>
+              ) : !expired && deadline && (
                 <div style={{ fontSize: 12 }}>
                   <CountdownTimer deadline={deadline} />
                 </div>
@@ -3460,7 +3467,7 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
         <div style={{ padding: '18px 24px 14px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>Compléter le dossier</div>
-            <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Ajoutez jusqu'à 5 documents oubliés</div>
+            <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Ajoutez jusqu'à 5 documents manquants</div>
           </div>
           {!uploading && (
             <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
