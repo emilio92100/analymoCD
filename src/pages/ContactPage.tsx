@@ -2,12 +2,19 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Clock, MapPin, Send, CheckCircle, Crown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useSEO } from '../hooks/useSEO';
 
 const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
 const isLowPerf = () => isIOS() || (typeof window !== 'undefined' && window.innerWidth <= 768);
 
 
 export default function ContactPage() {
+  useSEO({
+    title: 'Contact — Verimo',
+    description: "Une question sur Verimo ? Contactez notre équipe. Réponse sous 48h ouvrées pour tous vos besoins d'analyse immobilière.",
+    canonical: '/contact',
+  });
+
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
