@@ -3209,8 +3209,8 @@ function TabDocuments({ rapport, onComplement }: { rapport: RapportData; onCompl
       {/* Section docs manquants EN HAUT */}
       {(docsEssentielManquants.length > 0 || docsSecondairesManquants.length > 0) && (
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 220 }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>Pour améliorer votre score et mieux comprendre votre achat</div>
               <div style={{ fontSize: 13, color: expired ? '#94a3b8' : '#64748b' }}>
                 {expired
@@ -3221,7 +3221,7 @@ function TabDocuments({ rapport, onComplement }: { rapport: RapportData; onCompl
                 }
               </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, flexShrink: 0 }}>
               <button
                 onClick={expired ? undefined : () => onComplement?.()}
                 disabled={expired}
