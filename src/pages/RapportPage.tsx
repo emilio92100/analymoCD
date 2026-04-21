@@ -1280,11 +1280,40 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
   type NbLotsT = { logements?: number | null; parkings?: number | null; caves?: number | null; commerces?: number | null };
   type DtgT = { present?: boolean; etat_general?: string | null; budget_urgent_3ans?: number | null; budget_total_10ans?: number | null; travaux_prioritaires?: string[] };
   type RegleT = { label?: string; statut?: string; impact_rp?: boolean; impact_invest?: boolean };
+  type ContratEntretienT = { equipement?: string; prestataire?: string | null; date_reconduction?: string | null; periodicite?: string | null };
+  type TravauxCarnetT = { annee?: string | number | null; label?: string; montant?: number | null; entreprise?: string | null };
+  type TravauxEnCoursCarnetT = { label?: string; date_vote?: string | null; montant?: number | null };
+  type DiagCommunCarnetT = { type?: string; date?: string | null; entreprise?: string | null; resultat?: string | null };
+  type CarnetEntretienT = {
+    present?: boolean; date_maj?: string | null; immatriculation_registre?: string | null;
+    equipements_copro?: { chauffage_collectif?: boolean | null; type_chauffage?: string | null; eau_chaude_collective?: boolean | null; eau_froide_collective?: boolean | null; fibre_optique?: boolean | null; ascenseur?: boolean | null };
+    contrats_entretien?: ContratEntretienT[];
+    travaux_realises_carnet?: TravauxCarnetT[];
+    travaux_en_cours_votes_carnet?: TravauxEnCoursCarnetT[];
+    diagnostics_parties_communes_carnet?: DiagCommunCarnetT[];
+    conseil_syndical_carnet?: { date_nomination?: string | null; membres_nb?: number | null };
+    rcp_info_carnet?: { date_origine?: string | null; notaire?: string | null; nb_modificatifs?: number | null };
+  };
+  type FicheSyntheticT = {
+    present?: boolean; date?: string | null; recente?: boolean | null;
+    immatriculation_registre?: string | null; nb_lots_principaux?: number | null; nb_lots_total?: number | null;
+    equipements_collectifs?: string | string[] | null; dtg_mentionne?: boolean | null;
+    budget_n_1?: number | null; impayes_total?: number | null; fonds_travaux_alur_global?: number | null;
+    syndic_identite?: string | null; commentaire_verimo?: string | null;
+  };
+  type ModificatifRcpT = {
+    date_acte?: string | null; notaire?: string | null; type_modification?: string | null;
+    sur_quoi_porte?: Array<{ aspect?: string; detail?: string }>;
+    impact_acheteur?: string | null;
+    points_attention?: Array<{ label?: string; detail?: string }>;
+  };
   type VieT = {
     syndic?: SyndicT; nb_lots_total?: number | null; nb_lots_detail?: NbLotsT; nb_batiments?: number | null;
     participation_ag?: ParticT[]; tendance_participation?: string; analyse_participation?: string;
     travaux_votes_non_realises?: unknown[]; appels_fonds_exceptionnels?: unknown[];
     questions_diverses_notables?: unknown[]; dtg?: DtgT; regles_copro?: RegleT[];
+    carnet_entretien?: CarnetEntretienT;
+    fiche_synthetique?: FicheSyntheticT;
   };
 
   const vie = rapport.vie_copropriete as VieT | null;
@@ -1315,14 +1344,16 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
   const fin = rapport.finances as Record<string, unknown> | null;
   const budgetTotal = fin?.budget_total_copro;
   const budgetNum = typeof budgetTotal === 'number' ? budgetTotal : typeof budgetTotal === 'string' ? parseFloat(String(budgetTotal).replace(/[^0-9.]/g, '')) || 0 : 0;
+  const budgetAnnee = fin?.budget_total_copro_annee as string | number | null | undefined;
   const fondsNum = rapport.fonds_travaux > 0 ? rapport.fonds_travaux : 0;
+  const fondsAnnee = fin?.fonds_travaux_annee as string | number | null | undefined;
   const fondsPct = budgetNum > 0 && fondsNum > 0 ? ((fondsNum / budgetNum) * 100) : null;
   const fondsInsuffisant = rapport.fonds_travaux_statut === 'insuffisant' || rapport.fonds_travaux_statut === 'absent';
   const quitusRefuse = participation.some(p => p.quitus?.soumis === true && p.quitus?.approuve === false);
 
   // KPIs bandeau — infos spécifiques à la copropriété (pas au lot perso)
   const kpiItems = [];
-  if (budgetNum > 0) kpiItems.push({ emoji: '💰', label: 'Budget annuel copro', value: `${budgetNum.toLocaleString('fr-FR')} €`, sub: 'Charges totales copropriété', color: '#1e40af', bg: '#eff6ff', border: '#bfdbfe', tooltip: "Budget prévisionnel voté en AG pour faire fonctionner l'ensemble de la copropriété (entretien, assurance, syndic, fluides communs). Ne correspond pas aux charges de votre lot." });
+  if (budgetNum > 0) kpiItems.push({ emoji: '💰', label: 'Budget annuel copro', value: `${budgetNum.toLocaleString('fr-FR')} €`, sub: budgetAnnee ? `Budget ${budgetAnnee}` : 'Charges totales copropriété', color: '#1e40af', bg: '#eff6ff', border: '#bfdbfe', tooltip: "Budget prévisionnel voté en AG pour faire fonctionner l'ensemble de la copropriété (entretien, assurance, syndic, fluides communs). Ne correspond pas aux charges de votre lot." });
   if (nbLotsTotal) kpiItems.push({ emoji: '🏢', label: 'Lots dans la copropriété', value: String(nbLotsTotal), sub: nbBatiments ? `${nbBatiments} bâtiment${nbBatiments > 1 ? 's' : ''}` : undefined, tooltip: "Nombre total de lots (appartements, parkings, caves...) composant la copropriété." });
   if (fondsPct !== null) kpiItems.push({ emoji: '🔧', label: 'Fonds travaux', value: `${fondsPct.toFixed(1)}%`, sub: fondsPct < 5 ? 'Insuffisant — seuil 5%' : 'Conforme loi ALUR', color: fondsPct < 5 ? '#a16207' : '#16a34a', bg: fondsPct < 5 ? '#fff7ed' : '#f0fdf4', border: fondsPct < 5 ? '#fed7aa' : '#bbf7d0', tooltip: "Réserve obligatoire pour financer les futurs travaux. La loi ALUR impose minimum 5% du budget annuel de la copropriété." });
   if (travaux_votes.length > 0) kpiItems.push({ emoji: '⚖️', label: 'Travaux charge vendeur', value: String(travaux_votes.filter((t: Record<string, unknown>) => t.charge_vendeur !== false).length || travaux_votes.length), sub: 'À vérifier notaire', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' });
@@ -1688,7 +1719,9 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
           {budgetNum > 0 && (
             <div style={{ padding: 14, background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', textAlign: 'center' }}>
               <div style={{ fontSize: 19, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>{budgetNum.toLocaleString('fr-FR')} €</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Budget annuel copropriété</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>
+                Budget annuel copropriété{budgetAnnee ? ` — ${budgetAnnee}` : ''}
+              </div>
             </div>
           )}
           {fondsNum > 0 && (
@@ -1697,6 +1730,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
               <div style={{ fontSize: 11, color: fondsInsuffisant ? '#a16207' : '#16a34a', fontWeight: 600 }}>
                 <Tooltip text="Réserve obligatoire de la copropriété pour financer les futurs travaux. La loi ALUR impose minimum 5% du budget annuel.">Fonds travaux copro</Tooltip>
                 {fondsPct && ` — ${fondsPct.toFixed(1)}%`}
+                {fondsAnnee && ` (${fondsAnnee})`}
               </div>
             </div>
           )}
@@ -1775,6 +1809,319 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
           </div>
         )}
       </AccordionSection>
+
+      {/* ── CARNET D'ENTRETIEN ── */}
+      {(() => {
+        type EquipT = { chauffage_collectif?: boolean | null; type_chauffage?: string | null; eau_chaude_collective?: boolean | null; eau_froide_collective?: boolean | null; fibre_optique?: boolean | null; ascenseur?: boolean | null };
+        type ContratT = { equipement?: string | null; prestataire?: string | null; periodicite?: string | null; date_reconduction?: string | null };
+        type TravRealT = { annee?: string | number | null; label?: string | null; entreprise?: string | null; montant?: number | null };
+        type TravEnCoursT = { label?: string | null; date_ag?: string | null; montant?: number | null };
+        type DiagPCT = { type?: string | null; date?: string | null; entreprise?: string | null; resultat?: string | null; commentaire?: string | null };
+        type CSCarnT = { date_nomination?: string | null; nb_membres?: number | null };
+        type CarnetT = {
+          present?: boolean; date_maj?: string | null; immatriculation_registre?: string | null;
+          equipements_copro?: EquipT;
+          contrats_entretien?: ContratT[];
+          travaux_realises_carnet?: TravRealT[];
+          travaux_en_cours_votes_carnet?: TravEnCoursT[];
+          diagnostics_parties_communes_carnet?: DiagPCT[];
+          conseil_syndical_carnet?: CSCarnT;
+        };
+        const vieCopro = rapport.vie_copropriete as Record<string, unknown> | null;
+        const carnet = vieCopro?.carnet_entretien as CarnetT | null;
+        if (!carnet?.present) return null;
+
+        const equip = carnet.equipements_copro || {};
+        const contrats = carnet.contrats_entretien || [];
+        const travauxReal = carnet.travaux_realises_carnet || [];
+        const travauxEnCours = carnet.travaux_en_cours_votes_carnet || [];
+        const diagsPC = carnet.diagnostics_parties_communes_carnet || [];
+
+        return (
+          <AccordionSection
+            title="Carnet d'entretien" sub="Équipements · contrats · travaux · diagnostics communs" icon="📓"
+            defaultOpen={allOpen}
+            status="neutral"
+            badge={carnet.date_maj ? `MAJ ${carnet.date_maj}` : 'Détecté'}>
+
+            {/* Immatriculation registre */}
+            {carnet.immatriculation_registre && (
+              <div style={{ padding: '10px 14px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10, fontSize: 13, color: '#075985' }}>
+                <strong>N° registre national :</strong> {carnet.immatriculation_registre}
+              </div>
+            )}
+
+            {/* Équipements copro */}
+            {(equip.chauffage_collectif !== null || equip.ascenseur !== null || equip.fibre_optique !== null) && (
+              <>
+                <SectionTitle emoji="⚙️" text="Équipements de l'immeuble" />
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {equip.chauffage_collectif === true && (
+                    <span style={{ fontSize: 12, padding: '5px 12px', borderRadius: 100, background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af' }}>
+                      🔥 Chauffage collectif{equip.type_chauffage ? ` (${equip.type_chauffage})` : ''}
+                    </span>
+                  )}
+                  {equip.eau_chaude_collective === true && (
+                    <span style={{ fontSize: 12, padding: '5px 12px', borderRadius: 100, background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af' }}>💧 Eau chaude collective</span>
+                  )}
+                  {equip.eau_froide_collective === true && (
+                    <span style={{ fontSize: 12, padding: '5px 12px', borderRadius: 100, background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af' }}>💦 Eau froide collective</span>
+                  )}
+                  {equip.ascenseur === true && (
+                    <span style={{ fontSize: 12, padding: '5px 12px', borderRadius: 100, background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af' }}>🛗 Ascenseur</span>
+                  )}
+                  {equip.fibre_optique === true && (
+                    <span style={{ fontSize: 12, padding: '5px 12px', borderRadius: 100, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534' }}>🌐 Fibre optique</span>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Contrats d'entretien */}
+            {contrats.length > 0 && (
+              <>
+                <SectionTitle emoji="📑" text={`Contrats d'entretien (${contrats.length})`} />
+                <div style={{ background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+                  {contrats.map((c, i) => (
+                    <div key={i} style={{ padding: '10px 14px', borderBottom: i < contrats.length - 1 ? '1px solid #f1f5f9' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: '#0f172a' }}>{c.equipement}</div>
+                        {c.prestataire && <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{c.prestataire}</div>}
+                      </div>
+                      {(c.date_reconduction || c.periodicite) && (
+                        <div style={{ fontSize: 11, color: '#94a3b8', textAlign: 'right', flexShrink: 0 }}>
+                          {c.date_reconduction && <div>Reconduit le {c.date_reconduction}</div>}
+                          {c.periodicite && <div>{c.periodicite}</div>}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Travaux votés en cours (depuis carnet) */}
+            {travauxEnCours.length > 0 && (
+              <>
+                <SectionTitle emoji="🔨" text="Travaux votés en AG (mentionnés dans le carnet)" />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {travauxEnCours.map((t, i) => (
+                    <div key={i} style={{ padding: '10px 14px', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 10, fontSize: 13, color: '#92400e' }}>
+                      <div style={{ fontWeight: 500 }}>{t.label}</div>
+                      {(t.date_ag || t.montant) && (
+                        <div style={{ fontSize: 12, marginTop: 3, color: '#b45309' }}>
+                          {t.date_ag && `Voté le ${t.date_ag}`}
+                          {t.date_ag && t.montant && ' — '}
+                          {t.montant && `Budget ${t.montant.toLocaleString('fr-FR')} €`}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Travaux réalisés (historique) */}
+            {travauxReal.length > 0 && (
+              <>
+                <SectionTitle emoji="✅" text={`Travaux réalisés (${travauxReal.length})`} />
+                <div style={{ background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0', overflow: 'hidden' }}>
+                  {travauxReal.map((t, i) => (
+                    <div key={i} style={{ padding: '9px 14px', borderBottom: i < travauxReal.length - 1 ? '1px solid #dcfce7' : 'none', display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13, color: '#166534' }}>
+                      {t.annee && <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', background: '#dcfce7', borderRadius: 99, flexShrink: 0 }}>{t.annee}</span>}
+                      <div style={{ flex: 1 }}>
+                        <div>{t.label}</div>
+                        {(t.entreprise || t.montant) && (
+                          <div style={{ fontSize: 11, color: '#16a34a', marginTop: 2 }}>
+                            {t.entreprise}
+                            {t.entreprise && t.montant && ' — '}
+                            {t.montant && `${t.montant.toLocaleString('fr-FR')} €`}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Diagnostics parties communes (depuis carnet) */}
+            {diagsPC.length > 0 && (
+              <>
+                <SectionTitle emoji="🔍" text="Diagnostics parties communes (mentionnés dans le carnet)" />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {diagsPC.map((d, i) => {
+                    const bg = d.resultat === 'positif' ? '#fef2f2' : d.resultat === 'negatif' ? '#f0fdf4' : '#f8fafc';
+                    const border = d.resultat === 'positif' ? '#fecaca' : d.resultat === 'negatif' ? '#bbf7d0' : '#edf2f7';
+                    const emoji = d.type === 'amiante' ? '☣' : d.type === 'plomb' ? '🧱' : d.type === 'termites' ? '🐛' : d.type === 'ascenseur' ? '🛗' : '📋';
+                    return (
+                      <div key={i} style={{ padding: '9px 14px', background: bg, border: `1px solid ${border}`, borderRadius: 10, display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13 }}>
+                        <span style={{ fontSize: 14, flexShrink: 0 }}>{emoji}</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 500, textTransform: 'capitalize' }}>{d.type}</div>
+                          {(d.date || d.entreprise) && (
+                            <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                              {d.date && `Rapport du ${d.date}`}
+                              {d.date && d.entreprise && ' — '}
+                              {d.entreprise}
+                            </div>
+                          )}
+                          {d.commentaire && <div style={{ fontSize: 12, color: '#475569', marginTop: 3 }}>{d.commentaire}</div>}
+                        </div>
+                        {d.resultat && (
+                          <span style={{ fontSize: 11, padding: '2px 9px', borderRadius: 99, background: '#fff', border: `1px solid ${border}`, color: '#475569', flexShrink: 0 }}>
+                            {d.resultat === 'negatif' ? 'Négatif' : d.resultat === 'positif' ? 'Positif' : 'Non effectué'}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+          </AccordionSection>
+        );
+      })()}
+
+      {/* ── MODIFICATIFS RCP ── */}
+      {(() => {
+        type ModifT = {
+          date_acte?: string | null; notaire?: string | null; type_modification?: string | null;
+          sur_quoi_porte?: { aspect?: string; detail?: string }[];
+          impact_acheteur?: string | null;
+          points_attention?: { label?: string; detail?: string }[];
+        };
+        const vieCopro = rapport.vie_copropriete as Record<string, unknown> | null;
+        const modifs = (vieCopro?.modificatifs_rcp as ModifT[] | null) || [];
+        if (modifs.length === 0) return null;
+
+        const labelsType: Record<string, string> = {
+          creation_lot: 'Création de lot',
+          suppression_lot: 'Suppression de lot',
+          changement_usage: "Changement d'usage",
+          mise_a_jour_tantiemes: 'Mise à jour des tantièmes',
+          servitude: 'Servitude',
+          fusion_lots: 'Fusion de lots',
+          autre: 'Modification',
+        };
+
+        return (
+          <AccordionSection
+            title="Modificatifs du règlement" sub={`${modifs.length} modificatif${modifs.length > 1 ? 's' : ''} détecté${modifs.length > 1 ? 's' : ''}`} icon="📜"
+            defaultOpen={allOpen}
+            status="neutral"
+            badge={`${modifs.length} acte${modifs.length > 1 ? 's' : ''}`}>
+
+            <div style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 10, fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>
+              Le règlement de copropriété peut être modifié au fil du temps par des actes notariés (changement d'usage, fusion de lots, servitudes…). Voici ce qui a été détecté.
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {modifs.map((m, i) => (
+                <div key={i} style={{ padding: '14px 16px', background: '#fff', border: '1px solid #edf2f7', borderRadius: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
+                        {m.type_modification ? (labelsType[m.type_modification] || labelsType.autre) : labelsType.autre}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#64748b', marginTop: 3 }}>
+                        {m.date_acte && `Acte du ${m.date_acte}`}
+                        {m.date_acte && m.notaire && ' — '}
+                        {m.notaire}
+                      </div>
+                    </div>
+                  </div>
+
+                  {m.sur_quoi_porte && m.sur_quoi_porte.length > 0 && (
+                    <div style={{ marginBottom: 10 }}>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', letterSpacing: '0.06em', marginBottom: 6 }}>CE QUI CHANGE</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                        {m.sur_quoi_porte.map((s, j) => (
+                          <div key={j} style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                            {s.aspect && <strong>{s.aspect}{s.detail ? ' : ' : ''}</strong>}
+                            {s.detail}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {m.impact_acheteur && (
+                    <div style={{ padding: '10px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 9, fontSize: 13, color: '#1e40af', lineHeight: 1.6 }}>
+                      <strong>Impact pour vous : </strong>{m.impact_acheteur}
+                    </div>
+                  )}
+
+                  {m.points_attention && m.points_attention.length > 0 && (
+                    <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      {m.points_attention.map((p, j) => (
+                        <div key={j} style={{ padding: '8px 12px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 9, fontSize: 12, color: '#9a3412' }}>
+                          <strong>⚠ {p.label}{p.detail ? ' : ' : ''}</strong>{p.detail}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </AccordionSection>
+        );
+      })()}
+
+      {/* ── FICHE SYNTHÉTIQUE ── */}
+      {(() => {
+        type FicheT = {
+          present?: boolean; date?: string | null; fiche_recente?: boolean | null;
+          immatriculation_registre?: string | null;
+          dtg_realise?: boolean | null; dtg_date?: string | null;
+          equipements_collectifs_detail?: string[];
+        };
+        const vieCopro = rapport.vie_copropriete as Record<string, unknown> | null;
+        const fiche = vieCopro?.fiche_synthetique as FicheT | null;
+        if (!fiche?.present) return null;
+
+        return (
+          <AccordionSection
+            title="Fiche synthétique de copropriété" sub="Document standardisé loi ALUR" icon="📋"
+            defaultOpen={false}
+            status={fiche.fiche_recente === false ? 'warning' : 'neutral'}
+            badge={fiche.date ? (fiche.fiche_recente === false ? `Ancienne (${fiche.date})` : fiche.date) : 'Détectée'}>
+
+            {fiche.fiche_recente === false && (
+              <div style={{ padding: '10px 14px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10, fontSize: 13, color: '#9a3412', lineHeight: 1.6 }}>
+                ⚠ Cette fiche synthétique date de {fiche.date}. Certaines informations peuvent être obsolètes — les données financières et syndic sont prioritaires depuis les PV d'AG plus récents.
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {fiche.immatriculation_registre && (
+                <div style={{ padding: '10px 14px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10, fontSize: 13, color: '#075985' }}>
+                  <strong>N° registre national :</strong> {fiche.immatriculation_registre}
+                </div>
+              )}
+
+              {fiche.dtg_realise !== null && fiche.dtg_realise !== undefined && (
+                <div style={{ padding: '10px 14px', background: fiche.dtg_realise ? '#f0fdf4' : '#f8fafc', border: `1px solid ${fiche.dtg_realise ? '#bbf7d0' : '#edf2f7'}`, borderRadius: 10, fontSize: 13, color: fiche.dtg_realise ? '#166534' : '#475569' }}>
+                  <strong>DTG (Diagnostic Technique Global) : </strong>
+                  {fiche.dtg_realise ? `Réalisé${fiche.dtg_date ? ` le ${fiche.dtg_date}` : ''}` : 'Non réalisé'}
+                </div>
+              )}
+
+              {fiche.equipements_collectifs_detail && fiche.equipements_collectifs_detail.length > 0 && (
+                <>
+                  <SectionTitle emoji="⚙️" text="Équipements collectifs" />
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {fiche.equipements_collectifs_detail.map((e, i) => (
+                      <span key={i} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 99, background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569' }}>{e}</span>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </AccordionSection>
+        );
+      })()}
 
       {/* ── DIAGNOSTICS PARTIES COMMUNES ── */}
       <AccordionSection
@@ -2108,6 +2455,11 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
                   </div>
                 </div>
               </>
+            )}
+            {hasPed && (ped!.historique_charges ?? []).filter(h => h.budget_appele || h.charges_reelles).length === 0 && (
+              <div style={{ padding: '12px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, fontSize: 12, color: '#92400e', lineHeight: 1.6 }}>
+                <strong>Historique N-1 / N-2 non extrait.</strong> Le pré-état daté contient généralement les charges des deux derniers exercices clos — si elles n'apparaissent pas ici, relancez l'analyse ou vérifiez que le document complet a bien été uploadé.
+              </div>
             )}
 
             {/* Restrictions RCP */}
