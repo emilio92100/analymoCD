@@ -145,6 +145,15 @@ body { background-color: var(--bg-primary); color: var(--text-primary); font-fam
 .card-hover { transition: transform 0.25s ease, box-shadow 0.25s ease; }
 .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 60px rgba(42,125,156,0.15); }
 
+/* Onglets rapport — hover sur onglet inactif pour signaler la cliquabilité */
+.rapport-tab-btn:not(.rapport-tab-btn-active):hover {
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+}
+.rapport-tab-btn-active:hover {
+  filter: brightness(1.08);
+}
+
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg-secondary); }
 ::-webkit-scrollbar-thumb { background: var(--brand-teal); border-radius: 3px; }
