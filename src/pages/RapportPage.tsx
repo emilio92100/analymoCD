@@ -676,17 +676,34 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
   const getCatBg = (pct: number) => pct >= 80 ? '#EAF3DE' : pct >= 60 ? '#FAEEDA' : '#FCEBEB';
 
   // KPIs avec disposition intelligente
+  // severity pilote la couleur de la carte : 'neutral' (blanc) par défaut, teinté uniquement pour les alertes sémantiques
+  type KpiSeverity = 'neutral' | 'info' | 'ok' | 'warn' | 'danger';
   const buildKpis = () => {
-    const kpis: { icon: string; label: string; value: string; color?: string }[] = [];
-    if (nbLots) kpis.push({ icon: '🏢', label: 'Nombre de lots', value: String(nbLots) });
-    if (rapport.annee_construction) kpis.push({ icon: '📅', label: 'Année de construction', value: safeStr(rapport.annee_construction) });
-    if (chargesLotNum > 0) kpis.push({ icon: '💰', label: 'Charges annuelles', value: `${chargesLotNum.toLocaleString('fr-FR')} €/an` });
-    if (totalTravauxVotes > 0) kpis.push({ icon: '🏗', label: 'Travaux votés', value: `~${totalTravauxVotes.toLocaleString('fr-FR')} €` });
-    if (nbTravauxEvoques > 0) kpis.push({ icon: '⚠️', label: 'Travaux évoqués', value: `${nbTravauxEvoques} mentionné${nbTravauxEvoques > 1 ? 's' : ''}` });
-    if (dpeClasse) kpis.push({ icon: '⚡', label: 'Classe DPE', value: `Classe ${dpeClasse}`, color: dpeColors[dpeClasse] });
-    kpis.push({ icon: '⚖️', label: 'Procédures', value: nbProcedures === 0 ? 'Aucune détectée' : `${nbProcedures} détectée${nbProcedures > 1 ? 's' : ''}`, color: nbProcedures > 0 ? '#dc2626' : '#16a34a' });
-    if (taxeFonciereStr) kpis.push({ icon: '🏛', label: 'Taxe foncière', value: taxeFonciereStr });
+    const kpis: { icon: string; label: string; value: string; color?: string; severity: KpiSeverity }[] = [];
+    if (nbLots) kpis.push({ icon: '🏢', label: 'Nombre de lots', value: String(nbLots), severity: 'neutral' });
+    if (rapport.annee_construction) kpis.push({ icon: '📅', label: 'Année de construction', value: safeStr(rapport.annee_construction), severity: 'neutral' });
+    if (chargesLotNum > 0) kpis.push({ icon: '💰', label: 'Charges annuelles', value: `${chargesLotNum.toLocaleString('fr-FR')} €/an`, severity: 'neutral' });
+    if (totalTravauxVotes > 0) kpis.push({ icon: '🏗', label: 'Travaux votés', value: `~${totalTravauxVotes.toLocaleString('fr-FR')} €`, severity: 'warn' });
+    if (nbTravauxEvoques > 0) kpis.push({ icon: '⚠️', label: 'Travaux évoqués', value: `${nbTravauxEvoques} mentionné${nbTravauxEvoques > 1 ? 's' : ''}`, severity: 'warn' });
+    if (dpeClasse) {
+      const dpeSeverity: KpiSeverity = ['A', 'B', 'C'].includes(dpeClasse) ? 'ok' : ['D', 'E'].includes(dpeClasse) ? 'warn' : 'danger';
+      kpis.push({ icon: '⚡', label: 'Classe DPE', value: `Classe ${dpeClasse}`, color: dpeColors[dpeClasse], severity: dpeSeverity });
+    }
+    kpis.push({ icon: '⚖️', label: 'Procédures', value: nbProcedures === 0 ? 'Aucune détectée' : `${nbProcedures} détectée${nbProcedures > 1 ? 's' : ''}`, color: nbProcedures > 0 ? '#dc2626' : '#16a34a', severity: nbProcedures > 0 ? 'danger' : 'ok' });
+    if (taxeFonciereStr) kpis.push({ icon: '🏛', label: 'Taxe foncière', value: taxeFonciereStr, severity: 'neutral' });
     return kpis;
+  };
+
+  // Style de carte selon severity — hybride A+B (blanc par défaut, teinté si alerte)
+  const getKpiCardStyle = (severity: KpiSeverity) => {
+    switch (severity) {
+      case 'ok':      return { background: '#f0fdf4', border: '1px solid #bbf7d0', iconBg: '#dcfce7', iconColor: '#15803d', labelColor: '#166534', valueColor: '#14532d' };
+      case 'warn':    return { background: '#fff7ed', border: '1px solid #fed7aa', iconBg: '#ffedd5', iconColor: '#9a3412', labelColor: '#9a3412', valueColor: '#7c2d12' };
+      case 'danger':  return { background: '#fef2f2', border: '1px solid #fecaca', iconBg: '#fee2e2', iconColor: '#991b1b', labelColor: '#991b1b', valueColor: '#7f1d1d' };
+      case 'info':    return { background: '#eff6ff', border: '1px solid #bfdbfe', iconBg: '#dbeafe', iconColor: '#1e40af', labelColor: '#1e40af', valueColor: '#1e3a8a' };
+      case 'neutral':
+      default:        return { background: '#fff',     border: '1px solid #e2edf3', iconBg: '#f1f5f9', iconColor: '#475569', labelColor: '#6b8a96', valueColor: '#0f2d3d' };
+    }
   };
 
   const kpis = buildKpis();
@@ -781,38 +798,43 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
         )}
       </div>
 
-      {/* 2. KPIs — disposition intelligente */}
-      {isComplete && kpis.length > 0 && (() => {
-        const bleus = ['#2a7d9c','#236b87','#1e5f77','#185166','#133d50','#0f3d4e','#0b2e3b'];
-        return (
-          <>
-            {/* Desktop — grille blocs */}
-            <div style={kpiGridStyle} className="kpi-band-grid kpi-synth-desktop">
-              {kpis.map((kpi, i) => (
-                <div key={i} style={{ background: bleus[Math.min(i, bleus.length-1)], borderRadius: 12, padding: '16px 16px' }}>
-                  <div style={{ fontSize: 26, marginBottom: 10 }}>{kpi.icon}</div>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', marginBottom: 6, lineHeight: 1.3 }}>{kpi.label}</div>
-                  <div style={{ fontSize: 24, fontWeight: 500, color: '#fff', lineHeight: 1.1 }}>{kpi.value}</div>
+      {/* 2. KPIs — style hybride : blanc par défaut, teinté uniquement pour les alertes */}
+      {isComplete && kpis.length > 0 && (
+        <>
+          {/* Desktop — grille blocs */}
+          <div style={kpiGridStyle} className="kpi-band-grid kpi-synth-desktop">
+            {kpis.map((kpi, i) => {
+              const s = getKpiCardStyle(kpi.severity);
+              return (
+                <div key={i} style={{ background: s.background, border: s.border, borderRadius: 12, padding: '14px 14px', display: 'flex', alignItems: 'center', gap: 11, transition: 'transform 0.15s ease' }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: s.iconBg, color: s.iconColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{kpi.icon}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                    <span style={{ fontSize: 10.5, color: s.labelColor, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 700, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{kpi.label}</span>
+                    <span style={{ fontSize: 17, color: s.valueColor, fontWeight: 700, lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{kpi.value}</span>
+                  </div>
                 </div>
-              ))}
-            </div>
-            {/* Mobile — liste compacte */}
-            <div className="kpi-synth-mobile" style={{ display: 'none', flexDirection: 'column', gap: 0, background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, overflow: 'hidden', marginBottom: 4 }}>
-              {kpis.map((kpi, i) => (
+              );
+            })}
+          </div>
+          {/* Mobile — liste compacte (même logique de coloration) */}
+          <div className="kpi-synth-mobile" style={{ display: 'none', flexDirection: 'column', gap: 0, background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, overflow: 'hidden', marginBottom: 4 }}>
+            {kpis.map((kpi, i) => {
+              const s = getKpiCardStyle(kpi.severity);
+              return (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: i < kpis.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: bleus[Math.min(i, bleus.length-1)], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 9, background: s.iconBg, color: s.iconColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
                     {kpi.icon}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, color: '#64748b' }}>{kpi.label}</div>
                   </div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: kpi.color || '#0f172a', flexShrink: 0 }}>{kpi.value}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: s.valueColor, flexShrink: 0 }}>{kpi.value}</div>
                 </div>
-              ))}
-            </div>
-          </>
-        );
-      })()}
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* 3. POINTS POSITIFS / VIGILANCE */}
       <div>
