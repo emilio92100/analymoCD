@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowRight, Lock, Home as HomeIcon, FileText, CheckCircle, ShieldCheck,
+  ArrowRight, Lock, Home as HomeIcon, FileText, CheckCircle, ShieldCheck, X, Sparkles,
 } from 'lucide-react';
 import { buildRapportExemple, RapportViewExemple } from './RapportPage';
 import DocumentRenderer from './dashboard/DocumentRenderer';
@@ -226,6 +226,44 @@ const MOCK_PVAG_SIMPLE = {
    TOGGLE PILL SEGMENTÉ — Option A
 ═══════════════════════════════════════════════════════════════ */
 function SegmentedToggle({ mode, onChange }: { mode: 'complete' | 'simple'; onChange: (m: 'complete' | 'simple') => void }) {
+  const ToggleBtn = ({ active, onClick, icon, label, price }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string; price: string }) => (
+    <button
+      onClick={onClick}
+      style={{
+        padding: '18px 36px',
+        borderRadius: 999,
+        border: 'none',
+        background: active ? '#2a7d9c' : 'transparent',
+        color: active ? '#fff' : '#64748b',
+        cursor: 'pointer',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 14,
+        boxShadow: active ? '0 6px 20px rgba(42,125,156,0.35)' : 'none',
+        minWidth: 260,
+      }}
+    >
+      <div style={{
+        width: 42,
+        height: 42,
+        borderRadius: 12,
+        background: active ? 'rgba(255,255,255,0.18)' : '#e2e8f0',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        transition: 'background 0.3s',
+      }}>
+        {icon}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.25 }}>
+        <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-0.01em' }}>{label}</span>
+        <span style={{ fontSize: 13, fontWeight: 500, opacity: active ? 0.92 : 0.75, marginTop: 3 }}>{price}</span>
+      </div>
+    </button>
+  );
+
   return (
     <div style={{ display: 'flex', justifyContent: 'center' }}>
       <div
@@ -233,65 +271,28 @@ function SegmentedToggle({ mode, onChange }: { mode: 'complete' | 'simple'; onCh
         style={{
           background: '#f1f5f9',
           borderRadius: 999,
-          padding: 6,
+          padding: 8,
           display: 'inline-flex',
-          gap: 4,
+          gap: 6,
           position: 'relative',
           border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 3px rgba(15,45,61,0.04), 0 4px 12px rgba(15,45,61,0.03)',
         }}
       >
-        <button
-          onClick={() => onChange('complete')}
-          style={{
-            padding: '14px 28px',
-            borderRadius: 999,
-            border: 'none',
-            background: mode === 'complete' ? '#2a7d9c' : 'transparent',
-            color: mode === 'complete' ? '#fff' : '#64748b',
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            boxShadow: mode === 'complete' ? '0 4px 14px rgba(42,125,156,0.28)' : 'none',
-          }}
-        >
-          <HomeIcon size={16} />
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.2 }}>
-            <span style={{ fontWeight: 700 }}>Analyse complète</span>
-            <span style={{ fontSize: 11, fontWeight: 500, opacity: mode === 'complete' ? 0.85 : 0.7 }}>
-              19,90 € · dossier complet
-            </span>
-          </div>
-        </button>
-        <button
+        <ToggleBtn
+          active={mode === 'simple'}
           onClick={() => onChange('simple')}
-          style={{
-            padding: '14px 28px',
-            borderRadius: 999,
-            border: 'none',
-            background: mode === 'simple' ? '#2a7d9c' : 'transparent',
-            color: mode === 'simple' ? '#fff' : '#64748b',
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            boxShadow: mode === 'simple' ? '0 4px 14px rgba(42,125,156,0.28)' : 'none',
-          }}
-        >
-          <FileText size={16} />
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.2 }}>
-            <span style={{ fontWeight: 700 }}>Analyse simple</span>
-            <span style={{ fontSize: 11, fontWeight: 500, opacity: mode === 'simple' ? 0.85 : 0.7 }}>
-              4,90 € · un document
-            </span>
-          </div>
-        </button>
+          icon={<FileText size={22} color={mode === 'simple' ? '#fff' : '#64748b'} strokeWidth={2.2} />}
+          label="Analyse simple"
+          price="4,90 € · un document"
+        />
+        <ToggleBtn
+          active={mode === 'complete'}
+          onClick={() => onChange('complete')}
+          icon={<HomeIcon size={22} color={mode === 'complete' ? '#fff' : '#64748b'} strokeWidth={2.2} />}
+          label="Analyse complète"
+          price="19,90 € · dossier complet"
+        />
       </div>
     </div>
   );
@@ -304,15 +305,15 @@ function SegmentedToggle({ mode, onChange }: { mode: 'complete' | 'simple'; onCh
 ═══════════════════════════════════════════════════════════════ */
 function BlocEngagement() {
   return (
-    <div style={{ maxWidth: 980, margin: '0 auto', padding: '0 16px' }}>
+    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 16px' }}>
       <div
         style={{
           background: 'linear-gradient(135deg, #ffffff 0%, #f0f7fb 100%)',
           border: '1px solid #d0e5ef',
           borderRadius: 20,
-          padding: 'clamp(22px,3.5vw,34px) clamp(22px,4vw,40px)',
+          padding: 'clamp(26px,3.5vw,38px) clamp(28px,4vw,52px)',
           display: 'flex',
-          gap: 22,
+          gap: 28,
           alignItems: 'center',
           boxShadow: '0 1px 3px rgba(15,45,61,0.04), 0 4px 16px rgba(15,45,61,0.04)',
           flexWrap: 'wrap',
@@ -320,9 +321,9 @@ function BlocEngagement() {
       >
         <div
           style={{
-            width: 64,
-            height: 64,
-            borderRadius: 18,
+            width: 72,
+            height: 72,
+            borderRadius: 20,
             background: 'linear-gradient(135deg, #2a7d9c 0%, #1a5e78 100%)',
             display: 'flex',
             alignItems: 'center',
@@ -331,21 +332,21 @@ function BlocEngagement() {
             boxShadow: '0 6px 18px rgba(42,125,156,0.28)',
           }}
         >
-          <ShieldCheck size={30} color="#fff" strokeWidth={2.2} />
+          <ShieldCheck size={34} color="#fff" strokeWidth={2.2} />
         </div>
-        <div style={{ flex: 1, minWidth: 260 }}>
+        <div style={{ flex: 1, minWidth: 280 }}>
           <div
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 7,
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 800,
               color: '#1a5e78',
               letterSpacing: '0.1em',
               textTransform: 'uppercase',
-              marginBottom: 8,
-              padding: '3px 10px',
+              marginBottom: 10,
+              padding: '4px 12px',
               borderRadius: 100,
               background: 'rgba(42,125,156,0.08)',
               border: '1px solid rgba(42,125,156,0.15)',
@@ -355,11 +356,12 @@ function BlocEngagement() {
           </div>
           <p
             style={{
-              fontSize: 'clamp(14.5px,1.5vw,16px)',
+              fontSize: 'clamp(15px,1.55vw,17px)',
               color: '#1e293b',
-              lineHeight: 1.7,
+              lineHeight: 1.75,
               margin: 0,
               fontWeight: 500,
+              maxWidth: 1000,
             }}
           >
             Ces deux exemples sont{' '}
@@ -523,13 +525,192 @@ function CTAFinal() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   POPUP DÉMO — fonction non disponible en version exemple
+═══════════════════════════════════════════════════════════════ */
+function DemoPopup({ onClose }: { onClose: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(15, 45, 61, 0.55)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999,
+        padding: 20,
+      }}
+    >
+      <motion.div
+        initial={{ scale: 0.94, opacity: 0, y: 10 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.96, opacity: 0 }}
+        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: '#fff',
+          borderRadius: 24,
+          padding: 'clamp(28px,4vw,40px) clamp(24px,4vw,40px)',
+          maxWidth: 480,
+          width: '100%',
+          textAlign: 'center',
+          boxShadow: '0 24px 60px rgba(15,45,61,0.25)',
+          position: 'relative',
+        }}
+      >
+        {/* Bouton fermer */}
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute',
+            top: 16,
+            right: 16,
+            width: 36,
+            height: 36,
+            borderRadius: '50%',
+            background: '#f1f5f9',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = '#e2e8f0')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = '#f1f5f9')}
+          aria-label="Fermer"
+        >
+          <X size={18} color="#64748b" />
+        </button>
+
+        {/* Icône hero */}
+        <div
+          style={{
+            width: 80,
+            height: 80,
+            borderRadius: 24,
+            background: 'linear-gradient(135deg, #2a7d9c 0%, #1a5e78 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 20px',
+            boxShadow: '0 8px 24px rgba(42,125,156,0.35)',
+          }}
+        >
+          <Sparkles size={36} color="#fff" strokeWidth={2} />
+        </div>
+
+        {/* Badge */}
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '4px 12px',
+            borderRadius: 100,
+            background: 'rgba(42,125,156,0.08)',
+            border: '1px solid rgba(42,125,156,0.18)',
+            fontSize: 11,
+            fontWeight: 800,
+            color: '#1a5e78',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            marginBottom: 14,
+          }}
+        >
+          Version démo
+        </div>
+
+        {/* Titre */}
+        <h3
+          style={{
+            fontSize: 'clamp(20px,3vw,24px)',
+            fontWeight: 900,
+            color: '#0f2d3d',
+            margin: '0 0 12px',
+            letterSpacing: '-0.02em',
+            lineHeight: 1.2,
+          }}
+        >
+          Compléter mon dossier
+        </h3>
+
+        {/* Description */}
+        <p
+          style={{
+            fontSize: 15,
+            color: '#475569',
+            lineHeight: 1.65,
+            margin: '0 0 24px',
+          }}
+        >
+          Cette fonctionnalité n'est pas disponible dans la version démo.
+          Elle vous permet d'ajouter jusqu'à 5 documents supplémentaires dans les 7 jours suivant votre analyse — sans surcoût.
+        </p>
+
+        {/* CTAs */}
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Link
+            to="/dashboard/nouvelle-analyse"
+            onClick={onClose}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '12px 22px',
+              borderRadius: 12,
+              background: '#2a7d9c',
+              color: '#fff',
+              fontSize: 14,
+              fontWeight: 700,
+              textDecoration: 'none',
+              boxShadow: '0 4px 14px rgba(42,125,156,0.28)',
+              transition: 'transform 0.15s',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-1px)')}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
+          >
+            Lancer ma vraie analyse <ArrowRight size={15} />
+          </Link>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '12px 22px',
+              borderRadius: 12,
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              color: '#475569',
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f5f9')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#f8fafc')}
+          >
+            Continuer à explorer
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    PAGE
 ═══════════════════════════════════════════════════════════════ */
 export default function ExemplePage() {
   const [searchParams] = useSearchParams();
   const paramMode = searchParams.get('mode');
-  const initial: 'complete' | 'simple' = paramMode === 'simple' ? 'simple' : 'complete';
+  const initial: 'complete' | 'simple' = paramMode === 'complete' ? 'complete' : 'simple';
   const [mode, setMode] = useState<'complete' | 'simple'>(initial);
+  const [showDemoPopup, setShowDemoPopup] = useState(false);
 
   const rapportComplet = useMemo(() => {
     return buildRapportExemple(MOCK_COMPLETE_PAYLOAD as Record<string, unknown>, {
@@ -561,7 +742,7 @@ export default function ExemplePage() {
 
   const renderContenu = () => {
     if (mode === 'complete') {
-      return <RapportViewExemple rapport={rapportComplet} defaultTab="synthese" />;
+      return <RapportViewExemple rapport={rapportComplet} defaultTab="synthese" onComplement={() => setShowDemoPopup(true)} />;
     }
     return <DocumentRenderer result={docSimpleResult as unknown as Record<string, unknown>} />;
   };
@@ -569,15 +750,7 @@ export default function ExemplePage() {
   return (
     <main style={{ background: '#f4f7f9', fontFamily: "'DM Sans', system-ui, sans-serif", paddingTop: 72, minHeight: '100vh' }}>
       {/* HERO */}
-      <section style={{ background: 'linear-gradient(150deg, #eef7fb, #e4f2f8 50%, #f8fafc)', padding: '52px 24px 40px', textAlign: 'center', borderBottom: '1px solid #e2edf3' }}>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 16px', borderRadius: 100, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.2)', fontSize: 12, fontWeight: 700, color: '#1a5e78', marginBottom: 18, letterSpacing: '0.06em' }}
-        >
-          RAPPORT EXEMPLE
-        </motion.div>
+      <section style={{ background: 'linear-gradient(150deg, #eef7fb, #e4f2f8 50%, #f8fafc)', padding: '64px 24px 48px', textAlign: 'center', borderBottom: '1px solid #e2edf3' }}>
         <motion.h1
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -599,7 +772,7 @@ export default function ExemplePage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.18 }}
-          style={{ fontSize: 16, color: '#6b8a96', maxWidth: 560, margin: '0 auto 12px', lineHeight: 1.7 }}
+          style={{ fontSize: 16, color: '#6b8a96', maxWidth: 920, margin: '0 auto 12px', lineHeight: 1.7 }}
         >
           Un exemple de rapport réel. Choisissez le mode pour voir le rendu complet ou le décryptage d'un document seul.
         </motion.p>
@@ -616,7 +789,7 @@ export default function ExemplePage() {
       </section>
 
       {/* TOGGLE */}
-      <section style={{ padding: '36px 16px 28px' }}>
+      <section style={{ padding: '44px 16px 32px' }}>
         <SegmentedToggle mode={mode} onChange={setMode} />
       </section>
 
@@ -651,6 +824,11 @@ export default function ExemplePage() {
 
       {/* CTA FINAL */}
       <CTAFinal />
+
+      {/* POPUP DÉMO — fonctionnalité non disponible */}
+      <AnimatePresence>
+        {showDemoPopup && <DemoPopup onClose={() => setShowDemoPopup(false)} />}
+      </AnimatePresence>
     </main>
   );
 }
