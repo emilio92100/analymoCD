@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowRight, Lock, Home as HomeIcon, FileText, CheckCircle, ShieldCheck, X, Sparkles,
+  ArrowRight, Lock, Home as HomeIcon, FileText, CheckCircle, X, Sparkles,
 } from 'lucide-react';
 import { buildRapportExemple, RapportViewExemple } from './RapportPage';
 import DocumentRenderer from './dashboard/DocumentRenderer';
@@ -55,6 +55,8 @@ const MOCK_COMPLETE_PAYLOAD = {
     fonds_travaux_statut: 'conforme',
     impayes: 8400,
     type_chauffage: 'Collectif gaz',
+    nombre_lots: 42,
+    taxe_fonciere: 1180,
     budgets_historique: [
       { annee: '2022', budget_total: 41000, fonds_travaux: 2050 },
       { annee: '2023', budget_total: 42000, fonds_travaux: 2100 },
@@ -300,88 +302,11 @@ function SegmentedToggle({ mode, onChange }: { mode: 'complete' | 'simple'; onCh
 
 
 /* ═══════════════════════════════════════════════════════════════
-   BLOC ENGAGEMENT — "Ce que vous recevez" (au-dessus du rapport)
-   Version premium avec icône shield, titre fort, texte unique
-═══════════════════════════════════════════════════════════════ */
-function BlocEngagement() {
-  return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 16px' }}>
-      <div
-        style={{
-          background: 'linear-gradient(135deg, #ffffff 0%, #f0f7fb 100%)',
-          border: '1px solid #d0e5ef',
-          borderRadius: 20,
-          padding: 'clamp(26px,3.5vw,38px) clamp(28px,4vw,52px)',
-          display: 'flex',
-          gap: 28,
-          alignItems: 'center',
-          boxShadow: '0 1px 3px rgba(15,45,61,0.04), 0 4px 16px rgba(15,45,61,0.04)',
-          flexWrap: 'wrap',
-        }}
-      >
-        <div
-          style={{
-            width: 72,
-            height: 72,
-            borderRadius: 20,
-            background: 'linear-gradient(135deg, #2a7d9c 0%, #1a5e78 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            boxShadow: '0 6px 18px rgba(42,125,156,0.28)',
-          }}
-        >
-          <ShieldCheck size={34} color="#fff" strokeWidth={2.2} />
-        </div>
-        <div style={{ flex: 1, minWidth: 280 }}>
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 7,
-              fontSize: 12,
-              fontWeight: 800,
-              color: '#1a5e78',
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              marginBottom: 10,
-              padding: '4px 12px',
-              borderRadius: 100,
-              background: 'rgba(42,125,156,0.08)',
-              border: '1px solid rgba(42,125,156,0.15)',
-            }}
-          >
-            <span role="img" aria-label="sparkle">✨</span> Ce que vous recevez
-          </div>
-          <p
-            style={{
-              fontSize: 'clamp(15px,1.55vw,17px)',
-              color: '#1e293b',
-              lineHeight: 1.75,
-              margin: 0,
-              fontWeight: 500,
-              maxWidth: 1000,
-            }}
-          >
-            Ces deux exemples sont{' '}
-            <span style={{ color: '#0f2d3d', fontWeight: 800 }}>identiques à ce que vous recevrez</span>
-            {' '}pour votre propre bien. Vos documents sont décryptés par la technologie Verimo puis{' '}
-            <span style={{ color: '#0f2d3d', fontWeight: 800 }}>supprimés automatiquement</span>
-            {' '}conformément au RGPD — seul le rapport final est conservé dans votre espace.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
    CTA FINAL — pleine largeur, immersif
 ═══════════════════════════════════════════════════════════════ */
 function CTAFinal() {
   return (
-    <section style={{ padding: '56px 16px 72px' }}>
+    <section style={{ padding: '56px 16px 72px', maxWidth: 1100, margin: '0 auto' }}>
       <div
         style={{
           width: '100%',
@@ -459,7 +384,7 @@ function CTAFinal() {
               marginRight: 'auto',
             }}
           >
-            Uploadez vos documents et recevez un rapport clair en moins de 2 minutes.
+            Uploadez vos documents et recevez un rapport clair en moins de 30 secondes<span style={{ color: '#7dd3fc' }}>*</span>.
             Vos données sont supprimées automatiquement après analyse.
           </p>
           <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -508,7 +433,7 @@ function CTAFinal() {
           </div>
           <div style={{ display: 'flex', gap: 24, justifyContent: 'center', marginTop: 32, flexWrap: 'wrap' }}>
             {[
-              'Résultat en 2 minutes',
+              'Résultat en 30 secondes*',
               'RGPD — documents supprimés',
               'Sans abonnement',
             ].map((t, i) => (
@@ -518,6 +443,10 @@ function CTAFinal() {
               </div>
             ))}
           </div>
+          {/* Mention astérisque */}
+          <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 20, lineHeight: 1.5 }}>
+            * Pour les documents nativement numériques (PDF texte). Les documents scannés peuvent nécessiter un délai supplémentaire.
+          </p>
         </div>
       </div>
     </section>
@@ -776,14 +705,25 @@ export default function ExemplePage() {
         >
           Un exemple de rapport réel. Choisissez le mode pour voir le rendu complet ou le décryptage d'un document seul.
         </motion.p>
-        {/* Ligne discrète "Données anonymisées" intégrée au hero */}
+        {/* Ligne "Données anonymisées" — plus visible */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.32 }}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6b8a96' }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 14,
+            fontWeight: 600,
+            color: '#1a5e78',
+            padding: '8px 18px',
+            borderRadius: 100,
+            background: 'rgba(42,125,156,0.08)',
+            border: '1px solid rgba(42,125,156,0.18)',
+          }}
         >
-          <Lock size={12} />
+          <Lock size={14} />
           <span>Données anonymisées issues d'un dossier réel</span>
         </motion.div>
       </section>
@@ -791,11 +731,6 @@ export default function ExemplePage() {
       {/* TOGGLE */}
       <section style={{ padding: '44px 16px 32px' }}>
         <SegmentedToggle mode={mode} onChange={setMode} />
-      </section>
-
-      {/* BLOC ENGAGEMENT (remonté, avant le rapport) */}
-      <section style={{ padding: '0 0 28px' }}>
-        <BlocEngagement />
       </section>
 
       {/* APERÇU — ombre douce, pas de cadre laptop */}
