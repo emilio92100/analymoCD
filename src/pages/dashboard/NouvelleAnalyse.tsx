@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, ShieldCheck, Upload, CheckCircle, AlertTriangle, ChevronLeft, Sparkles, ArrowRight, Lock, Download, Home, Building2, HelpCircle } from 'lucide-react';
 import { lancerAnalyseEdge, type AnalyseProgress } from '../../lib/analyse-client';
 import DocumentRenderer from './DocumentRenderer';
@@ -116,6 +117,10 @@ export default function NouvelleAnalyse() {
   const [animatedProgress, setAnimatedProgress] = useState(0);
   const animRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // ─── UX messages rotatifs pendant l'analyse ────────────────
+  const [rotatingMsgIdx, setRotatingMsgIdx] = useState(0);
+  const [analyseStartTime, setAnalyseStartTime] = useState<number | null>(null);
+
   const plans = {
     document: { label: "Analyse d'un document", price: '4,90€', max: 1, desc: "Un seul fichier PDF — PV d'AG, règlement, diagnostic, appel de charges.", creditsKey: 'document' as keyof Credits },
     complete: { label: "Analyse complète d'un logement", price: '19,90€', max: 15, desc: 'Tous les documents du bien — score /20, risques, recommandation Verimo.', creditsKey: 'complete' as keyof Credits },
@@ -192,7 +197,20 @@ export default function NouvelleAnalyse() {
   }, []);
 
   useEffect(() => {
-    if (step !== 'analyse') { setAnimatedProgress(0); return; }
+    if (step !== 'analyse') {
+      setAnimatedProgress(0);
+      setRotatingMsgIdx(0);
+      setAnalyseStartTime(null);
+      return;
+    }
+    // Démarrer le chrono au début de l'analyse
+    if (!analyseStartTime) setAnalyseStartTime(Date.now());
+
+    const docsTotal = files.length;
+    // Facteur de ralentissement : plus de docs = animation plus lente
+    // 1 doc = 1x, 3 docs = 1.2x, 8 docs = 2x, 13 docs = 3x, 15 docs = 3.5x
+    const slowFactor = Math.max(1, 1 + (docsTotal - 1) * 0.18);
+
     if (animRef.current) clearInterval(animRef.current);
     animRef.current = setInterval(() => {
       setAnimatedProgress(prev => {
@@ -200,16 +218,25 @@ export default function NouvelleAnalyse() {
         // Rattraper le vrai progress rapidement
         if (prev < target - 1) return Math.min(prev + 1, target);
         if (prev < target) return target;
-        // Progression simulée très lente — calibrée pour 5-15 min d'analyse
-        if (prev < 44)  return prev + 0.3;    // Phase upload : modéré
-        if (prev < 84)  return prev + 0.02;   // Phase analyse Claude : très lente
-        if (prev < 93)  return prev + 0.008;  // Phase synthèse : ultra lente
-        if (prev < 97)  return prev + 0.003;  // Phase rapport : quasi immobile
+        // Progression simulée, adaptée au nombre de documents
+        if (prev < 44)  return prev + (0.3 / slowFactor);    // Phase upload
+        if (prev < 84)  return prev + (0.02 / slowFactor);   // Phase analyse Claude
+        if (prev < 93)  return prev + (0.008 / slowFactor);  // Phase synthèse
+        if (prev < 97)  return prev + (0.003 / slowFactor);  // Phase rapport
         return 97; // Jamais 100% avant confirmation serveur
       });
     }, 150);
     return () => { if (animRef.current) clearInterval(animRef.current); };
-  }, [step, progress]);
+  }, [step, progress, files.length, analyseStartTime]);
+
+  // ─── Rotation des messages rassurants pendant l'analyse ────
+  useEffect(() => {
+    if (step !== 'analyse') return;
+    const rotateInterval = setInterval(() => {
+      setRotatingMsgIdx(i => i + 1);
+    }, 12000); // change de message toutes les 12 secondes
+    return () => clearInterval(rotateInterval);
+  }, [step]);
 
   // ─── Callback progression Edge Function ───────────────────
   const handleProgress = (p: AnalyseProgress) => {
@@ -606,6 +633,7 @@ export default function NouvelleAnalyse() {
   if (step === 'analyse') {
     const pct = Math.round(animatedProgress);
     const docsTotal = files.length;
+    const elapsedSec = analyseStartTime ? Math.floor((Date.now() - analyseStartTime) / 1000) : 0;
 
     const tempsRestant = pct < 20
       ? (docsTotal <= 3 ? '~2 min' : docsTotal <= 8 ? '~4 min' : docsTotal <= 12 ? '~7 min' : '~10-15 min')
@@ -615,7 +643,55 @@ export default function NouvelleAnalyse() {
       ? (docsTotal <= 3 ? '~45 sec' : docsTotal <= 8 ? '~1 min 30' : '~3 min')
       : pct < 90
       ? (docsTotal <= 3 ? '~20 sec' : '~1 min')
-      : 'Bientôt prêt…';
+      : pct < 95
+      ? 'Bientôt prêt…'
+      : pct < 97
+      ? 'Finalisation…'
+      : 'Derniers contrôles…';
+
+    // Label du nombre de documents, adapté au volume
+    const docsLabel = docsTotal <= 5
+      ? `${docsTotal} document${docsTotal > 1 ? 's' : ''} · Analyse ${type === 'complete' ? 'complète' : 'document'}`
+      : docsTotal <= 10
+      ? `${docsTotal} documents · Analyse complète en profondeur`
+      : `${docsTotal} documents · Analyse volumineuse — on prend le temps de bien faire`;
+
+    // Messages rotatifs pendant l'analyse
+    // On choisit des messages adaptés au volume pour que ça sonne juste
+    const baseMessages = [
+      "Votre analyse avance en arrière-plan.",
+      "Chaque document est lu ligne par ligne.",
+      "Verimo recoupe les informations entre vos documents.",
+      "Les risques et bons points sont identifiés un par un.",
+      "Plus c'est précis, plus ça prend du temps — on fait le max.",
+      "Un rapport de qualité se construit avec soin.",
+    ];
+    const heavyMessages = [
+      "Analyse volumineuse en cours — merci de patienter.",
+      `On lit et recoupe ${docsTotal} documents — c'est normal que ce soit un peu long.`,
+      "La qualité du rapport dépend de cette lecture approfondie.",
+      "Plus il y a de documents, plus l'analyse est riche — on ne bâcle rien.",
+      "Encore quelques minutes pour un rapport vraiment utile.",
+      "Vous pouvez fermer cet onglet — l'analyse continue.",
+    ];
+    const finalMessages = [
+      "Dernière étape : contrôle qualité avant livraison.",
+      "Vérifications finales — encore un instant.",
+      "Rapport en cours de finalisation, ça arrive.",
+      "On vérifie que rien n'a été oublié.",
+    ];
+
+    // Sélection du pool en fonction de l'avancement
+    const messagePool =
+      pct >= 88 ? finalMessages :
+      docsTotal >= 8 ? heavyMessages :
+      baseMessages;
+    const currentRotatingMsg = messagePool[rotatingMsgIdx % messagePool.length];
+
+    // Info "Document X sur Y" si le serveur l'envoie
+    const docInfo = _progressDoc.total > 1 && _progressDoc.current > 0
+      ? `Document ${_progressDoc.current} sur ${_progressDoc.total} en cours d'analyse…`
+      : null;
 
     const etapes = [
       { id: 'upload',      label: 'Envoi des fichiers',         detail: 'Transfert sécurisé vers nos serveurs',           seuil: 0,  fin: 16,  couleur: '#2a7d9c', icon: '📤' },
@@ -667,7 +743,7 @@ export default function NouvelleAnalyse() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
-                    {docsTotal} document{docsTotal > 1 ? 's' : ''} · Analyse {type === 'complete' ? 'complète' : 'document'}
+                    {docsLabel}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 8, padding: '5px 12px' }}>
                     <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>⏱</span>
@@ -675,6 +751,33 @@ export default function NouvelleAnalyse() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Bandeau message rotatif + compteur de documents */}
+            <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {docInfo && (
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#0f2d3d', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#2a7d9c', animation: 'vr-pulse 1.5s ease-in-out infinite' }} />
+                  {docInfo}
+                </div>
+              )}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentRotatingMsg}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.35 }}
+                  style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 14 }}>💬</span>
+                  <span>{currentRotatingMsg}</span>
+                </motion.div>
+              </AnimatePresence>
+              {elapsedSec >= 60 && (
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                  Temps écoulé : {Math.floor(elapsedSec / 60)} min {elapsedSec % 60}s
+                </div>
+              )}
             </div>
 
             {/* Étapes */}
