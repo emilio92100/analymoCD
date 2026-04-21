@@ -1,6 +1,13 @@
 import { Link } from 'react-router-dom';
+import { useSEO } from '../hooks/useSEO';
 
 export default function ConfidentialitePage() {
+  useSEO({
+    title: 'Politique de confidentialité — Verimo',
+    description: "Politique de confidentialité Verimo : gestion de vos données personnelles, documents immobiliers analysés, conformité RGPD et vos droits.",
+    canonical: '/confidentialite',
+  });
+
   return (
     <main style={{ background: '#f8fafc', fontFamily: "'DM Sans', system-ui, sans-serif", paddingTop: 80 }}>
       <section style={{ maxWidth: 760, margin: '0 auto', padding: '52px 24px 88px' }}>
