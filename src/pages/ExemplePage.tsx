@@ -51,7 +51,7 @@ const MOCK_COMPLETE_PAYLOAD = {
   finances: {
     budget_total_copro: 45000,
     charges_annuelles_lot: 2160,
-    fonds_travaux: 42000,
+    fonds_travaux: 12000,
     fonds_travaux_statut: 'conforme',
     impayes: 8400,
     type_chauffage: 'Collectif gaz',
