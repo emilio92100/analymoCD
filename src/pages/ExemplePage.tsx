@@ -257,6 +257,7 @@ function SegmentedToggle({ mode, onChange }: { mode: 'complete' | 'simple'; onCh
             <button
               key={opt.id}
               onClick={() => onChange(opt.id)}
+              className={`seg-toggle-btn${active ? ' seg-toggle-btn-active' : ''}`}
               style={{
                 padding: '18px 36px',
                 borderRadius: 999,
@@ -273,10 +274,11 @@ function SegmentedToggle({ mode, onChange }: { mode: 'complete' | 'simple'; onCh
                 transition: 'color 0.3s ease',
               }}
             >
-              {/* Pill bleue animée — un seul élément partagé entre les 2 boutons */}
+              {/* Pill bleue animée — un seul élément partagé entre les 2 boutons (desktop uniquement) */}
               {active && (
                 <motion.span
                   layoutId="seg-toggle-pill"
+                  className="seg-toggle-pill-anim"
                   style={{
                     position: 'absolute',
                     inset: 0,
@@ -755,7 +757,7 @@ export default function ExemplePage() {
       </section>
 
       {/* APERÇU — ombre douce, pas de cadre laptop */}
-      <section style={{ padding: '0 16px 8px' }}>
+      <section className="exemple-rapport-wrap" style={{ padding: '0 16px 8px' }}>
         <AnimatePresence mode="wait">
           <motion.div
             key={mode}
@@ -763,6 +765,7 @@ export default function ExemplePage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.35 }}
+            className="exemple-rapport-card"
             style={{
               maxWidth: 1200,
               margin: '0 auto',
