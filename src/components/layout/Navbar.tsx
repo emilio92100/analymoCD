@@ -9,7 +9,6 @@ const navLinks = [
   { to: '/methode', label: 'Notre méthode' },
   { to: '/exemple', label: 'Exemple' },
   { to: '/tarifs', label: 'Tarifs' },
-  { to: '/contact', label: 'Contact' },
 ];
 
 export default function Navbar() {
