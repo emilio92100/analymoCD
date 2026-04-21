@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { ArrowRight, Check, X, Shield, Zap, FileText, Crown, Mail, GitCompare, ChevronDown } from 'lucide-react';
+import { useSEO } from '../hooks/useSEO';
 
 const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
 const isLowPerf = () => isIOS() || (typeof window !== 'undefined' && window.innerWidth <= 768);
@@ -179,6 +180,12 @@ function TableCell({ val, isHighlight }: { val: boolean | string; isHighlight: b
    PAGE
 ══════════════════════════════════════════ */
 export default function TarifsPage() {
+  useSEO({
+    title: 'Tarifs Verimo — Analyse immobilière dès 9€',
+    description: "Découvrez nos tarifs : analyse simple, complète ou pack comparatif. Score /20, travaux, santé financière de la copro et négociation. Sans abonnement.",
+    canonical: '/tarifs',
+  });
+
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [openAccordion, setOpenAccordion] = useState<number | null>(null);
   const [hoveredTip, setHoveredTip] = useState<number | null>(null);
