@@ -1294,20 +1294,9 @@ function HowItWorksSection() {
 }
 /* ═══ APERÇU DU RAPPORT ═════════════════════════════════════ */
 function ApercuRapportSection() {
-  const points = [
-    { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50", border: "border-green-100", label: "Finances saines", detail: "Fonds travaux bien dotés — 85 000€" },
-    { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50", border: "border-green-100", label: "Syndic réactif — mandat renouvelé", detail: "Aucune tension détectée sur 3 ans" },
-    { icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-50", border: "border-amber-100", label: "Ravalement voté 2025 — charge vendeur", detail: "Voté avant le compromis → à la charge du vendeur" },
-    { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50", border: "border-green-100", label: "Participation AG : 68% des tantièmes", detail: "Tendance stable sur 3 ans" },
-    { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50", border: "border-green-100", label: "DPE classé C — valide depuis 2022", detail: "Chauffage individuel gaz — maîtrise des charges" },
-    { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50", border: "border-green-100", label: "Aucune procédure judiciaire", detail: "Situation juridique nette" },
-    { icon: CheckCircle, color: "text-green-500", bg: "bg-green-50", border: "border-green-100", label: "Fonds travaux ALUR : 3 200€ récupérables", detail: "Cette somme vous revient à l'acte authentique" },
-    { icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-50", border: "border-amber-100", label: "Location Airbnb interdite", detail: "Restriction détectée dans le règlement de copropriété" },
-  ];
-
   return (
     <section className="py-12 md:py-20 px-4 md:px-6 bg-[#f4f7f9]">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <SectionTitle label="Exemple de rapport" title="Ce que vous" accent="recevez."
           sub="Voici ce que Verimo vous fournit en moins de 30 secondes*." />
 
@@ -1315,107 +1304,91 @@ function ApercuRapportSection() {
           <div className="bg-white rounded-2xl md:rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
 
             {/* Header rapport */}
-            <div className="bg-[#0f2d3d] px-6 md:px-10 py-5 md:py-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="bg-[#0f2d3d] px-6 md:px-10 py-6 md:py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
               <div>
-                <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-1">Rapport Verimo — Analyse complète</p>
-                <p className="text-white font-black text-lg md:text-xl">12 rue des Lilas, 69003 Lyon</p>
-                <p className="text-white/40 text-sm mt-0.5">Analysé le 28 mars 2026 · 3 documents</p>
+                <p className="text-white/50 text-xs font-bold uppercase tracking-widest mb-2">Rapport Verimo — Analyse complète</p>
+                <p className="text-white font-black text-xl md:text-2xl">12 rue des Lilas, 69003 Lyon</p>
+                <p className="text-white/40 text-sm mt-1">Analysé le 28 mars 2026 · 3 documents</p>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="relative w-16 h-16 md:w-20 md:h-20 shrink-0">
+              <div className="flex items-center gap-4 shrink-0">
+                <div className="relative w-20 h-20 md:w-24 md:h-24 shrink-0">
                   <svg className="w-full h-full -rotate-90" viewBox="0 0 80 80">
                     <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="6" />
-                    <motion.circle cx="40" cy="40" r="32" fill="none" stroke="#2a7d9c" strokeWidth="6" strokeLinecap="round"
+                    <motion.circle cx="40" cy="40" r="32" fill="none" stroke="#16a34a" strokeWidth="6" strokeLinecap="round"
                       strokeDasharray={201} initial={{ strokeDashoffset: 201 }}
                       whileInView={{ strokeDashoffset: 201 - 201 * 0.75 }} viewport={{ once: true }}
                       transition={{ duration: 1.4, delay: 0.3 }} />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-xl md:text-2xl font-black text-white leading-none">15</span>
-                    <span className="text-[10px] text-white/40">/20</span>
+                    <span className="text-2xl md:text-3xl font-black text-white leading-none">15</span>
+                    <span className="text-[11px] text-white/50 mt-0.5">/20</span>
                   </div>
                 </div>
                 <div>
-                  <span className="inline-block px-3 py-1 rounded-full bg-green-500/15 text-green-400 text-xs font-bold mb-1">✓ Recommandé</span>
-                  <p className="text-white/60 text-xs">Bien sain ✓</p>
+                  <span className="inline-block px-3 py-1.5 rounded-full bg-green-500/15 text-green-400 text-xs font-bold mb-1.5">✓ Bien sain</span>
+                  <p className="text-white/60 text-xs">Recommandé</p>
                 </div>
               </div>
             </div>
 
-            {/* Corps du rapport */}
-            <div className="p-6 md:p-10 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
-
-              {/* Points clés */}
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Points détectés</h4>
-                <div className="flex flex-col gap-2.5">
-                  {points.map((p, i) => (
-                    <motion.div key={i}
-                      initial={{ opacity: 0, x: -10 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: i * 0.08 }}
-                      className={`flex items-center gap-3 p-3.5 rounded-xl border ${p.bg} ${p.border}`}>
-                      <p.icon size={15} className={`${p.color} shrink-0`} />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-[#0f172a] truncate">{p.label}</p>
-                        <p className="text-xs text-slate-500 truncate">{p.detail}</p>
-                      </div>
-                    </motion.div>
-                  ))}
+            {/* Stats clés — bandeau compact */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-0 border-b border-slate-100">
+              {[
+                { value: '8', label: 'Catégories analysées', color: '#2a7d9c' },
+                { value: '3', label: 'Documents décryptés', color: '#2a7d9c' },
+                { value: '15/20', label: 'Score global', color: '#16a34a' },
+                { value: '30s*', label: 'Temps d\'analyse', color: '#f59e0b' },
+              ].map((stat, i) => (
+                <div key={i} className={`px-4 md:px-6 py-5 text-center ${i < 3 ? 'border-r border-slate-100' : ''} ${i < 2 ? 'border-b md:border-b-0' : ''} ${i === 2 ? 'md:border-r' : ''}`}>
+                  <div className="text-2xl md:text-3xl font-black mb-1" style={{ color: stat.color }}>{stat.value}</div>
+                  <div className="text-[11px] text-slate-500 uppercase tracking-wider font-semibold">{stat.label}</div>
                 </div>
-              </div>
+              ))}
+            </div>
 
-              {/* Données financières + recommandation */}
-              <div className="flex flex-col gap-5">
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Données financières</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      { label: "Charges mensuelles", val: "180 €/mois" },
-                      { label: "Fonds travaux ALUR", val: "85 000 €" },
-                      { label: "Travaux votés", val: "~7 000 €/lot" },
-                      { label: "Honoraires syndic", val: "8 400 €/an" },
-                      { label: "Type chauffage", val: "Individuel gaz" },
-                      { label: "Quote-part lot", val: "312/10 000" },
-                    ].map((d, i) => (
-                      <div key={i} className="p-3.5 rounded-xl bg-[#f4f7f9] border border-slate-100">
-                        <p className="text-[11px] text-slate-400 font-medium mb-1">{d.label}</p>
-                        <p className="text-base font-black text-[#0f172a]">{d.val}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-xl bg-[#0f2d3d]/5 border border-[#0f2d3d]/10 p-5">
-                  <p className="text-xs font-bold uppercase tracking-widest text-[#2a7d9c] mb-2">Avis Verimo</p>
-                  <p className="text-sm text-slate-600 leading-relaxed">
-                    Ce bien présente une copropriété globalement saine. Les travaux de toiture votés représentent une charge à anticiper. Le ratio charges/fonds travaux est satisfaisant. <span className="font-semibold text-[#0f172a]">Recommandé à l'achat avec négociation possible.</span>
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-3 p-4 rounded-xl bg-[#f4f7f9] border border-slate-100">
-                  <Download size={16} className="text-[#2a7d9c] shrink-0" />
-                  <div>
-                    <p className="text-sm font-bold text-[#0f172a]">Rapport PDF complet</p>
-                    <p className="text-xs text-slate-400">Téléchargeable · Partageable avec votre notaire</p>
-                  </div>
-                </div>
+            {/* Aperçu catégories */}
+            <div className="p-6 md:p-10">
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-5">Aperçu des catégories analysées</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {[
+                  { emoji: '🏢', label: 'Copropriété', desc: 'Syndic · participation AG · lots', score: '16/20', color: '#16a34a' },
+                  { emoji: '💰', label: 'Finances', desc: 'Charges · fonds travaux · impayés', score: '15/20', color: '#16a34a' },
+                  { emoji: '🏗', label: 'Travaux', desc: 'Votés · évoqués · charge vendeur', score: '13/20', color: '#f59e0b' },
+                  { emoji: '⚖️', label: 'Procédures & règles', desc: 'Procédures · restrictions · usage', score: '17/20', color: '#16a34a' },
+                ].map((cat, i) => (
+                  <motion.div key={i}
+                    initial={{ opacity: 0, y: 8 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.1 }}
+                    className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-2xl shrink-0">{cat.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-[#0f2d3d]">{cat.label}</p>
+                      <p className="text-xs text-slate-500 truncate">{cat.desc}</p>
+                    </div>
+                    <div className="text-sm font-black shrink-0" style={{ color: cat.color }}>{cat.score}</div>
+                  </motion.div>
+                ))}
               </div>
             </div>
+
           </div>
         </Reveal>
 
-        <Reveal className="text-center mt-8">
+        <Reveal className="text-center mt-10">
+          <p className="text-slate-500 text-sm mb-5">Envie de voir un rapport complet, navigable onglet par onglet ?</p>
           <Link to="/exemple"
-            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl border border-slate-200 bg-white text-[#0f172a] text-sm font-bold hover:border-[#2a7d9c]/40 hover:bg-[#f0f8fc] transition-all duration-200">
-            Voir un exemple complet interactif <ChevronRight size={16} className="text-slate-400" />
+            className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-white text-base font-bold transition-all duration-200 hover:shadow-xl hover:scale-105"
+            style={{ background: 'linear-gradient(135deg, #2a7d9c 0%, #1a5e78 100%)', boxShadow: '0 8px 24px rgba(42,125,156,0.35)' }}>
+            Voir un exemple complet interactif <ChevronRight size={18} />
           </Link>
         </Reveal>
       </div>
     </section>
   );
 }
+
 
 /* ═══ SCORE /20 ══════════════════════════════════════════════ */
 function AvisSection() {
