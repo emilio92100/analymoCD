@@ -1,6 +1,13 @@
 import { Link } from 'react-router-dom';
+import { useSEO } from '../hooks/useSEO';
 
 export default function MentionsLegalesPage() {
+  useSEO({
+    title: 'Mentions légales — Verimo',
+    description: "Mentions légales du site Verimo : éditeur, hébergeur, coordonnées et informations réglementaires.",
+    canonical: '/mentions-legales',
+  });
+
   return (
     <main style={{ background: '#f8fafc', fontFamily: "'DM Sans', system-ui, sans-serif", paddingTop: 80 }}>
       <section style={{ maxWidth: 760, margin: '0 auto', padding: '52px 24px 88px' }}>
