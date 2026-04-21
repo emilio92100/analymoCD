@@ -1,6 +1,13 @@
 import { Link } from 'react-router-dom';
+import { useSEO } from '../hooks/useSEO';
 
 export default function CGUPage() {
+  useSEO({
+    title: "Conditions Générales d'Utilisation — Verimo",
+    description: "Conditions générales d'utilisation du service Verimo : règles d'usage, engagements et responsabilités.",
+    canonical: '/cgu',
+  });
+
   return (
     <main style={{ background: '#f8fafc', fontFamily: "'DM Sans', system-ui, sans-serif", paddingTop: 80 }}>
       <section style={{ maxWidth: 760, margin: '0 auto', padding: '52px 24px 88px' }}>
