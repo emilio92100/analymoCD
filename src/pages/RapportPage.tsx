@@ -1718,6 +1718,7 @@ function SectionTitle({ emoji, text, tooltip }: { emoji: string; text: string; t
 }
 
 function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchTab?: (tab: TabId) => void }) {
+  const [allOpen, setAllOpen] = useState(false);
   type LotT2 = {
     quote_part_tantiemes?: string; fonds_travaux_alur?: string;
     parties_privatives?: unknown[]; restrictions_usage?: string[];
@@ -1851,6 +1852,13 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
         </>
       )}
 
+      {/* Bouton Tout déplier/replier */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+        <button onClick={() => setAllOpen(v => !v)} style={{ fontSize: 12, color: '#64748b', background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 8, padding: '6px 14px', cursor: 'pointer' }}>
+          {allOpen ? 'Tout replier' : 'Tout déplier'}
+        </button>
+      </div>
+
       {/* ── VOTRE LOT ── */}
       {(() => {
         type PedLot = { present?: boolean; impayes_vendeur?: number; fonds_travaux_alur?: number | null; fonds_roulement_acheteur?: number | null; fonds_roulement_modalite?: string | null; honoraires_syndic?: number | null; charges_futures?: { montant_trimestriel?: number | null; fonds_travaux_trimestriel?: number | null; montant_annuel?: number | null }; travaux_charge_vendeur?: Array<{ label?: string; montant?: number | null }>; procedures_contre_vendeur?: string[]; procedures_copro?: string; impayes_copro_global?: number | null; dette_fournisseurs?: number | null; fonds_travaux_copro_global?: number | null; historique_charges?: Array<{ exercice?: string; annee?: number | null; budget_appele?: number | null; charges_reelles?: number | null }> };
@@ -1862,7 +1870,7 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
           <AccordionSection
             title="Votre lot" sub="Tantièmes · situation vendeur · historique charges · restrictions" icon="🏠"
             status="neutral" badge='Informatif'
-            defaultOpen={true}>
+            defaultOpen={allOpen}>
 
             {/* Identité du lot */}
             {(lot?.quote_part_tantiemes || (lot?.parties_privatives as unknown[] ?? []).length > 0) && (
@@ -2034,7 +2042,7 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
           title="Performance énergétique" sub={dpeClasse ? `DPE Classe ${dpeClasse}${dpeGesClasse ? ` · GES Classe ${dpeGesClasse}` : ''}` : 'DPE fourni'} icon="⚡"
           status={dpeBad ? 'alert' : dpeGood ? 'ok' : 'warning'}
           badge={dpeClasse ? `Classe ${dpeClasse}` : 'Détecté'}
-          defaultOpen={true}
+          defaultOpen={allOpen}
           tooltip="Le DPE mesure la consommation d'énergie du logement de A (très performant) à G (passoire thermique). Les logements F sont interdits à la location dès 2028, G dès 2025.">
 
           {dpeBad && (
@@ -2150,7 +2158,7 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
           title="Diagnostics privatifs" sub="Électricité · gaz · amiante · plomb · termites · Carrez" icon="🔍"
           status={hasDiagAlert ? 'alert' : 'ok'}
           badge={hasDiagAlert ? "Points d'attention" : `${autresDiags.length} diagnostic${autresDiags.length > 1 ? 's' : ''}`}
-          defaultOpen={true}>
+          defaultOpen={allOpen}>
 
           <SectionTitle emoji="✅" text="Résultats des diagnostics" />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -2194,7 +2202,7 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
         title="Finances de votre lot" sub="Charges · taxe foncière · impayés" icon="💶"
         status={lot?.impayes_detectes ? 'alert' : 'neutral'}
         badge={lot?.impayes_detectes ? 'Impayés détectés' : 'Informatif'}
-        defaultOpen={true}>
+        defaultOpen={allOpen}>
 
         {/* Charges — affichées uniquement si pas déjà dans KPI */}
         {chargesLotNum > 0 && !taxeAnnuelle && (
@@ -2279,7 +2287,7 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
             title="Pré-état daté" sub="Situation vendeur · charges futures · historique N-1/N-2" icon="📋"
             status={Number(ped.impayes_vendeur) > 0 ? 'alert' : 'neutral'}
             badge={ped.date ? `Établi le ${safeStr(ped.date)}` : 'Détecté'}
-            defaultOpen={true}
+            defaultOpen={allOpen}
             tooltip="Le pré-état daté est établi par le syndic avant la vente. Il récapitule la situation financière du vendeur vis-à-vis de la copropriété et les charges que l'acheteur devra régler.">
 
             {/* Situation vendeur */}
@@ -2459,7 +2467,7 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
         <AccordionSection
           title="Compromis de vente" sub="Intervenants · prix · dates · conditions suspensives" icon="✍️"
           status="neutral" badge={compromis?.date_signature ? `Signé le ${safeStr(compromis.date_signature)}` : 'Détecté'}
-          defaultOpen={true}
+          defaultOpen={allOpen}
           tooltip="Le compromis de vente est l'acte par lequel vendeur et acheteur s'engagent mutuellement. Il fixe le prix, les conditions et les délais de la transaction.">
 
           {/* Intervenants */}
