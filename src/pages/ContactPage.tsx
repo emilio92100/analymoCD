@@ -71,7 +71,7 @@ export default function ContactPage() {
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Offre Professionnelle</div>
               </div>
               <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, marginBottom: 14 }}>
-                Notaire, agent, syndic ? Découvrez notre offre pro avec accès dédié et volumes illimités.
+                Agent immobilier, investisseur, marchand de bien, notaire ? Découvrez notre offre pro avec accès dédié.
               </p>
               <a href="mailto:pro@verimo.fr" style={{ fontSize: 13, fontWeight: 700, color: '#f59e0b', textDecoration: 'none' }}>
                 pro@verimo.fr →
