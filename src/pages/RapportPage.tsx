@@ -1204,14 +1204,11 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
   const fondsNum = rapport.fonds_travaux > 0 ? rapport.fonds_travaux : 0;
   const fondsPct = budgetNum > 0 && fondsNum > 0 ? ((fondsNum / budgetNum) * 100) : null;
   const fondsInsuffisant = rapport.fonds_travaux_statut === 'insuffisant' || rapport.fonds_travaux_statut === 'absent';
-  const chargesAnnuelles = fin?.charges_annuelles_lot as number | null;
-  const chargesMensuelles = chargesAnnuelles ? Math.round(chargesAnnuelles / 12) : null;
-
   const quitusRefuse = participation.some(p => p.quitus?.soumis === true && p.quitus?.approuve === false);
 
-  // KPIs bandeau
+  // KPIs bandeau — infos spécifiques à la copropriété (pas au lot perso)
   const kpiItems = [];
-  if (chargesMensuelles) kpiItems.push({ emoji: '💶', label: 'Charges mensuelles lot', value: `${chargesMensuelles.toLocaleString('fr-FR')} €`, sub: chargesAnnuelles ? `${chargesAnnuelles.toLocaleString('fr-FR')} €/an` : undefined, color: '#1e40af', bg: '#eff6ff', border: '#bfdbfe', tooltip: "Montant que vous devrez payer chaque mois pour l'entretien des parties communes et le fonds travaux." });
+  if (budgetNum > 0) kpiItems.push({ emoji: '💰', label: 'Budget annuel copro', value: `${budgetNum.toLocaleString('fr-FR')} €`, sub: 'Charges totales copropriété', color: '#1e40af', bg: '#eff6ff', border: '#bfdbfe', tooltip: "Budget prévisionnel voté en AG pour faire fonctionner l'ensemble de la copropriété (entretien, assurance, syndic, fluides communs). Ne correspond pas aux charges de votre lot." });
   if (nbLotsTotal) kpiItems.push({ emoji: '🏢', label: 'Lots dans la copropriété', value: String(nbLotsTotal), sub: nbBatiments ? `${nbBatiments} bâtiment${nbBatiments > 1 ? 's' : ''}` : undefined, tooltip: "Nombre total de lots (appartements, parkings, caves...) composant la copropriété." });
   if (fondsPct !== null) kpiItems.push({ emoji: '🔧', label: 'Fonds travaux', value: `${fondsPct.toFixed(1)}%`, sub: fondsPct < 5 ? 'Insuffisant — seuil 5%' : 'Conforme loi ALUR', color: fondsPct < 5 ? '#a16207' : '#16a34a', bg: fondsPct < 5 ? '#fff7ed' : '#f0fdf4', border: fondsPct < 5 ? '#fed7aa' : '#bbf7d0', tooltip: "Réserve obligatoire pour financer les futurs travaux. La loi ALUR impose minimum 5% du budget annuel de la copropriété." });
   if (travaux_votes.length > 0) kpiItems.push({ emoji: '⚖️', label: 'Travaux charge vendeur', value: String(travaux_votes.filter((t: Record<string, unknown>) => t.charge_vendeur !== false).length || travaux_votes.length), sub: 'À vérifier notaire', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' });
