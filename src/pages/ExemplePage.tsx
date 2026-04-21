@@ -1,8 +1,8 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowRight, Shield, Lock, Home as HomeIcon, FileText, CheckCircle,
+  ArrowRight, Lock, Home as HomeIcon, FileText, CheckCircle, ShieldCheck,
 } from 'lucide-react';
 import { buildRapportExemple, RapportViewExemple } from './RapportPage';
 import DocumentRenderer from './dashboard/DocumentRenderer';
@@ -223,20 +223,6 @@ const MOCK_PVAG_SIMPLE = {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   HOOK — détection mobile pour cadre adaptatif
-═══════════════════════════════════════════════════════════════ */
-function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth <= 768);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, []);
-  return isMobile;
-}
-
-/* ═══════════════════════════════════════════════════════════════
    TOGGLE PILL SEGMENTÉ — Option A
 ═══════════════════════════════════════════════════════════════ */
 function SegmentedToggle({ mode, onChange }: { mode: 'complete' | 'simple'; onChange: (m: 'complete' | 'simple') => void }) {
@@ -311,268 +297,76 @@ function SegmentedToggle({ mode, onChange }: { mode: 'complete' | 'simple'; onCh
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   CADRE LAPTOP MACBOOK (desktop)
-═══════════════════════════════════════════════════════════════ */
-function LaptopFrame({ children, mode }: { children: React.ReactNode; mode: 'complete' | 'simple' }) {
-  const url = mode === 'complete' ? 'verimo.fr/rapport' : 'verimo.fr/document';
-  return (
-    <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', padding: '8px 0' }}>
-      <div
-        style={{
-          background: '#0a0a0a',
-          borderRadius: '18px 18px 4px 4px',
-          padding: '18px 18px 4px',
-          position: 'relative',
-          boxShadow: '0 1px 0 #2a2a2a inset, 0 0 0 2px #111',
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            top: 3,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: 90,
-            height: 7,
-            background: '#000',
-            borderRadius: '0 0 7px 7px',
-          }}
-        />
-        <div style={{ background: '#f5f9fb', borderRadius: '8px 8px 0 0', overflow: 'hidden' }}>
-          <div
-            style={{
-              background: '#e8edf0',
-              padding: '10px 16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 14,
-              borderBottom: '1px solid #d9dfe3',
-            }}
-          >
-            <div style={{ display: 'flex', gap: 7 }}>
-              <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ff5f57' }} />
-              <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#febc2e' }} />
-              <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#28c840' }} />
-            </div>
-            <div
-              style={{
-                flex: 1,
-                background: '#fff',
-                borderRadius: 7,
-                padding: '6px 14px',
-                fontSize: 12,
-                color: '#64748b',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 7,
-                fontFamily: '-apple-system, sans-serif',
-                maxWidth: 480,
-                margin: '0 auto',
-              }}
-            >
-              <Lock size={11} />
-              {url}
-            </div>
-            <div style={{ width: 60 }} />
-          </div>
-          <div style={{ padding: '14px 18px', background: '#f5f9fb' }}>{children}</div>
-        </div>
-      </div>
-      <div
-        style={{
-          height: 14,
-          background: 'linear-gradient(180deg, #cdd2d6, #a8afb5 40%, #8a9197)',
-          borderRadius: '0 0 18px 18px',
-          position: 'relative',
-          marginBottom: -3,
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: 0,
-            transform: 'translateX(-50%)',
-            width: 130,
-            height: 7,
-            background: 'linear-gradient(180deg, #6e767c, #595f64)',
-            borderRadius: '0 0 10px 10px',
-          }}
-        />
-      </div>
-      <div
-        style={{
-          width: '86%',
-          height: 22,
-          background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.18), rgba(0,0,0,0) 70%)',
-          margin: '0 auto',
-          borderRadius: '50%',
-        }}
-      />
-    </div>
-  );
-}
 
 /* ═══════════════════════════════════════════════════════════════
-   CADRE IPHONE (mobile)
+   BLOC ENGAGEMENT — "Ce que vous recevez" (au-dessus du rapport)
+   Version premium avec icône shield, titre fort, texte unique
 ═══════════════════════════════════════════════════════════════ */
-function IphoneFrame({ children, mode }: { children: React.ReactNode; mode: 'complete' | 'simple' }) {
-  const title = mode === 'complete' ? 'Rapport' : 'Document';
+function BlocEngagement() {
   return (
-    <div style={{ width: '100%', maxWidth: 390, margin: '0 auto', padding: '8px 0' }}>
+    <div style={{ maxWidth: 980, margin: '0 auto', padding: '0 16px' }}>
       <div
         style={{
-          background: '#111',
-          borderRadius: 38,
-          padding: '10px 8px',
-          position: 'relative',
-          boxShadow: '0 0 0 2px #2a2a2a, 0 8px 24px rgba(0,0,0,0.2)',
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            top: 14,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: 100,
-            height: 26,
-            background: '#000',
-            borderRadius: 20,
-            zIndex: 2,
-          }}
-        />
-        <div
-          style={{
-            background: '#f5f9fb',
-            borderRadius: 30,
-            overflow: 'hidden',
-            paddingTop: 44,
-          }}
-        >
-          <div
-            style={{
-              padding: '0 26px 10px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              fontSize: 13,
-              fontWeight: 700,
-              color: '#0f172a',
-            }}
-          >
-            <span>9:41</span>
-            <span>{title}</span>
-            <span style={{ fontSize: 11 }}>●●●●</span>
-          </div>
-          <div style={{ padding: '6px 10px 14px' }}>{children}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   BANDEAU "DONNÉES ANONYMISÉES" — centré, pill premium
-═══════════════════════════════════════════════════════════════ */
-function BandeauAnonymisation() {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'center',
-        padding: '0 16px',
-        marginBottom: 20,
-      }}
-    >
-      <div
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 12,
-          background: '#fff7ed',
-          border: '1px solid #fed7aa',
-          borderRadius: 100,
-          padding: '10px 22px',
-          boxShadow: '0 2px 8px rgba(234,88,12,0.08)',
-        }}
-      >
-        <div
-          style={{
-            width: 30,
-            height: 30,
-            borderRadius: '50%',
-            background: '#ea580c',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}
-        >
-          <Shield size={16} color="#fff" />
-        </div>
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 800, color: '#9a3412', letterSpacing: '0.08em', textTransform: 'uppercase', lineHeight: 1.2 }}>
-            Données anonymisées
-          </div>
-          <div style={{ fontSize: 12.5, color: '#7c2d12', lineHeight: 1.4, marginTop: 2 }}>
-            Dossier réel — toutes les données personnelles ont été remplacées.
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   BLOC EXPLICATIF (sans "IA", plus grand, meilleure présentation)
-═══════════════════════════════════════════════════════════════ */
-function BlocExplicatif({ mode }: { mode: 'complete' | 'simple' }) {
-  return (
-    <div style={{ maxWidth: 980, margin: '24px auto 0', padding: '0 16px' }}>
-      <div
-        style={{
-          background: '#fff',
-          border: '1px solid #dde9ef',
-          borderRadius: 16,
-          padding: '22px 26px',
+          background: 'linear-gradient(135deg, #ffffff 0%, #f0f7fb 100%)',
+          border: '1px solid #d0e5ef',
+          borderRadius: 20,
+          padding: 'clamp(22px,3.5vw,34px) clamp(22px,4vw,40px)',
           display: 'flex',
-          gap: 16,
-          alignItems: 'flex-start',
+          gap: 22,
+          alignItems: 'center',
+          boxShadow: '0 1px 3px rgba(15,45,61,0.04), 0 4px 16px rgba(15,45,61,0.04)',
+          flexWrap: 'wrap',
         }}
       >
         <div
           style={{
-            width: 44,
-            height: 44,
-            borderRadius: 12,
-            background: '#eff7fb',
+            width: 64,
+            height: 64,
+            borderRadius: 18,
+            background: 'linear-gradient(135deg, #2a7d9c 0%, #1a5e78 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
-            border: '1px solid #d0e5ef',
+            boxShadow: '0 6px 18px rgba(42,125,156,0.28)',
           }}
         >
-          <Lock size={20} color="#2a7d9c" />
+          <ShieldCheck size={30} color="#fff" strokeWidth={2.2} />
         </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
-            {mode === 'complete' ? 'Ce que vous recevez' : "À propos de l'analyse simple"}
+        <div style={{ flex: 1, minWidth: 260 }}>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              fontSize: 11,
+              fontWeight: 800,
+              color: '#1a5e78',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              marginBottom: 8,
+              padding: '3px 10px',
+              borderRadius: 100,
+              background: 'rgba(42,125,156,0.08)',
+              border: '1px solid rgba(42,125,156,0.15)',
+            }}
+          >
+            <span role="img" aria-label="sparkle">✨</span> Ce que vous recevez
           </div>
-          <p style={{ fontSize: 15, color: '#1e293b', lineHeight: 1.7, margin: 0 }}>
-            {mode === 'complete' ? (
-              <>
-                Cet exemple est identique à ce que vous recevrez pour votre propre bien. Vos documents sont décryptés par la technologie Verimo puis{' '}
-                <strong style={{ color: '#0f172a' }}>supprimés automatiquement</strong> conformément au RGPD — seul le rapport final est conservé dans votre espace.
-              </>
-            ) : (
-              <>
-                L'analyse simple décrypte un seul document à la fois (PV d'AG, DPE, compromis…). Idéale pour comprendre rapidement un document avant une signature.{' '}
-                <strong style={{ color: '#0f172a' }}>Pas de score /20</strong> — juste un décryptage clair et un avis Verimo.
-              </>
-            )}
+          <p
+            style={{
+              fontSize: 'clamp(14.5px,1.5vw,16px)',
+              color: '#1e293b',
+              lineHeight: 1.7,
+              margin: 0,
+              fontWeight: 500,
+            }}
+          >
+            Ces deux exemples sont{' '}
+            <span style={{ color: '#0f2d3d', fontWeight: 800 }}>identiques à ce que vous recevrez</span>
+            {' '}pour votre propre bien. Vos documents sont décryptés par la technologie Verimo puis{' '}
+            <span style={{ color: '#0f2d3d', fontWeight: 800 }}>supprimés automatiquement</span>
+            {' '}conformément au RGPD — seul le rapport final est conservé dans votre espace.
           </p>
         </div>
       </div>
@@ -736,7 +530,6 @@ export default function ExemplePage() {
   const paramMode = searchParams.get('mode');
   const initial: 'complete' | 'simple' = paramMode === 'simple' ? 'simple' : 'complete';
   const [mode, setMode] = useState<'complete' | 'simple'>(initial);
-  const isMobile = useIsMobile();
 
   const rapportComplet = useMemo(() => {
     return buildRapportExemple(MOCK_COMPLETE_PAYLOAD as Record<string, unknown>, {
@@ -765,8 +558,6 @@ export default function ExemplePage() {
     ...MOCK_PVAG_SIMPLE,
     _profil: 'rp',
   }), []);
-
-  const Frame = isMobile ? IphoneFrame : LaptopFrame;
 
   const renderContenu = () => {
     if (mode === 'complete') {
@@ -808,39 +599,55 @@ export default function ExemplePage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.18 }}
-          style={{ fontSize: 16, color: '#6b8a96', maxWidth: 560, margin: '0 auto', lineHeight: 1.7 }}
+          style={{ fontSize: 16, color: '#6b8a96', maxWidth: 560, margin: '0 auto 12px', lineHeight: 1.7 }}
         >
-          Un exemple de rapport réel, anonymisé. Choisissez le mode pour voir le rendu complet ou le décryptage d'un document seul.
+          Un exemple de rapport réel. Choisissez le mode pour voir le rendu complet ou le décryptage d'un document seul.
         </motion.p>
+        {/* Ligne discrète "Données anonymisées" intégrée au hero */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.32 }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6b8a96' }}
+        >
+          <Lock size={12} />
+          <span>Données anonymisées issues d'un dossier réel</span>
+        </motion.div>
       </section>
 
       {/* TOGGLE */}
-      <section style={{ padding: '32px 16px 0' }}>
+      <section style={{ padding: '36px 16px 28px' }}>
         <SegmentedToggle mode={mode} onChange={setMode} />
       </section>
 
-      {/* BANDEAU */}
-      <section style={{ padding: '28px 0 0' }}>
-        <BandeauAnonymisation />
+      {/* BLOC ENGAGEMENT (remonté, avant le rapport) */}
+      <section style={{ padding: '0 0 28px' }}>
+        <BlocEngagement />
       </section>
 
-      {/* APERÇU dans cadre */}
+      {/* APERÇU — ombre douce, pas de cadre laptop */}
       <section style={{ padding: '0 16px 8px' }}>
         <AnimatePresence mode="wait">
           <motion.div
-            key={mode + (isMobile ? '-m' : '-d')}
+            key={mode}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.35 }}
+            style={{
+              maxWidth: 1200,
+              margin: '0 auto',
+              borderRadius: 16,
+              boxShadow: '0 4px 24px rgba(15,45,61,0.08), 0 1px 3px rgba(15,45,61,0.04)',
+              background: '#fff',
+              padding: 'clamp(10px,2vw,20px)',
+              overflow: 'hidden',
+            }}
           >
-            <Frame mode={mode}>{renderContenu()}</Frame>
+            {renderContenu()}
           </motion.div>
         </AnimatePresence>
       </section>
-
-      {/* EXPLICATIF */}
-      <BlocExplicatif mode={mode} />
 
       {/* CTA FINAL */}
       <CTAFinal />
