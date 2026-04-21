@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet complet — 21 avril 2026 (session 5)
+# VERIMO — Contexte projet complet — 22 avril 2026 (session 6)
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -16,12 +16,14 @@
 - L'utilisateur push manuellement sur GitHub
 - **Pour chaque fichier modifié, Claude doit le générer à nouveau dans sa totalité** — l'utilisateur remplace le fichier entier sur GitHub (pas de modification ligne par ligne)
 - **Ne jamais coder sans accord préalable** — toujours échanger et valider avant de toucher au code
+- **Ne jamais mentionner Tonton Immo ou Emilio Immo sur Verimo** — focus produit strict
+- **Mot "AI" banni** des pages publiques Verimo — utiliser "technologie Verimo", "moteur d'analyse", "nos algorithmes", "analyse experte"
 
 ---
 
 ## Le produit
 
-**Verimo** — SaaS d'analyse de documents immobiliers (PV d'AG, règlements copro, diagnostics, appels de charges, DPE, compromis, carnet d'entretien, DTG, pré-état daté, état daté, taxe foncière...). Rapport clair avec score /20, risques, recommandations. Fonctionne pour **appartements et maisons**.
+**Verimo** — SaaS d'analyse de documents immobiliers (PV d'AG, règlements copro, diagnostics, appels de charges, DPE, compromis, carnet d'entretien, DTG, pré-état daté, état daté, taxe foncière, modificatifs RCP, fiche synthétique...). Rapport clair avec score /20, risques, recommandations. Fonctionne pour **appartements et maisons**.
 
 **Slogan :** *Vos documents décryptés, votre décision éclairée.*
 
@@ -53,6 +55,7 @@ pack3    : price_1TIb51BO4ekMbwz0mmEez47o
 - **Déploiement** : Vercel (frontend auto depuis GitHub) + Supabase (edge functions manuelles)
 - **Repo** : `github.com/emilio92100/analymoCD`
 - **URL Supabase** : `veszrayromldfgetqaxb.supabase.co`
+- **Domaine** : verimo.fr (OVH registrar)
 
 ---
 
@@ -63,7 +66,7 @@ pack3    : price_1TIb51BO4ekMbwz0mmEez47o
 /contact-pro                → ContactProPage (formulaire qualifié pros — 5 profils)
 /tarifs                     → TarifsPage
 /contact                    → ContactPage
-/exemple                    → ExemplePage (refaite ✅ — toggle Simple/Complète, rapport interactif)
+/exemple                    → ExemplePage (toggle Simple/Complète, rapport interactif)
 /methode                    → MethodePage
 /confidentialite            → ConfidentialitePage
 /cgu                        → CGUPage
@@ -82,348 +85,234 @@ pack3    : price_1TIb51BO4ekMbwz0mmEez47o
 
 ---
 
-## 🆕 Modifications session 21 avril 2026 — session 5 (refonte visuelle + responsive)
+## 🆕 Modifications session 22 avril 2026 — session 6 (audit complet rapport Edelweiss + scoring déterministe)
 
 ### 🎯 Résumé de la session
-Session longue dédiée à la refonte visuelle du projet et à la responsivité mobile :
-- Refonte ExemplePage (Option B "vraie vitrine" — réutilisation composants RapportPage)
-- Animations accordéons fluides (CSS pur, pattern grid-template-rows 0fr→1fr)
-- Refonte KPI Synthèse en style hybride A+B (blancs sobres + teintés sémantiquement sur alertes)
-- Fix mobile responsive sur toute l'app (Toggle, KPI, SyndicBand, padding rapport)
-- Refonte section HomePage "Ce que vous recevez" pour cohérence parfaite avec /exemple
-- Onglets rapport : style coloré actif pour clarifier la navigation UX
-- Enrichissement prompt IA : détection rigoureuse du gestionnaire de copropriété
-- Corrections diverses (Navbar, Footer, ContactPage, mock ExemplePage)
+Session majeure sur la fiabilité du rapport et la qualité d'analyse. Partie d'un audit utilisateur sur un dossier réel (résidence Edelweiss Châtillon, 13 docs) qui a révélé 9 bugs/manques. Tout a été traité via 3 chantiers + 2 fixes :
+
+- **Chantier C** — Fix 3 systèmes de tooltips concurrents (RapportPage)
+- **Chantier A** — Règles prompt : scoring intelligent, retrait ALUR/état daté des vigilances, cascade sources finances
+- **Chantier B** — Enrichissement schéma + UI : carnet d'entretien, années budget, N-1/N-2 pré-état daté, modificatifs RCP, fiche synthétique
+- **Fix countdown** — Compte à rebours permanent à côté du bouton "Compléter mon dossier"
+- **Scoring déterministe** — Recalcul algorithmique des 5 catégories côté edge function (ne dépend plus du LLM)
 
 ---
 
-### ExemplePage.tsx — Refonte complète (Option B "vraie vitrine")
+### Chantier C — Refonte des tooltips (DÉPLOYÉ ✅)
 
-**Architecture choisie :** réutilisation des composants de `RapportPage` (et non duplication). Toute future modification du vrai rapport se propage automatiquement à l'exemple.
+**Problème** : 3 systèmes de tooltips concurrents dans `RapportPage.tsx` :
+1. Tooltip manuel dans `AccordionSection` (dupliqué avec `TooltipBtn`)
+2. Tooltip manuel dans les catégories scoring (`position: absolute` → clipping)
+3. `TooltipBubble` dans l'upload de compléments (`position: absolute`)
 
-**Exports ajoutés dans RapportPage.tsx** :
-- `type RapportData` et `type TabId` (types partagés)
-- `RapportViewExemple({ rapport, defaultTab, onComplement })` : composant qui réutilise `TabSynthese/TabCopropriete/TabLogement/TabProcedures/TabDocuments`
-- `buildRapportExemple(data, dbData)` : wrapper sur `buildRapport`
+**Solution** : **Un seul `TooltipBtn` global** avec :
+- `createPortal(document.body)` → échappe tout clipping parent (overflow:hidden)
+- `z-index: 2147483647` (max int32)
+- Recalcul auto au scroll/resize
+- Repositionnement intelligent (au-dessus si pas assez de place en bas)
+- Jamais hors écran (décalage auto au bord droit)
 
-**Fonctionnalités finales /exemple** :
-- Mode par défaut = **simple** (URL `?mode=complete` pour forcer la complète)
-- Toggle animé Simple/Complète avec `layoutId="seg-toggle-pill"` framer-motion (simple en 1er)
-- Hero : badge "RAPPORT EXEMPLE" supprimé, sous-titre maxWidth 920px (1 ligne desktop), ligne "Données anonymisées" agrandie en pill bleu (14px + Lock icon)
-- Rapport avec ombre douce (cadres laptop/iPhone supprimés)
-- **DemoPopup premium** : Sparkles icon, badge "VERSION DÉMO", 2 CTAs (Lancer ma vraie analyse / Continuer à explorer), backdrop blur 8px, scale+fade. Branchée via prop `onComplement` passée à `RapportViewExemple`
-- CTAFinal : maxWidth 1100px, "30 secondes*" (pas 2 minutes), mention astérisque discrète
-- BlocEngagement supprimé (redondant)
-
-**Mocks de démo** :
-- `MOCK_COMPLETE_PAYLOAD` (Lyon 6e, 24 rue des Lilas, score 14.8/20) :
-  - `finances.budget_total_copro: 45000`, `charges_annuelles_lot: 2160`, `fonds_travaux: 12000` (corrigé de 42000 qui était incohérent), `impayes: 8400`, `nombre_lots: 42`, `taxe_fonciere: 1180`
-  - `vie_copropriete.syndic` : Cabinet Immo Lyon Gestion, gestionnaire Marie Dupont, statut "stable", 3 AGs analysées
-- `MOCK_PVAG_SIMPLE` : PV AG Résidence Les Lilas, 22 rue Mozart Lyon 2e (pour mode simple)
+**Impact** : tooltips des blocs bleus (Composition copropriété, Appels de fonds exceptionnels, Identité du lot, Règles d'usage RCP, Performance énergétique, Classement énergétique) désormais bien positionnés à côté du `?`.
 
 ---
 
-### RapportPage.tsx — Refonte KPI Synthèse (style hybride A+B)
+### Chantier A — Règles produit dans le prompt (DÉPLOYÉ ✅)
 
-**Problème initial** : KPI Synthèse sur fond sombre bleu-teal cassaient le flux visuel avec le score vert du haut et la synthèse blanche du bas.
+Fichiers modifiés : `supabase/functions/analyser-run/index.ts` + `src/pages/RapportPage.tsx`.
 
-**Nouveau système de severity** :
-```ts
-type KpiSeverity = 'neutral' | 'info' | 'ok' | 'warn' | 'danger';
-```
+#### A1 — Scoring intelligent des diagnostics privatifs
+Ajout d'un gros bloc "REGLES DE CALCUL DES NOTES PAR CATEGORIE" (5 catégories). **Intelligence réglementaire complète** :
+- DPE : toujours requis
+- Électricité : requis si installation > 15 ans
+- Gaz : requis si > 15 ans ET présence de gaz
+- Amiante privatif : permis avant 01/07/1997
+- Plomb (CREP) : construction avant 01/01/1949
+- Termites : communes avec arrêté préfectoral
+- ERP : zones PPR/sismicité
+- Carrez : lot en copro uniquement ≥ 8 m²
 
-**Helper `getKpiCardStyle(severity)`** : retourne 5 palettes (background, border, iconBg, iconColor, labelColor, valueColor).
+**Règle clé** : un DDT + son actualisation (ERP/termites/etc.) = **dossier unifié**. Ne jamais noter 0 parce que 2 fichiers se complémentent.
 
-**Logique hybride A+B** :
-- **Cartes blanches sobres par défaut** (severity `neutral`) : Lots, Construction, Charges, Taxe foncière
-- **Teinte sémantique uniquement si alerte** :
-  - `ok` (vert clair) : DPE A/B/C, Aucune procédure
-  - `warn` (orange clair) : DPE D/E, Travaux votés, Travaux évoqués
-  - `danger` (rouge clair) : DPE F/G, Procédures > 0
+**Garde-fou UI** : si malgré tout `diags_privatifs.note === 0` mais qu'il y a des diagnostics privatifs extraits → afficher **"Non évalué"** en italique gris (au lieu de "0 pt sur 4" trompeur), couleur neutre, tooltip explicatif.
 
-**Design cards** : icône dans carré coloré 38px à gauche, label 10.5px majuscule, valeur 17px bold.
+#### A2 — Retrait ALUR/état daté de `points_vigilance`
+Les frais normaux de signature ne sont plus des risques :
+- Fonds travaux ALUR à rembourser au vendeur
+- Honoraires syndic pour pré-état daté (150-300€)
+- Fonds de roulement à reconstituer
 
----
+**Exception** : si anormalement élevé (honoraires syndic > 500€, fonds roulement > 3 mois), alors OK dans vigilances avec motif précis.
 
-### RapportPage.tsx — Onglets rapport en style coloré actif
+#### A3 — Cascade sources finances du lot
+Priorités :
+1. Pré-état daté / État daté (meilleure source)
+2. Appel de charges du lot
+3. PV d'AG + tantièmes (calcul auto)
+4. PV d'AG seul → message "Uploadez un appel de charges ou un pré-état daté..."
 
-**Avant** : Onglet actif = fond `#f8fafc` gris quasi invisible + ligne orange fine dessous. Onglet inactif = texte gris sans signal de cliquabilité.
-
-**Après** :
-- **Onglet actif** : fond plein de sa couleur (vert Synthèse, orange Copropriété, rouge Logement, etc.) + texte blanc bold + ombre douce colorée
-- **Onglet inactif** : texte gris, **effet hover CSS** → fond `#f1f5f9` + texte plus foncé → signale clairement la cliquabilité
-- Pastille devient blanche (rgba 0.85) sur l'onglet actif (cohérent avec fond coloré)
-- className `rapport-tab-btn` / `rapport-tab-btn-active` pour pilotage CSS
-- **Appliqué aux 2 composants** : `RapportViewExemple` ET `RapportView` principal → cohérence partout
-
----
-
-### RapportPage.tsx — Animations accordéons fluides (CSS pur)
-
-**Pattern utilisé** : `grid-template-rows: 0fr → 1fr` + opacity + translateY, cubic-bezier(0.4, 0, 0.2, 1), 0.35s. Chevron rotation 0→180deg. Import `ChevronUp` retiré.
-
-**Appliqué à** :
-- `AccordionSection` (RapportPage ligne ~99) — tous les accordéons du rapport
-- `CarrezAccordeon` (DocumentRenderer ligne 304)
-- `DiagnosticCardRow` (DocumentRenderer ligne 373)
-- `RendererDiagCommunes` (DocumentRenderer ligne 1987) avec flèche `▾` rotation 0↔-90deg
+UI : retrait des mentions "taxe foncière" trompeuses. Sous-titre "Charges · impayés · historique" (ex "Charges · taxe foncière · impayés").
 
 ---
 
-### RapportPage.tsx — Améliorations onglets
+### Chantier B — Schéma + UI enrichis (DÉPLOYÉ ✅)
 
-**TabCopropriete** :
-- SyndicBand déplacé DANS l'accordéon "Vie de la copropriété" (plus en haut)
-- KPI en position 1 juste après bandeau VUE D'ENSEMBLE
-- KPI "Charges mensuelles lot" → remplacé par **"Budget annuel copro"** (évite doublon avec TabLogement qui affiche les charges perso)
-- Tooltip ajouté sur Budget annuel pour expliquer la différence avec charges du lot
+#### B1 — Carnet d'entretien visible dans l'onglet Copropriété
+Nouveau schéma `vie_copropriete.carnet_entretien{}` avec date_maj, immatriculation_registre, équipements copro, contrats d'entretien, travaux réalisés, travaux votés en AG mentionnés dans le carnet, diagnostics parties communes, conseil syndical.
 
-**TabLogement** :
-- Ajout `const [allOpen, setAllOpen] = useState(false)` + bouton "Tout déplier/replier"
-- 6 AccordionSection avec `defaultOpen={allOpen}` (plus `true` par défaut)
+UI : nouveau bloc AccordionSection "📓 Carnet d'entretien" (tags équipements, liste contrats avec prestataire + date reconduction, travaux votés en jaune/warning, travaux réalisés en vert, diagnostics avec codes couleur).
 
-**SyndicBand simplifié** :
-- Retiré la grille Lots/Bâtiments/Fin mandat/Tensions + alerte échéance
-- Garde : identité + statut + gestionnaire
-- Affiche `gestionnaire_fonction` si présent : `👤 Gestionnaire de copropriété : Patrick Desserteau`
-- Props `nbLots`/`nbBatiments` retirées
+#### B2 — Années sur budget et fonds travaux
+Nouveaux champs : `budget_total_copro_annee`, `fonds_travaux_annee`, `charges_annuelles_lot_source`.
 
----
+UI : "Budget annuel copropriété — 2024" sur KPI et bloc finance. Fonds travaux avec année entre parenthèses.
 
-### HomePage.tsx — Section "Ce que vous recevez" refondue (cohérence parfaite avec /exemple)
+#### B3 — N-1/N-2 pré-état daté
+Template `historique_charges` forcé avec 2 entrées. Règle "Ne JAMAIS omettre ce tableau".
 
-**Objectif** : quand un visiteur clique de la HomePage vers /exemple, **zéro rupture visuelle**. Le design doit être identique.
+UI : fallback jaune doux si le tableau est vide malgré un pré-état daté présent.
 
-**Avant** : mini-maquette avec 8 points détectés + données financières + Avis Verimo + PDF → redondant et désynchronisé du vrai rapport.
+#### B4 — Modificatifs RCP
+Nouveau schéma `vie_copropriete.modificatifs_rcp[]` avec date_acte, notaire, type_modification, sur_quoi_porte, impact_acheteur, points_attention.
 
-**Après** : section réplique **pixel-perfect** le design du vrai `/exemple` :
-- Bandeau header dégradé `#0f2d3d → #1a5e78 → #2a7d9c`
-- Badge "RAPPORT VERIMO · ANALYSE COMPLÈTE"
-- Adresse "24 rue des Lilas, Lyon 6e" (cohérent avec le mock)
-- Score circulaire animé **14.8/20** + badge "✓ Bien sain"
-- Barre d'onglets (Synthèse active / Copropriété / Logement / Procédures / Documents) avec pastilles colorées de statut
-- Bandeau "🏢 VUE D'ENSEMBLE"
-- Grille 6 KPI en style hybride A+B cohérent avec vrai rapport
-- Synthèse avec Points Positifs (verts) et Points de Vigilance (orange)
-- CTA final gros dégradé `#2a7d9c → #1a5e78` "Voir un exemple complet interactif"
+UI : nouveau bloc AccordionSection "📜 Modificatifs du règlement" avec carte par modificatif (titre du type, date, notaire, "CE QUI CHANGE", encart bleu "Impact pour vous", points d'attention en jaune).
+
+#### B5 — Fiche synthétique de copropriété
+Nouveau type de document `FICHE_SYNTHETIQUE` dans la liste détectée, schéma d'extraction complet.
+
+**Règle clé** : priorité aux PV d'AG plus récents. La fiche synthétique n'est utile que pour les données stables (immatriculation registre, équipements, présence DTG). Données financières et syndic ignorées si PV récent disponible.
+
+UI : nouveau bloc AccordionSection "📋 Fiche synthétique" avec alerte visuelle si > 12 mois.
 
 ---
 
-### Responsive mobile — 4 corrections critiques
+### Fix — Compte à rebours permanent "Compléter mon dossier" (DÉPLOYÉ ✅)
 
-**Problème** : sur mobile, 4 zones étaient cassées (toggle débordant, KPI écrasés en bandes verticales, labels tronqués, padding latéral excessif).
+**Avant** : "Encore 7 jours pour compléter ce dossier" (texte statique). Compte à rebours hh/mm/ss uniquement le dernier jour (J-1).
 
-**Solution centralisée dans `src/index.css`** (media queries `@media (max-width: 768px)`) :
+**Après** : compte à rebours **permanent** à droite du bouton, format `6j 23h 14min 08s` (secondes qui défilent en live), couleurs selon urgence :
+- J-7 à J-3 : gris neutre
+- J-2 : orange (`#ea580c`)
+- J-1 : rouge (`#dc2626`)
+- Expiré : bouton grisé (déjà en place)
 
-1. **Toggle Simple/Complète** → cards empilées propres :
-   - Container pill gris parent devient transparent
-   - Chaque card devient un bouton indépendant (fond blanc + bordure grise 1.5px)
-   - Card active : fond bleu `#2a7d9c` + bordure bleue + ombre douce
-   - `.seg-toggle-pill-anim` (framer-motion) caché sur mobile
-   - Classes ajoutées : `seg-toggle-btn`, `seg-toggle-btn-active`, `seg-toggle-pill-anim`
+Texte remplacé : "Ajoutez des documents oubliés — le rapport sera recalculé gratuitement."
 
-2. **KPI Synthèse et KpiBand (Copro/Logement)** : bascule `desktop-hidden → mobile-flex` :
-   - `.kpi-desktop` et `.kpi-synth-desktop` → `display: none`
-   - `.kpi-mobile` et `.kpi-synth-mobile` → `display: flex`
-   - Les versions mobiles (liste empilée compacte) existaient déjà dans le code mais n'étaient pas activées faute de CSS
-   - Fix labels tronqués "ANNÉE DE CON..." : plus de truncate en mode liste
-
-3. **SyndicBand** : `.syndic-stats` passe en grille 2×2 sur mobile
-
-4. **Rapport ExemplePage** : padding latéral réduit sur mobile :
-   - Classes ajoutées : `.exemple-rapport-wrap` et `.exemple-rapport-card`
-   - `padding: 0 16px 8px` → **`6px`** sur mobile (supprime l'espace blanc à gauche/droite)
-   - Le rapport prend presque toute la largeur de l'écran
+Layout : suppression de `justify-content: space-between` pour que le bouton soit collé naturellement après le texte (plus de gros vide au milieu).
 
 ---
 
-### analyser-run/index.ts — Enrichissement prompt (gestionnaire de copropriété)
+### Fix majeur — Scoring déterministe côté edge function (DÉPLOYÉ ✅)
 
-**Contexte** : le gestionnaire de copropriété (ex: Patrick Desserteau) était souvent confondu avec le président du conseil syndical ou le PDG du cabinet. Règle durcie dans le prompt.
+**Problème persistant** : le LLM continuait à mettre `diags_privatifs.note = 0` même avec toutes les règles ajoutées au prompt. Notes imprévisibles d'une analyse à l'autre.
 
-**Règles de priorité stricte pour `gestionnaire` et `gestionnaire_fonction`** :
-- **Priorité gestionnaire** :
-  1. Gestionnaire principal de la copro (signataire régulier des documents syndic)
-  2. Gestionnaire associé/adjoint
-  3. `null`
-- **Interdictions explicites** :
-  - JAMAIS président du conseil syndical (= copropriétaire élu, pas un pro du syndic)
-  - JAMAIS secrétaire de séance
-  - JAMAIS PDG du cabinet sauf s'il est explicitement désigné gestionnaire
-  - JAMAIS inventer
-- **Fonction** : `gestionnaire_fonction` stocké UNIQUEMENT si explicitement écrite ("Gestionnaire de copropriété", "Chargée de clientèle", etc.), sinon `null`
+**Solution** : fonction `recalculerCategories(rapport, profil)` dans `supabase/functions/analyser-run/index.ts`. Le LLM extrait toujours les données (diagnostics, travaux, procédures, finances) mais **ce n'est plus lui qui calcule les notes**. Un algorithme déterministe recalcule les 5 catégories juste avant la sauvegarde en base.
 
-**À déployer côté Supabase Dashboard** (pas GitHub) : `supabase/functions/analyser-run/index.ts`
+**Garanties** :
+- Mêmes données = toujours la même note (reproductible)
+- Plancher anti-zéro sur `diags_privatifs` : si ≥ 1 diag privatif extrait, la note ne peut pas descendre sous 1/4
+- Règle `try/catch` : si l'algo bug, le rapport du LLM passe quand même (non bloquant)
+- Logs explicites dans la console Edge Functions : `[analyser-run] Categories recalculees: {...}`
 
----
+**Logique de calcul `diags_privatifs`** :
+1. Si 0 diag extrait → 0/4 (légitime)
+2. Sinon : départ 4/4, on détermine les diagnostics requis selon année de construction, on pénalise pour chaque requis manquant (-0.75), puis pour chaque anomalie (DPE F/G, élec majeure, gaz A1/A2, amiante dégradé, plomb dégradé, termites présence), plancher à 1/4.
 
-### Navbar / Footer / ContactPage — Ajustements
-
-**Navbar.tsx** :
-- Lien "Contact" retiré du menu principal (déjà présent dans Footer)
-- Navbar finale : Accueil, Notre méthode, Exemple, Tarifs
-
-**Footer.tsx** :
-- Import ajouté : `ArrowRight` de `lucide-react`
-- Bouton "Envoyer un message" ajouté dans la colonne Contact (pill blanc transparent avec flèche, linkTo `/contact`)
-
-**ContactPage.tsx** :
-- Texte bloc Offre Professionnelle corrigé : "Agent immobilier, investisseur, marchand de bien, notaire ? Découvrez notre offre pro avec accès dédié." (retiré "et volumes illimités", ordre métiers respecté)
+**Appliqué aussi** : travaux (évoqués lourds/légers, votes charge vendeur), procédures (gravité élevée/modérée/faible + quitus refusé), finances (statut fonds travaux + impayés + vendeur à jour), diags communs (DTG état général + alertes).
 
 ---
 
-### Fichiers modifiés session 5
+### Fichiers modifiés session 6
 
 **Frontend (à pousser sur GitHub)** :
 ```
-1. src/pages/RapportPage.tsx                 → exports Exemple + KPI Synthèse hybride A+B + onglets colorés + accordéons fluides + SyndicBand simplifié + KPI Copropriété (Budget annuel)
-2. src/pages/ExemplePage.tsx                 → refonte complète (toggle, DemoPopup, mocks, ombre douce)
-3. src/pages/dashboard/DocumentRenderer.tsx  → 3 accordéons animés (Carrez, DiagnosticCardRow, RendererDiagCommunes)
-4. src/pages/HomePage.tsx                    → section "Ce que vous recevez" refondue (cohérence /exemple)
-5. src/pages/ContactPage.tsx                 → texte Offre Pro corrigé
-6. src/components/layout/Navbar.tsx          → lien Contact retiré
-7. src/components/layout/Footer.tsx          → bouton "Envoyer un message" ajouté
-8. src/index.css                             → media queries responsive + hover onglets rapport
+1. src/pages/RapportPage.tsx  → refonte TooltipBtn + règles A3 UI (texte taxe foncière, cascade) + garde-fou scoring "Non évalué" + blocs UI carnet/modificatifs/fiche synthétique + années budget + fallback N-1/N-2 + countdown permanent avec couleurs urgence
 ```
 
 **Backend (à déployer sur Dashboard Supabase)** :
 ```
-9. supabase/functions/analyser-run/index.ts  → prompt enrichi gestionnaire + gestionnaire_fonction
+2. supabase/functions/analyser-run/index.ts  → règles A1/A2/A3 + B1 à B5 dans prompt + schéma enrichi (carnet_entretien, modificatifs_rcp, fiche_synthetique, années) + fonction recalculerCategories déterministe
 ```
+
+Les 2 fichiers ont été poussés et buildés avec succès sur Vercel. Scoring déterministe pas encore testé en conditions réelles (dernière modification livrée).
+
+---
+
+## Modifications session 21 avril 2026 — session 5 (refonte visuelle + responsive)
+
+### 🎯 Résumé de la session
+Refonte visuelle et responsivité mobile :
+- Refonte ExemplePage (Option B "vraie vitrine" — réutilisation composants RapportPage)
+- Animations accordéons fluides (CSS pur, grid-template-rows 0fr→1fr)
+- Refonte KPI Synthèse en style hybride A+B (blancs sobres + teintés sémantiquement sur alertes)
+- Fix mobile responsive sur toute l'app (Toggle, KPI, SyndicBand, padding rapport)
+- Refonte section HomePage "Ce que vous recevez" pour cohérence avec /exemple
+- Onglets rapport : style coloré actif
+- Enrichissement prompt IA : détection rigoureuse du gestionnaire de copropriété
+
+### ExemplePage.tsx — Refonte complète (Option B "vraie vitrine")
+Architecture réutilisation composants RapportPage. Exports : `RapportData`, `TabId`, `RapportViewExemple`, `buildRapportExemple`.
+
+Fonctionnalités : mode simple par défaut, toggle animé, DemoPopup premium 2 CTAs, mock Lyon 6e (score 14.8/20, fonds travaux 12 000€ corrigé).
+
+### RapportPage.tsx — Refonte KPI Synthèse (style hybride A+B)
+Système `KpiSeverity = 'neutral' | 'info' | 'ok' | 'warn' | 'danger'` + helper `getKpiCardStyle(severity)`. Cartes blanches sobres par défaut, teinte sémantique uniquement sur alertes (DPE A/B/C vert, D/E orange, F/G rouge, etc.).
+
+### RapportPage.tsx — Onglets rapport en style coloré actif
+Onglet actif = fond plein de sa couleur + texte blanc bold. Onglet inactif = hover `#f1f5f9`. Classes `rapport-tab-btn` / `rapport-tab-btn-active`.
+
+### Animations accordéons CSS pur
+Pattern `grid-template-rows: 0fr → 1fr` + opacity + translateY, cubic-bezier(0.4, 0, 0.2, 1), 0.35s. Appliqué à AccordionSection, CarrezAccordeon, DiagnosticCardRow, RendererDiagCommunes.
+
+### Responsive mobile — 4 corrections critiques
+Media queries dans `src/index.css` :
+1. Toggle Simple/Complète → cards empilées propres
+2. KPI bascule desktop-hidden → mobile-flex
+3. SyndicBand en grille 2×2
+4. Padding latéral rapport → 6px sur mobile
+
+### analyser-run/index.ts — Règles strictes gestionnaire
+Priorité : gestionnaire principal → gestionnaire associé → null. Interdictions : JAMAIS président conseil syndical, JAMAIS secrétaire de séance, JAMAIS PDG sauf explicite. `gestionnaire_fonction` uniquement si écrit dans le document.
 
 ---
 
 ## Modifications session 20 avril 2026 — session 4 partie 1
 
-### Sélecteur "Type de bien" dans NouvelleAnalyse (NOUVELLE ÉTAPE)
-Entre `choice` et `profil`, nouvelle étape où l'utilisateur déclare le type de bien :
-- Appartement en copropriété (bleu)
-- Maison individuelle (vert)
-- Maison en copropriété / lotissement / ASL (ambre)
-- Je ne suis pas sûr → Verimo détermine (violet)
+### Sélecteur "Type de bien" dans NouvelleAnalyse
+Entre `choice` et `profil`, nouvelle étape : appartement, maison, maison copro, indéterminé.
 
-Nouveau parcours complet :
-```
-1. choice       → Simple (4,90€) / Complète (19,90€)
-2. type_bien ⭐  → 4 options
-3. profil       → Résidence principale / Investissement
-4. upload       → PDFs + bouton "Lancer l'analyse"
-5. analyse      → Progression
-6. result       → Rapport
-```
+Nouveau parcours : choice → type_bien → profil → upload → analyse → result.
 
 ### Infrastructure type_bien
-- Nouvelle colonne `type_bien_declare` dans la table `analyses` (SQL migration idempotente)
-- Type `TypeBien = 'appartement' | 'maison' | 'maison_copro' | 'indetermine'` dans `analyses.ts`
-- Passage du `typeBienDeclare` de NouvelleAnalyse → analyses.ts → analyse-client.ts → edge `analyser` → edge `analyser-run`
-- Règle prompt IA : si `typeBienDeclare` fourni et cohérent avec les docs → utilise cette valeur ; si contradiction flagrante → warning dans `points_vigilance`
-- Fallback détection IA si `indetermine` ou non fourni (rétrocompatible avec les analyses antérieures)
+Colonne SQL `type_bien_declare`, type `TypeBien`, propagation dans toute la chaîne frontend → edge functions. Prompt IA respecte cette valeur avec fallback si contradictoire.
 
-### Fiabilisation du statut syndic (analyse simple ET complète)
-**Problème résolu** : avant, un changement de syndic affichait "❌ Syndic non reconduit" en rouge alarmiste alors que c'est une situation normale et courante.
+### Fiabilisation statut syndic (simple ET complète)
+Champs enrichis : `statut`, `sortant`, `entrant`, `annee_changement`, `nb_ags_analysees`, `historique_changements`.
 
-**Schéma enrichi PV_AG (analyse simple)** : nouveaux champs `syndic_statut`, `syndic_sortant`, `syndic_entrant`, `syndic_fin_mandat`.
-
-**Schéma enrichi `vie_copropriete.syndic` (analyse complète multi-PV)** : nouveaux champs `statut`, `sortant`, `entrant`, `annee_changement`, `nb_ags_analysees`, `historique_changements`.
-
-**Règles de détection (prompt IA)** :
-- `stable` : même syndic sur 2+ AGs → ✅ "Syndic stable" (vert)
-- `reconduit` : reconduction explicite → ✅ "Syndic reconduit" (vert)
-- `nouveau_elu` : 1 changement unique → 🔄 "Nouveau syndic élu en XXXX — a remplacé YYY" (bleu, neutre/positif)
-- `rotation_frequente` : 2+ changements sur 3 AGs → ⚠️ "Rotation fréquente des syndics" (orange) + historique déplié
-- `recherche` : mandat à terme sans désignation → 🔄 orange
-- `carence` : absence/administration provisoire explicite → ⚠️ rouge (rare)
-
-**Règle prompt anti-alarmisme** : un changement de syndic unique est NORMAL, ne JAMAIS le mettre dans `points_vigilance` sauf si combiné avec quitus refusé OU procédure contre le syndic sortant.
-
-### Page NouvelleAnalyse — améliorations UX
-- **Largeur 900px centrée** sur les 4 étapes
-- **Bouton "Lancer l'analyse"** renommé et remonté juste sous la zone d'upload
-
-### Fichiers modifiés session 4 partie 1
-```
-1. supabase-schema.sql                       → ajout type_bien_declare + index + contrainte CHECK
-2. src/lib/analyses.ts                       → type TypeBien, params createAnalyse/createApercu
-3. src/lib/analyse-client.ts                 → param typeBienDeclare dans lancerAnalyseEdge
-4. supabase/functions/analyser/index.ts      → v7 (reçoit + transmet typeBienDeclare)
-5. supabase/functions/analyser-run/index.ts  → v7 (prompt type_bien + syndic multi-PV)
-6. src/pages/dashboard/NouvelleAnalyse.tsx   → étape type_bien + maxWidth 900 + bouton remonté
-7. src/pages/dashboard/DocumentRenderer.tsx  → affichage syndic intelligent (analyse simple)
-8. src/pages/RapportPage.tsx                 → SyndicBand enrichi (analyse complète multi-PV)
-```
+Valeurs : stable / reconduit / nouveau_elu / rotation_frequente / recherche / carence. Anti-alarmisme : changement unique = normal.
 
 ---
 
 ## Modifications session 20 avril 2026 — session 3
 
-### Enrichissement du prompt IA (règles juridiques)
-**Loi Climat & Résilience :**
-- DPE G : interdit location depuis 1er janvier 2025
-- DPE F : interdit location au 1er janvier 2028
-- DPE E : interdit location au 1er janvier 2034
-- Gel loyers F et G depuis 24 août 2022
-- Profil investisseur : mention vigilance + impact rentabilité
-- Profil résidence principale : mention dans avis_verimo uniquement
+### Enrichissement prompt IA (règles juridiques)
+- Loi Climat & Résilience (DPE G 2025, F 2028, E 2034, gel loyers F/G)
+- DPE petites surfaces (arrêté 25 mars 2024)
+- Audit énergétique obligatoire maisons/monopropriétés E/F/G
 
-**DPE petites surfaces (arrêté 25 mars 2024) :**
-- Seuils ajustés pour logements < 40 m² depuis juillet 2024
-- Si DPE F/G + < 40 m² + DPE avant juillet 2024 → mention dans points_forts
-
-**Audit énergétique obligatoire à la vente :**
-- Maisons individuelles et monopropriétés E/F/G → audit obligatoire
-- NE concerne PAS les appartements en copropriété
-
-### Compléter le dossier (7 jours) — IMPLÉMENTÉ
-Après une analyse complète, l'utilisateur a 7 jours pour ajouter jusqu'à 5 documents oubliés. L'IA fusionne le rapport existant avec les nouveaux PDFs.
-
-**Backend** : mode `complement` dans analyser + analyser-run, colonnes `complement_date` et `complement_doc_names` dans `analyses`, stockage `regeneration_deadline`.
-
-**Frontend** : popup ComplementModal (drag & drop 5 docs max, suggestions + déjà analysés, progression, succès auto-fermeture 10s), bouton grisé après 7 jours, CountdownTimer, badges.
-
-**Flux RGPD** : nouveaux PDFs supprimés après traitement.
-
-### Autres
-- MethodePage — textes corrigés (15 docs, DDT, score)
-- App.tsx — préchargement HomePage (2s après load) pour iOS
+### Compléter le dossier (7 jours) — implémenté
+Mode `complement` dans analyser + analyser-run, colonnes `complement_date` et `complement_doc_names`, stockage `regeneration_deadline`. Popup ComplementModal drag & drop 5 docs max.
 
 ---
 
 ## Modifications session 19 avril 2026 — session 2
 
-### HomePage — Section "Pour Qui" interactive
-4 boutons (Premier achat, Coup de cœur, J'hésite, Je négocie) + messages personnalisés + bandeau Pro en dessous.
-
-### HomePage — Section "Comment ça marche" en timeline
-Desktop : horizontale. Mobile : vertical.
-
-### ProPage / ContactProPage — Profil "Marchand de bien"
-4ème onglet pro ProPage, 5ème profil ContactProPage, témoignage ajouté.
-
-### TarifsPage
-- "Selon le doc" en ambre pour analyse simple (tableau comparatif)
-- Bandeau Pro, sous-titre, FAQ
-
-### Compare.tsx — Comparaison de biens complète
-Radar 5 catégories, résumé financier année 1, travaux évoqués, documents analysés, verdict IA (edge function `comparer`), historique.
-
-### Edge function `comparer` + table `comparaisons`
-Déployées, RLS OK.
+HomePage (section "Pour Qui" + timeline "Comment ça marche"), ProPage/ContactProPage (profil Marchand de bien), TarifsPage, Compare.tsx (radar + financier + verdict IA + historique), edge `comparer`, table `comparaisons`.
 
 ---
 
 ## Pages existantes (session 1 — 19 avril 2026)
 
-### ProPage, ContactProPage, Table `contact_pro`
-Pages pros et formulaire qualifié. Table avec champs profile_data JSONB, notes_admin, etc.
-
-### Optimisations iOS TESTÉES
-Navbar backdrop-blur conditionnel, Reveal CSS natif mobile, badges float désactivés, préchargement HomePage, `-webkit-touch-callout` iOS Safari.
-
-### Navbar badge "Offre Pro"
-Desktop avant séparateur auth, Mobile pleine largeur dans hamburger.
-
-### AdminPage onglet "Demandes Pro"
-Badge compteur non lues, Realtime, actions complètes.
+ProPage, ContactProPage, table `contact_pro`, optimisations iOS testées, navbar badge "Offre Pro", AdminPage onglet "Demandes Pro".
 
 ---
 
@@ -438,7 +327,7 @@ Badge compteur non lues, Realtime, actions complètes.
 | Diagnostics communs | 3 pts |
 | **TOTAL** | **20 pts** |
 
-**Base 20/20** — on déduit les risques, on ajoute les éléments positifs.
+**⚠️ IMPORTANT (session 6)** — Les notes des 5 catégories sont maintenant **calculées côté code** dans `recalculerCategories()` au lieu d'être fournies par le LLM. Reproductibilité garantie.
 
 ### Niveaux
 | Plage | Niveau |
@@ -450,48 +339,70 @@ Badge compteur non lues, Realtime, actions complètes.
 | 0–6 | Bien à éviter |
 
 ### Travaux (-/+ 5pts)
-- Travaux lourds évoqués non votés : **-3**
-- Travaux légers évoqués non votés : **-1**
-- Travaux votés charge vendeur petits/moyens : **+2**
-- Gros travaux votés charge vendeur : **+3**
-- Garantie décennale récente : **+2**
+- Travaux lourds évoqués non votés : **-1.5 par sujet**, plafonné à -3
+- Travaux légers évoqués non votés : **-0.5 par sujet**, plafonné à -1.5
+- Votes charge vendeur : **+0.5 par item**, plafonné à +2
+- Plancher 1 si au moins un document travaux analysé
 
 ### Procédures (-/+ 4pts)
-- Procédure significative : **-3**
-- Procédure mineure : **-1,5**
-- Aucune procédure : **+1**
+- Gravité élevée : **-2**
+- Gravité modérée : **-1**
+- Gravité faible : **-0.5**
+- Quitus refusé : **-0.5**
 
-### Finances (-/+ 4pts)
-- Fonds travaux nul/absent : **-1**
-- Impayés > 15% budget : **-1**
-- Fonds travaux 5% : **+0,5** / 6-9% : **+1** / ≥10% : **+1,5**
+### Finances (-/+ 4pts) — départ 2/4 (neutre)
+- Fonds travaux excellent (≥10%) : **+1.5**
+- Fonds travaux bien (6-9%) : **+1**
+- Fonds travaux conforme (5%) : **+0.5**
+- Fonds travaux insuffisant (<5%) : **-0.5**
+- Fonds travaux absent : **-1**
+- Impayés > 15% budget : **-0.5**
+- Vendeur à jour (pré-état daté) : **+0.5**
 
-### Diagnostics privatifs (-/+ 4pts)
-- DPE F (RP) **-2** / G (RP) **-3** / F (invest) **-4** / G (invest) **-6**
-- Électricité anomalies majeures : **-2**
-- DPE A/B/C : **+1,5** / DPE D : **+1**
-- Diagnostics complets sans anomalie + DPE ≤ D : **+2**
+### Diagnostics privatifs (-/+ 4pts) — intelligence réglementaire
+- Si 0 diag extrait → **0/4**
+- Sinon : départ 4/4
+- **Diagnostics requis manquants** (selon année construction) : -0.75 chacun
+  - DPE toujours requis
+  - Électricité si construction > 15 ans
+  - Amiante si avant 1997
+  - Plomb si avant 1949
+  - Gaz si détecté
+  - Carrez si copro
+- **Anomalies** :
+  - DPE G : -1.5 (RP) / -2 (invest)
+  - DPE F : -1 (RP) / -1.5 (invest)
+  - Électricité anomalies majeures : -1
+  - Gaz A1 : -1 / A2 : -0.5
+  - Amiante dégradé : -1 / suspect : -0.3
+  - Plomb dégradé : -1
+  - Termites présence : -2
+- **Plancher à 1/4** si ≥ 1 diag extrait (anti-faux-zéro)
 
-### Diagnostics communs (-/+ 3pts)
-- Amiante PC dégradé **-2** / Termites PC **-2** / DTG dégradé **-2**
-- DTG budget urgent < 50k€ **-1** / > 50k€ **-2**
-- Immeuble bien entretenu **+0,5** / Chaudière certifiée **+0,5** / DTG bon **+1**
+### Diagnostics communs (-/+ 3pts) — départ 2/3 (neutre)
+- DTG bon : +1 / moyen : +0.5 / dégradé : -1
+- DTG budget urgent > 50k€ : -0.5
+- Amiante PC AC1 : -1
+- Termites PC présence : -1
 
 ---
 
 ## Règles métier critiques
 
-1. **Fonds ALUR** — L'acheteur hérite ces montants MAIS DOIT LES REMBOURSER AU VENDEUR à la signature en sus du prix.
-2. **Votes deux tours** — Art. 25 insuffisant + ≥ 1/3 voix → 2ème tour art. 24. Si adopté → ADOPTÉE.
-3. **Honoraires syndic pré-état daté** — Toujours à la charge du vendeur.
+1. **Fonds ALUR** — L'acheteur hérite ces montants MAIS DOIT LES REMBOURSER AU VENDEUR à la signature en sus du prix. NE JAMAIS les mettre dans `points_vigilance` (sauf si anormalement élevés).
+2. **Honoraires syndic pré-état daté** — Toujours à la charge du vendeur. NE JAMAIS mettre dans `points_vigilance`.
+3. **Votes deux tours** — Art. 25 insuffisant + ≥ 1/3 voix → 2ème tour art. 24. Si adopté → ADOPTÉE.
 4. **DPE D** = bonne performance, jamais dans vigilances.
 5. **Carrez** — ne pas afficher dans les diags si section Surface Carrez dédiée.
 6. **Travaux votés avant la vente** = charge vendeur, même si pas encore réalisés. NE PAS compter comme risque pour l'acheteur.
-7. **Travaux évoqués non votés** = vrai risque pour l'acheteur (il paiera si voté après la signature).
+7. **Travaux évoqués non votés** = vrai risque pour l'acheteur.
 8. **Loi Climat & Résilience** — DPE G interdit location depuis 2025, F en 2028, E en 2034. Gel loyers F/G depuis 2022.
-9. **DPE petites surfaces** — Seuils ajustés pour < 40 m² depuis juillet 2024 (arrêté 25 mars 2024).
+9. **DPE petites surfaces** — Seuils ajustés pour < 40 m² depuis juillet 2024.
 10. **Audit énergétique** — Obligatoire pour vente maisons/monopropriétés E/F/G. Pas les appartements en copro.
-11. **Gestionnaire de copropriété** — JAMAIS confondre avec président du conseil syndical ou PDG du cabinet. Stocker `gestionnaire_fonction` uniquement si explicite dans le document.
+11. **Gestionnaire de copropriété** — JAMAIS confondre avec président du conseil syndical ou PDG.
+12. **DDT + actualisation** (session 6) — Forment un dossier unifié, ne JAMAIS noter 0 car 2 fichiers séparés.
+13. **Fiche synthétique de copro** (session 6) — Priorité PV d'AG plus récent. Utile surtout pour immatriculation registre et équipements, pas pour données financières si PV récent disponible.
+14. **Cascade sources finances du lot** (session 6) — Pré-état daté > appel de charges > PV+tantièmes > PV seul. NE PAS mentionner "taxe foncière" dans les labels finances copro.
 
 ---
 
@@ -499,32 +410,36 @@ Badge compteur non lues, Realtime, actions complètes.
 
 1. L'utilisateur uploade ses PDFs dans Supabase Storage (bucket `analyse-temp`)
 2. Le frontend appelle la edge function `analyser` avec les paths Storage + l'ID analyse
-3. `analyser` télécharge les PDFs depuis Storage, les uploade vers l'API Anthropic Files, obtient des `file_ids`
-4. `analyser` **supprime les PDFs de Supabase Storage** (ligne 151 de analyser/index.ts)
+3. `analyser` télécharge les PDFs depuis Storage, les uploade vers l'API Anthropic Files
+4. `analyser` supprime les PDFs de Supabase Storage
 5. `analyser` passe le status à `files_ready` et appelle `analyser-run` via `EdgeRuntime.waitUntil`
 6. `analyser-run` appelle Claude Sonnet avec les `file_ids` et le prompt système
-7. Claude analyse tous les documents et retourne un JSON structuré (rapport complet ou analyse simple)
-8. `analyser-run` supprime les `file_ids` de l'API Anthropic Files (RGPD)
-9. Le rapport JSON est stocké dans `analyses.result` dans Supabase
-10. `analyser-run` stocke `regeneration_deadline` = now + 7 jours (analyses complètes uniquement)
-11. **IMPORTANT** : après le rapport, les documents originaux n'existent plus nulle part (ni Storage, ni Files API). Seul le JSON résultat est conservé.
+7. Claude analyse les documents et retourne un JSON structuré
+8. **(Session 6)** `recalculerCategories(report, profil)` recalcule les 5 notes à partir des données extraites
+9. `analyser-run` supprime les `file_ids` de l'API Anthropic Files (RGPD)
+10. Le rapport JSON est stocké dans `analyses.result` dans Supabase
+11. `analyser-run` stocke `regeneration_deadline` = now + 7 jours (analyses complètes uniquement)
 
-### Flux complément (session 3)
+### Flux complément
 1. L'utilisateur clique "Compléter mon dossier" (dans les 7 jours)
 2. Upload 1-5 PDFs
 3. `analyser` mode `complement` : vérifie deadline, lit rapport existant
 4. `analyser-run` mode `complement` : fusion JSON + nouveaux docs
-5. PDFs supprimés (RGPD)
-6. Nouveau rapport remplace l'ancien
+5. Recalcul déterministe des catégories
+6. PDFs supprimés (RGPD)
+7. Nouveau rapport remplace l'ancien
 
-### Estimation coûts / stockage (session 5)
-- **Stockage Supabase DB** : ~100 ko par rapport (JSON)
-  - Free (500 Mo) : ~5 000 analyses possibles
-  - Pro 25$ (8 Go) : ~80 000 analyses
-  - Team 599$ (50 Go) : ~500 000 analyses
-- **Stockage PDF** : quasi nul (PDF supprimés après analyse)
-- **Coût API Claude** (vrai coût scalable) : ~0,80€ à 1,50€ par analyse complète
-- **Conclusion** : le stockage n'est pas un problème court/moyen terme. Se concentrer sur coût API + acquisition clients.
+### Vérification Supabase si analyse bloquée
+Dashboard Supabase → Table Editor → `analyses` → trier par `created_at` → ouvrir la ligne :
+- `status` : completed / processing / files_ready / failed
+- `progress_message` : évolue si vivant
+- `updated_at` : change si en cours
+- `complement_date` + `complement_doc_names` : remplis si complément appliqué
+- `result` (JSON) : contient `categories`, `diagnostics[]`, etc.
+
+### Estimation coûts / stockage
+- **Stockage Supabase DB** : ~100 ko par rapport → Pro 25$ (8 Go) = ~80 000 analyses
+- **Coût API Claude** : ~0,80€ à 1,50€ par analyse complète
 
 ---
 
@@ -532,38 +447,44 @@ Badge compteur non lues, Realtime, actions complètes.
 
 ```
 src/pages/
-  HomePage.tsx              ← Page d'accueil (section "Pour Qui" interactive + timeline + "Ce que vous recevez" cohérent avec /exemple ✅)
-  ProPage.tsx               ← Landing page offre pro (4 profils dont marchand de bien)
-  TarifsPage.tsx            ← Tarifs + FAQ + comparatif
-  MethodePage.tsx           ← Notre méthode (score /20, types de docs)
+  HomePage.tsx              ← Page d'accueil
+  ProPage.tsx               ← Landing page offre pro
+  TarifsPage.tsx            ← Tarifs + FAQ
+  MethodePage.tsx           ← Notre méthode
   ContactPage.tsx           ← Formulaire contact général
-  ContactProPage.tsx        ← Formulaire contact pro (5 profils dont marchand de bien)
-  RapportPage.tsx           ← Rapport standalone (~3760 lignes) + exports RapportViewExemple/buildRapportExemple + KPI hybride A+B + onglets colorés + accordéons fluides
-  ExemplePage.tsx           ← Exemple interactif Simple/Complète (refondu session 5 ✅)
-  DashboardPage.tsx         ← Shell dashboard + sidebar + topbar
-  AdminPage.tsx             ← Admin (users, analyses, messages, demandes pro, promos, logs)
+  ContactProPage.tsx        ← Formulaire contact pro
+  RapportPage.tsx           ← Rapport standalone (~4210 lignes en session 6)
+                              + TooltipBtn (createPortal)
+                              + blocs UI carnet d'entretien / modificatifs RCP / fiche synthétique
+                              + garde-fou scoring "Non évalué"
+                              + countdown permanent avec couleurs urgence
+                              + années sur budget / fonds travaux
+                              + fallback N-1/N-2 pré-état daté
+  ExemplePage.tsx           ← Exemple interactif Simple/Complète
+  DashboardPage.tsx         ← Shell dashboard
+  AdminPage.tsx             ← Admin
   dashboard/
     MesAnalyses.tsx         ← Listing analyses
     HomeView.tsx            ← Tableau de bord
     NouvelleAnalyse.tsx     ← Upload + barre progression
-    DocumentRenderer.tsx    ← Rendu analyse simple + accordéons fluides (session 5 ✅)
-    Compare.tsx             ← Comparaison de biens (radar, financier, verdict IA, historique)
+    DocumentRenderer.tsx    ← Rendu analyse simple
+    Compare.tsx             ← Comparaison de biens
 
 src/components/layout/
-  Navbar.tsx                ← Navbar (Contact retiré du menu principal — session 5)
-  Footer.tsx                ← Footer (bouton "Envoyer un message" ajouté — session 5)
+  Navbar.tsx
+  Footer.tsx
 
 src/lib/
   supabase.ts
-  analyse-client.ts         ← Upload PDFs + polling (modes: complete, document, apercu, complement)
+  analyse-client.ts         ← Upload PDFs + polling (⚠️ fallback hardcodé 55% quand progress_current null, ligne 214)
   analyses.ts               ← Types AnalyseDB + CRUD Supabase
 
-src/index.css               ← Media queries responsive mobile (Toggle + KPI + SyndicBand + padding rapport) — session 5 ✅
+src/index.css               ← Media queries responsive mobile
 
 supabase/functions/
-  analyser/index.ts         ← Upload PDFs → Files API → déclenche analyser-run (+ mode complement)
-  analyser-run/index.ts     ← Appel Claude → rapport JSON → suppression RGPD (+ prompt complement + règles juridiques + gestionnaire strict — session 5)
-  comparer/index.ts         ← Comparaison IA : lit rapports JSON → appel Claude → verdict
+  analyser/index.ts         ← Upload PDFs → Files API → déclenche analyser-run
+  analyser-run/index.ts     ← Appel Claude → rapport JSON → recalculerCategories → suppression RGPD (~1120 lignes en session 6)
+  comparer/index.ts         ← Comparaison IA : lit rapports JSON → Claude → verdict
 ```
 
 ---
@@ -575,113 +496,132 @@ supabase/functions/
 - **Investisseur violet** : `#7c3aed`
 - **Marchand de bien ambre** : `#d97706`
 
-### Palette KPI sémantique (session 5)
-- **neutral** : fond blanc, bordure `#e2edf3`, icône gris `#475569`
-- **ok** (vert clair) : fond `#f0fdf4`, bordure `#bbf7d0`, icône `#15803d`
-- **warn** (orange clair) : fond `#fff7ed`, bordure `#fed7aa`, icône `#9a3412`
-- **danger** (rouge clair) : fond `#fef2f2`, bordure `#fecaca`, icône `#991b1b`
-- **info** (bleu clair) : fond `#eff6ff`, bordure `#bfdbfe`, icône `#1e40af`
+### Palette KPI sémantique
+- **neutral** : blanc + bordure `#e2edf3`
+- **ok** (vert) : fond `#f0fdf4`, bordure `#bbf7d0`
+- **warn** (orange) : fond `#fff7ed`, bordure `#fed7aa`
+- **danger** (rouge) : fond `#fef2f2`, bordure `#fecaca`
+- **info** (bleu) : fond `#eff6ff`, bordure `#bfdbfe`
+
+### Palette urgence countdown (session 6)
+- **J-7 à J-3** : gris `#64748b`, normal weight
+- **J-2** : orange `#ea580c`, bold
+- **J-1** : rouge `#dc2626`, bold
 
 ---
 
 ## 🗂️ Backlog
 
-### 🔴 Priorité haute — Prochaine session (session 6)
+### 🔴 Priorité haute — À tester après session 6
+
+- [ ] **Tester le scoring déterministe en prod** — relancer analyse Edelweiss + complément. Vérifier que `diags_privatifs.note` est maintenant non-nulle (devrait être ~2-2.5/4 vu les anomalies élec/gaz).
+- [ ] **Tester carnet d'entretien** — vérifier que le nouveau bloc UI "📓 Carnet d'entretien" apparaît avec contrats SEDEP/SICRE/SOMAP/SIL, travaux votés peinture grilles 13000€ du 13/05/2019, diagnostics amiante DTA 13/03/2006, etc.
+- [ ] **Tester modificatifs RCP** — uploader les modificatifs Edelweiss (1969, 1980, 2004) et vérifier le bloc "📜 Modificatifs du règlement".
+- [ ] **Tester fiche synthétique** — uploader une fiche synthétique et vérifier le bloc dédié avec alerte si > 12 mois.
+- [ ] **Tester countdown permanent** — vérifier que le format complet `6j 23h 14min 08s` s'affiche en permanence à droite du bouton, que les couleurs changent à J-2 (orange) et J-1 (rouge).
+- [ ] **Tester années budget/fonds travaux** — vérifier que les années apparaissent dans les KPI et le bloc Finances.
+
+### 🟡 Priorité normale — UX progression "Compléter mon dossier"
+
+- [ ] **Fix progression bloquée à 55%** — `src/lib/analyse-client.ts` ligne 214 : quand `progress_current` est null, percent est hardcodé à 55%. L'edge function en mode complément ne met pas à jour `progress_current` → UI bloquée visuellement (mais l'analyse tourne quand même en fond).
+- [ ] **Améliorer UX modale "Compléter le dossier"** — ne pas mettre "Oublié" en haut (mot négatif). Granularité des étapes à améliorer (actuellement `step: 'extracting'|'analysing'|'reducing'|'done'|'error'`, mais pas reflété visuellement).
+
+### 🔴 Priorité haute — Restant session 6 non traité
 
 - [ ] **RapportPage.tsx — rendu adaptatif maison** :
-  - Onglet "Logement" → renommer en **"Votre futur chez-vous"** quand `type_bien = maison`
-  - Onglet "Procédures" → renommer en **"Litiges"** quand `type_bien = maison`
-  - Fallback onglet Litiges maison : si aucun litige détecté → afficher liste d'exemples (servitudes mitoyenneté/passage/vue, bornage voisins, urbanisme/permis, malfaçons) avec mention "Rien détecté selon les documents fournis"
-  - Enrichir prompt IA pour chercher activement ces litiges spécifiques maison dans compromis/acte
-- [ ] **Fix règle pistes de négociation** : changer `applicable=true UNIQUEMENT si score < 14` → `applicable` seul (sans gate au score). L'IA décide déjà si `applicable` en fonction d'éléments chiffrables (travaux évoqués non votés, DPE E/F/G, impayés, fonds travaux insuffisant). Travaux votés = charge vendeur → PAS dans les pistes de négo.
-- [ ] **ExemplePage — mock maison à ajouter** :
-  - Actuellement seul un mock appartement (Lyon 6e) existe
-  - Toggle appart (5 onglets) / maison (4 onglets) pour démontrer les 2 rendus
-  - Cas maison : **Villeurbanne, 4P 95m², score 12,5/20** (avec DPE E, audit énergétique obligatoire)
-
-### 🔴 Priorité haute — hors session 6
-
-- [ ] **Tester compléter le dossier** — flux complet en vrai (upload → edge function → Claude fusionne → rapport mis à jour). Non testé en conditions réelles.
-- [ ] **Tester le sélecteur type_bien en production** — vérifier que les 4 options fonctionnent, que l'IA respecte bien `typeBienDeclare`
-- [ ] **Tester le syndic multi-PV** — lancer une analyse complète avec 2-3 PV d'AG successifs pour vérifier les cas stable / nouveau_elu / rotation_frequente
-- [ ] **Tester la détection rigoureuse du gestionnaire** — vérifier qu'il ne confond plus avec président conseil syndical ou PDG
-- [ ] **Tester rendu mobile** — vérifier que les 4 corrections responsive (Toggle, KPI, SyndicBand, padding) fonctionnent sur iPhone et Android
-- [ ] **Tester onglets colorés** sur /exemple et sur un vrai rapport payant — vérifier la clarté UX
+  - Onglet "Logement" → **"Votre futur chez-vous"** quand `type_bien = maison`
+  - Onglet "Procédures" → **"Litiges"** quand `type_bien = maison`
+  - Fallback onglet Litiges maison avec exemples (servitudes, bornage, urbanisme, malfaçons)
+- [ ] **Fix règle pistes de négociation** — `applicable=true UNIQUEMENT si score < 14` → `applicable` sans gate au score
+- [ ] **ExemplePage — mock maison** — Villeurbanne, 4P 95m², score 12,5/20, DPE E
 
 ### 🟡 Priorité normale
 
+- [ ] Tester le sélecteur type_bien en production
+- [ ] Tester syndic multi-PV (stable / nouveau_elu / rotation_frequente)
+- [ ] Tester détection rigoureuse du gestionnaire
+- [ ] Tester rendu mobile (responsive session 5)
+- [ ] Tester onglets colorés /exemple vs rapport payant
 - [ ] Tester RapportPage sur iPhone (performances)
-- [ ] Tester retour accueil sur iPhone après préchargement App.tsx
-- [ ] Vérifier affichage mobile tous types docs simples
+- [ ] Tester retour accueil iPhone après préchargement App.tsx
 - [ ] HomeView : retravailler présentation générale
 - [ ] Stripe TEST → production
 - [ ] Analyses bloquées > 20 min → badge "Échoué"
 - [ ] Système dossiers par bien
 - [ ] App.css : vestige Vite, peut être supprimé
-- [ ] Optimisation coût API Claude : étudier prompt caching (réduire de 90% input tokens répétés)
+- [ ] Optimisation coût API Claude : prompt caching (réduire 90% input tokens répétés)
+
+### ✅ Fait (session 6 — 22 avril 2026)
+
+- [x] **RapportPage** — Refonte TooltipBtn avec createPortal (z-index 2147483647, recalcul auto)
+- [x] **RapportPage** — Suppression des 3 tooltips manuels concurrents
+- [x] **analyser-run** — Bloc "REGLES DE CALCUL DES NOTES PAR CATEGORIE" avec intelligence réglementaire
+- [x] **analyser-run** — Règle DDT + actualisation = dossier unifié
+- [x] **RapportPage** — Garde-fou UI "Non évalué" quand diags_privatifs = 0 avec diagnostics présents
+- [x] **analyser-run** — Règle exclusion ALUR/honoraires état daté de points_vigilance
+- [x] **analyser-run** — Règle cascade sources finances du lot
+- [x] **RapportPage** — Retrait mentions "taxe foncière" trompeuses
+- [x] **analyser-run** — Schéma vie_copropriete.carnet_entretien{} + règles extraction
+- [x] **RapportPage** — Bloc UI "📓 Carnet d'entretien" complet
+- [x] **analyser-run** — Champs années : budget_total_copro_annee, fonds_travaux_annee, charges_annuelles_lot_source
+- [x] **RapportPage** — Affichage années sur KPI et bloc Finances
+- [x] **analyser-run** — Template historique_charges forcé N-1 ET N-2
+- [x] **RapportPage** — Fallback jaune doux si historique vide
+- [x] **analyser-run** — Schéma vie_copropriete.modificatifs_rcp[]
+- [x] **RapportPage** — Bloc UI "📜 Modificatifs du règlement"
+- [x] **analyser-run** — Type FICHE_SYNTHETIQUE + schéma extraction + règle priorité
+- [x] **RapportPage** — Bloc UI "📋 Fiche synthétique"
+- [x] **RapportPage** — CountdownTimer permanent (format complet 6j 23h 14min 08s)
+- [x] **RapportPage** — Couleurs urgence countdown (J-2 orange, J-1 rouge)
+- [x] **RapportPage** — Layout bouton compacté (plus de gros vide au milieu)
+- [x] **analyser-run** — Fonction `recalculerCategories()` déterministe (5 catégories)
+- [x] **analyser-run** — Injection recalcul avant sauvegarde DB (2 emplacements)
 
 ### ✅ Fait (session 5 — 21 avril 2026)
 
-- [x] **ExemplePage** — refonte complète architecture Option B (réutilisation composants RapportPage)
-- [x] **ExemplePage** — mode par défaut simple, toggle animé Simple/Complète
-- [x] **ExemplePage** — DemoPopup premium branché sur RapportViewExemple
-- [x] **ExemplePage** — mock Lyon 6e (score 14.8/20) avec données cohérentes
-- [x] **ExemplePage** — fix fonds travaux 42 000€ → 12 000€ (réaliste pour 42 lots)
-- [x] **RapportPage** — exports `RapportViewExemple`, `buildRapportExemple`, `type RapportData`, `type TabId`
-- [x] **RapportPage** — KPI Synthèse refondus en style hybride A+B (blancs + teintés sémantiquement)
-- [x] **RapportPage** — helper `getKpiCardStyle(severity)` centralisant les 5 palettes
-- [x] **RapportPage** — onglets en style coloré actif (fond plein + hover inactif) avec classes CSS dédiées
-- [x] **RapportPage** — animations accordéons fluides CSS pur (grid-template-rows 0fr→1fr)
-- [x] **RapportPage** — SyndicBand simplifié + affichage `gestionnaire_fonction`
-- [x] **RapportPage** — SyndicBand déplacé dans accordéon "Vie de la copropriété"
-- [x] **RapportPage** — KPI Copropriété : "Charges mensuelles lot" → "Budget annuel copro" (élimine doublon avec TabLogement)
-- [x] **RapportPage** — TabLogement : bouton "Tout déplier/replier"
-- [x] **DocumentRenderer** — 3 accordéons animés (Carrez, DiagnosticCardRow, RendererDiagCommunes)
-- [x] **HomePage** — section "Ce que vous recevez" refondue pixel-perfect pour cohérence avec /exemple
-- [x] **index.css** — media queries responsive mobile (Toggle → cards empilées, KPI → bascule desktop/mobile, SyndicBand → 2×2, padding rapport → 6px)
-- [x] **index.css** — effet hover onglets inactifs
-- [x] **Navbar** — lien Contact retiré du menu principal (dans Footer)
-- [x] **Footer** — bouton "Envoyer un message" ajouté dans colonne Contact
-- [x] **ContactPage** — texte Offre Pro corrigé
-- [x] **analyser-run** — prompt enrichi règle stricte `gestionnaire` + `gestionnaire_fonction` (à déployer Supabase Dashboard)
+- [x] ExemplePage refonte Option B
+- [x] RapportPage exports RapportViewExemple + buildRapportExemple
+- [x] KPI Synthèse hybride A+B
+- [x] Onglets colorés actifs
+- [x] Accordéons fluides CSS pur
+- [x] SyndicBand simplifié dans accordéon "Vie de la copropriété"
+- [x] HomePage section "Ce que vous recevez" pixel-perfect /exemple
+- [x] Responsive mobile (Toggle, KPI, SyndicBand, padding)
+- [x] Navbar : lien Contact retiré
+- [x] Footer : bouton "Envoyer un message"
+- [x] analyser-run : règle stricte gestionnaire + gestionnaire_fonction
 
 ### ✅ Fait (session 4 partie 1 — 20 avril 2026)
 
-- [x] Nouvelle étape "Type de bien" dans NouvelleAnalyse (4 options)
-- [x] Colonne `type_bien_declare` dans table analyses (SQL migration)
-- [x] Type `TypeBien` + propagation param dans toute la chaîne frontend → edge functions
-- [x] Prompt IA enrichi pour respecter `typeBienDeclare` (avec fallback si contradictoire)
-- [x] Fiabilisation statut syndic — analyse simple (DocumentRenderer + prompt PV_AG)
-- [x] Fiabilisation statut syndic — analyse complète multi-PV (RapportPage SyndicBand + prompt rapport complet)
-- [x] Règles anti-alarmisme : changement de syndic = neutre/positif sauf rotation fréquente
-- [x] NouvelleAnalyse — largeur 900px centrée sur toutes les étapes
-- [x] NouvelleAnalyse — bouton "Lancer l'analyse" renommé + remonté sous zone upload
+- [x] Étape "Type de bien" dans NouvelleAnalyse (4 options)
+- [x] Colonne `type_bien_declare` SQL
+- [x] Propagation TypeBien frontend → edge functions
+- [x] Fiabilisation statut syndic simple + complète multi-PV
+- [x] Anti-alarmisme changement syndic
 
 ### ✅ Fait (session 3 — 20 avril 2026)
 
-- [x] Prompt IA enrichi : loi Climat & Résilience, DPE petites surfaces, audit énergétique
-- [x] Compléter le dossier — backend complet (analyser + analyser-run + SQL)
-- [x] Compléter le dossier — frontend complet (popup, timer, badges, bouton grisé)
+- [x] Prompt IA enrichi (loi Climat, DPE petites surfaces, audit énergétique)
+- [x] Compléter le dossier — backend + frontend complet
 - [x] regeneration_deadline stockée dans analyser-run
-- [x] MethodePage — textes corrigés (15 docs, DDT, score)
-- [x] App.tsx — préchargement HomePage pour iOS
+- [x] MethodePage textes corrigés
+- [x] App.tsx préchargement HomePage iOS
 
 ### ✅ Fait (session 2 — 19 avril 2026)
 
-- [x] HomePage — Section "Pour Qui" interactive (4 boutons + messages personnalisés)
-- [x] HomePage — Section "Comment ça marche" refaite en timeline
-- [x] ProPage — Ajout profil "Marchand de bien" (4ème onglet)
-- [x] ContactProPage — Ajout profil "Marchand de bien" (5ème carte)
-- [x] TarifsPage — Tableau comparatif : "Selon le doc" en ambre pour analyse simple
-- [x] TarifsPage — Bandeau Pro mis à jour (4 profils, supprimé "volumes illimités")
-- [x] TarifsPage — Sous-titre simplifié
-- [x] TarifsPage — FAQ élargie (appartements + maisons)
-- [x] Compare.tsx — Radar des 5 catégories
-- [x] Compare.tsx — Résumé financier année 1
-- [x] Compare.tsx — Travaux évoqués non votés
-- [x] Compare.tsx — Documents analysés par bien
-- [x] Compare.tsx — Verdict IA via edge function comparer
-- [x] Compare.tsx — Historique des comparaisons + suppression
-- [x] Edge function `comparer` déployée sur Supabase
-- [x] Table `comparaisons` créée dans Supabase
-- [x] Optimisations iOS déployées et testées
+- [x] HomePage sections Pour Qui + timeline
+- [x] ProPage/ContactProPage profil Marchand de bien
+- [x] TarifsPage (tableau, bandeau Pro, FAQ)
+- [x] Compare.tsx complet (radar, financier, travaux, verdict IA, historique)
+- [x] Edge function `comparer` + table `comparaisons`
+- [x] Optimisations iOS
+
+---
+
+## SEO / Google (contexte hors projet code)
+
+- Domaine `verimo.fr` (OVH)
+- Search Console : propriété validée, sitemap soumis, 5 pages clés en indexation prioritaire
+- OAuth Google : nouveau logo wordmark validé
+- Suivre sur Search Console → Sitemaps → statut "Succès"
+- Pour sitelinks : chercher souvent "verimo" depuis différents appareils + partager sur LinkedIn
