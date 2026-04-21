@@ -229,43 +229,11 @@ const MOCK_PVAG_SIMPLE = {
    TOGGLE PILL SEGMENTÉ — Option A
 ═══════════════════════════════════════════════════════════════ */
 function SegmentedToggle({ mode, onChange }: { mode: 'complete' | 'simple'; onChange: (m: 'complete' | 'simple') => void }) {
-  const ToggleBtn = ({ active, onClick, icon, label, price }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string; price: string }) => (
-    <button
-      onClick={onClick}
-      style={{
-        padding: '18px 36px',
-        borderRadius: 999,
-        border: 'none',
-        background: active ? '#2a7d9c' : 'transparent',
-        color: active ? '#fff' : '#64748b',
-        cursor: 'pointer',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 14,
-        boxShadow: active ? '0 6px 20px rgba(42,125,156,0.35)' : 'none',
-        minWidth: 260,
-      }}
-    >
-      <div style={{
-        width: 42,
-        height: 42,
-        borderRadius: 12,
-        background: active ? 'rgba(255,255,255,0.18)' : '#e2e8f0',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-        transition: 'background 0.3s',
-      }}>
-        {icon}
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.25 }}>
-        <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-0.01em' }}>{label}</span>
-        <span style={{ fontSize: 13, fontWeight: 500, opacity: active ? 0.92 : 0.75, marginTop: 3 }}>{price}</span>
-      </div>
-    </button>
-  );
+  // Ordre : simple en premier, complète en second (par défaut)
+  const options = [
+    { id: 'simple' as const, icon: FileText, label: 'Analyse simple', price: '4,90 € · un document' },
+    { id: 'complete' as const, icon: HomeIcon, label: 'Analyse complète', price: '19,90 € · dossier complet' },
+  ];
 
   return (
     <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -282,20 +250,72 @@ function SegmentedToggle({ mode, onChange }: { mode: 'complete' | 'simple'; onCh
           boxShadow: '0 1px 3px rgba(15,45,61,0.04), 0 4px 12px rgba(15,45,61,0.03)',
         }}
       >
-        <ToggleBtn
-          active={mode === 'simple'}
-          onClick={() => onChange('simple')}
-          icon={<FileText size={22} color={mode === 'simple' ? '#fff' : '#64748b'} strokeWidth={2.2} />}
-          label="Analyse simple"
-          price="4,90 € · un document"
-        />
-        <ToggleBtn
-          active={mode === 'complete'}
-          onClick={() => onChange('complete')}
-          icon={<HomeIcon size={22} color={mode === 'complete' ? '#fff' : '#64748b'} strokeWidth={2.2} />}
-          label="Analyse complète"
-          price="19,90 € · dossier complet"
-        />
+        {options.map((opt) => {
+          const active = mode === opt.id;
+          const Icon = opt.icon;
+          return (
+            <button
+              key={opt.id}
+              onClick={() => onChange(opt.id)}
+              style={{
+                padding: '18px 36px',
+                borderRadius: 999,
+                border: 'none',
+                background: 'transparent',
+                color: active ? '#fff' : '#64748b',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 14,
+                minWidth: 260,
+                position: 'relative',
+                zIndex: 1,
+                transition: 'color 0.3s ease',
+              }}
+            >
+              {/* Pill bleue animée — un seul élément partagé entre les 2 boutons */}
+              {active && (
+                <motion.span
+                  layoutId="seg-toggle-pill"
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: 999,
+                    background: '#2a7d9c',
+                    boxShadow: '0 6px 20px rgba(42,125,156,0.35)',
+                    zIndex: -1,
+                  }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                />
+              )}
+
+              {/* Carré icône (couleur adaptative) */}
+              <div
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 12,
+                  background: active ? 'rgba(255,255,255,0.18)' : '#e2e8f0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  transition: 'background 0.3s ease',
+                  position: 'relative',
+                  zIndex: 1,
+                }}
+              >
+                <Icon size={22} color={active ? '#fff' : '#64748b'} strokeWidth={2.2} />
+              </div>
+
+              {/* Texte */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.25, position: 'relative', zIndex: 1 }}>
+                <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-0.01em' }}>{opt.label}</span>
+                <span style={{ fontSize: 13, fontWeight: 500, opacity: active ? 0.92 : 0.75, marginTop: 3 }}>{opt.price}</span>
+              </div>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
