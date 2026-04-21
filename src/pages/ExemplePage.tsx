@@ -1,15 +1,15 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowRight, CheckCircle, FileText, Shield, Lock, Info, Eye,
+  ArrowRight, Shield, Lock, Home as HomeIcon, FileText, CheckCircle,
 } from 'lucide-react';
 import { buildRapportExemple, RapportViewExemple } from './RapportPage';
 import DocumentRenderer from './dashboard/DocumentRenderer';
 
 /* ═══════════════════════════════════════════════════════════════
    DONNÉES MOCKÉES — ANALYSE COMPLÈTE — Lyon 6e, 14,8/20
-   Structure conforme au schéma attendu par buildRapport()
+   Structure 100% conforme au schéma attendu par buildRapport()
 ═══════════════════════════════════════════════════════════════ */
 const MOCK_COMPLETE_PAYLOAD = {
   titre: '24 rue des Lilas, Lyon 6e — Appartement 4B',
@@ -17,32 +17,34 @@ const MOCK_COMPLETE_PAYLOAD = {
   annee_construction: '1978',
   score: 14.8,
   score_niveau: 'Bien sain',
-  resume: "Appartement T3 de 62 m² situé dans une copropriété de 42 lots globalement bien gérée. Le PV d'AG 2024 révèle une gestion financière saine, un syndic stable depuis 2019 et aucune procédure judiciaire en cours. Deux points de vigilance à surveiller avant toute offre : un ravalement de façade évoqué mais non voté, et un fonds de travaux juste au seuil légal.",
+  resume: "Appartement T3 de 62 m² situé dans une copropriété de 42 lots globalement bien gérée. Le PV d'AG 2024 révèle une gestion financière saine, un syndic stable depuis 2019 et aucune procédure judiciaire majeure. Quelques points de vigilance à surveiller avant toute offre : un ravalement évoqué non voté, un fonds de travaux juste au seuil légal, un diagnostic électrique présentant des anomalies mineures, et un contentieux copropriétaire impayés en cours de régularisation.",
   points_forts: [
     'Fonds de travaux conforme au minimum légal ALUR (5% du budget annuel)',
     'Charges mensuelles maîtrisées pour Lyon 6e (180€/mois tout compris)',
     'DPE classé C — bonne performance, pas de risque réglementaire à horizon 2034',
-    'Aucune procédure judiciaire en cours, aucun contentieux actif',
     'Syndic professionnel stable sur 3 AGs consécutives (Cabinet Immo Lyon Gestion)',
     'Toiture refaite en 2021 sous garantie décennale (35 000€)',
-    'Mise aux normes électriques des parties communes en 2022',
+    'Mise aux normes électriques des parties communes réalisée en 2022',
   ],
   points_vigilance: [
-    "Ravalement de façade évoqué en AG 2024 sans avoir été voté — si voté après votre acquisition, votre quote-part est estimée à environ 2 400€",
+    "Ravalement de façade évoqué en AG 2024 sans avoir été voté — quote-part estimée à ~2 400€ si voté après votre acquisition",
+    "Diagnostic électrique privatif : 3 anomalies non majeures (prise sans terre salle de bain, tableau vétuste)",
+    "Procédure d'impayés en cours contre un copropriétaire (lot 12) — impayés cumulés : 8 400€",
     "Fonds de travaux au seuil minimum légal (42 000€), sans marge pour imprévu",
-    "2 copropriétaires en impayés inférieurs à 6 mois — situation surveillée par le syndic",
+    "DTG obligatoire pour les copros de +15 ans mentionne 65 000€ de travaux prioritaires sur 3 ans",
   ],
-  avis_verimo: "Ce bien présente un bilan sain pour une résidence principale à Lyon 6e. La copropriété est bien tenue, les charges sont maîtrisées et aucun litige n'est en cours. Le seul risque identifié concerne un ravalement de façade évoqué en AG 2024 sans avoir été voté — si ce vote intervient après votre acquisition, vous en supporterez une part.\n\nNous vous recommandons d'en parler avec votre agent immobilier avant de formuler une offre, et de demander l'ajout d'une clause dans le compromis prévoyant que les travaux votés après la signature restent à la charge du vendeur.\n\nCe rapport est établi uniquement à partir des documents analysés et ne remplace pas l'avis d'un professionnel de l'immobilier.",
+  avis_verimo: "Ce bien présente un bilan sain pour une résidence principale à Lyon 6e. La copropriété est bien tenue, les charges maîtrisées et le syndic stable. Cependant, plusieurs points de vigilance méritent votre attention avant de formuler une offre : un ravalement évoqué non voté (charge potentielle ~2 400€), un DTG récent qui annonce 65 000€ de travaux prioritaires sur 3 ans, et une procédure d'impayés sur le lot 12 qui pèse actuellement sur la trésorerie.\n\nNous vous recommandons de demander au vendeur l'accès au PV d'AG 2025 dès sa publication, de négocier une clause spécifique dans le compromis concernant les travaux votés postérieurement, et de faire expertiser les anomalies électriques mentionnées dans le diagnostic privatif.\n\nCe rapport est établi uniquement à partir des documents analysés et ne remplace pas l'avis d'un professionnel de l'immobilier.",
   travaux: {
     realises: [
       { label: 'Réfection complète de la toiture', annee: '2021', montant_estime: 35000, justificatif: true },
       { label: 'Mise aux normes électriques parties communes', annee: '2022', montant_estime: 12000, justificatif: true },
     ],
     votes: [
-      { label: 'Mise aux normes ascenseur (norme 2018)', annee: '2024', montant_estime: 4500, charge_vendeur: true },
+      { label: 'Mise aux normes ascenseur (conformité norme 2018)', annee: '2024', montant_estime: 4500, charge_vendeur: true },
     ],
     evoques: [
-      { label: 'Ravalement de façade principale', annee: null, montant_estime: null, precision: 'Évoqué en AG 2024 mais non mis au vote. Coût global estimé entre 85 000 et 120 000€ selon premiers devis.' },
+      { label: 'Ravalement de façade principale', annee: null, montant_estime: null, precision: "Évoqué en AG 2024 mais non mis au vote. Coût global estimé entre 85 000 et 120 000€ selon premiers devis. Vote renvoyé à l'AG 2025." },
+      { label: 'Remplacement chaudière collective gaz', annee: null, montant_estime: null, precision: 'DTG 2024 identifie le remplacement de la chaudière collective comme prioritaire sous 3 ans (budget estimé : 45 000€).' },
     ],
     estimation_totale: null,
   },
@@ -51,43 +53,48 @@ const MOCK_COMPLETE_PAYLOAD = {
     charges_annuelles_lot: 2160,
     fonds_travaux: 42000,
     fonds_travaux_statut: 'conforme',
-    impayes: 4200,
+    impayes: 8400,
     type_chauffage: 'Collectif gaz',
     budgets_historique: [
-      { annee: '2024', montant: 45000 },
-      { annee: '2023', montant: 42000 },
-      { annee: '2022', montant: 41000 },
+      { annee: '2022', budget_total: 41000, fonds_travaux: 2050 },
+      { annee: '2023', budget_total: 42000, fonds_travaux: 2100 },
+      { annee: '2024', budget_total: 45000, fonds_travaux: 2250 },
     ],
   },
-  procedures: [],
-  diagnostics_resume: "Diagnostics privatifs complets et conformes. Le DPE classe le bien en C avec 114 kWh/m²/an — bonne performance. Aucune anomalie majeure sur l'électricité ou le gaz. Diagnostics communs : immeuble bien entretenu, pas d'amiante accessible dans les parties communes.",
+  procedures: [
+    { label: "Procédure d'impayés de charges", type: 'impayes', gravite: 'moderee', message: "Une procédure de recouvrement est en cours contre le copropriétaire du lot 12 pour des impayés cumulés de 8 400€. Le syndic a saisi un huissier et un plan d'apurement a été proposé. Situation suivie par la prochaine AG." },
+  ],
+  diagnostics_resume: "Diagnostics privatifs complets. Le DPE classe le bien en C (bonne performance). Le diagnostic électrique relève 3 anomalies non majeures sur le tableau et une prise de salle de bain. Les diagnostics communs sont satisfaisants : pas d'amiante accessible ni de plomb dans les parties communes.",
   diagnostics: [
     { type: 'DPE', label: 'Diagnostic de Performance Énergétique', perimetre: 'lot_privatif', localisation: 'Logement 4B', resultat: 'Classe C · 114 kWh/m²/an · GES classe D · 25 kg CO₂/m²/an', presence: 'detectee', alerte: null },
-    { type: 'ELECTRICITE', label: 'Diagnostic électrique', perimetre: 'lot_privatif', localisation: 'Logement 4B', resultat: 'Aucune anomalie majeure détectée', presence: 'detectee', alerte: null },
-    { type: 'GAZ', label: 'Diagnostic gaz', perimetre: 'lot_privatif', localisation: 'Logement 4B', resultat: 'Installation conforme', presence: 'detectee', alerte: null },
-    { type: 'AMIANTE', label: "Diagnostic Amiante Parties Privatives", perimetre: 'lot_privatif', localisation: 'Logement 4B', resultat: "Absence d'amiante accessible", presence: 'absence', alerte: null },
-    { type: 'PLOMB', label: 'CREP plomb', perimetre: 'lot_privatif', localisation: 'Logement 4B', resultat: 'Présence de plomb sous seuil réglementaire', presence: 'detectee', alerte: null },
+    { type: 'ELECTRICITE', label: 'Diagnostic électrique privatif', perimetre: 'lot_privatif', localisation: 'Logement 4B', resultat: '3 anomalies non majeures : prise salle de bain sans terre, tableau électrique vétuste, protection différentielle partielle', presence: 'detectee', alerte: '3 anomalies mineures à régulariser — non bloquantes pour la vente mais à budgéter (~600€)' },
+    { type: 'GAZ', label: 'Diagnostic gaz privatif', perimetre: 'lot_privatif', localisation: 'Logement 4B', resultat: 'Installation conforme, aucune anomalie', presence: 'detectee', alerte: null },
+    { type: 'AMIANTE', label: "Diagnostic Amiante Parties Privatives (DAPP)", perimetre: 'lot_privatif', localisation: 'Logement 4B', resultat: "Absence d'amiante accessible détectée", presence: 'absence', alerte: null },
+    { type: 'PLOMB', label: "CREP (Constat de Risque d'Exposition au Plomb)", perimetre: 'lot_privatif', localisation: 'Logement 4B', resultat: 'Présence de plomb sous seuil réglementaire — peintures anciennes couche profonde, classe 1', presence: 'detectee', alerte: null },
     { type: 'AMIANTE', label: 'DAPP parties communes', perimetre: 'parties_communes', localisation: 'Immeuble', resultat: "Absence d'amiante accessible dans les parties communes", presence: 'absence', alerte: null },
-    { type: 'ERP', label: "État des Risques et Pollutions", perimetre: 'lot_privatif', localisation: 'Lyon 6e', resultat: "Zone de sismicité 2 (faible). Aucun autre risque majeur.", presence: 'detectee', alerte: null },
+    { type: 'ERP', label: "État des Risques et Pollutions", perimetre: 'lot_privatif', localisation: 'Lyon 6e', resultat: 'Zone de sismicité 2 (faible). Aucun autre risque majeur.', presence: 'detectee', alerte: null },
   ],
   documents_analyses: [
-    { type: 'PV_AG', annee: '2024', nom: "PV Assemblée Générale 2024" },
-    { type: 'PV_AG', annee: '2023', nom: "PV Assemblée Générale 2023" },
-    { type: 'PV_AG', annee: '2022', nom: "PV Assemblée Générale 2022" },
-    { type: 'REGLEMENT_COPRO', annee: null, nom: "Règlement de copropriété" },
-    { type: 'APPEL_CHARGES', annee: '2024', nom: "Appel de charges T1 2024" },
-    { type: 'DPE', annee: '2023', nom: "Diagnostic DPE" },
-    { type: 'DIAGNOSTIC', annee: '2023', nom: "Dossier de Diagnostics Techniques" },
+    { type: 'PV_AG', annee: '2024', nom: 'PV Assemblée Générale 2024' },
+    { type: 'PV_AG', annee: '2023', nom: 'PV Assemblée Générale 2023' },
+    { type: 'PV_AG', annee: '2022', nom: 'PV Assemblée Générale 2022' },
+    { type: 'REGLEMENT_COPRO', annee: null, nom: 'Règlement de copropriété' },
+    { type: 'APPEL_CHARGES', annee: '2024', nom: 'Appel de charges T1 2024' },
+    { type: 'DPE', annee: '2023', nom: 'Diagnostic DPE' },
+    { type: 'DIAGNOSTIC', annee: '2023', nom: 'Dossier de Diagnostics Techniques (DDT)' },
     { type: 'CARNET_ENTRETIEN', annee: '2024', nom: "Carnet d'entretien de l'immeuble" },
   ],
   documents_manquants: [
     'Pré-état daté',
-    "Attestation de surface Carrez signée du vendeur",
+    'Attestation de surface Carrez signée du vendeur',
+    "Procès-verbal de l'AG 2025",
   ],
   negociation: {
     applicable: true,
     elements: [
-      { label: 'Ravalement de façade évoqué non voté', impact_estime: 2400, justification: "Si ce ravalement est voté en AG après votre acquisition, votre quote-part sera d'environ 2 400€. C'est un argument légitime pour négocier une clause dans le compromis." },
+      { label: 'Ravalement de façade évoqué non voté', impact_estime: 2400, justification: "Si ce ravalement est voté en AG après votre acquisition, votre quote-part sera d'environ 2 400€ sur la base d'un devis à 120 000€. Argument légitime pour demander une clause de prise en charge dans le compromis." },
+      { label: 'DTG — travaux prioritaires sous 3 ans', impact_estime: 1800, justification: "Le DTG 2024 chiffre 65 000€ de travaux prioritaires à voter. Votre quote-part estimée serait d'environ 1 800€ (sur la base de vos 312/10 000 tantièmes)." },
+      { label: 'Anomalies électriques privatives à régulariser', impact_estime: 600, justification: "Le diagnostic électrique relève 3 anomalies mineures (prise SDB sans terre, tableau vétuste). Coût estimé de mise en conformité : ~600€." },
     ],
   },
   vie_copropriete: {
@@ -114,18 +121,29 @@ const MOCK_COMPLETE_PAYLOAD = {
       { annee: '2022', copropietaires_presents_representes: '30 sur 42', taux_tantiemes_pct: '71%', quorum_note: null, quitus: { soumis: true, approuve: true, detail: null } },
     ],
     tendance_participation: 'Stable',
-    analyse_participation: "La participation oscille autour de 65-70% des tantièmes sur 3 ans. Bon indicateur d'implication des copropriétaires et de bonne gestion démocratique de la copropriété.",
+    analyse_participation: "La participation oscille autour de 65-70% des tantièmes sur 3 ans. Bon indicateur d'implication des copropriétaires et de gestion démocratique saine de la copropriété.",
     travaux_votes_non_realises: [],
     appels_fonds_exceptionnels: [],
     questions_diverses_notables: [
       "Demande d'amélioration de l'éclairage du parking — en cours d'étude",
-      "Proposition d'installation de bornes de recharge électrique — renvoyée à l'AG 2025",
+      "Proposition d'installation de bornes de recharge électrique — renvoyée à l'AG 2025 pour devis",
     ],
-    dtg: { present: false, etat_general: null, budget_urgent_3ans: null, budget_total_10ans: null, travaux_prioritaires: [] },
+    dtg: {
+      present: true,
+      etat_general: 'moyen',
+      budget_urgent_3ans: 65000,
+      budget_total_10ans: 180000,
+      travaux_prioritaires: [
+        'Remplacement chaudière collective gaz (45 000€)',
+        "Réfection étanchéité toiture-terrasse (12 000€)",
+        "Mise en sécurité cage d'escalier (8 000€)",
+      ],
+    },
     regles_copro: [
       { label: 'Location courte durée (Airbnb)', statut: 'sous_conditions', impact_rp: false, impact_invest: true },
-      { label: 'Animaux domestiques', statut: 'autorise', impact_rp: true, impact_invest: false },
+      { label: 'Animaux domestiques de compagnie', statut: 'autorise', impact_rp: true, impact_invest: false },
       { label: 'Chiens de catégorie 1 et 2', statut: 'interdit', impact_rp: true, impact_invest: false },
+      { label: 'Travaux modifiant la façade ou les menuiseries', statut: 'sous_conditions', impact_rp: true, impact_invest: true },
     ],
   },
   lot_achete: {
@@ -139,16 +157,17 @@ const MOCK_COMPLETE_PAYLOAD = {
     restrictions_usage: [
       "Location courte durée (Airbnb) soumise à autorisation préalable de l'AG",
       'Chiens de catégorie 1 et 2 interdits',
+      "Toute modification visible depuis l'extérieur soumise à autorisation",
     ],
     points_specifiques: [],
   },
   pre_etat_date: { present: false },
   categories: {
-    travaux: { note: 2, note_max: 5 },
-    procedures: { note: 4, note_max: 4 },
-    finances: { note: 3.5, note_max: 4 },
-    diags_privatifs: { note: 4, note_max: 4 },
-    diags_communs: { note: 1.3, note_max: 3 },
+    travaux: { note: 2.5, note_max: 5 },
+    procedures: { note: 2.5, note_max: 4 },
+    finances: { note: 3, note_max: 4 },
+    diags_privatifs: { note: 3, note_max: 4 },
+    diags_communs: { note: 2, note_max: 3 },
   },
 };
 
@@ -158,7 +177,7 @@ const MOCK_COMPLETE_PAYLOAD = {
 const MOCK_PVAG_SIMPLE = {
   document_type: 'PV_AG',
   titre: "PV d'Assemblée Générale — Résidence Les Lilas, 22 rue Mozart, Lyon 2e",
-  resume: "Assemblée Générale Ordinaire du 14 mai 2024 réunissant 28 copropriétaires sur 42 (67% des tantièmes représentés). Le syndic Cabinet Immo Lyon Gestion a été reconduit pour 3 ans. Le budget 2024-2025 a été voté à 45 000€. Deux résolutions importantes : mise aux normes de l'ascenseur approuvée (4 500€) et ravalement de façade évoqué mais renvoyé à l'AG 2025 pour devis complémentaires.",
+  resume: "Assemblée Générale Ordinaire du 14 mai 2024 réunissant 28 copropriétaires sur 42 (67% des tantièmes représentés). Le syndic Cabinet Immo Lyon Gestion a été reconduit pour 3 ans. Budget 2024-2025 voté à 45 000€. Deux résolutions importantes : mise aux normes de l'ascenseur approuvée (4 500€) et ravalement de façade évoqué mais renvoyé à l'AG 2025 pour devis complémentaires. Une procédure d'impayés contre le lot 12 est en cours.",
   date_ag: '2024-05-14',
   lieu_ag: 'Lyon 2e — Cabinet Immo Lyon Gestion',
   type_ag: 'ordinaire',
@@ -185,168 +204,524 @@ const MOCK_PVAG_SIMPLE = {
     "Proposition d'installation de bornes de recharge électrique — renvoyée à l'AG 2025",
     "Rappel des règles d'usage des parties communes",
   ],
-  procedures: [],
+  procedures: [
+    { label: 'Procédure contre le copropriétaire du lot 12', detail: "Impayés cumulés de 8 400€. Le syndic a saisi un huissier, un plan d'apurement a été proposé." },
+  ],
   points_forts: [
-    'Syndic professionnel reconduit à la majorité (quitus approuvé)',
+    'Syndic professionnel reconduit à la majorité avec quitus approuvé',
     "Quorum confortable à 67% des tantièmes — bonne participation",
     'Budget maîtrisé, en légère hausse par rapport à 2023-2024 (+7%)',
-    'Aucune procédure judiciaire mentionnée',
     "Décisions claires avec échéances précises sur l'ascenseur",
+    "Situation des impayés identifiée et traitée activement par le syndic",
   ],
   points_vigilance: [
     "Ravalement de façade évoqué sans vote — si adopté après votre acquisition, une quote-part sera à votre charge",
-    "2 copropriétaires en retard de paiement (< 6 mois) — situation surveillée par le syndic",
+    "Procédure d'impayés contre le lot 12 pour 8 400€ — pèse sur la trésorerie de la copropriété",
     "Fonds travaux reconduit au minimum légal sans effort complémentaire",
   ],
-  avis_verimo: "Ce procès-verbal reflète une assemblée saine, bien tenue, dans une copropriété sans litige. Le point principal à surveiller est le ravalement de façade évoqué mais non voté : si un vote intervient après votre acquisition, vous supporterez une part estimée à environ 2 400€ sur la base d'un devis à 120 000€.\n\nNous vous recommandons de demander l'accès au PV d'AG 2025 dès sa publication pour vérifier si le ravalement est finalement adopté. Ce document ne remplace pas l'analyse complète d'un dossier d'acquisition — les autres documents (règlement, diagnostics, état daté…) restent à examiner pour une décision éclairée.",
+  avis_verimo: "Ce procès-verbal reflète une assemblée bien tenue, dans une copropriété sans litige majeur mais pas sans points d'attention. Deux éléments méritent votre vigilance : le ravalement de façade évoqué mais non voté (si adopté après votre acquisition, votre quote-part sera d'environ 2 400€ sur la base d'un devis à 120 000€), et la procédure d'impayés contre le lot 12 qui immobilise 8 400€ de trésorerie.\n\nNous vous recommandons de demander l'accès au PV d'AG 2025 dès sa publication pour vérifier si le ravalement est finalement adopté, et de questionner le syndic sur l'avancement de la procédure contre le lot 12.\n\nCe document ne remplace pas l'analyse complète d'un dossier d'acquisition — les autres documents (règlement, diagnostics, état daté…) restent à examiner pour une décision éclairée.",
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   COMPOSANTS UI
+   HOOK — détection mobile pour cadre adaptatif
 ═══════════════════════════════════════════════════════════════ */
-function ToggleMode({ mode, onChange }: { mode: 'complete' | 'simple'; onChange: (m: 'complete' | 'simple') => void }) {
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+  return isMobile;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TOGGLE PILL SEGMENTÉ — Option A
+═══════════════════════════════════════════════════════════════ */
+function SegmentedToggle({ mode, onChange }: { mode: 'complete' | 'simple'; onChange: (m: 'complete' | 'simple') => void }) {
   return (
-    <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, padding: 6, display: 'flex', gap: 6, maxWidth: 640, margin: '0 auto 18px' }}>
-      <button
-        onClick={() => onChange('complete')}
+    <div style={{ display: 'flex', justifyContent: 'center' }}>
+      <div
+        className="seg-toggle"
         style={{
-          flex: 1, padding: '14px 18px', borderRadius: 10, border: 'none',
-          background: mode === 'complete' ? '#2a7d9c' : 'transparent',
-          color: mode === 'complete' ? '#fff' : '#64748b',
-          fontSize: 14, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+          background: '#f1f5f9',
+          borderRadius: 999,
+          padding: 6,
+          display: 'inline-flex',
+          gap: 4,
+          position: 'relative',
+          border: '1px solid #e2e8f0',
         }}
       >
-        <span>Analyse complète</span>
-        <span style={{ fontSize: 11, fontWeight: 500, opacity: mode === 'complete' ? 0.85 : 0.7 }}>19,90€ · jusqu'à 15 documents</span>
-      </button>
-      <button
-        onClick={() => onChange('simple')}
-        style={{
-          flex: 1, padding: '14px 18px', borderRadius: 10, border: 'none',
-          background: mode === 'simple' ? '#2a7d9c' : 'transparent',
-          color: mode === 'simple' ? '#fff' : '#64748b',
-          fontSize: 14, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-        }}
-      >
-        <span>Analyse simple</span>
-        <span style={{ fontSize: 11, fontWeight: 500, opacity: mode === 'simple' ? 0.85 : 0.7 }}>4,90€ · 1 document</span>
-      </button>
+        <button
+          onClick={() => onChange('complete')}
+          style={{
+            padding: '14px 28px',
+            borderRadius: 999,
+            border: 'none',
+            background: mode === 'complete' ? '#2a7d9c' : 'transparent',
+            color: mode === 'complete' ? '#fff' : '#64748b',
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            boxShadow: mode === 'complete' ? '0 4px 14px rgba(42,125,156,0.28)' : 'none',
+          }}
+        >
+          <HomeIcon size={16} />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.2 }}>
+            <span style={{ fontWeight: 700 }}>Analyse complète</span>
+            <span style={{ fontSize: 11, fontWeight: 500, opacity: mode === 'complete' ? 0.85 : 0.7 }}>
+              19,90 € · dossier complet
+            </span>
+          </div>
+        </button>
+        <button
+          onClick={() => onChange('simple')}
+          style={{
+            padding: '14px 28px',
+            borderRadius: 999,
+            border: 'none',
+            background: mode === 'simple' ? '#2a7d9c' : 'transparent',
+            color: mode === 'simple' ? '#fff' : '#64748b',
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            boxShadow: mode === 'simple' ? '0 4px 14px rgba(42,125,156,0.28)' : 'none',
+          }}
+        >
+          <FileText size={16} />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.2 }}>
+            <span style={{ fontWeight: 700 }}>Analyse simple</span>
+            <span style={{ fontSize: 11, fontWeight: 500, opacity: mode === 'simple' ? 0.85 : 0.7 }}>
+              4,90 € · un document
+            </span>
+          </div>
+        </button>
+      </div>
     </div>
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   CADRE LAPTOP MACBOOK (desktop)
+═══════════════════════════════════════════════════════════════ */
+function LaptopFrame({ children, mode }: { children: React.ReactNode; mode: 'complete' | 'simple' }) {
+  const url = mode === 'complete' ? 'verimo.fr/rapport' : 'verimo.fr/document';
+  return (
+    <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', padding: '8px 0' }}>
+      <div
+        style={{
+          background: '#0a0a0a',
+          borderRadius: '18px 18px 4px 4px',
+          padding: '18px 18px 4px',
+          position: 'relative',
+          boxShadow: '0 1px 0 #2a2a2a inset, 0 0 0 2px #111',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            top: 3,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 90,
+            height: 7,
+            background: '#000',
+            borderRadius: '0 0 7px 7px',
+          }}
+        />
+        <div style={{ background: '#f5f9fb', borderRadius: '8px 8px 0 0', overflow: 'hidden' }}>
+          <div
+            style={{
+              background: '#e8edf0',
+              padding: '10px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 14,
+              borderBottom: '1px solid #d9dfe3',
+            }}
+          >
+            <div style={{ display: 'flex', gap: 7 }}>
+              <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ff5f57' }} />
+              <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#febc2e' }} />
+              <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#28c840' }} />
+            </div>
+            <div
+              style={{
+                flex: 1,
+                background: '#fff',
+                borderRadius: 7,
+                padding: '6px 14px',
+                fontSize: 12,
+                color: '#64748b',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 7,
+                fontFamily: '-apple-system, sans-serif',
+                maxWidth: 480,
+                margin: '0 auto',
+              }}
+            >
+              <Lock size={11} />
+              {url}
+            </div>
+            <div style={{ width: 60 }} />
+          </div>
+          <div style={{ padding: '14px 18px', background: '#f5f9fb' }}>{children}</div>
+        </div>
+      </div>
+      <div
+        style={{
+          height: 14,
+          background: 'linear-gradient(180deg, #cdd2d6, #a8afb5 40%, #8a9197)',
+          borderRadius: '0 0 18px 18px',
+          position: 'relative',
+          marginBottom: -3,
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: 0,
+            transform: 'translateX(-50%)',
+            width: 130,
+            height: 7,
+            background: 'linear-gradient(180deg, #6e767c, #595f64)',
+            borderRadius: '0 0 10px 10px',
+          }}
+        />
+      </div>
+      <div
+        style={{
+          width: '86%',
+          height: 22,
+          background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.18), rgba(0,0,0,0) 70%)',
+          margin: '0 auto',
+          borderRadius: '50%',
+        }}
+      />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CADRE IPHONE (mobile)
+═══════════════════════════════════════════════════════════════ */
+function IphoneFrame({ children, mode }: { children: React.ReactNode; mode: 'complete' | 'simple' }) {
+  const title = mode === 'complete' ? 'Rapport' : 'Document';
+  return (
+    <div style={{ width: '100%', maxWidth: 390, margin: '0 auto', padding: '8px 0' }}>
+      <div
+        style={{
+          background: '#111',
+          borderRadius: 38,
+          padding: '10px 8px',
+          position: 'relative',
+          boxShadow: '0 0 0 2px #2a2a2a, 0 8px 24px rgba(0,0,0,0.2)',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            top: 14,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 100,
+            height: 26,
+            background: '#000',
+            borderRadius: 20,
+            zIndex: 2,
+          }}
+        />
+        <div
+          style={{
+            background: '#f5f9fb',
+            borderRadius: 30,
+            overflow: 'hidden',
+            paddingTop: 44,
+          }}
+        >
+          <div
+            style={{
+              padding: '0 26px 10px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              fontSize: 13,
+              fontWeight: 700,
+              color: '#0f172a',
+            }}
+          >
+            <span>9:41</span>
+            <span>{title}</span>
+            <span style={{ fontSize: 11 }}>●●●●</span>
+          </div>
+          <div style={{ padding: '6px 10px 14px' }}>{children}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BANDEAU "DONNÉES ANONYMISÉES" — centré, pill premium
+═══════════════════════════════════════════════════════════════ */
 function BandeauAnonymisation() {
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 10, background: '#fff7ed',
-      border: '1px solid #fed7aa', borderRadius: 12, padding: '12px 18px',
-      maxWidth: 1250, margin: '0 auto 14px', flexWrap: 'wrap',
-    }}>
-      <Shield size={18} style={{ color: '#ea580c', flexShrink: 0 }} />
-      <div style={{ flex: 1, minWidth: 200 }}>
-        <div style={{ fontSize: 12, fontWeight: 800, color: '#9a3412', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-          Données anonymisées
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'center',
+        padding: '0 16px',
+        marginBottom: 20,
+      }}
+    >
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 12,
+          background: '#fff7ed',
+          border: '1px solid #fed7aa',
+          borderRadius: 100,
+          padding: '10px 22px',
+          boxShadow: '0 2px 8px rgba(234,88,12,0.08)',
+        }}
+      >
+        <div
+          style={{
+            width: 30,
+            height: 30,
+            borderRadius: '50%',
+            background: '#ea580c',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <Shield size={16} color="#fff" />
         </div>
-        <div style={{ fontSize: 13, color: '#7c2d12', lineHeight: 1.55, marginTop: 2 }}>
-          Cet exemple est construit à partir d'un dossier réel — toutes les données personnelles et identifiantes ont été remplacées.
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: '#9a3412', letterSpacing: '0.08em', textTransform: 'uppercase', lineHeight: 1.2 }}>
+            Données anonymisées
+          </div>
+          <div style={{ fontSize: 12.5, color: '#7c2d12', lineHeight: 1.4, marginTop: 2 }}>
+            Dossier réel — toutes les données personnelles ont été remplacées.
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function Comparatif() {
-  const lignesSimple = [
-    'Décryptage d\'un seul document',
-    'Résumé clair + points de vigilance',
-    'Avis Verimo sur ce document',
-    'Pas de score /20 global',
-    'Idéal pour comprendre un PV, un DPE, un compromis…',
-  ];
-  const lignesComplete = [
-    'Jusqu\'à 15 documents analysés ensemble',
-    'Score /20 sur 5 catégories',
-    'Avis Verimo global et pistes de négociation',
-    'Synthèse, Copropriété, Logement, Procédures, Documents',
-    'Délai de 7 jours pour compléter votre dossier',
-  ];
-
+/* ═══════════════════════════════════════════════════════════════
+   BLOC EXPLICATIF (sans "IA", plus grand, meilleure présentation)
+═══════════════════════════════════════════════════════════════ */
+function BlocExplicatif({ mode }: { mode: 'complete' | 'simple' }) {
   return (
-    <section style={{ maxWidth: 1100, margin: '48px auto 0', padding: '0 24px' }}>
-      <div style={{ textAlign: 'center', marginBottom: 28 }}>
-        <h2 style={{ fontSize: 'clamp(22px,3vw,30px)', fontWeight: 900, color: '#0f2d3d', marginBottom: 8, letterSpacing: '-0.02em' }}>
-          Deux formules, une promesse
-        </h2>
-        <p style={{ fontSize: 14, color: '#6b8a96', maxWidth: 520, margin: '0 auto', lineHeight: 1.6 }}>
-          Choisissez selon vos besoins : une analyse ciblée sur un document, ou un décryptage global de votre dossier.
-        </p>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 18 }}>
-        <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 16, padding: '22px 24px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '4px 10px', borderRadius: 100, background: '#f1f5f9', marginBottom: 12 }}>
-            <FileText size={12} /> Analyse simple
-          </div>
-          <div style={{ fontSize: 28, fontWeight: 900, color: '#0f2d3d', marginBottom: 4 }}>4,90 €</div>
-          <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 18 }}>par document</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {lignesSimple.map((l, i) => (
-              <div key={i} style={{ display: 'flex', gap: 9, alignItems: 'flex-start' }}>
-                <CheckCircle size={15} style={{ color: '#2a7d9c', flexShrink: 0, marginTop: 2 }} />
-                <span style={{ fontSize: 13.5, color: '#334155', lineHeight: 1.55 }}>{l}</span>
-              </div>
-            ))}
-          </div>
+    <div style={{ maxWidth: 980, margin: '24px auto 0', padding: '0 16px' }}>
+      <div
+        style={{
+          background: '#fff',
+          border: '1px solid #dde9ef',
+          borderRadius: 16,
+          padding: '22px 26px',
+          display: 'flex',
+          gap: 16,
+          alignItems: 'flex-start',
+        }}
+      >
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            background: '#eff7fb',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            border: '1px solid #d0e5ef',
+          }}
+        >
+          <Lock size={20} color="#2a7d9c" />
         </div>
-
-        <div style={{ background: 'linear-gradient(160deg, #0f2d3d, #1e4a5e)', borderRadius: 16, padding: '22px 24px', color: '#fff', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: 14, right: 14, fontSize: 10, fontWeight: 800, letterSpacing: '0.1em', padding: '4px 10px', borderRadius: 100, background: '#f0a500', color: '#0f2d3d' }}>
-            RECOMMANDÉ
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
+            {mode === 'complete' ? 'Ce que vous recevez' : "À propos de l'analyse simple"}
           </div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.1em', textTransform: 'uppercase', padding: '4px 10px', borderRadius: 100, background: 'rgba(255,255,255,0.1)', marginBottom: 12 }}>
-            <Eye size={12} /> Analyse complète
-          </div>
-          <div style={{ fontSize: 28, fontWeight: 900, marginBottom: 4 }}>19,90 €</div>
-          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginBottom: 18 }}>pour votre dossier entier</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {lignesComplete.map((l, i) => (
-              <div key={i} style={{ display: 'flex', gap: 9, alignItems: 'flex-start' }}>
-                <CheckCircle size={15} style={{ color: '#7dd3fc', flexShrink: 0, marginTop: 2 }} />
-                <span style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.9)', lineHeight: 1.55 }}>{l}</span>
-              </div>
-            ))}
-          </div>
+          <p style={{ fontSize: 15, color: '#1e293b', lineHeight: 1.7, margin: 0 }}>
+            {mode === 'complete' ? (
+              <>
+                Cet exemple est identique à ce que vous recevrez pour votre propre bien. Vos documents sont décryptés par la technologie Verimo puis{' '}
+                <strong style={{ color: '#0f172a' }}>supprimés automatiquement</strong> conformément au RGPD — seul le rapport final est conservé dans votre espace.
+              </>
+            ) : (
+              <>
+                L'analyse simple décrypte un seul document à la fois (PV d'AG, DPE, compromis…). Idéale pour comprendre rapidement un document avant une signature.{' '}
+                <strong style={{ color: '#0f172a' }}>Pas de score /20</strong> — juste un décryptage clair et un avis Verimo.
+              </>
+            )}
+          </p>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   CTA FINAL — pleine largeur, immersif
+═══════════════════════════════════════════════════════════════ */
 function CTAFinal() {
   return (
-    <section style={{ maxWidth: 900, margin: '48px auto 72px', padding: '0 24px', textAlign: 'center' }}>
-      <div style={{ background: 'linear-gradient(150deg, #eef7fb, #e4f2f8 50%, #f8fafc)', border: '1px solid #e2edf3', borderRadius: 20, padding: 'clamp(32px,5vw,48px) clamp(22px,4vw,40px)' }}>
-        <h2 style={{ fontSize: 'clamp(24px,3.5vw,34px)', fontWeight: 900, color: '#0f2d3d', marginBottom: 10, letterSpacing: '-0.02em' }}>
-          Prêt à analyser votre bien ?
-        </h2>
-        <p style={{ fontSize: 15, color: '#4a6a78', maxWidth: 520, margin: '0 auto 24px', lineHeight: 1.65 }}>
-          Uploadez vos documents et recevez un rapport clair en moins de 2 minutes.
-        </p>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link
-            to="/dashboard/nouvelle-analyse"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '14px 26px', borderRadius: 12, background: '#2a7d9c', color: '#fff', fontSize: 15, fontWeight: 800, textDecoration: 'none' }}
+    <section style={{ padding: '56px 16px 72px' }}>
+      <div
+        style={{
+          width: '100%',
+          background: 'linear-gradient(135deg, #0f2d3d 0%, #1e4a5e 55%, #2a7d9c 100%)',
+          borderRadius: 24,
+          padding: 'clamp(40px,6vw,72px) clamp(24px,5vw,64px)',
+          position: 'relative',
+          overflow: 'hidden',
+          color: '#fff',
+          textAlign: 'center',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            top: '-80px',
+            right: '-80px',
+            width: 340,
+            height: 340,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(125,211,252,0.15), transparent 70%)',
+            pointerEvents: 'none',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '-100px',
+            left: '-100px',
+            width: 380,
+            height: 380,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(42,125,156,0.3), transparent 70%)',
+            pointerEvents: 'none',
+          }}
+        />
+        <div style={{ position: 'relative', zIndex: 1, maxWidth: 780, margin: '0 auto' }}>
+          <div
+            style={{
+              display: 'inline-block',
+              padding: '5px 14px',
+              borderRadius: 100,
+              background: 'rgba(125,211,252,0.15)',
+              border: '1px solid rgba(125,211,252,0.3)',
+              fontSize: 11,
+              fontWeight: 800,
+              color: '#7dd3fc',
+              letterSpacing: '0.1em',
+              marginBottom: 22,
+              textTransform: 'uppercase',
+            }}
           >
-            Analyser mon bien <ArrowRight size={16} />
-          </Link>
-          <Link
-            to="/tarifs"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '14px 26px', borderRadius: 12, background: '#fff', border: '1px solid #cbd5e1', color: '#0f2d3d', fontSize: 15, fontWeight: 700, textDecoration: 'none' }}
+            Lancez votre analyse
+          </div>
+          <h2
+            style={{
+              fontSize: 'clamp(28px,4.5vw,48px)',
+              fontWeight: 900,
+              letterSpacing: '-0.025em',
+              lineHeight: 1.1,
+              marginBottom: 18,
+            }}
           >
-            Voir les tarifs
-          </Link>
+            Prêt à analyser{' '}
+            <span style={{ color: '#7dd3fc' }}>votre bien ?</span>
+          </h2>
+          <p
+            style={{
+              fontSize: 'clamp(15px,2vw,18px)',
+              color: 'rgba(255,255,255,0.8)',
+              lineHeight: 1.65,
+              marginBottom: 34,
+              maxWidth: 580,
+              marginLeft: 'auto',
+              marginRight: 'auto',
+            }}
+          >
+            Uploadez vos documents et recevez un rapport clair en moins de 2 minutes.
+            Vos données sont supprimées automatiquement après analyse.
+          </p>
+          <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link
+              to="/dashboard/nouvelle-analyse"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '16px 32px',
+                borderRadius: 14,
+                background: '#fff',
+                color: '#0f2d3d',
+                fontSize: 16,
+                fontWeight: 800,
+                textDecoration: 'none',
+                boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
+                transition: 'transform 0.15s',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-2px)')}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
+            >
+              Analyser mon bien <ArrowRight size={18} />
+            </Link>
+            <Link
+              to="/tarifs"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '16px 32px',
+                borderRadius: 14,
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.25)',
+                color: '#fff',
+                fontSize: 16,
+                fontWeight: 700,
+                textDecoration: 'none',
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.15)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
+            >
+              Voir les tarifs
+            </Link>
+          </div>
+          <div style={{ display: 'flex', gap: 24, justifyContent: 'center', marginTop: 32, flexWrap: 'wrap' }}>
+            {[
+              'Résultat en 2 minutes',
+              'RGPD — documents supprimés',
+              'Sans abonnement',
+            ].map((t, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
+                <CheckCircle size={14} style={{ color: '#7dd3fc' }} />
+                <span>{t}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </section>
@@ -361,8 +736,8 @@ export default function ExemplePage() {
   const paramMode = searchParams.get('mode');
   const initial: 'complete' | 'simple' = paramMode === 'simple' ? 'simple' : 'complete';
   const [mode, setMode] = useState<'complete' | 'simple'>(initial);
+  const isMobile = useIsMobile();
 
-  // Construire le rapport complet une seule fois (cache par useMemo)
   const rapportComplet = useMemo(() => {
     return buildRapportExemple(MOCK_COMPLETE_PAYLOAD as Record<string, unknown>, {
       id: 'exemple-lyon-6e',
@@ -370,13 +745,13 @@ export default function ExemplePage() {
       profil: 'rp',
       created_at: '2026-04-03T10:00:00Z',
       document_names: [
-        "PV Assemblée Générale 2024",
-        "PV Assemblée Générale 2023",
-        "PV Assemblée Générale 2022",
-        "Règlement de copropriété",
-        "Appel de charges T1 2024",
-        "Diagnostic DPE",
-        "Dossier de Diagnostics Techniques",
+        'PV Assemblée Générale 2024',
+        'PV Assemblée Générale 2023',
+        'PV Assemblée Générale 2022',
+        'Règlement de copropriété',
+        'Appel de charges T1 2024',
+        'Diagnostic DPE',
+        'Dossier de Diagnostics Techniques',
         "Carnet d'entretien de l'immeuble",
       ],
       regeneration_deadline: null,
@@ -391,9 +766,18 @@ export default function ExemplePage() {
     _profil: 'rp',
   }), []);
 
+  const Frame = isMobile ? IphoneFrame : LaptopFrame;
+
+  const renderContenu = () => {
+    if (mode === 'complete') {
+      return <RapportViewExemple rapport={rapportComplet} defaultTab="synthese" />;
+    }
+    return <DocumentRenderer result={docSimpleResult as unknown as Record<string, unknown>} />;
+  };
+
   return (
     <main style={{ background: '#f4f7f9', fontFamily: "'DM Sans', system-ui, sans-serif", paddingTop: 72, minHeight: '100vh' }}>
-      {/* ── HERO ───────────────────────────────────────────── */}
+      {/* HERO */}
       <section style={{ background: 'linear-gradient(150deg, #eef7fb, #e4f2f8 50%, #f8fafc)', padding: '52px 24px 40px', textAlign: 'center', borderBottom: '1px solid #e2edf3' }}>
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -430,50 +814,35 @@ export default function ExemplePage() {
         </motion.p>
       </section>
 
-      {/* ── TOGGLE ─────────────────────────────────────────── */}
-      <section style={{ padding: '28px 16px 0' }}>
-        <ToggleMode mode={mode} onChange={setMode} />
+      {/* TOGGLE */}
+      <section style={{ padding: '32px 16px 0' }}>
+        <SegmentedToggle mode={mode} onChange={setMode} />
       </section>
 
-      {/* ── BANDEAU ANONYMISATION ──────────────────────────── */}
-      <section style={{ padding: '0 16px' }}>
+      {/* BANDEAU */}
+      <section style={{ padding: '28px 0 0' }}>
         <BandeauAnonymisation />
       </section>
 
-      {/* ── APERÇU RAPPORT ─────────────────────────────────── */}
-      <section style={{ padding: '0 16px 40px' }}>
-        <div style={{ maxWidth: 1250, margin: '0 auto', background: '#fff', borderRadius: 18, border: '1px solid #e2edf3', padding: '14px 18px', position: 'relative' }}>
-          {/* Mini-bandeau "Démo" */}
-          <div style={{ position: 'absolute', top: 14, right: 14, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 100, background: '#f0f7fb', color: '#1a5e78', fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', border: '1px solid #d0e5ef', zIndex: 2 }}>
-            <Info size={10} /> DÉMO
-          </div>
-
-          {mode === 'complete' ? (
-            <RapportViewExemple rapport={rapportComplet} defaultTab="synthese" />
-          ) : (
-            <div style={{ padding: '12px 0' }}>
-              <DocumentRenderer result={docSimpleResult as unknown as Record<string, unknown>} />
-            </div>
-          )}
-        </div>
-
-        {/* Note explicative sous l'aperçu */}
-        <div style={{ maxWidth: 900, margin: '18px auto 0', padding: '12px 20px', background: '#f0f7fb', border: '1px solid #d0e5ef', borderRadius: 12, fontSize: 13, color: '#1a5e78', lineHeight: 1.6, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-          <Lock size={15} style={{ flexShrink: 0, marginTop: 2 }} />
-          <div>
-            {mode === 'complete' ? (
-              <>Cet exemple est identique à ce que vous recevrez pour votre propre bien. Vos documents sont analysés par IA puis <strong>supprimés automatiquement</strong> conformément au RGPD — seul le rapport JSON est conservé.</>
-            ) : (
-              <>L'analyse simple décrypte un seul document à la fois. Idéale pour comprendre un PV d'AG avant la signature, un DPE, ou un compromis. <strong>Pas de score /20</strong> — juste un décryptage clair.</>
-            )}
-          </div>
-        </div>
+      {/* APERÇU dans cadre */}
+      <section style={{ padding: '0 16px 8px' }}>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={mode + (isMobile ? '-m' : '-d')}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.35 }}
+          >
+            <Frame mode={mode}>{renderContenu()}</Frame>
+          </motion.div>
+        </AnimatePresence>
       </section>
 
-      {/* ── COMPARATIF ─────────────────────────────────────── */}
-      <Comparatif />
+      {/* EXPLICATIF */}
+      <BlocExplicatif mode={mode} />
 
-      {/* ── CTA FINAL ──────────────────────────────────────── */}
+      {/* CTA FINAL */}
       <CTAFinal />
     </main>
   );
