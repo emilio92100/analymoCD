@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useSearchParams } from 'react-router-dom';
 import { fetchAnalyseById, fetchAnalyseByShareToken, getOrCreateShareToken } from '../lib/analyses';
 import { lancerAnalyseEdge } from '../lib/analyse-client';
@@ -103,12 +104,9 @@ function AccordionSection({
   badge?: string; defaultOpen?: boolean; tooltip?: string; children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen ?? true);
-  const [showTooltip, setShowTooltip] = useState(false);
   React.useEffect(() => { if (defaultOpen !== undefined) setOpen(defaultOpen); }, [defaultOpen]);
   // Synchroniser avec defaultOpen quand il change (ex: bouton Tout déplier/replier)
   React.useEffect(() => { if (defaultOpen !== undefined) setOpen(defaultOpen); }, [defaultOpen]);
-  const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number } | null>(null);
-  const tooltipBtnRef = useRef<HTMLDivElement>(null);
   const dotColor = status === 'alert' ? '#ef4444' : status === 'warning' ? '#f97316' : status === 'ok' ? '#22c55e' : '#94a3b8';
   const iconBg = status === 'alert' ? '#fef2f2' : status === 'warning' ? '#fff7ed' : status === 'ok' ? '#f0fdf4' : '#f8fafc';
   const badgeStyle = status === 'alert'
@@ -129,18 +127,9 @@ function AccordionSection({
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 15, fontWeight: 500, color: '#0f172a' }}>{title}</span>
             {tooltip && (
-              <div style={{ position: 'relative', display: 'inline-flex' }}
-                onMouseEnter={() => { if (tooltipBtnRef.current) { const r = tooltipBtnRef.current.getBoundingClientRect(); setTooltipPos({ top: r.bottom + 6, left: Math.min(r.left, window.innerWidth - 320) }); } setShowTooltip(true); }}
-                onMouseLeave={() => { setShowTooltip(false); setTooltipPos(null); }}
+              <div style={{ display: 'inline-flex' }}
                 onClick={e => e.stopPropagation()}>
-<TooltipBtn text={tooltip} />
-                {showTooltip && tooltipPos && (
-                  <div style={{ position: 'fixed', top: tooltipPos.top, left: tooltipPos.left, width: 300, background: '#0f172a', borderRadius: 10, padding: '12px 14px', fontSize: 12, color: '#fff', lineHeight: 1.7, zIndex: 9999, boxShadow: '0 8px 24px rgba(0,0,0,0.3)', pointerEvents: 'none' }}>
-                    {tooltip.split('|').map((part, i) => (
-                      <div key={i} style={{ marginBottom: i < tooltip.split('|').length - 1 ? 8 : 0, paddingBottom: i < tooltip.split('|').length - 1 ? 8 : 0, borderBottom: i < tooltip.split('|').length - 1 ? '1px solid rgba(255,255,255,0.1)' : 'none' }}>{part.trim()}</div>
-                    ))}
-                  </div>
-                )}
+                <TooltipBtn text={tooltip} />
               </div>
             )}
           </div>
@@ -652,7 +641,6 @@ function ResumeBlock({ resume }: { resume: string }) {
    ONGLET SYNTHÈSE
 ══════════════════════════════════ */
 function TabSynthese({ rapport }: { rapport: RapportData }) {
-  const [tooltip, setTooltip] = useState<string | null>(null);
   const docsIgnores = (rapport as Record<string, unknown>).documents_ignores as string[] | undefined;
   const avertissement = (rapport as Record<string, unknown>).avertissement_docs as string | undefined;
   const isComplete = rapport.type === 'complete';
@@ -752,7 +740,6 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
                 const pct = Math.round((c.note / c.note_max) * 100);
                 const color = isZero ? '#94a3b8' : getCatColor(pct);
                 const bg = isZero ? '#f8fafc' : getCatBg(pct);
-                const tooltipKey = `${key}`;
                 return (
                   <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ width: 34, height: 34, borderRadius: 8, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>{catIcons[key] || '📊'}</div>
@@ -761,16 +748,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ fontSize: 15, color: '#0f172a' }}>{catLabels[key] || key}</span>
                           {isZero && (
-                            <div style={{ position: 'relative', display: 'inline-flex' }}
-                              onMouseEnter={() => setTooltip(tooltipKey)}
-                              onMouseLeave={() => setTooltip(null)}>
-                              <div style={{ width: 15, height: 15, borderRadius: '50%', background: '#f1f5f9', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>?</div>
-                              {tooltip === tooltipKey && (
-                                <div style={{ position: 'absolute', left: 22, top: -8, width: 260, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 11.5, color: '#fff', lineHeight: 1.7, zIndex: 100, boxShadow: '0 8px 24px rgba(0,0,0,0.2)', animation: 'fadeUp 0.15s ease' }}>
-                                  Cette note est nulle car aucun document pertinent n'a été détecté. Complétez votre dossier dans les 7 jours pour améliorer votre score.
-                                </div>
-                              )}
-                            </div>
+                            <TooltipBtn text="Cette note est nulle car aucun document pertinent n'a été détecté. Complétez votre dossier dans les 7 jours pour améliorer votre score." />
                           )}
                         </div>
                         <span style={{ fontSize: 14, fontWeight: 600, color }}>{c.note} pt sur {c.note_max}</span>
@@ -967,40 +945,137 @@ function TooltipBtn({ text, white = false }: { text: string; white?: boolean }) 
   const [pos, setPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const ref = useRef<HTMLSpanElement>(null);
 
+  const computePos = () => {
+    if (!ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    const tooltipWidth = 270;
+    const margin = 8;
+    // Positionnement horizontal : aligné à gauche du ?, mais jamais hors écran
+    let left = r.left;
+    if (left + tooltipWidth + margin > window.innerWidth) {
+      left = window.innerWidth - tooltipWidth - margin;
+    }
+    if (left < margin) left = margin;
+    // Positionnement vertical : sous le ? si assez de place, sinon au-dessus
+    const estimatedHeight = 120;
+    let top = r.bottom + 6;
+    if (top + estimatedHeight > window.innerHeight && r.top > estimatedHeight) {
+      top = r.top - estimatedHeight - 6;
+    }
+    setPos({ top, left });
+  };
+
   const show = () => {
     const isMob = window.innerWidth <= 640;
     setMobile(isMob);
-    if (!isMob && ref.current) {
-      const r = ref.current.getBoundingClientRect();
-      setPos({ top: r.bottom + 6, left: Math.min(r.left, window.innerWidth - 290) });
-    }
+    if (!isMob) computePos();
     setVisible(true);
   };
 
   const hide = () => setVisible(false);
 
+  // Recalcule la position si scroll/resize pendant l'affichage (desktop)
+  useEffect(() => {
+    if (!visible || mobile) return;
+    const handler = () => computePos();
+    window.addEventListener('scroll', handler, true);
+    window.addEventListener('resize', handler);
+    return () => {
+      window.removeEventListener('scroll', handler, true);
+      window.removeEventListener('resize', handler);
+    };
+  }, [visible, mobile]);
+
+  // Rendu du tooltip via portal pour échapper à tout clipping parent (overflow:hidden, z-index, etc.)
+  const tooltipNode = visible && !mobile ? (
+    <span
+      className="tooltip-bubble"
+      style={{
+        position: 'fixed',
+        top: pos.top,
+        left: pos.left,
+        width: 270,
+        background: '#0f172a',
+        borderRadius: 10,
+        padding: '10px 13px',
+        fontSize: 12,
+        color: '#fff',
+        lineHeight: 1.6,
+        zIndex: 2147483647, // Niveau max pour passer par-dessus tout
+        pointerEvents: 'none',
+        whiteSpace: 'normal',
+        fontWeight: 400,
+        boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+      }}
+    >
+      {text}
+    </span>
+  ) : null;
+
+  const mobileNode = visible && mobile ? (
+    <div
+      onClick={hide}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 2147483647,
+        background: 'rgba(0,0,0,0.4)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '0 24px',
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: '#0f172a',
+          borderRadius: 14,
+          padding: '16px 18px',
+          fontSize: 14,
+          color: '#fff',
+          lineHeight: 1.7,
+          maxWidth: 340,
+          width: '100%',
+          fontWeight: 400,
+        }}
+      >
+        <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.08em' }}>INFORMATION</span>
+          <span style={{ fontSize: 18, color: 'rgba(255,255,255,0.4)', cursor: 'pointer', lineHeight: 1 }} onClick={hide}>✕</span>
+        </div>
+        {text}
+      </div>
+    </div>
+  ) : null;
+
   return (
     <>
-      <span ref={ref}
-        onMouseEnter={show} onMouseLeave={hide}
+      <span
+        ref={ref}
+        onMouseEnter={show}
+        onMouseLeave={hide}
         onClick={e => { e.stopPropagation(); visible ? hide() : show(); }}
-        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: white ? 'rgba(255,255,255,0.25)' : '#f1f5f9', border: white ? 'none' : '1px solid #e2e8f0', fontSize: 10, color: white ? '#fff' : '#94a3b8', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 16,
+          height: 16,
+          borderRadius: '50%',
+          background: white ? 'rgba(255,255,255,0.25)' : '#f1f5f9',
+          border: white ? 'none' : '1px solid #e2e8f0',
+          fontSize: 10,
+          color: white ? '#fff' : '#94a3b8',
+          fontWeight: 700,
+          cursor: 'pointer',
+          flexShrink: 0,
+        }}
+      >
         ?
       </span>
-      {visible && mobile && (
-        <div onClick={hide} style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px' }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#0f172a', borderRadius: 14, padding: '16px 18px', fontSize: 14, color: '#fff', lineHeight: 1.7, maxWidth: 340, width: '100%', fontWeight: 400 }}>
-            <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.08em' }}>INFORMATION</span>
-              <span style={{ fontSize: 18, color: 'rgba(255,255,255,0.4)', cursor: 'pointer', lineHeight: 1 }} onClick={hide}>✕</span>
-            </div>
-            {text}
-          </div>
-        </div>
-      )}
-      {visible && !mobile && (
-        <span className="tooltip-bubble" style={{ position: 'fixed', top: pos.top, left: pos.left, width: 270, background: '#0f172a', borderRadius: 10, padding: '10px 13px', fontSize: 12, color: '#fff', lineHeight: 1.6, zIndex: 9999, pointerEvents: 'none', whiteSpace: 'normal', fontWeight: 400 }}>{text}</span>
-      )}
+      {typeof document !== 'undefined' && tooltipNode && createPortal(tooltipNode, document.body)}
+      {typeof document !== 'undefined' && mobileNode && createPortal(mobileNode, document.body)}
     </>
   );
 }
@@ -2905,7 +2980,6 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
   const [progress, setProgress] = useState<AnalyseProgress | null>(null);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tooltipId, setTooltipId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const autoCloseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -2991,17 +3065,9 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
 
   const progressPercent = progress?.percent || 0;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const TooltipBubble = ({ id, text }: { id: string; text: string }) => (
-    <div style={{ position: 'relative', display: 'inline-flex' }}
-      onMouseEnter={() => setTooltipId(id)} onMouseLeave={() => setTooltipId(null)}>
-      <div style={{ width: 15, height: 15, borderRadius: '50%', background: '#f1f5f9', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help', fontSize: 9, color: '#94a3b8', fontWeight: 700 }}>?</div>
-      {tooltipId === id && (
-        <div style={{ position: 'absolute', left: 20, top: -6, width: 220, background: '#0f172a', borderRadius: 8, padding: '8px 11px', fontSize: 11, color: '#fff', lineHeight: 1.6, zIndex: 100, boxShadow: '0 6px 20px rgba(0,0,0,0.25)' }}>
-          {text}
-        </div>
-      )}
-    </div>
+  // Utilise le TooltipBtn global — pas besoin d'id ni d'état local
+  const TooltipBubble = ({ text }: { id?: string; text: string }) => (
+    <TooltipBtn text={text} />
   );
 
   return (
