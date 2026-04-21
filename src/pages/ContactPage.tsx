@@ -44,7 +44,7 @@ export default function ContactPage() {
               style={{ position: 'absolute', bottom: -3, left: 0, right: 0, height: 4, background: 'rgba(42,125,156,0.25)', borderRadius: 4, transformOrigin: 'left', display: 'block' }} />
           </span>
         </motion.h1>
-        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: isLowPerf() ? 0.06 : 0.2 }} style={{ fontSize: 17, color: '#6b8a96', maxWidth: 700, margin: '0 auto', lineHeight: 1.7, whiteSpace: 'nowrap' }}>
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: isLowPerf() ? 0.06 : 0.2 }} style={{ fontSize: 'clamp(15px, 2.2vw, 17px)', color: '#6b8a96', maxWidth: 700, margin: '0 auto', lineHeight: 1.6, padding: '0 8px' }}>
           Une question, une demande pro, ou simplement envie d'en savoir plus — écrivez-nous.
         </motion.p>
       </section>
