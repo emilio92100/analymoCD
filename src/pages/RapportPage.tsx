@@ -1044,12 +1044,11 @@ function KpiBand({ items }: { items: { label: string; value: string; sub?: strin
   );
 }
 
-function SyndicBand({ syndic, nbLots, nbBatiments }: { syndic: Record<string, unknown> | null; nbLots: number | null; nbBatiments: number | null }) {
+function SyndicBand({ syndic }: { syndic: Record<string, unknown> | null }) {
   if (!syndic?.nom) return null;
-  const finMandat = safeStr(syndic.fin_mandat);
   const gestionnaire = safeStr(syndic.gestionnaire);
+  const gestionnaireFonction = safeStr(syndic.gestionnaire_fonction);
   const type = safeStr(syndic.type);
-  const tensions = syndic.tensions_detectees === true;
 
   // ⭐ Session 4 — Nouveaux champs statut syndic multi-PV
   const statut = safeStr(syndic.statut);
@@ -1107,10 +1106,15 @@ function SyndicBand({ syndic, nbLots, nbBatiments }: { syndic: Record<string, un
     return null;
   })();
 
+  // Libellé gestionnaire : "Fonction : Nom" ou "Gestionnaire : Nom" par défaut
+  const gestionnaireLabel = gestionnaire
+    ? (gestionnaireFonction ? `${gestionnaireFonction} : ${gestionnaire}` : `Gestionnaire : ${gestionnaire}`)
+    : null;
+
   return (
-    <div className="syndic-band" style={{ background: '#fff', border: '0.5px solid #edf2f7', borderRadius: 14, padding: '16px 20px', marginBottom: 20 }}>
+    <div className="syndic-band" style={{ background: '#fff', border: '0.5px solid #edf2f7', borderRadius: 14, padding: '16px 20px' }}>
       {/* Identité syndic */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: statutDisplay ? 14 : 0 }}>
         <div style={{ width: 42, height: 42, borderRadius: 10, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 500, color: '#1e40af', flexShrink: 0 }}>
           {safeStr(syndic.nom)?.substring(0, 2).toUpperCase() ?? 'SY'}
         </div>
@@ -1118,14 +1122,14 @@ function SyndicBand({ syndic, nbLots, nbBatiments }: { syndic: Record<string, un
           <div style={{ fontSize: 15, fontWeight: 600, color: '#0f172a' }}>{safeStr(syndic.nom)}</div>
           <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {type && <span>🏢 {type === 'professionnel' ? 'Cabinet professionnel' : 'Syndic bénévole'}</span>}
-            {gestionnaire && <span>👤 {gestionnaire}</span>}
+            {gestionnaireLabel && <span>👤 {gestionnaireLabel}</span>}
           </div>
         </div>
       </div>
 
       {/* ⭐ Session 4 — Bloc statut syndic intelligent (affiché uniquement si info pertinente) */}
       {statutDisplay && (
-        <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 10, background: statutDisplay.bg, border: `1px solid ${statutDisplay.border}` }}>
+        <div style={{ padding: '12px 14px', borderRadius: 10, background: statutDisplay.bg, border: `1px solid ${statutDisplay.border}` }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
             <span style={{ fontSize: 18, flexShrink: 0, lineHeight: 1.2 }}>{statutDisplay.icon}</span>
             <div style={{ flex: 1 }}>
@@ -1148,20 +1152,6 @@ function SyndicBand({ syndic, nbLots, nbBatiments }: { syndic: Record<string, un
               )}
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Stats grille */}
-      <div className="syndic-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0, borderTop: '1px solid #f1f5f9', paddingTop: 12 }}>
-        {nbLots && <div style={{ textAlign: 'center', padding: '4px 8px' }}><div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>Lots</div><div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>{nbLots}</div></div>}
-        {nbBatiments && <div style={{ textAlign: 'center', padding: '4px 8px', borderLeft: '1px solid #f1f5f9' }}><div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>Bâtiments</div><div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>{nbBatiments}</div></div>}
-        {finMandat && <div style={{ textAlign: 'center', padding: '4px 8px', borderLeft: '1px solid #f1f5f9' }}><div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>Fin mandat</div><div style={{ fontSize: 13, fontWeight: 500, color: '#a16207' }}>{finMandat}</div></div>}
-        <div style={{ textAlign: 'center', padding: '4px 8px', borderLeft: '1px solid #f1f5f9' }}><div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 2 }}>Tensions</div><div style={{ fontSize: 13, fontWeight: 500, color: tensions ? '#dc2626' : '#16a34a' }}>{tensions ? '⚠ Oui' : '✓ Non'}</div></div>
-      </div>
-      {/* Alerte tensions ou fin mandat */}
-      {(tensions || (finMandat && new Date(finMandat) < new Date(Date.now() + 180 * 24 * 60 * 60 * 1000))) && (
-        <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: tensions ? '#fef2f2' : '#fffbeb', border: `1px solid ${tensions ? '#fecaca' : '#fde68a'}`, fontSize: 13, color: tensions ? '#991b1b' : '#92400e', lineHeight: 1.55 }}>
-          {tensions ? '⚠ Des tensions ont été détectées au sein de la copropriété — vérifiez les détails dans les PV d\'AG.' : `⏳ Le mandat du syndic arrive à échéance le ${finMandat} — une AG de renouvellement sera nécessaire.`}
         </div>
       )}
     </div>
@@ -1236,10 +1226,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#0f2d3d', color: '#fff', fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 99, letterSpacing: '0.06em' }}>🏢 VUE D'ENSEMBLE</span>
       </div>
 
-      {/* Syndic band */}
-      <SyndicBand syndic={syndic as Record<string, unknown> | null} nbLots={nbLotsTotal} nbBatiments={nbBatiments} />
-
-      {/* KPIs */}
+      {/* KPIs — directement après le bandeau (SyndicBand retiré, déplacé dans accordéon Vie de la copro) */}
       {kpiItems.length > 0 && <KpiBand items={kpiItems} />}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
@@ -1254,6 +1241,9 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         defaultOpen={allOpen}
         status={syndic?.tensions_detectees ? 'warning' : 'neutral'}
         badge={participation.length > 0 ? `${participation.length} AG analysée${participation.length > 1 ? 's' : ''}` : 'Non disponible'}>
+
+        {/* Carte Syndic (déplacée ici — tout ce qui concerne le syndic au même endroit) */}
+        <SyndicBand syndic={syndic as Record<string, unknown> | null} />
 
         {/* Alerte tensions */}
         {syndic?.tensions_detectees && syndic.tensions_detail && (
