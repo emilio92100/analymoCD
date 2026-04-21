@@ -8,6 +8,7 @@ import {
   ShieldCheck, Trash2,
   Download, Lock, Eye, ChevronDown, Briefcase,
 } from "lucide-react";
+import { useSEO } from "../hooks/useSEO";
 
 // Détection iOS Safari — animations 3D et boucles infinies désactivées
 const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
@@ -125,6 +126,12 @@ function SectionTitle({ label, title, accent, sub }: { label: string; title: str
 }
 
 export default function HomePage() {
+  useSEO({
+    title: 'Verimo — Vos documents décryptés, votre décision éclairée',
+    description: "Verimo décrypte vos documents immobiliers (PV d'AG, règlement de copropriété, diagnostics) en quelques secondes. Score /20, travaux à prévoir, pistes de négociation avant de signer.",
+    canonical: '/',
+  });
+
   return (
     <div className="bg-white text-[#0f172a] antialiased overflow-x-hidden" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <HeroSection />
