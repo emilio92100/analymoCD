@@ -34,6 +34,51 @@ body { background-color: var(--bg-primary); color: var(--text-primary); font-fam
     transform: translateZ(0);
     -webkit-transform: translateZ(0);
   }
+
+  /* ═══════════════════════════════════════════════════════════
+     RESPONSIVE KPI — Synthèse & KpiBand
+     Bascule vers la version mobile "liste compacte" (au lieu de l'écrasement 5-col)
+  ═══════════════════════════════════════════════════════════ */
+  .kpi-desktop,
+  .kpi-synth-desktop {
+    display: none !important;
+  }
+  .kpi-mobile,
+  .kpi-synth-mobile {
+    display: flex !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     RESPONSIVE Toggle ExemplePage — empilé sur mobile
+  ═══════════════════════════════════════════════════════════ */
+  .seg-toggle {
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 360px !important;
+    gap: 4px !important;
+    padding: 6px !important;
+  }
+  .seg-toggle button {
+    min-width: 0 !important;
+    width: 100% !important;
+    padding: 14px 20px !important;
+    justify-content: flex-start !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     RESPONSIVE SyndicBand — stats grille 2x2 sur mobile
+  ═══════════════════════════════════════════════════════════ */
+  .syndic-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+  .syndic-stats > div {
+    border-left: none !important;
+    border-top: 1px solid #f1f5f9;
+  }
+  .syndic-stats > div:nth-child(-n+2) {
+    border-top: none;
+  }
 }
 
 /* iOS Safari : désactiver backdrop-blur partout sur mobile */
