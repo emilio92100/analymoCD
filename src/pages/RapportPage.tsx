@@ -1314,6 +1314,7 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
     questions_diverses_notables?: unknown[]; dtg?: DtgT; regles_copro?: RegleT[];
     carnet_entretien?: CarnetEntretienT;
     fiche_synthetique?: FicheSyntheticT;
+    modificatifs_rcp?: ModificatifRcpT[];
   };
 
   const vie = rapport.vie_copropriete as VieT | null;
