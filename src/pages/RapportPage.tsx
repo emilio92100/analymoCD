@@ -737,9 +737,19 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
               {Object.entries(categories).map(([key, cat]) => {
                 const c = cat as { note: number; note_max: number };
                 const isZero = c.note === 0;
+                // Garde-fou : detecter les "faux 0" ou le scoring est visiblement en contradiction avec les donnees extraites
+                const diagsPrivatifsPresent = rapport.diagnostics && rapport.diagnostics.some(
+                  (d: Record<string, unknown>) => d.perimetre === 'lot_privatif'
+                );
+                const diagsCommunsPresent = rapport.diagnostics && rapport.diagnostics.some(
+                  (d: Record<string, unknown>) => d.perimetre === 'parties_communes'
+                );
+                const isFauxZero =
+                  (key === 'diags_privatifs' && isZero && diagsPrivatifsPresent) ||
+                  (key === 'diags_communs' && isZero && diagsCommunsPresent);
                 const pct = Math.round((c.note / c.note_max) * 100);
-                const color = isZero ? '#94a3b8' : getCatColor(pct);
-                const bg = isZero ? '#f8fafc' : getCatBg(pct);
+                const color = isFauxZero ? '#64748b' : (isZero ? '#94a3b8' : getCatColor(pct));
+                const bg = isFauxZero ? '#f1f5f9' : (isZero ? '#f8fafc' : getCatBg(pct));
                 return (
                   <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ width: 34, height: 34, borderRadius: 8, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>{catIcons[key] || '📊'}</div>
@@ -747,14 +757,21 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ fontSize: 15, color: '#0f172a' }}>{catLabels[key] || key}</span>
-                          {isZero && (
+                          {isFauxZero && (
+                            <TooltipBtn text="Les diagnostics ont bien été détectés dans vos documents. La note n'a pas été calculée automatiquement — consultez le détail dans l'onglet Logement." />
+                          )}
+                          {isZero && !isFauxZero && (
                             <TooltipBtn text="Cette note est nulle car aucun document pertinent n'a été détecté. Complétez votre dossier dans les 7 jours pour améliorer votre score." />
                           )}
                         </div>
-                        <span style={{ fontSize: 14, fontWeight: 600, color }}>{c.note} pt sur {c.note_max}</span>
+                        {isFauxZero ? (
+                          <span style={{ fontSize: 13, fontWeight: 500, color: '#64748b', fontStyle: 'italic' }}>Non évalué</span>
+                        ) : (
+                          <span style={{ fontSize: 14, fontWeight: 600, color }}>{c.note} pt sur {c.note_max}</span>
+                        )}
                       </div>
                       <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99 }}>
-                        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99 }} />
+                        <div style={{ height: '100%', width: `${isFauxZero ? 0 : pct}%`, background: color, borderRadius: 99 }} />
                       </div>
                     </div>
                   </div>
@@ -2293,7 +2310,7 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
 
       {/* ── FINANCES DU LOT ── */}
       <AccordionSection
-        title="Finances de votre lot" sub="Charges · taxe foncière · impayés" icon="💶"
+        title="Finances de votre lot" sub="Charges · impayés · historique" icon="💶"
         status={lot?.impayes_detectes ? 'alert' : 'neutral'}
         badge={lot?.impayes_detectes ? 'Impayés détectés' : 'Informatif'}
         defaultOpen={allOpen}>
@@ -2349,7 +2366,7 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
 
         {chargesLotNum === 0 && !taxeAnnuelle && !lot?.impayes_detectes && (
           <div style={{ padding: '20px', textAlign: 'center' }}>
-            <p style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Uploadez un appel de charges et/ou votre taxe foncière pour obtenir ces informations.</p>
+            <p style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Uploadez un appel de charges ou un pré-état daté pour obtenir ces informations.</p>
           </div>
         )}
       </AccordionSection>
