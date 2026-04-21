@@ -39,6 +39,186 @@ function parseJson<T>(raw: string): T | null {
   }
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// RECALCUL DETERMINISTE DES NOTES PAR CATEGORIE
+// ══════════════════════════════════════════════════════════════════════
+// Objectif : ne plus dependre du LLM pour les notes — les calculer a partir
+// des donnees extraites. Garantit un scoring coherent et reproductible.
+// ══════════════════════════════════════════════════════════════════════
+interface DiagItem { type?: string; perimetre?: string; resultat?: string; presence?: string; alerte?: string | null; label?: string }
+interface TravauxItem { label?: string; montant_estime?: number | null; charge_vendeur?: boolean }
+interface ProcedureItem { label?: string; type?: string; gravite?: string; message?: string }
+interface RapportShape {
+  score?: number;
+  annee_construction?: string | number | null;
+  type_bien?: string;
+  profil?: string;
+  diagnostics?: DiagItem[];
+  travaux?: { realises?: TravauxItem[]; votes?: TravauxItem[]; evoques?: TravauxItem[]; estimation_totale?: number | null };
+  procedures?: ProcedureItem[];
+  finances?: {
+    budget_total_copro?: number | null;
+    charges_annuelles_lot?: number | null;
+    fonds_travaux?: number | null;
+    fonds_travaux_statut?: string;
+    impayes?: number | null;
+  };
+  vie_copropriete?: {
+    dtg?: { present?: boolean; etat_general?: string; budget_urgent_3ans?: number | null };
+    syndic?: { statut?: string };
+    participation_ag?: Array<{ quitus?: { soumis?: boolean; approuve?: boolean } }>;
+  };
+  pre_etat_date?: { present?: boolean; impayes_vendeur?: number };
+  categories?: Record<string, { note: number; note_max: number }>;
+}
+
+function clamp(n: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, n));
+}
+
+function recalculerCategories(rapport: RapportShape, profil: string): RapportShape {
+  const diagnostics = rapport.diagnostics || [];
+  const diagsPrivatifs = diagnostics.filter(d => d.perimetre === 'lot_privatif');
+  const diagsCommuns = diagnostics.filter(d => d.perimetre === 'parties_communes');
+
+  const anneeNum = rapport.annee_construction ? Number(String(rapport.annee_construction).replace(/[^0-9]/g, '')) : null;
+  const typeBien = rapport.type_bien || 'appartement';
+  const isCopro = typeBien === 'appartement' || typeBien === 'maison_copro';
+
+  // ═══ TRAVAUX (note_max = 5) ═══
+  let noteTravaux = 5;
+  const travaux = rapport.travaux || {};
+  const evoques = travaux.evoques || [];
+  const motsLourds = /toiture|ravalement|chaudi[èe]re|ascenseur|structure|fa[çc]ade|canalisation|[ée]tanch[ée]it[ée]/i;
+  let lourdsCount = 0;
+  let legersCount = 0;
+  for (const t of evoques) {
+    if (t.label && motsLourds.test(t.label)) lourdsCount++;
+    else legersCount++;
+  }
+  noteTravaux -= Math.min(3, lourdsCount * 1.5);
+  noteTravaux -= Math.min(1.5, legersCount * 0.5);
+
+  const votesChargeVendeur = (travaux.votes || []).filter(t => t.charge_vendeur);
+  if (votesChargeVendeur.length > 0) noteTravaux += Math.min(2, votesChargeVendeur.length * 0.5);
+
+  const travauxAnalyses = (travaux.realises || []).length + (travaux.votes || []).length + evoques.length;
+  noteTravaux = clamp(noteTravaux, travauxAnalyses > 0 ? 1 : 0, 5);
+
+  // ═══ PROCEDURES (note_max = 4) ═══
+  let noteProcedures = 4;
+  const procedures = rapport.procedures || [];
+  for (const p of procedures) {
+    if (p.gravite === 'elevee') noteProcedures -= 2;
+    else if (p.gravite === 'moderee') noteProcedures -= 1;
+    else if (p.gravite === 'faible') noteProcedures -= 0.5;
+  }
+  const quitusRefuse = (rapport.vie_copropriete?.participation_ag || []).some(p => p.quitus?.soumis === true && p.quitus?.approuve === false);
+  if (quitusRefuse) noteProcedures -= 0.5;
+  noteProcedures = clamp(noteProcedures, 0, 4);
+
+  // ═══ FINANCES (note_max = 4) ═══
+  let noteFinances = 2;
+  const fin = rapport.finances || {};
+  const fondsStatut = fin.fonds_travaux_statut;
+  if (fondsStatut === 'excellent') noteFinances += 1.5;
+  else if (fondsStatut === 'bien') noteFinances += 1;
+  else if (fondsStatut === 'conforme') noteFinances += 0.5;
+  else if (fondsStatut === 'insuffisant') noteFinances -= 0.5;
+  else if (fondsStatut === 'absent') noteFinances -= 1;
+
+  const budget = fin.budget_total_copro || 0;
+  const impayes = fin.impayes || 0;
+  if (budget > 0 && impayes > 0 && impayes / budget > 0.15) noteFinances -= 0.5;
+
+  if (rapport.pre_etat_date?.present && rapport.pre_etat_date?.impayes_vendeur === 0) noteFinances += 0.5;
+
+  const hasFinancesData = !!(fin.budget_total_copro || fin.charges_annuelles_lot || fin.fonds_travaux || rapport.pre_etat_date?.present);
+  noteFinances = clamp(noteFinances, hasFinancesData ? 1 : 0, 4);
+
+  // ═══ DIAGS PRIVATIFS (note_max = 4) — LE VRAI FIX ═══
+  let noteDiagsPrivatifs: number;
+  if (diagsPrivatifs.length === 0) {
+    noteDiagsPrivatifs = 0;
+  } else {
+    const requis = ['DPE'];
+    if (!anneeNum || anneeNum < 2010) requis.push('ELECTRICITE');
+    if (anneeNum && anneeNum < 1997) requis.push('AMIANTE');
+    if (anneeNum && anneeNum < 1949) requis.push('PLOMB');
+    const aGaz = diagsPrivatifs.some(d => d.type === 'GAZ');
+    if (aGaz) requis.push('GAZ');
+    const aTermites = diagsPrivatifs.some(d => d.type === 'TERMITES');
+    if (aTermites) requis.push('TERMITES');
+    if (isCopro) requis.push('CARREZ');
+
+    noteDiagsPrivatifs = 4;
+
+    const typesPresents = new Set(diagsPrivatifs.map(d => d.type));
+    const manquants = requis.filter(t => !typesPresents.has(t));
+    noteDiagsPrivatifs -= manquants.length * 0.75;
+
+    for (const d of diagsPrivatifs) {
+      const detail = (d.resultat || d.alerte || d.label || '').toLowerCase();
+      if (d.type === 'DPE') {
+        if (/classe\s*g/i.test(detail)) {
+          noteDiagsPrivatifs -= profil === 'invest' ? 2 : 1.5;
+        } else if (/classe\s*f/i.test(detail)) {
+          noteDiagsPrivatifs -= profil === 'invest' ? 1.5 : 1;
+        }
+      }
+      if (d.type === 'ELECTRICITE') {
+        if (/majeur|danger|risque/i.test(detail) && /anomali/i.test(detail)) noteDiagsPrivatifs -= 1;
+        else if (/anomali/i.test(detail)) noteDiagsPrivatifs -= 0.3;
+      }
+      if (d.type === 'GAZ') {
+        if (/a1\b/i.test(detail)) noteDiagsPrivatifs -= 1;
+        else if (/a2\b/i.test(detail)) noteDiagsPrivatifs -= 0.5;
+      }
+      if (d.type === 'AMIANTE') {
+        if (/d[ée]grad|positif|pr[ée]sent/i.test(detail) && !/non/i.test(detail)) noteDiagsPrivatifs -= 1;
+        else if (/suspect|[ée]valuation p[ée]riodique/i.test(detail)) noteDiagsPrivatifs -= 0.3;
+      }
+      if (d.type === 'PLOMB' && /d[ée]grad|positif/i.test(detail)) noteDiagsPrivatifs -= 1;
+      if (d.type === 'TERMITES' && /pr[ée]sence|d[ée]tect[ée]|positif/i.test(detail) && !/absence|non/i.test(detail)) noteDiagsPrivatifs -= 2;
+    }
+
+    // PLANCHER : si au moins 1 diag extrait, la note ne peut pas descendre sous 1
+    noteDiagsPrivatifs = clamp(noteDiagsPrivatifs, 1, 4);
+  }
+
+  // ═══ DIAGS COMMUNS (note_max = 3) ═══
+  let noteDiagsCommuns = 2;
+  const dtg = rapport.vie_copropriete?.dtg;
+  if (dtg?.present) {
+    if (dtg.etat_general === 'bon') noteDiagsCommuns += 1;
+    else if (dtg.etat_general === 'moyen') noteDiagsCommuns += 0.5;
+    else if (dtg.etat_general === 'degrade') noteDiagsCommuns -= 1;
+
+    if (dtg.budget_urgent_3ans && dtg.budget_urgent_3ans > 50000) noteDiagsCommuns -= 0.5;
+  }
+  for (const d of diagsCommuns) {
+    const detail = (d.resultat || d.alerte || d.label || '').toLowerCase();
+    if (d.type === 'AMIANTE' && /ac1|action corrective/i.test(detail)) noteDiagsCommuns -= 1;
+    if (d.type === 'TERMITES' && /pr[ée]sence|d[ée]tect[ée]/i.test(detail) && !/absence/i.test(detail)) noteDiagsCommuns -= 1;
+  }
+
+  const hasCommunsData = diagsCommuns.length > 0 || dtg?.present;
+  noteDiagsCommuns = clamp(noteDiagsCommuns, hasCommunsData ? 1 : 0, 3);
+
+  const categoriesRecalculees = {
+    travaux: { note: Math.round(noteTravaux * 2) / 2, note_max: 5 },
+    procedures: { note: Math.round(noteProcedures * 2) / 2, note_max: 4 },
+    finances: { note: Math.round(noteFinances * 2) / 2, note_max: 4 },
+    diags_privatifs: { note: Math.round(noteDiagsPrivatifs * 2) / 2, note_max: 4 },
+    diags_communs: { note: Math.round(noteDiagsCommuns * 2) / 2, note_max: 3 },
+  };
+
+  console.log('[analyser-run] Categories recalculees:', JSON.stringify(categoriesRecalculees));
+  console.log('[analyser-run] Diags privatifs detectes:', diagsPrivatifs.length, '| types:', diagsPrivatifs.map(d => d.type).join(','));
+
+  return { ...rapport, categories: categoriesRecalculees };
+}
+
 async function deleteFromFilesAPI(fileId: string, apiKey: string): Promise<void> {
   try {
     await fetch(`${ANTHROPIC_FILES_URL}/${fileId}`, {
@@ -708,6 +888,20 @@ async function runAnalyseWithData(
     }
 
     const isApercu = mode.startsWith('apercu');
+
+    // ══════════════════════════════════════════════════════════
+    // RECALCUL DETERMINISTE DES NOTES DE CATEGORIES
+    // (uniquement pour les modes complete et complement qui produisent
+    //  la structure complete avec categories)
+    // ══════════════════════════════════════════════════════════
+    if (!isApercu && mode !== 'document') {
+      try {
+        report = recalculerCategories(report as RapportShape, profil) as Record<string, unknown>;
+      } catch (e) {
+        console.error('[analyser-run] Erreur recalcul categories (non bloquant):', e);
+      }
+    }
+
     const updateData: Record<string, unknown> = {
       status: 'completed',
       progress_current: files.length,
@@ -832,6 +1026,18 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
     }
 
     const isApercu = mode.startsWith('apercu');
+
+    // ══════════════════════════════════════════════════════════
+    // RECALCUL DETERMINISTE DES NOTES DE CATEGORIES
+    // ══════════════════════════════════════════════════════════
+    if (!isApercu && mode !== 'document') {
+      try {
+        report = recalculerCategories(report as RapportShape, profil) as Record<string, unknown>;
+      } catch (e) {
+        console.error('[analyser-run] Erreur recalcul categories (non bloquant):', e);
+      }
+    }
+
     const updateData: Record<string, unknown> = {
       status: 'completed',
       progress_current: files.length,
