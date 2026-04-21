@@ -352,6 +352,93 @@ DIAGNOSTICS COMMUNS :
 - DTG etat general bon : +1
 - PPT (Plan Pluriannuel de Travaux) : INFORMATIF UNIQUEMENT, ne pas penaliser ni bonifier
 
+════════════════════════════════════════════════════════════════════
+REGLES DE CALCUL DES NOTES PAR CATEGORIE (categories.{cle}.note)
+════════════════════════════════════════════════════════════════════
+Ces notes alimentent le camembert/barres de l onglet Synthese.
+Elles doivent etre COHERENTES avec le score global mais sont CALCULEES
+INDEPENDAMMENT a partir de criteres specifiques a chaque categorie.
+
+REGLE CRITIQUE — JAMAIS DE 0 ARBITRAIRE :
+Une note de 0 doit UNIQUEMENT etre utilisee si AUCUN document pertinent n est disponible pour la categorie.
+SI au moins un element a ete extrait pour la categorie (diagnostic, travaux, procedure, donnee financiere) alors la note doit refleter l etat reel — JAMAIS 0.
+En cas de doute, utiliser la moitie de la note_max (ex : 2 sur 4) et expliquer dans avis_verimo.
+
+--- categories.travaux (note_max = 5) ---
+- Depart : 5/5
+- Travaux lourds evoques non votes (toiture, ravalement, chaudiere, ascenseur, structure) : -1.5 par sujet lourd identifie, plafonne a -3
+- Travaux legers evoques non votes : -0.5 par sujet
+- Gros travaux a charge du vendeur (chaudiere, ravalement, toiture) : +1 bonus (max +2)
+- Travaux realises avec garantie decennale recente : +0.5 bonus (max +1)
+- Plancher : 1 si au moins un document travaux a ete analyse, 0 uniquement si aucun PV/carnet/DTG fourni
+
+--- categories.procedures (note_max = 4) ---
+- Depart : 4/4
+- Procedure significative (litige bloquant, administration provisoire, detournement syndic, impayes massifs) : -2
+- Procedure mineure (petit litige isole, mise en demeure sans suite, un seul coproprietaire en impaye) : -1
+- Tensions avec syndic documentees (quitus refuse, changement+conflit) : -0.5
+- Aucune procedure detectee ET documents pertinents presents : 4/4
+
+--- categories.finances (note_max = 4) ---
+- Depart : 2/4 (neutre par defaut)
+- Fonds travaux >= 10 % budget (excellent) : +1.5
+- Fonds travaux 6-9 % budget (bien) : +1
+- Fonds travaux = 5 % budget (conforme legal) : +0.5
+- Fonds travaux < 5 % budget (insuffisant) : -0.5
+- Fonds travaux absent ou nul : -1
+- Impayes anormaux dans la copropriete (> 15 % du budget annuel) : -0.5
+- Vendeur a jour de ses charges (pre-etat date ou etat date avec impayes_vendeur = 0) : +0.5
+- Budget stable ou en legere hausse sur plusieurs exercices : +0.5
+- Plancher : 1 si au moins un document financier a ete analyse
+
+--- categories.diags_privatifs (note_max = 4) ---
+INTELLIGENCE REGLEMENTAIRE : avant de noter, determine d abord quels diagnostics sont REGLEMENTAIREMENT REQUIS pour ce bien selon ces criteres :
+
+* DPE : requis TOUJOURS pour toute vente de logement (appartement, maison, maison en copro). Aucune exception en pratique pour les biens analyses ici.
+* Electricite : requis si installation > 15 ans. Si annee_construction > (annee actuelle - 15) OU si attestation Consuel recente documentee : non requis.
+* Gaz : requis si installation > 15 ans ET presence de gaz dans le logement. Si pas de gaz (chauffage elec ou fioul collectif sans gaz individuel), non requis.
+* Amiante privatif : requis si permis de construire avant 01/07/1997 (en pratique : annee_construction < 1997). Si annee_construction >= 1997 : non requis.
+* Plomb (CREP) : requis si construction avant 01/01/1949 (annee_construction < 1949). Si annee_construction >= 1949 : non requis.
+* Termites : requis uniquement si la commune est couverte par un arrete prefectoral. Si l ERP ou le carnet d entretien confirme que la commune est en zone termites : requis. Sinon : informatif uniquement.
+* ERP : requis si la commune est couverte par un PPR (naturel, minier, technologique) ou une zone de sismicite. A verifier via ERP lui-meme ou le carnet. En pratique souvent requis en zone urbaine.
+* Carrez : requis UNIQUEMENT pour les lots en copropriete (appartement, maison_copro) >= 8 m2 et bati clos. Pas de Carrez pour une maison individuelle.
+
+REGLE DDT + ACTUALISATION : un DDT et son actualisation (generalement ERP + termites car valides 6 mois) forment ENSEMBLE le dossier de diagnostics privatifs. Les traiter comme un seul dossier unifie. Priorite a la date la plus recente en cas de doublon. Ne JAMAIS noter 0 parce que deux fichiers se complementent — c est normal.
+
+REGLE DDT UNIQUE : un DDT (Dossier de Diagnostic Technique) contient TOUS les diagnostics privatifs reglementaires en un seul document. Quand un DDT est detecte, considerer chacun de ses diagnostics (DPE, electricite, gaz, amiante, plomb, termites, Carrez, ERP) comme s il s agissait de documents separes, et les noter individuellement.
+
+CALCUL DE LA NOTE (une fois la liste des diagnostics requis etablie) :
+- Depart : 4/4 (si tous les diagnostics requis sont presents et sans anomalie majeure)
+- Pour chaque diagnostic requis MANQUANT : -0.75
+- DPE F (residence principale) : -1
+- DPE G (residence principale) : -1.5
+- DPE F (investissement locatif) : -1.5
+- DPE G (investissement locatif) : -2
+- Electricite avec anomalies majeures (parties actives nues, risque electrocution) : -1
+- Electricite avec anomalies mineures : -0.3
+- Gaz avec anomalies A2 (reparation urgente) : -0.5
+- Gaz avec anomalies A1 (risque immediat) : -1
+- Amiante privatif avec materiaux degrades : -1
+- Amiante privatif avec materiaux suspects non preleves (evaluation periodique) : -0.3
+- Plomb (CREP) avec revetements degrades : -1
+- Termites : presence detectee : -2
+- Plancher : 1 si au moins un diagnostic privatif a ete extrait (diagnostics[].filter(d => d.perimetre === "lot_privatif").length > 0). 0 UNIQUEMENT si aucun diagnostic privatif n a ete extrait de tous les documents fournis.
+- Plafond : la note ne peut pas descendre sous le plancher si des diagnostics sont presents.
+
+JUSTIFICATION OBLIGATOIRE : dans avis_verimo ou en note interne, indiquer brievement quels diagnostics sont requis vs non requis pour ce bien, notamment quand certains sont legitimement absents (ex : "CREP non applicable, construction 1967 — non note negativement").
+
+--- categories.diags_communs (note_max = 3) ---
+- Depart : 2/3 (neutre par defaut)
+- DTG etat general bon : +1
+- DTG etat general moyen : +0.5
+- Amiante parties communes AC1 (action corrective) : -1
+- Termites parties communes : -1
+- DTG etat general degrade ou budget urgent > 50 000 € : -1
+- Diagnostics parties communes complets sans alerte : +0.5
+- Plancher : 1 si au moins un element (carnet ou DTG ou diag parties communes) a ete analyse. 0 si aucun document concernant l immeuble.
+
+════════════════════════════════════════════════════════════════════
+
 REGLES FONDS TRAVAUX STATUT :
 - "absent" : aucun fonds de travaux mentionné ou = 0€
 - "insuffisant" : fonds travaux < 5% du budget annuel (non conforme loi ALUR)
@@ -363,6 +450,12 @@ REGLES FONDS TRAVAUX STATUT :
 REGLES IMPORTANTES :
 - finances.budget_total_copro = budget annuel TOTAL copropriete, PAS la quote-part du lot
 - finances.charges_annuelles_lot = charges annuelles du lot (quote-part acheteur). Extraire depuis TOUT document mentionnant les charges du lot : appels de charges, appels de fonds provisionnels. Un appel de fonds provisionnel est la MEME chose qu un appel de charges.
+- RÈGLE CASCADE SOURCES FINANCES DU LOT : pour remplir finances.charges_annuelles_lot et les informations financieres associees au lot vendu, appliquer la cascade suivante par ordre de priorite descendante :
+  1. PRÉ-ÉTAT DATÉ ou ÉTAT DATÉ : si present, c est la source la plus fiable. Extraire charges_futures.montant_annuel (x4 si trimestriel), fonds_travaux_alur, impayes_vendeur, et surtout historique_charges N-1 et N-2 (budget_appele + charges_reelles) qui doivent apparaitre dans finances.budgets_historique. Source = "Pré-état daté" ou "État daté".
+  2. APPEL DE CHARGES du lot : si present sans pre-etat date, extraire montant_annuel du lot. Source = "Appel de charges".
+  3. PV D AG + TANTIEMES : si seulement un PV d AG fourni avec budget total ET tantiemes du lot connus (lot_achete.quote_part_tantiemes), calculer estimation = budget_total × tantiemes_lot / total_tantiemes. Source = "Estimation depuis PV d AG × tantiemes".
+  4. PV D AG SEUL : si ni tantiemes ni appel de charges, laisser charges_annuelles_lot = null et signaler dans avis_verimo : "Charges du lot non determinables — uploader un appel de charges ou le pre-etat date pour obtention du montant precis."
+- RÈGLE AFFICHAGE FINANCES LOT (UI) : NE JAMAIS mentionner "taxe fonciere" dans les labels ou textes concernant les finances copro du lot. La taxe fonciere est un impot, pas une charge copro. Si l onglet affiche un texte d aide, il doit etre : "Uploadez un appel de charges OU un pre-etat date pour obtenir ces informations." (Sans mention de taxe fonciere.)
 - finances.budgets_historique = tableau des budgets annuels extraits de CHAQUE PV d'AG disponible : [{annee: "2023", budget_total: 180000, fonds_travaux: 9000, charges_lot: 3200}]. Laisser null si aucun PV fourni.
 - diagnostics : perimetre OBLIGATOIRE = "lot_privatif" ou "parties_communes"
 - diagnostics DPE : le champ "resultat" doit contenir la classe energetique ET la classe GES sous la forme "Classe E - 281 kWh/m2/an. GES: Classe D - 61 kg CO2/m2/an."
@@ -404,6 +497,12 @@ REGLES STATUT SYNDIC (multi-PV) — IMPORTANT : etudier TOUS les PV d AG fournis
 - negociation : applicable=true UNIQUEMENT si score < 14.
 - RÈGLE CRITIQUE — VOTES EN DEUX TOURS : En copropriété française, si une résolution ne recueille pas la majorité art. 25 au 1er tour mais obtient au moins 1/3 des voix, un 2ème tour à la majorité art. 24 est organisé immédiatement. Si le 2ème tour adopte la résolution, elle EST ADOPTÉE. Ne jamais la marquer comme refusée. Indices : "second tour", "art. 24", "adoptée à la majorité art. 24". Un vrai refus = résolution rejetée sans 2ème tour ou 2ème tour également rejeté. S applique à toutes les résolutions : fonds travaux, travaux, contrat syndic, etc.
 - RÈGLE FONDS ALUR / FONDS DE ROULEMENT : Ces montants sont attachés au lot. L acheteur les hérite MAIS DOIT LES REMBOURSER AU VENDEUR à la signature de l acte authentique, en sus du prix de vente. NE JAMAIS dire qu ils sont "récupérables par l acheteur" ou "restitués à l acheteur". Formuler toujours ainsi : "X € de fonds travaux ALUR à rembourser au vendeur à la signature."
+- RÈGLE EXCLUSION points_vigilance (frais de signature normaux) : les elements ci-dessous sont des FRAIS NORMAUX lies a toute transaction immobiliere en copropriete. Ils ne sont PAS des risques et ne doivent JAMAIS apparaitre dans points_vigilance de la synthese finale (rapport.points_vigilance), meme avec un emoji warning. Ils restent affiches dans leurs blocs dedies (onglet Logement, bloc pre-etat date, etc.) ou l acheteur peut les consulter.
+  * Fonds de travaux ALUR a rembourser au vendeur (quel que soit le montant)
+  * Honoraires de syndic pour l etablissement du pre-etat date ou de l etat date (generalement 150-300 €)
+  * Fonds de roulement a reconstituer par l acheteur
+  * Frais de mutation standards
+  EXCEPTION : si l un de ces montants est ANORMALEMENT ELEVE (ex : honoraires syndic > 500 €, fonds roulement > 3 mois de charges), alors mentionner dans points_vigilance avec le motif precis de l anomalie. Sinon, rester silencieux dans la synthese.
 - pre_etat_date : si un pré-état daté ou état daté est fourni, remplir pre_etat_date.present=true et extraire TOUS les champs : impayes_vendeur (0 si vendeur à jour), fonds_travaux_alur (montant fonds travaux à verser AU vendeur), fonds_roulement_acheteur (montant fonds de roulement à verser AU vendeur), honoraires_syndic (frais d établissement du document, TOUJOURS à la charge du vendeur), charges_futures (montants trimestriels), historique_charges N-1 et N-2, travaux_charge_vendeur, procedures_contre_vendeur, impayes_copro_global, dette_fournisseurs. RAPPEL FONDS : fonds_travaux_alur et fonds_roulement_acheteur sont à VERSER AU VENDEUR par l acheteur à la signature, en sus du prix.
 - compromis : si un compromis ou une promesse de vente est fourni, extraire dans lot_achete.compromis : { vendeur, acheteur, notaire_vendeur, notaire_acheteur, agence, prix_net_vendeur, honoraires_agence, honoraires_charge, prix_total, depot_garantie, date_signature, date_acte, bien_libre_a, conditions_suspensives: [{label, detail, date_limite, statut}], clauses_particulieres: [] } INCLURE : travaux urgents chiffres / DPE F ou G uniquement (pas D ou E) / impayes vendeur / procedures judiciaires / gros travaux votes / travaux evoques sans vote depuis plusieurs AG. EXCLURE : DPE A/B/C/D / travaux charge vendeur / constats sans impact financier. Si aucun element ne justifie une negociation, applicable=false et elements=[].
 
