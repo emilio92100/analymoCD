@@ -8,7 +8,7 @@ import DocumentRenderer from './dashboard/DocumentRenderer';
 import {
   ChevronLeft, Download, Building2, AlertTriangle, CheckCircle,
   Shield, FileText, Gavel, Info, Star, Paperclip,
-  RefreshCw, Lock, ChevronDown, ChevronUp, Copy, Check,
+  RefreshCw, Lock, ChevronDown, Copy, Check,
   Home, TrendingDown, Upload, X, Clock,
 } from 'lucide-react';
 
@@ -149,14 +149,36 @@ function AccordionSection({
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           {badge && <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 10px', borderRadius: 100, ...badgeStyle }}>{badge}</span>}
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor }} />
-          {open ? <ChevronUp size={14} color="#94a3b8" /> : <ChevronDown size={14} color="#94a3b8" />}
+          <ChevronDown size={14} color="#94a3b8" style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }} />
         </div>
       </button>
-      {open && (
-        <div className="rapport-accordion-body" style={{ borderTop: '1px solid #f1f5f9', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {children}
+      {/* Corps accordéon — animation douce CSS (ouverture/fermeture) */}
+      <div
+        className="rapport-accordion-body-wrap"
+        style={{
+          display: 'grid',
+          gridTemplateRows: open ? '1fr' : '0fr',
+          transition: 'grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
+        <div style={{ overflow: 'hidden', minHeight: 0 }}>
+          <div
+            className="rapport-accordion-body"
+            style={{
+              borderTop: '1px solid #f1f5f9',
+              padding: '16px 18px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+              opacity: open ? 1 : 0,
+              transform: open ? 'translateY(0)' : 'translateY(-4px)',
+              transition: 'opacity 0.3s ease 0.05s, transform 0.3s ease 0.05s',
+            }}
+          >
+            {children}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -3253,7 +3275,7 @@ export function buildRapportExemple(
   return buildRapport(data, dbData);
 }
 
-export function RapportViewExemple({ rapport, defaultTab = 'synthese' }: { rapport: RapportData; defaultTab?: TabId }) {
+export function RapportViewExemple({ rapport, defaultTab = 'synthese', onComplement }: { rapport: RapportData; defaultTab?: TabId; onComplement?: () => void }) {
   const [activeTab, setActiveTab] = useState<TabId>(defaultTab);
   const isComplete = rapport.type === 'complete';
   const hasCopro = isCoproType(rapport.type_bien);
@@ -3293,7 +3315,7 @@ export function RapportViewExemple({ rapport, defaultTab = 'synthese' }: { rappo
         {activeTab === 'copropriete' && isComplete && hasCopro && <SafeTabBoundary><TabCopropriete rapport={rapport} /></SafeTabBoundary>}
         {activeTab === 'logement' && isComplete && <SafeTabBoundary><TabLogement rapport={rapport} onSwitchTab={setActiveTab} /></SafeTabBoundary>}
         {activeTab === 'procedures' && isComplete && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
-        {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} /></SafeTabBoundary>}
+        {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} onComplement={onComplement} /></SafeTabBoundary>}
       </div>
     </div>
   );
