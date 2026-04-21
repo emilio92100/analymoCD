@@ -58,14 +58,21 @@ function CountdownTimer({ deadline }: { deadline: Date }) {
     return () => clearInterval(interval);
   }, []);
   const diff = Math.max(0, deadline.getTime() - now);
-  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
   const seconds = Math.floor((diff % (1000 * 60)) / 1000);
   if (diff <= 0) return <span>Délai expiré</span>;
+  // Calcul de la couleur d'urgence : J-1 = rouge, J-2 = orange, sinon neutre
+  const totalHoursRemaining = diff / (1000 * 60 * 60);
+  const color =
+    totalHoursRemaining <= 24 ? '#dc2626' :      // Rouge : J-1 (moins de 24h)
+    totalHoursRemaining <= 48 ? '#ea580c' :      // Orange : J-2 (entre 24h et 48h)
+    '#64748b';                                   // Neutre : J-3 ou plus
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color, fontWeight: totalHoursRemaining <= 48 ? 600 : 500, fontVariantNumeric: 'tabular-nums' }}>
       <Clock size={13} />
-      Dernier jour — encore {hours}h {String(minutes).padStart(2, '0')}min {String(seconds).padStart(2, '0')}s
+      {days}j {String(hours).padStart(2, '0')}h {String(minutes).padStart(2, '0')}min {String(seconds).padStart(2, '0')}s
     </span>
   );
 }
@@ -3152,9 +3159,7 @@ function TabDocuments({ rapport, onComplement }: { rapport: RapportData; onCompl
   const deadlineStr = rapport.regeneration_deadline;
   const deadline = deadlineStr ? new Date(deadlineStr) : null;
   const diffMs = deadline ? deadline.getTime() - Date.now() : 0;
-  const diffDays = deadline ? Math.ceil(diffMs / (1000 * 60 * 60 * 24)) : 0;
   const expired = deadline ? diffMs <= 0 : false;
-  const lastDay = diffDays === 1 && !expired;
 
   // Complement info
   const complementDate = rapport.complement_date;
@@ -3205,33 +3210,38 @@ function TabDocuments({ rapport, onComplement }: { rapport: RapportData; onCompl
       {(docsEssentielManquants.length > 0 || docsSecondairesManquants.length > 0) && (
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <div>
+            <div style={{ flex: 1, minWidth: 220 }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>Pour améliorer votre score et mieux comprendre votre achat</div>
               <div style={{ fontSize: 13, color: expired ? '#94a3b8' : '#64748b' }}>
                 {expired
                   ? 'Le délai de 7 jours pour ajouter des documents est dépassé.'
-                  : lastDay && deadline
-                    ? <CountdownTimer deadline={deadline} />
-                    : deadline
-                      ? `Encore ${diffDays} jour${diffDays > 1 ? 's' : ''} pour compléter ce dossier`
-                      : 'Ajoutez ces documents pour compléter votre analyse'
+                  : deadline
+                    ? 'Ajoutez des documents oubliés — le rapport sera recalculé gratuitement.'
+                    : 'Ajoutez ces documents pour compléter votre analyse'
                 }
               </div>
             </div>
-            <button
-              onClick={expired ? undefined : () => onComplement?.()}
-              disabled={expired}
-              title={expired ? 'Le délai de 7 jours pour ajouter des documents est dépassé' : undefined}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 10, border: 'none',
-                background: expired ? '#e2e8f0' : '#2a7d9c',
-                color: expired ? '#94a3b8' : '#fff',
-                fontSize: 13, fontWeight: 600,
-                cursor: expired ? 'not-allowed' : 'pointer', flexShrink: 0,
-                opacity: expired ? 0.7 : 1,
-              }}>
-              <RefreshCw size={13} /> Compléter mon dossier
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+              <button
+                onClick={expired ? undefined : () => onComplement?.()}
+                disabled={expired}
+                title={expired ? 'Le délai de 7 jours pour ajouter des documents est dépassé' : undefined}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 10, border: 'none',
+                  background: expired ? '#e2e8f0' : '#2a7d9c',
+                  color: expired ? '#94a3b8' : '#fff',
+                  fontSize: 13, fontWeight: 600,
+                  cursor: expired ? 'not-allowed' : 'pointer',
+                  opacity: expired ? 0.7 : 1,
+                }}>
+                <RefreshCw size={13} /> Compléter mon dossier
+              </button>
+              {!expired && deadline && (
+                <div style={{ fontSize: 12 }}>
+                  <CountdownTimer deadline={deadline} />
+                </div>
+              )}
+            </div>
           </div>
           <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
             {docsEssentielManquants.length > 0 && (
