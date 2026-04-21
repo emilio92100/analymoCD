@@ -1052,26 +1052,76 @@ function ForWhoSection() {
       text: "« Un ravalement est évoqué depuis 2 AG sans vote », « les impayés copro atteignent 12% du budget », « le DPE classe E impose des travaux d'isolation ». Verimo détecte et chiffre chaque risque pour vous donner des arguments concrets face au vendeur.",
       pills: ['Arguments chiffrés', 'Risques valorisés', 'Rapport partageable', 'Prêt pour le notaire'],
     },
+    {
+      emoji: '📋',
+      label: 'Je vends',
+      micro: "Rassurer l'acheteur",
+      icon: '📋',
+      title: "Vous vendez — donnez toute sa valeur à votre bien.",
+      text: "Un acheteur méfiant négocie. Un acheteur informé achète. En fournissant un rapport Verimo transparent — PV d'AG, charges, travaux, DPE — vous levez les doutes avant qu'ils ne deviennent des objections. Vous vendez plus vite, au juste prix, sans surprise à la dernière minute.",
+      pills: ['Transparence totale', 'Moins de négociation', 'Vente accélérée', 'Confiance acheteur'],
+    },
   ];
+
+  // Rendu du panneau de détail (factorisé pour réutilisation mobile + desktop)
+  const DetailPanel = ({ idx }: { idx: number }) => (
+    <motion.div
+      key={idx}
+      initial={{ opacity: 0, y: 12, height: 0 }}
+      animate={{ opacity: 1, y: 0, height: 'auto' }}
+      exit={{ opacity: 0, y: -8, height: 0 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      className="overflow-hidden">
+      <div className="bg-white rounded-2xl border-[1.5px] border-[#2a7d9c]/20 p-6 md:p-8 flex flex-col md:flex-row gap-5 md:gap-6 items-start">
+        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-[22px] shrink-0"
+          style={{ background: 'linear-gradient(135deg, #0f2d3d, #2a7d9c)' }}>
+          {situations[idx].icon}
+        </div>
+        <div className="flex-1">
+          <h3 className="text-base md:text-lg font-black text-[#0f172a] mb-2 leading-snug">
+            {situations[idx].title}
+          </h3>
+          <p className="text-sm text-slate-500 leading-relaxed mb-4">
+            {situations[idx].text}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {situations[idx].pills.map((pill, j) => (
+              <motion.span key={j}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: j * 0.06 }}
+                className="text-[11px] font-semibold px-3 py-1.5 rounded-full bg-[#f0f7fb] text-[#185a73] border border-[#2a7d9c]/15">
+                {pill}
+              </motion.span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+
+  // Détermine après quelle "rangée mobile" (grille 2 colonnes) le détail doit apparaître
+  // Rangée 0 = tuiles 0-1, rangée 1 = tuiles 2-3, rangée 2 = tuile 4
+  const mobileRowForIdx = activeIdx !== null ? Math.floor(activeIdx / 2) : null;
 
   return (
     <section className="py-14 md:py-24 px-4 md:px-6 bg-[#f4f7f9]">
       <div className="max-w-5xl mx-auto">
         <SectionTitle label="Pour qui" title="Fait pour" accent="vous." />
 
-        {/* ─── Sous-titre sur 2 lignes ─── */}
+        {/* ─── Sous-titre (responsive : pas de nowrap sur mobile) ─── */}
         <Reveal>
-          <div className="text-center mb-10 md:mb-14 max-w-4xl mx-auto">
-            <p className="text-base md:text-lg text-slate-500 leading-relaxed whitespace-nowrap">
+          <div className="text-center mb-10 md:mb-14 max-w-4xl mx-auto px-2">
+            <p className="text-sm md:text-lg text-slate-500 leading-relaxed">
               Que ce soit votre premier achat ou votre dixième, les documents restent les mêmes — et les risques aussi.
             </p>
-            <p className="text-base md:text-lg font-semibold text-[#0f172a] leading-relaxed mt-1">
+            <p className="text-sm md:text-lg font-semibold text-[#0f172a] leading-relaxed mt-1">
               Verimo les analyse pour que vous décidiez en confiance.
             </p>
           </div>
         </Reveal>
 
-        {/* ─── 4 boutons interactifs ─── */}
+        {/* ─── MOBILE : grille 2 colonnes avec le détail inséré entre les rangées ─── */}
         <Reveal>
           <div className="text-center mb-4">
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#2a7d9c]/20 shadow-sm">
@@ -1079,60 +1129,98 @@ function ForWhoSection() {
               <span className="text-sm font-semibold text-[#2a7d9c]">Cliquez sur votre situation</span>
             </span>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-            {situations.map((s, i) => (
-              <button key={i} onClick={() => setActiveIdx(activeIdx === i ? null : i)}
-                className={`rounded-2xl p-5 text-center border-[1.5px] transition-all duration-300 cursor-pointer group ${
-                  activeIdx === i
-                    ? 'border-[#2a7d9c] bg-[#f0f7fb] -translate-y-1 shadow-lg'
-                    : 'border-slate-100 bg-white hover:border-[#2a7d9c] hover:-translate-y-1 hover:shadow-md'
-                }`}>
-                <span className={`text-[28px] block mb-2.5 transition-transform duration-300 ${activeIdx === i ? 'scale-110' : 'group-hover:scale-110'}`}>{s.emoji}</span>
-                <span className={`text-[13px] font-bold block leading-tight ${activeIdx === i ? 'text-[#2a7d9c]' : 'text-[#0f172a]'}`}>{s.label}</span>
-                <span className="text-[11px] text-slate-400 block mt-1">{s.micro}</span>
-              </button>
-            ))}
+
+          {/* Version MOBILE — visible < md */}
+          <div className="md:hidden space-y-3 mb-5">
+            {/* Rangée 1 : tuiles 0 et 1 */}
+            <div className="grid grid-cols-2 gap-3">
+              {situations.slice(0, 2).map((s, i) => (
+                <button key={i} onClick={() => setActiveIdx(activeIdx === i ? null : i)}
+                  className={`rounded-2xl p-5 text-center border-[1.5px] transition-all duration-300 cursor-pointer group ${
+                    activeIdx === i
+                      ? 'border-[#2a7d9c] bg-[#f0f7fb] -translate-y-1 shadow-lg'
+                      : 'border-slate-100 bg-white hover:border-[#2a7d9c] hover:-translate-y-1 hover:shadow-md'
+                  }`}>
+                  <span className={`text-[28px] block mb-2.5 transition-transform duration-300 ${activeIdx === i ? 'scale-110' : 'group-hover:scale-110'}`}>{s.emoji}</span>
+                  <span className={`text-[13px] font-bold block leading-tight ${activeIdx === i ? 'text-[#2a7d9c]' : 'text-[#0f172a]'}`}>{s.label}</span>
+                  <span className="text-[11px] text-slate-400 block mt-1">{s.micro}</span>
+                </button>
+              ))}
+            </div>
+            <AnimatePresence mode="wait">
+              {activeIdx !== null && mobileRowForIdx === 0 && <DetailPanel idx={activeIdx} />}
+            </AnimatePresence>
+
+            {/* Rangée 2 : tuiles 2 et 3 */}
+            <div className="grid grid-cols-2 gap-3">
+              {situations.slice(2, 4).map((s, i) => {
+                const realIdx = i + 2;
+                return (
+                  <button key={realIdx} onClick={() => setActiveIdx(activeIdx === realIdx ? null : realIdx)}
+                    className={`rounded-2xl p-5 text-center border-[1.5px] transition-all duration-300 cursor-pointer group ${
+                      activeIdx === realIdx
+                        ? 'border-[#2a7d9c] bg-[#f0f7fb] -translate-y-1 shadow-lg'
+                        : 'border-slate-100 bg-white hover:border-[#2a7d9c] hover:-translate-y-1 hover:shadow-md'
+                    }`}>
+                    <span className={`text-[28px] block mb-2.5 transition-transform duration-300 ${activeIdx === realIdx ? 'scale-110' : 'group-hover:scale-110'}`}>{s.emoji}</span>
+                    <span className={`text-[13px] font-bold block leading-tight ${activeIdx === realIdx ? 'text-[#2a7d9c]' : 'text-[#0f172a]'}`}>{s.label}</span>
+                    <span className="text-[11px] text-slate-400 block mt-1">{s.micro}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <AnimatePresence mode="wait">
+              {activeIdx !== null && mobileRowForIdx === 1 && <DetailPanel idx={activeIdx} />}
+            </AnimatePresence>
+
+            {/* Rangée 3 : tuile 4 (Je vends), pleine largeur pour équilibrer */}
+            <div className="grid grid-cols-1 gap-3">
+              {situations.slice(4, 5).map((s, i) => {
+                const realIdx = i + 4;
+                return (
+                  <button key={realIdx} onClick={() => setActiveIdx(activeIdx === realIdx ? null : realIdx)}
+                    className={`rounded-2xl p-5 text-center border-[1.5px] transition-all duration-300 cursor-pointer group ${
+                      activeIdx === realIdx
+                        ? 'border-[#2a7d9c] bg-[#f0f7fb] -translate-y-1 shadow-lg'
+                        : 'border-slate-100 bg-white hover:border-[#2a7d9c] hover:-translate-y-1 hover:shadow-md'
+                    }`}>
+                    <span className={`text-[28px] block mb-2.5 transition-transform duration-300 ${activeIdx === realIdx ? 'scale-110' : 'group-hover:scale-110'}`}>{s.emoji}</span>
+                    <span className={`text-[13px] font-bold block leading-tight ${activeIdx === realIdx ? 'text-[#2a7d9c]' : 'text-[#0f172a]'}`}>{s.label}</span>
+                    <span className="text-[11px] text-slate-400 block mt-1">{s.micro}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <AnimatePresence mode="wait">
+              {activeIdx !== null && mobileRowForIdx === 2 && <DetailPanel idx={activeIdx} />}
+            </AnimatePresence>
+          </div>
+
+          {/* Version DESKTOP — visible >= md — 5 tuiles en ligne */}
+          <div className="hidden md:block">
+            <div className="grid grid-cols-5 gap-3 mb-5">
+              {situations.map((s, i) => (
+                <button key={i} onClick={() => setActiveIdx(activeIdx === i ? null : i)}
+                  className={`rounded-2xl p-5 text-center border-[1.5px] transition-all duration-300 cursor-pointer group ${
+                    activeIdx === i
+                      ? 'border-[#2a7d9c] bg-[#f0f7fb] -translate-y-1 shadow-lg'
+                      : 'border-slate-100 bg-white hover:border-[#2a7d9c] hover:-translate-y-1 hover:shadow-md'
+                  }`}>
+                  <span className={`text-[28px] block mb-2.5 transition-transform duration-300 ${activeIdx === i ? 'scale-110' : 'group-hover:scale-110'}`}>{s.emoji}</span>
+                  <span className={`text-[13px] font-bold block leading-tight ${activeIdx === i ? 'text-[#2a7d9c]' : 'text-[#0f172a]'}`}>{s.label}</span>
+                  <span className="text-[11px] text-slate-400 block mt-1">{s.micro}</span>
+                </button>
+              ))}
+            </div>
+            <AnimatePresence mode="wait">
+              {activeIdx !== null && (
+                <div className="mb-6">
+                  <DetailPanel idx={activeIdx} />
+                </div>
+              )}
+            </AnimatePresence>
           </div>
         </Reveal>
-
-        {/* ─── Résultat animé ─── */}
-        <AnimatePresence mode="wait">
-          {activeIdx !== null && (
-            <motion.div
-              key={activeIdx}
-              initial={{ opacity: 0, y: 12, height: 0 }}
-              animate={{ opacity: 1, y: 0, height: 'auto' }}
-              exit={{ opacity: 0, y: -8, height: 0 }}
-              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-              className="overflow-hidden mb-6">
-              <div className="bg-white rounded-2xl border-[1.5px] border-[#2a7d9c]/20 p-6 md:p-8 flex flex-col md:flex-row gap-5 md:gap-6 items-start">
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-[22px] shrink-0"
-                  style={{ background: 'linear-gradient(135deg, #0f2d3d, #2a7d9c)' }}>
-                  {situations[activeIdx].icon}
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-base md:text-lg font-black text-[#0f172a] mb-2 leading-snug">
-                    {situations[activeIdx].title}
-                  </h3>
-                  <p className="text-sm text-slate-500 leading-relaxed mb-4">
-                    {situations[activeIdx].text}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {situations[activeIdx].pills.map((pill, j) => (
-                      <motion.span key={j}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: j * 0.06 }}
-                        className="text-[11px] font-semibold px-3 py-1.5 rounded-full bg-[#f0f7fb] text-[#185a73] border border-[#2a7d9c]/15">
-                        {pill}
-                      </motion.span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* ─── Invite si rien sélectionné ─── */}
         {activeIdx === null && (
