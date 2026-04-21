@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /admin
+Disallow: /auth/
+Disallow: /rapport
+Disallow: /rapport/
+Disallow: /start
+Disallow: /connexion
+Disallow: /inscription
+Disallow: /mot-de-passe-oublie
+
+Sitemap: https://www.verimo.fr/sitemap.xml
