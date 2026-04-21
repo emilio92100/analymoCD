@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { buildRapportExemple, RapportViewExemple } from './RapportPage';
 import DocumentRenderer from './dashboard/DocumentRenderer';
+import { useSEO } from '../hooks/useSEO';
 
 /* ═══════════════════════════════════════════════════════════════
    DONNÉES MOCKÉES — ANALYSE COMPLÈTE — Lyon 6e, 14,8/20
@@ -658,6 +659,12 @@ function DemoPopup({ onClose }: { onClose: () => void }) {
    PAGE
 ═══════════════════════════════════════════════════════════════ */
 export default function ExemplePage() {
+  useSEO({
+    title: 'Exemple de rapport Verimo — Appartement Lyon 6e analysé',
+    description: "Découvrez un exemple concret de rapport Verimo : score /20, travaux détectés, santé financière de la copropriété et pistes de négociation sur un appartement réel.",
+    canonical: '/exemple',
+  });
+
   const [searchParams] = useSearchParams();
   const paramMode = searchParams.get('mode');
   const initial: 'complete' | 'simple' = paramMode === 'complete' ? 'complete' : 'simple';
