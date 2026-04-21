@@ -376,7 +376,8 @@ REGLES IMPORTANTES :
 - lot_achete.parties_privatives : lister TOUS les elements privatifs du lot avec leur numero et tantiemes si mentionnes.
 - lot_achete.quote_part_tantiemes : tantiemes TOTAUX du lot. Ex : "171/9865emes".
 - vie_copropriete.syndic.type : "professionnel" si cabinet syndic, "benevole" si copropriétaire gérant lui-même.
-- vie_copropriete.syndic.gestionnaire : nom du gestionnaire de dossier au sein du cabinet syndic, si mentionné.
+- vie_copropriete.syndic.gestionnaire : nom de la personne qui gere le dossier au sein du cabinet syndic, si mentionne. REGLES DE PRIORITE STRICTE (choisir le PREMIER trouve dans cet ordre) : 1) gestionnaire principal de copropriete (personne designee comme "gestionnaire de copropriete", "gestionnaire principal", "chargee de copropriete", signataire regulier des convocations et PV) ; 2) gestionnaire associe ou adjoint si aucun principal clair ; 3) laisser null sinon. INTERDICTIONS : NE JAMAIS mettre le president du conseil syndical (c est un coproprietaire, pas un employe du syndic) ; NE JAMAIS mettre le secretaire de seance (role ponctuel) ; NE JAMAIS mettre uniquement le gerant ou PDG du cabinet sauf s il est aussi explicitement designe comme gestionnaire du dossier ; NE JAMAIS inventer un nom.
+- vie_copropriete.syndic.gestionnaire_fonction : fonction exacte de la personne identifiee comme gestionnaire, UNIQUEMENT si elle est explicitement ecrite dans le document. Valeurs types : "Gestionnaire de copropriete", "Gestionnaire principal", "Gestionnaire associe", "Chargee de clientele", "Chargee de copropriete". Laisser null si la fonction n est pas explicitement ecrite dans les documents — ne JAMAIS inventer une fonction par defaut.
 
 REGLES STATUT SYNDIC (multi-PV) — IMPORTANT : etudier TOUS les PV d AG fournis pour reconstituer l historique :
 - vie_copropriete.syndic.statut : analyser l evolution du syndic sur l ensemble des PV d AG analyses. Valeurs possibles :
