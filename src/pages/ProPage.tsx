@@ -9,6 +9,7 @@ import {
   PieChart, BadgeCheck, Handshake,
   Sparkles,
 } from 'lucide-react';
+import { useSEO } from '../hooks/useSEO';
 
 const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
 const isMobile = () => typeof window !== 'undefined' && window.innerWidth <= 768;
@@ -121,6 +122,12 @@ const faqPro = [
 
 /* ═══ PAGE ═══════════════════════════════════════════════════ */
 export default function ProPage() {
+  useSEO({
+    title: 'Verimo Pro — Outil d’analyse pour professionnels de l’immobilier',
+    description: "Verimo Pro pour agents, investisseurs, marchands de biens et notaires : analyse de documents en volume, tableaux de bord, gains de temps et sécurisation des dossiers.",
+    canonical: '/pro',
+  });
+
   return (
     <div className="bg-white text-[#0f172a] antialiased overflow-x-hidden" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <HeroSection />
