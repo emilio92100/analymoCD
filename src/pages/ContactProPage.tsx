@@ -6,6 +6,7 @@ import {
   Send, CheckCircle, ArrowRight, ShieldCheck, Lock,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useSEO } from '../hooks/useSEO';
 
 /* ═══ TYPES DE PROFILS ═══════════════════════════════════════ */
 const profileTypes = [
@@ -86,6 +87,12 @@ function RadioCards({ value, onChange, options }: { value: string; onChange: (v:
 
 /* ═══ PAGE ═══════════════════════════════════════════════════ */
 export default function ContactProPage() {
+  useSEO({
+    title: 'Contact Pro — Verimo pour les professionnels de l’immobilier',
+    description: "Agents, investisseurs, marchands de biens, notaires : discutons de votre besoin d'analyse de documents immobiliers à grande échelle.",
+    canonical: '/contact-pro',
+  });
+
   const [searchParams] = useSearchParams();
   const preselected = searchParams.get('type') || '';
 
