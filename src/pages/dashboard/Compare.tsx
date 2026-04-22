@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitCompare, ShieldCheck, Building2, CheckCircle, FileText, Shield, ArrowRight, TrendingUp, TrendingDown, Minus, AlertTriangle, Trash2, Clock, Eye, ChevronDown } from 'lucide-react';
+import { GitCompare, ShieldCheck, Building2, CheckCircle, FileText, Shield, ArrowRight, AlertTriangle, Trash2, Clock, Eye, ChevronDown, ArrowLeftRight } from 'lucide-react';
 import { useAnalyses, type Analyse } from '../../hooks/useAnalyses';
 import { supabase } from '../../lib/supabase';
 
@@ -178,7 +178,12 @@ function buildVerdict(analyses: Analyse[], resultsData: (ReturnType<typeof getRe
 const COMPARER_URL = 'https://veszrayromldfgetqaxb.supabase.co/functions/v1/comparer';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlc3pyYXlyb21sZGZnZXRxYXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MzI5NTUsImV4cCI6MjA2MTAwODk1NX0.XsqzBPDMfHRFKgMhJxoLhgVWZMdV5YnFKM3VCBe9hOk';
 
-type VerdictIA = {
+/* ══════════════════════════════════════════
+   TYPES verdict — compatibles ancien ET nouveau schéma
+   ══════════════════════════════════════════ */
+
+// Ancien format (sessions précédentes, verdicts déjà en BDD)
+type VerdictLegacy = {
   bien_recommande_idx: number;
   titre_verdict: string;
   synthese: string;
@@ -188,15 +193,51 @@ type VerdictIA = {
   alerte_documents: string | null;
 };
 
+// Nouveau format session 8
+type VerdictItem = { titre: string; detail: string; impact?: 'majeur' | 'modere' | 'mineur' | null };
+type VerdictProfil = {
+  bien_idx: number;
+  profil: string;
+  forces: VerdictItem[];
+  points_faibles: VerdictItem[];
+};
+type VerdictEcart = {
+  bien_1: number | string | null;
+  bien_2: number | string | null;
+  bien_3: number | string | null;
+  delta_label: string;
+};
+type VerdictV2 = {
+  bien_recommande_idx: number;
+  titre_verdict: string;
+  ecarts_cles: {
+    score: VerdictEcart;
+    cout_annee_1: VerdictEcart;
+    dpe: VerdictEcart;
+  };
+  profils: VerdictProfil[];
+  comparatif: string;
+  points_a_approfondir: { bien: string; action: string }[];
+  alerte_documents: string | null;
+};
+
+type VerdictAny = VerdictLegacy | VerdictV2;
+
+// Détecter format
+function isVerdictV2(v: VerdictAny): v is VerdictV2 {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return !!(v && typeof v === 'object' && Array.isArray((v as any).profils) && (v as any).ecarts_cles);
+}
+
 type ComparaisonSaved = {
   id: string;
   analyse_ids: string;
-  verdict: VerdictIA;
+  verdict: VerdictAny;
   created_at: string;
 };
 
 /* ══════════════════════════════════════════
-   PARSER tantièmes : "171/9865emes" ou "171 / 9865" → { num: 171, den: 9865 }
+   PARSER tantièmes : "171/9865emes" → { num: 171, den: 9865 }
    ══════════════════════════════════════════ */
 function parseTantiemes(raw: unknown): { num: number; den: number } | null {
   if (typeof raw !== 'string') return null;
@@ -208,7 +249,7 @@ function parseTantiemes(raw: unknown): { num: number; den: number } | null {
   return { num, den };
 }
 
-// Données enrichies depuis le résultat JSON de Claude (stocké dans result)
+// Données enrichies depuis le résultat JSON de Claude
 function getResultData(a: Analyse) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const r = (a as any).result as Record<string, unknown> | null;
@@ -226,24 +267,18 @@ function getResultData(a: Analyse) {
     return null;
   };
 
-  // Cascade charges annuelles — priorité du plus fiable au plus estimé
+  // Cascade charges annuelles
   let chargesAnnuelles: number | null = null;
   let chargesIsEstimation = false;
 
-  // 1. Champ direct (pré-état daté ou appel de charges, rempli par Claude)
   chargesAnnuelles = parseNum(fin?.charges_annuelles_lot);
-
-  // 2. Charges futures trimestrielles × 4
   if (!chargesAnnuelles) {
     const trim = parseNum(chargesFutures?.montant_trimestriel);
     if (trim) chargesAnnuelles = trim * 4;
   }
-  // 3. Charges futures annuelles
   if (!chargesAnnuelles) {
     chargesAnnuelles = parseNum(chargesFutures?.montant_annuel);
   }
-
-  // 4. 🆕 Fallback : budget total copro × tantièmes du lot / total_tantièmes
   if (!chargesAnnuelles) {
     const budgetTotal = parseNum(fin?.budget_total_copro);
     const tt = parseTantiemes(lotAchete?.quote_part_tantiemes);
@@ -303,136 +338,363 @@ function DpeCell({ classe }: { classe: string | null }) {
   return <span style={{ fontSize: 12, fontWeight: 800, padding: '2px 10px', borderRadius: 6, background: `${c}18`, color: c, border: `1px solid ${c}40` }}>Classe {classe}</span>;
 }
 
-function TendanceIcon({ val, best }: { val: number; best: number }) {
-  if (val === best) return <TrendingUp size={13} color="#16a34a" />;
-  if (val < best * 0.7) return <TrendingDown size={13} color="#dc2626" />;
-  return <Minus size={13} color="#d97706" />;
-}
-
 /* ══════════════════════════════════════════
-   DÉTECTION THÉMATIQUE d'un point fort / vigilance
-   → renvoie { icon, label, detail } pour UI compacte
+   ACCORDION — bloc repliable réutilisable
    ══════════════════════════════════════════ */
-function detectTheme(raw: string): { icon: string; tag: string; titre: string; detail: string } {
-  const txt = raw.toLowerCase();
-  // Split titre/détail sur " : ", " — " ou " - "
-  let titre = raw;
-  let detail = '';
-  const sep = raw.match(/^([^:—\-]{4,60})\s*[:—\-]\s*(.+)$/);
-  if (sep) { titre = sep[1].trim(); detail = sep[2].trim(); }
-
-  // Détection icône + tag
-  let icon = '📌'; let tag = 'Divers';
-  if (/\bdpe\b|\bges\b|énerg[ée]tique|kwh|performance/i.test(txt)) { icon = '⚡'; tag = 'Énergétique'; }
-  else if (/électri|electrique|\belec\b|différentiel|tension|prise de terre/i.test(txt)) { icon = '🔌'; tag = 'Électricité'; }
-  else if (/\bgaz\b|cuisson|chaudière|\ba1\b|\ba2\b/i.test(txt)) { icon = '🔥'; tag = 'Gaz'; }
-  else if (/amiante/i.test(txt)) { icon = '🧪'; tag = 'Amiante'; }
-  else if (/plomb|crep/i.test(txt)) { icon = '🧪'; tag = 'Plomb'; }
-  else if (/termites?/i.test(txt)) { icon = '🐛'; tag = 'Termites'; }
-  else if (/fonds de travaux|fonds alur|provision travaux/i.test(txt)) { icon = '💰'; tag = 'Fonds travaux'; }
-  else if (/impay[ée]s?|d[ée]biteur|dette|arriéré/i.test(txt)) { icon = '📊'; tag = 'Impayés'; }
-  else if (/participation|gouvernance|quorum|ag\b|assembl[ée]e/i.test(txt)) { icon = '👥'; tag = 'Gouvernance'; }
-  else if (/travaux|rénovation|toiture|façade|isolation|menuiseries|ravalement/i.test(txt)) { icon = '🔨'; tag = 'Travaux'; }
-  else if (/procédure|litige|contentieux|tribunal/i.test(txt)) { icon = '⚖️'; tag = 'Procédures'; }
-  else if (/surface|carrez|m²|cave|box|parking|garage|lot\s/i.test(txt)) { icon = '🏠'; tag = 'Lot'; }
-  else if (/règlement|r[cè]p|modificatif|servitude/i.test(txt)) { icon = '📜'; tag = 'Règlement'; }
-  else if (/syndic|gestionnaire/i.test(txt)) { icon = '🏢'; tag = 'Syndic'; }
-  else if (/dtg|carnet d'entretien/i.test(txt)) { icon = '📋'; tag = 'État général'; }
-
-  return { icon, tag, titre, detail };
-}
-
-/* ══════════════════════════════════════════
-   CARTE POINT COMPACT (fort ou vigilance)
-   ══════════════════════════════════════════ */
-function PointCard({ raw, kind }: { raw: string; kind: 'fort' | 'vigilance' }) {
-  const { icon, tag, titre, detail } = detectTheme(raw);
-  const colors = kind === 'fort'
-    ? { bg: '#f0fdf4', border: '#d1fae5', tagBg: 'rgba(22,163,74,0.12)', tagColor: '#16a34a', titleColor: '#166534', detailColor: '#15803d' }
-    : { bg: '#fffbeb', border: '#fde68a', tagBg: 'rgba(217,119,6,0.12)', tagColor: '#d97706', titleColor: '#92400e', detailColor: '#a16207' };
+function Accordion({ title, icon, defaultOpen = false, children, subtitle }: { title: string; icon?: string; defaultOpen?: boolean; children: React.ReactNode; subtitle?: string }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div style={{ padding: '10px 12px', borderRadius: 10, background: colors.bg, border: `1px solid ${colors.border}`, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-      <div style={{ width: 30, height: 30, borderRadius: 8, background: colors.tagBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 15 }}>
-        {icon}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 9.5, fontWeight: 800, color: colors.tagColor, letterSpacing: '0.06em', textTransform: 'uppercase', background: colors.tagBg, padding: '1px 6px', borderRadius: 4 }}>{tag}</span>
+    <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{ width: '100%', padding: '14px 18px', background: open ? '#fafbfc' : '#fff', border: 'none', borderBottom: open ? '1px solid #f1f5f9' : 'none', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', transition: 'background 0.2s', fontFamily: 'inherit', textAlign: 'left' }}>
+        {icon && <span style={{ fontSize: 16 }}>{icon}</span>}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a' }}>{title}</span>
+          {subtitle && <span style={{ fontSize: 11.5, color: '#94a3b8' }}>{subtitle}</span>}
         </div>
-        <div style={{ fontSize: 12.5, fontWeight: 700, color: colors.titleColor, lineHeight: 1.4, marginBottom: detail ? 3 : 0 }}>{titre}</div>
-        {detail && <div style={{ fontSize: 11.5, color: colors.detailColor, lineHeight: 1.5, opacity: 0.88 }}>{detail}</div>}
+        <ChevronDown size={16} style={{ color: '#94a3b8', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.25s' }} />
+      </button>
+      <div style={{
+        display: 'grid',
+        gridTemplateRows: open ? '1fr' : '0fr',
+        transition: 'grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      }}>
+        <div style={{ overflow: 'hidden' }}>
+          {children}
+        </div>
       </div>
     </div>
   );
 }
 
 /* ══════════════════════════════════════════
-   PARSING synthèse verdict en 3 blocs Bien 1 / Bien 2 / Comparatif
+   BADGE IMPACT — majeur / modéré / mineur
    ══════════════════════════════════════════ */
-function splitSyntheseParBien(synthese: string, adresses: string[]): { parBien: string[]; comparatif: string } {
-  // On découpe en phrases
-  const phrases = synthese.split(/(?<=[.!?])\s+/).filter(p => p.trim().length > 10);
-  const parBien: string[][] = adresses.map(() => []);
-  const comparatif: string[] = [];
-
-  // Extraction mots-clés par bien (ville, numéro rue, "Bien N", etc.)
-  const keywordsParBien = adresses.map((adr, i) => {
-    const kws: string[] = [`bien ${i + 1}`, `bien n°${i + 1}`, `bien n° ${i + 1}`];
-    if (adr) {
-      // ville = dernier mot avec majuscule
-      const parts = adr.split(/[,\s-]+/).filter(Boolean);
-      parts.forEach(p => {
-        if (p.length > 3 && /^[A-ZÉÈÀÂÔÎ]/.test(p)) kws.push(p.toLowerCase());
-      });
-      // numéro de rue
-      const num = adr.match(/^\s*(\d+[a-z]?)\s/i);
-      if (num) kws.push(num[1].toLowerCase());
-    }
-    return kws;
-  });
-
-  // Mots-clés indiquant un comparatif explicite
-  const comparatifKws = /\b(les deux|deux biens|comparativement|en revanche|tandis que|alors que|par rapport|à l'inverse|à contrario|en comparaison|partagent|commun)/i;
-
-  phrases.forEach(p => {
-    const lower = p.toLowerCase();
-    // Si phrase mentionne plusieurs biens OU contient un mot comparatif → comparatif
-    const matches = keywordsParBien.map(kws => kws.some(kw => lower.includes(kw)));
-    const nbBiens = matches.filter(Boolean).length;
-    if (nbBiens >= 2 || comparatifKws.test(p)) {
-      comparatif.push(p);
-    } else if (nbBiens === 1) {
-      const idx = matches.findIndex(Boolean);
-      parBien[idx].push(p);
-    } else {
-      // Phrase orpheline → comparatif
-      comparatif.push(p);
-    }
-  });
-
-  return {
-    parBien: parBien.map(arr => arr.join(' ').trim()),
-    comparatif: comparatif.join(' ').trim(),
-  };
+function ImpactBadge({ impact, kind }: { impact?: 'majeur' | 'modere' | 'mineur' | null; kind: 'force' | 'faible' }) {
+  if (!impact || impact === 'mineur') return null;
+  if (impact !== 'majeur') return null; // on n'affiche que les "majeur" pour ne pas surcharger
+  const color = kind === 'force' ? '#16a34a' : '#dc2626';
+  const bg = kind === 'force' ? '#f0fdf4' : '#fef2f2';
+  return (
+    <span style={{ fontSize: 9.5, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: bg, color, marginLeft: 6, verticalAlign: 'middle', letterSpacing: '0.02em' }}>
+      majeur
+    </span>
+  );
 }
 
 /* ══════════════════════════════════════════
-   DÉTECTION bien concerné (1 ou 2) pour forces / points
+   ÉCARTS CLÉS — Style C : barres visuelles
    ══════════════════════════════════════════ */
-function detectBienIndex(texte: string, adresses: string[]): number | null {
-  const lower = texte.toLowerCase();
-  for (let i = 0; i < adresses.length; i++) {
-    if (lower.includes(`bien ${i + 1}`) || lower.includes(`bien n°${i + 1}`)) return i;
-    const adr = adresses[i];
-    if (!adr) continue;
-    const parts = adr.split(/[,\s-]+/).filter(p => p.length > 3 && /^[A-ZÉÈÀÂÔÎ]/.test(p));
-    for (const p of parts) {
-      if (lower.includes(p.toLowerCase())) return i;
-    }
-    const num = adr.match(/^\s*(\d+[a-z]?)\s/i);
-    if (num && lower.includes(num[1].toLowerCase() + ' ')) return i;
+function EcartsCles({ ecarts, nbBiens, bestIdx }: { ecarts: VerdictV2['ecarts_cles']; nbBiens: number; bestIdx: number }) {
+  const biens: Array<{ label: string; score: number | null; cout: number | null; dpe: string | null; isBest: boolean }> = [];
+  const scoreMax = 20;
+  const dpeColors: Record<string, { bg: string; color: string }> = {
+    A: { bg: '#f0fdf4', color: '#16a34a' }, B: { bg: '#f0fdf4', color: '#22c55e' }, C: { bg: '#f7fee7', color: '#84cc16' },
+    D: { bg: '#fef9c3', color: '#a16207' }, E: { bg: '#ffedd5', color: '#c2410c' }, F: { bg: '#fef2f2', color: '#dc2626' }, G: { bg: '#fef2f2', color: '#991b1b' },
+  };
+
+  const getVal = (e: VerdictEcart, idx: number): number | string | null => {
+    if (idx === 0) return e.bien_1;
+    if (idx === 1) return e.bien_2;
+    if (idx === 2) return e.bien_3;
+    return null;
+  };
+
+  for (let i = 0; i < nbBiens; i++) {
+    const s = getVal(ecarts.score, i);
+    const c = getVal(ecarts.cout_annee_1, i);
+    const d = getVal(ecarts.dpe, i);
+    biens.push({
+      label: `Bien ${i + 1}`,
+      score: typeof s === 'number' ? s : (typeof s === 'string' ? parseFloat(s) : null),
+      cout: typeof c === 'number' ? c : (typeof c === 'string' ? parseFloat(c) : null),
+      dpe: typeof d === 'string' ? d.toUpperCase() : null,
+      isBest: i === bestIdx,
+    });
   }
-  return null;
+
+  // Max cout pour barres
+  const maxCout = Math.max(...biens.map(b => b.cout || 0), 1);
+
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e0ecf3', borderRadius: 12, padding: '16px 18px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
+        <ArrowLeftRight size={12} color="#2a7d9c" />
+        <span style={{ fontSize: 10.5, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.1em' }}>ÉCARTS CLÉS</span>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {/* Score global */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: '#64748b' }}>Score global</span>
+            <span style={{ fontSize: 11, color: '#94a3b8' }}>{ecarts.score.delta_label}</span>
+          </div>
+          {biens.map((b, i) => b.score != null && (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '50px 1fr 50px', gap: 10, alignItems: 'center', fontSize: 12, marginBottom: i < biens.length - 1 ? 4 : 0 }}>
+              <span style={{ color: '#64748b' }}>Bien {i + 1}</span>
+              <div style={{ background: '#f1f5f9', borderRadius: 2, height: 5, overflow: 'hidden' }}>
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(b.score / scoreMax) * 100}%` }}
+                  transition={{ duration: 0.9, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
+                  style={{ height: '100%', background: b.isBest ? '#16a34a' : '#94a3b8', borderRadius: 2 }} />
+              </div>
+              <span style={{ textAlign: 'right', fontWeight: b.isBest ? 700 : 500, color: b.isBest ? '#16a34a' : '#0f172a' }}>{b.score.toFixed(1)}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Coût année 1 */}
+        {biens.some(b => b.cout != null) && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+              <span style={{ fontSize: 12, color: '#64748b' }}>Coût année 1</span>
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>{ecarts.cout_annee_1.delta_label}</span>
+            </div>
+            {biens.map((b, i) => {
+              if (b.cout == null) return null;
+              // Moins c'est cher, mieux c'est — le "best cout" est le min
+              const minCout = Math.min(...biens.filter(x => x.cout != null).map(x => x.cout!));
+              const isBestCout = b.cout === minCout;
+              return (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '50px 1fr 70px', gap: 10, alignItems: 'center', fontSize: 12, marginBottom: i < biens.length - 1 ? 4 : 0 }}>
+                  <span style={{ color: '#64748b' }}>Bien {i + 1}</span>
+                  <div style={{ background: '#f1f5f9', borderRadius: 2, height: 5, overflow: 'hidden' }}>
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(b.cout / maxCout) * 100}%` }}
+                      transition={{ duration: 0.9, delay: i * 0.1 + 0.1, ease: [0.22, 1, 0.36, 1] }}
+                      style={{ height: '100%', background: isBestCout ? '#16a34a' : '#94a3b8', borderRadius: 2 }} />
+                  </div>
+                  <span style={{ textAlign: 'right', fontWeight: isBestCout ? 700 : 500, color: isBestCout ? '#16a34a' : '#0f172a' }}>{Math.round(b.cout).toLocaleString('fr-FR')} €</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* DPE */}
+        {biens.some(b => b.dpe) && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+              <span style={{ fontSize: 12, color: '#64748b' }}>DPE</span>
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>{ecarts.dpe.delta_label}</span>
+            </div>
+            {biens.map((b, i) => b.dpe && (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '50px auto 1fr', gap: 10, alignItems: 'center', fontSize: 12, marginBottom: i < biens.length - 1 ? 4 : 0 }}>
+                <span style={{ color: '#64748b' }}>Bien {i + 1}</span>
+                <span style={{ padding: '2px 8px', borderRadius: 4, background: dpeColors[b.dpe]?.bg || '#f1f5f9', color: dpeColors[b.dpe]?.color || '#64748b', fontWeight: 700, fontSize: 11.5 }}>Classe {b.dpe}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   VERDICT V2 — nouveau rendu structuré
+   ══════════════════════════════════════════ */
+function VerdictV2Render({ verdict, adresses, bestId, selectedAnalyses }: { verdict: VerdictV2; adresses: string[]; bestId: string; selectedAnalyses: Analyse[] }) {
+  const nbBiens = adresses.length;
+  // bien_recommande_idx selon claude, fallback sur best id
+  let bestIdx = typeof verdict.bien_recommande_idx === 'number' ? verdict.bien_recommande_idx : -1;
+  if (bestIdx < 0 || bestIdx >= nbBiens) {
+    bestIdx = selectedAnalyses.findIndex(a => a.id === bestId);
+    if (bestIdx < 0) bestIdx = 0;
+  }
+  const gridCols = nbBiens === 2 ? '1fr 1fr' : '1fr 1fr 1fr';
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+      style={{ padding: '22px 24px', borderRadius: 16, background: 'linear-gradient(135deg, #f0f7fb, #e8f4fa)', border: '1.5px solid #bae3f5', boxShadow: '0 4px 16px rgba(42,125,156,0.08)' }}>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+        <Shield size={16} color="#2a7d9c" style={{ flexShrink: 0 }} />
+        <div style={{ fontSize: 12, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Verdict Verimo</div>
+      </div>
+
+      {/* Titre */}
+      <p style={{ fontSize: 17, fontWeight: 700, color: '#0f172a', marginBottom: 16, lineHeight: 1.5 }}>
+        {verdict.titre_verdict}
+      </p>
+
+      {/* Écarts clés — style barres */}
+      {verdict.ecarts_cles && (
+        <div style={{ marginBottom: 18 }}>
+          <EcartsCles ecarts={verdict.ecarts_cles} nbBiens={nbBiens} bestIdx={bestIdx} />
+        </div>
+      )}
+
+      {/* Profils par bien */}
+      {verdict.profils && verdict.profils.length > 0 && (
+        <div className="compare-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 12, marginBottom: 14 }}>
+          {verdict.profils.slice(0, nbBiens).map((p, idx) => {
+            const isBest = idx === bestIdx;
+            return (
+              <div key={idx} style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', border: '1px solid #e0ecf3' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                  <span style={{ fontSize: 10.5, color: '#94a3b8', letterSpacing: '0.1em', fontWeight: 700 }}>BIEN {idx + 1}</span>
+                  {isBest && <span style={{ fontSize: 11 }}>⭐</span>}
+                </div>
+
+                {/* Profil */}
+                {p.profil && (
+                  <>
+                    <div style={{ fontSize: 10.5, color: '#94a3b8', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 4 }}>PROFIL</div>
+                    <div style={{ fontSize: 13, lineHeight: 1.5, color: '#64748b', marginBottom: 14 }}>{p.profil}</div>
+                  </>
+                )}
+
+                {/* Forces */}
+                {p.forces && p.forces.length > 0 && (
+                  <>
+                    <div style={{ fontSize: 10.5, color: '#16a34a', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <CheckCircle size={11} /> FORCES
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+                      {p.forces.map((f, fi) => (
+                        <div key={fi} style={{ fontSize: 13, lineHeight: 1.5 }}>
+                          <span style={{ fontWeight: 600, color: '#0f172a' }}>{f.titre}</span>
+                          <ImpactBadge impact={f.impact} kind="force" />
+                          {f.detail && <div style={{ color: '#64748b', marginTop: 2 }}>{f.detail}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {/* Points faibles */}
+                {p.points_faibles && p.points_faibles.length > 0 && (
+                  <>
+                    <div style={{ fontSize: 10.5, color: '#d97706', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <AlertTriangle size={11} /> POINTS FAIBLES
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {p.points_faibles.map((pf, pfi) => (
+                        <div key={pfi} style={{ fontSize: 13, lineHeight: 1.5 }}>
+                          <span style={{ fontWeight: 600, color: '#0f172a' }}>{pf.titre}</span>
+                          <ImpactBadge impact={pf.impact} kind="faible" />
+                          {pf.detail && <div style={{ color: '#64748b', marginTop: 2 }}>{pf.detail}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Comparatif — ce qui diffère */}
+      {verdict.comparatif && (
+        <div style={{ background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.25)', borderRadius: 12, padding: '12px 14px', marginBottom: 12 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.1em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <GitCompare size={11} /> CE QUI DIFFÈRE
+          </div>
+          <div style={{ fontSize: 13, lineHeight: 1.55, color: '#0f2d3d' }}>{verdict.comparatif}</div>
+        </div>
+      )}
+
+      {/* Alerte documents */}
+      {verdict.alerte_documents && (
+        <div style={{ padding: '10px 14px', borderRadius: 10, background: '#fff7ed', border: '1px solid #fed7aa', marginBottom: 12, fontSize: 12.5, color: '#9a3412', lineHeight: 1.55 }}>
+          📁 {verdict.alerte_documents}
+        </div>
+      )}
+
+      {/* Points à approfondir */}
+      {verdict.points_a_approfondir && verdict.points_a_approfondir.length > 0 && (
+        <div style={{ background: '#fff', border: '1px solid rgba(42,125,156,0.15)', borderRadius: 12, padding: '14px 16px' }}>
+          <div style={{ fontSize: 10.5, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.1em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 5 }}>
+            💡 POINTS À APPROFONDIR AVANT DE SIGNER
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {verdict.points_a_approfondir.map((pt, pti) => (
+              <div key={pti} style={{ fontSize: 13, lineHeight: 1.5, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 9.5, padding: '2px 7px', borderRadius: 4, background: '#f1f5f9', color: '#475569', fontWeight: 700, letterSpacing: '0.04em', flexShrink: 0, marginTop: 2 }}>
+                  {pt.bien.toUpperCase()}
+                </span>
+                <span style={{ color: '#0f172a' }}>{pt.action}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <p style={{ fontSize: 11.5, color: '#94a3b8', fontStyle: 'italic', lineHeight: 1.55, marginTop: 12 }}>
+        Ce verdict est établi uniquement à partir des données disponibles dans vos rapports et ne remplace pas l'avis d'un professionnel de l'immobilier.
+      </p>
+    </motion.div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   VERDICT LEGACY — fallback pour anciennes comparaisons sauvegardées
+   ══════════════════════════════════════════ */
+function VerdictLegacyRender({ verdict }: { verdict: VerdictLegacy }) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+      style={{ padding: '22px 24px', borderRadius: 16, background: 'linear-gradient(135deg, #f0f7fb, #e8f4fa)', border: '1.5px solid #bae3f5', boxShadow: '0 4px 16px rgba(42,125,156,0.08)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+        <Shield size={16} color="#2a7d9c" style={{ flexShrink: 0 }} />
+        <div style={{ fontSize: 12, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Verdict Verimo</div>
+      </div>
+
+      <p style={{ fontSize: 17, fontWeight: 700, color: '#0f172a', marginBottom: 14, lineHeight: 1.5 }}>
+        {verdict.titre_verdict}
+      </p>
+
+      {verdict.synthese && (
+        <p style={{ fontSize: 14.5, color: '#374151', lineHeight: 1.7, marginBottom: 16 }}>
+          {verdict.synthese}
+        </p>
+      )}
+
+      {verdict.forces_bien_recommande?.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: '#16a34a', letterSpacing: '0.08em', marginBottom: 8 }}>✓ FORCES IDENTIFIÉES</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {verdict.forces_bien_recommande.map((f, i) => (
+              <div key={i} style={{ fontSize: 13.5, color: '#166534', lineHeight: 1.55 }}>• {f}</div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {verdict.points_attention?.length > 0 && (
+        <div style={{ background: 'rgba(217,119,6,0.06)', border: '1px solid rgba(217,119,6,0.15)', borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: '#d97706', letterSpacing: '0.08em', marginBottom: 8 }}>⚠ POINTS D'ATTENTION</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {verdict.points_attention.map((p, i) => (
+              <div key={i} style={{ fontSize: 13.5, color: '#92400e', lineHeight: 1.55 }}>• {p}</div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {verdict.alerte_documents && (
+        <div style={{ padding: '10px 14px', borderRadius: 10, background: '#fff7ed', border: '1px solid #fed7aa', marginBottom: 14, fontSize: 12.5, color: '#9a3412', lineHeight: 1.55 }}>
+          📁 {verdict.alerte_documents}
+        </div>
+      )}
+
+      {verdict.conseil && (
+        <div style={{ background: '#fff', border: '1px solid rgba(42,125,156,0.15)', borderRadius: 10, padding: '12px 14px', marginBottom: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.08em', marginBottom: 6 }}>💡 POINTS À APPROFONDIR AVANT DE SIGNER</div>
+          <p style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.65, margin: 0 }}>{verdict.conseil}</p>
+        </div>
+      )}
+
+      <p style={{ fontSize: 11.5, color: '#94a3b8', fontStyle: 'italic', lineHeight: 1.55, marginTop: 10 }}>
+        Ce verdict est établi uniquement à partir des données disponibles dans vos rapports et ne remplace pas l'avis d'un professionnel de l'immobilier.
+      </p>
+    </motion.div>
+  );
 }
 
 export default function Compare() {
@@ -440,11 +702,10 @@ export default function Compare() {
   const completedAnalyses = analyses.filter((a: Analyse) => a.type === 'complete' && a.status === 'completed');
   const [selected, setSelected] = useState<string[]>([]);
   const [launched, setLaunched] = useState(false);
-  const [verdictIA, setVerdictIA] = useState<VerdictIA | null>(null);
+  const [verdictIA, setVerdictIA] = useState<VerdictAny | null>(null);
   const [verdictLoading, setVerdictLoading] = useState(false);
   const [verdictError, setVerdictError] = useState(false);
   const [isCached, setIsCached] = useState(false);
-  const [docsAccordionOpen, setDocsAccordionOpen] = useState(false);
 
   // Historique
   const [historique, setHistorique] = useState<ComparaisonSaved[]>([]);
@@ -480,12 +741,12 @@ export default function Compare() {
   const viewComparaison = (comp: ComparaisonSaved) => {
     const ids = comp.analyse_ids.split(',');
     setSelected(ids);
-    let v: VerdictIA | null = null;
+    let v: VerdictAny | null = null;
     try {
       if (typeof comp.verdict === 'string') {
-        v = JSON.parse(comp.verdict) as VerdictIA;
+        v = JSON.parse(comp.verdict) as VerdictAny;
       } else if (comp.verdict && typeof comp.verdict === 'object') {
-        v = comp.verdict as VerdictIA;
+        v = comp.verdict as VerdictAny;
       }
     } catch (e) {
       console.error('[Compare] Impossible de parser le verdict sauvegardé:', e);
@@ -517,8 +778,8 @@ export default function Compare() {
     setVerdictIA(null);
     setVerdictError(false);
     setIsCached(false);
-    setDocsAccordionOpen(false);
   };
+
   const handleLaunch = async () => {
     if (!canLaunch) return;
     setLaunched(true);
@@ -545,7 +806,7 @@ export default function Compare() {
 
       const data = await res.json();
       if (data.success && data.verdict) {
-        setVerdictIA(data.verdict as VerdictIA);
+        setVerdictIA(data.verdict as VerdictAny);
         if (data.cached) {
           setIsCached(true);
         }
@@ -696,19 +957,18 @@ export default function Compare() {
         </div>
       )}
 
-      {/* Écran d'attente : analyse en cours */}
+      {/* Écran d'attente */}
       {launched && verdictLoading && !isCached && (
         <CompareWaitingScreen
           biens={selectedAnalyses.map(a => a.adresse_bien || a.nom_document || 'Bien sans titre')}
         />
       )}
 
-      {/* Mini loader pour réouverture depuis historique */}
       {launched && verdictLoading && isCached && (
         <CompareCacheLoader />
       )}
 
-      {/* Résultat comparaison : affiché UNIQUEMENT quand le verdict est prêt */}
+      {/* Résultat comparaison */}
       {launched && !verdictLoading && selectedAnalyses.length >= 2 && (() => {
         const resultsData = selectedAnalyses.map(a => getResultData(a));
         const { best } = buildVerdict(selectedAnalyses, resultsData);
@@ -720,21 +980,28 @@ export default function Compare() {
           <AnimatePresence mode="wait">
             <motion.div key="rapport" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-              {/* Cartes scores */}
+              {/* ══════════════════════════════════════════════════════════════
+                  PHASE 1 — Cards score avec bouton "Voir rapport détaillé" intégré
+                  ══════════════════════════════════════════════════════════════ */}
               <div className="compare-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 12 }}>
                 {selectedAnalyses.map((a, i) => {
                   const score = a.score ?? 0;
                   const sc = getScoreColor(score);
+                  const d = resultsData[i];
                   const isBest = a.id === best.id;
                   const circ = 2 * Math.PI * 22;
                   return (
                     <motion.div key={a.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-                      style={{ background: '#fff', borderRadius: 18, border: `2px solid ${isBest ? sc : '#edf2f7'}`, padding: '20px', position: 'relative', boxShadow: isBest ? `0 6px 24px ${sc}18` : '0 1px 4px rgba(0,0,0,0.04)' }}>
+                      style={{ background: '#fff', borderRadius: 18, border: `2px solid ${isBest ? sc : '#edf2f7'}`, padding: '20px', position: 'relative', boxShadow: isBest ? `0 6px 24px ${sc}18` : '0 1px 4px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', gap: 12 }}>
                       {isBest && <div style={{ position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)', padding: '3px 12px', borderRadius: 100, background: sc, color: '#fff', fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap' }}>⭐ Recommandé</div>}
-                      <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 6 }}>BIEN {i + 1}</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', lineHeight: 1.4, marginBottom: 16, minHeight: 36 }}>{a.adresse_bien}</div>
+
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 6 }}>BIEN {i + 1}</div>
+                        <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a', lineHeight: 1.4, minHeight: 36 }}>{a.adresse_bien}</div>
+                      </div>
+
                       {a.score != null && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <svg width="52" height="52" style={{ flexShrink: 0 }}>
                             <circle cx="26" cy="26" r="22" fill="none" stroke="#f1f5f9" strokeWidth="5" />
                             <motion.circle cx="26" cy="26" r="22" fill="none" stroke={sc} strokeWidth="5" strokeLinecap="round" transform="rotate(-90 26 26)" strokeDasharray={circ} initial={{ strokeDashoffset: circ }} animate={{ strokeDashoffset: circ - circ * (score / 20) }} transition={{ duration: 1.2, delay: i * 0.15, ease: [0.22, 1, 0.36, 1] }} />
@@ -747,21 +1014,75 @@ export default function Compare() {
                           </div>
                         </div>
                       )}
-                      <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
-                        <motion.div initial={{ width: 0 }} animate={{ width: `${((a.score ?? 0) / 20) * 100}%` }} transition={{ duration: 1.2, delay: i * 0.15 + 0.2 }} style={{ height: '100%', background: sc, borderRadius: 99 }} />
+
+                      {/* Mini infos : DPE + total année 1 */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '8px 0', borderTop: '1px dashed #f1f5f9', borderBottom: '1px dashed #f1f5f9' }}>
+                        {d?.dpe && <DpeCell classe={d.dpe} />}
+                        {d?.financier?.has_data && (
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                            <span style={{ fontSize: 11, color: '#94a3b8' }}>année 1 :</span>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
+                              {d.financier.total_annee_1 > 0 ? `${Math.round(d.financier.total_annee_1).toLocaleString('fr-FR')} €` : '—'}
+                            </span>
+                          </div>
+                        )}
                       </div>
+
+                      {/* Bouton "Voir rapport détaillé" intégré dans la card */}
+                      <Link to={`/rapport?id=${a.id}`}
+                        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 14px', borderRadius: 10, background: '#f4f7f9', border: '1px solid #edf2f7', color: '#0f172a', fontSize: 12.5, fontWeight: 600, textDecoration: 'none', transition: 'all 0.18s' }}>
+                        <FileText size={13} />
+                        Voir le rapport détaillé
+                        <ArrowRight size={12} />
+                      </Link>
                     </motion.div>
                   );
                 })}
               </div>
 
-              {/* Tableau comparatif enrichi */}
-              <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-                <div style={{ padding: '16px 22px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 18 }}>📊</span>
-                  <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Comparaison détaillée</span>
-                </div>
+              {/* ══════════════════════════════════════════════════════════════
+                  PHASE 2 — Verdict Verimo
+                  ══════════════════════════════════════════════════════════════ */}
 
+              {/* Verdict fallback si erreur API */}
+              {verdictError && !verdictIA && (() => {
+                const { best, raisons } = buildVerdict(selectedAnalyses, resultsData);
+                return (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                    style={{ padding: '22px 24px', borderRadius: 16, background: 'linear-gradient(135deg, #f0f7fb, #e8f4fa)', border: '1.5px solid #bae3f5' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                      <Shield size={16} color="#2a7d9c" style={{ flexShrink: 0 }} />
+                      <div style={{ fontSize: 11, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Verdict Verimo</div>
+                    </div>
+                    <p style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>
+                      D'après les scores : <span style={{ color: getScoreColor(best.score ?? 0) }}>"{best.adresse_bien}"</span> présente le profil le plus équilibré
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                      {raisons.map((r, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                          <CheckCircle size={14} color="#2a7d9c" style={{ flexShrink: 0, marginTop: 2 }} />
+                          <span style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>{r}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p style={{ fontSize: 11, color: '#d97706', fontStyle: 'italic' }}>Le verdict détaillé n'a pas pu être généré. Voici une analyse simplifiée basée sur les scores.</p>
+                  </motion.div>
+                );
+              })()}
+
+              {/* Verdict IA — détection auto format V2 ou legacy */}
+              {verdictIA && (
+                isVerdictV2(verdictIA)
+                  ? <VerdictV2Render verdict={verdictIA} adresses={adresses} bestId={best.id} selectedAnalyses={selectedAnalyses} />
+                  : <VerdictLegacyRender verdict={verdictIA as VerdictLegacy} />
+              )}
+
+              {/* ══════════════════════════════════════════════════════════════
+                  PHASE 3 — Détails en accordéons
+                  ══════════════════════════════════════════════════════════════ */}
+
+              {/* Tableau comparatif — OUVERT par défaut */}
+              <Accordion title="Comparaison détaillée" icon="📊" defaultOpen>
                 <div style={{ display: 'grid', gridTemplateColumns: `180px repeat(${cols}, 1fr)`, borderBottom: '2px solid #f1f5f9', background: '#fafbfc' }}>
                   <div style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Critère</div>
                   {selectedAnalyses.map((a, i) => (
@@ -787,47 +1108,45 @@ export default function Compare() {
                   {
                     label: 'Travaux votés', render: (_a: Analyse, i: number) => {
                       const d = resultsData[i]; if (!d) return <span style={{ color: '#94a3b8', fontSize: 13 }}>—</span>;
-                      const bestVal = Math.min(...resultsData.filter(Boolean).map(r => r!.travaux_votes));
-                      return <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><TendanceIcon val={d.travaux_votes} best={bestVal} /><span style={{ fontSize: 14, fontWeight: 600, color: d.travaux_votes === 0 ? '#16a34a' : '#d97706' }}>{d.travaux_votes} travaux</span></div>;
+                      const n = d.travaux_votes;
+                      return <span style={{ fontSize: 13.5, fontWeight: 600, color: n === 0 ? '#64748b' : n >= 3 ? '#d97706' : '#0f172a' }}>{n} travaux</span>;
                     }
                   },
                   {
                     label: 'Travaux évoqués', render: (_a: Analyse, i: number) => {
                       const d = resultsData[i]; if (!d) return <span style={{ color: '#94a3b8', fontSize: 13 }}>—</span>;
-                      const bestVal = Math.min(...resultsData.filter(Boolean).map(r => r!.travaux_evoques));
-                      return <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><TendanceIcon val={d.travaux_evoques} best={bestVal} /><span style={{ fontSize: 14, fontWeight: 600, color: d.travaux_evoques === 0 ? '#16a34a' : '#f97316' }}>{d.travaux_evoques} évoqués</span></div>;
+                      const n = d.travaux_evoques;
+                      return <span style={{ fontSize: 13.5, fontWeight: 600, color: n === 0 ? '#64748b' : '#d97706' }}>{n} évoqués</span>;
                     }
                   },
                   {
                     label: 'Procédures', render: (_a: Analyse, i: number) => {
                       const d = resultsData[i]; if (!d) return <span style={{ color: '#94a3b8', fontSize: 13 }}>—</span>;
-                      return <span style={{ fontSize: 14, fontWeight: 600, color: d.procedures === 0 ? '#16a34a' : '#dc2626' }}>{d.procedures === 0 ? '✓ Aucune' : `⚠ ${d.procedures} détectée${d.procedures > 1 ? 's' : ''}`}</span>;
+                      return <span style={{ fontSize: 13.5, fontWeight: 600, color: d.procedures === 0 ? '#64748b' : '#dc2626' }}>{d.procedures === 0 ? 'Aucune' : `⚠ ${d.procedures} détectée${d.procedures > 1 ? 's' : ''}`}</span>;
                     }
                   },
                   {
                     label: 'Fonds travaux', render: (_a: Analyse, i: number) => {
                       const d = resultsData[i]; if (!d) return <span style={{ color: '#94a3b8', fontSize: 13 }}>—</span>;
                       const s = d.fonds_travaux_statut;
-                      return <span style={{ fontSize: 13.5, fontWeight: 600, color: s === 'conforme' ? '#16a34a' : s === 'insuffisant' ? '#dc2626' : '#94a3b8' }}>
-                        {s === 'conforme' ? '✓ Conforme' : s === 'insuffisant' ? '⚠ Insuffisant' : s === 'absent' ? '✗ Absent' : '—'}
+                      return <span style={{ fontSize: 13.5, fontWeight: 600, color: s === 'insuffisant' || s === 'absent' ? '#dc2626' : '#64748b' }}>
+                        {s === 'conforme' ? 'Conforme' : s === 'bien' ? 'Bien' : s === 'excellent' ? 'Excellent' : s === 'insuffisant' ? '⚠ Insuffisant' : s === 'absent' ? '⚠ Absent' : '—'}
                       </span>;
                     }
                   },
                   {
                     label: 'Impayés vendeur', render: (_a: Analyse, i: number) => {
                       const d = resultsData[i]; if (!d) return <span style={{ color: '#94a3b8', fontSize: 13 }}>—</span>;
-                      return <span style={{ fontSize: 13.5, fontWeight: 600, color: d.impayes ? '#dc2626' : '#16a34a' }}>{d.impayes ? '⚠ Détectés' : '✓ Aucun'}</span>;
+                      return <span style={{ fontSize: 13.5, fontWeight: 600, color: d.impayes ? '#dc2626' : '#64748b' }}>{d.impayes ? '⚠ Détectés' : 'Aucun'}</span>;
                     }
                   },
                   {
                     label: 'Charges/an lot', render: (_a: Analyse, i: number) => {
                       const d = resultsData[i]; if (!d || !d.charges_annuelles) return <span style={{ color: '#94a3b8', fontSize: 13 }}>—</span>;
-                      const bestVal = Math.min(...resultsData.filter(r => r?.charges_annuelles).map(r => r!.charges_annuelles!));
                       return (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          <TendanceIcon val={d.charges_annuelles} best={bestVal} />
                           <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
-                            {d.charges_is_estimation ? '~ ' : ''}{d.charges_annuelles.toLocaleString('fr-FR')}€
+                            {d.charges_is_estimation ? '~ ' : ''}{d.charges_annuelles.toLocaleString('fr-FR')} €
                           </span>
                           {d.charges_is_estimation && (
                             <span style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic' }}>estimation</span>
@@ -836,30 +1155,22 @@ export default function Compare() {
                       );
                     }
                   },
-                ].map((row, ri) => {
-                  const vals = selectedAnalyses.map((a, j) => row.render(a, j));
-                  void vals;
-                  return (
-                  <div key={ri} style={{ display: 'grid', gridTemplateColumns: `180px repeat(${cols}, 1fr)`, borderBottom: ri < 8 ? '1px solid #f8fafc' : 'none', background: ri % 2 === 0 ? '#fff' : '#fafbfc' }}>
+                ].map((row, ri) => (
+                  <div key={ri} style={{ display: 'grid', gridTemplateColumns: `180px repeat(${cols}, 1fr)`, borderBottom: ri < 8 ? '1px solid #f8fafc' : 'none' }}>
                     <div style={{ padding: '14px 18px', fontSize: 13.5, color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center' }}>{row.label}</div>
                     {selectedAnalyses.map((a, j) => (
-                      <div key={j} style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', borderLeft: '1px solid #f1f5f9', background: a.id === best.id ? 'rgba(42,125,156,0.02)' : 'transparent' }}>
+                      <div key={j} style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', borderLeft: '1px solid #f1f5f9' }}>
                         {row.render(a, j)}
                       </div>
                     ))}
                   </div>
-                  );
-                })}
-              </div>
+                ))}
+              </Accordion>
 
-              {/* Radar des 5 catégories */}
+              {/* Scores par catégorie — OUVERT par défaut */}
               {resultsData.some(d => d?.categories) && (
-                <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-                  <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 16 }}>📊</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Scores par catégorie</span>
-                  </div>
-                  <div style={{ padding: '20px' }}>
+                <Accordion title="Scores par catégorie" icon="📊" defaultOpen>
+                  <div style={{ padding: '16px 20px' }}>
                     {[
                       { key: 'travaux', label: 'Travaux', emoji: '🏗️', max: 5 },
                       { key: 'procedures', label: 'Procédures', emoji: '⚖️', max: 4 },
@@ -906,16 +1217,12 @@ export default function Compare() {
                       );
                     })}
                   </div>
-                </div>
+                </Accordion>
               )}
 
-              {/* Résumé financier année 1 */}
+              {/* Résumé financier — REPLIÉ */}
               {resultsData.some(d => d?.financier?.has_data) && (
-                <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-                  <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 16 }}>💶</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Résumé financier — 1ère année</span>
-                  </div>
+                <Accordion title="Résumé financier — 1ère année" icon="💶">
                   <div style={{ overflowX: 'auto' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: `180px repeat(${cols}, 1fr)`, minWidth: cols === 3 ? 640 : 400 }}>
                       <div style={{ padding: '10px 16px', fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', borderBottom: '2px solid #f1f5f9', background: '#fafbfc' }}>Poste</div>
@@ -932,14 +1239,14 @@ export default function Compare() {
                         { label: 'Fonds roulement (signature)', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.fonds_roulement_signature, est: false }) },
                       ].map((row, ri) => (
                         <React.Fragment key={ri}>
-                          <div style={{ padding: '10px 16px', fontSize: 12, color: '#64748b', fontWeight: 600, borderBottom: '1px solid #f8fafc', background: ri % 2 === 0 ? '#fff' : '#fafbfc' }}>{row.label}</div>
+                          <div style={{ padding: '10px 16px', fontSize: 12, color: '#64748b', fontWeight: 600, borderBottom: '1px solid #f8fafc' }}>{row.label}</div>
                           {resultsData.map((d, j) => {
                             const cell = d ? row.get(d) : { val: null, est: false };
                             return (
-                              <div key={j} style={{ padding: '10px 16px', borderLeft: '1px solid #f1f5f9', borderBottom: '1px solid #f8fafc', background: ri % 2 === 0 ? '#fff' : '#fafbfc', fontSize: 13, fontWeight: 600, color: cell.val ? '#0f172a' : '#94a3b8' }}>
+                              <div key={j} style={{ padding: '10px 16px', borderLeft: '1px solid #f1f5f9', borderBottom: '1px solid #f8fafc', fontSize: 13, fontWeight: 600, color: cell.val ? '#0f172a' : '#94a3b8' }}>
                                 {cell.val ? (
                                   <span>
-                                    {cell.est ? '~ ' : ''}{Math.round(cell.val).toLocaleString('fr-FR')}€
+                                    {cell.est ? '~ ' : ''}{Math.round(cell.val).toLocaleString('fr-FR')} €
                                     {cell.est && <span style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic', marginLeft: 4 }}>estimation</span>}
                                   </span>
                                 ) : '—'}
@@ -956,7 +1263,7 @@ export default function Compare() {
                         const isBestFinancier = total > 0 && total === Math.min(...allTotals.filter(t => t > 0));
                         return (
                           <div key={j} style={{ padding: '12px 16px', borderLeft: '1px solid #f1f5f9', borderTop: '2px solid #2a7d9c', background: isBestFinancier ? '#f0fdf4' : '#f0f7fb', fontSize: 15, fontWeight: 900, color: isBestFinancier ? '#16a34a' : '#0f172a' }}>
-                            {total > 0 ? `${Math.round(total).toLocaleString('fr-FR')}€` : '—'}
+                            {total > 0 ? `${Math.round(total).toLocaleString('fr-FR')} €` : '—'}
                             {isBestFinancier && <span style={{ fontSize: 10, marginLeft: 6 }}>✓ le moins cher</span>}
                           </div>
                         );
@@ -965,66 +1272,82 @@ export default function Compare() {
                   </div>
                   <div style={{ padding: '12px 20px', background: '#fafbfc', borderTop: '1px solid #f1f5f9' }}>
                     <p style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic', lineHeight: 1.6, margin: 0 }}>
-                      * Estimation basée sur les éléments présents dans vos documents. Les travaux évoqués non votés et les éventuels appels de fonds exceptionnels ne sont pas inclus dans ce calcul. Les montants précédés de « ~ » sont calculés via le budget global × tantièmes du lot.
+                      * Estimation basée sur les éléments présents dans vos documents. Les travaux évoqués non votés et les éventuels appels de fonds exceptionnels ne sont pas inclus. Les montants précédés de « ~ » sont calculés via le budget global × tantièmes du lot.
                     </p>
                   </div>
-                </div>
+                </Accordion>
               )}
 
-              {/* Travaux évoqués non votés */}
+              {/* Travaux évoqués non votés — REPLIÉ, nouveau design lignes fines */}
               {resultsData.some(d => d && d.travaux_evoques_list.length > 0) && (
-                <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #fde68a', overflow: 'hidden' }}>
-                  <div style={{ padding: '14px 20px', borderBottom: '1px solid #fde68a', background: '#fffbeb', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 16 }}>⚠️</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>Travaux évoqués non votés — à anticiper</span>
-                  </div>
+                <Accordion title="Travaux évoqués non votés" icon="⚠️" subtitle="à anticiper dans votre budget">
                   <div className="compare-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 0 }}>
                     {selectedAnalyses.map((a, i) => {
                       const d = resultsData[i];
                       return (
                         <div key={a.id} style={{ padding: '14px 18px', borderLeft: i > 0 ? '1px solid #f1f5f9' : 'none' }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 8 }}>BIEN {i + 1}</div>
-                          {d && d.travaux_evoques_list.length > 0 ? d.travaux_evoques_list.map((t, ti) => (
-                            <div key={ti} style={{ fontSize: 12, color: '#92400e', padding: '6px 10px', borderRadius: 8, background: '#fffbeb', border: '1px solid #fde68a', marginBottom: 4, lineHeight: 1.4 }}>
-                              {t.label}{t.montant_estime ? ` — ~${Math.round(t.montant_estime).toLocaleString('fr-FR')}€` : ' — montant non déterminé'}
+                          <div style={{ fontSize: 10.5, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 10 }}>BIEN {i + 1}</div>
+                          {d && d.travaux_evoques_list.length > 0 ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              {d.travaux_evoques_list.map((t, ti) => (
+                                <div key={ti} style={{ display: 'flex', gap: 8, fontSize: 12.5, lineHeight: 1.5, alignItems: 'flex-start' }}>
+                                  <span style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }}>▸</span>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <span style={{ color: '#0f172a' }}>{t.label}</span>
+                                    {t.montant_estime ? (
+                                      <span style={{ color: '#94a3b8', marginLeft: 6 }}>~ {Math.round(t.montant_estime).toLocaleString('fr-FR')} €</span>
+                                    ) : (
+                                      <span style={{ color: '#cbd5e1', marginLeft: 6, fontSize: 11, fontStyle: 'italic' }}>montant non déterminé</span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                          )) : <p style={{ fontSize: 12, color: '#16a34a' }}>✓ Aucun travaux évoqué</p>}
+                          ) : (
+                            <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>Aucun travaux évoqué.</p>
+                          )}
                         </div>
                       );
                     })}
                   </div>
-                </div>
+                </Accordion>
               )}
 
-              {/* 🆕 Points clés par bien — refonte UX en cards thématiques */}
-              <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
-                <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 16 }}>🔍</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Points clés par bien</span>
-                </div>
+              {/* Points clés par bien — REPLIÉ (simplifié, redondance avec verdict assumée pour qui veut le détail) */}
+              <Accordion title="Points clés extraits de chaque rapport" icon="🔍" subtitle="détail complet par bien">
                 <div className="compare-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 0 }}>
                   {selectedAnalyses.map((a, i) => {
                     const d = resultsData[i];
                     return (
-                      <div key={a.id} style={{ padding: '18px 18px 20px', borderLeft: i > 0 ? '1px solid #f1f5f9' : 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.1em' }}>BIEN {i + 1}{a.id === best.id ? ' ⭐' : ''}</div>
+                      <div key={a.id} style={{ padding: '16px 18px', borderLeft: i > 0 ? '1px solid #f1f5f9' : 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div style={{ fontSize: 10.5, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.1em' }}>BIEN {i + 1}{a.id === best.id ? ' ⭐' : ''}</div>
                         {d?.points_forts && d.points_forts.length > 0 && (
                           <div>
-                            <div style={{ fontSize: 10.5, fontWeight: 800, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <CheckCircle size={12} /> Points forts
+                            <div style={{ fontSize: 10.5, fontWeight: 800, color: '#16a34a', letterSpacing: '0.08em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <CheckCircle size={11} /> POINTS FORTS
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                              {d.points_forts.map((p, pi) => <PointCard key={pi} raw={p} kind="fort" />)}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {d.points_forts.map((p, pi) => (
+                                <div key={pi} style={{ fontSize: 12.5, color: '#166534', lineHeight: 1.5, display: 'flex', gap: 6 }}>
+                                  <span style={{ color: '#16a34a', flexShrink: 0 }}>▸</span>
+                                  <span>{p}</span>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         )}
                         {d?.points_vigilance && d.points_vigilance.length > 0 && (
                           <div>
-                            <div style={{ fontSize: 10.5, fontWeight: 800, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <AlertTriangle size={12} /> Vigilances
+                            <div style={{ fontSize: 10.5, fontWeight: 800, color: '#d97706', letterSpacing: '0.08em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <AlertTriangle size={11} /> VIGILANCES
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                              {d.points_vigilance.map((p, pi) => <PointCard key={pi} raw={p} kind="vigilance" />)}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {d.points_vigilance.map((p, pi) => (
+                                <div key={pi} style={{ fontSize: 12.5, color: '#92400e', lineHeight: 1.5, display: 'flex', gap: 6 }}>
+                                  <span style={{ color: '#d97706', flexShrink: 0 }}>▸</span>
+                                  <span>{p}</span>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         )}
@@ -1033,237 +1356,58 @@ export default function Compare() {
                     );
                   })}
                 </div>
-              </div>
+              </Accordion>
 
-              {/* Verdict (fallback local si erreur API) */}
-              {verdictError && !verdictIA && !verdictLoading && (() => {
-                const { best, raisons } = buildVerdict(selectedAnalyses, resultsData);
-                return (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                    style={{ padding: '22px 24px', borderRadius: 16, background: 'linear-gradient(135deg, #f0f7fb, #e8f4fa)', border: '1.5px solid #bae3f5' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                      <Shield size={16} color="#2a7d9c" style={{ flexShrink: 0 }} />
-                      <div style={{ fontSize: 11, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Verdict Verimo</div>
-                    </div>
-                    <p style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 10 }}>
-                      D'après les scores : <span style={{ color: getScoreColor(best.score ?? 0) }}>"{best.adresse_bien}"</span> présente le profil le plus équilibré
-                    </p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
-                      {raisons.map((r, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                          <CheckCircle size={14} color="#2a7d9c" style={{ flexShrink: 0, marginTop: 2 }} />
-                          <span style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>{r}</span>
+              {/* Documents analysés — REPLIÉ */}
+              <Accordion
+                title="Documents analysés par bien"
+                icon="📁"
+                subtitle={selectedAnalyses.map((_, i) => {
+                  const n = resultsData[i]?.documents_analyses?.length || 0;
+                  return `Bien ${i + 1} : ${n} doc${n > 1 ? 's' : ''}`;
+                }).join(' • ')}
+              >
+                <div className="compare-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 0 }}>
+                  {selectedAnalyses.map((a, i) => {
+                    const d = resultsData[i];
+                    const docs = d?.documents_analyses || [];
+                    return (
+                      <div key={a.id} style={{ padding: '16px 18px', borderLeft: i > 0 ? '1px solid #f1f5f9' : 'none' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                          <span style={{ fontSize: 10.5, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.1em' }}>BIEN {i + 1}</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: 'rgba(42,125,156,0.08)', padding: '2px 8px', borderRadius: 6 }}>{docs.length} doc{docs.length > 1 ? 's' : ''}</span>
                         </div>
-                      ))}
-                    </div>
-                    <p style={{ fontSize: 11, color: '#d97706', fontStyle: 'italic' }}>Le verdict détaillé n'a pas pu être généré. Voici une analyse simplifiée basée sur les scores.</p>
-                  </motion.div>
-                );
-              })()}
-
-              {/* 🆕 Verdict IA — refonte : synthèse scindée + badges par bien */}
-              {verdictIA && !verdictLoading && (() => {
-                const { parBien, comparatif } = splitSyntheseParBien(verdictIA.synthese || '', adresses);
-                const hasSplit = parBien.some(t => t.length > 0) && comparatif.length > 0;
-
-                return (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                    style={{ padding: '24px 26px', borderRadius: 16, background: 'linear-gradient(135deg, #f0f7fb, #e8f4fa)', border: '1.5px solid #bae3f5', boxShadow: '0 4px 16px rgba(42,125,156,0.08)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                      <Shield size={16} color="#2a7d9c" style={{ flexShrink: 0 }} />
-                      <div style={{ fontSize: 12, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Verdict Verimo</div>
-                    </div>
-
-                    {/* Titre verdict */}
-                    <p style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', marginBottom: 16, lineHeight: 1.5 }}>
-                      {verdictIA.titre_verdict}
-                    </p>
-
-                    {/* Synthèse — version scindée ou fallback texte unifié */}
-                    {hasSplit ? (
-                      <div style={{ marginBottom: 20 }}>
-                        <div className="compare-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 10, marginBottom: 10 }}>
-                          {parBien.map((txt, i) => txt && (
-                            <div key={i} style={{ padding: '14px 16px', borderRadius: 12, background: '#fff', border: '1px solid #e0ecf3' }}>
-                              <div style={{ fontSize: 10.5, fontWeight: 800, color: '#64748b', letterSpacing: '0.1em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <Building2 size={11} /> BIEN {i + 1}{selectedAnalyses[i]?.id === best.id ? ' ⭐' : ''}
-                              </div>
-                              <div style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.65 }}>{txt}</div>
-                            </div>
-                          ))}
-                        </div>
-                        {comparatif && (
-                          <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.2)' }}>
-                            <div style={{ fontSize: 10.5, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.1em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <GitCompare size={11} /> COMPARATIF
-                            </div>
-                            <div style={{ fontSize: 13.5, color: '#0f2d3d', lineHeight: 1.65 }}>{comparatif}</div>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <p style={{ fontSize: 15, color: '#374151', lineHeight: 1.7, marginBottom: 18 }}>
-                        {verdictIA.synthese}
-                      </p>
-                    )}
-
-                    {/* Forces + Points d'attention en 2 colonnes avec badges Bien 1/2 */}
-                    <div className="compare-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-                      {verdictIA.forces_bien_recommande?.length > 0 && (
-                        <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.15)' }}>
-                          <div style={{ fontSize: 11, fontWeight: 800, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <CheckCircle size={12} /> Forces identifiées
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            {verdictIA.forces_bien_recommande.map((f, i) => {
-                              const bienIdx = detectBienIndex(f, adresses);
+                        {docs.length > 0 ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {docs.map((doc, di) => {
+                              const parts = doc.nom.split(/\s[-–]\s/);
+                              const filename = parts[0].trim();
+                              const description = parts.slice(1).join(' – ').trim();
                               return (
-                                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                                  <CheckCircle size={12} color="#16a34a" style={{ flexShrink: 0, marginTop: 3 }} />
+                                <div key={di} style={{ padding: '8px 10px', borderRadius: 8, background: '#fafbfc', border: '1px solid #f1f5f9', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                                  <FileText size={12} style={{ color: '#94a3b8', flexShrink: 0, marginTop: 2 }} />
                                   <div style={{ flex: 1, minWidth: 0 }}>
-                                    {bienIdx !== null && (
-                                      <span style={{ display: 'inline-block', fontSize: 9.5, fontWeight: 800, color: '#16a34a', background: 'rgba(22,163,74,0.15)', padding: '1px 6px', borderRadius: 4, marginRight: 6, letterSpacing: '0.04em', verticalAlign: 'middle' }}>
-                                        BIEN {bienIdx + 1}
-                                      </span>
-                                    )}
-                                    <span style={{ fontSize: 13, color: '#166534', lineHeight: 1.55 }}>{f}</span>
+                                    <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', lineHeight: 1.4, wordBreak: 'break-word' }}>{filename}</div>
+                                    {description && <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.5, marginTop: 2, wordBreak: 'break-word' }}>{description}</div>}
+                                    {doc.annee && <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 3 }}>{doc.annee}</div>}
                                   </div>
                                 </div>
                               );
                             })}
                           </div>
-                        </div>
-                      )}
-
-                      {verdictIA.points_attention?.length > 0 && (
-                        <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(217,119,6,0.06)', border: '1px solid rgba(217,119,6,0.15)' }}>
-                          <div style={{ fontSize: 11, fontWeight: 800, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <AlertTriangle size={12} /> Points d'attention
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            {verdictIA.points_attention.map((a, i) => {
-                              const bienIdx = detectBienIndex(a, adresses);
-                              return (
-                                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                                  <AlertTriangle size={12} color="#d97706" style={{ flexShrink: 0, marginTop: 3 }} />
-                                  <div style={{ flex: 1, minWidth: 0 }}>
-                                    {bienIdx !== null && (
-                                      <span style={{ display: 'inline-block', fontSize: 9.5, fontWeight: 800, color: '#d97706', background: 'rgba(217,119,6,0.15)', padding: '1px 6px', borderRadius: 4, marginRight: 6, letterSpacing: '0.04em', verticalAlign: 'middle' }}>
-                                        BIEN {bienIdx + 1}
-                                      </span>
-                                    )}
-                                    <span style={{ fontSize: 13, color: '#92400e', lineHeight: 1.55 }}>{a}</span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Alerte documents */}
-                    {verdictIA.alerte_documents && (
-                      <div style={{ padding: '12px 16px', borderRadius: 10, background: '#fff7ed', border: '1px solid #fed7aa', marginBottom: 16, fontSize: 13.5, color: '#9a3412', lineHeight: 1.6 }}>
-                        📁 {verdictIA.alerte_documents}
+                        ) : <p style={{ fontSize: 12, color: '#94a3b8' }}>Non disponible</p>}
                       </div>
-                    )}
-
-                    {/* Points à approfondir (ex-"Notre conseil") */}
-                    <div style={{ padding: '16px 18px', borderRadius: 12, background: '#fff', border: '1px solid rgba(42,125,156,0.15)', marginBottom: 14 }}>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: '#2a7d9c', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        💡 Points à approfondir avant de signer
-                      </div>
-                      <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.65, margin: 0 }}>{verdictIA.conseil}</p>
-                    </div>
-
-                    <p style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic', lineHeight: 1.6 }}>Ce verdict est établi uniquement à partir des données disponibles dans vos rapports et ne remplace pas l'avis d'un professionnel de l'immobilier.</p>
-                  </motion.div>
-                );
-              })()}
-
-              {/* Liens rapports */}
-              <div style={{ padding: '16px 20px', borderRadius: 14, background: '#fff', border: '1px solid #edf2f7', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 2 }}>Consulter les rapports individuels</div>
-                  <div style={{ fontSize: 12, color: '#94a3b8' }}>Pour le détail complet de chaque bien</div>
+                    );
+                  })}
                 </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {selectedAnalyses.map((a, i) => (
-                    <Link key={a.id} to={`/rapport?id=${a.id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, background: '#f4f7f9', border: '1px solid #edf2f7', color: '#0f172a', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
-                      <FileText size={12} /> Bien {i + 1}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-
-              {/* 🆕 Documents analysés — accordéon replié en bas */}
-              <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
-                <button
-                  onClick={() => setDocsAccordionOpen(o => !o)}
-                  style={{ width: '100%', padding: '14px 18px', background: docsAccordionOpen ? '#fafbfc' : '#fff', border: 'none', borderBottom: docsAccordionOpen ? '1px solid #f1f5f9' : 'none', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', transition: 'background 0.2s', fontFamily: 'inherit', textAlign: 'left' }}>
-                  <span style={{ fontSize: 16 }}>📁</span>
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Documents analysés par bien</span>
-                    <span style={{ fontSize: 11, color: '#94a3b8' }}>
-                      {selectedAnalyses.map((_, i) => {
-                        const n = resultsData[i]?.documents_analyses?.length || 0;
-                        return `Bien ${i + 1} : ${n} doc${n > 1 ? 's' : ''}`;
-                      }).join(' • ')}
-                    </span>
-                  </div>
-                  <ChevronDown size={16} style={{ color: '#94a3b8', transform: docsAccordionOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.25s' }} />
-                </button>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateRows: docsAccordionOpen ? '1fr' : '0fr',
-                  transition: 'grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                }}>
-                  <div style={{ overflow: 'hidden' }}>
-                    <div className="compare-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 0 }}>
-                      {selectedAnalyses.map((a, i) => {
-                        const d = resultsData[i];
-                        const docs = d?.documents_analyses || [];
-                        return (
-                          <div key={a.id} style={{ padding: '16px 18px', borderLeft: i > 0 ? '1px solid #f1f5f9' : 'none' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                              <span style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.1em' }}>BIEN {i + 1}</span>
-                              <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: 'rgba(42,125,156,0.08)', padding: '2px 8px', borderRadius: 6 }}>{docs.length} doc{docs.length > 1 ? 's' : ''}</span>
-                            </div>
-                            {docs.length > 0 ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                {docs.map((doc, di) => {
-                                  // Split nom / description sur " - " ou " – "
-                                  const parts = doc.nom.split(/\s[-–]\s/);
-                                  const filename = parts[0].trim();
-                                  const description = parts.slice(1).join(' – ').trim();
-                                  return (
-                                    <div key={di} style={{ padding: '8px 10px', borderRadius: 8, background: '#fafbfc', border: '1px solid #f1f5f9', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                                      <FileText size={12} style={{ color: '#94a3b8', flexShrink: 0, marginTop: 2 }} />
-                                      <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', lineHeight: 1.4, wordBreak: 'break-word' }}>{filename}</div>
-                                        {description && <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.5, marginTop: 2, wordBreak: 'break-word' }}>{description}</div>}
-                                        {doc.annee && <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 3 }}>{doc.annee}</div>}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ) : <p style={{ fontSize: 12, color: '#94a3b8' }}>Non disponible</p>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              </Accordion>
 
             </motion.div>
           </AnimatePresence>
         );
       })()}
 
-      {/* ─── Historique des comparaisons ─── */}
+      {/* ─── Historique ─── */}
       {!launched && historique.length > 0 && (
         <div style={{ marginTop: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
