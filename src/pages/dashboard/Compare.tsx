@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GitCompare, ShieldCheck, Building2, CheckCircle, FileText, Shield, ArrowRight, TrendingUp, TrendingDown, Minus, AlertTriangle, Trash2, Clock, Eye } from 'lucide-react';
+import { GitCompare, ShieldCheck, Building2, CheckCircle, FileText, Shield, ArrowRight, TrendingUp, TrendingDown, Minus, AlertTriangle, Trash2, Clock, Eye, ChevronDown } from 'lucide-react';
 import { useAnalyses, type Analyse } from '../../hooks/useAnalyses';
 import { supabase } from '../../lib/supabase';
 
@@ -12,9 +12,6 @@ function CompareWaitingScreen({ biens }: { biens: string[] }) {
   const [currentStep, setCurrentStep] = useState(0);
   const n = biens.length;
 
-  // Les 3 étapes s'enchaînent automatiquement toutes les ~9-10s
-  // Le composant sera démonté quand Claude finit (verdictLoading → false)
-  // La 3ème étape reste "en cours" tant que Claude n'a pas fini
   useEffect(() => {
     const t1 = setTimeout(() => setCurrentStep(1), 8000);
     const t2 = setTimeout(() => setCurrentStep(2), 18000);
@@ -31,7 +28,6 @@ function CompareWaitingScreen({ biens }: { biens: string[] }) {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
       style={{ padding: '48px 32px', borderRadius: 20, background: 'linear-gradient(135deg, #f0f7fb 0%, #e8f4fa 100%)', border: '1.5px solid #bae3f5', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24, minHeight: 520, justifyContent: 'center' }}>
 
-      {/* Animation principale : 2-3 bâtiments qui pulsent + liaisons */}
       <div style={{ position: 'relative', width: 200, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
         {biens.slice(0, 3).map((_, i) => (
           <motion.div key={i}
@@ -41,14 +37,12 @@ function CompareWaitingScreen({ biens }: { biens: string[] }) {
             <Building2 size={28} color="#fff" />
           </motion.div>
         ))}
-        {/* Ligne de comparaison animée */}
         <motion.div
           animate={{ scaleX: [0.7, 1, 0.7], opacity: [0.4, 0.9, 0.4] }}
           transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
           style={{ position: 'absolute', top: '50%', left: 50, right: 50, height: 2, background: 'linear-gradient(90deg, transparent, #2a7d9c, transparent)', transformOrigin: 'center' }} />
       </div>
 
-      {/* Titre dynamique */}
       <div style={{ textAlign: 'center' }}>
         <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 8, letterSpacing: '-0.02em' }}>
           Analyse comparative en cours
@@ -58,7 +52,6 @@ function CompareWaitingScreen({ biens }: { biens: string[] }) {
         </p>
       </div>
 
-      {/* Biens en cours de comparaison */}
       <div style={{ width: '100%', maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {biens.map((adr, i) => (
           <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 + i * 0.15 }}
@@ -73,7 +66,6 @@ function CompareWaitingScreen({ biens }: { biens: string[] }) {
         ))}
       </div>
 
-      {/* Barre de progression des 3 étapes */}
       <div style={{ width: '100%', maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 14, marginTop: 8 }}>
         {steps.map((step, i) => {
           const isDone = i < currentStep;
@@ -159,7 +151,6 @@ function getScoreBorder(s: number) {
 }
 
 function buildVerdict(analyses: Analyse[], resultsData: (ReturnType<typeof getResultData>)[]) {
-  // Verdict local de fallback — utilisé pendant le chargement ou en cas d'erreur API
   const sorted = [...analyses].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
   const best = sorted[0];
   const bestIdx = analyses.findIndex(a => a.id === best.id);
@@ -204,6 +195,19 @@ type ComparaisonSaved = {
   created_at: string;
 };
 
+/* ══════════════════════════════════════════
+   PARSER tantièmes : "171/9865emes" ou "171 / 9865" → { num: 171, den: 9865 }
+   ══════════════════════════════════════════ */
+function parseTantiemes(raw: unknown): { num: number; den: number } | null {
+  if (typeof raw !== 'string') return null;
+  const m = raw.replace(/\s/g, '').match(/(\d+)\s*\/\s*(\d+)/);
+  if (!m) return null;
+  const num = parseInt(m[1], 10);
+  const den = parseInt(m[2], 10);
+  if (!num || !den || den < num) return null;
+  return { num, den };
+}
+
 // Données enrichies depuis le résultat JSON de Claude (stocké dans result)
 function getResultData(a: Analyse) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -222,13 +226,40 @@ function getResultData(a: Analyse) {
     return null;
   };
 
-  const chargesAnnuelles = parseNum(fin?.charges_annuelles_lot) || (parseNum(chargesFutures?.montant_trimestriel) ? parseNum(chargesFutures?.montant_trimestriel)! * 4 : null) || (parseNum(chargesFutures?.montant_annuel));
+  // Cascade charges annuelles — priorité du plus fiable au plus estimé
+  let chargesAnnuelles: number | null = null;
+  let chargesIsEstimation = false;
+
+  // 1. Champ direct (pré-état daté ou appel de charges, rempli par Claude)
+  chargesAnnuelles = parseNum(fin?.charges_annuelles_lot);
+
+  // 2. Charges futures trimestrielles × 4
+  if (!chargesAnnuelles) {
+    const trim = parseNum(chargesFutures?.montant_trimestriel);
+    if (trim) chargesAnnuelles = trim * 4;
+  }
+  // 3. Charges futures annuelles
+  if (!chargesAnnuelles) {
+    chargesAnnuelles = parseNum(chargesFutures?.montant_annuel);
+  }
+
+  // 4. 🆕 Fallback : budget total copro × tantièmes du lot / total_tantièmes
+  if (!chargesAnnuelles) {
+    const budgetTotal = parseNum(fin?.budget_total_copro);
+    const tt = parseTantiemes(lotAchete?.quote_part_tantiemes);
+    if (budgetTotal && tt) {
+      chargesAnnuelles = Math.round(budgetTotal * tt.num / tt.den);
+      chargesIsEstimation = true;
+    }
+  }
+
   const fondsTravTrimestriel = parseNum(chargesFutures?.fonds_travaux_trimestriel);
   const fondsTravAnnuel = fondsTravTrimestriel ? fondsTravTrimestriel * 4 : null;
   const fondsAlurSignature = parseNum(preEtat?.fonds_travaux_alur) || parseNum(lotAchete?.fonds_travaux_alur);
   const fondsRoulementSignature = parseNum(preEtat?.fonds_roulement_acheteur);
 
   return {
+    titre: (r.titre as string) || a.adresse_bien || '',
     travaux_votes: ((r.travaux as Record<string, unknown>)?.votes as unknown[] || []).length,
     travaux_evoques: ((r.travaux as Record<string, unknown>)?.evoques as unknown[] || []).length,
     travaux_evoques_list: ((r.travaux as Record<string, unknown>)?.evoques as Array<{ label: string; montant_estime?: number | null }> || []),
@@ -241,6 +272,7 @@ function getResultData(a: Analyse) {
     })(),
     fonds_travaux_statut: (r.finances as Record<string, unknown>)?.fonds_travaux_statut as string || 'non_mentionne',
     charges_annuelles: chargesAnnuelles,
+    charges_is_estimation: chargesIsEstimation,
     impayes: !!((r.lot_achete as Record<string, unknown>)?.impayes_detectes),
     points_forts: (r.points_forts as string[] || []).slice(0, 3),
     points_vigilance: (r.points_vigilance as string[] || []).slice(0, 3),
@@ -254,6 +286,7 @@ function getResultData(a: Analyse) {
     documents_analyses: (r.documents_analyses as Array<{ type: string; nom: string; annee?: string | null }> || []),
     financier: {
       charges_annuelles: chargesAnnuelles,
+      charges_is_estimation: chargesIsEstimation,
       fonds_travaux_annuel: fondsTravAnnuel,
       fonds_alur_signature: fondsAlurSignature,
       fonds_roulement_signature: fondsRoulementSignature,
@@ -276,6 +309,132 @@ function TendanceIcon({ val, best }: { val: number; best: number }) {
   return <Minus size={13} color="#d97706" />;
 }
 
+/* ══════════════════════════════════════════
+   DÉTECTION THÉMATIQUE d'un point fort / vigilance
+   → renvoie { icon, label, detail } pour UI compacte
+   ══════════════════════════════════════════ */
+function detectTheme(raw: string): { icon: string; tag: string; titre: string; detail: string } {
+  const txt = raw.toLowerCase();
+  // Split titre/détail sur " : ", " — " ou " - "
+  let titre = raw;
+  let detail = '';
+  const sep = raw.match(/^([^:—\-]{4,60})\s*[:—\-]\s*(.+)$/);
+  if (sep) { titre = sep[1].trim(); detail = sep[2].trim(); }
+
+  // Détection icône + tag
+  let icon = '📌'; let tag = 'Divers';
+  if (/\bdpe\b|\bges\b|énerg[ée]tique|kwh|performance/i.test(txt)) { icon = '⚡'; tag = 'Énergétique'; }
+  else if (/électri|electrique|\belec\b|différentiel|tension|prise de terre/i.test(txt)) { icon = '🔌'; tag = 'Électricité'; }
+  else if (/\bgaz\b|cuisson|chaudière|\ba1\b|\ba2\b/i.test(txt)) { icon = '🔥'; tag = 'Gaz'; }
+  else if (/amiante/i.test(txt)) { icon = '🧪'; tag = 'Amiante'; }
+  else if (/plomb|crep/i.test(txt)) { icon = '🧪'; tag = 'Plomb'; }
+  else if (/termites?/i.test(txt)) { icon = '🐛'; tag = 'Termites'; }
+  else if (/fonds de travaux|fonds alur|provision travaux/i.test(txt)) { icon = '💰'; tag = 'Fonds travaux'; }
+  else if (/impay[ée]s?|d[ée]biteur|dette|arriéré/i.test(txt)) { icon = '📊'; tag = 'Impayés'; }
+  else if (/participation|gouvernance|quorum|ag\b|assembl[ée]e/i.test(txt)) { icon = '👥'; tag = 'Gouvernance'; }
+  else if (/travaux|rénovation|toiture|façade|isolation|menuiseries|ravalement/i.test(txt)) { icon = '🔨'; tag = 'Travaux'; }
+  else if (/procédure|litige|contentieux|tribunal/i.test(txt)) { icon = '⚖️'; tag = 'Procédures'; }
+  else if (/surface|carrez|m²|cave|box|parking|garage|lot\s/i.test(txt)) { icon = '🏠'; tag = 'Lot'; }
+  else if (/règlement|r[cè]p|modificatif|servitude/i.test(txt)) { icon = '📜'; tag = 'Règlement'; }
+  else if (/syndic|gestionnaire/i.test(txt)) { icon = '🏢'; tag = 'Syndic'; }
+  else if (/dtg|carnet d'entretien/i.test(txt)) { icon = '📋'; tag = 'État général'; }
+
+  return { icon, tag, titre, detail };
+}
+
+/* ══════════════════════════════════════════
+   CARTE POINT COMPACT (fort ou vigilance)
+   ══════════════════════════════════════════ */
+function PointCard({ raw, kind }: { raw: string; kind: 'fort' | 'vigilance' }) {
+  const { icon, tag, titre, detail } = detectTheme(raw);
+  const colors = kind === 'fort'
+    ? { bg: '#f0fdf4', border: '#d1fae5', tagBg: 'rgba(22,163,74,0.12)', tagColor: '#16a34a', titleColor: '#166534', detailColor: '#15803d' }
+    : { bg: '#fffbeb', border: '#fde68a', tagBg: 'rgba(217,119,6,0.12)', tagColor: '#d97706', titleColor: '#92400e', detailColor: '#a16207' };
+  return (
+    <div style={{ padding: '10px 12px', borderRadius: 10, background: colors.bg, border: `1px solid ${colors.border}`, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+      <div style={{ width: 30, height: 30, borderRadius: 8, background: colors.tagBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 15 }}>
+        {icon}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 9.5, fontWeight: 800, color: colors.tagColor, letterSpacing: '0.06em', textTransform: 'uppercase', background: colors.tagBg, padding: '1px 6px', borderRadius: 4 }}>{tag}</span>
+        </div>
+        <div style={{ fontSize: 12.5, fontWeight: 700, color: colors.titleColor, lineHeight: 1.4, marginBottom: detail ? 3 : 0 }}>{titre}</div>
+        {detail && <div style={{ fontSize: 11.5, color: colors.detailColor, lineHeight: 1.5, opacity: 0.88 }}>{detail}</div>}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   PARSING synthèse verdict en 3 blocs Bien 1 / Bien 2 / Comparatif
+   ══════════════════════════════════════════ */
+function splitSyntheseParBien(synthese: string, adresses: string[]): { parBien: string[]; comparatif: string } {
+  // On découpe en phrases
+  const phrases = synthese.split(/(?<=[.!?])\s+/).filter(p => p.trim().length > 10);
+  const parBien: string[][] = adresses.map(() => []);
+  const comparatif: string[] = [];
+
+  // Extraction mots-clés par bien (ville, numéro rue, "Bien N", etc.)
+  const keywordsParBien = adresses.map((adr, i) => {
+    const kws: string[] = [`bien ${i + 1}`, `bien n°${i + 1}`, `bien n° ${i + 1}`];
+    if (adr) {
+      // ville = dernier mot avec majuscule
+      const parts = adr.split(/[,\s-]+/).filter(Boolean);
+      parts.forEach(p => {
+        if (p.length > 3 && /^[A-ZÉÈÀÂÔÎ]/.test(p)) kws.push(p.toLowerCase());
+      });
+      // numéro de rue
+      const num = adr.match(/^\s*(\d+[a-z]?)\s/i);
+      if (num) kws.push(num[1].toLowerCase());
+    }
+    return kws;
+  });
+
+  // Mots-clés indiquant un comparatif explicite
+  const comparatifKws = /\b(les deux|deux biens|comparativement|en revanche|tandis que|alors que|par rapport|à l'inverse|à contrario|en comparaison|partagent|commun)/i;
+
+  phrases.forEach(p => {
+    const lower = p.toLowerCase();
+    // Si phrase mentionne plusieurs biens OU contient un mot comparatif → comparatif
+    const matches = keywordsParBien.map(kws => kws.some(kw => lower.includes(kw)));
+    const nbBiens = matches.filter(Boolean).length;
+    if (nbBiens >= 2 || comparatifKws.test(p)) {
+      comparatif.push(p);
+    } else if (nbBiens === 1) {
+      const idx = matches.findIndex(Boolean);
+      parBien[idx].push(p);
+    } else {
+      // Phrase orpheline → comparatif
+      comparatif.push(p);
+    }
+  });
+
+  return {
+    parBien: parBien.map(arr => arr.join(' ').trim()),
+    comparatif: comparatif.join(' ').trim(),
+  };
+}
+
+/* ══════════════════════════════════════════
+   DÉTECTION bien concerné (1 ou 2) pour forces / points
+   ══════════════════════════════════════════ */
+function detectBienIndex(texte: string, adresses: string[]): number | null {
+  const lower = texte.toLowerCase();
+  for (let i = 0; i < adresses.length; i++) {
+    if (lower.includes(`bien ${i + 1}`) || lower.includes(`bien n°${i + 1}`)) return i;
+    const adr = adresses[i];
+    if (!adr) continue;
+    const parts = adr.split(/[,\s-]+/).filter(p => p.length > 3 && /^[A-ZÉÈÀÂÔÎ]/.test(p));
+    for (const p of parts) {
+      if (lower.includes(p.toLowerCase())) return i;
+    }
+    const num = adr.match(/^\s*(\d+[a-z]?)\s/i);
+    if (num && lower.includes(num[1].toLowerCase() + ' ')) return i;
+  }
+  return null;
+}
+
 export default function Compare() {
   const { analyses } = useAnalyses();
   const completedAnalyses = analyses.filter((a: Analyse) => a.type === 'complete' && a.status === 'completed');
@@ -285,6 +444,7 @@ export default function Compare() {
   const [verdictLoading, setVerdictLoading] = useState(false);
   const [verdictError, setVerdictError] = useState(false);
   const [isCached, setIsCached] = useState(false);
+  const [docsAccordionOpen, setDocsAccordionOpen] = useState(false);
 
   // Historique
   const [historique, setHistorique] = useState<ComparaisonSaved[]>([]);
@@ -309,7 +469,6 @@ export default function Compare() {
     await supabase.from('comparaisons').delete().eq('id', id);
     setHistorique(prev => prev.filter(c => c.id !== id));
     if (launched && verdictIA) {
-      // Si on était en train de voir cette comparaison, revenir à la sélection
       const currentSorted = [...selected].sort().join(',');
       const deleted = historique.find(c => c.id === id);
       if (deleted && deleted.analyse_ids === currentSorted) {
@@ -321,7 +480,6 @@ export default function Compare() {
   const viewComparaison = (comp: ComparaisonSaved) => {
     const ids = comp.analyse_ids.split(',');
     setSelected(ids);
-    // Parser de manière défensive : Supabase peut renvoyer le jsonb comme string ou objet
     let v: VerdictIA | null = null;
     try {
       if (typeof comp.verdict === 'string') {
@@ -336,7 +494,6 @@ export default function Compare() {
     setIsCached(true);
     setLaunched(true);
     setVerdictError(false);
-    // Affichage du mini loader 1.8s pour une UX fluide
     setVerdictLoading(true);
     setVerdictIA(null);
     setTimeout(() => {
@@ -360,6 +517,7 @@ export default function Compare() {
     setVerdictIA(null);
     setVerdictError(false);
     setIsCached(false);
+    setDocsAccordionOpen(false);
   };
   const handleLaunch = async () => {
     if (!canLaunch) return;
@@ -391,7 +549,6 @@ export default function Compare() {
         if (data.cached) {
           setIsCached(true);
         }
-        // Recharger l'historique pour inclure cette nouvelle comparaison
         loadHistorique();
       } else {
         setVerdictError(true);
@@ -462,7 +619,6 @@ export default function Compare() {
       {/* Sélection */}
       {!launched && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* Instruction */}
           <div style={{ padding: '14px 18px', background: 'rgba(42,125,156,0.05)', borderRadius: 12, border: '1px solid rgba(42,125,156,0.15)', fontSize: 13, color: '#2a7d9c', fontWeight: 500 }}>
             <strong>{completedAnalyses.length} analyse{completedAnalyses.length > 1 ? 's' : ''} disponible{completedAnalyses.length > 1 ? 's' : ''}</strong> — Cliquez sur les biens à comparer ci-dessous
           </div>
@@ -493,14 +649,12 @@ export default function Compare() {
             );
           })}
 
-          {/* Message sélection partielle */}
           {selected.length === 1 && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: '11px 16px', borderRadius: 11, background: 'rgba(42,125,156,0.05)', border: '1px solid rgba(42,125,156,0.15)', fontSize: 13, color: '#2a7d9c', fontWeight: 600 }}>
               ✓ 1 bien sélectionné — choisissez {maxSelect === 3 ? 'un 2e ou un 3e bien' : 'un 2e bien'} pour continuer
             </motion.div>
           )}
 
-          {/* Bouton Lancer — ou message "déjà comparé" */}
           {canLaunch && (() => {
             const sortedSelected = [...selected].sort().join(',');
             const existingComp = historique.find(c => c.analyse_ids === sortedSelected);
@@ -560,6 +714,7 @@ export default function Compare() {
         const { best } = buildVerdict(selectedAnalyses, resultsData);
         const cols = selectedAnalyses.length;
         const gridCols = cols === 2 ? '1fr 1fr' : '1fr 1fr 1fr';
+        const adresses = selectedAnalyses.map(a => a.adresse_bien || '');
 
         return (
           <AnimatePresence mode="wait">
@@ -607,7 +762,6 @@ export default function Compare() {
                   <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Comparaison détaillée</span>
                 </div>
 
-                {/* En-têtes biens */}
                 <div style={{ display: 'grid', gridTemplateColumns: `180px repeat(${cols}, 1fr)`, borderBottom: '2px solid #f1f5f9', background: '#fafbfc' }}>
                   <div style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Critère</div>
                   {selectedAnalyses.map((a, i) => (
@@ -617,7 +771,6 @@ export default function Compare() {
                   ))}
                 </div>
 
-                {/* Score global */}
                 {[
                   {
                     label: 'Score global', render: (a: Analyse) => {
@@ -670,13 +823,22 @@ export default function Compare() {
                     label: 'Charges/an lot', render: (_a: Analyse, i: number) => {
                       const d = resultsData[i]; if (!d || !d.charges_annuelles) return <span style={{ color: '#94a3b8', fontSize: 13 }}>—</span>;
                       const bestVal = Math.min(...resultsData.filter(r => r?.charges_annuelles).map(r => r!.charges_annuelles!));
-                      return <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><TendanceIcon val={d.charges_annuelles} best={bestVal} /><span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>{d.charges_annuelles.toLocaleString('fr-FR')}€</span></div>;
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <TendanceIcon val={d.charges_annuelles} best={bestVal} />
+                          <span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
+                            {d.charges_is_estimation ? '~ ' : ''}{d.charges_annuelles.toLocaleString('fr-FR')}€
+                          </span>
+                          {d.charges_is_estimation && (
+                            <span style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic' }}>estimation</span>
+                          )}
+                        </div>
+                      );
                     }
                   },
                 ].map((row, ri) => {
-                  // Déterminer le winner pour cette ligne
                   const vals = selectedAnalyses.map((a, j) => row.render(a, j));
-                  void vals; // utilisé pour le rendu
+                  void vals;
                   return (
                   <div key={ri} style={{ display: 'grid', gridTemplateColumns: `180px repeat(${cols}, 1fr)`, borderBottom: ri < 8 ? '1px solid #f8fafc' : 'none', background: ri % 2 === 0 ? '#fff' : '#fafbfc' }}>
                     <div style={{ padding: '14px 18px', fontSize: 13.5, color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center' }}>{row.label}</div>
@@ -698,7 +860,6 @@ export default function Compare() {
                     <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Scores par catégorie</span>
                   </div>
                   <div style={{ padding: '20px' }}>
-                    {/* Barres horizontales comparatives */}
                     {[
                       { key: 'travaux', label: 'Travaux', emoji: '🏗️', max: 5 },
                       { key: 'procedures', label: 'Procédures', emoji: '⚖️', max: 4 },
@@ -757,7 +918,6 @@ export default function Compare() {
                   </div>
                   <div style={{ overflowX: 'auto' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: `180px repeat(${cols}, 1fr)`, minWidth: cols === 3 ? 640 : 400 }}>
-                      {/* En-têtes */}
                       <div style={{ padding: '10px 16px', fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', borderBottom: '2px solid #f1f5f9', background: '#fafbfc' }}>Poste</div>
                       {selectedAnalyses.map((a, i) => (
                         <div key={i} style={{ padding: '10px 16px', borderLeft: '1px solid #f1f5f9', borderBottom: '2px solid #f1f5f9', background: '#fafbfc', fontSize: 12, fontWeight: 700, color: '#0f172a' }}>
@@ -765,27 +925,30 @@ export default function Compare() {
                         </div>
                       ))}
 
-                      {/* Lignes */}
                       {[
-                        { label: 'Charges annuelles', get: (d: NonNullable<ReturnType<typeof getResultData>>) => d.financier.charges_annuelles },
-                        { label: 'Cotisation fonds travaux', get: (d: NonNullable<ReturnType<typeof getResultData>>) => d.financier.fonds_travaux_annuel },
-                        { label: 'Fonds ALUR (signature)', get: (d: NonNullable<ReturnType<typeof getResultData>>) => d.financier.fonds_alur_signature },
-                        { label: 'Fonds roulement (signature)', get: (d: NonNullable<ReturnType<typeof getResultData>>) => d.financier.fonds_roulement_signature },
+                        { label: 'Charges annuelles', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.charges_annuelles, est: d.financier.charges_is_estimation }) },
+                        { label: 'Cotisation fonds travaux', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.fonds_travaux_annuel, est: false }) },
+                        { label: 'Fonds ALUR (signature)', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.fonds_alur_signature, est: false }) },
+                        { label: 'Fonds roulement (signature)', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.fonds_roulement_signature, est: false }) },
                       ].map((row, ri) => (
                         <React.Fragment key={ri}>
                           <div style={{ padding: '10px 16px', fontSize: 12, color: '#64748b', fontWeight: 600, borderBottom: '1px solid #f8fafc', background: ri % 2 === 0 ? '#fff' : '#fafbfc' }}>{row.label}</div>
                           {resultsData.map((d, j) => {
-                            const val = d ? row.get(d) : null;
+                            const cell = d ? row.get(d) : { val: null, est: false };
                             return (
-                              <div key={j} style={{ padding: '10px 16px', borderLeft: '1px solid #f1f5f9', borderBottom: '1px solid #f8fafc', background: ri % 2 === 0 ? '#fff' : '#fafbfc', fontSize: 13, fontWeight: 600, color: val ? '#0f172a' : '#94a3b8' }}>
-                                {val ? `${Math.round(val).toLocaleString('fr-FR')}€` : '—'}
+                              <div key={j} style={{ padding: '10px 16px', borderLeft: '1px solid #f1f5f9', borderBottom: '1px solid #f8fafc', background: ri % 2 === 0 ? '#fff' : '#fafbfc', fontSize: 13, fontWeight: 600, color: cell.val ? '#0f172a' : '#94a3b8' }}>
+                                {cell.val ? (
+                                  <span>
+                                    {cell.est ? '~ ' : ''}{Math.round(cell.val).toLocaleString('fr-FR')}€
+                                    {cell.est && <span style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic', marginLeft: 4 }}>estimation</span>}
+                                  </span>
+                                ) : '—'}
                               </div>
                             );
                           })}
                         </React.Fragment>
                       ))}
 
-                      {/* Total année 1 */}
                       <div style={{ padding: '12px 16px', fontSize: 13, fontWeight: 800, color: '#0f172a', borderTop: '2px solid #2a7d9c', background: '#f0f7fb' }}>Total estimé année 1</div>
                       {resultsData.map((d, j) => {
                         const total = d?.financier?.total_annee_1 || 0;
@@ -802,13 +965,13 @@ export default function Compare() {
                   </div>
                   <div style={{ padding: '12px 20px', background: '#fafbfc', borderTop: '1px solid #f1f5f9' }}>
                     <p style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic', lineHeight: 1.6, margin: 0 }}>
-                      * Estimation basée sur les éléments présents dans vos documents. Les travaux évoqués non votés et les éventuels appels de fonds exceptionnels ne sont pas inclus dans ce calcul.
+                      * Estimation basée sur les éléments présents dans vos documents. Les travaux évoqués non votés et les éventuels appels de fonds exceptionnels ne sont pas inclus dans ce calcul. Les montants précédés de « ~ » sont calculés via le budget global × tantièmes du lot.
                     </p>
                   </div>
                 </div>
               )}
 
-              {/* Travaux évoqués non votés — alertes qualitatives */}
+              {/* Travaux évoqués non votés */}
               {resultsData.some(d => d && d.travaux_evoques_list.length > 0) && (
                 <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #fde68a', overflow: 'hidden' }}>
                   <div style={{ padding: '14px 20px', borderBottom: '1px solid #fde68a', background: '#fffbeb', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -833,35 +996,7 @@ export default function Compare() {
                 </div>
               )}
 
-              {/* Documents analysés par bien */}
-              <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
-                <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 16 }}>📁</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Documents analysés par bien</span>
-                </div>
-                <div className="compare-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 0 }}>
-                  {selectedAnalyses.map((a, i) => {
-                    const d = resultsData[i];
-                    const docs = d?.documents_analyses || [];
-                    return (
-                      <div key={a.id} style={{ padding: '14px 18px', borderLeft: i > 0 ? '1px solid #f1f5f9' : 'none' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em' }}>BIEN {i + 1}</span>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: 'rgba(42,125,156,0.08)', padding: '2px 8px', borderRadius: 6 }}>{docs.length} doc{docs.length > 1 ? 's' : ''}</span>
-                        </div>
-                        {docs.length > 0 ? docs.map((doc, di) => (
-                          <div key={di} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: di < docs.length - 1 ? '1px solid #f8fafc' : 'none' }}>
-                            <FileText size={11} style={{ color: '#94a3b8', flexShrink: 0 }} />
-                            <span style={{ fontSize: 11.5, color: '#374151', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.nom}</span>
-                            {doc.annee && <span style={{ fontSize: 10, color: '#94a3b8' }}>{doc.annee}</span>}
-                          </div>
-                        )) : <p style={{ fontSize: 12, color: '#94a3b8' }}>Non disponible</p>}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              {/* Points forts / vigilances par bien */}
+              {/* 🆕 Points clés par bien — refonte UX en cards thématiques */}
               <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
                 <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 16 }}>🔍</span>
@@ -871,22 +1006,26 @@ export default function Compare() {
                   {selectedAnalyses.map((a, i) => {
                     const d = resultsData[i];
                     return (
-                      <div key={a.id} style={{ padding: '16px 18px', borderLeft: i > 0 ? '1px solid #f1f5f9' : 'none' }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 12 }}>BIEN {i + 1}{a.id === best.id ? ' ⭐' : ''}</div>
+                      <div key={a.id} style={{ padding: '18px 18px 20px', borderLeft: i > 0 ? '1px solid #f1f5f9' : 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.1em' }}>BIEN {i + 1}{a.id === best.id ? ' ⭐' : ''}</div>
                         {d?.points_forts && d.points_forts.length > 0 && (
-                          <div style={{ marginBottom: 10 }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>✓ Points forts</div>
-                            {d.points_forts.map((p, pi) => (
-                              <div key={pi} style={{ fontSize: 12, color: '#166534', padding: '6px 10px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #d1fae5', marginBottom: 4, lineHeight: 1.4 }}>{p}</div>
-                            ))}
+                          <div>
+                            <div style={{ fontSize: 10.5, fontWeight: 800, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <CheckCircle size={12} /> Points forts
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              {d.points_forts.map((p, pi) => <PointCard key={pi} raw={p} kind="fort" />)}
+                            </div>
                           </div>
                         )}
                         {d?.points_vigilance && d.points_vigilance.length > 0 && (
                           <div>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>⚠ Vigilances</div>
-                            {d.points_vigilance.map((p, pi) => (
-                              <div key={pi} style={{ fontSize: 12, color: '#92400e', padding: '6px 10px', borderRadius: 8, background: '#fffbeb', border: '1px solid #fde68a', marginBottom: 4, lineHeight: 1.4 }}>{p}</div>
-                            ))}
+                            <div style={{ fontSize: 10.5, fontWeight: 800, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <AlertTriangle size={12} /> Vigilances
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              {d.points_vigilance.map((p, pi) => <PointCard key={pi} raw={p} kind="vigilance" />)}
+                            </div>
                           </div>
                         )}
                         {!d && <p style={{ fontSize: 12, color: '#94a3b8' }}>Données détaillées non disponibles.</p>}
@@ -896,7 +1035,7 @@ export default function Compare() {
                 </div>
               </div>
 
-              {/* Verdict */}
+              {/* Verdict (fallback local si erreur API) */}
               {verdictError && !verdictIA && !verdictLoading && (() => {
                 const { best, raisons } = buildVerdict(selectedAnalyses, resultsData);
                 return (
@@ -922,70 +1061,126 @@ export default function Compare() {
                 );
               })()}
 
-              {verdictIA && !verdictLoading && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                  style={{ padding: '24px 26px', borderRadius: 16, background: 'linear-gradient(135deg, #f0f7fb, #e8f4fa)', border: '1.5px solid #bae3f5', boxShadow: '0 4px 16px rgba(42,125,156,0.08)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                    <Shield size={16} color="#2a7d9c" style={{ flexShrink: 0 }} />
-                    <div style={{ fontSize: 12, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Verdict Verimo</div>
-                  </div>
+              {/* 🆕 Verdict IA — refonte : synthèse scindée + badges par bien */}
+              {verdictIA && !verdictLoading && (() => {
+                const { parBien, comparatif } = splitSyntheseParBien(verdictIA.synthese || '', adresses);
+                const hasSplit = parBien.some(t => t.length > 0) && comparatif.length > 0;
 
-                  {/* Titre verdict */}
-                  <p style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', marginBottom: 14, lineHeight: 1.5 }}>
-                    {verdictIA.titre_verdict}
-                  </p>
+                return (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+                    style={{ padding: '24px 26px', borderRadius: 16, background: 'linear-gradient(135deg, #f0f7fb, #e8f4fa)', border: '1.5px solid #bae3f5', boxShadow: '0 4px 16px rgba(42,125,156,0.08)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                      <Shield size={16} color="#2a7d9c" style={{ flexShrink: 0 }} />
+                      <div style={{ fontSize: 12, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Verdict Verimo</div>
+                    </div>
 
-                  {/* Synthèse */}
-                  <p style={{ fontSize: 15, color: '#374151', lineHeight: 1.7, marginBottom: 18 }}>
-                    {verdictIA.synthese}
-                  </p>
+                    {/* Titre verdict */}
+                    <p style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', marginBottom: 16, lineHeight: 1.5 }}>
+                      {verdictIA.titre_verdict}
+                    </p>
 
-                  {/* Forces */}
-                  {verdictIA.forces_bien_recommande?.length > 0 && (
-                    <div style={{ marginBottom: 16 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>✓ Forces identifiées</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                        {verdictIA.forces_bien_recommande.map((f, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                            <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(22,163,74,0.12)', border: '1px solid rgba(22,163,74,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}><CheckCircle size={11} color="#16a34a" /></div>
-                            <span style={{ fontSize: 14.5, color: '#374151', lineHeight: 1.55 }}>{f}</span>
+                    {/* Synthèse — version scindée ou fallback texte unifié */}
+                    {hasSplit ? (
+                      <div style={{ marginBottom: 20 }}>
+                        <div className="compare-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 10, marginBottom: 10 }}>
+                          {parBien.map((txt, i) => txt && (
+                            <div key={i} style={{ padding: '14px 16px', borderRadius: 12, background: '#fff', border: '1px solid #e0ecf3' }}>
+                              <div style={{ fontSize: 10.5, fontWeight: 800, color: '#64748b', letterSpacing: '0.1em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <Building2 size={11} /> BIEN {i + 1}{selectedAnalyses[i]?.id === best.id ? ' ⭐' : ''}
+                              </div>
+                              <div style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.65 }}>{txt}</div>
+                            </div>
+                          ))}
+                        </div>
+                        {comparatif && (
+                          <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.2)' }}>
+                            <div style={{ fontSize: 10.5, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.1em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <GitCompare size={11} /> COMPARATIF
+                            </div>
+                            <div style={{ fontSize: 13.5, color: '#0f2d3d', lineHeight: 1.65 }}>{comparatif}</div>
                           </div>
-                        ))}
+                        )}
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <p style={{ fontSize: 15, color: '#374151', lineHeight: 1.7, marginBottom: 18 }}>
+                        {verdictIA.synthese}
+                      </p>
+                    )}
 
-                  {/* Points d'attention */}
-                  {verdictIA.points_attention?.length > 0 && (
-                    <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(217,119,6,0.06)', border: '1px solid rgba(217,119,6,0.15)', marginBottom: 16 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>⚠ Points d'attention</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                        {verdictIA.points_attention.map((a, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                            <AlertTriangle size={14} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
-                            <span style={{ fontSize: 14.5, color: '#92400e', lineHeight: 1.55 }}>{a}</span>
+                    {/* Forces + Points d'attention en 2 colonnes avec badges Bien 1/2 */}
+                    <div className="compare-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                      {verdictIA.forces_bien_recommande?.length > 0 && (
+                        <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.15)' }}>
+                          <div style={{ fontSize: 11, fontWeight: 800, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <CheckCircle size={12} /> Forces identifiées
                           </div>
-                        ))}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {verdictIA.forces_bien_recommande.map((f, i) => {
+                              const bienIdx = detectBienIndex(f, adresses);
+                              return (
+                                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                                  <CheckCircle size={12} color="#16a34a" style={{ flexShrink: 0, marginTop: 3 }} />
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    {bienIdx !== null && (
+                                      <span style={{ display: 'inline-block', fontSize: 9.5, fontWeight: 800, color: '#16a34a', background: 'rgba(22,163,74,0.15)', padding: '1px 6px', borderRadius: 4, marginRight: 6, letterSpacing: '0.04em', verticalAlign: 'middle' }}>
+                                        BIEN {bienIdx + 1}
+                                      </span>
+                                    )}
+                                    <span style={{ fontSize: 13, color: '#166534', lineHeight: 1.55 }}>{f}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {verdictIA.points_attention?.length > 0 && (
+                        <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(217,119,6,0.06)', border: '1px solid rgba(217,119,6,0.15)' }}>
+                          <div style={{ fontSize: 11, fontWeight: 800, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <AlertTriangle size={12} /> Points d'attention
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {verdictIA.points_attention.map((a, i) => {
+                              const bienIdx = detectBienIndex(a, adresses);
+                              return (
+                                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                                  <AlertTriangle size={12} color="#d97706" style={{ flexShrink: 0, marginTop: 3 }} />
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    {bienIdx !== null && (
+                                      <span style={{ display: 'inline-block', fontSize: 9.5, fontWeight: 800, color: '#d97706', background: 'rgba(217,119,6,0.15)', padding: '1px 6px', borderRadius: 4, marginRight: 6, letterSpacing: '0.04em', verticalAlign: 'middle' }}>
+                                        BIEN {bienIdx + 1}
+                                      </span>
+                                    )}
+                                    <span style={{ fontSize: 13, color: '#92400e', lineHeight: 1.55 }}>{a}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Alerte documents */}
+                    {verdictIA.alerte_documents && (
+                      <div style={{ padding: '12px 16px', borderRadius: 10, background: '#fff7ed', border: '1px solid #fed7aa', marginBottom: 16, fontSize: 13.5, color: '#9a3412', lineHeight: 1.6 }}>
+                        📁 {verdictIA.alerte_documents}
                       </div>
+                    )}
+
+                    {/* Points à approfondir (ex-"Notre conseil") */}
+                    <div style={{ padding: '16px 18px', borderRadius: 12, background: '#fff', border: '1px solid rgba(42,125,156,0.15)', marginBottom: 14 }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: '#2a7d9c', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        💡 Points à approfondir avant de signer
+                      </div>
+                      <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.65, margin: 0 }}>{verdictIA.conseil}</p>
                     </div>
-                  )}
 
-                  {/* Alerte documents */}
-                  {verdictIA.alerte_documents && (
-                    <div style={{ padding: '12px 16px', borderRadius: 10, background: '#fff7ed', border: '1px solid #fed7aa', marginBottom: 16, fontSize: 13.5, color: '#9a3412', lineHeight: 1.6 }}>
-                      📁 {verdictIA.alerte_documents}
-                    </div>
-                  )}
-
-                  {/* Conseil */}
-                  <div style={{ padding: '16px 18px', borderRadius: 12, background: '#fff', border: '1px solid rgba(42,125,156,0.15)', marginBottom: 14 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#2a7d9c', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>💡 Notre conseil</div>
-                    <p style={{ fontSize: 14.5, color: '#374151', lineHeight: 1.65, margin: 0 }}>{verdictIA.conseil}</p>
-                  </div>
-
-                  <p style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic', lineHeight: 1.6 }}>Ce verdict est établi uniquement à partir des données disponibles dans vos rapports et ne remplace pas l'avis d'un professionnel de l'immobilier.</p>
-                </motion.div>
-              )}
+                    <p style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic', lineHeight: 1.6 }}>Ce verdict est établi uniquement à partir des données disponibles dans vos rapports et ne remplace pas l'avis d'un professionnel de l'immobilier.</p>
+                  </motion.div>
+                );
+              })()}
 
               {/* Liens rapports */}
               <div style={{ padding: '16px 20px', borderRadius: 14, background: '#fff', border: '1px solid #edf2f7', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
@@ -999,6 +1194,67 @@ export default function Compare() {
                       <FileText size={12} /> Bien {i + 1}
                     </Link>
                   ))}
+                </div>
+              </div>
+
+              {/* 🆕 Documents analysés — accordéon replié en bas */}
+              <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
+                <button
+                  onClick={() => setDocsAccordionOpen(o => !o)}
+                  style={{ width: '100%', padding: '14px 18px', background: docsAccordionOpen ? '#fafbfc' : '#fff', border: 'none', borderBottom: docsAccordionOpen ? '1px solid #f1f5f9' : 'none', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', transition: 'background 0.2s', fontFamily: 'inherit', textAlign: 'left' }}>
+                  <span style={{ fontSize: 16 }}>📁</span>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Documents analysés par bien</span>
+                    <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                      {selectedAnalyses.map((_, i) => {
+                        const n = resultsData[i]?.documents_analyses?.length || 0;
+                        return `Bien ${i + 1} : ${n} doc${n > 1 ? 's' : ''}`;
+                      }).join(' • ')}
+                    </span>
+                  </div>
+                  <ChevronDown size={16} style={{ color: '#94a3b8', transform: docsAccordionOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.25s' }} />
+                </button>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateRows: docsAccordionOpen ? '1fr' : '0fr',
+                  transition: 'grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                }}>
+                  <div style={{ overflow: 'hidden' }}>
+                    <div className="compare-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 0 }}>
+                      {selectedAnalyses.map((a, i) => {
+                        const d = resultsData[i];
+                        const docs = d?.documents_analyses || [];
+                        return (
+                          <div key={a.id} style={{ padding: '16px 18px', borderLeft: i > 0 ? '1px solid #f1f5f9' : 'none' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                              <span style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.1em' }}>BIEN {i + 1}</span>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: 'rgba(42,125,156,0.08)', padding: '2px 8px', borderRadius: 6 }}>{docs.length} doc{docs.length > 1 ? 's' : ''}</span>
+                            </div>
+                            {docs.length > 0 ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                {docs.map((doc, di) => {
+                                  // Split nom / description sur " - " ou " – "
+                                  const parts = doc.nom.split(/\s[-–]\s/);
+                                  const filename = parts[0].trim();
+                                  const description = parts.slice(1).join(' – ').trim();
+                                  return (
+                                    <div key={di} style={{ padding: '8px 10px', borderRadius: 8, background: '#fafbfc', border: '1px solid #f1f5f9', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                                      <FileText size={12} style={{ color: '#94a3b8', flexShrink: 0, marginTop: 2 }} />
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', lineHeight: 1.4, wordBreak: 'break-word' }}>{filename}</div>
+                                        {description && <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.5, marginTop: 2, wordBreak: 'break-word' }}>{description}</div>}
+                                        {doc.annee && <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 3 }}>{doc.annee}</div>}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : <p style={{ fontSize: 12, color: '#94a3b8' }}>Non disponible</p>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1028,12 +1284,10 @@ export default function Compare() {
                 <motion.div key={comp.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
                   style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', padding: '14px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', gap: 14 }}>
 
-                  {/* Icône */}
                   <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(42,125,156,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <GitCompare size={18} style={{ color: '#2a7d9c' }} />
                   </div>
 
-                  {/* Contenu */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {biens.map(b => b.titre).join(' vs ')}
@@ -1053,7 +1307,6 @@ export default function Compare() {
                     </div>
                   </div>
 
-                  {/* Actions */}
                   <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                     <button onClick={() => viewComparaison(comp)}
                       style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 9, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.15)', color: '#2a7d9c', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
