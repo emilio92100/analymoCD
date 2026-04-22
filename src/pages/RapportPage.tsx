@@ -602,56 +602,59 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
               </div>
             </div>
             {/* Tags */}
-            <div className="hero-tags" style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 100, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)' }}>{getTypeBienLabel(rapport.type_bien)}</span>
-              <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 100, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)' }}>{getProfilLabel(rapport.profil)}</span>
-              {rapport.annee_construction && <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 100, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)' }}>Construit en {rapport.annee_construction}</span>}
-              <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 100, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.55)' }}>Analysé le {rapport.date}</span>
+            <div className="hero-tags" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 12, padding: '4px 12px', borderRadius: 100, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)' }}>{getTypeBienLabel(rapport.type_bien)}</span>
+              <span style={{ fontSize: 12, padding: '4px 12px', borderRadius: 100, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)' }}>{getProfilLabel(rapport.profil)}</span>
+              {rapport.annee_construction && <span style={{ fontSize: 12, padding: '4px 12px', borderRadius: 100, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)' }}>Construit en {rapport.annee_construction}</span>}
+              <span style={{ fontSize: 12, padding: '4px 12px', borderRadius: 100, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.65)' }}>Analysé le {rapport.date}</span>
             </div>
 
-            {/* Barre de notation Verimo — paliers visibles */}
+            {/* Barre de notation Verimo — jauge arrondie avec cercle posé dessus */}
             {(() => {
               const score = rapport.score;
-              // Position curseur : proportionnelle au score /20
               const cursorPct = Math.max(0, Math.min(100, (score / 20) * 100));
-              // Palier actuel
               const palier = score < 7 ? 0 : score < 10 ? 1 : score < 14 ? 2 : score < 17 ? 3 : 4;
+              const palierColors = ['#ef4444', '#f97316', '#f59e0b', '#22c55e', '#16a34a'];
+              const palierColorsLight = ['#fca5a5', '#fdba74', '#fcd34d', '#86efac', '#6ee7b7'];
+              const palierRanges = ['0 – 6', '7 – 9', '10 – 13', '14 – 16', '17 – 20'];
               const palierLabels = ['Éviter', 'Risqué', 'Réserves', 'Sain', 'Irréproch.'];
-              const palierColors = ['#dc2626', '#ea580c', '#d97706', '#16a34a', '#15803d'];
+              const scoreDisplay = Number.isInteger(score) ? String(score) : score.toFixed(1).replace('.', ',');
               return (
-                <div className="hero-paliers" style={{ position: 'relative', paddingTop: 14, marginTop: 14, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.1em', marginBottom: 30, textTransform: 'uppercase' as const }}>Notation Verimo</div>
-
-                  {/* Pin score au-dessus de la barre */}
-                  <div style={{ position: 'absolute', top: 30, left: `${cursorPct}%`, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: '#fff', padding: '3px 10px', background: palierColors[palier], borderRadius: 99, border: '2px solid rgba(255,255,255,0.95)', whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(0,0,0,0.35)' }}>
-                      {score.toFixed(1)}
+                <div className="hero-paliers" style={{ paddingTop: 14, marginTop: 14, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.1em', marginBottom: 26, textTransform: 'uppercase' as const }}>Notation Verimo</div>
+                  <div style={{ position: 'relative' }}>
+                    {/* Barre jauge */}
+                    <div style={{ display: 'flex', height: 14, borderRadius: 99, overflow: 'hidden', background: 'rgba(255,255,255,0.05)' }}>
+                      <div style={{ flex: 7, background: '#ef4444' }} />
+                      <div style={{ flex: 3, background: '#f97316' }} />
+                      <div style={{ flex: 4, background: '#f59e0b' }} />
+                      <div style={{ flex: 3, background: '#22c55e' }} />
+                      <div style={{ flex: 3, background: '#16a34a' }} />
                     </div>
-                    {/* Petit triangle pointant vers la barre */}
-                    <div style={{ width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: `6px solid ${palierColors[palier]}`, marginTop: -1 }} />
-                  </div>
-
-                  {/* Barre segmentée */}
-                  <div style={{ position: 'relative', display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', gap: 2 }}>
-                    <div style={{ flex: 7, background: '#dc2626' }} />
-                    <div style={{ flex: 3, background: '#ea580c' }} />
-                    <div style={{ flex: 4, background: '#d97706' }} />
-                    <div style={{ flex: 3, background: '#16a34a' }} />
-                    <div style={{ flex: 3, background: '#15803d' }} />
-                  </div>
-
-                  {/* Labels */}
-                  <div className="hero-paliers-labels" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>
-                    {palierLabels.map((label, i) => {
-                      const ranges = ['0 – 6', '7 – 9', '10 – 13', '14 – 16', '17 – 20'];
-                      const isActive = i === palier;
-                      return (
-                        <span key={i} style={{ textAlign: 'center', color: isActive ? palierColors[i] : 'rgba(255,255,255,0.65)', opacity: isActive ? 1 : 0.7, fontWeight: isActive ? 700 : 500 }}>
-                          <span style={{ display: 'block', fontSize: 10.5, letterSpacing: '0.02em' }}>{ranges[i]}</span>
-                          <span style={{ display: 'block', marginTop: 3, fontSize: 12 }}>{label}</span>
-                        </span>
-                      );
-                    })}
+                    {/* Cercle score posé sur la barre */}
+                    <div style={{ position: 'absolute', top: -10, left: `${cursorPct}%`, transform: 'translateX(-50%)', zIndex: 2 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fff', border: `3px solid ${palierColors[palier]}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: palierColors[palier], boxShadow: '0 3px 10px rgba(0,0,0,0.4)' }}>
+                        {scoreDisplay}
+                      </div>
+                    </div>
+                    {/* Labels en 1 ligne */}
+                    <div className="hero-paliers-labels" style={{ display: 'grid', gridTemplateColumns: '7fr 3fr 4fr 3fr 3fr', gap: 3, marginTop: 10, fontSize: 12 }}>
+                      {palierLabels.map((label, i) => {
+                        const isActive = i === palier;
+                        return (
+                          <div key={i} style={{ textAlign: 'center', color: isActive ? palierColorsLight[i] : 'rgba(255,255,255,0.75)', fontWeight: isActive ? 700 : 400 }}>
+                            {isActive ? (
+                              <span>{palierRanges[i]} · {label}</span>
+                            ) : (
+                              <span>
+                                <span style={{ color: palierColorsLight[i] }}>{palierRanges[i]}</span>
+                                <span> · {label}</span>
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               );
@@ -4530,9 +4533,8 @@ export default function RapportPage() {
           /* Badges hero — masqués sur mobile (redondants avec les infos du header) */
           .hero-tags { display: none !important; }
 
-          /* Barre de paliers — sur mobile, masquer les ranges et garder juste les labels */
-          .hero-paliers-labels > span > span:first-child { display: none !important; }
-          .hero-paliers-labels { font-size: 8.5px !important; }
+          /* Barre de paliers — sur mobile, labels plus petits */
+          .hero-paliers-labels { font-size: 10px !important; }
 
           /* ── Topnav — labels courts ── */
           .topnav-back-label { font-size: 11px !important; }
