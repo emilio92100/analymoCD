@@ -157,6 +157,8 @@ export default function Compare() {
   const [verdictIA, setVerdictIA] = useState<VerdictIA | null>(null);
   const [verdictLoading, setVerdictLoading] = useState(false);
   const [verdictError, setVerdictError] = useState(false);
+  const [isCached, setIsCached] = useState(false);
+  const [cachedDate, setCachedDate] = useState<string | null>(null);
 
   // Historique
   const [historique, setHistorique] = useState<ComparaisonSaved[]>([]);
@@ -193,9 +195,23 @@ export default function Compare() {
   const viewComparaison = (comp: ComparaisonSaved) => {
     const ids = comp.analyse_ids.split(',');
     setSelected(ids);
-    setVerdictIA(comp.verdict);
-    setVerdictError(false);
+    // Parser de manière défensive : Supabase peut renvoyer le jsonb comme string ou objet
+    let v: VerdictIA | null = null;
+    try {
+      if (typeof comp.verdict === 'string') {
+        v = JSON.parse(comp.verdict) as VerdictIA;
+      } else if (comp.verdict && typeof comp.verdict === 'object') {
+        v = comp.verdict as VerdictIA;
+      }
+    } catch (e) {
+      console.error('[Compare] Impossible de parser le verdict sauvegardé:', e);
+      v = null;
+    }
+    setVerdictIA(v);
+    setVerdictError(!v);
     setVerdictLoading(false);
+    setIsCached(true);
+    setCachedDate(new Date(comp.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }));
     setLaunched(true);
   };
 
@@ -207,13 +223,22 @@ export default function Compare() {
   const selectedAnalyses = completedAnalyses.filter(a => selected.includes(a.id));
   const canLaunch = selected.length >= 2;
 
-  const handleReset = () => { setSelected([]); setLaunched(false); setVerdictIA(null); setVerdictError(false); };
+  const handleReset = () => {
+    setSelected([]);
+    setLaunched(false);
+    setVerdictIA(null);
+    setVerdictError(false);
+    setIsCached(false);
+    setCachedDate(null);
+  };
   const handleLaunch = async () => {
     if (!canLaunch) return;
     setLaunched(true);
     setVerdictLoading(true);
     setVerdictError(false);
     setVerdictIA(null);
+    setIsCached(false);
+    setCachedDate(null);
 
     try {
       const session = (await supabase.auth.getSession()).data.session;
@@ -234,6 +259,15 @@ export default function Compare() {
       const data = await res.json();
       if (data.success && data.verdict) {
         setVerdictIA(data.verdict as VerdictIA);
+        if (data.cached) {
+          setIsCached(true);
+          // On cherche la date de création dans l'historique (rechargé après)
+          const sortedIds = [...selected].sort().join(',');
+          const existing = historique.find(c => c.analyse_ids === sortedIds);
+          if (existing) {
+            setCachedDate(new Date(existing.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }));
+          }
+        }
         // Recharger l'historique pour inclure cette nouvelle comparaison
         loadHistorique();
       } else {
@@ -403,18 +437,42 @@ export default function Compare() {
                 })}
               </div>
 
+              {/* Bandeau : comparaison déjà effectuée */}
+              {isCached && verdictIA && !verdictLoading && (
+                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+                  style={{ padding: '12px 16px', borderRadius: 12, background: '#f0f7fb', border: '1px solid #bae3f5', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 18 }}>📋</span>
+                  <span style={{ fontSize: 14, color: '#0f2d3d', lineHeight: 1.5 }}>
+                    Vous avez déjà comparé ces biens{cachedDate ? ` le ${cachedDate}` : ''}. Affichage du rapport existant.
+                  </span>
+                </motion.div>
+              )}
+
+              {/* Loader en haut — affiché dès le lancement, masqué quand le verdict arrive */}
+              {verdictLoading && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                  style={{ padding: '22px 24px', borderRadius: 16, background: 'linear-gradient(135deg, #f0f7fb, #e8f4fa)', border: '1.5px solid #bae3f5', display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    style={{ width: 24, height: 24, borderRadius: '50%', border: '3px solid #2a7d9c', borderTopColor: 'transparent', flexShrink: 0 }} />
+                  <div>
+                    <p style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>Analyse comparative en cours...</p>
+                    <p style={{ fontSize: 13, color: '#64748b' }}>Verimo compare vos biens en profondeur</p>
+                  </div>
+                </motion.div>
+              )}
+
               {/* Tableau comparatif enrichi */}
               <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-                <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 16 }}>📊</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Comparaison détaillée</span>
+                <div style={{ padding: '16px 22px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 18 }}>📊</span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Comparaison détaillée</span>
                 </div>
 
                 {/* En-têtes biens */}
                 <div style={{ display: 'grid', gridTemplateColumns: `180px repeat(${cols}, 1fr)`, borderBottom: '2px solid #f1f5f9', background: '#fafbfc' }}>
-                  <div style={{ padding: '10px 16px', fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Critère</div>
+                  <div style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Critère</div>
                   {selectedAnalyses.map((a, i) => (
-                    <div key={i} style={{ padding: '10px 16px', borderLeft: '1px solid #f1f5f9', fontSize: 12, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div key={i} style={{ padding: '12px 18px', borderLeft: '1px solid #f1f5f9', fontSize: 13.5, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       Bien {i + 1} {a.id === best.id ? '⭐' : ''}
                     </div>
                   ))}
@@ -425,55 +483,55 @@ export default function Compare() {
                   {
                     label: 'Score global', render: (a: Analyse) => {
                       const s = a.score ?? 0; const sc = getScoreColor(s);
-                      return <span style={{ fontSize: 15, fontWeight: 900, color: sc }}>{s.toFixed(1)}<span style={{ fontSize: 10, opacity: 0.6 }}>/20</span></span>;
+                      return <span style={{ fontSize: 17, fontWeight: 900, color: sc }}>{s.toFixed(1)}<span style={{ fontSize: 11, opacity: 0.6 }}>/20</span></span>;
                     }
                   },
-                  { label: 'Niveau', render: (a: Analyse) => <span style={{ fontSize: 12, color: getScoreColor(a.score ?? 0), fontWeight: 700 }}>{getScoreLabel(a.score ?? 0)}</span> },
+                  { label: 'Niveau', render: (a: Analyse) => <span style={{ fontSize: 13.5, color: getScoreColor(a.score ?? 0), fontWeight: 700 }}>{getScoreLabel(a.score ?? 0)}</span> },
                   {
                     label: 'DPE', render: (_a: Analyse, i: number) => {
-                      const d = resultsData[i]; return d ? <DpeCell classe={d.dpe} /> : <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>;
+                      const d = resultsData[i]; return d ? <DpeCell classe={d.dpe} /> : <span style={{ color: '#94a3b8', fontSize: 13 }}>—</span>;
                     }
                   },
                   {
                     label: 'Travaux votés', render: (_a: Analyse, i: number) => {
-                      const d = resultsData[i]; if (!d) return <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>;
+                      const d = resultsData[i]; if (!d) return <span style={{ color: '#94a3b8', fontSize: 13 }}>—</span>;
                       const bestVal = Math.min(...resultsData.filter(Boolean).map(r => r!.travaux_votes));
-                      return <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><TendanceIcon val={d.travaux_votes} best={bestVal} /><span style={{ fontSize: 13, fontWeight: 600, color: d.travaux_votes === 0 ? '#16a34a' : '#d97706' }}>{d.travaux_votes} travaux</span></div>;
+                      return <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><TendanceIcon val={d.travaux_votes} best={bestVal} /><span style={{ fontSize: 14, fontWeight: 600, color: d.travaux_votes === 0 ? '#16a34a' : '#d97706' }}>{d.travaux_votes} travaux</span></div>;
                     }
                   },
                   {
                     label: 'Travaux évoqués', render: (_a: Analyse, i: number) => {
-                      const d = resultsData[i]; if (!d) return <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>;
+                      const d = resultsData[i]; if (!d) return <span style={{ color: '#94a3b8', fontSize: 13 }}>—</span>;
                       const bestVal = Math.min(...resultsData.filter(Boolean).map(r => r!.travaux_evoques));
-                      return <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><TendanceIcon val={d.travaux_evoques} best={bestVal} /><span style={{ fontSize: 13, fontWeight: 600, color: d.travaux_evoques === 0 ? '#16a34a' : '#f97316' }}>{d.travaux_evoques} évoqués</span></div>;
+                      return <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><TendanceIcon val={d.travaux_evoques} best={bestVal} /><span style={{ fontSize: 14, fontWeight: 600, color: d.travaux_evoques === 0 ? '#16a34a' : '#f97316' }}>{d.travaux_evoques} évoqués</span></div>;
                     }
                   },
                   {
                     label: 'Procédures', render: (_a: Analyse, i: number) => {
-                      const d = resultsData[i]; if (!d) return <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>;
-                      return <span style={{ fontSize: 13, fontWeight: 600, color: d.procedures === 0 ? '#16a34a' : '#dc2626' }}>{d.procedures === 0 ? '✓ Aucune' : `⚠ ${d.procedures} détectée${d.procedures > 1 ? 's' : ''}`}</span>;
+                      const d = resultsData[i]; if (!d) return <span style={{ color: '#94a3b8', fontSize: 13 }}>—</span>;
+                      return <span style={{ fontSize: 14, fontWeight: 600, color: d.procedures === 0 ? '#16a34a' : '#dc2626' }}>{d.procedures === 0 ? '✓ Aucune' : `⚠ ${d.procedures} détectée${d.procedures > 1 ? 's' : ''}`}</span>;
                     }
                   },
                   {
                     label: 'Fonds travaux', render: (_a: Analyse, i: number) => {
-                      const d = resultsData[i]; if (!d) return <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>;
+                      const d = resultsData[i]; if (!d) return <span style={{ color: '#94a3b8', fontSize: 13 }}>—</span>;
                       const s = d.fonds_travaux_statut;
-                      return <span style={{ fontSize: 12, fontWeight: 600, color: s === 'conforme' ? '#16a34a' : s === 'insuffisant' ? '#dc2626' : '#94a3b8' }}>
+                      return <span style={{ fontSize: 13.5, fontWeight: 600, color: s === 'conforme' ? '#16a34a' : s === 'insuffisant' ? '#dc2626' : '#94a3b8' }}>
                         {s === 'conforme' ? '✓ Conforme' : s === 'insuffisant' ? '⚠ Insuffisant' : s === 'absent' ? '✗ Absent' : '—'}
                       </span>;
                     }
                   },
                   {
                     label: 'Impayés vendeur', render: (_a: Analyse, i: number) => {
-                      const d = resultsData[i]; if (!d) return <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>;
-                      return <span style={{ fontSize: 12, fontWeight: 600, color: d.impayes ? '#dc2626' : '#16a34a' }}>{d.impayes ? '⚠ Détectés' : '✓ Aucun'}</span>;
+                      const d = resultsData[i]; if (!d) return <span style={{ color: '#94a3b8', fontSize: 13 }}>—</span>;
+                      return <span style={{ fontSize: 13.5, fontWeight: 600, color: d.impayes ? '#dc2626' : '#16a34a' }}>{d.impayes ? '⚠ Détectés' : '✓ Aucun'}</span>;
                     }
                   },
                   {
                     label: 'Charges/an lot', render: (_a: Analyse, i: number) => {
-                      const d = resultsData[i]; if (!d || !d.charges_annuelles) return <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>;
+                      const d = resultsData[i]; if (!d || !d.charges_annuelles) return <span style={{ color: '#94a3b8', fontSize: 13 }}>—</span>;
                       const bestVal = Math.min(...resultsData.filter(r => r?.charges_annuelles).map(r => r!.charges_annuelles!));
-                      return <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><TendanceIcon val={d.charges_annuelles} best={bestVal} /><span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{d.charges_annuelles.toLocaleString('fr-FR')}€</span></div>;
+                      return <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><TendanceIcon val={d.charges_annuelles} best={bestVal} /><span style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>{d.charges_annuelles.toLocaleString('fr-FR')}€</span></div>;
                     }
                   },
                 ].map((row, ri) => {
@@ -482,9 +540,9 @@ export default function Compare() {
                   void vals; // utilisé pour le rendu
                   return (
                   <div key={ri} style={{ display: 'grid', gridTemplateColumns: `180px repeat(${cols}, 1fr)`, borderBottom: ri < 8 ? '1px solid #f8fafc' : 'none', background: ri % 2 === 0 ? '#fff' : '#fafbfc' }}>
-                    <div style={{ padding: '12px 16px', fontSize: 12, color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center' }}>{row.label}</div>
+                    <div style={{ padding: '14px 18px', fontSize: 13.5, color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center' }}>{row.label}</div>
                     {selectedAnalyses.map((a, j) => (
-                      <div key={j} style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', borderLeft: '1px solid #f1f5f9', background: a.id === best.id ? 'rgba(42,125,156,0.02)' : 'transparent' }}>
+                      <div key={j} style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', borderLeft: '1px solid #f1f5f9', background: a.id === best.id ? 'rgba(42,125,156,0.02)' : 'transparent' }}>
                         {row.render(a, j)}
                       </div>
                     ))}
@@ -700,16 +758,6 @@ export default function Compare() {
               </div>
 
               {/* Verdict */}
-              {verdictLoading && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                  style={{ padding: '32px 24px', borderRadius: 16, background: 'linear-gradient(135deg, #f0f7fb, #e8f4fa)', border: '1.5px solid #bae3f5', textAlign: 'center' }}>
-                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                    style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid #2a7d9c', borderTopColor: 'transparent', margin: '0 auto 16px' }} />
-                  <p style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Analyse comparative en cours...</p>
-                  <p style={{ fontSize: 12, color: '#64748b' }}>Verimo compare vos biens en profondeur</p>
-                </motion.div>
-              )}
-
               {verdictError && !verdictIA && !verdictLoading && (() => {
                 const { best, raisons } = buildVerdict(selectedAnalyses, resultsData);
                 return (
@@ -737,31 +785,31 @@ export default function Compare() {
 
               {verdictIA && !verdictLoading && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-                  style={{ padding: '22px 24px', borderRadius: 16, background: 'linear-gradient(135deg, #f0f7fb, #e8f4fa)', border: '1.5px solid #bae3f5', boxShadow: '0 4px 16px rgba(42,125,156,0.08)' }}>
+                  style={{ padding: '24px 26px', borderRadius: 16, background: 'linear-gradient(135deg, #f0f7fb, #e8f4fa)', border: '1.5px solid #bae3f5', boxShadow: '0 4px 16px rgba(42,125,156,0.08)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                     <Shield size={16} color="#2a7d9c" style={{ flexShrink: 0 }} />
-                    <div style={{ fontSize: 11, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Verdict Verimo</div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Verdict Verimo</div>
                   </div>
 
                   {/* Titre verdict */}
-                  <p style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', marginBottom: 14, lineHeight: 1.5 }}>
+                  <p style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', marginBottom: 14, lineHeight: 1.5 }}>
                     {verdictIA.titre_verdict}
                   </p>
 
                   {/* Synthèse */}
-                  <p style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.7, marginBottom: 16 }}>
+                  <p style={{ fontSize: 15, color: '#374151', lineHeight: 1.7, marginBottom: 18 }}>
                     {verdictIA.synthese}
                   </p>
 
                   {/* Forces */}
                   {verdictIA.forces_bien_recommande?.length > 0 && (
-                    <div style={{ marginBottom: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>✓ Forces identifiées</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>✓ Forces identifiées</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                         {verdictIA.forces_bien_recommande.map((f, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                            <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'rgba(22,163,74,0.12)', border: '1px solid rgba(22,163,74,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}><CheckCircle size={10} color="#16a34a" /></div>
-                            <span style={{ fontSize: 13, color: '#374151', lineHeight: 1.5 }}>{f}</span>
+                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                            <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(22,163,74,0.12)', border: '1px solid rgba(22,163,74,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}><CheckCircle size={11} color="#16a34a" /></div>
+                            <span style={{ fontSize: 14.5, color: '#374151', lineHeight: 1.55 }}>{f}</span>
                           </div>
                         ))}
                       </div>
@@ -770,13 +818,13 @@ export default function Compare() {
 
                   {/* Points d'attention */}
                   {verdictIA.points_attention?.length > 0 && (
-                    <div style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(217,119,6,0.06)', border: '1px solid rgba(217,119,6,0.15)', marginBottom: 14 }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>⚠ Points d'attention</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    <div style={{ padding: '14px 16px', borderRadius: 12, background: 'rgba(217,119,6,0.06)', border: '1px solid rgba(217,119,6,0.15)', marginBottom: 16 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>⚠ Points d'attention</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                         {verdictIA.points_attention.map((a, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                            <AlertTriangle size={13} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
-                            <span style={{ fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>{a}</span>
+                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                            <AlertTriangle size={14} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
+                            <span style={{ fontSize: 14.5, color: '#92400e', lineHeight: 1.55 }}>{a}</span>
                           </div>
                         ))}
                       </div>
@@ -785,18 +833,18 @@ export default function Compare() {
 
                   {/* Alerte documents */}
                   {verdictIA.alerte_documents && (
-                    <div style={{ padding: '10px 14px', borderRadius: 10, background: '#fff7ed', border: '1px solid #fed7aa', marginBottom: 14, fontSize: 12, color: '#9a3412', lineHeight: 1.6 }}>
+                    <div style={{ padding: '12px 16px', borderRadius: 10, background: '#fff7ed', border: '1px solid #fed7aa', marginBottom: 16, fontSize: 13.5, color: '#9a3412', lineHeight: 1.6 }}>
                       📁 {verdictIA.alerte_documents}
                     </div>
                   )}
 
                   {/* Conseil */}
-                  <div style={{ padding: '14px 16px', borderRadius: 12, background: '#fff', border: '1px solid rgba(42,125,156,0.15)', marginBottom: 14 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>💡 Notre conseil</div>
-                    <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.65, margin: 0 }}>{verdictIA.conseil}</p>
+                  <div style={{ padding: '16px 18px', borderRadius: 12, background: '#fff', border: '1px solid rgba(42,125,156,0.15)', marginBottom: 14 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#2a7d9c', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>💡 Notre conseil</div>
+                    <p style={{ fontSize: 14.5, color: '#374151', lineHeight: 1.65, margin: 0 }}>{verdictIA.conseil}</p>
                   </div>
 
-                  <p style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic', lineHeight: 1.6 }}>Ce verdict est établi uniquement à partir des données disponibles dans vos rapports et ne remplace pas l'avis d'un professionnel de l'immobilier.</p>
+                  <p style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic', lineHeight: 1.6 }}>Ce verdict est établi uniquement à partir des données disponibles dans vos rapports et ne remplace pas l'avis d'un professionnel de l'immobilier.</p>
                 </motion.div>
               )}
 
