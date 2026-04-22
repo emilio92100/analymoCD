@@ -3,6 +3,48 @@ import { useSearchParams } from 'react-router-dom';
 import { fetchAnalyseById } from '../lib/analyses';
 
 /* ══════════ Utilitaires ══════════ */
+
+// Flatten le resume : string (legacy) OU objet 5 sections (nouveau) → string unique pour PDF
+function flattenResume(resume: string | Record<string, string | null> | null | undefined): string {
+  if (!resume) return '';
+  if (typeof resume === 'string') return resume;
+  const labels: Record<string, string> = {
+    le_bien: 'Le bien',
+    la_copropriete: 'La copropriété',
+    performance_energetique: 'Performance énergétique',
+    diagnostics_privatifs: 'Diagnostics privatifs',
+    gouvernance_finances: 'Gouvernance & finances',
+  };
+  return Object.keys(labels)
+    .map(k => {
+      const v = resume[k];
+      return typeof v === 'string' && v.trim() ? `${labels[k]} — ${v.trim()}` : null;
+    })
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+// Flatten l'avis verimo : string (legacy) OU objet structuré (nouveau) → string unique pour PDF
+function flattenAvisVerimo(avis: string | Record<string, unknown> | null | undefined): string {
+  if (!avis) return '';
+  if (typeof avis === 'string') return avis;
+  const parts: string[] = [];
+  if (typeof avis.verdict === 'string' && avis.verdict.trim()) parts.push(avis.verdict.trim());
+  if (typeof avis.contexte === 'string' && avis.contexte.trim()) parts.push(avis.contexte.trim());
+  if (Array.isArray(avis.demarches) && avis.demarches.length > 0) {
+    parts.push('Points à approfondir avant de signer :');
+    avis.demarches.forEach((d: unknown, i: number) => {
+      if (d && typeof d === 'object') {
+        const rec = d as Record<string, unknown>;
+        const titre = typeof rec.titre === 'string' ? rec.titre : '';
+        const desc = typeof rec.description === 'string' ? rec.description : '';
+        if (titre || desc) parts.push(`${i + 1}. ${titre}${titre && desc ? ' — ' : ''}${desc}`);
+      }
+    });
+  }
+  return parts.join('\n\n');
+}
+
 function getScoreColor(score: number) {
   if (score >= 17) return '#15803d';
   if (score >= 14) return '#16a34a';
@@ -92,10 +134,10 @@ function buildRapportPrint(data: Record<string, unknown>, dbData: { id: string; 
     type_bien: (r.type_bien as string) || 'appartement',
     annee_construction: (r.annee_construction as string) || null,
     profil: dbData.profil || 'rp',
-    resume: (r.resume as string) || '',
+    resume: r.resume as string | Record<string, string | null> | null,
     points_forts: (r.points_forts as string[]) || [],
     points_vigilance: (r.points_vigilance as string[]) || [],
-    avis_verimo: (r.avis_verimo as string) || '',
+    avis_verimo: r.avis_verimo as string | Record<string, unknown> | null,
     categories: (r.categories as Record<string, { note: number; note_max: number }>) || {},
     budget_total_copro: budgetTotalNum,
     charges_annuelles_lot: chargesLotNum,
@@ -252,7 +294,7 @@ export default function RapportPrintPage() {
           {/* Résumé */}
           <div className="no-break" style={{ marginBottom: 22 }}>
             <Section title="Résumé de l'analyse">
-              <p style={{ fontSize: 12, color: '#374151', lineHeight: 1.75, margin: 0, padding: '12px 16px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}>{rapport.resume}</p>
+              <p style={{ fontSize: 12, color: '#374151', lineHeight: 1.75, margin: 0, padding: '12px 16px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', whiteSpace: 'pre-wrap' }}>{flattenResume(rapport.resume)}</p>
             </Section>
           </div>
 
@@ -531,11 +573,11 @@ export default function RapportPrintPage() {
           )}
 
           {/* ══════════ AVIS VERIMO ══════════ */}
-          {rapport.avis_verimo && (
+          {flattenAvisVerimo(rapport.avis_verimo) && (
             <div className="no-break" style={{ marginBottom: 22 }}>
               <Section title="Avis Verimo">
                 <div style={{ background: '#0f2d3d', borderRadius: 12, padding: '18px 22px' }}>
-                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.90)', lineHeight: 1.85, margin: 0 }}>{rapport.avis_verimo}</p>
+                  <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.90)', lineHeight: 1.85, margin: 0, whiteSpace: 'pre-wrap' }}>{flattenAvisVerimo(rapport.avis_verimo)}</p>
                 </div>
               </Section>
             </div>
