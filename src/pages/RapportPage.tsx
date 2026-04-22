@@ -313,10 +313,10 @@ function DiagRow({ d }: { d: any }) {
   const carrezSolTotal = resultatBrut.match(/(?:surface\s+au\s+sol|sol)\s*(?:totale?)?\s*:?\s*([\d,\.]+)\s*m²/i);
 
   return (
-    <div style={{ borderRadius: 12, border: `1.5px solid ${hasAlert ? '#fecaca' : isAbsence ? '#bbf7d0' : isERP ? '#e2e8f0' : '#edf2f7'}`, overflow: 'hidden', background: '#fff' }}>
-      <div style={{ padding: '12px 16px', background: hasAlert ? '#fef2f2' : isAbsence ? '#f0fdf4' : isERP ? '#f8fafc' : `${color}08`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+    <div style={{ borderRadius: 12, border: `1.5px solid ${hasAlert ? '#fecaca' : (isAbsence || isConforme) ? '#bbf7d0' : isERP ? '#e2e8f0' : '#edf2f7'}`, overflow: 'hidden', background: '#fff' }}>
+      <div style={{ padding: '12px 16px', background: hasAlert ? '#fef2f2' : (isAbsence || isConforme) ? '#f0fdf4' : isERP ? '#f8fafc' : `${color}08`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{icon}</div>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: (isAbsence || isConforme) ? '#dcfce7' : `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{icon}</div>
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{d.label || d.type}</div>
             {d.localisation && <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 2 }}>📍 {d.localisation}</div>}
@@ -2384,7 +2384,19 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
 
         {diagsCommuns.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {diagsCommuns.map((d: Record<string, unknown>, i: number) => <DiagRow key={i} d={d} />)}
+            {[...diagsCommuns].sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
+              const getScore = (d: Record<string, unknown>): number => {
+                const isERP = d.type === 'ERP';
+                const hasAlert = !!d.alerte && !isERP;
+                const isAbsence = d.presence === 'absence';
+                const isConforme = d.presence === 'detecte' && !hasAlert && !isERP;
+                if (isAbsence || isConforme) return 0;
+                if (isERP || d.presence === 'non_realise') return 1;
+                if (hasAlert) return 2;
+                return 1;
+              };
+              return getScore(a) - getScore(b);
+            }).map((d: Record<string, unknown>, i: number) => <DiagRow key={i} d={d} />)}
           </div>
         )}
 
@@ -2905,7 +2917,23 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
 
           <SectionTitle emoji="✅" text="Résultats des diagnostics" />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {autresDiags.map((d: Record<string, unknown>, i: number) => <DiagRow key={i} d={d} />)}
+            {(() => {
+              // Tri : verts (absence/conforme) en haut, alertes en bas, ERP/autres au milieu
+              const sorted = [...autresDiags].sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
+                const getScore = (d: Record<string, unknown>): number => {
+                  const isERP = d.type === 'ERP';
+                  const hasAlert = !!d.alerte && !isERP;
+                  const isAbsence = d.presence === 'absence';
+                  const isConforme = d.presence === 'detecte' && !hasAlert && !isERP;
+                  if (isAbsence || isConforme) return 0; // vert → haut
+                  if (isERP || d.presence === 'non_realise') return 1; // neutre → milieu
+                  if (hasAlert) return 2; // rouge → bas
+                  return 1;
+                };
+                return getScore(a) - getScore(b);
+              });
+              return sorted.map((d: Record<string, unknown>, i: number) => <DiagRow key={i} d={d} />);
+            })()}
           </div>
 
           {/* Surface Carrez */}
