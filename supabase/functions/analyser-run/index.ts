@@ -763,19 +763,36 @@ REGLE AUDIT ENERGETIQUE OBLIGATOIRE A LA VENTE :
 
 REGLES RESUME STRUCTURE (objet "resume" a 5 sections) :
 - resume est un OBJET avec 5 cles : le_bien, la_copropriete, performance_energetique, diagnostics_privatifs, gouvernance_finances.
-- Chaque cle contient soit un TEXTE (3-5 phrases factuelles, langage simple) soit null si aucune donnee dans les documents analyses ne permet de renseigner cette section.
+- Chaque cle contient soit un TEXTE TRES COURT (1 a 3 phrases, 50 MOTS MAX) soit null si aucune donnee dans les documents analyses ne permet de renseigner cette section.
+- CONCISION STRICTE : chaque section doit tenir en 1-3 phrases MAX, jamais plus. Si tu as beaucoup d information a partager, SELECTIONNE l essentiel et ignore le reste — le detail existe dans les autres onglets du rapport.
 - TON STRICTEMENT FACTUEL — zero evaluation. Le resume DECRIT ce que contiennent les documents, il n EVALUE jamais.
+- REGLE ANTI-REDONDANCE KPI : les donnees suivantes sont DEJA affichees en gros dans les KPIs de la page synthese — NE PAS les mettre dans le resume en prose (ce serait redondant et alourdit la lecture) :
+  * Surface Carrez (deja en KPI)
+  * Classe DPE (deja en KPI avec la lettre A-G)
+  * Annee de construction (deja en KPI)
+  * Charges annuelles lot (deja en KPI)
+  * Nombre de lots (deja en KPI)
+  * Nombre de travaux votes (deja en KPI)
+  EXCEPTION : tu peux mentionner ces donnees en prose UNIQUEMENT si tu y ajoutes un contexte qui apporte du sens (ex: "DPE E lie a la chaudiere collective ancienne" — le "lie a..." justifie la mention). Sinon, ne les redonne pas.
 - INTERDIT dans resume : adjectifs evaluatifs ("correct", "preoccupant", "rassurant", "exigeant", "solide", "degrade", "defavorable", "inquietant", "tres bon", "problematique", "satisfaisant"...). Utiliser uniquement des faits mesurables.
 - INTERDIT dans resume : mentionner "acheteur", "il faudra", "vous devrez", donner des pistes d action, faire des recommandations.
 - INTERDIT dans resume : conclusions type "En conclusion...", "Ce qui constitue...", "Point negatif...", "Principal point...".
-- Contenu suggere par section :
-  * le_bien : type de bien, surface Carrez, composition du lot (appart + annexes), tantiemes generaux
-  * la_copropriete : nombre de lots, annee construction, nb batiments, chauffage, equipements collectifs
-  * performance_energetique : classe DPE avec kWh, GES, classe GES avec kg CO2, type de chauffage, menuiseries, consommation/cout annuel si documente
-  * diagnostics_privatifs : liste factuelle des anomalies detectees (electricite, gaz, amiante, plomb, termites) avec leur nature. Ne pas qualifier leur gravite.
-  * gouvernance_finances : syndic(s), changements, fonds ALUR, fonds travaux, impayes (montants bruts), procedures en cours (mention factuelle), DTG/PPT statut
+- INTERDIT dans resume : enumerations longues de details techniques (numeros ADEME, references documentaires, sous-sections type "liste A et B", detail piece par piece...). Si le detail existe, il est dans les onglets.
+- Contenu suggere par section (en restant BREF) :
+  * le_bien : composition du lot (appart T2/T3... + annexes cave/parking). Si deja evident par les KPIs, peux mettre null.
+  * la_copropriete : nb batiments, type de chauffage, equipements collectifs marquants (ascenseur, gardien). Ne pas redonner nombre de lots et annee (deja en KPI).
+  * performance_energetique : type de chauffage (gaz/fioul/electrique), specificites menuiseries SI anomalies. Ne pas redonner la classe DPE seule (deja en KPI).
+  * diagnostics_privatifs : synthese ultra-courte type "Amiante, electricite, gaz, termites : aucune anomalie" ou "Anomalie detectee sur l installation electrique". Pas de detail piece par piece.
+  * gouvernance_finances : syndic (nom + stabilite), fonds ALUR en euros si notable, impayes copro si notable. Pas de details procedures ou citations longues.
 - Si aucun document ne documente une section, mettre null. L UI masquera la section automatiquement.
-- Une section peut etre null meme en analyse complete si l information n est pas disponible (ex: pas de DPE uploade -> performance_energetique = null).
+- Une section peut etre null meme en analyse complete si l information n est pas disponible (ex: pas de DPE uploade -> performance_energetique = null). Une section peut aussi etre null si toute l info utile est deja dans les KPIs et qu il n y a rien a ajouter en contexte.
+- EXEMPLES DE BONNE LONGUEUR :
+  * le_bien : "Appartement T2 au 3eme etage avec cave en annexe." (13 mots - parfait)
+  * la_copropriete : "Immeuble de 110 lots avec 4 ascenseurs et chauffage collectif gaz depuis 2016 (conversion votee apres remplacement fioul). Gardien present en semaine." (24 mots - parfait)
+  * performance_energetique : "Chauffage collectif gaz a condensation, fenetres bois double vitrage." (10 mots - parfait)
+  * diagnostics_privatifs : "Aucune anomalie detectee sur amiante, electricite, gaz et termites." (10 mots - parfait)
+  * gouvernance_finances : "Syndic professionnel stable depuis 2017. Fonds ALUR 17 225 EUR (11,3 % du budget). Impayes copro 16 721 EUR." (19 mots - parfait)
+- SI TU DEPASSES 50 MOTS SUR UNE SECTION : coupe. Le detail est dans les onglets.
 
 REGLES AVIS VERIMO STRUCTURE (objet "avis_verimo" a 4 cles) :
 - avis_verimo est un OBJET avec 4 cles : verdict, verdict_highlight, contexte, demarches.
