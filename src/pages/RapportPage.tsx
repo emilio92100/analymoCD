@@ -608,6 +608,45 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
               {rapport.annee_construction && <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 100, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.8)' }}>Construit en {rapport.annee_construction}</span>}
               <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 100, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.55)' }}>Analysé le {rapport.date}</span>
             </div>
+
+            {/* Barre de notation Verimo — paliers visibles */}
+            {(() => {
+              const score = rapport.score;
+              // Position curseur : proportionnelle au score /20
+              const cursorPct = Math.max(0, Math.min(100, (score / 20) * 100));
+              // Palier actuel
+              const palier = score < 7 ? 0 : score < 10 ? 1 : score < 14 ? 2 : score < 17 ? 3 : 4;
+              const palierLabels = ['Éviter', 'Risqué', 'Réserves', 'Sain', 'Irréproch.'];
+              const palierColors = ['#dc2626', '#ea580c', '#d97706', '#16a34a', '#15803d'];
+              return (
+                <div className="hero-paliers" style={{ position: 'relative', paddingTop: 14, marginTop: 14, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.1em', marginBottom: 8, textTransform: 'uppercase' as const }}>Notation Verimo</div>
+                  {/* Barre segmentée */}
+                  <div style={{ position: 'relative', display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', gap: 2 }}>
+                    <div style={{ flex: 7, background: '#dc2626' }} />
+                    <div style={{ flex: 3, background: '#ea580c' }} />
+                    <div style={{ flex: 4, background: '#d97706' }} />
+                    <div style={{ flex: 3, background: '#16a34a' }} />
+                    <div style={{ flex: 3, background: '#15803d' }} />
+                  </div>
+                  {/* Curseur */}
+                  <div style={{ position: 'absolute', top: 36, left: `${cursorPct}%`, transform: 'translateX(-50%)', width: 2, height: 14, background: '#fff', borderRadius: 1, boxShadow: '0 0 8px rgba(255,255,255,0.5)' }} />
+                  {/* Labels */}
+                  <div className="hero-paliers-labels" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 14, fontSize: 9, color: 'rgba(255,255,255,0.55)' }}>
+                    {palierLabels.map((label, i) => {
+                      const ranges = ['0-6', '7-9', '10-13', '14-16', '17-20'];
+                      const isActive = i === palier;
+                      return (
+                        <span key={i} style={{ textAlign: 'center', color: isActive ? palierColors[i] : undefined, opacity: isActive ? 1 : 0.55, fontWeight: isActive ? 700 : 400 }}>
+                          <span style={{ display: 'block', fontSize: 8.5, letterSpacing: '0.02em' }}>{ranges[i]}</span>
+                          <span style={{ display: 'block', marginTop: 2 }}>{label}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -4481,6 +4520,10 @@ export default function RapportPage() {
           .score-label-badge { font-size: 9px !important; padding: 2px 8px !important; }
           /* Badges hero — masqués sur mobile (redondants avec les infos du header) */
           .hero-tags { display: none !important; }
+
+          /* Barre de paliers — sur mobile, masquer les ranges et garder juste les labels */
+          .hero-paliers-labels > span > span:first-child { display: none !important; }
+          .hero-paliers-labels { font-size: 8.5px !important; }
 
           /* ── Topnav — labels courts ── */
           .topnav-back-label { font-size: 11px !important; }
