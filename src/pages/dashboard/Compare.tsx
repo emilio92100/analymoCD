@@ -5,6 +5,133 @@ import { GitCompare, ShieldCheck, Building2, CheckCircle, FileText, Shield, Arro
 import { useAnalyses, type Analyse } from '../../hooks/useAnalyses';
 import { supabase } from '../../lib/supabase';
 
+/* ══════════════════════════════════════════
+   ÉCRAN D'ATTENTE — analyse comparative en cours
+   ══════════════════════════════════════════ */
+function CompareWaitingScreen({ biens }: { biens: string[] }) {
+  const [currentStep, setCurrentStep] = useState(0);
+  const n = biens.length;
+
+  // Les 3 étapes s'enchaînent automatiquement toutes les ~9-10s
+  // Le composant sera démonté quand Claude finit (verdictLoading → false)
+  // La 3ème étape reste "en cours" tant que Claude n'a pas fini
+  useEffect(() => {
+    const t1 = setTimeout(() => setCurrentStep(1), 8000);
+    const t2 = setTimeout(() => setCurrentStep(2), 18000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
+  const steps = [
+    { label: `Lecture des ${n} rapports`, icon: '📄' },
+    { label: 'Comparaison des forces et faiblesses', icon: '⚖️' },
+    { label: 'Rédaction du verdict comparatif', icon: '✍️' },
+  ];
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
+      style={{ padding: '48px 32px', borderRadius: 20, background: 'linear-gradient(135deg, #f0f7fb 0%, #e8f4fa 100%)', border: '1.5px solid #bae3f5', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24, minHeight: 520, justifyContent: 'center' }}>
+
+      {/* Animation principale : 2-3 bâtiments qui pulsent + liaisons */}
+      <div style={{ position: 'relative', width: 200, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
+        {biens.slice(0, 3).map((_, i) => (
+          <motion.div key={i}
+            animate={{ y: [0, -8, 0], opacity: [0.6, 1, 0.6] }}
+            transition={{ duration: 2, repeat: Infinity, delay: i * 0.3, ease: 'easeInOut' }}
+            style={{ width: 52, height: 68, borderRadius: 10, background: 'linear-gradient(180deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 20px rgba(15,45,61,0.2)' }}>
+            <Building2 size={28} color="#fff" />
+          </motion.div>
+        ))}
+        {/* Ligne de comparaison animée */}
+        <motion.div
+          animate={{ scaleX: [0.7, 1, 0.7], opacity: [0.4, 0.9, 0.4] }}
+          transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ position: 'absolute', top: '50%', left: 50, right: 50, height: 2, background: 'linear-gradient(90deg, transparent, #2a7d9c, transparent)', transformOrigin: 'center' }} />
+      </div>
+
+      {/* Titre dynamique */}
+      <div style={{ textAlign: 'center' }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 8, letterSpacing: '-0.02em' }}>
+          Analyse comparative en cours
+        </h2>
+        <p style={{ fontSize: 14.5, color: '#64748b', lineHeight: 1.6 }}>
+          Verimo compare vos {n === 2 ? '2' : '3'} biens en profondeur
+        </p>
+      </div>
+
+      {/* Biens en cours de comparaison */}
+      <div style={{ width: '100%', maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {biens.map((adr, i) => (
+          <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 + i * 0.15 }}
+            style={{ padding: '10px 14px', background: '#fff', borderRadius: 10, border: '1px solid #e0ecf3', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(42,125,156,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Building2 size={14} color="#2a7d9c" />
+            </div>
+            <span style={{ fontSize: 13.5, color: '#0f172a', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+              Bien {i + 1} — {adr}
+            </span>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Barre de progression des 3 étapes */}
+      <div style={{ width: '100%', maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 14, marginTop: 8 }}>
+        {steps.map((step, i) => {
+          const isDone = i < currentStep;
+          const isActive = i === currentStep;
+          return (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: isDone ? '#16a34a' : isActive ? 'rgba(42,125,156,0.12)' : '#f1f5f9',
+                border: isActive ? '2px solid #2a7d9c' : 'none',
+                transition: 'all 0.3s',
+              }}>
+                {isDone ? (
+                  <CheckCircle size={16} color="#fff" />
+                ) : isActive ? (
+                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+                    style={{ width: 14, height: 14, borderRadius: '50%', border: '2.5px solid #2a7d9c', borderTopColor: 'transparent' }} />
+                ) : (
+                  <span style={{ fontSize: 13 }}>{step.icon}</span>
+                )}
+              </div>
+              <span style={{
+                fontSize: 14, lineHeight: 1.5,
+                color: isDone ? '#16a34a' : isActive ? '#0f172a' : '#94a3b8',
+                fontWeight: isDone || isActive ? 700 : 500,
+              }}>
+                {step.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <p style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic', marginTop: 4 }}>
+        L'analyse prend généralement moins d'une minute
+      </p>
+    </motion.div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   MINI LOADER — réouverture depuis historique
+   ══════════════════════════════════════════ */
+function CompareCacheLoader() {
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+      style={{ padding: '60px 32px', borderRadius: 20, background: 'linear-gradient(135deg, #f0f7fb, #e8f4fa)', border: '1.5px solid #bae3f5', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, minHeight: 280, justifyContent: 'center' }}>
+      <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+        style={{ width: 44, height: 44, borderRadius: '50%', border: '4px solid #2a7d9c', borderTopColor: 'transparent' }} />
+      <div style={{ textAlign: 'center' }}>
+        <p style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Patientez</p>
+        <p style={{ fontSize: 14, color: '#64748b' }}>Votre rapport se charge…</p>
+      </div>
+    </motion.div>
+  );
+}
+
 function ScoreBadge({ score, size = 'sm' }: { score: number; size?: 'sm' | 'md' }) {
   const color = score >= 14 ? '#16a34a' : score >= 10 ? '#d97706' : '#dc2626';
   const bg = score >= 14 ? '#f0fdf4' : score >= 10 ? '#fffbeb' : '#fef2f2';
@@ -158,7 +285,6 @@ export default function Compare() {
   const [verdictLoading, setVerdictLoading] = useState(false);
   const [verdictError, setVerdictError] = useState(false);
   const [isCached, setIsCached] = useState(false);
-  const [cachedDate, setCachedDate] = useState<string | null>(null);
 
   // Historique
   const [historique, setHistorique] = useState<ComparaisonSaved[]>([]);
@@ -207,12 +333,17 @@ export default function Compare() {
       console.error('[Compare] Impossible de parser le verdict sauvegardé:', e);
       v = null;
     }
-    setVerdictIA(v);
-    setVerdictError(!v);
-    setVerdictLoading(false);
     setIsCached(true);
-    setCachedDate(new Date(comp.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }));
     setLaunched(true);
+    setVerdictError(false);
+    // Affichage du mini loader 1.8s pour une UX fluide
+    setVerdictLoading(true);
+    setVerdictIA(null);
+    setTimeout(() => {
+      setVerdictIA(v);
+      setVerdictError(!v);
+      setVerdictLoading(false);
+    }, 1800);
   };
 
   const toggleSelect = (id: string) => {
@@ -229,7 +360,6 @@ export default function Compare() {
     setVerdictIA(null);
     setVerdictError(false);
     setIsCached(false);
-    setCachedDate(null);
   };
   const handleLaunch = async () => {
     if (!canLaunch) return;
@@ -238,7 +368,6 @@ export default function Compare() {
     setVerdictError(false);
     setVerdictIA(null);
     setIsCached(false);
-    setCachedDate(null);
 
     try {
       const session = (await supabase.auth.getSession()).data.session;
@@ -261,12 +390,6 @@ export default function Compare() {
         setVerdictIA(data.verdict as VerdictIA);
         if (data.cached) {
           setIsCached(true);
-          // On cherche la date de création dans l'historique (rechargé après)
-          const sortedIds = [...selected].sort().join(',');
-          const existing = historique.find(c => c.analyse_ids === sortedIds);
-          if (existing) {
-            setCachedDate(new Date(existing.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }));
-          }
         }
         // Recharger l'historique pour inclure cette nouvelle comparaison
         loadHistorique();
@@ -377,22 +500,62 @@ export default function Compare() {
             </motion.div>
           )}
 
-          {/* Bouton Lancer */}
-          {canLaunch && (
-            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
-              <button onClick={handleLaunch}
-                style={{ width: '100%', padding: '15px', borderRadius: 13, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 800, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, boxShadow: '0 4px 16px rgba(15,45,61,0.2)' }}>
-                <GitCompare size={18} />
-                Lancer la comparaison — {selected.length} bien{selected.length > 1 ? 's' : ''} sélectionné{selected.length > 1 ? 's' : ''}
-                <ArrowRight size={16} />
-              </button>
-            </motion.div>
-          )}
+          {/* Bouton Lancer — ou message "déjà comparé" */}
+          {canLaunch && (() => {
+            const sortedSelected = [...selected].sort().join(',');
+            const existingComp = historique.find(c => c.analyse_ids === sortedSelected);
+            if (existingComp) {
+              const dateExist = new Date(existingComp.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+              return (
+                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                  style={{ padding: '16px 18px', borderRadius: 14, background: '#f0f7fb', border: '1.5px solid #bae3f5', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 22 }}>📋</span>
+                    <div>
+                      <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0f2d3d', marginBottom: 2 }}>
+                        Comparaison déjà effectuée
+                      </div>
+                      <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
+                        Vous avez déjà comparé ces {selected.length} biens le {dateExist}.
+                      </div>
+                    </div>
+                  </div>
+                  <button onClick={() => viewComparaison(existingComp)}
+                    style={{ width: '100%', padding: '13px', borderRadius: 11, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14.5, fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 12px rgba(15,45,61,0.15)' }}>
+                    <Eye size={17} />
+                    Voir le rapport
+                  </button>
+                </motion.div>
+              );
+            }
+            return (
+              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+                <button onClick={handleLaunch}
+                  style={{ width: '100%', padding: '15px', borderRadius: 13, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 800, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, boxShadow: '0 4px 16px rgba(15,45,61,0.2)' }}>
+                  <GitCompare size={18} />
+                  Lancer la comparaison — {selected.length} bien{selected.length > 1 ? 's' : ''} sélectionné{selected.length > 1 ? 's' : ''}
+                  <ArrowRight size={16} />
+                </button>
+              </motion.div>
+            );
+          })()}
         </div>
       )}
 
-      {/* Résultat comparaison */}
-      {launched && selectedAnalyses.length >= 2 && (() => {
+      {/* Écran d'attente : analyse en cours */}
+      {launched && verdictLoading && !isCached && (
+        <CompareWaitingScreen
+          biens={selectedAnalyses.map(a => a.adresse_bien || a.nom_document || 'Bien sans titre')}
+        />
+      )}
+
+      {/* Mini loader pour réouverture depuis historique */}
+      {launched && verdictLoading && isCached && (
+        <CompareCacheLoader />
+      )}
+
+      {/* Résultat comparaison : affiché UNIQUEMENT quand le verdict est prêt */}
+      {launched && !verdictLoading && selectedAnalyses.length >= 2 && (() => {
         const resultsData = selectedAnalyses.map(a => getResultData(a));
         const { best } = buildVerdict(selectedAnalyses, resultsData);
         const cols = selectedAnalyses.length;
@@ -436,30 +599,6 @@ export default function Compare() {
                   );
                 })}
               </div>
-
-              {/* Bandeau : comparaison déjà effectuée */}
-              {isCached && verdictIA && !verdictLoading && (
-                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-                  style={{ padding: '12px 16px', borderRadius: 12, background: '#f0f7fb', border: '1px solid #bae3f5', display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 18 }}>📋</span>
-                  <span style={{ fontSize: 14, color: '#0f2d3d', lineHeight: 1.5 }}>
-                    Vous avez déjà comparé ces biens{cachedDate ? ` le ${cachedDate}` : ''}. Affichage du rapport existant.
-                  </span>
-                </motion.div>
-              )}
-
-              {/* Loader en haut — affiché dès le lancement, masqué quand le verdict arrive */}
-              {verdictLoading && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                  style={{ padding: '22px 24px', borderRadius: 16, background: 'linear-gradient(135deg, #f0f7fb, #e8f4fa)', border: '1.5px solid #bae3f5', display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                    style={{ width: 24, height: 24, borderRadius: '50%', border: '3px solid #2a7d9c', borderTopColor: 'transparent', flexShrink: 0 }} />
-                  <div>
-                    <p style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>Analyse comparative en cours...</p>
-                    <p style={{ fontSize: 13, color: '#64748b' }}>Verimo compare vos biens en profondeur</p>
-                  </div>
-                </motion.div>
-              )}
 
               {/* Tableau comparatif enrichi */}
               <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
