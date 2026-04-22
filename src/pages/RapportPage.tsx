@@ -628,21 +628,76 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
   );
 }
 /* ══════════════════════════════════
-   RÉSUMÉ BLOCK — avec line-clamp mobile
+   RÉSUMÉ BLOCK — Option A (5 sections à icônes) avec fallback retrocompat
 ══════════════════════════════════ */
-function ResumeBlock({ resume }: { resume: string }) {
+type ResumeStructured = {
+  le_bien?: string | null;
+  la_copropriete?: string | null;
+  performance_energetique?: string | null;
+  diagnostics_privatifs?: string | null;
+  gouvernance_finances?: string | null;
+};
+
+type AvisVerimoStructured = {
+  verdict?: string | null;
+  verdict_highlight?: string | null;
+  contexte?: string | null;
+  demarches?: Array<{ titre?: string | null; description?: string | null }> | null;
+};
+
+const RESUME_SECTIONS: Array<{ key: keyof ResumeStructured; label: string; icon: string; iconBg: string }> = [
+  { key: 'le_bien', label: 'Le bien', icon: '🏠', iconBg: '#eff6ff' },
+  { key: 'la_copropriete', label: 'La copropriété', icon: '🏢', iconBg: '#f5f3ff' },
+  { key: 'performance_energetique', label: 'Performance énergétique', icon: '⚡', iconBg: '#fef3c7' },
+  { key: 'diagnostics_privatifs', label: 'Diagnostics privatifs', icon: '🔍', iconBg: '#fee2e2' },
+  { key: 'gouvernance_finances', label: 'Gouvernance & finances', icon: '📋', iconBg: '#ecfccb' },
+];
+
+function ResumeBlock({ resume }: { resume: string | ResumeStructured | null }) {
   const [expanded, setExpanded] = React.useState(false);
+
+  // Rétrocompat : ancien format string → affichage legacy
+  if (typeof resume === 'string') {
+    if (!resume.trim()) return null;
+    return (
+      <div style={{ padding: '20px 22px 16px' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#0f2d3d', color: '#fff', fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 99, letterSpacing: '0.06em', marginBottom: 14 }}>📋 RÉSUMÉ</div>
+        <p className={!expanded ? 'resume-clamped' : ''} style={{ fontSize: 15, color: '#374151', lineHeight: 1.9, margin: 0 }}>{resume}</p>
+        <button className="resume-toggle" onClick={() => setExpanded(v => !v)}
+          style={{ display: 'none', marginTop: 8, fontSize: 13, fontWeight: 600, color: '#2a7d9c', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+          {expanded ? 'Réduire ↑' : 'Lire la suite ↓'}
+        </button>
+      </div>
+    );
+  }
+
+  // Nouveau format : objet structuré
+  const sections = RESUME_SECTIONS
+    .map(s => ({ ...s, text: resume?.[s.key] }))
+    .filter(s => typeof s.text === 'string' && s.text.trim().length > 0);
+
+  if (sections.length === 0) return null;
+
   return (
-    <div style={{ padding: '20px 22px 16px' }}>
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#0f2d3d', color: '#fff', fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 99, letterSpacing: '0.06em', marginBottom: 14 }}>📋 RÉSUMÉ</div>
-      <p className={!expanded ? 'resume-clamped' : ''} style={{ fontSize: 15, color: '#374151', lineHeight: 1.9, margin: 0 }}>{resume}</p>
-      <button className="resume-toggle" onClick={() => setExpanded(v => !v)}
-        style={{ display: 'none', marginTop: 8, fontSize: 13, fontWeight: 600, color: '#2a7d9c', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
-        {expanded ? 'Réduire ↑' : 'Lire la suite ↓'}
-      </button>
+    <div style={{ padding: '20px 22px 18px' }}>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#0f2d3d', color: '#fff', fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 99, letterSpacing: '0.06em', marginBottom: 18 }}>📋 RÉSUMÉ</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+        {sections.map((s, i) => (
+          <div key={i} className="resume-section-row" style={{ display: 'grid', gridTemplateColumns: '44px 1fr', gap: 14, alignItems: 'start' }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: s.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+              {s.icon}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.04em', color: '#0f2d3d', marginBottom: 4, textTransform: 'uppercase' }}>{s.label}</div>
+              <div style={{ fontSize: 14.5, lineHeight: 1.7, color: '#334155' }}>{s.text}</div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
+
 
 /* ══════════════════════════════════
    ONGLET SYNTHÈSE
@@ -924,6 +979,30 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
       )}
 
       {/* 5. AVIS VERIMO */}
+      <AvisVerimoBlock avis={rapport.avis_verimo} isSimple={rapport.type !== 'complete'} />
+
+    </div>
+  );
+}
+
+/* ══════════════════════════════════
+   AVIS VERIMO BLOCK — nouveau format structuré (verdict + contexte + démarches)
+   avec fallback retrocompat pour ancien format string
+══════════════════════════════════ */
+function AvisVerimoBlock({ avis, isSimple }: { avis: string | AvisVerimoStructured | null; isSimple: boolean }) {
+  // Rétrocompat : ancien format string → affichage legacy (3 paragraphes fusionnés)
+  if (typeof avis === 'string') {
+    if (!avis.trim()) return null;
+    const groups = avis
+      .split(/\.\s+/)
+      .filter(s => s.trim().length > 20)
+      .reduce<string[][]>((acc, sentence, i, arr) => {
+        const groupIdx = Math.floor(i / Math.ceil(arr.length / 3));
+        if (!acc[groupIdx]) acc[groupIdx] = [];
+        acc[groupIdx].push(sentence.trim());
+        return acc;
+      }, []);
+    return (
       <div className="avis-verimo-block" style={{ background: '#0f2d3d', borderRadius: 16, overflow: 'hidden' }}>
         <div className="avis-header" style={{ padding: '16px 20px 14px', borderBottom: '0.5px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 18, flexShrink: 0 }}>⭐</span>
@@ -933,28 +1012,114 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
           </div>
         </div>
         <div className="avis-body" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 0 }}>
-          {(rapport.avis_verimo || '')
-            .split(/\.\s+/)
-            .filter(s => s.trim().length > 20)
-            .reduce<string[][]>((acc, sentence, i, arr) => {
-              const groupIdx = Math.floor(i / Math.ceil(arr.length / 3));
-              if (!acc[groupIdx]) acc[groupIdx] = [];
-              acc[groupIdx].push(sentence.trim());
-              return acc;
-            }, [])
-            .map((group, i) => (
-              <p key={i} className="avis-para" style={{ fontSize: 14, color: i === 0 ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.75)', lineHeight: 1.75, margin: 0, marginTop: i > 0 ? 12 : 0, paddingTop: i > 0 ? 12 : 0, borderTop: i > 0 ? '0.5px solid rgba(255,255,255,0.1)' : 'none' }}>
-                {group.join('. ').replace(/\.+$/, '')}.
-              </p>
-            ))}
+          {groups.map((group, i) => (
+            <p key={i} className="avis-para" style={{ fontSize: 14, color: i === 0 ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.75)', lineHeight: 1.75, margin: 0, marginTop: i > 0 ? 12 : 0, paddingTop: i > 0 ? 12 : 0, borderTop: i > 0 ? '0.5px solid rgba(255,255,255,0.1)' : 'none' }}>
+              {group.join('. ').replace(/\.+$/, '')}.
+            </p>
+          ))}
         </div>
-        {rapport.type !== 'complete' && (
+        {isSimple && (
           <div style={{ margin: '0 28px 24px', padding: '12px 14px', background: 'rgba(255,255,255,0.07)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', fontSize: 12, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6 }}>
             💡 Cette analyse porte sur un seul document. Pour un score /20 et un rapport complet du bien, lancez une <span style={{ color: '#5bb8d4', fontWeight: 600 }}>Analyse Complète</span>.
           </div>
         )}
       </div>
+    );
+  }
 
+  // Nouveau format : objet structuré
+  const verdict = typeof avis?.verdict === 'string' ? avis.verdict.trim() : '';
+  const highlight = typeof avis?.verdict_highlight === 'string' ? avis.verdict_highlight.trim() : '';
+  const contexte = typeof avis?.contexte === 'string' ? avis.contexte.trim() : '';
+  const demarches = Array.isArray(avis?.demarches)
+    ? avis.demarches.filter(d => d && typeof d.titre === 'string' && d.titre.trim().length > 0)
+    : [];
+
+  // Si vraiment rien, on ne rend rien
+  if (!verdict && !contexte && demarches.length === 0) return null;
+
+  // Fonction de rendu du verdict avec surlignage du highlight
+  const renderVerdict = () => {
+    if (!verdict) return null;
+    if (highlight && verdict.toLowerCase().includes(highlight.toLowerCase())) {
+      const idx = verdict.toLowerCase().indexOf(highlight.toLowerCase());
+      const before = verdict.slice(0, idx);
+      const match = verdict.slice(idx, idx + highlight.length);
+      const after = verdict.slice(idx + highlight.length);
+      return (
+        <>
+          {before}
+          <strong style={{ background: 'linear-gradient(transparent 60%, rgba(91,184,212,0.4) 60%)', fontWeight: 600, color: '#fff' }}>{match}</strong>
+          {after}
+        </>
+      );
+    }
+    return verdict;
+  };
+
+  return (
+    <div className="avis-verimo-block" style={{ background: '#0f2d3d', borderRadius: 16, overflow: 'hidden' }}>
+      {/* Header */}
+      <div className="avis-header" style={{ padding: '16px 24px 14px', borderBottom: '0.5px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ fontSize: 18, flexShrink: 0 }}>⭐</span>
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+          <span className="avis-title" style={{ fontSize: 16, fontWeight: 600, color: '#fff', position: 'relative', zIndex: 1 }}>Avis Verimo</span>
+          <div style={{ position: 'absolute', bottom: 1, left: 0, right: 0, height: 6, background: 'rgba(91,184,212,0.45)', zIndex: 0, borderRadius: 2 }} />
+        </div>
+      </div>
+
+      {/* Verdict */}
+      {verdict && (
+        <div className="avis-verdict" style={{ padding: '22px 26px 20px', background: 'linear-gradient(180deg, rgba(91,184,212,0.08), transparent)' }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.14em', color: '#5bb8d4', textTransform: 'uppercase', marginBottom: 10 }}>Notre lecture du dossier</div>
+          <div style={{ fontSize: 17, color: '#fff', lineHeight: 1.55, fontWeight: 500 }}>{renderVerdict()}</div>
+        </div>
+      )}
+
+      {/* Contexte */}
+      {contexte && (
+        <>
+          {verdict && <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '0 26px' }} />}
+          <div className="avis-contexte" style={{ padding: '20px 26px 18px' }}>
+            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.14em', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: 10 }}>En contexte</div>
+            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', lineHeight: 1.75 }}>{contexte}</div>
+          </div>
+        </>
+      )}
+
+      {/* Démarches */}
+      {demarches.length > 0 && (
+        <>
+          {(verdict || contexte) && <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '0 26px' }} />}
+          <div className="avis-demarches" style={{ padding: '20px 26px 8px' }}>
+            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.14em', color: '#5bb8d4', textTransform: 'uppercase', marginBottom: 14 }}>
+              Points à approfondir avant de signer
+            </div>
+            {demarches.map((d, i) => (
+              <div key={i} className="avis-action-item" style={{ display: 'grid', gridTemplateColumns: '32px 1fr', gap: 14, padding: '14px 0', borderBottom: i < demarches.length - 1 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>
+                <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(91,184,212,0.15)', border: '1px solid rgba(91,184,212,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#5bb8d4', fontSize: 13, fontWeight: 700, marginTop: 1 }}>
+                  {i + 1}
+                </div>
+                <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.82)', lineHeight: 1.6 }}>
+                  {d.titre && <div style={{ color: '#fff', fontWeight: 600, marginBottom: 3, fontSize: 14 }}>{d.titre}</div>}
+                  {d.description && <div>{d.description}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Disclaimer discret */}
+      <div style={{ margin: '14px 26px 22px', padding: '12px 14px', background: 'rgba(255,255,255,0.04)', borderRadius: 8, fontSize: 12, color: 'rgba(255,255,255,0.55)', lineHeight: 1.55, fontStyle: 'italic' }}>
+        Verimo analyse vos documents pour vous aider à décider. Cette lecture ne remplace pas l'avis d'un professionnel de l'immobilier.
+      </div>
+
+      {isSimple && (
+        <div style={{ margin: '0 26px 22px', padding: '12px 14px', background: 'rgba(255,255,255,0.07)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', fontSize: 12, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6 }}>
+          💡 Cette analyse porte sur un seul document. Pour un score /20 et un rapport complet du bien, lancez une <span style={{ color: '#5bb8d4', fontWeight: 600 }}>Analyse Complète</span>.
+        </div>
+      )}
     </div>
   );
 }
@@ -3682,10 +3847,10 @@ function buildRapport(data: Record<string, unknown>, dbData: { id: string; type:
     type_bien: (r.type_bien as string) || 'appartement',
     annee_construction: (r.annee_construction as string) || null,
     profil: (dbData.profil as string) || 'rp',
-    resume: (r.resume as string) || '',
+    resume: (r.resume as string | ResumeStructured | null) ?? '',
     points_forts: (r.points_forts as string[]) || (r.synthese_points_positifs as string[]) || [],
     points_vigilance: (r.points_vigilance as string[]) || (r.synthese_points_vigilance as string[]) || [],
-    avis_verimo: (r.avis_verimo as string) || (r.conclusion as string) || '',
+    avis_verimo: (r.avis_verimo as string | AvisVerimoStructured | null) ?? (r.conclusion as string) ?? '',
     categories: (r.categories as Record<string, { note: number; note_max: number; details: unknown[] }>) || {},
     charges_mensuelles: chargesMensuelles,
     fonds_travaux: fondsTrvauxNum,
