@@ -529,25 +529,23 @@ function VerdictV2Render({ verdict, adresses, bestId, selectedAnalyses }: { verd
         </div>
       )}
 
-      {/* Profils par bien */}
+      {/* Profils par bien — 1 colonne = 1 bien (forces + points faibles par bien) */}
       {verdict.profils && verdict.profils.length > 0 && (
         <div className="compare-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 12, marginBottom: 14 }}>
           {verdict.profils.slice(0, nbBiens).map((p, idx) => {
             const isBest = idx === bestIdx;
+            const adresse = adresses[idx] || '';
             return (
-              <div key={idx} style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', border: '1px solid #e0ecf3' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                  <span style={{ fontSize: 10.5, color: '#94a3b8', letterSpacing: '0.1em', fontWeight: 700 }}>BIEN {idx + 1}</span>
-                  {isBest && <span style={{ fontSize: 11 }}>⭐</span>}
-                </div>
-
-                {/* Profil */}
-                {p.profil && (
-                  <>
-                    <div style={{ fontSize: 10.5, color: '#94a3b8', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 4 }}>PROFIL</div>
-                    <div style={{ fontSize: 13, lineHeight: 1.5, color: '#64748b', marginBottom: 14 }}>{p.profil}</div>
-                  </>
+              <div key={idx} style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', border: isBest ? '2px solid #16a34a' : '1px solid #e0ecf3', position: 'relative' }}>
+                {isBest && (
+                  <div style={{ position: 'absolute', top: -11, left: 14, padding: '3px 12px', background: '#16a34a', color: '#fff', fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', borderRadius: 99, whiteSpace: 'nowrap' }}>
+                    ⭐ RECOMMANDÉ
+                  </div>
                 )}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4, marginTop: isBest ? 6 : 0 }}>
+                  <span style={{ fontSize: 10.5, color: '#94a3b8', letterSpacing: '0.1em', fontWeight: 700 }}>BIEN {idx + 1}</span>
+                </div>
+                {adresse && <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 12, lineHeight: 1.35 }}>{adresse}</div>}
 
                 {/* Forces */}
                 {p.forces && p.forces.length > 0 && (
@@ -571,7 +569,7 @@ function VerdictV2Render({ verdict, adresses, bestId, selectedAnalyses }: { verd
                 {p.points_faibles && p.points_faibles.length > 0 && (
                   <>
                     <div style={{ fontSize: 10.5, color: '#d97706', letterSpacing: '0.08em', fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <AlertTriangle size={11} /> POINTS FAIBLES
+                      <AlertTriangle size={11} /> À SURVEILLER
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {p.points_faibles.map((pf, pfi) => (
@@ -1070,12 +1068,7 @@ export default function Compare() {
                 );
               })()}
 
-              {/* Verdict IA — détection auto format V2 ou legacy */}
-              {verdictIA && (
-                isVerdictV2(verdictIA)
-                  ? <VerdictV2Render verdict={verdictIA} adresses={adresses} bestId={best.id} selectedAnalyses={selectedAnalyses} />
-                  : <VerdictLegacyRender verdict={verdictIA as VerdictLegacy} />
-              )}
+              {/* Verdict IA — déplacé en bas de page après les accordéons */}
 
               {/* ══════════════════════════════════════════════════════════════
                   PHASE 3 — Détails en accordéons
@@ -1234,9 +1227,9 @@ export default function Compare() {
 
                       {[
                         { label: 'Charges annuelles', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.charges_annuelles, est: d.financier.charges_is_estimation }) },
-                        { label: 'Cotisation fonds travaux', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.fonds_travaux_annuel, est: false }) },
-                        { label: 'Fonds ALUR (signature)', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.fonds_alur_signature, est: false }) },
-                        { label: 'Fonds roulement (signature)', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.fonds_roulement_signature, est: false }) },
+                        { label: 'Cotisation trimestrielle fonds travaux', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.fonds_travaux_annuel, est: false }) },
+                        { label: 'Fonds de travaux du lot à rembourser au vendeur', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.fonds_alur_signature, est: false }) },
+                        { label: 'Fonds de roulement à rembourser au vendeur', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.fonds_roulement_signature, est: false }) },
                       ].map((row, ri) => (
                         <React.Fragment key={ri}>
                           <div style={{ padding: '10px 16px', fontSize: 12, color: '#64748b', fontWeight: 600, borderBottom: '1px solid #f8fafc' }}>{row.label}</div>
@@ -1249,7 +1242,7 @@ export default function Compare() {
                                     {cell.est ? '~ ' : ''}{Math.round(cell.val).toLocaleString('fr-FR')} €
                                     {cell.est && <span style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic', marginLeft: 4 }}>estimation</span>}
                                   </span>
-                                ) : '—'}
+                                ) : <span style={{ fontSize: 11, fontStyle: 'italic' }}>Non renseigné</span>}
                               </div>
                             );
                           })}
@@ -1401,6 +1394,15 @@ export default function Compare() {
                   })}
                 </div>
               </Accordion>
+
+              {/* ══════════════════════════════════════════════════════════════
+                  VERDICT VERIMO — placé en fin de page pour la synthèse
+                  ══════════════════════════════════════════════════════════════ */}
+              {verdictIA && (
+                isVerdictV2(verdictIA)
+                  ? <VerdictV2Render verdict={verdictIA} adresses={adresses} bestId={best.id} selectedAnalyses={selectedAnalyses} />
+                  : <VerdictLegacyRender verdict={verdictIA as VerdictLegacy} />
+              )}
 
             </motion.div>
           </AnimatePresence>
