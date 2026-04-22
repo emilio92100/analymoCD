@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet complet — 22 avril 2026 (session 6)
+# VERIMO — Contexte projet complet — 22 avril 2026 (session 7)
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -512,6 +512,20 @@ supabase/functions/
 
 ## 🗂️ Backlog
 
+### 🔴 Priorité haute — Session 8 : Continuer refonte Comparaison de biens
+
+**Contexte** : en session 7, on a fait une grosse refonte technique + UX de la page `/dashboard/compare`. Plusieurs points restent à finir :
+
+- [ ] **Refonte présentation du verdict comparatif** — Actuellement le texte est "trop brut, moche, pavé". Options à explorer :
+  - Scinder la synthèse en 3 blocs distincts (Bien 1 / Bien 2 / Comparatif) avec encarts colorés
+  - Passer Forces et Points d'attention en 2 colonnes côte à côte (comme RapportPage)
+  - Tagger chaque force et chaque point d'attention avec un badge "Bien 1" ou "Bien 2"
+  - Mix des 3 approches = meilleur résultat probable
+- [ ] **Bug UX doublon detection** — malgré le fix session 7 (détection "déjà comparé" au niveau de la sélection des biens), il reste encore un problème d'affichage à valider avec tests approfondis. Tester les scénarios : 2 biens, 3 biens, réouverture depuis historique, nouvelle sélection après Retour.
+- [ ] **Retirer la version DEBUG de l'edge function `comparer`** — on avait ajouté `debug_upsert_error` dans la réponse pour diagnostiquer le bug de sauvegarde. Le bug est résolu (contrainte unique ajoutée). Remplacer la version actuellement déployée par une version propre sans `debug_upsert_error`. Fichier propre à régénérer côté Claude, à redéployer manuellement dans Dashboard Supabase → Edge Functions → `comparer`.
+- [ ] **Reformuler "Notre conseil"** en "Points à approfondir" (cohérent avec l'Avis Verimo du rapport individuel) — plus du conseil impératif, mais de l'aide à la décision.
+- [ ] **Edge function `comparer` prompt** — le verdict Claude fait encore trop de longues synthèses unifiées alors qu'il devrait scinder par bien. Possible amélioration du system prompt pour forcer des blocs distincts.
+
 ### 🔴 Priorité haute — À tester après session 6
 
 - [ ] **Tester le scoring déterministe en prod** — relancer analyse Edelweiss + complément. Vérifier que `diags_privatifs.note` est maintenant non-nulle (devrait être ~2-2.5/4 vu les anomalies élec/gaz).
@@ -523,7 +537,7 @@ supabase/functions/
 
 ### 🟡 Priorité normale — UX progression "Compléter mon dossier"
 
-- [ ] **Fix progression bloquée à 55%** — `src/lib/analyse-client.ts` ligne 214 : quand `progress_current` est null, percent est hardcodé à 55%. L'edge function en mode complément ne met pas à jour `progress_current` → UI bloquée visuellement (mais l'analyse tourne quand même en fond).
+- [x] ~~**Fix progression bloquée à 55%**~~ → Résolu en session 7 : `analyse-client.ts` ligne `pollAnalyseStatus` refactorée avec progression temporelle simulée 60→90% sur 180s max quand `progress_current` est null (phase analyse Claude).
 - [ ] **Améliorer UX modale "Compléter le dossier"** — ne pas mettre "Oublié" en haut (mot négatif). Granularité des étapes à améliorer (actuellement `step: 'extracting'|'analysing'|'reducing'|'done'|'error'`, mais pas reflété visuellement).
 
 ### 🔴 Priorité haute — Restant session 6 non traité
@@ -550,6 +564,58 @@ supabase/functions/
 - [ ] Système dossiers par bien
 - [ ] App.css : vestige Vite, peut être supprimé
 - [ ] Optimisation coût API Claude : prompt caching (réduire 90% input tokens répétés)
+
+### ✅ Fait (session 7 — 22 avril 2026)
+
+**A. Refonte UX Résumé et Avis Verimo**
+- [x] **analyser-run** — Schéma `resume` devenu objet 5 sections à icônes (le_bien, la_copropriete, performance_energetique, diagnostics_privatifs, gouvernance_finances). String OU null pour chaque.
+- [x] **analyser-run** — Schéma `avis_verimo` devenu objet structuré `{verdict, verdict_highlight, contexte, demarches[]}`
+- [x] **analyser-run** — Règles strictes résumé factuel uniquement (adjectifs évaluatifs interdits), avis_verimo interprétatif avec ton adapté au score (tranché si ≤6), anti-doublon résumé/avis
+- [x] **analyser-run** — Positionnement "aide à la décision" (jamais d'impératif type "nous recommandons")
+- [x] **analyser-run** — Démarches 2-4 comme "points à approfondir" (pas des "actions à faire")
+- [x] **analyser-run** — Protection DB : extrait verdict pour colonne string legacy avis_verimo
+- [x] **RapportPage** — Types `ResumeStructured` + `AvisVerimoStructured`
+- [x] **RapportPage** — Cast `buildRapport` permissif (string OU objet) pour rétrocompatibilité
+- [x] **RapportPage** — Nouveau composant `ResumeBlock` : 5 sections icônes (🏠🏢⚡🔍📋) avec masquage si vide + fallback legacy
+- [x] **RapportPage** — Nouveau composant `AvisVerimoBlock` : verdict avec surlignage auto via `verdict_highlight` + contexte + démarches numérotées 1,2,3 + disclaimer + fallback legacy
+- [x] **RapportPage** — Libellés : "Notre lecture du dossier" / "En contexte" / "Points à approfondir avant de signer"
+- [x] **RapportPrintPage** — Helpers `flattenResume` + `flattenAvisVerimo` pour convertir format objet → texte dans le PDF généré
+- [x] **ExemplePage** — Mock MOCK_COMPLETE_PAYLOAD converti au nouveau format (resume objet, avis_verimo structuré avec verdict + highlight + contexte + 3 démarches)
+
+**B. Countdown + état "dossier complété"**
+- [x] **RapportPage** — Countdown passé de column → row (à droite du bouton, pas en dessous)
+- [x] **RapportPage** — État "complété" : bouton grisé + icône verte + "Dossier complété le [date]" quand `complementDate` rempli
+- [x] **RapportPage** — Remplacement "oubliés" → "manquants" (3 endroits : onglet Documents, modale ComplementModal, sous-texte countdown)
+- [x] **RapportPage** — Tooltip "Dossier déjà complété" sur bouton grisé
+
+**C. Fix barre de progression**
+- [x] **analyse-client.ts** — Fonction `pollAnalyseStatus` refactorée : détection phase analyse IA via progress_message ou status=files_ready, progression temporelle simulée 60→90% étalée sur 180s max quand progress_current null, fallback 55% uniquement avant phase analyse. Fix bug original où la barre était figée à 55% pendant tout l'appel Claude.
+
+**D. Fix SEO Tarifs**
+- [x] **TarifsPage** — Title SEO : "dès 9€" → "dès 4,90€" (corrigé pour refléter le vrai prix d'appel)
+- [x] **TarifsPage** — Description SEO : retrait du "pack comparatif" ambigu, reformulation plus claire
+
+**E. Fix bugs critiques Comparaison de biens (DB + code)**
+
+BUGS DB RÉSOLUS (via SQL Editor Supabase) :
+- [x] Renommage colonne `avis_final` → `verdict` sur table `comparaisons`
+- [x] Changement de type : `analyse_ids` passée de `jsonb` à `text`
+- [x] Ajout contrainte unique `(user_id, analyse_ids)` requise pour le `ON CONFLICT` de l'upsert
+
+FIX CÔTÉ CODE :
+- [x] **useAnalyses.ts** — Ajout champ `result?: unknown` dans type `Analyse` + mapping depuis `a.result` (fix tableau comparatif vide : DPE, travaux, procédures, etc. étaient tous à "—")
+- [x] **Compare.tsx** — Parsing défensif du verdict à la réouverture : gère `verdict` en string JSON OU en objet (fix verdict vide à réouverture depuis historique)
+
+**F. Refonte UX page /dashboard/compare**
+- [x] **Compare.tsx** — Nouveau composant `CompareWaitingScreen` : écran d'attente plein écran avec 2-3 bâtiments animés (pulsation), ligne de connexion animée, titre dynamique "Verimo compare vos N biens", liste des biens affichés (staggered), 3 étapes qui s'enchaînent (Lecture des rapports / Comparaison forces-faiblesses / Rédaction verdict), message bas "L'analyse prend généralement moins d'une minute"
+- [x] **Compare.tsx** — Nouveau composant `CompareCacheLoader` : mini loader 1.8s pour réouverture depuis historique ("Patientez / Votre rapport se charge")
+- [x] **Compare.tsx** — Synchronisation : le rapport (tableau + verdict) n'apparaît QUE quand Claude a terminé. Avant, tout s'affichait direct puis le verdict en bas apparaissait après — UX bizarre. Désormais l'écran d'attente puis tout s'affiche d'un coup.
+- [x] **Compare.tsx** — Détection "déjà comparé" au moment de la sélection des biens : si l'utilisateur resélectionne une combinaison déjà faite, à la place du bouton "Lancer la comparaison" → encart bleu avec 📋 "Comparaison déjà effectuée le [date]" + bouton unique "Voir le rapport" (appelle viewComparaison direct, pas de nouvel appel Claude, pas de coût inutile)
+- [x] **Compare.tsx** — Suppression du bandeau "déjà comparé" à l'intérieur du rapport (devenu inutile avec la détection amont)
+- [x] **Compare.tsx** — Augmentation des tailles de texte verdict et tableau : titre 16→18, synthèse 13.5→15, forces/points 13→14.5, notre conseil 13→14.5, tableau valeurs 12-13→13.5-14, en-têtes tableau 11-12→12-13.5
+
+**G. Version DEBUG temporaire edge function comparer (à retirer en session 8)**
+- [x] **comparer/index.ts** — Ajout logique `debug_upsert_error` dans la réponse quand upsert échoue (a servi à diagnostiquer le bug 42P10 sur la contrainte unique). TOUJOURS DÉPLOYÉE EN PROD SUPABASE. À remplacer par une version propre sans debug_upsert_error une fois tous les tests comparaison validés.
 
 ### ✅ Fait (session 6 — 22 avril 2026)
 
