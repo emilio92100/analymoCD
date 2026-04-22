@@ -1930,9 +1930,12 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
 
         {/* Historique budgets */}
         {(() => {
-          const hist = fin?.budgets_historique as Array<{ annee: string; budget_total: number; fonds_travaux?: number }> | null;
-          if (!hist || hist.length < 2) return null;
-          const sorted = [...hist].sort((a, b) => String(a.annee).localeCompare(String(b.annee)));
+          const hist = fin?.budgets_historique as Array<{ annee: string; budget_total: number | null; fonds_travaux?: number | null }> | null;
+          if (!hist || hist.length === 0) return null;
+          // Filtrer les entrées avec un budget_total numérique valide (évite crash si Claude renvoie null)
+          const validHist = hist.filter(r => typeof r.budget_total === 'number' && !isNaN(r.budget_total) && r.budget_total > 0) as Array<{ annee: string; budget_total: number; fonds_travaux?: number | null }>;
+          if (validHist.length < 2) return null;
+          const sorted = [...validHist].sort((a, b) => String(a.annee).localeCompare(String(b.annee)));
           const max = Math.max(...sorted.map(r => r.budget_total));
           return (
             <div style={{ background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', overflow: 'hidden' }}>
