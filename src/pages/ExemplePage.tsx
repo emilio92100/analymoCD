@@ -18,7 +18,13 @@ const MOCK_COMPLETE_PAYLOAD = {
   annee_construction: '1978',
   score: 14.8,
   score_niveau: 'Bien sain',
-  resume: "Appartement T3 de 62 m² situé dans une copropriété de 42 lots globalement bien gérée. Le PV d'AG 2024 révèle une gestion financière saine, un syndic stable depuis 2019 et aucune procédure judiciaire majeure. Quelques points de vigilance à surveiller avant toute offre : un ravalement évoqué non voté, un fonds de travaux juste au seuil légal, un diagnostic électrique présentant des anomalies mineures, et un contentieux copropriétaire impayés en cours de régularisation.",
+  resume: {
+    le_bien: "Appartement T3 de 62 m² Carrez situé dans une copropriété lyonnaise. Le lot comprend l'appartement principal, une cave et un emplacement de parking. Charges annuelles estimées à 2 400 € pour le lot.",
+    la_copropriete: "Copropriété de 42 lots répartis sur un bâtiment unique, construite en 1978. Syndic Cabinet Immo Lyon Gestion en place depuis 2019. Budget annuel voté à 45 000 € en AG 2024.",
+    performance_energetique: "DPE classé C (175 kWh/m²/an), GES classé B. Chauffage collectif gaz. Menuiseries double vitrage sur l'ensemble du logement.",
+    diagnostics_privatifs: "Diagnostic électrique : 3 anomalies non majeures relevées (prise sans terre salle de bain, tableau vétuste). Diagnostics amiante et plomb négatifs. Pas de CREP applicable (construction post-1949).",
+    gouvernance_finances: "Fonds de travaux ALUR constitué à 42 000 €. Procédure d'impayés en cours contre un copropriétaire (lot 12, 8 400 €). DTG réalisé en 2024 identifiant 65 000 € de travaux prioritaires sur 3 ans. Aucun changement de syndic documenté depuis 2019.",
+  },
   points_forts: [
     'Fonds de travaux conforme au minimum légal ALUR (5% du budget annuel)',
     'Charges mensuelles maîtrisées pour Lyon 6e (180€/mois tout compris)',
@@ -34,7 +40,25 @@ const MOCK_COMPLETE_PAYLOAD = {
     "Fonds de travaux au seuil minimum légal (42 000€), sans marge pour imprévu",
     "DTG obligatoire pour les copros de +15 ans mentionne 65 000€ de travaux prioritaires sur 3 ans",
   ],
-  avis_verimo: "Ce bien présente un bilan sain pour une résidence principale à Lyon 6e. La copropriété est bien tenue, les charges maîtrisées et le syndic stable. Cependant, plusieurs points de vigilance méritent votre attention avant de formuler une offre : un ravalement évoqué non voté (charge potentielle ~2 400€), un DTG récent qui annonce 65 000€ de travaux prioritaires sur 3 ans, et une procédure d'impayés sur le lot 12 qui pèse actuellement sur la trésorerie.\n\nNous vous recommandons de demander au vendeur l'accès au PV d'AG 2025 dès sa publication, de négocier une clause spécifique dans le compromis concernant les travaux votés postérieurement, et de faire expertiser les anomalies électriques mentionnées dans le diagnostic privatif.\n\nCe rapport est établi uniquement à partir des documents analysés et ne remplace pas l'avis d'un professionnel de l'immobilier.",
+  avis_verimo: {
+    verdict: "Dossier globalement sain avec quelques points à clarifier avant de formuler une offre.",
+    verdict_highlight: "globalement sain",
+    contexte: "Lyon 6e reste un secteur très recherché, porté par un marché stable et une forte demande locative. Cette copropriété de taille moyenne (42 lots) construite en 1978 présente un profil patrimonial rassurant, d'autant que le syndic est en place depuis 2019 sans tension documentée. La trajectoire énergétique (DPE C) ne soulève pas d'enjeu réglementaire immédiat au regard de la loi Climat.",
+    demarches: [
+      {
+        titre: "Obtenir le PV d'AG 2025 dès sa publication",
+        description: "Le ravalement évoqué en 2024 sera potentiellement voté lors de cette prochaine AG. Connaître l'issue du vote est déterminant pour anticiper une quote-part estimée à 2 000 à 3 000 € selon le devis retenu.",
+      },
+      {
+        titre: "Faire expertiser les anomalies du diagnostic électrique",
+        description: "Les 3 anomalies non majeures relevées (prise, tableau) peuvent être traitées par un électricien certifié. Une remise en conformité partielle de ce type représente généralement entre 800 et 2 500 € selon l'ampleur.",
+      },
+      {
+        titre: "Questionner le syndic sur le calendrier du PPT",
+        description: "Le DTG identifie 65 000 € de travaux prioritaires sur 3 ans. Le Plan Pluriannuel de Travaux qui en découle conditionne la charge financière sur 10 ans. Demander le planning prévisionnel et les modalités d'appel de fonds.",
+      },
+    ],
+  },
   travaux: {
     realises: [
       { label: 'Réfection complète de la toiture', annee: '2021', montant_estime: 35000, justificatif: true },
