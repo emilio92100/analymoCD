@@ -558,7 +558,7 @@ export default function RapportPrintPage() {
           )}
 
           {/* ══════════ NÉGOCIATION ══════════ */}
-          {rapport.negociation?.applicable && rapport.negociation.elements.length > 0 && rapport.score < 14 && (
+          {rapport.negociation?.applicable && rapport.negociation.elements.length > 0 && rapport.score < 17 && (
             <div className="no-break" style={{ marginBottom: 22 }}>
               <Section title="Pistes de négociation" color="#d97706">
                 <div style={{ fontSize: 11, color: '#92400e', marginBottom: 8, fontStyle: 'italic' }}>Arguments concrets pour défendre votre négociation auprès du vendeur.</div>
