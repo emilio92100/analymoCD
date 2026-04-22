@@ -750,8 +750,73 @@ REGLE AUDIT ENERGETIQUE OBLIGATOIRE A LA VENTE :
 - Si type_bien = "maison" ET DPE E, F ou G : verifier si un audit energetique est present dans les documents fournis. Si absent, ajouter "Audit energetique reglementaire (obligatoire pour la vente d une maison classee E/F/G)" dans documents_manquants.
 - Si type_bien = "appartement" : ne PAS demander d audit energetique — les coproprietes ne sont pas concernees.
 
-Reponds UNIQUEMENT en JSON strict, sans texte avant ou apres :
-{"titre":"adresse complete","type_bien":"appartement|maison|maison_copro","annee_construction":null,"score":14.5,"score_niveau":"Bien sain","resume":"4-5 phrases","points_forts":[],"points_vigilance":[],"travaux":{"realises":[{"label":"desc","annee":"2021","montant_estime":35000,"justificatif":true}],"votes":[{"label":"desc","annee":"2027","montant_estime":4500,"charge_vendeur":false}],"evoques":[{"label":"desc","annee":null,"montant_estime":null,"precision":"contexte"}],"estimation_totale":null},"finances":{"budget_total_copro":null,"budget_total_copro_annee":null,"charges_annuelles_lot":null,"charges_annuelles_lot_source":null,"fonds_travaux":null,"fonds_travaux_annee":null,"fonds_travaux_statut":"non_mentionne|insuffisant|conforme|bien|excellent|absent","impayes":null,"type_chauffage":null,"budgets_historique":null},"procedures":[{"label":"Type","type":"copro_vs_syndic|impayes|contentieux|autre","gravite":"faible|moderee|elevee","message":"Explication claire 2-3 phrases"}],"diagnostics_resume":"resume global","diagnostics":[{"type":"DPE|ELECTRICITE|GAZ|AMIANTE|PLOMB|TERMITES|ERP|CARREZ|AUTRE","label":"nom complet","perimetre":"lot_privatif|parties_communes","localisation":"localisation","resultat":"resultat avec GES si DPE","presence":"detectee|absence|non_realise","alerte":null,"pieces_detail":null}],"documents_analyses":[{"type":"PV_AG|REGLEMENT_COPRO|APPEL_CHARGES|DPE|DDT|DIAGNOSTIC|COMPROMIS|ETAT_DATE|TAXE_FONCIERE|CARNET_ENTRETIEN|MODIFICATIF_RCP|PRE_ETAT_DATE|DIAGNOSTIC_PARTIES_COMMUNES|FICHE_SYNTHETIQUE|AUTRE","annee":null,"nom":"nom fichier"}],"documents_manquants":[],"negociation":{"applicable":false,"elements":[]},"vie_copropriete":{"syndic":{"nom":null,"type":"professionnel|benevole","gestionnaire":null,"fin_mandat":null,"tensions_detectees":false,"tensions_detail":null,"statut":null,"sortant":null,"entrant":null,"annee_changement":null,"nb_ags_analysees":null,"historique_changements":[]},"nb_lots_total":null,"nb_lots_detail":{"logements":null,"parkings":null,"caves":null,"commerces":null},"nb_batiments":null,"participation_ag":[{"annee":"2024","copropietaires_presents_representes":"18/24","taux_tantiemes_pct":"72%","quorum_note":null,"quitus":{"soumis":true,"approuve":true,"detail":null}}],"tendance_participation":"Non determinable","analyse_participation":"analyse","travaux_votes_non_realises":[],"appels_fonds_exceptionnels":[],"questions_diverses_notables":[],"dtg":{"present":false,"etat_general":null,"budget_urgent_3ans":null,"budget_total_10ans":null,"travaux_prioritaires":[]},"regles_copro":[{"label":"...","statut":"autorise|interdit|sous_conditions","impact_rp":false,"impact_invest":false}],"carnet_entretien":{"present":false,"date_maj":null,"immatriculation_registre":null,"equipements_copro":{"chauffage_collectif":null,"type_chauffage":null,"eau_chaude_collective":null,"eau_froide_collective":null,"fibre_optique":null,"ascenseur":null},"contrats_entretien":[{"equipement":"...","prestataire":null,"periodicite":null,"date_reconduction":null}],"travaux_realises_carnet":[{"annee":null,"label":"...","entreprise":null,"montant":null}],"travaux_en_cours_votes_carnet":[{"label":"...","date_ag":null,"montant":null}],"diagnostics_parties_communes_carnet":[{"type":"amiante|plomb|termites|ascenseur|autre","date":null,"entreprise":null,"resultat":"negatif|positif|non_effectue","commentaire":null}],"conseil_syndical_carnet":{"date_nomination":null,"nb_membres":null}},"modificatifs_rcp":[{"date_acte":null,"notaire":null,"type_modification":"creation_lot|suppression_lot|changement_usage|mise_a_jour_tantiemes|servitude|fusion_lots|autre","sur_quoi_porte":[{"aspect":"...","detail":"..."}],"impact_acheteur":"...","points_attention":[]}],"fiche_synthetique":{"present":false,"date":null,"fiche_recente":null,"immatriculation_registre":null,"dtg_realise":null,"dtg_date":null,"equipements_collectifs_detail":[]}},"lot_achete":{"quote_part_tantiemes":null,"parties_privatives":[],"impayes_detectes":null,"fonds_travaux_alur":null,"travaux_votes_charge_vendeur":[],"restrictions_usage":[],"points_specifiques":[]},"pre_etat_date":{"present":false,"date":null,"syndic":null,"impayes_vendeur":0,"fonds_travaux_alur":null,"fonds_roulement_acheteur":null,"fonds_roulement_modalite":"remboursement_vendeur|reconstitution_syndicat","honoraires_syndic":null,"charges_futures":{"montant_trimestriel":null,"fonds_travaux_trimestriel":null,"montant_annuel":null},"travaux_charge_vendeur":[],"procedures_contre_vendeur":[],"procedures_copro":"neant|en_cours","impayes_copro_global":null,"dette_fournisseurs":null,"fonds_travaux_copro_global":null,"historique_charges":[{"exercice":"N-1","annee":null,"budget_appele":null,"charges_reelles":null},{"exercice":"N-2","annee":null,"budget_appele":null,"charges_reelles":null}]},"categories":{"travaux":{"note":4,"note_max":5},"procedures":{"note":4,"note_max":4},"finances":{"note":3,"note_max":4},"diags_privatifs":{"note":2,"note_max":4},"diags_communs":{"note":1.5,"note_max":3}},"avis_verimo":"Avis structure en 2-3 paragraphes. Ce rapport est etabli uniquement a partir des documents analyses et ne remplace pas l avis d un professionnel de l immobilier."}`;
+REGLES RESUME STRUCTURE (objet "resume" a 5 sections) :
+- resume est un OBJET avec 5 cles : le_bien, la_copropriete, performance_energetique, diagnostics_privatifs, gouvernance_finances.
+- Chaque cle contient soit un TEXTE (3-5 phrases factuelles, langage simple) soit null si aucune donnee dans les documents analyses ne permet de renseigner cette section.
+- TON STRICTEMENT FACTUEL — zero evaluation. Le resume DECRIT ce que contiennent les documents, il n EVALUE jamais.
+- INTERDIT dans resume : adjectifs evaluatifs ("correct", "preoccupant", "rassurant", "exigeant", "solide", "degrade", "defavorable", "inquietant", "tres bon", "problematique", "satisfaisant"...). Utiliser uniquement des faits mesurables.
+- INTERDIT dans resume : mentionner "acheteur", "il faudra", "vous devrez", donner des pistes d action, faire des recommandations.
+- INTERDIT dans resume : conclusions type "En conclusion...", "Ce qui constitue...", "Point negatif...", "Principal point...".
+- Contenu suggere par section :
+  * le_bien : type de bien, surface Carrez, composition du lot (appart + annexes), tantiemes generaux
+  * la_copropriete : nombre de lots, annee construction, nb batiments, chauffage, equipements collectifs
+  * performance_energetique : classe DPE avec kWh, GES, classe GES avec kg CO2, type de chauffage, menuiseries, consommation/cout annuel si documente
+  * diagnostics_privatifs : liste factuelle des anomalies detectees (electricite, gaz, amiante, plomb, termites) avec leur nature. Ne pas qualifier leur gravite.
+  * gouvernance_finances : syndic(s), changements, fonds ALUR, fonds travaux, impayes (montants bruts), procedures en cours (mention factuelle), DTG/PPT statut
+- Si aucun document ne documente une section, mettre null. L UI masquera la section automatiquement.
+- Une section peut etre null meme en analyse complete si l information n est pas disponible (ex: pas de DPE uploade -> performance_energetique = null).
+
+REGLES AVIS VERIMO STRUCTURE (objet "avis_verimo" a 4 cles) :
+- avis_verimo est un OBJET avec 4 cles : verdict, verdict_highlight, contexte, demarches.
+- POSITIONNEMENT VERIMO : aide a la decision et a la comprehension des documents, PAS conseiller. Jamais d imperatif, jamais de recommandation directe.
+
+verdict (string, une phrase unique) :
+- Lecture globale du dossier. Ton adapte au score :
+  * Score <= 6 : formulation tranchee autorisee (ex : "Dossier presentant des risques majeurs, a aborder avec prudence.", "Dossier a eviter en l etat.")
+  * Score 7 a 13 : ton neutre factuel (ex : "Dossier comportant plusieurs points d attention significatifs.")
+  * Score 14 a 16 : ton neutre positif (ex : "Dossier globalement sain avec quelques points a clarifier.")
+  * Score >= 17 : ton positif (ex : "Dossier particulierement solide, peu de points d attention.")
+- INTERDIT : "Nous recommandons", "Il faut", "Vous devez", "Je conseille", "Prevoir X euros".
+- AUTORISE : "Dossier qui...", "Bien dont...", "Situation ou...", "Profil de copro..."
+
+verdict_highlight (string, 2-4 mots) :
+- Le bout de phrase le plus significatif du verdict, que l UI surlignera en couleur.
+- Doit etre un sous-ensemble EXACT du verdict (pour permettre le surlignage cote UI).
+- Exemple verdict : "Un bien globalement sain mais qui demande de la lucidite sur la trajectoire energetique."
+- Exemple verdict_highlight : "globalement sain mais qui demande de la lucidite"
+
+contexte (string, 2-3 phrases) :
+- APPORTE UN CADRAGE QUE LE RESUME N APPORTE PAS : quartier, type de copropriete dans son contexte (ancienne francilienne, residence moderne...), trajectoire reglementaire (loi Climat pour DPE faibles, audit energetique pour maisons E/F/G...), marche local si pertinent.
+- INTERDIT : reproduire des faits deja dans le resume. Le contexte INTERPRETE, il ne re-constate pas.
+- INTERDIT : lister les forts/faibles (deja dans points_forts et points_vigilance).
+
+demarches (array de 2 a 4 elements) :
+- Formulation neutre, factuelle. Ce sont des "points a approfondir avant de signer" — pas des recommandations.
+- Chaque demarche a deux champs : titre (court, action decrite a l infinitif ou en nom) et description (1-2 phrases explicatives).
+- EXEMPLES BONS :
+  * titre : "Faire chiffrer la remise aux normes electrique par un professionnel certifie"
+    description : "Les anomalies relevees dans le diagnostic electricite necessitent un devis precis. Une remise aux normes d un appartement de cette taille represente generalement 3 000 a 8 000 euros selon l ampleur."
+  * titre : "Interroger le syndic sur le calendrier du DTG et du PPT"
+    description : "Le DTG est obligatoire pour cette coproprite et a ete reporte en AG 2019. Son contenu conditionne la charge de travaux collectifs des 5 prochaines annees."
+- EXEMPLES MAUVAIS (a ne PAS produire) :
+  * "Nous recommandons de prevoir 15 000 euros de travaux" (imperatif/conseil direct)
+  * "Il faut absolument faire une visite technique" (impératif)
+  * "Budgetez la renovation energetique des l achat" (impératif)
+- Les ordres de grandeur chiffres sont AUTORISES mais formules comme donnees de marche neutres : "represente generalement X euros", "se situe entre X et Y", jamais "prevoir X euros".
+- Adapter le nombre au dossier : dossier simple -> 2 demarches. Dossier complexe -> 4 demarches max.
+
+REGLE ANTI-DOUBLON CRITIQUE entre resume et avis_verimo :
+- Le resume DECRIT les faits (ce que contiennent les documents).
+- L avis_verimo INTERPRETE (donne une grille de lecture + points a approfondir).
+- NE JAMAIS reproduire dans avis_verimo les memes phrases ou les memes enumerations que dans resume.
+- Si le resume dit "DPE classe E (302 kWh/m2/an), chauffage collectif fioul", l avis_verimo ne redira PAS cela. Il dira plutot : "Ce profil energetique est typique des coproprietes francilliennes 1960-75, rattrape par la loi Climat."
+
+REGLE ANTI-DOUBLON avec points_forts et points_vigilance :
+- Les enumerations "ce qui va / ce qui cloche" sont deja dans points_forts et points_vigilance.
+- L avis_verimo ne refait PAS ces listes. Il synthetise en une lecture globale (verdict) + cadrage (contexte) + pistes pour approfondir (demarches).
+
+
+{"titre":"adresse complete","type_bien":"appartement|maison|maison_copro","annee_construction":null,"score":14.5,"score_niveau":"Bien sain","resume":{"le_bien":null,"la_copropriete":null,"performance_energetique":null,"diagnostics_privatifs":null,"gouvernance_finances":null},"points_forts":[],"points_vigilance":[],"travaux":{"realises":[{"label":"desc","annee":"2021","montant_estime":35000,"justificatif":true}],"votes":[{"label":"desc","annee":"2027","montant_estime":4500,"charge_vendeur":false}],"evoques":[{"label":"desc","annee":null,"montant_estime":null,"precision":"contexte"}],"estimation_totale":null},"finances":{"budget_total_copro":null,"budget_total_copro_annee":null,"charges_annuelles_lot":null,"charges_annuelles_lot_source":null,"fonds_travaux":null,"fonds_travaux_annee":null,"fonds_travaux_statut":"non_mentionne|insuffisant|conforme|bien|excellent|absent","impayes":null,"type_chauffage":null,"budgets_historique":null},"procedures":[{"label":"Type","type":"copro_vs_syndic|impayes|contentieux|autre","gravite":"faible|moderee|elevee","message":"Explication claire 2-3 phrases"}],"diagnostics_resume":"resume global","diagnostics":[{"type":"DPE|ELECTRICITE|GAZ|AMIANTE|PLOMB|TERMITES|ERP|CARREZ|AUTRE","label":"nom complet","perimetre":"lot_privatif|parties_communes","localisation":"localisation","resultat":"resultat avec GES si DPE","presence":"detectee|absence|non_realise","alerte":null,"pieces_detail":null}],"documents_analyses":[{"type":"PV_AG|REGLEMENT_COPRO|APPEL_CHARGES|DPE|DDT|DIAGNOSTIC|COMPROMIS|ETAT_DATE|TAXE_FONCIERE|CARNET_ENTRETIEN|MODIFICATIF_RCP|PRE_ETAT_DATE|DIAGNOSTIC_PARTIES_COMMUNES|FICHE_SYNTHETIQUE|AUTRE","annee":null,"nom":"nom fichier"}],"documents_manquants":[],"negociation":{"applicable":false,"elements":[]},"vie_copropriete":{"syndic":{"nom":null,"type":"professionnel|benevole","gestionnaire":null,"fin_mandat":null,"tensions_detectees":false,"tensions_detail":null,"statut":null,"sortant":null,"entrant":null,"annee_changement":null,"nb_ags_analysees":null,"historique_changements":[]},"nb_lots_total":null,"nb_lots_detail":{"logements":null,"parkings":null,"caves":null,"commerces":null},"nb_batiments":null,"participation_ag":[{"annee":"2024","copropietaires_presents_representes":"18/24","taux_tantiemes_pct":"72%","quorum_note":null,"quitus":{"soumis":true,"approuve":true,"detail":null}}],"tendance_participation":"Non determinable","analyse_participation":"analyse","travaux_votes_non_realises":[],"appels_fonds_exceptionnels":[],"questions_diverses_notables":[],"dtg":{"present":false,"etat_general":null,"budget_urgent_3ans":null,"budget_total_10ans":null,"travaux_prioritaires":[]},"regles_copro":[{"label":"...","statut":"autorise|interdit|sous_conditions","impact_rp":false,"impact_invest":false}],"carnet_entretien":{"present":false,"date_maj":null,"immatriculation_registre":null,"equipements_copro":{"chauffage_collectif":null,"type_chauffage":null,"eau_chaude_collective":null,"eau_froide_collective":null,"fibre_optique":null,"ascenseur":null},"contrats_entretien":[{"equipement":"...","prestataire":null,"periodicite":null,"date_reconduction":null}],"travaux_realises_carnet":[{"annee":null,"label":"...","entreprise":null,"montant":null}],"travaux_en_cours_votes_carnet":[{"label":"...","date_ag":null,"montant":null}],"diagnostics_parties_communes_carnet":[{"type":"amiante|plomb|termites|ascenseur|autre","date":null,"entreprise":null,"resultat":"negatif|positif|non_effectue","commentaire":null}],"conseil_syndical_carnet":{"date_nomination":null,"nb_membres":null}},"modificatifs_rcp":[{"date_acte":null,"notaire":null,"type_modification":"creation_lot|suppression_lot|changement_usage|mise_a_jour_tantiemes|servitude|fusion_lots|autre","sur_quoi_porte":[{"aspect":"...","detail":"..."}],"impact_acheteur":"...","points_attention":[]}],"fiche_synthetique":{"present":false,"date":null,"fiche_recente":null,"immatriculation_registre":null,"dtg_realise":null,"dtg_date":null,"equipements_collectifs_detail":[]}},"lot_achete":{"quote_part_tantiemes":null,"parties_privatives":[],"impayes_detectes":null,"fonds_travaux_alur":null,"travaux_votes_charge_vendeur":[],"restrictions_usage":[],"points_specifiques":[]},"pre_etat_date":{"present":false,"date":null,"syndic":null,"impayes_vendeur":0,"fonds_travaux_alur":null,"fonds_roulement_acheteur":null,"fonds_roulement_modalite":"remboursement_vendeur|reconstitution_syndicat","honoraires_syndic":null,"charges_futures":{"montant_trimestriel":null,"fonds_travaux_trimestriel":null,"montant_annuel":null},"travaux_charge_vendeur":[],"procedures_contre_vendeur":[],"procedures_copro":"neant|en_cours","impayes_copro_global":null,"dette_fournisseurs":null,"fonds_travaux_copro_global":null,"historique_charges":[{"exercice":"N-1","annee":null,"budget_appele":null,"charges_reelles":null},{"exercice":"N-2","annee":null,"budget_appele":null,"charges_reelles":null}]},"categories":{"travaux":{"note":4,"note_max":5},"procedures":{"note":4,"note_max":4},"finances":{"note":3,"note_max":4},"diags_privatifs":{"note":2,"note_max":4},"diags_communs":{"note":1.5,"note_max":3}},"avis_verimo":{"verdict":"phrase unique de lecture globale","verdict_highlight":"2-4 mots cles du verdict","contexte":"2-3 phrases de cadrage (quartier, type de copro, trajectoire reglementaire) — PAS de constat deja dans resume ou points_forts/vigilance","demarches":[{"titre":"point a approfondir ou question a poser","description":"1-2 phrases explicatives. Formulation neutre : jamais d imperatif, jamais de conseil direct."}]}}`;
 }
 
 // Attend que le status soit files_ready puis lance l'analyse
@@ -902,6 +967,17 @@ async function runAnalyseWithData(
       }
     }
 
+    // avis_verimo peut etre string (ancien format, simple) ou objet (nouveau format, complete)
+    // En DB on stocke une version string pour retrocompat des ecrans listing/admin
+    let avisVerimoForDb: string | null = null;
+    const av = report.avis_verimo;
+    if (typeof av === 'string') {
+      avisVerimoForDb = av || null;
+    } else if (av && typeof av === 'object') {
+      const verdict = (av as Record<string, unknown>).verdict;
+      avisVerimoForDb = typeof verdict === 'string' ? verdict : null;
+    }
+
     const updateData: Record<string, unknown> = {
       status: 'completed',
       progress_current: files.length,
@@ -910,7 +986,7 @@ async function runAnalyseWithData(
       file_ids: [],
       title: (report.titre as string) || 'Analyse immobili\u00e8re',
       score: (report.score as number) ?? null,
-      avis_verimo: (report.avis_verimo as string) || null,
+      avis_verimo: avisVerimoForDb,
     };
     if (isApercu) { updateData.apercu = report; updateData.is_preview = true; }
     else { updateData.result = report; updateData.paid = true; }
