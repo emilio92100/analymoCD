@@ -181,6 +181,7 @@ export async function pollAnalyseStatus(params: {
   const start = Date.now();
   let lastMessage = '';
   let lastMessageTime = Date.now();
+  let analysingStart: number | null = null; // moment où on entre en phase analyse IA
 
   while (Date.now() - start < timeoutMs) {
     await new Promise(r => setTimeout(r, 3000));
@@ -208,10 +209,31 @@ export async function pollAnalyseStatus(params: {
       return { status: 'failed', errorMessage: msg };
     }
 
+    // ── Calcul du % de progression ──────────────────────────────
+    // Phase 1 (50-60%) : files_ready, Claude va démarrer
+    // Phase 2 (60-90%) : progression simulée sur le temps écoulé en analyse IA
+    //   (car progress_current n'est pas mis à jour pendant l'appel Claude)
+    // L'analyse IA prend typiquement 60 à 180s, on étale 60→90% sur 180s max.
     if (onProgress && data.progress_total) {
-      const percent = data.progress_current
-        ? Math.min(90, 40 + Math.floor((data.progress_current / data.progress_total) * 50))
-        : 55;
+      // On considère qu'on est en phase analyse IA dès que status=files_ready ou progress_message change après upload
+      const isAnalysingPhase = data.status === 'files_ready' || (data.progress_message && data.progress_message !== 'Upload des documents…');
+      if (isAnalysingPhase && analysingStart === null) {
+        analysingStart = Date.now();
+      }
+
+      let percent: number;
+      if (data.progress_current && data.progress_current > 0) {
+        // Cas normal : progress_current remonte (fin d'analyse)
+        percent = Math.min(90, 40 + Math.floor((data.progress_current / data.progress_total) * 50));
+      } else if (analysingStart) {
+        // Cas analyse IA en cours : progression temporelle 60 → 90% étalée sur ~180s
+        const elapsed = Date.now() - analysingStart;
+        const ramp = Math.min(1, elapsed / 180_000); // 0 à 1 sur 3 minutes
+        percent = Math.min(90, 60 + Math.floor(ramp * 30));
+      } else {
+        percent = 55;
+      }
+
       onProgress({
         step: 'analysing',
         current: data.progress_current || 0,
@@ -223,10 +245,6 @@ export async function pollAnalyseStatus(params: {
 
     if (data.status === 'completed') return { status: 'completed' };
     if (data.status === 'failed') return { status: 'failed', errorMessage: data.progress_message || undefined };
-    // files_ready = fichiers uploadés, webhook en route → afficher progression spécifique
-    if (data.status === 'files_ready') {
-      onProgress?.({ step: 'analysing', current: data.progress_current || 0, total: data.progress_total || 1, percent: 60, message: 'Documents prêts — analyse en cours...' });
-    }
   }
 
   return { status: 'timeout' };
