@@ -903,7 +903,10 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
           <div className="points-card" style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, padding: '18px 20px' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#2d6a2d', color: '#fff', fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', padding: '5px 12px', borderRadius: 99, marginBottom: 16 }}>✓ POINTS POSITIFS</div>
             <div className="rapport-main" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {rapport.points_forts.length > 0 ? rapport.points_forts.map((p: string, i: number) => (
+              {rapport.points_forts.length > 0 ? rapport.points_forts.map((p: string, i: number) => {
+                // Strip éventuel ✓ en tête injecté par le LLM
+                const cleanText = safeStr(p).replace(/^\s*[✓✔✅]+[\s:—-]*/u, '').trim();
+                return (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                   <div style={{ width: 18, height: 18, flexShrink: 0, marginTop: 2 }}>
                     <svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -911,15 +914,19 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
                       <path d="M7 11.5l3 3 5-5" stroke="#2d6a2d" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </div>
-                  <span className="points-text" style={{ fontSize: 14, color: '#0f172a', lineHeight: 1.65 }}>{safeStr(p)}</span>
+                  <span className="points-text" style={{ fontSize: 14, color: '#0f172a', lineHeight: 1.65 }}>{cleanText}</span>
                 </div>
-              )) : <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun point positif identifié.</p>}
+                );
+              }) : <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun point positif identifié.</p>}
             </div>
           </div>
           <div className="points-card" style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, padding: '18px 20px' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#92400e', color: '#fff', fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', padding: '5px 12px', borderRadius: 99, marginBottom: 16 }}>⚠ POINTS DE VIGILANCE</div>
             <div className="rapport-main" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {rapport.points_vigilance.length > 0 ? rapport.points_vigilance.map((p: string, i: number) => (
+              {rapport.points_vigilance.length > 0 ? rapport.points_vigilance.map((p: string, i: number) => {
+                // Strip un éventuel ⚠ en tête injecté par le LLM (évite le doublon avec le triangle UI)
+                const cleanText = safeStr(p).replace(/^\s*[⚠⚡!]+[\s:—-]*/u, '').trim();
+                return (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                   <div style={{ width: 18, height: 18, flexShrink: 0, marginTop: 2 }}>
                     <svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -928,16 +935,36 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
                       <circle cx="11" cy="16.5" r="0.8" fill="#92400e"/>
                     </svg>
                   </div>
-                  <span className="points-text" style={{ fontSize: 14, color: '#0f172a', lineHeight: 1.65 }}>{safeStr(p)}</span>
+                  <span className="points-text" style={{ fontSize: 14, color: '#0f172a', lineHeight: 1.65 }}>{cleanText}</span>
                 </div>
-              )) : <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun point de vigilance identifié.</p>}
+                );
+              }) : <p style={{ fontSize: 13, color: '#94a3b8' }}>Aucun point de vigilance identifié.</p>}
             </div>
           </div>
         </div>
       </div>
 
       {/* 4. PISTES DE NÉGOCIATION */}
-      {rapport.negociation?.applicable && rapport.negociation.elements.length > 0 && rapport.score < 14 && (
+      {(() => {
+        if (!rapport.negociation?.applicable) return null;
+        if (!rapport.negociation.elements?.length) return null;
+        if (rapport.score >= 17) return null; // Pas de négo sur un bien irréprochable
+
+        // Filtrer les items qui ne sont PAS des leviers de négo (déjà à charge vendeur)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const validElements = (rapport.negociation.elements as any[]).filter((el: any) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const test = (s: any) => typeof s === 'string' && s.toLowerCase();
+          const t = test(el) || test(el?.motif) || test(el?.argument) || test(el?.description) || test(el?.levier) || test(el?.texte) || '';
+          // Filtrer les items mentionnant "charge vendeur", "déjà voté", "fonds ALUR", "honoraires syndic pré-état daté"
+          if (/charge.*vendeur|charg[ée] au vendeur|\bdéjà voté|voté et pris en charge/.test(t)) return false;
+          if (/fonds.*alur.*rembours|honoraires.*syndic.*pr[eé]-?[ée]tat|frais de.*pr[eé]-?[ée]tat/.test(t)) return false;
+          if (el?.charge_vendeur === true) return false;
+          return true;
+        });
+        if (validElements.length === 0) return null;
+
+        return (
         <div className="nego-block" style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 14, padding: '16px 18px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <TrendingDown size={15} style={{ color: '#d97706' }} />
@@ -948,7 +975,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            {rapport.negociation.elements.map((el: any, i: number) => {
+            {validElements.map((el: any, i: number) => {
               const texte = typeof el === 'string'
                 ? el
                 : safeStr(el?.motif || el?.argument || el?.description || el?.levier || el?.texte || Object.values(el || {}).find((v: unknown) => typeof v === 'string' && (v as string).length > 10));
@@ -976,7 +1003,8 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
             })}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* 5. AVIS VERIMO */}
       <AvisVerimoBlock avis={rapport.avis_verimo} isSimple={rapport.type !== 'complete'} />
@@ -1974,11 +2002,21 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
             {vie!.appels_fonds_exceptionnels!.map((a, i) => {
               const obj = typeof a === 'string' ? { motif: a } : a as Record<string, unknown>;
               const montant: number | null = typeof obj.montant_total === 'number' ? obj.montant_total : typeof obj.montant === 'number' ? obj.montant : null;
+              const motif = String(obj.motif ?? obj.description ?? obj.libelle ?? 'Appel de fonds exceptionnel');
+              const detail = typeof obj.detail === 'string' ? obj.detail : (typeof obj.precision === 'string' ? obj.precision : null);
+              const dateAg = obj.date_ag ?? obj.date_vote ?? obj.date ?? null;
+              const echeance = obj.echeance ?? null;
               return (
-                <div key={i} style={{ fontSize: 14, color: '#92400e', padding: '9px 12px', background: '#fffbeb', borderRadius: 8, marginBottom: 6, border: '1px solid #fde68a', lineHeight: 1.5 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 2 }}>• {String(obj.motif ?? obj.description ?? obj.libelle ?? 'Appel de fonds exceptionnel')}</div>
-                  {montant !== null && <div style={{ fontSize: 11, color: '#d97706' }}>Montant total copro : {montant.toLocaleString('fr-FR')} €</div>}
-                  {obj.date != null && <div style={{ fontSize: 11, color: '#b45309' }}>Date : {String(obj.date)}</div>}
+                <div key={i} style={{ fontSize: 14, color: '#92400e', padding: '10px 14px', background: '#fffbeb', borderRadius: 8, marginBottom: 6, border: '1px solid #fde68a', lineHeight: 1.5 }}>
+                  <div style={{ fontWeight: 600, marginBottom: detail ? 4 : 2, color: '#0f172a' }}>• {motif}</div>
+                  {detail && <div style={{ fontSize: 12.5, color: '#64748b', lineHeight: 1.55, marginBottom: 5 }}>{detail}</div>}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, fontSize: 11, color: '#b45309', marginTop: 3 }}>
+                    {montant !== null && (
+                      <span style={{ fontWeight: 600, color: '#d97706' }}>Montant total copro : {montant.toLocaleString('fr-FR')} €</span>
+                    )}
+                    {dateAg != null && <span>Voté le {String(dateAg)}</span>}
+                    {echeance != null && <span>Échéance : {String(echeance)}</span>}
+                  </div>
                 </div>
               );
             })}
@@ -2190,11 +2228,30 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
             badge={`${modifs.length} acte${modifs.length > 1 ? 's' : ''}`}>
 
             <div style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 10, fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>
-              Le règlement de copropriété peut être modifié au fil du temps par des actes notariés (changement d'usage, fusion de lots, servitudes…). Voici ce qui a été détecté.
+              {modifs.length === 1 ? (() => {
+                const aspects = (modifs[0].sur_quoi_porte || []).map(s => s.aspect).filter(Boolean);
+                const tLabel = modifs[0].type_modification ? (labelsType[modifs[0].type_modification] || labelsType.autre) : null;
+                if (aspects.length > 0) {
+                  return <>Ce modificatif au règlement de copropriété porte sur&nbsp;: <strong style={{ color: '#0f172a' }}>{aspects.join(', ')}</strong>.</>;
+                }
+                if (tLabel) {
+                  return <>Modificatif détecté&nbsp;: <strong style={{ color: '#0f172a' }}>{tLabel}</strong>. Détail ci-dessous.</>;
+                }
+                return <>Un modificatif au règlement de copropriété a été détecté. Détail ci-dessous.</>;
+              })() : (() => {
+                const types = Array.from(new Set(modifs.map(m => m.type_modification ? (labelsType[m.type_modification] || null) : null).filter(Boolean) as string[]));
+                if (types.length > 0) {
+                  return <>Les {modifs.length} modificatifs portent sur&nbsp;: <strong style={{ color: '#0f172a' }}>{types.join(', ')}</strong>.</>;
+                }
+                return <>Le règlement de copropriété peut être modifié au fil du temps par des actes notariés (changement d'usage, fusion de lots, servitudes…). Voici ce qui a été détecté.</>;
+              })()}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {modifs.map((m, i) => (
+              {modifs.map((m, i) => {
+                // Filtrer les points_attention vides (bug screen 3 : bloc jaune sans contenu)
+                const pointsValides = (m.points_attention || []).filter(p => (p.label && p.label.trim()) || (p.detail && p.detail.trim()));
+                return (
                 <div key={i} style={{ padding: '14px 16px', background: '#fff', border: '1px solid #edf2f7', borderRadius: 12 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -2229,17 +2286,18 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
                     </div>
                   )}
 
-                  {m.points_attention && m.points_attention.length > 0 && (
+                  {pointsValides.length > 0 && (
                     <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                      {m.points_attention.map((p, j) => (
+                      {pointsValides.map((p, j) => (
                         <div key={j} style={{ padding: '8px 12px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 9, fontSize: 12, color: '#9a3412' }}>
-                          <strong>⚠ {p.label}{p.detail ? ' : ' : ''}</strong>{p.detail}
+                          <strong>⚠ {p.label}{p.label && p.detail ? ' : ' : ''}</strong>{p.detail}
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </AccordionSection>
         );
@@ -2270,31 +2328,61 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
               </div>
             )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
               {fiche.immatriculation_registre && (
-                <div style={{ padding: '10px 14px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10, fontSize: 13, color: '#075985' }}>
-                  <strong>N° registre national :</strong> {fiche.immatriculation_registre}
+                <div style={{ padding: '12px 14px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 15 }}>🗂️</div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 10.5, color: '#0284c7', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 3 }}>Registre national</div>
+                    <div style={{ fontSize: 13, color: '#075985', fontWeight: 600, wordBreak: 'break-all' }}>{fiche.immatriculation_registre}</div>
+                  </div>
                 </div>
               )}
 
               {fiche.dtg_realise !== null && fiche.dtg_realise !== undefined && (
-                <div style={{ padding: '10px 14px', background: fiche.dtg_realise ? '#f0fdf4' : '#f8fafc', border: `1px solid ${fiche.dtg_realise ? '#bbf7d0' : '#edf2f7'}`, borderRadius: 10, fontSize: 13, color: fiche.dtg_realise ? '#166534' : '#475569' }}>
-                  <strong>DTG (Diagnostic Technique Global) : </strong>
-                  {fiche.dtg_realise ? `Réalisé${fiche.dtg_date ? ` le ${fiche.dtg_date}` : ''}` : 'Non réalisé'}
+                <div style={{ padding: '12px 14px', background: fiche.dtg_realise ? '#f0fdf4' : '#f8fafc', border: `1px solid ${fiche.dtg_realise ? '#bbf7d0' : '#e2e8f0'}`, borderRadius: 10, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: fiche.dtg_realise ? '#dcfce7' : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 15 }}>{fiche.dtg_realise ? '✅' : '⏳'}</div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 10.5, color: fiche.dtg_realise ? '#16a34a' : '#64748b', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: 3 }}>DTG</div>
+                    <div style={{ fontSize: 13, color: fiche.dtg_realise ? '#166534' : '#475569', fontWeight: 600 }}>
+                      {fiche.dtg_realise ? `Réalisé${fiche.dtg_date ? ` le ${fiche.dtg_date}` : ''}` : 'Non réalisé'}
+                    </div>
+                  </div>
                 </div>
               )}
+            </div>
 
-              {fiche.equipements_collectifs_detail && fiche.equipements_collectifs_detail.length > 0 && (
-                <>
-                  <SectionTitle emoji="⚙️" text="Équipements collectifs" />
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {fiche.equipements_collectifs_detail && fiche.equipements_collectifs_detail.length > 0 && (() => {
+              // Mapping icône par type d'équipement
+              const equipIcon = (label: string): string => {
+                const l = label.toLowerCase();
+                if (/chauffage|chauf/.test(l)) return '🔥';
+                if (/eau.*chaude|ecs/.test(l)) return '🚿';
+                if (/ascenseur/.test(l)) return '🛗';
+                if (/gaz/.test(l)) return '⛽';
+                if (/fibre|internet/.test(l)) return '🌐';
+                if (/eau.*froide/.test(l)) return '💧';
+                if (/ventilation|vmc/.test(l)) return '🌬️';
+                if (/\blot/.test(l)) return '🏢';
+                return '⚙️';
+              };
+              return (
+                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden' }}>
+                  <div style={{ background: '#2a7d9c', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 15 }}>⚙️</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>Équipements collectifs</span>
+                  </div>
+                  <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {fiche.equipements_collectifs_detail.map((e, i) => (
-                      <span key={i} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 99, background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569' }}>{e}</span>
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 10px', background: '#f8fafc', borderRadius: 8, border: '1px solid #f1f5f9' }}>
+                        <span style={{ fontSize: 15, flexShrink: 0, marginTop: 1 }}>{equipIcon(e)}</span>
+                        <span style={{ fontSize: 13, color: '#334155', lineHeight: 1.5, flex: 1 }}>{e}</span>
+                      </div>
                     ))}
                   </div>
-                </>
-              )}
-            </div>
+                </div>
+              );
+            })()}
           </AccordionSection>
         );
       })()}
@@ -2320,17 +2408,36 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
 
         <div style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <Info size={13} style={{ color: '#64748b', flexShrink: 0, marginTop: 1 }} />
-          <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>
-            {diagsCommuns.length === 0
-              ? "Aucun diagnostic parties communes dans les documents fournis. Vérifiez auprès du vendeur si l'immeuble dispose de :"
-              : "D'autres diagnostics parties communes peuvent exister. Vérifiez auprès du vendeur si l'immeuble dispose également de :"}
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-              {(!anneeNum || anneeNum < 1997) && <span style={{ fontSize: 11, padding: '2px 9px', borderRadius: 100, background: '#fff', border: '1px solid #e2e8f0', color: '#475569' }}>DTA (avant 1997)</span>}
-              {(!anneeNum || anneeNum < 1949) && <span style={{ fontSize: 11, padding: '2px 9px', borderRadius: 100, background: '#fff', border: '1px solid #e2e8f0', color: '#475569' }}>Plomb parties communes (avant 1949)</span>}
-              <span style={{ fontSize: 11, padding: '2px 9px', borderRadius: 100, background: '#fff', border: '1px solid #e2e8f0', color: '#475569' }}>Termites immeuble</span>
-              <span style={{ fontSize: 11, padding: '2px 9px', borderRadius: 100, background: '#fff', border: '1px solid #e2e8f0', color: '#475569' }}>ERP</span>
-            </div>
-          </div>
+          {(() => {
+            // Vérifier quels diagnostics sont déjà détectés pour ne pas les proposer en "autres"
+            const detectedTypes = new Set(diagsCommuns.map((d: Record<string, unknown>) => String(d.type || '').toUpperCase()));
+            const hasDTA = detectedTypes.has('AMIANTE') || detectedTypes.has('DTA');
+            const hasPlomb = detectedTypes.has('PLOMB');
+            const hasTermites = detectedTypes.has('TERMITES');
+            // ERP concerne plutôt le logement/privatif, pas vraiment parties communes — on le retire des suggestions
+            const anything = (!hasDTA && (!anneeNum || anneeNum < 1997))
+              || (!hasPlomb && (!anneeNum || anneeNum < 1949))
+              || !hasTermites;
+            if (!anything) {
+              return (
+                <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>
+                  Tous les diagnostics parties communes usuels semblent présents dans les documents fournis.
+                </div>
+              );
+            }
+            return (
+              <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>
+                {diagsCommuns.length === 0
+                  ? "Aucun diagnostic parties communes dans les documents fournis. Vérifiez auprès du vendeur si l'immeuble dispose de :"
+                  : "D'autres diagnostics parties communes peuvent exister. Vérifiez auprès du vendeur si l'immeuble dispose également de :"}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                  {!hasDTA && (!anneeNum || anneeNum < 1997) && <span style={{ fontSize: 11, padding: '2px 9px', borderRadius: 100, background: '#fff', border: '1px solid #e2e8f0', color: '#475569' }}>DTA (avant 1997)</span>}
+                  {!hasPlomb && (!anneeNum || anneeNum < 1949) && <span style={{ fontSize: 11, padding: '2px 9px', borderRadius: 100, background: '#fff', border: '1px solid #e2e8f0', color: '#475569' }}>Plomb parties communes (avant 1949)</span>}
+                  {!hasTermites && <span style={{ fontSize: 11, padding: '2px 9px', borderRadius: 100, background: '#fff', border: '1px solid #e2e8f0', color: '#475569' }}>Termites immeuble</span>}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </AccordionSection>
     </div>
@@ -2509,16 +2616,48 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
             {/* Identité du lot */}
             {(lot?.quote_part_tantiemes || (lot?.parties_privatives as unknown[] ?? []).length > 0) && (
               <>
-                <SectionTitle emoji="🏠" text="Identité du lot" tooltip="Données issues du règlement de copropriété, du pré-état daté ou de l'état daté." />
+                <SectionTitle emoji="🏠" text="Identité du lot" tooltip="Données issues du règlement de copropriété, du pré-état daté, de l'état daté ou des appels de charges." />
                 <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
                   {(lot?.parties_privatives as unknown[] ?? []).length > 0 && (
                     <div className="lot-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: lot?.quote_part_tantiemes ? '0.5px solid var(--color-border-tertiary)' : 'none', gap: 16 }}>
                       <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', flexShrink: 0 }}>Lots concernés</span>
-                      <div className="lot-row-value" style={{ textAlign: 'right' }}>
+                      <div className="lot-row-value" style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {((lot as typeof lot | null)?.parties_privatives as unknown[] ?? []).map((p, i) => {
-                          let label = safeStr(p);
-                          if (label && label.startsWith('{')) { try { const obj = JSON.parse(label); label = obj.numero && obj.description ? `Lot ${obj.numero} — ${obj.description}` : obj.description ?? obj.label ?? label; } catch { /* keep */ } }
-                          return <div key={i} style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: 2 }}>{label}</div>;
+                          // Parser l'objet proprement, avec icône selon le type
+                          let obj: Record<string, unknown> | null = null;
+                          if (typeof p === 'object' && p !== null) obj = p as Record<string, unknown>;
+                          else if (typeof p === 'string' && p.startsWith('{')) { try { obj = JSON.parse(p); } catch { /* garde null */ } }
+
+                          if (obj) {
+                            const numero = obj.numero_lot ?? obj.numero ?? null;
+                            const tantiemes = obj.tantiemes ?? null;
+                            const designation = (obj.designation ?? obj.description ?? obj.label ?? obj.type ?? '') as string;
+                            const desc = String(designation).toLowerCase();
+                            let icon = '🏠';
+                            if (/cave/.test(desc)) icon = '🗝️';
+                            else if (/parking|box|garage/.test(desc)) icon = '🚗';
+                            else if (/grenier|combles/.test(desc)) icon = '🪜';
+                            else if (/appartement|logement/.test(desc)) icon = '🏠';
+                            else if (/commerce|local/.test(desc)) icon = '🏪';
+                            else if (/terrasse|jardin/.test(desc)) icon = '🌿';
+                            return (
+                              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
+                                <span style={{ fontSize: 14 }}>{icon}</span>
+                                <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>
+                                  {numero ? <>Lot {String(numero)}{designation ? ` · ${designation}` : ''}</> : (designation || '—')}
+                                </span>
+                                {tantiemes && (
+                                  <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.2)', color: '#2a7d9c', whiteSpace: 'nowrap' }}>
+                                    {String(tantiemes)}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          }
+
+                          // Fallback : string simple
+                          const label = safeStr(p);
+                          return <div key={i} style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{label}</div>;
                         })}
                       </div>
                     </div>
@@ -3450,11 +3589,13 @@ function TabDocuments({ rapport, onComplement }: { rapport: RapportData; onCompl
       )}
 
       {/* Documents analysés EN BAS */}
-      {hasDocs && (
+      {hasDocs && (() => {
+        const nbDocs = (docsAnalyses.length > 0 ? docsAnalyses : rapport.documents_detectes).length;
+        return (
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
             <Paperclip size={15} style={{ color: '#94a3b8' }} />
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#64748b', letterSpacing: '0.06em' }}>DOCUMENTS ANALYSÉS</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#64748b', letterSpacing: '0.06em' }}>DOCUMENTS ANALYSÉS ({nbDocs})</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {(docsAnalyses.length > 0 ? docsAnalyses : rapport.documents_detectes).map((doc, i) => {
@@ -3491,7 +3632,8 @@ function TabDocuments({ rapport, onComplement }: { rapport: RapportData; onCompl
             <span style={{ fontSize: 13, color: '#94a3b8' }}>Documents supprimés de nos serveurs après traitement — conformément au RGPD.</span>
           </div>
         </div>
-      )}
+        );
+      })()}
 
     </div>
   );
@@ -3956,11 +4098,13 @@ export function RapportViewExemple({ rapport, defaultTab = 'synthese', onComplem
           </div>
         )}
 
-        {(activeTab === 'synthese' || !isComplete) && <SafeTabBoundary><TabSynthese rapport={rapport} /></SafeTabBoundary>}
-        {activeTab === 'copropriete' && isComplete && hasCopro && <SafeTabBoundary><TabCopropriete rapport={rapport} /></SafeTabBoundary>}
-        {activeTab === 'logement' && isComplete && <SafeTabBoundary><TabLogement rapport={rapport} onSwitchTab={setActiveTab} /></SafeTabBoundary>}
-        {activeTab === 'procedures' && isComplete && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
-        {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} onComplement={onComplement} /></SafeTabBoundary>}
+        <div key={activeTab} className="rapport-tab-content">
+          {(activeTab === 'synthese' || !isComplete) && <SafeTabBoundary><TabSynthese rapport={rapport} /></SafeTabBoundary>}
+          {activeTab === 'copropriete' && isComplete && hasCopro && <SafeTabBoundary><TabCopropriete rapport={rapport} /></SafeTabBoundary>}
+          {activeTab === 'logement' && isComplete && <SafeTabBoundary><TabLogement rapport={rapport} onSwitchTab={setActiveTab} /></SafeTabBoundary>}
+          {activeTab === 'procedures' && isComplete && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
+          {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} onComplement={onComplement} /></SafeTabBoundary>}
+        </div>
       </div>
     </div>
   );
@@ -4215,11 +4359,13 @@ export default function RapportPage() {
         )}
 
         {/* Contenu onglets */}
-        {(activeTab === 'synthese' || !isComplete) && <SafeTabBoundary><TabSynthese rapport={rapport} /></SafeTabBoundary>}
-        {activeTab === 'copropriete' && isComplete && hasCopro && <SafeTabBoundary><TabCopropriete rapport={rapport} /></SafeTabBoundary>}
-        {activeTab === 'logement' && isComplete && <SafeTabBoundary><TabLogement rapport={rapport} onSwitchTab={setActiveTab} /></SafeTabBoundary>}
-        {activeTab === 'procedures' && isComplete && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
-        {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} onComplement={() => setShowComplement(true)} /></SafeTabBoundary>}
+        <div key={activeTab} className="rapport-tab-content">
+          {(activeTab === 'synthese' || !isComplete) && <SafeTabBoundary><TabSynthese rapport={rapport} /></SafeTabBoundary>}
+          {activeTab === 'copropriete' && isComplete && hasCopro && <SafeTabBoundary><TabCopropriete rapport={rapport} /></SafeTabBoundary>}
+          {activeTab === 'logement' && isComplete && <SafeTabBoundary><TabLogement rapport={rapport} onSwitchTab={setActiveTab} /></SafeTabBoundary>}
+          {activeTab === 'procedures' && isComplete && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
+          {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} onComplement={() => setShowComplement(true)} /></SafeTabBoundary>}
+        </div>
 
         {/* ══ BOTTOM TAB BAR — mobile uniquement — Option C pill ══ */}
         {isComplete && (
@@ -4263,6 +4409,16 @@ export default function RapportPage() {
 
       </div>
       <style>{`
+        /* Animation onglet content : slide + fade à chaque changement */
+        .rapport-tab-content { animation: rapportTabSlide 0.35s cubic-bezier(0.22, 1, 0.36, 1); }
+        @keyframes rapportTabSlide {
+          from { opacity: 0; transform: translateX(14px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .rapport-tab-content { animation: none; }
+        }
+
         /* ══════════════════════════════════
            MOBILE — 640px et moins
         ══════════════════════════════════ */
