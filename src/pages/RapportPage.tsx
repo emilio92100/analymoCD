@@ -620,26 +620,35 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
               const palierColors = ['#dc2626', '#ea580c', '#d97706', '#16a34a', '#15803d'];
               return (
                 <div className="hero-paliers" style={{ position: 'relative', paddingTop: 14, marginTop: 14, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.1em', marginBottom: 8, textTransform: 'uppercase' as const }}>Notation Verimo</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.1em', marginBottom: 30, textTransform: 'uppercase' as const }}>Notation Verimo</div>
+
+                  {/* Pin score au-dessus de la barre */}
+                  <div style={{ position: 'absolute', top: 30, left: `${cursorPct}%`, transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: '#fff', padding: '3px 10px', background: palierColors[palier], borderRadius: 99, border: '2px solid rgba(255,255,255,0.95)', whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(0,0,0,0.35)' }}>
+                      {score.toFixed(1)}
+                    </div>
+                    {/* Petit triangle pointant vers la barre */}
+                    <div style={{ width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: `6px solid ${palierColors[palier]}`, marginTop: -1 }} />
+                  </div>
+
                   {/* Barre segmentée */}
-                  <div style={{ position: 'relative', display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', gap: 2 }}>
+                  <div style={{ position: 'relative', display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', gap: 2 }}>
                     <div style={{ flex: 7, background: '#dc2626' }} />
                     <div style={{ flex: 3, background: '#ea580c' }} />
                     <div style={{ flex: 4, background: '#d97706' }} />
                     <div style={{ flex: 3, background: '#16a34a' }} />
                     <div style={{ flex: 3, background: '#15803d' }} />
                   </div>
-                  {/* Curseur */}
-                  <div style={{ position: 'absolute', top: 36, left: `${cursorPct}%`, transform: 'translateX(-50%)', width: 2, height: 14, background: '#fff', borderRadius: 1, boxShadow: '0 0 8px rgba(255,255,255,0.5)' }} />
+
                   {/* Labels */}
-                  <div className="hero-paliers-labels" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 14, fontSize: 9, color: 'rgba(255,255,255,0.55)' }}>
+                  <div className="hero-paliers-labels" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>
                     {palierLabels.map((label, i) => {
-                      const ranges = ['0-6', '7-9', '10-13', '14-16', '17-20'];
+                      const ranges = ['0 – 6', '7 – 9', '10 – 13', '14 – 16', '17 – 20'];
                       const isActive = i === palier;
                       return (
-                        <span key={i} style={{ textAlign: 'center', color: isActive ? palierColors[i] : undefined, opacity: isActive ? 1 : 0.55, fontWeight: isActive ? 700 : 400 }}>
-                          <span style={{ display: 'block', fontSize: 8.5, letterSpacing: '0.02em' }}>{ranges[i]}</span>
-                          <span style={{ display: 'block', marginTop: 2 }}>{label}</span>
+                        <span key={i} style={{ textAlign: 'center', color: isActive ? palierColors[i] : 'rgba(255,255,255,0.65)', opacity: isActive ? 1 : 0.7, fontWeight: isActive ? 700 : 500 }}>
+                          <span style={{ display: 'block', fontSize: 10.5, letterSpacing: '0.02em' }}>{ranges[i]}</span>
+                          <span style={{ display: 'block', marginTop: 3, fontSize: 12 }}>{label}</span>
                         </span>
                       );
                     })}
