@@ -1803,6 +1803,92 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
               });
             })()}
           </div>
+
+          {/* ── SOUS-SECTION MODIFICATIFS RCP (si détectés) ── */}
+          {(() => {
+            type ModifT = {
+              date_acte?: string | null; notaire?: string | null; type_modification?: string | null;
+              sur_quoi_porte?: { aspect?: string; detail?: string }[];
+              impact_acheteur?: string | null;
+              points_attention?: { label?: string; detail?: string }[];
+            };
+            const vieCopro = rapport.vie_copropriete as Record<string, unknown> | null;
+            const modifs = (vieCopro?.modificatifs_rcp as ModifT[] | null) || [];
+            if (modifs.length === 0) return null;
+            const labelsType: Record<string, string> = {
+              creation_lot: 'Création de lot', suppression_lot: 'Suppression de lot',
+              changement_usage: "Changement d'usage", mise_a_jour_tantiemes: 'Mise à jour des tantièmes',
+              servitude: 'Servitude', fusion_lots: 'Fusion de lots', autre: 'Modification',
+            };
+            return (
+              <div style={{ marginTop: 18 }}>
+                <SectionTitle emoji="📜" text={`Modificatifs du règlement (${modifs.length} acte${modifs.length > 1 ? 's' : ''})`} tooltip="Le règlement de copropriété peut être modifié au fil du temps par des actes notariés (changement d'usage, fusion de lots, servitudes…)." />
+
+                <div style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 10, fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>
+                  {modifs.length === 1 ? (() => {
+                    const aspects = (modifs[0].sur_quoi_porte || []).map(s => s.aspect).filter(Boolean);
+                    const tLabel = modifs[0].type_modification ? (labelsType[modifs[0].type_modification] || labelsType.autre) : null;
+                    if (aspects.length > 0) return <>Ce modificatif porte sur&nbsp;: <strong style={{ color: '#0f172a' }}>{aspects.join(', ')}</strong>.</>;
+                    if (tLabel) return <>Modificatif détecté&nbsp;: <strong style={{ color: '#0f172a' }}>{tLabel}</strong>. Détail ci-dessous.</>;
+                    return <>Un modificatif au règlement a été détecté. Détail ci-dessous.</>;
+                  })() : (() => {
+                    const types = Array.from(new Set(modifs.map(m => m.type_modification ? (labelsType[m.type_modification] || null) : null).filter(Boolean) as string[]));
+                    if (types.length > 0) return <>Les {modifs.length} modificatifs portent sur&nbsp;: <strong style={{ color: '#0f172a' }}>{types.join(', ')}</strong>.</>;
+                    return <>Plusieurs actes modificatifs ont été détectés.</>;
+                  })()}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
+                  {modifs.map((m, i) => {
+                    const pointsValides = (m.points_attention || []).filter(p => (p.label && p.label.trim()) || (p.detail && p.detail.trim()));
+                    return (
+                      <div key={i} style={{ padding: '14px 16px', background: '#fff', border: '1px solid #edf2f7', borderRadius: 12 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
+                              {m.type_modification ? (labelsType[m.type_modification] || labelsType.autre) : labelsType.autre}
+                            </div>
+                            <div style={{ fontSize: 12, color: '#64748b', marginTop: 3 }}>
+                              {m.date_acte && `Acte du ${m.date_acte}`}
+                              {m.date_acte && m.notaire && ' — '}
+                              {m.notaire}
+                            </div>
+                          </div>
+                        </div>
+                        {m.sur_quoi_porte && m.sur_quoi_porte.length > 0 && (
+                          <div style={{ marginBottom: 10 }}>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', letterSpacing: '0.06em', marginBottom: 6 }}>CE QUI CHANGE</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                              {m.sur_quoi_porte.map((s, j) => (
+                                <div key={j} style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                                  {s.aspect && <strong>{s.aspect}{s.detail ? ' : ' : ''}</strong>}
+                                  {s.detail}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {m.impact_acheteur && (
+                          <div style={{ padding: '10px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 9, fontSize: 13, color: '#1e40af', lineHeight: 1.6 }}>
+                            <strong>Impact pour vous : </strong>{m.impact_acheteur}
+                          </div>
+                        )}
+                        {pointsValides.length > 0 && (
+                          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                            {pointsValides.map((p, j) => (
+                              <div key={j} style={{ padding: '8px 12px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 9, fontSize: 12, color: '#9a3412' }}>
+                                <strong>⚠ {p.label}{p.label && p.detail ? ' : ' : ''}</strong>{p.detail}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
         </AccordionSection>
       )}
 
@@ -2198,110 +2284,6 @@ function TabCopropriete({ rapport }: { rapport: RapportData }) {
         );
       })()}
 
-      {/* ── MODIFICATIFS RCP ── */}
-      {(() => {
-        type ModifT = {
-          date_acte?: string | null; notaire?: string | null; type_modification?: string | null;
-          sur_quoi_porte?: { aspect?: string; detail?: string }[];
-          impact_acheteur?: string | null;
-          points_attention?: { label?: string; detail?: string }[];
-        };
-        const vieCopro = rapport.vie_copropriete as Record<string, unknown> | null;
-        const modifs = (vieCopro?.modificatifs_rcp as ModifT[] | null) || [];
-        if (modifs.length === 0) return null;
-
-        const labelsType: Record<string, string> = {
-          creation_lot: 'Création de lot',
-          suppression_lot: 'Suppression de lot',
-          changement_usage: "Changement d'usage",
-          mise_a_jour_tantiemes: 'Mise à jour des tantièmes',
-          servitude: 'Servitude',
-          fusion_lots: 'Fusion de lots',
-          autre: 'Modification',
-        };
-
-        return (
-          <AccordionSection
-            title="Modificatifs du règlement" sub={`${modifs.length} modificatif${modifs.length > 1 ? 's' : ''} détecté${modifs.length > 1 ? 's' : ''}`} icon="📜"
-            defaultOpen={allOpen}
-            status="neutral"
-            badge={`${modifs.length} acte${modifs.length > 1 ? 's' : ''}`}>
-
-            <div style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 10, fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>
-              {modifs.length === 1 ? (() => {
-                const aspects = (modifs[0].sur_quoi_porte || []).map(s => s.aspect).filter(Boolean);
-                const tLabel = modifs[0].type_modification ? (labelsType[modifs[0].type_modification] || labelsType.autre) : null;
-                if (aspects.length > 0) {
-                  return <>Ce modificatif au règlement de copropriété porte sur&nbsp;: <strong style={{ color: '#0f172a' }}>{aspects.join(', ')}</strong>.</>;
-                }
-                if (tLabel) {
-                  return <>Modificatif détecté&nbsp;: <strong style={{ color: '#0f172a' }}>{tLabel}</strong>. Détail ci-dessous.</>;
-                }
-                return <>Un modificatif au règlement de copropriété a été détecté. Détail ci-dessous.</>;
-              })() : (() => {
-                const types = Array.from(new Set(modifs.map(m => m.type_modification ? (labelsType[m.type_modification] || null) : null).filter(Boolean) as string[]));
-                if (types.length > 0) {
-                  return <>Les {modifs.length} modificatifs portent sur&nbsp;: <strong style={{ color: '#0f172a' }}>{types.join(', ')}</strong>.</>;
-                }
-                return <>Le règlement de copropriété peut être modifié au fil du temps par des actes notariés (changement d'usage, fusion de lots, servitudes…). Voici ce qui a été détecté.</>;
-              })()}
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {modifs.map((m, i) => {
-                // Filtrer les points_attention vides (bug screen 3 : bloc jaune sans contenu)
-                const pointsValides = (m.points_attention || []).filter(p => (p.label && p.label.trim()) || (p.detail && p.detail.trim()));
-                return (
-                <div key={i} style={{ padding: '14px 16px', background: '#fff', border: '1px solid #edf2f7', borderRadius: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
-                        {m.type_modification ? (labelsType[m.type_modification] || labelsType.autre) : labelsType.autre}
-                      </div>
-                      <div style={{ fontSize: 12, color: '#64748b', marginTop: 3 }}>
-                        {m.date_acte && `Acte du ${m.date_acte}`}
-                        {m.date_acte && m.notaire && ' — '}
-                        {m.notaire}
-                      </div>
-                    </div>
-                  </div>
-
-                  {m.sur_quoi_porte && m.sur_quoi_porte.length > 0 && (
-                    <div style={{ marginBottom: 10 }}>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', letterSpacing: '0.06em', marginBottom: 6 }}>CE QUI CHANGE</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                        {m.sur_quoi_porte.map((s, j) => (
-                          <div key={j} style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
-                            {s.aspect && <strong>{s.aspect}{s.detail ? ' : ' : ''}</strong>}
-                            {s.detail}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {m.impact_acheteur && (
-                    <div style={{ padding: '10px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 9, fontSize: 13, color: '#1e40af', lineHeight: 1.6 }}>
-                      <strong>Impact pour vous : </strong>{m.impact_acheteur}
-                    </div>
-                  )}
-
-                  {pointsValides.length > 0 && (
-                    <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                      {pointsValides.map((p, j) => (
-                        <div key={j} style={{ padding: '8px 12px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 9, fontSize: 12, color: '#9a3412' }}>
-                          <strong>⚠ {p.label}{p.label && p.detail ? ' : ' : ''}</strong>{p.detail}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                );
-              })}
-            </div>
-          </AccordionSection>
-        );
-      })()}
 
       {/* ── FICHE SYNTHÉTIQUE ── */}
       {(() => {
@@ -2609,21 +2591,51 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
         if (!hasLotInfo && !hasPed && travauxEvoques.length === 0) return null;
         return (
           <AccordionSection
-            title="Votre lot" sub="Tantièmes · situation vendeur · historique charges · restrictions" icon="🏠"
+            title="Votre lot" sub="Tantièmes · situation vendeur · restrictions" icon="🏠"
             status="neutral" badge='Informatif'
-            defaultOpen={allOpen}>
+            defaultOpen={allOpen || hasPed}>
 
             {/* Identité du lot */}
-            {(lot?.quote_part_tantiemes || (lot?.parties_privatives as unknown[] ?? []).length > 0) && (
+            {(lot?.quote_part_tantiemes || (lot?.parties_privatives as unknown[] ?? []).length > 0) && (() => {
+              // Parser les parties_privatives pour récupérer tantièmes de chaque lot
+              const partiesRaw = (lot?.parties_privatives as unknown[] ?? []);
+              const partiesParsed = partiesRaw.map(p => {
+                let obj: Record<string, unknown> | null = null;
+                if (typeof p === 'object' && p !== null) obj = p as Record<string, unknown>;
+                else if (typeof p === 'string' && p.startsWith('{')) { try { obj = JSON.parse(p); } catch { /* keep null */ } }
+                return obj;
+              }).filter(Boolean) as Record<string, unknown>[];
+
+              // Calculer les tantièmes totaux si possible
+              let totalNum = 0;
+              let totalDen = 0;
+              let canCompute = true;
+              for (const obj of partiesParsed) {
+                const tant = obj.tantiemes;
+                if (typeof tant !== 'string') { canCompute = false; break; }
+                const m = tant.replace(/\s/g, '').match(/^(\d+)\/(\d+)/);
+                if (!m) { canCompute = false; break; }
+                const num = parseInt(m[1], 10);
+                const den = parseInt(m[2], 10);
+                if (!num || !den) { canCompute = false; break; }
+                if (totalDen === 0) totalDen = den;
+                else if (totalDen !== den) { canCompute = false; break; }
+                totalNum += num;
+              }
+              const tantiemesAffiches = canCompute && partiesParsed.length > 1 && totalNum > 0
+                ? `${totalNum}/${totalDen}èmes`
+                : safeStr(lot?.quote_part_tantiemes);
+              const showDetail = canCompute && partiesParsed.length > 1 && totalNum > 0;
+
+              return (
               <>
                 <SectionTitle emoji="🏠" text="Identité du lot" tooltip="Données issues du règlement de copropriété, du pré-état daté, de l'état daté ou des appels de charges." />
                 <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
-                  {(lot?.parties_privatives as unknown[] ?? []).length > 0 && (
-                    <div className="lot-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: lot?.quote_part_tantiemes ? '0.5px solid var(--color-border-tertiary)' : 'none', gap: 16 }}>
+                  {partiesRaw.length > 0 && (
+                    <div className="lot-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: (lot?.quote_part_tantiemes || showDetail) ? '0.5px solid var(--color-border-tertiary)' : 'none', gap: 16 }}>
                       <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', flexShrink: 0 }}>Lots concernés</span>
                       <div className="lot-row-value" style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        {((lot as typeof lot | null)?.parties_privatives as unknown[] ?? []).map((p, i) => {
-                          // Parser l'objet proprement, avec icône selon le type
+                        {partiesRaw.map((p, i) => {
                           let obj: Record<string, unknown> | null = null;
                           if (typeof p === 'object' && p !== null) obj = p as Record<string, unknown>;
                           else if (typeof p === 'string' && p.startsWith('{')) { try { obj = JSON.parse(p); } catch { /* garde null */ } }
@@ -2654,27 +2666,54 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
                               </div>
                             );
                           }
-
-                          // Fallback : string simple
                           const label = safeStr(p);
                           return <div key={i} style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{label}</div>;
                         })}
                       </div>
                     </div>
                   )}
-                  {lot?.quote_part_tantiemes && (
+                  {(lot?.quote_part_tantiemes || showDetail) && (
                     <div className="lot-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', background: 'var(--color-background-secondary)', gap: 16 }}>
                       <span style={{ fontSize: 13, color: 'var(--color-text-secondary)', flexShrink: 0 }}>
-                        <Tooltip text="Votre quote-part dans la copropriété. Détermine votre participation aux charges et votre poids lors des votes en AG.">Tantièmes</Tooltip>
+                        <Tooltip text="Votre quote-part totale dans la copropriété — somme des tantièmes de tous vos lots. Détermine votre participation aux charges et votre poids lors des votes en AG.">Tantièmes</Tooltip>
                       </span>
                       <div className="lot-row-value" style={{ textAlign: 'right' }}>
-                        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{safeStr(lot?.quote_part_tantiemes)}</span>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                          {tantiemesAffiches}
+                          {showDetail && <span style={{ fontSize: 11, fontWeight: 500, color: '#94a3b8', marginLeft: 6 }}>(total)</span>}
+                        </div>
+                        {showDetail && (
+                          <div style={{ fontSize: 11, color: '#64748b', marginTop: 3, lineHeight: 1.5 }}>
+                            {partiesParsed.map((obj, idx) => {
+                              const tant = obj.tantiemes as string;
+                              const m = tant.replace(/\s/g, '').match(/^(\d+)\/\d+/);
+                              if (!m) return null;
+                              const numero = obj.numero_lot ?? obj.numero ?? null;
+                              const designation = (obj.designation ?? obj.description ?? obj.label ?? '') as string;
+                              const desc = String(designation).toLowerCase();
+                              let shortLabel = designation;
+                              if (/cave/.test(desc)) shortLabel = 'Cave';
+                              else if (/parking|box|garage/.test(desc)) shortLabel = 'Parking';
+                              else if (/grenier|combles/.test(desc)) shortLabel = 'Grenier';
+                              else if (/appartement|logement/.test(desc)) shortLabel = 'Appartement';
+                              else if (/commerce|local/.test(desc)) shortLabel = 'Commerce';
+                              else if (/terrasse|jardin/.test(desc)) shortLabel = 'Terrasse';
+                              return (
+                                <span key={idx}>
+                                  {idx > 0 && ' · '}
+                                  {shortLabel || `Lot ${numero || ''}`} <strong>{m[1]}</strong>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
                 </div>
               </>
-            )}
+              );
+            })()}
 
             {/* Situation vendeur (pré-état daté) */}
             {hasPed && (
@@ -2702,81 +2741,7 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
               </>
             )}
 
-            {/* Sommes à verser au vendeur */}
-            {(fondsAlurNum || ped?.fonds_roulement_acheteur) && (
-              <>
-                <div style={{ border: '0.5px solid #fed7aa', borderRadius: 10, overflow: 'hidden', background: '#fffbeb' }}>
-                  {fondsAlurNum && (
-                    <div style={{ padding: '12px 16px', borderBottom: ped?.fonds_roulement_acheteur ? '0.5px solid #fde68a' : 'none' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-                        <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e' }}><Tooltip text="Part des fonds de travaux constituée par le vendeur pendant sa détention du lot. Elle vous est transférée mais vous devez la rembourser au vendeur à la signature.">Fonds travaux ALUR</Tooltip></div>
-                        <span style={{ fontSize: 18, fontWeight: 700, color: '#d97706', flexShrink: 0 }}>{fondsAlurNum.toLocaleString('fr-FR')} €</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, padding: '7px 10px', background: 'rgba(217,119,6,0.08)', borderRadius: 8, border: '1px solid #fde68a' }}>
-                        <span style={{ fontSize: 12, flexShrink: 0, marginTop: 1 }}>ℹ️</span>
-                        <span style={{ fontSize: 12, color: '#92400e', lineHeight: 1.5 }}>Ce montant est à rembourser au vendeur en sus du prix de vente, à la signature de l'acte authentique.</span>
-                      </div>
-                    </div>
-                  )}
-                  {ped?.fonds_roulement_acheteur && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', gap: 12 }}>
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e' }}>Fonds de roulement</div>
-                        <div style={{ fontSize: 13, color: '#a16207', marginTop: 3 }}>{ped.fonds_roulement_modalite === 'remboursement_vendeur' ? 'Remboursement au vendeur' : 'Reconstitution au syndicat'}</div>
-                      </div>
-                      <span style={{ fontSize: 16, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>{Number(ped.fonds_roulement_acheteur).toLocaleString('fr-FR')} €</span>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-
             {/* Historique charges N-1/N-2 */}
-            {hasPed && (ped!.historique_charges ?? []).filter(h => h.budget_appele || h.charges_reelles).length > 0 && (
-              <>
-                <SectionTitle emoji="📊" text="Historique des charges du lot" tooltip="Le budget appelé est ce que la copropriété a prévu de dépenser. Les charges réelles sont ce qui a été effectivement dépensé. Un écart est normal — seul un écart important et répété mérite attention." />
-                <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ background: 'var(--color-background-secondary)' }}>
-                        {['Exercice', 'Budget appelé', 'Charges réelles', 'Écart'].map((h, i) => (
-                          <th key={i} style={{ padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right' as const, fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {ped!.historique_charges!.filter(h => h.budget_appele || h.charges_reelles).map((h, i, arr) => {
-                        const ecart = h.charges_reelles && h.budget_appele ? Number(h.charges_reelles) - Number(h.budget_appele) : null;
-                        return (
-                          <tr key={i} style={{ borderBottom: i < arr.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none', background: i % 2 === 0 ? 'var(--color-background-primary)' : 'var(--color-background-secondary)' }}>
-                            <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{safeStr(h.exercice)}{h.annee ? ` (${h.annee})` : ''}</td>
-                            <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--color-text-secondary)', textAlign: 'right' as const }}>{h.budget_appele ? `${Number(h.budget_appele).toLocaleString('fr-FR')} €` : '—'}</td>
-                            <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', textAlign: 'right' as const }}>{h.charges_reelles ? `${Number(h.charges_reelles).toLocaleString('fr-FR')} €` : '—'}</td>
-                            <td style={{ padding: '12px 16px', textAlign: 'right' as const }}>
-                              {ecart !== null && (
-                                <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 9px', borderRadius: 20, background: ecart > 0 ? '#fef2f2' : '#f0fdf4', color: ecart > 0 ? '#dc2626' : '#16a34a' }}>
-                                  {ecart > 0 ? '+' : ''}{ecart.toLocaleString('fr-FR')} €
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                  <div style={{ padding: '14px 16px', background: 'var(--color-background-secondary)', borderTop: '0.5px solid var(--color-border-tertiary)' }}>
-                    <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 6 }}>💡 Comment lire ce tableau ?</div>
-                    <div style={{ fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.7 }}>Le <strong>budget appelé</strong> est ce que la copropriété a prévu de dépenser sur l'exercice. Les <strong>charges réelles</strong> sont ce qui a été effectivement dépensé après clôture. Un petit écart est tout à fait normal. C'est seulement un écart important et répété sur plusieurs exercices qui mérite attention.</div>
-                  </div>
-                </div>
-              </>
-            )}
-            {hasPed && (ped!.historique_charges ?? []).filter(h => h.budget_appele || h.charges_reelles).length === 0 && (
-              <div style={{ padding: '12px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, fontSize: 12, color: '#92400e', lineHeight: 1.6 }}>
-                <strong>Historique N-1 / N-2 non extrait.</strong> Le pré-état daté contient généralement les charges des deux derniers exercices clos — si elles n'apparaissent pas ici, relancez l'analyse ou vérifiez que le document complet a bien été uploadé.
-              </div>
-            )}
-
             {/* Restrictions RCP */}
             {restrictions.length > 0 && (
               <>
@@ -3040,11 +3005,12 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
 
       {/* ── PRÉ-ÉTAT DATÉ ── */}
       {(() => {
-        type HistoT = { exercice?: string; annee?: number | null; budget_appele?: number | null; charges_reelles?: number | null };
+        type HistoT = { exercice?: string; annee?: number | null; budget_appele?: number | null; charges_reelles?: number | null; provisions_hors_budget?: number | null };
         type TravauxVT = { label?: string; montant?: number | null };
         type PreEtatT = {
           present?: boolean; date?: string | null; syndic?: string | null;
           impayes_vendeur?: number; fonds_travaux_alur?: number | null;
+          fonds_travaux_ancien?: number | null;
           fonds_roulement_acheteur?: number | null; fonds_roulement_modalite?: string | null;
           honoraires_syndic?: number | null;
           charges_futures?: { montant_trimestriel?: number | null; fonds_travaux_trimestriel?: number | null; montant_annuel?: number | null };
@@ -3067,6 +3033,14 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
             badge={ped.date ? `Établi le ${safeStr(ped.date)}` : 'Détecté'}
             defaultOpen={allOpen}
             tooltip="Le pré-état daté est établi par le syndic avant la vente. Il récapitule la situation financière du vendeur vis-à-vis de la copropriété et les charges que l'acheteur devra régler.">
+
+            {/* Bandeau source */}
+            <div style={{ padding: '10px 14px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10, fontSize: 12.5, color: '#075985', lineHeight: 1.55, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>📄</span>
+              <span>
+                <strong>Source</strong> : pré-état daté{ped.date ? ` du ${safeStr(ped.date)}` : ''}. Données extraites de ce document officiel établi avant la vente.
+              </span>
+            </div>
 
             {/* Situation vendeur */}
             <SectionTitle emoji="👤" text="Situation du vendeur" />
@@ -3095,31 +3069,53 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
             </div>
 
             {/* Fonds à verser au vendeur */}
-            {(ped.fonds_travaux_alur || ped.fonds_roulement_acheteur) && (
+            {(ped.fonds_travaux_alur || ped.fonds_travaux_ancien || ped.fonds_roulement_acheteur) && (() => {
+              const alur = Number(ped.fonds_travaux_alur || 0);
+              const ancien = Number(ped.fonds_travaux_ancien || 0);
+              const roulement = Number(ped.fonds_roulement_acheteur || 0);
+              const total = alur + ancien + roulement;
+              const nbLignes = [alur, ancien, roulement].filter(v => v > 0).length;
+              return (
               <>
                 <SectionTitle emoji="💰" text="Sommes à verser au vendeur à la signature" tooltip="Ces montants sont attachés au lot. Ils vous seront transférés mais vous devrez les rembourser au vendeur en sus du prix de vente, lors de la signature de l'acte authentique." />
                 <div style={{ border: '0.5px solid #fed7aa', borderRadius: 10, overflow: 'hidden', background: '#fffbeb' }}>
-                  {ped.fonds_travaux_alur && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: ped.fonds_roulement_acheteur ? '0.5px solid #fde68a' : 'none', gap: 12 }}>
+                  {ped.fonds_travaux_alur != null && ped.fonds_travaux_alur > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: '0.5px solid #fde68a', gap: 12 }}>
                       <div>
-                        <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e' }}>Fonds travaux ALUR</div>
-                        <div style={{ fontSize: 13, color: '#a16207', marginTop: 3 }}>Part des fonds travaux constituée par le vendeur, attachée au lot</div>
+                        <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e' }}>Fonds travaux ALUR <span style={{ fontSize: 11, color: '#a16207', fontWeight: 400 }}>(art. 14-2 loi ALUR 2014)</span></div>
+                        <div style={{ fontSize: 13, color: '#a16207', marginTop: 3 }}>Part du fonds de prévoyance obligatoire constituée par le vendeur, attachée au lot.</div>
                       </div>
-                      <span style={{ fontSize: 16, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>{Number(ped.fonds_travaux_alur).toLocaleString('fr-FR')} €</span>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: '#d97706', flexShrink: 0 }}>{Number(ped.fonds_travaux_alur).toLocaleString('fr-FR')} €</span>
                     </div>
                   )}
-                  {ped.fonds_roulement_acheteur && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', gap: 12 }}>
+                  {ped.fonds_travaux_ancien != null && ped.fonds_travaux_ancien > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: ped.fonds_roulement_acheteur ? '0.5px solid #fde68a' : (nbLignes > 1 ? '0.5px solid #fde68a' : 'none'), gap: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e' }}>Fonds travaux « ancien » <span style={{ fontSize: 11, color: '#a16207', fontWeight: 400 }}>(art. 18 loi 1965)</span></div>
+                        <div style={{ fontSize: 13, color: '#a16207', marginTop: 3 }}>Réserve de trésorerie constituée avant la loi ALUR. Distinct du fonds ALUR, mais suit la même logique : attaché au lot et à rembourser au vendeur.</div>
+                      </div>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: '#d97706', flexShrink: 0 }}>{Number(ped.fonds_travaux_ancien).toLocaleString('fr-FR')} €</span>
+                    </div>
+                  )}
+                  {ped.fonds_roulement_acheteur != null && ped.fonds_roulement_acheteur > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: nbLignes > 1 ? '0.5px solid #fde68a' : 'none', gap: 12 }}>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e' }}>Fonds de roulement</div>
-                        <div style={{ fontSize: 13, color: '#a16207', marginTop: 3 }}>{ped.fonds_roulement_modalite === 'remboursement_vendeur' ? 'Remboursement au vendeur' : 'Reconstitution au syndicat'}</div>
+                        <div style={{ fontSize: 13, color: '#a16207', marginTop: 3 }}>{ped.fonds_roulement_modalite === 'remboursement_vendeur' ? 'Avance de trésorerie à rembourser au vendeur.' : 'Reconstitution au syndicat — à verser directement au syndic.'}</div>
                       </div>
-                      <span style={{ fontSize: 16, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>{Number(ped.fonds_roulement_acheteur).toLocaleString('fr-FR')} €</span>
+                      <span style={{ fontSize: 16, fontWeight: 700, color: '#d97706', flexShrink: 0 }}>{Number(ped.fonds_roulement_acheteur).toLocaleString('fr-FR')} €</span>
+                    </div>
+                  )}
+                  {nbLignes > 1 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'rgba(217,119,6,0.1)', gap: 12 }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: '#92400e' }}>Total à prévoir à la signature</span>
+                      <span style={{ fontSize: 18, fontWeight: 800, color: '#d97706', flexShrink: 0 }}>{total.toLocaleString('fr-FR')} €</span>
                     </div>
                   )}
                 </div>
               </>
-            )}
+              );
+            })()}
 
             {/* Charges futures */}
             {(ped.charges_futures?.montant_trimestriel || ped.charges_futures?.fonds_travaux_trimestriel) && (
@@ -3197,44 +3193,64 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
             )}
 
             {/* Historique charges N-1 / N-2 */}
-            {(ped.historique_charges ?? []).filter(h => h.budget_appele || h.charges_reelles).length > 0 && (
+            {(ped.historique_charges ?? []).filter(h => h.budget_appele || h.charges_reelles || h.provisions_hors_budget).length > 0 && (() => {
+              const hist = ped.historique_charges!.filter(h => h.budget_appele || h.charges_reelles || h.provisions_hors_budget);
+              // Colonnes dynamiques : on affiche une colonne uniquement si au moins 1 ligne a la donnée
+              const showBudget = hist.some(h => h.budget_appele);
+              const showReel = hist.some(h => h.charges_reelles);
+              const showProvisions = hist.some(h => h.provisions_hors_budget);
+              const showEcart = showBudget && showReel;
+              const columns: { key: string; label: string; tooltip?: string }[] = [{ key: 'exercice', label: 'Exercice' }];
+              if (showBudget) columns.push({ key: 'budget', label: 'Budget voté', tooltip: 'Budget prévisionnel voté en AG pour l\'exercice — correspond aux charges courantes appelées au vendeur.' });
+              if (showReel) columns.push({ key: 'reel', label: 'Charges réelles', tooltip: 'Charges effectivement dépensées après clôture de l\'exercice.' });
+              if (showProvisions) columns.push({ key: 'provisions', label: 'Provisions hors budget', tooltip: 'Appels exceptionnels pour financer des travaux votés, en plus du budget courant (art. 44 du décret).' });
+              if (showEcart) columns.push({ key: 'ecart', label: 'Écart' });
+              return (
               <>
-                <SectionTitle emoji="📊" text="Historique des charges du lot" tooltip="Le budget appelé correspond à ce qui était prévu. Les charges réelles sont ce qui a été effectivement dépensé. Un écart positif (réel > prévu) indique des dépenses imprévues." />
+                <SectionTitle emoji="📊" text="Historique des charges du lot" tooltip="Données issues du pré-état daté, annexe 3ème partie. Permet de comparer ce qui était prévu (budget voté) et ce qui a été réellement dépensé ou appelé en plus." />
                 <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
-                  <div style={{ padding: '10px 16px', background: 'var(--color-background-secondary)', borderBottom: '0.5px solid var(--color-border-tertiary)', fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
-                    <strong>Comment lire ce tableau ?</strong> Le budget appelé = ce qui était prévu par la copropriété. Les charges réelles = ce qui a effectivement été dépensé. Un écart positif signifie des dépenses imprévues (appels exceptionnels).
+                  <div style={{ padding: '10px 16px', background: 'var(--color-background-secondary)', borderBottom: '0.5px solid var(--color-border-tertiary)', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+                    💡 <strong>Comment lire ce tableau ?</strong> Le <strong>budget voté</strong> correspond aux charges courantes prévues. Les <strong>provisions hors budget</strong> sont les appels exceptionnels (travaux). Un écart important et répété mérite attention.
                   </div>
+                  <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: 'var(--color-background-secondary)' }}>
-                        {['Exercice', 'Budget appelé', 'Charges réelles', 'Écart'].map((h, i) => (
-                          <th key={i} style={{ padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right' as const, fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary)', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>{h}</th>
+                        {columns.map((c, i) => (
+                          <th key={c.key} style={{ padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right' as const, fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', borderBottom: '0.5px solid var(--color-border-tertiary)', whiteSpace: 'nowrap' }}>
+                            {c.tooltip ? <Tooltip text={c.tooltip}>{c.label}</Tooltip> : c.label}
+                          </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {ped.historique_charges!.filter(h => h.budget_appele || h.charges_reelles).map((h, i, arr) => {
+                      {hist.map((h, i, arr) => {
                         const ecart = h.charges_reelles && h.budget_appele ? Number(h.charges_reelles) - Number(h.budget_appele) : null;
                         return (
                           <tr key={i} style={{ borderBottom: i < arr.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none', background: i % 2 === 0 ? 'var(--color-background-primary)' : 'var(--color-background-secondary)' }}>
                             <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--color-text-primary)', fontWeight: 500 }}>{safeStr(h.exercice)}{h.annee ? ` (${h.annee})` : ''}</td>
-                            <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--color-text-secondary)', textAlign: 'right' as const }}>{h.budget_appele ? `${Number(h.budget_appele).toLocaleString('fr-FR')} €` : '—'}</td>
-                            <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', textAlign: 'right' as const }}>{h.charges_reelles ? `${Number(h.charges_reelles).toLocaleString('fr-FR')} €` : '—'}</td>
-                            <td style={{ padding: '12px 16px', textAlign: 'right' as const }}>
-                              {ecart !== null && (
-                                <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 9px', borderRadius: 20, background: ecart > 0 ? '#fef2f2' : '#f0fdf4', color: ecart > 0 ? '#dc2626' : '#16a34a' }}>
-                                  {ecart > 0 ? '+' : ''}{ecart.toLocaleString('fr-FR')} €
-                                </span>
-                              )}
-                            </td>
+                            {showBudget && <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--color-text-primary)', textAlign: 'right' as const, whiteSpace: 'nowrap' }}>{h.budget_appele ? `${Number(h.budget_appele).toLocaleString('fr-FR')} €` : '—'}</td>}
+                            {showReel && <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', textAlign: 'right' as const, whiteSpace: 'nowrap' }}>{h.charges_reelles ? `${Number(h.charges_reelles).toLocaleString('fr-FR')} €` : '—'}</td>}
+                            {showProvisions && <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 500, color: h.provisions_hors_budget ? '#d97706' : 'var(--color-text-secondary)', textAlign: 'right' as const, whiteSpace: 'nowrap' }}>{h.provisions_hors_budget ? `+${Number(h.provisions_hors_budget).toLocaleString('fr-FR')} €` : '—'}</td>}
+                            {showEcart && (
+                              <td style={{ padding: '12px 16px', textAlign: 'right' as const }}>
+                                {ecart !== null && (
+                                  <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 9px', borderRadius: 20, background: ecart > 0 ? '#fef2f2' : '#f0fdf4', color: ecart > 0 ? '#dc2626' : '#16a34a', whiteSpace: 'nowrap' }}>
+                                    {ecart > 0 ? '+' : ''}{ecart.toLocaleString('fr-FR')} €
+                                  </span>
+                                )}
+                              </td>
+                            )}
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               </>
-            )}
+              );
+            })()}
 
           </AccordionSection>
         );
@@ -3595,7 +3611,7 @@ function TabDocuments({ rapport, onComplement }: { rapport: RapportData; onCompl
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
             <Paperclip size={15} style={{ color: '#94a3b8' }} />
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#64748b', letterSpacing: '0.06em' }}>DOCUMENTS ANALYSÉS ({nbDocs})</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#64748b', letterSpacing: '0.06em' }}>{nbDocs > 1 ? `DOCUMENTS ANALYSÉS (${nbDocs})` : `DOCUMENT ANALYSÉ (1)`}</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {(docsAnalyses.length > 0 ? docsAnalyses : rapport.documents_detectes).map((doc, i) => {
