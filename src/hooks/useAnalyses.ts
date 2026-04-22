@@ -18,6 +18,7 @@ export type Analyse = {
   is_preview?: boolean;
   document_names?: string[];
   regeneration_deadline?: string;
+  result?: unknown;
 };
 
 export function useAnalyses() {
@@ -54,6 +55,7 @@ export function useAnalyses() {
           is_preview: a.is_preview ?? false,
           document_names: a.document_names || [],
           regeneration_deadline: a.regeneration_deadline || undefined,
+          result: a.result,
         };
       });
       setAnalyses(mapped);
