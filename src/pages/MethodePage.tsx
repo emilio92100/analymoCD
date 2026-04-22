@@ -754,7 +754,7 @@ export default function MethodePage() {
               <div style={{ marginTop: 16, padding: '14px 18px', borderRadius: 11, background: '#fffbeb', border: '1px solid #fde68a', display: 'flex', gap: 10 }}>
                 <AlertTriangle size={14} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
                 <p style={{ fontSize: 14, color: '#92400e', margin: 0, lineHeight: 1.6 }}>
-                  <strong>Astuce :</strong> si votre score est entre 0 et 13, Verimo génère automatiquement des pistes de négociation pour vous aider à revoir le prix à la baisse.
+                  <strong>Astuce :</strong> si votre score est inférieur à 17/20, Verimo génère automatiquement des pistes de négociation pour vous aider à revoir le prix à la baisse.
                 </p>
               </div>
             </Reveal>
