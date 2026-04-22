@@ -35,12 +35,42 @@ STRUCTURE DE TA RÉPONSE (JSON strict) :
 {
   "bien_recommande_idx": 0,
   "titre_verdict": "phrase courte résumant la comparaison — ex: Le Bien 1 présente un profil globalement plus équilibré",
-  "synthese": "Paragraphe de 3-5 phrases comparant les biens de manière factuelle et nuancée. Mentionne les adresses. Compare les points forts et faiblesses de chaque bien. Reste mesuré.",
-  "forces_bien_recommande": ["3 forces factuelles du bien recommandé"],
-  "points_attention": ["2-4 points d'attention sur le bien recommandé ou les autres biens — travaux évoqués, DPE, procédures, écart financier"],
-  "conseil": "Paragraphe de 2-3 phrases de conseil mesuré. Ne dis pas quoi acheter. Suggère les prochaines étapes : vérifier tel point, demander tel document, consulter un professionnel pour tel aspect. Toujours terminer par rappeler que l'analyse est basée uniquement sur les documents fournis.",
+  "ecarts_cles": {
+    "score": { "bien_1": 14, "bien_2": 13.5, "bien_3": null, "delta_label": "0,5 pt d'écart" },
+    "cout_annee_1": { "bien_1": 2361, "bien_2": 3209, "bien_3": null, "delta_label": "848 € d'écart sur l'année 1" },
+    "dpe": { "bien_1": "E", "bien_2": "E", "bien_3": null, "delta_label": "Même classe" }
+  },
+  "profils": [
+    {
+      "bien_idx": 0,
+      "profil": "2-3 mots décrivant le profil global (ex: 'Gestion sereine', 'Vigilance financière', 'Profil équilibré')",
+      "forces": [
+        { "titre": "Titre court 3-5 mots", "detail": "Phrase de détail explicative 15-25 mots", "impact": "majeur|modere|mineur" }
+      ],
+      "points_faibles": [
+        { "titre": "Titre court 3-5 mots", "detail": "Phrase de détail explicative 15-25 mots", "impact": "majeur|modere|mineur" }
+      ]
+    }
+  ],
+  "comparatif": "2-3 phrases (3-4 si 3 biens) comparant directement les biens. Factuel, nuancé.",
+  "points_a_approfondir": [
+    { "bien": "Bien 1|Bien 2|Bien 3|Les 2|Les 3", "action": "Action concrète à mener avant signature, 15-25 mots" }
+  ],
   "alerte_documents": "Si un bien a été analysé avec significativement moins de documents que l'autre, le signaler ici. Sinon null."
 }
+
+RÈGLES DE REMPLISSAGE :
+- profils[] doit contenir EXACTEMENT N objets où N = nombre de biens comparés (2 ou 3).
+- profils[i].bien_idx doit correspondre à l index du bien dans l ordre reçu (0 pour Bien 1, 1 pour Bien 2, 2 pour Bien 3).
+- Chaque bien doit avoir AU MOINS 2 forces et AU MOINS 1 point faible (même le bien recommandé a des points faibles — symétrie de traitement).
+- 3-4 forces et 2-3 points faibles par bien est une bonne moyenne.
+- forces + points_faibles DOIVENT être factuels et mesurables (chiffres, dates, statuts précis). Pas de généralités.
+- impact = "majeur" si ça change la décision (ex: procédure lourde, travaux > 20 000 €), "modere" si ça mérite attention (ex: DPE E, tensions AG), "mineur" si c est un point de contexte.
+- comparatif : 2-3 phrases qui comparent directement les biens (ex: "Le Bien 1 se distingue par X, tandis que le Bien 2 présente Y. L écart principal porte sur Z.")
+- points_a_approfondir : 3-5 items concrets. Chaque item cible un bien précis (champ "bien"). Exemples d actions : "Réclamer le pré-état daté", "Demander le détail des travaux votés", "Vérifier le dernier PV d AG".
+- ecarts_cles.bien_X null si le bien n existe pas (cas 2 biens : bien_3 = null partout).
+- ecarts_cles.cout_annee_1 : somme de (charges annuelles + fonds ALUR signature + fonds roulement signature + cotisations fonds travaux année 1). Si pré-état daté manquant, estimer sur charges annuelles seules et le signaler dans le commentaire.
+- ecarts_cles.delta_label : formulation "X d écart" adaptée au type (points, euros, lettres).
 
 RÈGLES CRITIQUES :
 - Les travaux VOTÉS avant la vente sont à la charge du vendeur — ne les compte PAS comme un risque pour l'acheteur.
@@ -56,13 +86,12 @@ RÈGLE DE SÉLECTION DU BIEN RECOMMANDÉ (bien_recommande_idx) :
    * DPE F ou G (passoire thermique) alors que l'autre bien est A-D
    * Impayés de copropriété globaux > 15% du budget annuel
    * Asymétrie documentaire MAJEURE : le bien au meilleur score a été analysé avec < 3 documents, l'autre avec beaucoup plus
-3. SI TU FAIS UNE EXCEPTION : tu DOIS impérativement mentionner explicitement dans titre_verdict ET dans synthese POURQUOI tu ne recommandes pas le meilleur score. Exemple : "Le Bien 2, malgré son score légèrement inférieur, présente un profil plus serein sans travaux importants à prévoir contrairement au Bien 1."
+3. SI TU FAIS UNE EXCEPTION : tu DOIS impérativement mentionner explicitement dans titre_verdict ET dans comparatif POURQUOI tu ne recommandes pas le meilleur score.
 4. SI AUCUN FACTEUR BLOQUANT : tu dois OBLIGATOIREMENT recommander le bien avec le meilleur score, même si l'écart est faible.
 
 COHÉRENCE DU TEXTE NARRATIF :
-- titre_verdict, synthese, forces_bien_recommande doivent TOUJOURS désigner le bien indiqué par bien_recommande_idx. Jamais de contradiction entre l'index numérique et le texte.
+- titre_verdict et comparatif doivent TOUJOURS désigner le bien indiqué par bien_recommande_idx. Jamais de contradiction entre l'index numérique et le texte.
 - Utilise "Bien 1", "Bien 2", "Bien 3" dans le texte pour correspondre aux labels de l'interface (l'ordre des biens dans les données = l'ordre affiché à l'écran).
-- Si tu dois parler du bien NON recommandé dans les points d'attention, dis-le clairement ("Le Bien 2 présente...").
 
 - Réponds UNIQUEMENT en JSON strict, sans texte avant ou après.`;
 }
