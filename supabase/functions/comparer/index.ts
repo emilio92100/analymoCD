@@ -169,12 +169,26 @@ Deno.serve(async (req) => {
     }
 
     // Stocker le verdict
-    await supabaseAdmin.from('comparaisons').upsert({
+    const { error: upsertError } = await supabaseAdmin.from('comparaisons').upsert({
       user_id: user.id,
       analyse_ids: sortedIds,
       verdict,
       created_at: new Date().toISOString(),
     }, { onConflict: 'user_id,analyse_ids' });
+
+    if (upsertError) {
+      console.error('[comparer] UPSERT ERROR:', JSON.stringify(upsertError));
+      return new Response(JSON.stringify({
+        success: true,
+        verdict,
+        cached: false,
+        debug_upsert_error: upsertError,
+      }), {
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log('[comparer] Upsert OK pour user', user.id, 'ids', sortedIds);
 
     return new Response(JSON.stringify({ success: true, verdict, cached: false }), {
       headers: { ...CORS, 'Content-Type': 'application/json' },
