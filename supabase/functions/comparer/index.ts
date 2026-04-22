@@ -69,8 +69,13 @@ RÈGLES DE REMPLISSAGE :
 - comparatif : 2-3 phrases qui comparent directement les biens (ex: "Le Bien 1 se distingue par X, tandis que le Bien 2 présente Y. L écart principal porte sur Z.")
 - points_a_approfondir : 3-5 items concrets. Chaque item cible un bien précis (champ "bien"). Exemples d actions : "Réclamer le pré-état daté", "Demander le détail des travaux votés", "Vérifier le dernier PV d AG".
 - ecarts_cles.bien_X null si le bien n existe pas (cas 2 biens : bien_3 = null partout).
-- ecarts_cles.cout_annee_1 : somme de (charges annuelles + fonds ALUR signature + fonds roulement signature + cotisations fonds travaux année 1). Si pré-état daté manquant, estimer sur charges annuelles seules et le signaler dans le commentaire.
+- ecarts_cles.cout_annee_1 : somme de (charges annuelles + fonds ALUR signature + fonds roulement signature + cotisations fonds travaux année 1 + taxe foncière annuelle si disponible dans finances.taxe_fonciere_annuelle). Si pré-état daté manquant, estimer sur charges annuelles seules et le signaler dans le commentaire.
 - ecarts_cles.delta_label : formulation "X d écart" adaptée au type (points, euros, lettres).
+
+RÈGLE TAXE FONCIÈRE DANS COMPARER :
+- Si l un des biens a finances.taxe_fonciere_annuelle renseignée et l autre non, signaler l asymétrie dans alerte_documents ou dans points_a_approfondir (ex: "Demander le dernier avis de taxe foncière du Bien 2 pour une comparaison complète").
+- Si la taxe foncière est renseignée pour les 2 biens, elle DOIT être incluse dans cout_annee_1.
+- Si les 2 biens ont chauffage ou eau chaude individuels (finances.chauffage_individuel ou finances.eau_chaude_individuelle = true), l ajouter dans points_a_approfondir : "Obtenir du vendeur les consommations annuelles de chauffage/eau chaude individuels — non incluses dans les charges".
 
 RÈGLES CRITIQUES :
 - Les travaux VOTÉS avant la vente sont à la charge du vendeur — ne les compte PAS comme un risque pour l'acheteur.
