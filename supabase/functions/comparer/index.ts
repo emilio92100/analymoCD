@@ -1,15 +1,9 @@
 // ══════════════════════════════════════════════════════════════
-// EDGE FUNCTION — comparer (session 8)
+// EDGE FUNCTION — comparer
 // Reçoit 2-3 IDs d'analyses complètes
 // Lit les rapports JSON depuis Supabase
 // Appelle Claude pour générer un verdict comparatif personnalisé
 // Stocke le verdict dans la table comparaisons
-//
-// Nouveau schéma verdict (session 8) :
-// - profils[] : profil + forces + points_faibles par bien (structuré titre+detail)
-// - ecarts_cles : 3 métriques chiffrées pour comparaison visuelle
-// - comparatif : 2-3 phrases sur la vraie différence entre biens
-// - points_a_approfondir[] : actions concrètes par bien (ou "les 2")
 // ══════════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -32,93 +26,45 @@ RÔLE ET TON :
 - Tu es objectif, factuel et bienveillant.
 - Tu NE RECOMMANDES JAMAIS d'acheter ou de ne pas acheter un bien.
 - Tu NE DIS JAMAIS "n'achetez pas", "ce bien est à éviter", "fuyez" ou toute formulation directive négative.
-- Tu orientes avec subtilité : "à anticiper", "à surveiller", "nécessite une vérification", "permet une meilleure visibilité", plutôt que des impératifs directs.
-- Tu présentes les forces et faiblesses de chaque bien de manière équilibrée et SYMÉTRIQUE (forces ET points faibles pour CHAQUE bien).
+- Tu présentes les forces et faiblesses de chaque bien de manière équilibrée.
+- Tu utilises des formulations nuancées : "présente un profil plus équilibré", "nécessite une attention particulière", "offre une meilleure visibilité financière".
 - Tu laisses TOUJOURS la décision finale à l'acheteur.
 - Tu ne mentionnes jamais Claude, Anthropic ou IA.
-
-NOMBRE DE BIENS (CRITIQUE) :
-- Tu peux recevoir 2 OU 3 biens à comparer.
-- Adapte TOUTES tes sorties au nombre exact de biens reçus : "profils" doit contenir 2 ou 3 objets (jamais plus, jamais moins), "ecarts_cles" doit avoir bien_3 rempli si 3 biens / null si 2 biens, "points_a_approfondir" doit mentionner "Bien 3" et "Les 3" si 3 biens.
-- La SYMÉTRIE vaut pour tous les biens : si 3 biens, tu dois donner forces+points_faibles pour le Bien 1, le Bien 2 ET le Bien 3.
 
 STRUCTURE DE TA RÉPONSE (JSON strict) :
 {
   "bien_recommande_idx": 0,
-  "titre_verdict": "1 phrase courte et nuancée résumant la comparaison — ex: Le Bien 1 offre un profil plus équilibré malgré une performance énergétique à surveiller",
-  "ecarts_cles": {
-    "score": { "bien_1": 14.5, "bien_2": 11.5, "bien_3": null, "delta_label": "3 pts d'écart" },
-    "cout_annee_1": { "bien_1": 1501, "bien_2": 1608, "bien_3": null, "delta_label": "107 € d'écart" },
-    "dpe": { "bien_1": "E", "bien_2": "D", "bien_3": null, "delta_label": "1 classe d'écart" }
-  },
-  "profils": [
-    {
-      "bien_idx": 0,
-      "profil": "1 ligne factuelle sur le bien — type, surface, copro. Ex: T4 de 79 m² avec cave et box, copropriété de 330 lots",
-      "forces": [
-        { "titre": "2-3 mots clés", "detail": "phrase courte de contexte, sans impératif", "impact": "majeur|modere|mineur" }
-      ],
-      "points_faibles": [
-        { "titre": "2-3 mots clés", "detail": "phrase courte nuancée — jamais d'impératif direct, privilégier 'à anticiper', 'à vérifier'", "impact": "majeur|modere|mineur" }
-      ]
-    }
-  ],
-  "comparatif": "2-3 phrases MAXIMUM sur la VRAIE différence entre les biens. Ce que l'un a que l'autre n'a pas, où se situe le risque principal de chacun. PAS une redite des profils.",
-  "points_a_approfondir": [
-    { "bien": "Bien 1|Bien 2|Bien 3|Les 2|Les 3", "action": "1 phrase d'action concrète — 'demander au syndic...', 'obtenir un devis...', 'consulter un expert...'" }
-  ],
+  "titre_verdict": "phrase courte résumant la comparaison — ex: Le Bien 1 présente un profil globalement plus équilibré",
+  "synthese": "Paragraphe de 3-5 phrases comparant les biens de manière factuelle et nuancée. Mentionne les adresses. Compare les points forts et faiblesses de chaque bien. Reste mesuré.",
+  "forces_bien_recommande": ["3 forces factuelles du bien recommandé"],
+  "points_attention": ["2-4 points d'attention sur le bien recommandé ou les autres biens — travaux évoqués, DPE, procédures, écart financier"],
+  "conseil": "Paragraphe de 2-3 phrases de conseil mesuré. Ne dis pas quoi acheter. Suggère les prochaines étapes : vérifier tel point, demander tel document, consulter un professionnel pour tel aspect. Toujours terminer par rappeler que l'analyse est basée uniquement sur les documents fournis.",
   "alerte_documents": "Si un bien a été analysé avec significativement moins de documents que l'autre, le signaler ici. Sinon null."
 }
 
-RÈGLES POUR LES CHAMPS :
-
-1. "ecarts_cles"
-- Toujours 3 métriques : score, cout_annee_1, dpe.
-- Pour "score" et "cout_annee_1" : renvoyer des NOMBRES (pas de string avec €).
-- Pour "dpe" : renvoyer la lettre "A" à "G", ou null si absent.
-- "delta_label" :
-  * À 2 biens : écart simple entre les 2 biens. Ex: "3 pts d'écart", "107 € d'écart", "1 classe d'écart", "même classe".
-  * À 3 biens : écart entre min et max, formulé clairement. Ex: "entre 11.5 et 14.5", "jusqu'à 215 € d'écart", "de D à F".
-  * Si égalité ou donnée absente : "même classe", "écarts proches", "non comparable".
-- Si 2 biens comparés : bien_3 = null partout. Si 3 biens : bien_3 doit être rempli avec la valeur (jamais null si le bien existe et a la donnée).
-
-2. "profils[]"
-- UN objet par bien, dans l'ordre des biens reçus (bien_idx 0, 1, éventuellement 2).
-- Le NOMBRE d'entrées dans "profils" doit correspondre au nombre de biens reçus (2 ou 3). JAMAIS plus, JAMAIS moins.
-- "profil" : 1 ligne factuelle maximum (pas un paragraphe).
-- "forces" : 2 à 4 items. SYMÉTRIE : chaque bien doit en avoir, y compris le moins bien noté.
-- "points_faibles" : 2 à 4 items. SYMÉTRIE : chaque bien doit en avoir, même le bien recommandé.
-- Chaque item : titre (2-3 mots accrocheurs) + detail (1 phrase de contexte) + impact ("majeur", "modere" ou "mineur").
-- "majeur" : impact significatif sur la valeur, la sécurité, le coût (DPE F/G, fonds travaux très insuffisant, anomalies gaz/élec, lot complet rare).
-- "modere" : à surveiller, budget à prévoir (travaux évoqués, DPE E, participation AG faible).
-- "mineur" : bon à savoir (absence termites, fonds ALUR présent).
-
-3. "comparatif"
-- DOIT être la valeur ajoutée du verdict : ce que l'acheteur ne voit pas dans chaque rapport individuel.
-- Focus sur la DIFFÉRENCE entre les biens, pas la description de chacun.
-- À 2 biens : 2-3 phrases MAXIMUM.
-- À 3 biens : 3-4 phrases MAXIMUM, en couvrant les vraies distinctions (quel bien se distingue côté technique, lequel côté financier, lequel côté gouvernance...). Ne pas forcer 3 comparaisons binaires si une structure naturelle existe.
-
-4. "points_a_approfondir"
-- À 2 biens : 3 à 5 items. À 3 biens : 4 à 6 items (au moins 1 action par bien).
-- Actions concrètes : documents à demander, devis à obtenir, expert à consulter.
-- Couvrir TOUS les biens (2 ou 3), pas uniquement le recommandé. Chaque bien reçu doit avoir au moins 1 action spécifique.
-- Peut inclure une action transverse : à 2 biens utiliser "Les 2", à 3 biens utiliser "Les 3".
-- Valeurs acceptées pour "bien" : "Bien 1", "Bien 2", "Bien 3" (seulement si 3 biens comparés), "Les 2" (seulement si 2 biens), "Les 3" (seulement si 3 biens).
-
-RÈGLES CRITIQUES MÉTIER :
+RÈGLES CRITIQUES :
 - Les travaux VOTÉS avant la vente sont à la charge du vendeur — ne les compte PAS comme un risque pour l'acheteur.
-- Les travaux ÉVOQUÉS non votés sont un vrai risque.
-- Le fonds ALUR et le fonds de roulement sont à REMBOURSER AU VENDEUR à la signature — coût réel pour l'acheteur mais pas un risque financier de la copro.
+- Les travaux ÉVOQUÉS non votés sont un vrai risque — l'acheteur paiera si ces travaux sont votés après la signature.
+- Le fonds ALUR et le fonds de roulement sont à REMBOURSER AU VENDEUR à la signature, en sus du prix — c'est un coût réel pour l'acheteur.
 - DPE D = bonne performance, NE PAS le signaler négativement. Seuls E, F, G sont des points d'attention.
-- Fiche synthétique copro > 12 mois : données financières à actualiser, privilégier pré-état daté récent.
 
-TON ET NUANCE :
-- Jamais d'impératif : "à anticiper" plutôt que "il faut prévoir", "nécessite une vérification" plutôt que "vérifiez".
-- Verimo oriente, ne dicte pas. L'acheteur décide.
-- Rester factuel : chiffres, dates, classes DPE, pourcentages. Les détails techniques rassurent.
+RÈGLE DE SÉLECTION DU BIEN RECOMMANDÉ (bien_recommande_idx) :
+1. PAR DÉFAUT : le bien recommandé est celui qui a le MEILLEUR SCORE /20. Cette règle s'applique dans 90% des cas.
+2. EXCEPTION POSSIBLE : tu peux recommander un bien avec un score INFÉRIEUR UNIQUEMENT si le bien avec le meilleur score présente au moins l'UN de ces facteurs bloquants :
+   * Travaux évoqués ou votés à la charge de l'acheteur > 20 000 EUR
+   * Procédure judiciaire grave en cours (contentieux copro, administration provisoire)
+   * DPE F ou G (passoire thermique) alors que l'autre bien est A-D
+   * Impayés de copropriété globaux > 15% du budget annuel
+   * Asymétrie documentaire MAJEURE : le bien au meilleur score a été analysé avec < 3 documents, l'autre avec beaucoup plus
+3. SI TU FAIS UNE EXCEPTION : tu DOIS impérativement mentionner explicitement dans titre_verdict ET dans synthese POURQUOI tu ne recommandes pas le meilleur score. Exemple : "Le Bien 2, malgré son score légèrement inférieur, présente un profil plus serein sans travaux importants à prévoir contrairement au Bien 1."
+4. SI AUCUN FACTEUR BLOQUANT : tu dois OBLIGATOIREMENT recommander le bien avec le meilleur score, même si l'écart est faible.
 
-Réponds UNIQUEMENT en JSON strict, sans texte avant ou après.`;
+COHÉRENCE DU TEXTE NARRATIF :
+- titre_verdict, synthese, forces_bien_recommande doivent TOUJOURS désigner le bien indiqué par bien_recommande_idx. Jamais de contradiction entre l'index numérique et le texte.
+- Utilise "Bien 1", "Bien 2", "Bien 3" dans le texte pour correspondre aux labels de l'interface (l'ordre des biens dans les données = l'ordre affiché à l'écran).
+- Si tu dois parler du bien NON recommandé dans les points d'attention, dis-le clairement ("Le Bien 2 présente...").
+
+- Réponds UNIQUEMENT en JSON strict, sans texte avant ou après.`;
 }
 
 Deno.serve(async (req) => {
@@ -160,10 +106,16 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'analyses_not_found' }), { status: 404, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    // Préserver l'ordre demandé par le client (important pour l'UI Bien 1 / Bien 2 / Bien 3)
-    const orderedAnalyses = analyseIds
+    // IMPORTANT : Supabase .in() ne préserve pas l'ordre d'analyseIds.
+    // On réordonne les analyses dans l'ordre exact demandé par le frontend
+    // pour que "Bien 1" dans le verdict corresponde bien au premier bien affiché côté UI.
+    const analysesOrdered = analyseIds
       .map(id => analyses.find(a => a.id === id))
-      .filter((a): a is NonNullable<typeof a> => !!a);
+      .filter((a): a is NonNullable<typeof a> => a !== undefined);
+
+    if (analysesOrdered.length !== analyseIds.length) {
+      return new Response(JSON.stringify({ error: 'analyses_not_found' }), { status: 404, headers: { ...CORS, 'Content-Type': 'application/json' } });
+    }
 
     // Vérifier si un verdict existe déjà pour cette combinaison
     const sortedIds = [...analyseIds].sort().join(',');
@@ -180,9 +132,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Construire le message pour Claude — ordre client respecté
-    const userContent = orderedAnalyses.map((a, i) => {
+    // Construire le message pour Claude dans l'ordre demandé par le frontend
+    const userContent = analysesOrdered.map((a, i) => {
       const result = a.result as Record<string, unknown>;
+      // Extraire les données pertinentes pour la comparaison (pas tout le JSON)
       const compact = {
         titre: result.titre,
         score: result.score,
@@ -196,7 +149,6 @@ Deno.serve(async (req) => {
         finances: result.finances,
         procedures: result.procedures,
         diagnostics_resume: result.diagnostics_resume,
-        diagnostics: result.diagnostics,
         documents_analyses: result.documents_analyses,
         pre_etat_date: result.pre_etat_date,
         lot_achete: result.lot_achete,
@@ -218,7 +170,7 @@ Deno.serve(async (req) => {
         model: AI_MODEL,
         max_tokens: MAX_TOKENS,
         system: buildComparePrompt(),
-        messages: [{ role: 'user', content: `Compare ces ${orderedAnalyses.length} biens et génère le verdict comparatif en JSON strict.\n\n${userContent}` }],
+        messages: [{ role: 'user', content: `Compare ces ${analysesOrdered.length} biens et génère le verdict comparatif en JSON.\n\n${userContent}` }],
       }),
     });
 
@@ -244,7 +196,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'parse_error' }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    // Stocker le verdict (plus de debug_upsert_error — bug DB résolu en session 7)
+    // Stocker le verdict
     const { error: upsertError } = await supabaseAdmin.from('comparaisons').upsert({
       user_id: user.id,
       analyse_ids: sortedIds,
@@ -254,8 +206,12 @@ Deno.serve(async (req) => {
 
     if (upsertError) {
       console.error('[comparer] UPSERT ERROR:', JSON.stringify(upsertError));
-      // On renvoie quand même le verdict à l'utilisateur, mais on log l'erreur
-      return new Response(JSON.stringify({ success: true, verdict, cached: false }), {
+      return new Response(JSON.stringify({
+        success: true,
+        verdict,
+        cached: false,
+        debug_upsert_error: upsertError,
+      }), {
         headers: { ...CORS, 'Content-Type': 'application/json' },
       });
     }
