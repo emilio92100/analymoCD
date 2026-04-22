@@ -323,9 +323,10 @@ function getResultData(a: Analyse) {
       charges_annuelles: chargesAnnuelles,
       charges_is_estimation: chargesIsEstimation,
       fonds_travaux_annuel: fondsTravAnnuel,
+      taxe_fonciere: (parseNum(r.taxe_fonciere) || parseNum((r as Record<string, unknown>).taxe_fonciere_annuelle) || parseNum(fin?.taxe_fonciere)) as number | null,
       fonds_alur_signature: fondsAlurSignature,
       fonds_roulement_signature: fondsRoulementSignature,
-      total_annee_1: (chargesAnnuelles || 0) + (fondsTravAnnuel || 0) + (fondsAlurSignature || 0) + (fondsRoulementSignature || 0),
+      total_annee_1: (chargesAnnuelles || 0) + (fondsTravAnnuel || 0) + (fondsAlurSignature || 0) + (fondsRoulementSignature || 0) + (parseNum(r.taxe_fonciere) || parseNum((r as Record<string, unknown>).taxe_fonciere_annuelle) || parseNum(fin?.taxe_fonciere) || 0),
       has_data: !!(chargesAnnuelles || fondsTravAnnuel || fondsAlurSignature || fondsRoulementSignature),
     },
   };
@@ -1216,6 +1217,12 @@ export default function Compare() {
               {/* Résumé financier — REPLIÉ */}
               {resultsData.some(d => d?.financier?.has_data) && (
                 <Accordion title="Résumé financier — 1ère année" icon="💶">
+                  <div style={{ padding: '10px 16px', background: '#eff6ff', borderBottom: '1px solid #dbeafe', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 13, flexShrink: 0, marginTop: 1 }}>💡</span>
+                    <span style={{ fontSize: 12, color: '#1e40af', lineHeight: 1.55 }}>
+                      <strong>À ne pas oublier</strong> — si le chauffage ou l'eau chaude sont <strong>individuels</strong> (non collectifs), ces consommations ne sont pas incluses dans les charges ci-dessous. Rapprochez-vous du vendeur pour connaître les montants annuels exacts avant signature.
+                    </span>
+                  </div>
                   <div style={{ overflowX: 'auto' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: `180px repeat(${cols}, 1fr)`, minWidth: cols === 3 ? 640 : 400 }}>
                       <div style={{ padding: '10px 16px', fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', borderBottom: '2px solid #f1f5f9', background: '#fafbfc' }}>Poste</div>
@@ -1228,6 +1235,7 @@ export default function Compare() {
                       {[
                         { label: 'Charges annuelles', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.charges_annuelles, est: d.financier.charges_is_estimation }) },
                         { label: 'Cotisation trimestrielle fonds travaux', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.fonds_travaux_annuel, est: false }) },
+                        { label: 'Taxe foncière annuelle', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.taxe_fonciere, est: false }) },
                         { label: 'Fonds de travaux du lot à rembourser au vendeur', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.fonds_alur_signature, est: false }) },
                         { label: 'Fonds de roulement à rembourser au vendeur', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.fonds_roulement_signature, est: false }) },
                       ].map((row, ri) => (
@@ -1242,7 +1250,7 @@ export default function Compare() {
                                     {cell.est ? '~ ' : ''}{Math.round(cell.val).toLocaleString('fr-FR')} €
                                     {cell.est && <span style={{ fontSize: 10, color: '#94a3b8', fontStyle: 'italic', marginLeft: 4 }}>estimation</span>}
                                   </span>
-                                ) : <span style={{ fontSize: 11, fontStyle: 'italic' }}>Non renseigné</span>}
+                                ) : <span style={{ fontSize: 11, fontStyle: 'italic' }}>Non renseigné / non détecté</span>}
                               </div>
                             );
                           })}
