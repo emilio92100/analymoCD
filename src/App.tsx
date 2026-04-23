@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import React, { useEffect, lazy, Suspense, Component } from 'react';
+import React, { useEffect, lazy, Suspense, Component, useState } from 'react';
 import type { ReactNode, ErrorInfo } from 'react';
 import { supabase } from './lib/supabase';
 import Navbar from './components/layout/Navbar';
@@ -167,6 +167,45 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
   return (<><Navbar />{children}<Footer /></>);
 }
 
+// ─── 404 intelligente — détecte si l'user est connecté et adapte le CTA ──
+function NotFoundPage() {
+  const location = useLocation();
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsLoggedIn(!!session);
+    });
+  }, []);
+
+  // Si l'URL commence par /dashboard, on renvoie vers le dashboard
+  const cameFromDashboard = location.pathname.startsWith('/dashboard');
+  const shouldRedirectToDashboard = isLoggedIn === true || cameFromDashboard;
+  const targetUrl = shouldRedirectToDashboard ? '/dashboard' : '/';
+  const targetLabel = shouldRedirectToDashboard ? 'Retour au tableau de bord' : "Retour à l'accueil";
+
+  // Tant qu'on ne sait pas si l'user est connecté, on affiche rien (évite un flash de bouton)
+  if (isLoggedIn === null) {
+    return (
+      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid #e2e8f0', borderTopColor: '#2a7d9c', animation: 'spin 0.8s linear infinite' }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingTop: 80 }}>
+      <div style={{ fontSize: 80, marginBottom: 24 }}>🏠</div>
+      <h1 style={{ fontSize: 32, fontWeight: 800, color: 'var(--brand-navy)', marginBottom: 12 }}>Page introuvable</h1>
+      <p style={{ fontSize: 16, color: 'var(--text-secondary)', marginBottom: 32 }}>Cette page n'existe pas.</p>
+      <a href={targetUrl} style={{ padding: '13px 28px', borderRadius: 12, background: 'linear-gradient(135deg, var(--brand-teal), var(--brand-navy))', color: '#fff', textDecoration: 'none', fontWeight: 700, fontSize: 15 }}>
+        {targetLabel}
+      </a>
+    </div>
+  );
+}
+
 function SessionManager() {
   useEffect(() => {
     // Rafraîchir le token automatiquement
@@ -245,6 +284,7 @@ export default function App() {
           <Route path="/dashboard/nouvelle-analyse" element={<DashboardPage />} />
           <Route path="/dashboard/analyses" element={<DashboardPage />} />
           <Route path="/dashboard/compare" element={<DashboardPage />} />
+          <Route path="/dashboard/aide" element={<DashboardPage />} />
           <Route path="/dashboard/compte" element={<DashboardPage />} />
           <Route path="/dashboard/support" element={<DashboardPage />} />
           <Route path="/dashboard/tarifs" element={<DashboardPage />} />
@@ -253,16 +293,7 @@ export default function App() {
           <Route path="/rapport/partage/:token" element={<RapportPartagePage />} />
           <Route path="/rapport/print" element={<RapportPrintPage />} />
           <Route path="/rapport-comparaison" element={<RapportComparaisonPage />} />
-          <Route path="*" element={
-            <PublicLayout>
-              <div style={{ minHeight:'60vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', paddingTop:80 }}>
-                <div style={{ fontSize:80, marginBottom:24 }}>🏠</div>
-                <h1 style={{ fontSize:32, fontWeight:800, color:'var(--brand-navy)', marginBottom:12 }}>Page introuvable</h1>
-                <p style={{ fontSize:16, color:'var(--text-secondary)', marginBottom:32 }}>Cette page n'existe pas.</p>
-                <a href="/" style={{ padding:'13px 28px', borderRadius:12, background:'linear-gradient(135deg, var(--brand-teal), var(--brand-navy))', color:'#fff', textDecoration:'none', fontWeight:700, fontSize:15 }}>Retour à l'accueil</a>
-              </div>
-            </PublicLayout>
-          } />
+          <Route path="*" element={<PublicLayout><NotFoundPage /></PublicLayout>} />
         </Routes>
       </Suspense>
       </ErrorBoundary>
