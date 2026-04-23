@@ -162,38 +162,23 @@ export default function Support() {
   const totalQuestions = faqCategories.reduce((sum, c) => sum + c.questions.length, 0);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, animation: 'fadeUp 0.35s ease both' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeUp 0.35s ease both' }}>
       <style>{`
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(8px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        @media (max-width: 640px) {
-          .support-header-title { font-size: 22px !important; }
-          .support-form-grid { grid-template-columns: 1fr !important; }
-        }
       `}</style>
-
-      {/* HEADER */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <div style={{ width: 52, height: 52, borderRadius: 14, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 6px 18px rgba(42,125,156,0.25)' }}>
-          <LifeBuoy size={24} style={{ color: '#fff' }} />
-        </div>
-        <div>
-          <h1 className="support-header-title" style={{ fontSize: 26, fontWeight: 900, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Support & aide</h1>
-          <p style={{ fontSize: 14, color: '#64748b', margin: '4px 0 0' }}>Une question ? Une remarque ? Nous sommes là pour vous accompagner.</p>
-        </div>
-      </div>
 
       {/* FORMULAIRE EN HAUT */}
       <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-        <div style={{ padding: '22px 26px', background: 'linear-gradient(135deg, #f0f7fb 0%, #e0eef5 100%)', borderBottom: '1px solid #bae3f5', display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(42,125,156,0.25)' }}>
+        <div style={{ padding: '22px 26px', background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', borderBottom: '1px solid #fed7aa', display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(217,119,6,0.25)' }}>
             <Mail size={20} style={{ color: '#fff' }} />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Comment pouvons-nous vous aider ?</div>
-            <div style={{ fontSize: 13.5, color: '#475569', lineHeight: 1.6 }}>
+            <div style={{ fontSize: 17, fontWeight: 800, color: '#92400e', marginBottom: 4 }}>Comment pouvons-nous vous aider ?</div>
+            <div style={{ fontSize: 13.5, color: '#78350f', lineHeight: 1.6 }}>
               Écrivez-nous, nous revenons vers vous sous 24h en moyenne. 💡 <strong>Astuce</strong> : la réponse se trouve peut-être déjà dans notre FAQ juste en dessous — jetez-y un œil avant !
             </div>
           </div>
@@ -328,13 +313,13 @@ export default function Support() {
       </div>
 
       {/* CTA FINAL — rappel contact si la FAQ ne répond pas */}
-      <div style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', border: '1.5px solid #fed7aa', borderRadius: 14, padding: '18px 22px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-        <div style={{ width: 40, height: 40, borderRadius: 11, background: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(217,119,6,0.3)' }}>
+      <div style={{ background: 'linear-gradient(135deg, #f0f7fb 0%, #e0eef5 100%)', border: '1.5px solid #bae3f5', borderRadius: 14, padding: '18px 22px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+        <div style={{ width: 40, height: 40, borderRadius: 11, background: '#2a7d9c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(42,125,156,0.25)' }}>
           <Mail size={18} style={{ color: '#fff' }} />
         </div>
         <div style={{ flex: 1, minWidth: 220 }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: '#92400e', marginBottom: 3 }}>Vous n'avez pas trouvé votre réponse ?</div>
-          <div style={{ fontSize: 13, color: '#78350f', lineHeight: 1.5 }}>Utilisez le formulaire en haut de page, nous revenons vers vous rapidement.</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 3 }}>Vous n'avez pas trouvé votre réponse ?</div>
+          <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.5 }}>Remontez en haut de page pour nous écrire, nous revenons vers vous rapidement.</div>
         </div>
       </div>
 
