@@ -385,20 +385,11 @@ export default function Aide() {
         @media (max-width: 640px) {
           .aide-sommaire-grid { grid-template-columns: 1fr 1fr !important; }
           .notation-tabs { flex-direction: column !important; }
-          .aide-header-title { font-size: 22px !important; }
         }
       `}</style>
 
-      {/* HEADER */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <div style={{ width: 52, height: 52, borderRadius: 14, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 6px 18px rgba(42,125,156,0.25)' }}>
-          <BookOpen size={24} style={{ color: '#fff' }} />
-        </div>
-        <div>
-          <h1 className="aide-header-title" style={{ fontSize: 26, fontWeight: 900, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>Aide & Méthode</h1>
-          <p style={{ fontSize: 14, color: '#64748b', margin: '4px 0 0' }}>Tout comprendre sur Verimo et notre méthode d'analyse</p>
-        </div>
-      </div>
+      {/* INTRO */}
+      <p style={{ fontSize: 14, color: '#64748b', margin: '0', lineHeight: 1.5 }}>Tout comprendre sur Verimo et notre méthode d'analyse</p>
 
       {/* CONSEIL VERIMO EN HAUT */}
       <div style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', border: '1.5px solid #fed7aa', borderRadius: 16, padding: '24px 28px', boxShadow: '0 4px 16px rgba(217,119,6,0.08)' }}>
