@@ -7,7 +7,8 @@ import {
   Search, X, Check, AlertTriangle, Shield, CreditCard,
   Trash2, RefreshCw, Eye, EyeOff, TrendingUp, ArrowRight,
   LogOut, Send, UserPlus, CheckCircle, Download, Tag,
-  Bell, ChevronLeft, Plus, Copy, Briefcase,
+  Bell, ChevronLeft, Plus, Copy, Briefcase, Euro, ExternalLink,
+  Clock, User,
 } from 'lucide-react';
 
 /* ══════════════════════════════════════════
@@ -18,10 +19,19 @@ type AdminUser = {
   full_name?: string; role: string; suspended?: boolean;
   credits_document?: number; credits_complete?: number;
   email_verified?: boolean; provider?: string;
+  last_sign_in_at?: string;
 };
 type AdminAnalyse = {
   id: string; user_id: string; type: string; status: string;
   adresse_bien?: string; title?: string; score?: number; created_at: string;
+  document_urls?: string[]; paid?: boolean; stripe_payment_id?: string;
+  completed_at?: string;
+};
+type AdminPayment = {
+  id: string; user_id: string; amount: number; currency: string;
+  description?: string; stripe_session_id?: string; stripe_payment_id?: string;
+  promo_code?: string; credits_added?: number; credit_type?: string;
+  status: string; created_at: string; retractation_waiver_at?: string;
 };
 type ContactMessage = {
   id: string; name: string; email: string; subject?: string;
@@ -48,6 +58,25 @@ type ConfirmAction = {
 ══════════════════════════════════════════ */
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 const fmtDateTime = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+const fmtRelative = (d: string) => {
+  const diff = Date.now() - new Date(d).getTime();
+  const sec = Math.floor(diff / 1000);
+  if (sec < 60) return 'à l\'instant';
+  if (sec < 3600) return `il y a ${Math.floor(sec / 60)} min`;
+  if (sec < 86400) return `il y a ${Math.floor(sec / 3600)} h`;
+  const days = Math.floor(sec / 86400);
+  if (days < 7) return `il y a ${days} j`;
+  if (days < 30) return `il y a ${Math.floor(days / 7)} sem`;
+  if (days < 365) return `il y a ${Math.floor(days / 30)} mois`;
+  return `il y a ${Math.floor(days / 365)} an${Math.floor(days / 365) > 1 ? 's' : ''}`;
+};
+const daysSince = (d: string) => Math.floor((Date.now() - new Date(d).getTime()) / (1000 * 60 * 60 * 24));
+const stripeUrl = (id?: string) => {
+  if (!id) return null;
+  // Les payment_intent commencent par pi_, les sessions par cs_
+  if (id.startsWith('cs_')) return `https://dashboard.stripe.com/payments?query=${id}`;
+  return `https://dashboard.stripe.com/payments/${id}`;
+};
 const getScoreColor = (s: number) => s >= 14 ? '#16a34a' : s >= 10 ? '#d97706' : '#dc2626';
 const getScoreBg = (s: number) => s >= 14 ? '#f0fdf4' : s >= 10 ? '#fffbeb' : '#fef2f2';
 const PLAN_PRICES: Record<string, number> = { document: 4.90, complete: 19.90, pack2: 29.90, pack3: 39.90 };
@@ -159,7 +188,7 @@ function ActionBtn({ icon, label, color = '#64748b', bg = '#f8fafc', border = '#
 /* ══════════════════════════════════════════
    ADMIN PAGE ROOT
 ══════════════════════════════════════════ */
-type TabId = 'dashboard' | 'users' | 'analyses' | 'messages' | 'demandes_pro' | 'stats' | 'promos' | 'logs' | 'banner';
+type TabId = 'dashboard' | 'users' | 'analyses' | 'payments' | 'messages' | 'demandes_pro' | 'stats' | 'promos' | 'logs' | 'banner';
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -171,6 +200,11 @@ export default function AdminPage() {
   const [toast, setToast] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
   const [proUnreadCount, setProUnreadCount] = useState(0);
+  // Routing inter-onglets : permet d'ouvrir la fiche d'un user depuis une analyse, etc.
+  const [focusUserId, setFocusUserId] = useState<string | null>(null);
+  // Recherche globale
+  const [globalSearch, setGlobalSearch] = useState('');
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg); setTimeout(() => setToast(''), 3000);
@@ -206,6 +240,23 @@ export default function AdminPage() {
     init();
   }, [isAdmin]);
 
+  // Raccourci clavier Cmd+K / Ctrl+K pour ouvrir la recherche globale
+  useEffect(() => {
+    if (!isAdmin) return;
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setGlobalSearchOpen(true);
+      }
+      if (e.key === 'Escape' && globalSearchOpen) {
+        setGlobalSearchOpen(false);
+        setGlobalSearch('');
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isAdmin, globalSearchOpen]);
+
   if (loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f4f7f9' }}>
       <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
@@ -219,6 +270,7 @@ export default function AdminPage() {
     { id: 'stats', label: 'Statistiques', icon: BarChart2 },
     { id: 'users', label: 'Utilisateurs', icon: Users },
     { id: 'analyses', label: 'Analyses', icon: FileText },
+    { id: 'payments', label: 'Paiements', icon: Euro },
     { id: 'messages', label: 'Messages', icon: Mail, badge: unreadCount },
     { id: 'demandes_pro', label: 'Demandes Pro', icon: Briefcase, badge: proUnreadCount },
     { id: 'promos', label: 'Codes promo', icon: Tag },
@@ -326,8 +378,8 @@ export default function AdminPage() {
       <AnimatePresence>{confirm && <ConfirmModal action={confirm} onClose={() => setConfirm(null)} />}</AnimatePresence>
 
       {/* Topbar */}
-      <div style={{ background: 'linear-gradient(135deg,#0f2d3d,#1a4a60)', padding: '0 16px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(15,45,61,0.3)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ background: 'linear-gradient(135deg,#0f2d3d,#1a4a60)', padding: '0 16px', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(15,45,61,0.3)', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <div style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(42,125,156,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Shield size={17} color="#7dd3f0" />
           </div>
@@ -336,7 +388,20 @@ export default function AdminPage() {
             <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{adminEmail}</div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+
+        {/* Recherche globale — desktop */}
+        <button
+          className="admin-global-search"
+          onClick={() => setGlobalSearchOpen(true)}
+          style={{ flex: 1, maxWidth: 440, display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}
+          onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.12)'; }}
+          onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.08)'; }}>
+          <Search size={14} style={{ color: 'rgba(255,255,255,0.5)', flexShrink: 0 }} />
+          <span style={{ flex: 1 }}>Rechercher un client, une analyse, un paiement…</span>
+          <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 5, background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>⌘K</span>
+        </button>
+
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
           <button onClick={() => navigate('/dashboard')}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 9, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
             ←<span className="admin-topbar-title" style={{ display: 'inline' }}> Dashboard</span>
@@ -389,8 +454,9 @@ export default function AdminPage() {
             <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
               {activeTab === 'dashboard' && <DashboardTab onNavigate={setActiveTab} />}
               {activeTab === 'stats' && <StatsTab />}
-              {activeTab === 'users' && <UsersTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} />}
-              {activeTab === 'analyses' && <AnalysesTab />}
+              {activeTab === 'users' && <UsersTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} focusUserId={focusUserId} onFocusUserHandled={() => setFocusUserId(null)} />}
+              {activeTab === 'analyses' && <AnalysesTab onOpenUser={(id) => { setFocusUserId(id); setActiveTab('users'); }} />}
+              {activeTab === 'payments' && <PaymentsTab onOpenUser={(id) => { setFocusUserId(id); setActiveTab('users'); }} showToast={showToast} />}
               {activeTab === 'messages' && <MessagesTab onConfirm={setConfirm} showToast={showToast} onReadChange={setUnreadCount} />}
               {activeTab === 'demandes_pro' && <DemandesProTab onConfirm={setConfirm} showToast={showToast} onReadChange={setProUnreadCount} />}
               {activeTab === 'promos' && <PromosTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} />}
@@ -400,6 +466,23 @@ export default function AdminPage() {
           </AnimatePresence>
         </main>
       </div>
+
+      {/* Global Search Modal */}
+      <AnimatePresence>
+        {globalSearchOpen && (
+          <GlobalSearchModal
+            query={globalSearch}
+            setQuery={setGlobalSearch}
+            onClose={() => { setGlobalSearchOpen(false); setGlobalSearch(''); }}
+            onNavigate={(tab, userId) => {
+              if (userId) setFocusUserId(userId);
+              setActiveTab(tab);
+              setGlobalSearchOpen(false);
+              setGlobalSearch('');
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -770,7 +853,13 @@ function StatsTab() {
 /* ══════════════════════════════════════════
    USERS TAB
 ══════════════════════════════════════════ */
-function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmAction) => void; showToast: (m: string) => void; logAction: (a: string, t?: string) => Promise<void> }) {
+function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHandled }: {
+  onConfirm: (a: ConfirmAction) => void;
+  showToast: (m: string) => void;
+  logAction: (a: string, t?: string) => Promise<void>;
+  focusUserId?: string | null;
+  onFocusUserHandled?: () => void;
+}) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -778,6 +867,7 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
   const [detailUser, setDetailUser] = useState<AdminUser | null>(null);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [userAnalyses, setUserAnalyses] = useState<AdminAnalyse[]>([]);
+  const [userPayments, setUserPayments] = useState<AdminPayment[]>([]);
   const [form, setForm] = useState({ email: '', password: '', name: '', credits_doc: 0, credits_complete: 0 });
   const [feedback, setFeedback] = useState('');
   const [sending, setSending] = useState(false);
@@ -796,11 +886,25 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
 
   useEffect(() => { loadUsers(); }, [loadUsers]);
 
-  const openDetail = async (user: AdminUser) => {
+  const openDetail = useCallback(async (user: AdminUser) => {
     setDetailUser(user);
-    const { data } = await supabase.from('analyses').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
-    setUserAnalyses(data || []);
-  };
+    const [{ data: analyses }, { data: payments }] = await Promise.all([
+      supabase.from('analyses').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+      supabase.from('payments').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+    ]);
+    setUserAnalyses(analyses || []);
+    setUserPayments(payments || []);
+  }, []);
+
+  // Si focusUserId est passé (venant d'une analyse ou d'un paiement), ouvrir direct la fiche
+  useEffect(() => {
+    if (!focusUserId || users.length === 0) return;
+    const user = users.find(u => u.id === focusUserId);
+    if (user) {
+      openDetail(user);
+      onFocusUserHandled?.();
+    }
+  }, [focusUserId, users, openDetail, onFocusUserHandled]);
 
   const filtered = users
     .filter(u => {
@@ -897,20 +1001,34 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
   };
 
   if (detailUser) {
+    const totalSpent = userPayments.filter(p => p.status === 'completed').reduce((s, p) => s + (p.amount || 0), 0);
+    const totalPaidPayments = userPayments.filter(p => p.status === 'completed' && p.amount > 0).length;
+
     return (
       <div>
-        <button onClick={() => setDetailUser(null)} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#2a7d9c' }}>
+        <button onClick={() => { setDetailUser(null); setUserPayments([]); setUserAnalyses([]); }} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#2a7d9c' }}>
           <ChevronLeft size={16} /> Retour à la liste
         </button>
         <div className="admin-detail-grid" style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 16 }}>
+          {/* Colonne gauche : profil client */}
           <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '24px', height: 'fit-content' }}>
             <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 900, color: '#fff', margin: '0 auto 16px' }}>
               {(detailUser.full_name || detailUser.email).charAt(0).toUpperCase()}
             </div>
             <div style={{ textAlign: 'center' as const, marginBottom: 20 }}>
               <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>{detailUser.full_name || '—'}</div>
-              <div style={{ fontSize: 13, color: '#2a7d9c' }}>{detailUser.email}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Inscrit le {fmtDate(detailUser.created_at)}</div>
+              <button onClick={() => { navigator.clipboard.writeText(detailUser.email); showToast('Email copié'); }}
+                style={{ background: 'none', border: 'none', fontSize: 13, color: '#2a7d9c', cursor: 'pointer', padding: 0, textDecoration: 'underline', textDecorationColor: '#bae3f5' }}>
+                {detailUser.email}
+              </button>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>
+                Inscrit le {fmtDateTime(detailUser.created_at)}
+              </div>
+              {detailUser.last_sign_in_at && (
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                  <Clock size={10} /> Dernière connexion : {fmtRelative(detailUser.last_sign_in_at)}
+                </div>
+              )}
               <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 10, flexWrap: 'wrap' as const }}>
                 {detailUser.role === 'admin' && <Badge color="#7c3aed" bg="#f5f3ff">admin</Badge>}
                 {detailUser.suspended && <Badge color="#dc2626" bg="#fef2f2">suspendu</Badge>}
@@ -921,7 +1039,12 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
-              {[{ l: 'Crédits Simple', v: detailUser.credits_document || 0, c: '#2a7d9c' }, { l: 'Crédits Complet', v: detailUser.credits_complete || 0, c: '#7c3aed' }, { l: 'Analyses', v: userAnalyses.length, c: '#16a34a' }].map((s, i) => (
+              {[
+                { l: 'Crédits Simple', v: detailUser.credits_document || 0, c: '#2a7d9c' },
+                { l: 'Crédits Complet', v: detailUser.credits_complete || 0, c: '#7c3aed' },
+                { l: 'Analyses', v: userAnalyses.length, c: '#16a34a' },
+                { l: 'Total dépensé', v: `${totalSpent.toFixed(2)}€`, c: '#f0a500' },
+              ].map((s, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
                   <span style={{ fontSize: 13, color: '#64748b' }}>{s.l}</span>
                   <span style={{ fontSize: 14, fontWeight: 800, color: s.c }}>{s.v}</span>
@@ -937,24 +1060,98 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
                 style={{ padding: '10px', borderRadius: 10, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#64748b', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 <RefreshCw size={14} /> Reset mot de passe
               </button>
+              <button onClick={() => onConfirm({ title: detailUser.suspended ? 'Réactiver' : 'Suspendre', message: `${detailUser.suspended ? 'Réactiver' : 'Suspendre'} le compte de ${detailUser.email} ?`, confirmLabel: detailUser.suspended ? 'Réactiver' : 'Suspendre', variant: detailUser.suspended ? 'info' : 'warning', onConfirm: async () => { await supabase.from('profiles').update({ suspended: !detailUser.suspended }).eq('id', detailUser.id); await logAction(detailUser.suspended ? 'Réactivation' : 'Suspension', detailUser.email); await loadUsers(); setDetailUser(u => u ? { ...u, suspended: !u.suspended } : u); showToast(`Compte ${detailUser.suspended ? 'réactivé' : 'suspendu'}`); } })}
+                style={{ padding: '10px', borderRadius: 10, background: detailUser.suspended ? '#f0fdf4' : '#fffbeb', border: `1.5px solid ${detailUser.suspended ? '#86efac' : '#fde68a'}`, color: detailUser.suspended ? '#16a34a' : '#d97706', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                {detailUser.suspended ? <><Eye size={14} /> Réactiver</> : <><EyeOff size={14} /> Suspendre</>}
+              </button>
+              <button onClick={() => onConfirm({ title: 'Supprimer le compte', message: `Supprimer définitivement ${detailUser.email} ? Action irréversible. Toutes les analyses seront également perdues.`, confirmLabel: 'Supprimer définitivement', variant: 'danger', onConfirm: async () => { await callEdgeFunction('delete', { user_id: detailUser.id }); await logAction('Suppression compte', detailUser.email); await loadUsers(); setDetailUser(null); setUserPayments([]); setUserAnalyses([]); showToast('Compte supprimé'); } })}
+                style={{ padding: '10px', borderRadius: 10, background: '#fef2f2', border: '1.5px solid #fecaca', color: '#dc2626', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <Trash2 size={14} /> Supprimer le compte
+              </button>
             </div>
           </div>
-          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
-            <div style={{ padding: '18px 22px', borderBottom: '1px solid #f1f5f9', fontSize: 14, fontWeight: 800, color: '#0f172a' }}>
-              Analyses ({userAnalyses.length})
-            </div>
-            {userAnalyses.length === 0 ? (
-              <div style={{ padding: '40px', textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Aucune analyse</div>
-            ) : userAnalyses.map((a, i) => (
-              <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 22px', borderBottom: i < userAnalyses.length - 1 ? '1px solid #f8fafc' : 'none' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{a.adresse_bien || a.title || 'Sans titre'}</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDate(a.created_at)} · {PLAN_LABELS[a.type] || a.type}</div>
+
+          {/* Colonne droite : sections historiques */}
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
+            {/* Historique des paiements */}
+            <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
+              <div style={{ padding: '18px 22px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Euro size={16} style={{ color: '#16a34a' }} />
+                  <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Historique des paiements</div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f1f5f9', padding: '2px 8px', borderRadius: 6 }}>{userPayments.length}</span>
                 </div>
-                {a.score != null && <span style={{ fontSize: 13, fontWeight: 900, color: getScoreColor(a.score), background: getScoreBg(a.score), padding: '3px 9px', borderRadius: 8 }}>{a.score}/20</span>}
-                {a.status === 'completed' ? <Badge color="#16a34a" bg="#f0fdf4">✓</Badge> : a.status === 'processing' ? <Badge color="#2a7d9c" bg="#f0f7fb">⟳</Badge> : <Badge color="#dc2626" bg="#fef2f2">✗</Badge>}
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#16a34a' }}>
+                  {totalSpent.toFixed(2)}€ · {totalPaidPayments} paiement{totalPaidPayments > 1 ? 's' : ''}
+                </div>
               </div>
-            ))}
+              {userPayments.length === 0 ? (
+                <div style={{ padding: '32px', textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Aucun paiement</div>
+              ) : userPayments.map((p, i) => {
+                const days = daysSince(p.created_at);
+                const eligible = days < 14 && p.amount > 0;
+                return (
+                  <div key={p.id} style={{ padding: '14px 22px', borderBottom: i < userPayments.length - 1 ? '1px solid #f8fafc' : 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 9, background: p.amount === 0 ? '#f5f3ff' : '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {p.amount === 0 ? <Tag size={15} style={{ color: '#7c3aed' }} /> : <Euro size={15} style={{ color: '#16a34a' }} />}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 3 }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
+                            {p.amount === 0 ? 'Crédits offerts' : `${p.amount.toFixed(2)}€`}
+                          </div>
+                          <div style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDateTime(p.created_at)}</div>
+                        </div>
+                        <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>
+                          {p.description || 'Paiement'}
+                          {p.promo_code && <span style={{ color: '#7c3aed', fontWeight: 700, marginLeft: 6 }}>· Code {p.promo_code}</span>}
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginTop: 8 }}>
+                          {p.retractation_waiver_at && (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 7px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 3 }}>
+                              <CheckCircle size={9} /> Consentement le {fmtDateTime(p.retractation_waiver_at)}
+                            </span>
+                          )}
+                          {eligible && (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fffbeb', padding: '3px 7px', borderRadius: 6 }}>
+                              ⚠ Éligible remboursement ({14 - days}j restants)
+                            </span>
+                          )}
+                          {(p.stripe_session_id || p.stripe_payment_id) && (
+                            <a href={stripeUrl(p.stripe_payment_id || p.stripe_session_id) || '#'} target="_blank" rel="noopener noreferrer"
+                              style={{ fontSize: 10, fontWeight: 700, color: '#64748b', background: '#f8fafc', border: '1px solid #edf2f7', padding: '3px 7px', borderRadius: 6, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
+                              <ExternalLink size={9} /> Stripe
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Historique des analyses */}
+            <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
+              <div style={{ padding: '18px 22px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <FileText size={16} style={{ color: '#7c3aed' }} />
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Analyses</div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f1f5f9', padding: '2px 8px', borderRadius: 6 }}>{userAnalyses.length}</span>
+              </div>
+              {userAnalyses.length === 0 ? (
+                <div style={{ padding: '32px', textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Aucune analyse</div>
+              ) : userAnalyses.map((a, i) => (
+                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 22px', borderBottom: i < userAnalyses.length - 1 ? '1px solid #f8fafc' : 'none' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.adresse_bien || a.title || 'Sans titre'}</div>
+                    <div style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDateTime(a.created_at)} · {PLAN_LABELS[a.type] || a.type}</div>
+                  </div>
+                  {a.score != null && <span style={{ fontSize: 13, fontWeight: 900, color: getScoreColor(a.score), background: getScoreBg(a.score), padding: '3px 9px', borderRadius: 8 }}>{a.score}/20</span>}
+                  {a.status === 'completed' ? <Badge color="#16a34a" bg="#f0fdf4">✓</Badge> : (a.status === 'processing' || a.status === 'pending') ? <Badge color="#2a7d9c" bg="#f0f7fb">⟳</Badge> : <Badge color="#dc2626" bg="#fef2f2">✗</Badge>}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -964,7 +1161,7 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
               <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
                 <Input label="Crédits Analyse Simple" type="number" value={form.credits_doc} onChange={e => setForm(f => ({ ...f, credits_doc: parseInt(e.target.value) || 0 }))} />
                 <Input label="Crédits Analyse Complète" type="number" value={form.credits_complete} onChange={e => setForm(f => ({ ...f, credits_complete: parseInt(e.target.value) || 0 }))} />
-                <button onClick={handleSetCredits} style={{ padding: '12px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                <button onClick={handleSetCredits} style={{ padding: '12px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                   <Check size={15} /> Enregistrer
                 </button>
               </div>
@@ -1108,72 +1305,370 @@ function UsersTab({ onConfirm, showToast, logAction }: { onConfirm: (a: ConfirmA
 /* ══════════════════════════════════════════
    ANALYSES TAB
 ══════════════════════════════════════════ */
-function AnalysesTab() {
-  const [analyses, setAnalyses] = useState<AdminAnalyse[]>([]);
-  const [filter, setFilter] = useState<'all' | 'completed' | 'processing' | 'error'>('all');
+type AnalysisWithUser = AdminAnalyse & { userEmail?: string; userName?: string };
+
+function AnalysesTab({ onOpenUser }: { onOpenUser: (userId: string) => void }) {
+  const [analyses, setAnalyses] = useState<AnalysisWithUser[]>([]);
+  const [filter, setFilter] = useState<'all' | 'completed' | 'processing' | 'failed'>('all');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [detail, setDetail] = useState<AnalysisWithUser | null>(null);
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const { data } = await supabase.from('analyses').select('*').order('created_at', { ascending: false }).limit(200);
-      setAnalyses(data || []);
+  const loadAnalyses = useCallback(async () => {
+    setLoading(true);
+    // Jointure manuelle : on charge les analyses + les profils associés
+    const { data: rawAnalyses } = await supabase
+      .from('analyses')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(500);
+
+    if (!rawAnalyses || rawAnalyses.length === 0) {
+      setAnalyses([]);
       setLoading(false);
-    };
-    load();
+      return;
+    }
+
+    const userIds = [...new Set(rawAnalyses.map(a => a.user_id).filter(Boolean))];
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, email, full_name')
+      .in('id', userIds);
+
+    const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+    const enriched: AnalysisWithUser[] = rawAnalyses.map(a => ({
+      ...a,
+      userEmail: profileMap.get(a.user_id)?.email,
+      userName: profileMap.get(a.user_id)?.full_name,
+    }));
+
+    setAnalyses(enriched);
+    setLoading(false);
   }, []);
 
+  useEffect(() => { loadAnalyses(); }, [loadAnalyses]);
+
   const filtered = analyses.filter(a => {
-    const matchFilter = filter === 'all' || a.status === filter;
-    const matchSearch = !search || (a.adresse_bien || a.title || '').toLowerCase().includes(search.toLowerCase());
+    // Filtre statut : 'error' dans l'ancien code = 'failed' en vrai
+    const matchFilter = filter === 'all' || (filter === 'failed' ? (a.status === 'failed' || a.status === 'error') : a.status === filter);
+    const q = search.toLowerCase().trim();
+    const matchSearch = !q
+      || (a.adresse_bien || '').toLowerCase().includes(q)
+      || (a.title || '').toLowerCase().includes(q)
+      || (a.userEmail || '').toLowerCase().includes(q)
+      || (a.userName || '').toLowerCase().includes(q);
     return matchFilter && matchSearch;
   });
 
   const doExport = () => {
-    exportCSV(filtered.map(a => ({ adresse: a.adresse_bien || a.title || '', type: PLAN_LABELS[a.type] || a.type, score: a.score ?? '', statut: a.status, date: fmtDate(a.created_at) })), 'verimo-analyses.csv');
+    exportCSV(filtered.map(a => ({
+      adresse: a.adresse_bien || a.title || '',
+      client: a.userEmail || '',
+      type: PLAN_LABELS[a.type] || a.type,
+      score: a.score ?? '',
+      statut: a.status,
+      date: fmtDateTime(a.created_at),
+    })), 'verimo-analyses.csv');
   };
+
+  const counts = {
+    all: analyses.length,
+    completed: analyses.filter(a => a.status === 'completed').length,
+    processing: analyses.filter(a => a.status === 'processing' || a.status === 'pending').length,
+    failed: analyses.filter(a => a.status === 'failed' || a.status === 'error').length,
+  };
+
+  // VUE DÉTAIL D'UNE ANALYSE
+  if (detail) {
+    return <AnalysisDetailView analysis={detail} onBack={() => setDetail(null)} onOpenUser={onOpenUser} onReload={loadAnalyses} />;
+  }
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap' as const, gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Analyses</h1>
-          <p style={{ fontSize: 13, color: '#94a3b8' }}>{analyses.length} analyses · {analyses.filter(a => a.status === 'completed').length} complétées</p>
+          <p style={{ fontSize: 13, color: '#94a3b8' }}>{analyses.length} analyses · cliquez une ligne pour voir le détail</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={doExport} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#374151', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
             <Download size={14} /> CSV
           </button>
-          {(['all', 'completed', 'processing', 'error'] as const).map(f => (
-            <button key={f} onClick={() => setFilter(f)}
-              style={{ padding: '8px 14px', borderRadius: 10, border: `1.5px solid ${filter === f ? '#2a7d9c' : '#edf2f7'}`, background: filter === f ? '#f0f7fb' : '#fff', color: filter === f ? '#2a7d9c' : '#64748b', fontSize: 12, fontWeight: filter === f ? 700 : 500, cursor: 'pointer' }}>
-              {f === 'all' ? 'Toutes' : f === 'completed' ? 'Complétées' : f === 'processing' ? 'En cours' : 'Erreurs'}
-            </button>
-          ))}
         </div>
+      </div>
+
+      {/* Filtres en tabs */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' as const }}>
+        {([
+          { id: 'all', label: 'Toutes', count: counts.all, color: '#64748b' },
+          { id: 'completed', label: '✓ Complétées', count: counts.completed, color: '#16a34a' },
+          { id: 'processing', label: '⟳ En cours', count: counts.processing, color: '#2a7d9c' },
+          { id: 'failed', label: '✗ Échouées', count: counts.failed, color: '#dc2626' },
+        ] as const).map(f => (
+          <button key={f.id} onClick={() => setFilter(f.id)}
+            style={{ padding: '8px 14px', borderRadius: 10, border: `1.5px solid ${filter === f.id ? f.color : '#edf2f7'}`, background: filter === f.id ? `${f.color}12` : '#fff', color: filter === f.id ? f.color : '#64748b', fontSize: 12, fontWeight: filter === f.id ? 700 : 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+            {f.label} <span style={{ padding: '1px 6px', borderRadius: 6, background: filter === f.id ? f.color : '#f1f5f9', color: filter === f.id ? '#fff' : '#94a3b8', fontSize: 11, fontWeight: 700 }}>{f.count}</span>
+          </button>
+        ))}
       </div>
 
       <div style={{ position: 'relative', marginBottom: 16 }}>
         <Search size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher par adresse..."
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher par adresse, email ou nom client…"
           style={{ width: '100%', padding: '11px 14px 11px 42px', borderRadius: 12, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const, background: '#fff', fontFamily: 'inherit' }} />
       </div>
 
-      <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 80px 100px 90px', borderBottom: '1.5px solid #edf2f7', padding: '10px 18px', background: '#f8fafc' }}>
-          {['Adresse / Titre', 'Type', 'Score', 'Statut', 'Date'].map(h => <div key={h} style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.07em', textTransform: 'uppercase' as const }}>{h}</div>)}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1.2fr 90px 75px 110px 100px', borderBottom: '1.5px solid #edf2f7', padding: '10px 18px', background: '#f8fafc' }}>
+          {['Adresse / Titre', 'Client', 'Type', 'Score', 'Statut', 'Date'].map(h => <div key={h} style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.07em', textTransform: 'uppercase' as const }}>{h}</div>)}
         </div>
         {loading ? <div style={{ padding: '40px', textAlign: 'center' as const, color: '#94a3b8' }}>Chargement...</div>
+          : filtered.length === 0 ? <div style={{ padding: '40px', textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Aucune analyse ne correspond à votre recherche</div>
           : filtered.map((a, i) => (
-            <div key={a.id} style={{ display: 'grid', gridTemplateColumns: '1fr 90px 80px 100px 90px', padding: '12px 18px', borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc', alignItems: 'center' }}>
+            <button key={a.id} onClick={() => setDetail(a)}
+              style={{ width: '100%', display: 'grid', gridTemplateColumns: '1.4fr 1.2fr 90px 75px 110px 100px', padding: '12px 18px', borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc', alignItems: 'center', border: 'none', borderRadius: 0, cursor: 'pointer', textAlign: 'left' as const, transition: 'background 0.15s', fontFamily: 'inherit' }}
+              onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#f0f7fb'}
+              onMouseOut={e => (e.currentTarget as HTMLElement).style.background = i % 2 === 0 ? '#fff' : '#fafbfc'}>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.adresse_bien || a.title || 'Sans titre'}</div>
-              <Badge color="#64748b" bg="#f8fafc">{PLAN_LABELS[a.type] || a.type}</Badge>
+              <div style={{ fontSize: 12, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                {a.userEmail || <span style={{ color: '#e2e8f0', fontStyle: 'italic' as const }}>Client supprimé</span>}
+              </div>
+              <Badge color={PLAN_COLORS[a.type] || '#64748b'} bg={`${PLAN_COLORS[a.type] || '#64748b'}12`}>{PLAN_LABELS[a.type] || a.type}</Badge>
               <div>{a.score != null ? <span style={{ fontSize: 13, fontWeight: 900, color: getScoreColor(a.score), background: getScoreBg(a.score), padding: '3px 9px', borderRadius: 8 }}>{a.score}/20</span> : <span style={{ color: '#e2e8f0' }}>—</span>}</div>
-              <div>{a.status === 'completed' ? <Badge color="#16a34a" bg="#f0fdf4">✓ Complétée</Badge> : a.status === 'processing' ? <Badge color="#2a7d9c" bg="#f0f7fb">⟳ En cours</Badge> : <Badge color="#dc2626" bg="#fef2f2">✗ Erreur</Badge>}</div>
+              <div>{a.status === 'completed' ? <Badge color="#16a34a" bg="#f0fdf4">✓ Complétée</Badge> : (a.status === 'processing' || a.status === 'pending') ? <Badge color="#2a7d9c" bg="#f0f7fb">⟳ En cours</Badge> : <Badge color="#dc2626" bg="#fef2f2">✗ Échouée</Badge>}</div>
               <div style={{ fontSize: 12, color: '#94a3b8' }}>{fmtDate(a.created_at)}</div>
-            </div>
+            </button>
           ))}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   ANALYSIS DETAIL VIEW
+══════════════════════════════════════════ */
+function AnalysisDetailView({ analysis, onBack, onOpenUser, onReload }: {
+  analysis: AnalysisWithUser;
+  onBack: () => void;
+  onOpenUser: (userId: string) => void;
+  onReload: () => void;
+}) {
+  const [linkedPayment, setLinkedPayment] = useState<AdminPayment | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      // Tenter de retrouver le paiement lié via stripe_payment_id ou via le plus récent paiement du user avant cette analyse
+      if (analysis.stripe_payment_id) {
+        const { data } = await supabase.from('payments')
+          .select('*')
+          .eq('stripe_payment_id', analysis.stripe_payment_id)
+          .single();
+        if (data) { setLinkedPayment(data); setLoading(false); return; }
+      }
+      // Sinon on cherche le paiement correspondant dans les 24h avant la création de l'analyse
+      const { data: recent } = await supabase.from('payments')
+        .select('*')
+        .eq('user_id', analysis.user_id)
+        .eq('status', 'completed')
+        .order('created_at', { ascending: false })
+        .limit(5);
+      const match = (recent || []).find(p => {
+        const diff = new Date(analysis.created_at).getTime() - new Date(p.created_at).getTime();
+        return diff >= 0 && diff < 86400000; // dans les 24h
+      });
+      setLinkedPayment(match || null);
+      setLoading(false);
+    };
+    load();
+  }, [analysis]);
+
+  const duration = analysis.completed_at
+    ? Math.round((new Date(analysis.completed_at).getTime() - new Date(analysis.created_at).getTime()) / 1000)
+    : null;
+
+  // Déterminer l'origine de l'analyse
+  let origineLabel = '';
+  let origineColor = '#64748b';
+  let origineBg = '#f8fafc';
+  if (linkedPayment) {
+    if (linkedPayment.amount === 0 && linkedPayment.promo_code) {
+      origineLabel = `🎁 Code promo gratuit "${linkedPayment.promo_code}"`;
+      origineColor = '#7c3aed';
+      origineBg = '#f5f3ff';
+    } else if (linkedPayment.promo_code) {
+      origineLabel = `💳 Paiement ${linkedPayment.amount.toFixed(2)}€ · Code "${linkedPayment.promo_code}"`;
+      origineColor = '#16a34a';
+      origineBg = '#f0fdf4';
+    } else {
+      origineLabel = `💳 Paiement Stripe ${linkedPayment.amount.toFixed(2)}€`;
+      origineColor = '#16a34a';
+      origineBg = '#f0fdf4';
+    }
+  } else if (analysis.paid === false || (!analysis.stripe_payment_id && analysis.type !== 'document')) {
+    origineLabel = '✨ Aperçu gratuit / Analyse offerte';
+    origineColor = '#f0a500';
+    origineBg = '#fffbeb';
+  } else {
+    origineLabel = '❓ Origine non identifiée';
+  }
+
+  return (
+    <div>
+      <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#2a7d9c' }}>
+        <ChevronLeft size={16} /> Retour aux analyses
+      </button>
+
+      <div className="admin-detail-grid" style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 16 }}>
+        {/* Colonne gauche : client + statut */}
+        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
+          {/* Bloc Client */}
+          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 14 }}>CLIENT</div>
+            {analysis.userEmail ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 900, color: '#fff', flexShrink: 0 }}>
+                    {(analysis.userName || analysis.userEmail).charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{analysis.userName || '—'}</div>
+                    <div style={{ fontSize: 12, color: '#2a7d9c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{analysis.userEmail}</div>
+                  </div>
+                </div>
+                <button onClick={() => onOpenUser(analysis.user_id)}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, background: '#f0f7fb', border: '1.5px solid #bae3f5', color: '#2a7d9c', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <User size={14} /> Voir la fiche complète
+                </button>
+              </>
+            ) : (
+              <div style={{ fontSize: 13, color: '#94a3b8', fontStyle: 'italic' as const, padding: '12px', background: '#f8fafc', borderRadius: 10 }}>
+                Client introuvable — compte supprimé
+              </div>
+            )}
+          </div>
+
+          {/* Bloc Statut */}
+          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 14 }}>STATUT</div>
+            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+                <span style={{ fontSize: 12, color: '#64748b' }}>État</span>
+                {analysis.status === 'completed' ? <Badge color="#16a34a" bg="#f0fdf4">✓ Complétée</Badge>
+                  : (analysis.status === 'processing' || analysis.status === 'pending') ? <Badge color="#2a7d9c" bg="#f0f7fb">⟳ En cours</Badge>
+                  : <Badge color="#dc2626" bg="#fef2f2">✗ Échouée</Badge>}
+              </div>
+              {analysis.score != null && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+                  <span style={{ fontSize: 12, color: '#64748b' }}>Score</span>
+                  <span style={{ fontSize: 14, fontWeight: 900, color: getScoreColor(analysis.score), background: getScoreBg(analysis.score), padding: '3px 10px', borderRadius: 8 }}>{analysis.score}/20</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+                <span style={{ fontSize: 12, color: '#64748b' }}>Type</span>
+                <Badge color={PLAN_COLORS[analysis.type] || '#64748b'} bg={`${PLAN_COLORS[analysis.type] || '#64748b'}12`}>{PLAN_LABELS[analysis.type] || analysis.type}</Badge>
+              </div>
+              {duration !== null && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+                  <span style={{ fontSize: 12, color: '#64748b' }}>Durée traitement</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{duration}s</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 14 }}>ACTIONS</div>
+            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+              {analysis.status === 'completed' && (
+                <a href={`/dashboard/rapport?id=${analysis.id}`} target="_blank" rel="noopener noreferrer"
+                  style={{ padding: '10px 14px', borderRadius: 10, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <Eye size={14} /> Voir le rapport
+                </a>
+              )}
+              {linkedPayment?.stripe_session_id && (
+                <a href={`https://dashboard.stripe.com/payments?query=${linkedPayment.stripe_session_id}`} target="_blank" rel="noopener noreferrer"
+                  style={{ padding: '10px 14px', borderRadius: 10, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#64748b', fontSize: 13, fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <ExternalLink size={14} /> Ouvrir dans Stripe
+                </a>
+              )}
+              <button onClick={onReload}
+                style={{ padding: '10px 14px', borderRadius: 10, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#64748b', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <RefreshCw size={14} /> Actualiser
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Colonne droite : infos analyse */}
+        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
+          {/* Titre et adresse */}
+          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 18 }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: `${PLAN_COLORS[analysis.type] || '#64748b'}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <FileText size={22} style={{ color: PLAN_COLORS[analysis.type] || '#64748b' }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 4 }}>ANALYSE</div>
+                <h2 style={{ fontSize: 18, fontWeight: 900, color: '#0f172a', margin: 0, lineHeight: 1.3 }}>{analysis.adresse_bien || analysis.title || 'Sans titre'}</h2>
+                {analysis.adresse_bien && analysis.title && analysis.title !== analysis.adresse_bien && (
+                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>{analysis.title}</div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+              <div style={{ padding: '12px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.05em', marginBottom: 4 }}>CRÉÉE LE</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{fmtDateTime(analysis.created_at)}</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{fmtRelative(analysis.created_at)}</div>
+              </div>
+              {analysis.completed_at && (
+                <div style={{ padding: '12px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.05em', marginBottom: 4 }}>COMPLÉTÉE LE</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{fmtDateTime(analysis.completed_at)}</div>
+                </div>
+              )}
+              <div style={{ padding: '12px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.05em', marginBottom: 4 }}>ID ANALYSE</div>
+                <div style={{ fontSize: 11, fontFamily: 'monospace', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{analysis.id}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Origine */}
+          <div style={{ background: origineBg, borderRadius: 14, border: `1.5px solid ${origineColor}30`, padding: '18px 20px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: origineColor, letterSpacing: '0.08em', marginBottom: 8 }}>ORIGINE DE L'ANALYSE</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: origineColor }}>{loading ? 'Chargement...' : origineLabel}</div>
+            {linkedPayment?.retractation_waiver_at && (
+              <div style={{ fontSize: 11, color: origineColor, opacity: 0.8, marginTop: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <CheckCircle size={11} /> Consentement rétractation : {fmtDateTime(linkedPayment.retractation_waiver_at)}
+              </div>
+            )}
+          </div>
+
+          {/* Documents fournis */}
+          {analysis.document_urls && analysis.document_urls.length > 0 && (
+            <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 14 }}>
+                DOCUMENTS FOURNIS ({analysis.document_urls.length})
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+                {analysis.document_urls.map((url, i) => {
+                  const fileName = typeof url === 'string' ? url.split('/').pop() || `Document ${i + 1}` : `Document ${i + 1}`;
+                  return (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 9, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+                      <FileText size={14} style={{ color: '#64748b', flexShrink: 0 }} />
+                      <span style={{ flex: 1, fontSize: 12, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{fileName}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1775,5 +2270,473 @@ function DemandesProTab({ onConfirm, showToast, onReadChange }: { onConfirm: (a:
         )}
       </div>
     </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   PAYMENTS TAB
+══════════════════════════════════════════ */
+type PaymentWithUser = AdminPayment & { userEmail?: string; userName?: string };
+
+function PaymentsTab({ onOpenUser, showToast }: { onOpenUser: (userId: string) => void; showToast: (m: string) => void }) {
+  const [payments, setPayments] = useState<PaymentWithUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'paid' | 'free' | 'refundable'>('all');
+  const [search, setSearch] = useState('');
+  const [period, setPeriod] = useState<'all' | '7j' | '30j' | '90j'>('all');
+
+  const loadPayments = useCallback(async () => {
+    setLoading(true);
+    const { data: rawPayments } = await supabase
+      .from('payments')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(500);
+
+    if (!rawPayments || rawPayments.length === 0) {
+      setPayments([]);
+      setLoading(false);
+      return;
+    }
+
+    const userIds = [...new Set(rawPayments.map(p => p.user_id).filter(Boolean))];
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, email, full_name')
+      .in('id', userIds);
+
+    const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+    const enriched: PaymentWithUser[] = rawPayments.map(p => ({
+      ...p,
+      userEmail: profileMap.get(p.user_id)?.email,
+      userName: profileMap.get(p.user_id)?.full_name,
+    }));
+
+    setPayments(enriched);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadPayments(); }, [loadPayments]);
+
+  // Filtrage
+  const filtered = payments.filter(p => {
+    // Période
+    if (period !== 'all') {
+      const days = daysSince(p.created_at);
+      const limit = period === '7j' ? 7 : period === '30j' ? 30 : 90;
+      if (days > limit) return false;
+    }
+    // Type paiement
+    if (filter === 'paid' && p.amount === 0) return false;
+    if (filter === 'free' && p.amount > 0) return false;
+    if (filter === 'refundable') {
+      const days = daysSince(p.created_at);
+      if (days >= 14 || p.amount === 0) return false;
+    }
+    // Recherche
+    const q = search.toLowerCase().trim();
+    if (!q) return true;
+    return (p.userEmail || '').toLowerCase().includes(q)
+      || (p.userName || '').toLowerCase().includes(q)
+      || (p.description || '').toLowerCase().includes(q)
+      || (p.promo_code || '').toLowerCase().includes(q)
+      || (p.stripe_session_id || '').toLowerCase().includes(q);
+  });
+
+  const totalPeriod = filtered.filter(p => p.status === 'completed').reduce((s, p) => s + (p.amount || 0), 0);
+  const totalCount = filtered.filter(p => p.status === 'completed' && p.amount > 0).length;
+
+  const doExport = () => {
+    exportCSV(filtered.map(p => ({
+      date: fmtDateTime(p.created_at),
+      client: p.userEmail || '',
+      montant: p.amount,
+      description: p.description || '',
+      code_promo: p.promo_code || '',
+      credits: p.credits_added || 0,
+      type_credit: p.credit_type || '',
+      stripe_id: p.stripe_session_id || p.stripe_payment_id || '',
+      consentement: p.retractation_waiver_at ? fmtDateTime(p.retractation_waiver_at) : '',
+      statut: p.status,
+    })), `verimo-paiements-${period}.csv`);
+    showToast('Export CSV téléchargé');
+  };
+
+  const counts = {
+    all: payments.length,
+    paid: payments.filter(p => p.amount > 0).length,
+    free: payments.filter(p => p.amount === 0).length,
+    refundable: payments.filter(p => p.amount > 0 && daysSince(p.created_at) < 14).length,
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap' as const, gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Paiements</h1>
+          <p style={{ fontSize: 13, color: '#94a3b8' }}>Tous les paiements et crédits offerts</p>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={doExport} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#374151', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            <Download size={14} /> CSV
+          </button>
+        </div>
+      </div>
+
+      {/* KPIs période */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
+        <div style={{ background: 'linear-gradient(135deg,#16a34a,#14532d)', borderRadius: 14, padding: '18px 20px', color: '#fff' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.7, letterSpacing: '0.1em', marginBottom: 4 }}>TOTAL PÉRIODE</div>
+          <div style={{ fontSize: 26, fontWeight: 900 }}>{totalPeriod.toFixed(2)}€</div>
+          <div style={{ fontSize: 11, opacity: 0.6, marginTop: 4 }}>{totalCount} paiement{totalCount > 1 ? 's' : ''}</div>
+        </div>
+        <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', padding: '18px 20px' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 4 }}>PAIEMENTS</div>
+          <div style={{ fontSize: 26, fontWeight: 900, color: '#0f172a' }}>{counts.paid}</div>
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Total depuis le début</div>
+        </div>
+        <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', padding: '18px 20px' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 4 }}>CRÉDITS GRATUITS</div>
+          <div style={{ fontSize: 26, fontWeight: 900, color: '#7c3aed' }}>{counts.free}</div>
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Via codes promo</div>
+        </div>
+        <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', padding: '18px 20px' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 4 }}>ÉLIGIBLES REMBOURSEMENT</div>
+          <div style={{ fontSize: 26, fontWeight: 900, color: '#d97706' }}>{counts.refundable}</div>
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>&lt; 14 jours</div>
+        </div>
+      </div>
+
+      {/* Filtres période */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' as const }}>
+        {([
+          { id: 'all', label: 'Tout' },
+          { id: '7j', label: '7 jours' },
+          { id: '30j', label: '30 jours' },
+          { id: '90j', label: '90 jours' },
+        ] as const).map(p => (
+          <button key={p.id} onClick={() => setPeriod(p.id)}
+            style={{ padding: '7px 14px', borderRadius: 10, border: `1.5px solid ${period === p.id ? '#2a7d9c' : '#edf2f7'}`, background: period === p.id ? '#f0f7fb' : '#fff', color: period === p.id ? '#2a7d9c' : '#64748b', fontSize: 12, fontWeight: period === p.id ? 700 : 500, cursor: 'pointer' }}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Filtres type */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' as const }}>
+        {([
+          { id: 'all', label: 'Tous les paiements', color: '#64748b' },
+          { id: 'paid', label: '💳 Payants', color: '#16a34a' },
+          { id: 'free', label: '🎁 Gratuits', color: '#7c3aed' },
+          { id: 'refundable', label: '⚠ Éligibles remboursement', color: '#d97706' },
+        ] as const).map(f => (
+          <button key={f.id} onClick={() => setFilter(f.id)}
+            style={{ padding: '8px 14px', borderRadius: 10, border: `1.5px solid ${filter === f.id ? f.color : '#edf2f7'}`, background: filter === f.id ? `${f.color}12` : '#fff', color: filter === f.id ? f.color : '#64748b', fontSize: 12, fontWeight: filter === f.id ? 700 : 500, cursor: 'pointer' }}>
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ position: 'relative', marginBottom: 16 }}>
+        <Search size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher par email, code promo, ID Stripe…"
+          style={{ width: '100%', padding: '11px 14px 11px 42px', borderRadius: 12, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const, background: '#fff', fontFamily: 'inherit' }} />
+      </div>
+
+      {/* Liste */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+        {loading ? <div style={{ padding: '40px', textAlign: 'center' as const, color: '#94a3b8' }}>Chargement...</div>
+          : filtered.length === 0 ? <div style={{ padding: '40px', textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Aucun paiement ne correspond à vos filtres</div>
+          : filtered.map((p, i) => {
+            const days = daysSince(p.created_at);
+            const eligible = days < 14 && p.amount > 0;
+            return (
+              <div key={p.id} style={{ padding: '14px 18px', borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: p.amount === 0 ? '#f5f3ff' : '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {p.amount === 0 ? <Tag size={16} style={{ color: '#7c3aed' }} /> : <Euro size={16} style={{ color: '#16a34a' }} />}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 15, fontWeight: 900, color: p.amount === 0 ? '#7c3aed' : '#16a34a' }}>
+                          {p.amount === 0 ? 'Gratuit' : `${p.amount.toFixed(2)}€`}
+                        </span>
+                        {p.userEmail ? (
+                          <button onClick={() => onOpenUser(p.user_id)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 13, color: '#2a7d9c', fontWeight: 700, textDecoration: 'underline', textDecorationColor: '#bae3f5' }}>
+                            {p.userEmail}
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: 13, color: '#94a3b8', fontStyle: 'italic' as const }}>Client supprimé</span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{fmtDateTime(p.created_at)}</div>
+                    </div>
+                    <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5, marginBottom: 6 }}>
+                      {p.description || 'Paiement'}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+                      {p.promo_code && (
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', background: '#f5f3ff', padding: '3px 7px', borderRadius: 6 }}>
+                          🎁 {p.promo_code}
+                        </span>
+                      )}
+                      {p.credits_added && (
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '3px 7px', borderRadius: 6 }}>
+                          +{p.credits_added} crédit{p.credits_added > 1 ? 's' : ''} {p.credit_type === 'document' ? 'simple' : 'complet'}
+                        </span>
+                      )}
+                      {p.retractation_waiver_at && (
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 7px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 3 }}>
+                          <CheckCircle size={9} /> Consentement tracé
+                        </span>
+                      )}
+                      {eligible && (
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fffbeb', padding: '3px 7px', borderRadius: 6 }}>
+                          ⚠ Éligible remboursement ({14 - days}j)
+                        </span>
+                      )}
+                      {(p.stripe_session_id || p.stripe_payment_id) && (
+                        <a href={stripeUrl(p.stripe_payment_id || p.stripe_session_id) || '#'} target="_blank" rel="noopener noreferrer"
+                          style={{ fontSize: 10, fontWeight: 700, color: '#64748b', background: '#f8fafc', border: '1px solid #edf2f7', padding: '3px 7px', borderRadius: 6, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
+                          <ExternalLink size={9} /> Stripe
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   GLOBAL SEARCH MODAL
+══════════════════════════════════════════ */
+type SearchResult = {
+  type: 'user' | 'analysis' | 'payment';
+  id: string;
+  title: string;
+  subtitle: string;
+  meta?: string;
+  userId?: string;
+};
+
+function GlobalSearchModal({ query, setQuery, onClose, onNavigate }: {
+  query: string;
+  setQuery: (q: string) => void;
+  onClose: () => void;
+  onNavigate: (tab: TabId, userId?: string) => void;
+}) {
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    const q = query.trim().toLowerCase();
+    if (q.length < 2) {
+      setResults([]);
+      return;
+    }
+
+    const searchTimeout = setTimeout(async () => {
+      setSearching(true);
+      try {
+        // Recherche utilisateurs (email et nom)
+        const { data: users } = await supabase
+          .from('profiles')
+          .select('id, email, full_name')
+          .or(`email.ilike.%${q}%,full_name.ilike.%${q}%`)
+          .limit(5);
+
+        // Recherche analyses (adresse et titre)
+        const { data: analyses } = await supabase
+          .from('analyses')
+          .select('id, user_id, adresse_bien, title, type, created_at, status')
+          .or(`adresse_bien.ilike.%${q}%,title.ilike.%${q}%`)
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        // Recherche paiements (code promo, stripe_id, description)
+        const { data: payments } = await supabase
+          .from('payments')
+          .select('id, user_id, amount, description, promo_code, stripe_session_id, created_at')
+          .or(`description.ilike.%${q}%,promo_code.ilike.%${q}%,stripe_session_id.ilike.%${q}%`)
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        const combined: SearchResult[] = [
+          ...(users || []).map((u): SearchResult => ({
+            type: 'user',
+            id: u.id,
+            title: u.full_name || u.email,
+            subtitle: u.email,
+            userId: u.id,
+          })),
+          ...(analyses || []).map((a): SearchResult => ({
+            type: 'analysis',
+            id: a.id,
+            title: a.adresse_bien || a.title || 'Sans titre',
+            subtitle: `${PLAN_LABELS[a.type] || a.type} · ${a.status === 'completed' ? 'Complétée' : a.status === 'failed' ? 'Échouée' : 'En cours'}`,
+            meta: fmtDate(a.created_at),
+            userId: a.user_id,
+          })),
+          ...(payments || []).map((p): SearchResult => ({
+            type: 'payment',
+            id: p.id,
+            title: `${p.amount > 0 ? p.amount.toFixed(2) + '€' : 'Gratuit'} — ${p.description || 'Paiement'}`,
+            subtitle: p.promo_code ? `Code ${p.promo_code}` : (p.stripe_session_id || '—'),
+            meta: fmtDate(p.created_at),
+            userId: p.user_id,
+          })),
+        ];
+
+        setResults(combined);
+      } catch (err) {
+        console.error('Search error:', err);
+      } finally {
+        setSearching(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(searchTimeout);
+  }, [query]);
+
+  const byType = {
+    user: results.filter(r => r.type === 'user'),
+    analysis: results.filter(r => r.type === 'analysis'),
+    payment: results.filter(r => r.type === 'payment'),
+  };
+
+  const handleSelect = (r: SearchResult) => {
+    if (r.type === 'user' && r.userId) onNavigate('users', r.userId);
+    else if (r.type === 'analysis' && r.userId) onNavigate('users', r.userId);
+    else if (r.type === 'payment' && r.userId) onNavigate('users', r.userId);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: 90 }}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: -20, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -20, scale: 0.97 }}
+        transition={{ duration: 0.2 }}
+        onClick={e => e.stopPropagation()}
+        style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 620, boxShadow: '0 30px 80px rgba(0,0,0,0.35)', overflow: 'hidden' }}
+      >
+        {/* Input */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '18px 22px', borderBottom: '1px solid #f1f5f9' }}>
+          <Search size={18} style={{ color: '#94a3b8', flexShrink: 0 }} />
+          <input
+            autoFocus
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Rechercher un client, une analyse, un paiement…"
+            style={{ flex: 1, border: 'none', outline: 'none', fontSize: 16, fontFamily: 'inherit', color: '#0f172a', background: 'transparent' }}
+          />
+          {searching && <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid #e2e8f0', borderTopColor: '#2a7d9c', animation: 'spin 0.8s linear infinite' }} />}
+          <button onClick={onClose} style={{ background: '#f1f5f9', border: 'none', padding: '4px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>ESC</button>
+        </div>
+
+        {/* Results */}
+        <div style={{ maxHeight: 480, overflowY: 'auto' }}>
+          {query.trim().length < 2 ? (
+            <div style={{ padding: '50px 22px', textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>
+              Tapez au moins 2 caractères pour rechercher
+            </div>
+          ) : results.length === 0 && !searching ? (
+            <div style={{ padding: '50px 22px', textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>
+              Aucun résultat pour "{query}"
+            </div>
+          ) : (
+            <>
+              {byType.user.length > 0 && (
+                <div>
+                  <div style={{ padding: '12px 22px 6px', fontSize: 10, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>
+                    Utilisateurs ({byType.user.length})
+                  </div>
+                  {byType.user.map(r => (
+                    <button key={r.id} onClick={() => handleSelect(r)}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 22px', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left' as const, transition: 'background 0.12s' }}
+                      onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#f0f7fb'}
+                      onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                      <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 900, flexShrink: 0 }}>
+                        {r.title.charAt(0).toUpperCase()}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{r.title}</div>
+                        <div style={{ fontSize: 12, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{r.subtitle}</div>
+                      </div>
+                      <ArrowRight size={13} style={{ color: '#cbd5e1', flexShrink: 0 }} />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {byType.analysis.length > 0 && (
+                <div style={{ borderTop: byType.user.length > 0 ? '1px solid #f1f5f9' : 'none' }}>
+                  <div style={{ padding: '12px 22px 6px', fontSize: 10, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>
+                    Analyses ({byType.analysis.length})
+                  </div>
+                  {byType.analysis.map(r => (
+                    <button key={r.id} onClick={() => handleSelect(r)}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 22px', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left' as const, transition: 'background 0.12s' }}
+                      onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#f5f3ff'}
+                      onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                      <div style={{ width: 34, height: 34, borderRadius: 9, background: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <FileText size={14} style={{ color: '#7c3aed' }} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{r.title}</div>
+                        <div style={{ fontSize: 12, color: '#64748b' }}>{r.subtitle}</div>
+                      </div>
+                      {r.meta && <div style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{r.meta}</div>}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {byType.payment.length > 0 && (
+                <div style={{ borderTop: (byType.user.length > 0 || byType.analysis.length > 0) ? '1px solid #f1f5f9' : 'none' }}>
+                  <div style={{ padding: '12px 22px 6px', fontSize: 10, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>
+                    Paiements ({byType.payment.length})
+                  </div>
+                  {byType.payment.map(r => (
+                    <button key={r.id} onClick={() => handleSelect(r)}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 22px', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left' as const, transition: 'background 0.12s' }}
+                      onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#f0fdf4'}
+                      onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                      <div style={{ width: 34, height: 34, borderRadius: 9, background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Euro size={14} style={{ color: '#16a34a' }} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{r.title}</div>
+                        <div style={{ fontSize: 12, color: '#64748b' }}>{r.subtitle}</div>
+                      </div>
+                      {r.meta && <div style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{r.meta}</div>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '10px 22px', background: '#f8fafc', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: '#94a3b8' }}>
+          <span>Cliquez un résultat pour l'ouvrir</span>
+          <span>Raccourci : <kbd style={{ padding: '1px 6px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 4, fontFamily: 'monospace', fontSize: 10, fontWeight: 700 }}>⌘K</kbd></span>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
