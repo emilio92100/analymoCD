@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, ShieldCheck, GitCompare, BarChart2, CreditCard, CheckCircle, AlertTriangle, Lock, X, Star, Info } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { markFreePreviewUsed } from '../../lib/analyses';
 import { useCredits, type Credits } from '../../hooks/useCredits';
 import DashboardLoader from '../../components/DashboardLoader';
 
@@ -238,9 +237,7 @@ export default function Tarifs() {
     if (params.get('cancelled') === 'true') { window.history.replaceState({}, '', '/dashboard/tarifs'); return; }
     if (params.get('success') === 'true') {
       window.history.replaceState({}, '', '/dashboard/tarifs');
-      const freePreviewUsed = localStorage.getItem('verimo_free_preview_used') === 'true';
-      if (!freePreviewUsed) { markFreePreviewUsed(); setSuccessToast("🎉 Vous aviez une analyse gratuite disponible, mais pourquoi regarder par le trou de la serrure quand on peut ouvrir la porte en grand ? En payant directement, votre offre gratuite a été remplacée par l'analyse que vous venez d'acheter. Bonne analyse !"); }
-      else { setSuccessToast("✅ Paiement confirmé ! Vos crédits ont été ajoutés. 🔒 P.S. : vos documents ont été supprimés de nos serveurs après votre analyse simplifiée (RGPD nous y oblige !). Re-uploadez-les sur votre analyse pour générer le rapport complet — promis, c'est rapide !"); }
+      setSuccessToast("✅ Paiement confirmé ! Vos crédits ont bien été ajoutés à votre compte. Vous pouvez dès maintenant lancer une nouvelle analyse ou les utiliser plus tard — ils n'expirent jamais.");
     }
   }, []);
 
