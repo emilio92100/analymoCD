@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Plus, FileText, GitCompare, User, LifeBuoy,
   LogOut, Menu, X, ChevronDown, Bell, Shield, CreditCard,
-  AlertTriangle, Lock, Sparkles, CheckCircle, BookOpen,
+  AlertTriangle, Lock, Sparkles, CheckCircle,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useCredits } from '../hooks/useCredits';
@@ -18,14 +18,12 @@ import Compare from './dashboard/Compare';
 import Compte from './dashboard/Compte';
 import Support from './dashboard/Support';
 import Tarifs from './dashboard/Tarifs';
-import Aide from './dashboard/Aide';
 
 const navItems = [
   { to: '/dashboard',               icon: LayoutDashboard, label: 'Tableau de bord' },
   { to: '/dashboard/analyses',      icon: FileText,        label: 'Mes analyses' },
   { to: '/dashboard/compare',       icon: GitCompare,      label: 'Comparer mes biens' },
   { to: '/dashboard/tarifs',        icon: CreditCard,      label: 'Tarifs' },
-  { to: '/dashboard/aide',          icon: BookOpen,        label: 'Aide & Méthode' },
   { to: '/dashboard/compte',        icon: User,            label: 'Mon compte' },
   { to: '/dashboard/support',       icon: LifeBuoy,        label: 'Support / Aide' },
 ];
@@ -344,7 +342,6 @@ function DashboardContent({ path }: { path:string }) {
   if (path === '/dashboard/tarifs')           return <Tarifs/>;
   if (path === '/dashboard/analyses')         return <MesAnalyses/>;
   if (path === '/dashboard/compare')          return <Compare/>;
-  if (path === '/dashboard/aide')             return <Aide/>;
   if (path === '/dashboard/compte')           return <Compte/>;
   if (path === '/dashboard/support')          return <Support/>;
   if (path === '/dashboard/rapport')          return <RapportDashboard/>;
@@ -385,7 +382,7 @@ export default function DashboardPage() {
       <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0 }}>
         <Topbar onMenuClick={()=>setMobileOpen(true)} title={title}/>
         <DashboardBanner/>
-        <main style={{ flex:1, padding:'28px 24px', overflowX:'hidden' }}>
+        <main className="dashboard-main" style={{ flex:1, padding:'28px 24px', overflowX:'hidden' }}>
           <DashboardContent path={location.pathname}/>
         </main>
       </div>
@@ -396,11 +393,24 @@ export default function DashboardPage() {
           .topbar-cta { display: none !important; }
           .topbar-title { font-size: 14px !important; }
           header { padding: 0 12px !important; height: 54px !important; }
+          .dashboard-main { padding: 16px 12px !important; }
           .stats-grid { grid-template-columns: 1fr 1fr !important; }
           .action-grid { grid-template-columns: 1fr !important; }
           .compare-grid { grid-template-columns: 1fr !important; }
           .result-grid { grid-template-columns: 1fr !important; }
           .type-grid { grid-template-columns: 1fr !important; }
+          /* Force tous les conteneurs à prendre 100% de la largeur */
+          .dashboard-main > div,
+          .dashboard-main > section {
+            max-width: 100% !important;
+            width: 100% !important;
+          }
+          /* Réduire padding interne des cards sur mobile */
+          .dashboard-main [style*="padding: '28px'"],
+          .dashboard-main [style*="padding: \"28px\""],
+          .dashboard-main [style*="padding:28px"] {
+            padding: 18px !important;
+          }
         }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
