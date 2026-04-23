@@ -287,8 +287,8 @@ function WaitingScreen({ biens, fromCache }: { biens: string[]; fromCache: boole
         <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
           style={{ width: 44, height: 44, borderRadius: '50%', border: '4px solid #2a7d9c', borderTopColor: 'transparent' }} />
         <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Chargement du rapport</p>
-          <p style={{ fontSize: 13, color: '#64748b' }}>Récupération de votre comparaison sauvegardée…</p>
+          <p style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Préparation de votre rapport</p>
+          <p style={{ fontSize: 13, color: '#64748b' }}>Quelques instants, on finalise l'affichage…</p>
         </div>
       </motion.div>
     );
@@ -619,7 +619,7 @@ function VerdictLegacyRender({ verdict }: { verdict: VerdictLegacy }) {
    SECTIONS COMPLÉMENTAIRES (accordéons)
    ══════════════════════════════════════════ */
 
-function ComparaisonDetaillee({ analyses, resultsData, bestIdx }: { analyses: AnalyseLite[]; resultsData: (ReturnType<typeof getResultData>)[]; bestIdx: number }) {
+function ComparaisonDetaillee({ analyses, resultsData, bestIdx, displayOrder }: { analyses: AnalyseLite[]; resultsData: (ReturnType<typeof getResultData>)[]; bestIdx: number; displayOrder?: number[] }) {
   const cols = analyses.length;
   const rows = [
     {
@@ -677,11 +677,14 @@ function ComparaisonDetaillee({ analyses, resultsData, bestIdx }: { analyses: An
     <>
       <div style={{ display: 'grid', gridTemplateColumns: `180px repeat(${cols}, 1fr)`, borderBottom: '2px solid #f1f5f9', background: '#fafbfc' }}>
         <div style={{ padding: '12px 18px', fontSize: 12, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>Critère</div>
-        {analyses.map((_, i) => (
-          <div key={i} style={{ padding: '12px 18px', borderLeft: '1px solid #f1f5f9', fontSize: 13.5, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            Bien {i + 1} {i === bestIdx ? '⭐' : ''}
-          </div>
-        ))}
+        {analyses.map((_, i) => {
+          const origIdx = displayOrder ? displayOrder[i] : i;
+          return (
+            <div key={i} style={{ padding: '12px 18px', borderLeft: '1px solid #f1f5f9', fontSize: 13.5, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              Bien {origIdx + 1} {i === bestIdx ? '⭐' : ''}
+            </div>
+          );
+        })}
       </div>
       {rows.map((row, ri) => (
         <div key={ri} style={{ display: 'grid', gridTemplateColumns: `180px repeat(${cols}, 1fr)`, borderBottom: ri < rows.length - 1 ? '1px solid #f8fafc' : 'none' }}>
@@ -697,7 +700,7 @@ function ComparaisonDetaillee({ analyses, resultsData, bestIdx }: { analyses: An
   );
 }
 
-function ResumeFinancier({ analyses, resultsData, bestIdx }: { analyses: AnalyseLite[]; resultsData: (ReturnType<typeof getResultData>)[]; bestIdx: number }) {
+function ResumeFinancier({ analyses, resultsData, bestIdx, displayOrder }: { analyses: AnalyseLite[]; resultsData: (ReturnType<typeof getResultData>)[]; bestIdx: number; displayOrder?: number[] }) {
   const cols = analyses.length;
   const rows = [
     { label: 'Charges annuelles', get: (d: NonNullable<ReturnType<typeof getResultData>>) => ({ val: d.financier.charges_annuelles, est: d.financier.charges_is_estimation }) },
@@ -718,11 +721,14 @@ function ResumeFinancier({ analyses, resultsData, bestIdx }: { analyses: Analyse
       <div style={{ overflowX: 'auto' }}>
         <div style={{ display: 'grid', gridTemplateColumns: `240px repeat(${cols}, 1fr)`, minWidth: cols === 3 ? 720 : 480 }}>
           <div style={{ padding: '10px 16px', fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', borderBottom: '2px solid #f1f5f9', background: '#fafbfc' }}>Poste</div>
-          {analyses.map((_, i) => (
-            <div key={i} style={{ padding: '10px 16px', borderLeft: '1px solid #f1f5f9', borderBottom: '2px solid #f1f5f9', background: '#fafbfc', fontSize: 12, fontWeight: 700, color: '#0f172a' }}>
-              Bien {i + 1} {i === bestIdx ? '⭐' : ''}
-            </div>
-          ))}
+          {analyses.map((_, i) => {
+            const origIdx = displayOrder ? displayOrder[i] : i;
+            return (
+              <div key={i} style={{ padding: '10px 16px', borderLeft: '1px solid #f1f5f9', borderBottom: '2px solid #f1f5f9', background: '#fafbfc', fontSize: 12, fontWeight: 700, color: '#0f172a' }}>
+                Bien {origIdx + 1} {i === bestIdx ? '⭐' : ''}
+              </div>
+            );
+          })}
 
           {rows.map((row, ri) => (
             <React.Fragment key={ri}>
@@ -942,6 +948,16 @@ export default function RapportComparaisonPage() {
     analyses.forEach((a, i) => { if ((a.score ?? 0) > bestScore) { bestScore = a.score ?? 0; bestIdx = i; } });
   }
 
+  // displayOrder : on affiche TOUJOURS le bien recommandé en première position (gauche).
+  // C'est purement visuel — le backend et le verdict continuent de référencer "Bien 1", "Bien 2"
+  // selon l'ordre d'origine. Cette réorganisation ne touche que l'affichage des cards + tableau.
+  const displayOrder: number[] = [bestIdx, ...analyses.map((_, i) => i).filter(i => i !== bestIdx)];
+  const analysesDisplay = displayOrder.map(i => analyses[i]);
+  const resultsDataDisplay = displayOrder.map(i => resultsData[i]);
+  // Mapping d'un index "display" vers le numéro de bien d'origine (affiché à l'utilisateur "Bien 1", "Bien 2")
+  const origBienNumber = (displayIdx: number) => displayOrder[displayIdx] + 1;
+  const bestDisplayIdx = 0; // après réorganisation, le recommandé est toujours en position 0
+
   const adresses = analyses.map(a => a.adresse_bien || '');
 
   return (
@@ -975,16 +991,17 @@ export default function RapportComparaisonPage() {
             <motion.div key="content" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
               style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
-              {/* ─── Cards biens — version grosse style preview ─── */}
+              {/* ─── Cards biens — version grosse style preview (recommandé toujours à gauche) ─── */}
               <div className="rcp-biens-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 14 }}>
-                {analyses.map((a, i) => {
+                {analysesDisplay.map((a, displayIdx) => {
                   const score = a.score ?? 0;
                   const sc = getScoreColor(score);
-                  const isBest = i === bestIdx;
-                  const d = resultsData[i];
+                  const isBest = displayIdx === bestDisplayIdx;
+                  const d = resultsDataDisplay[displayIdx];
                   const circ = 2 * Math.PI * 25;
+                  const bienNumber = origBienNumber(displayIdx);
                   return (
-                    <motion.div key={a.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                    <motion.div key={a.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: displayIdx * 0.05 }}
                       style={{
                         background: '#fff',
                         borderRadius: 18,
@@ -1018,7 +1035,7 @@ export default function RapportComparaisonPage() {
 
                       {/* Header bien : label + nom */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.14em' }}>BIEN {i + 1}</span>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.14em' }}>BIEN {bienNumber}</span>
                         <span style={{ fontSize: 16.5, fontWeight: 800, color: '#0f172a', lineHeight: 1.35, letterSpacing: '-0.01em' }}>{a.adresse_bien}</span>
                       </div>
 
@@ -1031,7 +1048,7 @@ export default function RapportComparaisonPage() {
                               strokeDasharray={circ}
                               initial={{ strokeDashoffset: circ }}
                               animate={{ strokeDashoffset: circ - circ * (score / 20) }}
-                              transition={{ duration: 1.2, delay: i * 0.15, ease: [0.22, 1, 0.36, 1] }} />
+                              transition={{ duration: 1.2, delay: displayIdx * 0.15, ease: [0.22, 1, 0.36, 1] }} />
                             <text x="30" y="30" textAnchor="middle" fontSize="14" fontWeight="900" fill={sc}>{score.toFixed(1)}</text>
                             <text x="30" y="45" textAnchor="middle" fontSize="9" fill="#94a3b8">/20</text>
                           </svg>
@@ -1091,23 +1108,24 @@ export default function RapportComparaisonPage() {
               {/* ─── Sections complémentaires (accordéons) — AVANT le verdict ─── */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <Accordion title="Comparaison détaillée" icon="📊" defaultOpen>
-                  <ComparaisonDetaillee analyses={analyses} resultsData={resultsData} bestIdx={bestIdx} />
+                  <ComparaisonDetaillee analyses={analysesDisplay} resultsData={resultsDataDisplay} bestIdx={bestDisplayIdx} displayOrder={displayOrder} />
                 </Accordion>
 
                 {resultsData.some(d => d?.financier?.has_data) && (
                   <Accordion title="Résumé financier — 1ère année" icon="💶">
-                    <ResumeFinancier analyses={analyses} resultsData={resultsData} bestIdx={bestIdx} />
+                    <ResumeFinancier analyses={analysesDisplay} resultsData={resultsDataDisplay} bestIdx={bestDisplayIdx} displayOrder={displayOrder} />
                   </Accordion>
                 )}
 
                 {resultsData.some(d => d && d.travaux_evoques_list.length > 0) && (
                   <Accordion title="Travaux évoqués non votés" icon="⚠️" subtitle="à anticiper dans votre budget">
                     <div className="rcp-section-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 0 }}>
-                      {analyses.map((a, i) => {
-                        const d = resultsData[i];
+                      {analysesDisplay.map((a, displayIdx) => {
+                        const d = resultsDataDisplay[displayIdx];
+                        const bienNumber = origBienNumber(displayIdx);
                         return (
-                          <div key={a.id} style={{ padding: '14px 18px', borderLeft: i > 0 ? '1px solid #f1f5f9' : 'none' }}>
-                            <div style={{ fontSize: 10.5, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 10 }}>BIEN {i + 1}</div>
+                          <div key={a.id} style={{ padding: '14px 18px', borderLeft: displayIdx > 0 ? '1px solid #f1f5f9' : 'none' }}>
+                            <div style={{ fontSize: 10.5, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 10 }}>BIEN {bienNumber}</div>
                             {d && d.travaux_evoques_list.length > 0 ? (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 {d.travaux_evoques_list.map((t, ti) => (
@@ -1166,21 +1184,23 @@ export default function RapportComparaisonPage() {
                 <VerdictLegacyRender verdict={verdict as VerdictLegacy} />
               )}
 
-              {/* ─── Documents analysés — dernier bloc de la page ─── */}
+              {/* ─── Documents analysés — dernier bloc de la page (réordonné aussi) ─── */}
               <div>
                 <Accordion title="Documents analysés par bien" icon="📁"
-                  subtitle={analyses.map((_, i) => {
-                    const n = resultsData[i]?.documents_analyses?.length || 0;
-                    return `Bien ${i + 1} : ${n} doc${n > 1 ? 's' : ''}`;
+                  subtitle={analysesDisplay.map((_, displayIdx) => {
+                    const n = resultsDataDisplay[displayIdx]?.documents_analyses?.length || 0;
+                    const bienNumber = origBienNumber(displayIdx);
+                    return `Bien ${bienNumber} : ${n} doc${n > 1 ? 's' : ''}`;
                   }).join(' • ')}>
                   <div className="rcp-section-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 0 }}>
-                    {analyses.map((a, i) => {
-                      const d = resultsData[i];
+                    {analysesDisplay.map((a, displayIdx) => {
+                      const d = resultsDataDisplay[displayIdx];
                       const docs = d?.documents_analyses || [];
+                      const bienNumber = origBienNumber(displayIdx);
                       return (
-                        <div key={a.id} style={{ padding: '16px 18px', borderLeft: i > 0 ? '1px solid #f1f5f9' : 'none' }}>
+                        <div key={a.id} style={{ padding: '16px 18px', borderLeft: displayIdx > 0 ? '1px solid #f1f5f9' : 'none' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                            <span style={{ fontSize: 10.5, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.1em' }}>BIEN {i + 1}</span>
+                            <span style={{ fontSize: 10.5, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.1em' }}>BIEN {bienNumber}</span>
                             <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: 'rgba(42,125,156,0.08)', padding: '2px 8px', borderRadius: 6 }}>{docs.length} doc{docs.length > 1 ? 's' : ''}</span>
                           </div>
                           {docs.length > 0 ? (
