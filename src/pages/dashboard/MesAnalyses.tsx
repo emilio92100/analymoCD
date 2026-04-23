@@ -4,6 +4,7 @@ import { Plus, Search, FileText, Building2, ExternalLink, Trash2, Copy, Check, M
 import { getOrCreateShareToken } from '../../lib/analyses';
 import { supabase } from '../../lib/supabase';
 import { useAnalyses, type Analyse } from '../../hooks/useAnalyses';
+import DashboardLoader from '../../components/DashboardLoader';
 
 function ScoreBadge({ score, size = 'md' }: { score: number; size?: 'sm' | 'md' | 'lg' }) {
   const color = score >= 14 ? '#16a34a' : score >= 10 ? '#d97706' : '#dc2626';
@@ -326,6 +327,8 @@ export default function MesAnalyses() {
 
   const allSelected = filtered.length > 0 && selectedIds.size === filtered.length;
 
+  if (loading) return <DashboardLoader message="Chargement de vos analyses…" />;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
 
@@ -399,9 +402,7 @@ export default function MesAnalyses() {
       )}
 
       {/* Liste */}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '48px', color: '#94a3b8', fontSize: 14 }}>Chargement de vos analyses…</div>
-      ) : filtered.length > 0 ? (
+      {filtered.length > 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {filtered.map(a => (
             <AnalyseRow key={a.id} a={a} onDelete={deleteAnalyse}
