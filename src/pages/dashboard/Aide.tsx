@@ -137,7 +137,6 @@ const tips = [
   { color: '#d97706', bg: '#fffbeb', bord: '#fde68a', title: 'Points de vigilance', desc: "Un DPE classé F ou G peut impacter la valeur du bien. Les travaux votés en AG mais non réalisés sont à surveiller de près." },
   { color: '#16a34a', bg: '#f0fdf4', bord: '#bbf7d0', title: 'Documents à prioriser', desc: "PV d'AG, règlement de copropriété, DPE, diagnostic électricité et gaz, appels de charges — ce sont les documents les plus riches en informations." },
   { color: '#7c3aed', bg: '#f5f3ff', bord: '#ddd6fe', title: 'Vos rapports sont permanents', desc: 'Chaque rapport est sauvegardé définitivement dans votre espace. Consultez-le et téléchargez-le en PDF à tout moment.' },
-  { color: '#2a7d9c', bg: '#f0f7fb', bord: '#bae3f5', title: "Besoin d'aide ?", desc: "Notre équipe est disponible depuis la page Support pour toute question sur votre rapport ou l'utilisation de Verimo." },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════
