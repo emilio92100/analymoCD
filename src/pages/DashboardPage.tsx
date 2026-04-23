@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Plus, FileText, GitCompare, User, LifeBuoy,
   LogOut, Menu, X, ChevronDown, Bell, Shield, CreditCard,
-  AlertTriangle, Lock, Sparkles, CheckCircle,
+  AlertTriangle, Lock, Sparkles, CheckCircle, BookOpen,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useCredits } from '../hooks/useCredits';
@@ -17,6 +17,7 @@ import NouvelleAnalyse from './dashboard/NouvelleAnalyse';
 import Compare from './dashboard/Compare';
 import Compte from './dashboard/Compte';
 import Support from './dashboard/Support';
+import Aide from './dashboard/Aide';
 import Tarifs from './dashboard/Tarifs';
 
 const navItems = [
@@ -25,6 +26,7 @@ const navItems = [
   { to: '/dashboard/compare',       icon: GitCompare,      label: 'Comparer mes biens' },
   { to: '/dashboard/tarifs',        icon: CreditCard,      label: 'Tarifs' },
   { to: '/dashboard/compte',        icon: User,            label: 'Mon compte' },
+  { to: '/dashboard/aide',          icon: BookOpen,        label: 'Aide & Méthode' },
   { to: '/dashboard/support',       icon: LifeBuoy,        label: 'Support / Aide' },
 ];
 
@@ -344,6 +346,7 @@ function DashboardContent({ path }: { path:string }) {
   if (path === '/dashboard/compare')          return <Compare/>;
   if (path === '/dashboard/compte')           return <Compte/>;
   if (path === '/dashboard/support')          return <Support/>;
+  if (path === '/dashboard/aide')             return <Aide/>;
   if (path === '/dashboard/rapport')          return <RapportDashboard/>;
   return <HomeView/>;
 }
