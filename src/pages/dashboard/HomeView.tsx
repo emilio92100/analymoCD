@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { useUser } from '../../hooks/useUser';
 import { useAnalyses, type Analyse } from '../../hooks/useAnalyses';
 import { useCredits } from '../../hooks/useCredits';
+import DashboardLoader from '../../components/DashboardLoader';
 
 function ScoreBadge({ score, size = 'sm' }: { score: number; size?: 'sm' | 'md' }) {
   const color = score >= 14 ? '#16a34a' : score >= 10 ? '#d97706' : '#dc2626';
@@ -165,7 +166,7 @@ function NoteExplicativeBlock({ penalties, bonuses, scale }: {
 
 export default function HomeView() {
   const { name } = useUser();
-  const { analyses } = useAnalyses();
+  const { analyses, loading: analysesLoading } = useAnalyses();
   const { credits } = useCredits();
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
@@ -215,6 +216,8 @@ export default function HomeView() {
     { color: '#7c3aed', title: 'Vos rapports sont permanents', desc: 'Chaque rapport est sauvegardé définitivement dans votre espace. Consultez-le et téléchargez-le en PDF à tout moment.' },
     { color: '#dc2626', title: "Besoin d'aide ?", desc: "Notre équipe est disponible depuis la page Support pour toute question sur votre rapport ou l'utilisation de Verimo." },
   ];
+
+  if (analysesLoading) return <DashboardLoader message="Chargement de votre espace…" />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, animation: 'fadeUp 0.35s ease both' }}>
