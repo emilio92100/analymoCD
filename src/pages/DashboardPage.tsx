@@ -394,8 +394,9 @@ export default function DashboardPage() {
           .desktop-sidebar { display: none !important; }
           .mobile-menu-btn { display: flex !important; }
           .topbar-cta { display: none !important; }
-          .topbar-title { font-size: 14px !important; }
-          header { padding: 0 12px !important; height: 54px !important; }
+          header { padding: 0 14px !important; height: 62px !important; gap: 10px !important; }
+          .mobile-menu-btn svg { width: 24px !important; height: 24px !important; }
+          .topbar-title { font-size: 15px !important; font-weight: 800 !important; }
           .dashboard-main { padding: 16px 12px !important; }
           .stats-grid { grid-template-columns: 1fr 1fr !important; }
           .action-grid { grid-template-columns: 1fr !important; }
