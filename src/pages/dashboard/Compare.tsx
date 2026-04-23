@@ -30,6 +30,133 @@ function getScoreBorder(s: number) {
   if (s >= 17) return '#bbf7d0'; if (s >= 14) return '#d1fae5'; if (s >= 10) return '#fde68a'; if (s >= 7) return '#fed7aa'; return '#fecaca';
 }
 
+const COMPARER_URL = 'https://veszrayromldfgetqaxb.supabase.co/functions/v1/comparer';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlc3pyYXlyb21sZGZnZXRxYXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MzI5NTUsImV4cCI6MjA2MTAwODk1NX0.XsqzBPDMfHRFKgMhJxoLhgVWZMdV5YnFKM3VCBe9hOk';
+
+/* ══════════════════════════════════════════
+   ÉCRAN D'ATTENTE — analyse comparative en cours
+   ══════════════════════════════════════════ */
+function CompareWaitingScreen({ biens, fromCache, onCancel }: { biens: string[]; fromCache: boolean; onCancel: () => void }) {
+  const [currentStep, setCurrentStep] = useState(0);
+  const n = biens.length;
+
+  useEffect(() => {
+    if (fromCache) return;
+    const t1 = setTimeout(() => setCurrentStep(1), 8000);
+    const t2 = setTimeout(() => setCurrentStep(2), 18000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [fromCache]);
+
+  if (fromCache) {
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+        style={{ padding: '48px 32px', borderRadius: 20, background: 'linear-gradient(135deg, #f0f7fb, #e8f4fa)', border: '1.5px solid #bae3f5', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, minHeight: 280, justifyContent: 'center' }}>
+        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+          style={{ width: 44, height: 44, borderRadius: '50%', border: '4px solid #2a7d9c', borderTopColor: 'transparent' }} />
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Chargement du rapport</p>
+          <p style={{ fontSize: 13, color: '#64748b' }}>Récupération de votre comparaison sauvegardée…</p>
+        </div>
+      </motion.div>
+    );
+  }
+
+  const steps = [
+    { label: `Lecture des ${n} rapports`, icon: '📄' },
+    { label: 'Comparaison des forces et faiblesses', icon: '⚖️' },
+    { label: 'Rédaction du verdict comparatif', icon: '✍️' },
+  ];
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
+      style={{ padding: '48px 32px', borderRadius: 20, background: 'linear-gradient(135deg, #f0f7fb 0%, #e8f4fa 100%)', border: '1.5px solid #bae3f5', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24, minHeight: 520, justifyContent: 'center' }}>
+
+      <div style={{ position: 'relative', width: 200, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20 }}>
+        {biens.slice(0, 3).map((_, i) => (
+          <motion.div key={i}
+            animate={{ y: [0, -8, 0], opacity: [0.6, 1, 0.6] }}
+            transition={{ duration: 2, repeat: Infinity, delay: i * 0.3, ease: 'easeInOut' }}
+            style={{ width: 52, height: 68, borderRadius: 10, background: 'linear-gradient(180deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 20px rgba(15,45,61,0.2)' }}>
+            <Building2 size={28} color="#fff" />
+          </motion.div>
+        ))}
+        <motion.div
+          animate={{ scaleX: [0.7, 1, 0.7], opacity: [0.4, 0.9, 0.4] }}
+          transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ position: 'absolute', top: '50%', left: 50, right: 50, height: 2, background: 'linear-gradient(90deg, transparent, #2a7d9c, transparent)', transformOrigin: 'center' }} />
+      </div>
+
+      <div style={{ textAlign: 'center' }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 8, letterSpacing: '-0.02em' }}>
+          Analyse comparative en cours
+        </h2>
+        <p style={{ fontSize: 14.5, color: '#64748b', lineHeight: 1.6 }}>
+          Verimo compare vos {n === 2 ? '2' : '3'} biens en profondeur
+        </p>
+      </div>
+
+      {/* Rappel des biens comparés */}
+      <div style={{ width: '100%', maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {biens.map((adr, i) => (
+          <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 + i * 0.15 }}
+            style={{ padding: '10px 14px', background: '#fff', borderRadius: 10, border: '1px solid #e0ecf3', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(42,125,156,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Building2 size={14} color="#2a7d9c" />
+            </div>
+            <span style={{ fontSize: 13.5, color: '#0f172a', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+              Bien {i + 1} — {adr}
+            </span>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Progression */}
+      <div style={{ width: '100%', maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 14, marginTop: 8 }}>
+        {steps.map((step, i) => {
+          const isDone = i < currentStep;
+          const isActive = i === currentStep;
+          return (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: isDone ? '#16a34a' : isActive ? 'rgba(42,125,156,0.12)' : '#f1f5f9',
+                border: isActive ? '2px solid #2a7d9c' : 'none',
+                transition: 'all 0.3s',
+              }}>
+                {isDone ? (
+                  <CheckCircle size={16} color="#fff" />
+                ) : isActive ? (
+                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+                    style={{ width: 14, height: 14, borderRadius: '50%', border: '2.5px solid #2a7d9c', borderTopColor: 'transparent' }} />
+                ) : (
+                  <span style={{ fontSize: 13 }}>{step.icon}</span>
+                )}
+              </div>
+              <span style={{
+                fontSize: 14, lineHeight: 1.5,
+                color: isDone ? '#16a34a' : isActive ? '#0f172a' : '#94a3b8',
+                fontWeight: isDone || isActive ? 700 : 500,
+              }}>
+                {step.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <p style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic', marginTop: 4 }}>
+        L'analyse prend généralement moins d'une minute
+      </p>
+
+      <button onClick={onCancel}
+        style={{ fontSize: 12.5, fontWeight: 600, color: '#64748b', background: 'transparent', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: '4px 8px' }}>
+        Annuler
+      </button>
+    </motion.div>
+  );
+}
+
 /* ══════════════════════════════════════════
    TYPES — verdict sauvegardé (titre_verdict utilisé dans l'historique)
    ══════════════════════════════════════════ */
@@ -41,14 +168,21 @@ type ComparaisonSaved = {
 };
 
 /* ══════════════════════════════════════════
-   COMPOSANT PRINCIPAL — sélection + redirection + historique
-   La visualisation du rapport est désormais gérée par /rapport-comparaison
+   COMPOSANT PRINCIPAL
+   - Sélection des biens dans le dashboard
+   - Écran d'attente in-dashboard pendant la génération du verdict
+   - Au retour depuis l'historique : redirection directe vers /rapport-comparaison
+   - Navigation vers /rapport-comparaison une fois le verdict prêt
    ══════════════════════════════════════════ */
 export default function Compare() {
   const navigate = useNavigate();
   const { analyses } = useAnalyses();
   const completedAnalyses = analyses.filter((a: Analyse) => a.type === 'complete' && a.status === 'completed');
   const [selected, setSelected] = useState<string[]>([]);
+
+  // Génération du verdict
+  const [launched, setLaunched] = useState(false);
+  const [launchError, setLaunchError] = useState<string | null>(null);
 
   // Historique
   const [historique, setHistorique] = useState<ComparaisonSaved[]>([]);
@@ -80,14 +214,58 @@ export default function Compare() {
   };
 
   const toggleSelect = (id: string) => {
+    if (launched) return;
     setSelected(prev => prev.includes(id) ? prev.filter(s => s !== id) : prev.length < 3 ? [...prev, id] : prev);
   };
 
+  const selectedAnalyses = completedAnalyses.filter(a => selected.includes(a.id));
   const canLaunch = selected.length >= 2;
 
-  const handleLaunch = () => {
+  const handleCancel = () => {
+    setLaunched(false);
+    setLaunchError(null);
+  };
+
+  const handleLaunch = async () => {
     if (!canLaunch) return;
-    openComparaison(selected);
+    setLaunched(true);
+    setLaunchError(null);
+
+    try {
+      const session = (await supabase.auth.getSession()).data.session;
+      if (!session) { setLaunchError('Session expirée, reconnectez-vous.'); setLaunched(false); return; }
+
+      const res = await fetch(COMPARER_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ analyseIds: selected }),
+      });
+
+      if (!res.ok) {
+        setLaunchError('La génération du verdict a échoué. Réessayez dans un instant.');
+        setLaunched(false);
+        return;
+      }
+
+      const data = await res.json();
+      if (data.success && data.verdict) {
+        // Rafraîchir l'historique en arrière-plan puis rediriger vers le rapport
+        loadHistorique();
+        // Redirection vers la page rapport plein écran
+        navigate(`/rapport-comparaison?ids=${selected.join(',')}`);
+      } else {
+        setLaunchError('Réponse inattendue du serveur. Réessayez.');
+        setLaunched(false);
+      }
+    } catch (e) {
+      console.error('[Compare] handleLaunch error', e);
+      setLaunchError('Erreur réseau. Vérifiez votre connexion et réessayez.');
+      setLaunched(false);
+    }
   };
 
   /* ─── États vides ─── */
@@ -129,6 +307,25 @@ export default function Compare() {
 
   const maxSelect = completedAnalyses.length >= 3 ? 3 : 2;
 
+  /* ─── Pendant la génération : on masque la sélection, on affiche l'écran d'attente in-dashboard ─── */
+  if (launched) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 6 }}>Comparer mes biens</h1>
+          <p style={{ fontSize: 14, color: '#64748b' }}>
+            Comparaison de {selectedAnalyses.length} biens
+          </p>
+        </div>
+        <CompareWaitingScreen
+          biens={selectedAnalyses.map(a => a.adresse_bien || a.nom_document || 'Bien sans titre')}
+          fromCache={false}
+          onCancel={handleCancel}
+        />
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* Header */}
@@ -138,6 +335,12 @@ export default function Compare() {
           Sélectionnez 2{maxSelect === 3 ? ' ou 3' : ''} biens à comparer, puis lancez la comparaison
         </p>
       </div>
+
+      {launchError && (
+        <div style={{ padding: '12px 16px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 13, color: '#991b1b' }}>
+          ⚠ {launchError}
+        </div>
+      )}
 
       {/* Sélection */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
