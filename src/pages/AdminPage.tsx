@@ -202,6 +202,7 @@ export default function AdminPage() {
   const [proUnreadCount, setProUnreadCount] = useState(0);
   // Routing inter-onglets : permet d'ouvrir la fiche d'un user depuis une analyse, etc.
   const [focusUserId, setFocusUserId] = useState<string | null>(null);
+  const [focusAnalysisId, setFocusAnalysisId] = useState<string | null>(null);
   // Recherche globale
   const [globalSearch, setGlobalSearch] = useState('');
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
@@ -455,7 +456,7 @@ export default function AdminPage() {
               {activeTab === 'dashboard' && <DashboardTab onNavigate={setActiveTab} />}
               {activeTab === 'stats' && <StatsTab />}
               {activeTab === 'users' && <UsersTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} focusUserId={focusUserId} onFocusUserHandled={() => setFocusUserId(null)} />}
-              {activeTab === 'analyses' && <AnalysesTab onOpenUser={(id) => { setFocusUserId(id); setActiveTab('users'); }} />}
+              {activeTab === 'analyses' && <AnalysesTab onOpenUser={(id) => { setFocusUserId(id); setActiveTab('users'); }} focusAnalysisId={focusAnalysisId} onFocusAnalysisHandled={() => setFocusAnalysisId(null)} />}
               {activeTab === 'payments' && <PaymentsTab onOpenUser={(id) => { setFocusUserId(id); setActiveTab('users'); }} showToast={showToast} />}
               {activeTab === 'messages' && <MessagesTab onConfirm={setConfirm} showToast={showToast} onReadChange={setUnreadCount} />}
               {activeTab === 'demandes_pro' && <DemandesProTab onConfirm={setConfirm} showToast={showToast} onReadChange={setProUnreadCount} />}
@@ -474,8 +475,12 @@ export default function AdminPage() {
             query={globalSearch}
             setQuery={setGlobalSearch}
             onClose={() => { setGlobalSearchOpen(false); setGlobalSearch(''); }}
-            onNavigate={(tab, userId) => {
-              if (userId) setFocusUserId(userId);
+            onNavigate={(tab, resourceId, resourceType) => {
+              if (resourceType === 'analysis' && resourceId) {
+                setFocusAnalysisId(resourceId);
+              } else if (resourceId) {
+                setFocusUserId(resourceId);
+              }
               setActiveTab(tab);
               setGlobalSearchOpen(false);
               setGlobalSearch('');
@@ -1318,7 +1323,11 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
 ══════════════════════════════════════════ */
 type AnalysisWithUser = AdminAnalyse & { userEmail?: string; userName?: string };
 
-function AnalysesTab({ onOpenUser }: { onOpenUser: (userId: string) => void }) {
+function AnalysesTab({ onOpenUser, focusAnalysisId, onFocusAnalysisHandled }: {
+  onOpenUser: (userId: string) => void;
+  focusAnalysisId?: string | null;
+  onFocusAnalysisHandled?: () => void;
+}) {
   const [analyses, setAnalyses] = useState<AnalysisWithUser[]>([]);
   const [filter, setFilter] = useState<'all' | 'completed' | 'processing' | 'failed'>('all');
   const [search, setSearch] = useState('');
@@ -1358,6 +1367,16 @@ function AnalysesTab({ onOpenUser }: { onOpenUser: (userId: string) => void }) {
   }, []);
 
   useEffect(() => { loadAnalyses(); }, [loadAnalyses]);
+
+  // Si focusAnalysisId est passé (venant de la recherche globale), ouvrir direct la fiche
+  useEffect(() => {
+    if (!focusAnalysisId || analyses.length === 0) return;
+    const analysis = analyses.find(a => a.id === focusAnalysisId);
+    if (analysis) {
+      setDetail(analysis);
+      onFocusAnalysisHandled?.();
+    }
+  }, [focusAnalysisId, analyses, onFocusAnalysisHandled]);
 
   const filtered = analyses.filter(a => {
     // Filtre statut : 'error' dans l'ancien code = 'failed' en vrai
@@ -2541,7 +2560,7 @@ function GlobalSearchModal({ query, setQuery, onClose, onNavigate }: {
   query: string;
   setQuery: (q: string) => void;
   onClose: () => void;
-  onNavigate: (tab: TabId, userId?: string) => void;
+  onNavigate: (tab: TabId, resourceId?: string, resourceType?: 'user' | 'analysis' | 'payment') => void;
 }) {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -2623,9 +2642,13 @@ function GlobalSearchModal({ query, setQuery, onClose, onNavigate }: {
   };
 
   const handleSelect = (r: SearchResult) => {
-    if (r.type === 'user' && r.userId) onNavigate('users', r.userId);
-    else if (r.type === 'analysis' && r.userId) onNavigate('users', r.userId);
-    else if (r.type === 'payment' && r.userId) onNavigate('users', r.userId);
+    if (r.type === 'user' && r.userId) {
+      onNavigate('users', r.userId, 'user');
+    } else if (r.type === 'analysis') {
+      onNavigate('analyses', r.id, 'analysis');
+    } else if (r.type === 'payment' && r.userId) {
+      onNavigate('users', r.userId, 'user');
+    }
   };
 
   return (
