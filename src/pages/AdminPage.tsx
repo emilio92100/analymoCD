@@ -23,7 +23,7 @@ type AdminUser = {
 };
 type AdminAnalyse = {
   id: string; user_id: string; type: string; status: string;
-  adresse_bien?: string; title?: string; score?: number; created_at: string;
+  adresse_bien?: string; address?: string; title?: string; score?: number; created_at: string;
   document_urls?: string[]; paid?: boolean; stripe_payment_id?: string;
   completed_at?: string;
 };
@@ -619,14 +619,14 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
 
   useEffect(() => {
     const load = async () => {
-      const [{ count: u }, { count: a }, { count: m }, { count: p }, { data: anal }] = await Promise.all([
+      const [{ count: u }, { count: a }, { count: m }, { count: p }, { data: paymentsData }] = await Promise.all([
         supabase.from('profiles').select('*', { count: 'exact', head: true }),
         supabase.from('analyses').select('*', { count: 'exact', head: true }),
         supabase.from('contact_messages').select('*', { count: 'exact', head: true }).eq('read', false),
         supabase.from('contact_pro').select('*', { count: 'exact', head: true }).eq('read', false),
-        supabase.from('analyses').select('type').eq('paid', true).not('stripe_payment_id', 'is', null),
+        supabase.from('payments').select('amount').eq('status', 'completed').gt('amount', 0),
       ]);
-      const ca = (anal || []).reduce((s, a) => s + (PLAN_PRICES[a.type] || 0), 0);
+      const ca = (paymentsData || []).reduce((s, p) => s + (p.amount || 0), 0);
       setKpis({ users: u || 0, analyses: a || 0, messages: m || 0, pro: p || 0, ca });
     };
     load();
@@ -716,28 +716,39 @@ function StatsTab() {
     const load = async () => {
       const { start, end } = getRange();
       if (!start || !end) return;
-      const [{ count: newUsers }, { count: totalUsers }, { data: analyses }, { count: totalAnalyses }] = await Promise.all([
+      const [{ count: newUsers }, { count: totalUsers }, { data: analyses }, { count: totalAnalyses }, { data: paymentsData }] = await Promise.all([
         supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end),
         supabase.from('profiles').select('*', { count: 'exact', head: true }),
         supabase.from('analyses').select('type,status,created_at').gte('created_at', start).lte('created_at', end),
         supabase.from('analyses').select('*', { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end),
+        supabase.from('payments').select('amount,created_at,status').eq('status', 'completed').gte('created_at', start).lte('created_at', end),
       ]);
       const completed = (analyses || []).filter(a => a.status === 'completed');
-      const ca = completed.reduce((s, a) => s + (PLAN_PRICES[a.type] || 0), 0);
+      // CA basé sur les VRAIS paiements Stripe (table payments), plus les vraies ventes
+      const realPayments = (paymentsData || []).filter(p => p.amount > 0);
+      const ca = realPayments.reduce((s, p) => s + (p.amount || 0), 0);
+      const ticketMoyen = realPayments.length > 0 ? ca / realPayments.length : 0;
       const byType = (analyses || []).reduce((acc, a) => ({ ...acc, [a.type]: (acc[a.type] || 0) + 1 }), {} as Record<string, number>);
-      setStats({ newUsers: newUsers || 0, totalUsers: totalUsers || 0, totalAnalyses: totalAnalyses || 0, completedAnalyses: completed.length, ca, ticketMoyen: completed.length ? ca / completed.length : 0, byType });
+      setStats({ newUsers: newUsers || 0, totalUsers: totalUsers || 0, totalAnalyses: totalAnalyses || 0, completedAnalyses: completed.length, ca, ticketMoyen, byType });
 
-      // Weekly chart data (last 8 weeks)
+      // Weekly chart data (last 8 weeks) — basé sur les vrais paiements
       const weeks: { week: string; ca: number; users: number }[] = [];
+      const now = new Date();
       for (let i = 7; i >= 0; i--) {
-        const wEnd = new Date(); wEnd.setDate(wEnd.getDate() - i * 7);
-        const wStart = new Date(wEnd); wStart.setDate(wEnd.getDate() - 7);
-        const label = wStart.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
-        const weekAnal = (analyses || []).filter(a => { const d = new Date(a.created_at); return d >= wStart && d < wEnd; });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const weekCa = weekAnal.filter((a: any) => a.paid === true && a.stripe_payment_id != null).reduce((s: number, a: any) => s + (PLAN_PRICES[a.type] || 0), 0);
-        const { count: weekUsers } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', wStart.toISOString()).lt('created_at', wEnd.toISOString());
-        weeks.push({ week: label, ca: weekCa, users: weekUsers || 0 });
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - (i * 7) - 6);
+        weekStart.setHours(0, 0, 0, 0);
+        const weekEnd = new Date(now);
+        weekEnd.setDate(now.getDate() - (i * 7));
+        weekEnd.setHours(23, 59, 59, 999);
+
+        const [{ data: wPayments }, { count: wUsers }] = await Promise.all([
+          supabase.from('payments').select('amount').eq('status', 'completed').gt('amount', 0).gte('created_at', weekStart.toISOString()).lte('created_at', weekEnd.toISOString()),
+          supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', weekStart.toISOString()).lte('created_at', weekEnd.toISOString()),
+        ]);
+        const wCa = (wPayments || []).reduce((s, p) => s + (p.amount || 0), 0);
+        const label = `${weekStart.getDate().toString().padStart(2, '0')}/${(weekStart.getMonth() + 1).toString().padStart(2, '0')}`;
+        weeks.push({ week: label, ca: wCa, users: wUsers || 0 });
       }
       setWeeklyData(weeks);
     };
@@ -1144,7 +1155,7 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
               ) : userAnalyses.map((a, i) => (
                 <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 22px', borderBottom: i < userAnalyses.length - 1 ? '1px solid #f8fafc' : 'none' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.adresse_bien || a.title || 'Sans titre'}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.address || a.adresse_bien || a.title || 'Sans titre'}</div>
                     <div style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDateTime(a.created_at)} · {PLAN_LABELS[a.type] || a.type}</div>
                   </div>
                   {a.score != null && <span style={{ fontSize: 13, fontWeight: 900, color: getScoreColor(a.score), background: getScoreBg(a.score), padding: '3px 9px', borderRadius: 8 }}>{a.score}/20</span>}
@@ -1353,7 +1364,7 @@ function AnalysesTab({ onOpenUser }: { onOpenUser: (userId: string) => void }) {
     const matchFilter = filter === 'all' || (filter === 'failed' ? (a.status === 'failed' || a.status === 'error') : a.status === filter);
     const q = search.toLowerCase().trim();
     const matchSearch = !q
-      || (a.adresse_bien || '').toLowerCase().includes(q)
+      || (a.address || a.adresse_bien || '').toLowerCase().includes(q)
       || (a.title || '').toLowerCase().includes(q)
       || (a.userEmail || '').toLowerCase().includes(q)
       || (a.userName || '').toLowerCase().includes(q);
@@ -1362,7 +1373,7 @@ function AnalysesTab({ onOpenUser }: { onOpenUser: (userId: string) => void }) {
 
   const doExport = () => {
     exportCSV(filtered.map(a => ({
-      adresse: a.adresse_bien || a.title || '',
+      adresse: a.address || a.adresse_bien || a.title || '',
       client: a.userEmail || '',
       type: PLAN_LABELS[a.type] || a.type,
       score: a.score ?? '',
@@ -1429,7 +1440,7 @@ function AnalysesTab({ onOpenUser }: { onOpenUser: (userId: string) => void }) {
               style={{ width: '100%', display: 'grid', gridTemplateColumns: '1.4fr 1.2fr 90px 75px 110px 100px', padding: '12px 18px', borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc', alignItems: 'center', border: 'none', borderRadius: 0, cursor: 'pointer', textAlign: 'left' as const, transition: 'background 0.15s', fontFamily: 'inherit' }}
               onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#f0f7fb'}
               onMouseOut={e => (e.currentTarget as HTMLElement).style.background = i % 2 === 0 ? '#fff' : '#fafbfc'}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.adresse_bien || a.title || 'Sans titre'}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.address || a.adresse_bien || a.title || 'Sans titre'}</div>
               <div style={{ fontSize: 12, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
                 {a.userEmail || <span style={{ color: '#e2e8f0', fontStyle: 'italic' as const }}>Client supprimé</span>}
               </div>
@@ -1612,8 +1623,8 @@ function AnalysisDetailView({ analysis, onBack, onOpenUser, onReload }: {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 4 }}>ANALYSE</div>
-                <h2 style={{ fontSize: 18, fontWeight: 900, color: '#0f172a', margin: 0, lineHeight: 1.3 }}>{analysis.adresse_bien || analysis.title || 'Sans titre'}</h2>
-                {analysis.adresse_bien && analysis.title && analysis.title !== analysis.adresse_bien && (
+                <h2 style={{ fontSize: 18, fontWeight: 900, color: '#0f172a', margin: 0, lineHeight: 1.3 }}>{analysis.address || analysis.adresse_bien || analysis.title || 'Sans titre'}</h2>
+                {(analysis.address || analysis.adresse_bien) && analysis.title && analysis.title !== (analysis.address || analysis.adresse_bien) && (
                   <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>{analysis.title}</div>
                 )}
               </div>
@@ -2555,8 +2566,8 @@ function GlobalSearchModal({ query, setQuery, onClose, onNavigate }: {
         // Recherche analyses (adresse et titre)
         const { data: analyses } = await supabase
           .from('analyses')
-          .select('id, user_id, adresse_bien, title, type, created_at, status')
-          .or(`adresse_bien.ilike.%${q}%,title.ilike.%${q}%`)
+          .select('id, user_id, address, adresse_bien, title, type, created_at, status')
+          .or(`address.ilike.%${q}%,adresse_bien.ilike.%${q}%,title.ilike.%${q}%`)
           .order('created_at', { ascending: false })
           .limit(5);
 
@@ -2579,7 +2590,7 @@ function GlobalSearchModal({ query, setQuery, onClose, onNavigate }: {
           ...(analyses || []).map((a): SearchResult => ({
             type: 'analysis',
             id: a.id,
-            title: a.adresse_bien || a.title || 'Sans titre',
+            title: (a as { address?: string; adresse_bien?: string; title?: string }).address || (a as { adresse_bien?: string }).adresse_bien || a.title || 'Sans titre',
             subtitle: `${PLAN_LABELS[a.type] || a.type} · ${a.status === 'completed' ? 'Complétée' : a.status === 'failed' ? 'Échouée' : 'En cours'}`,
             meta: fmtDate(a.created_at),
             userId: a.user_id,
