@@ -3,7 +3,7 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronLeft, Download, Building2, CheckCircle, AlertTriangle,
-  Shield, FileText, GitCompare, ArrowLeftRight, Sparkles, ChevronDown,
+  Shield, FileText, GitCompare, HelpCircle, Sparkles, ChevronDown,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { fetchAnalyseById } from '../lib/analyses';
@@ -348,7 +348,66 @@ function WaitingScreen({ biens, fromCache }: { biens: string[]; fromCache: boole
 }
 
 /* ══════════════════════════════════════════
-   VERDICT PREMIUM — 5 blocs
+   INFO TOOLTIP — petit ? avec infobulle au hover
+   ══════════════════════════════════════════ */
+
+function InfoTooltip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span
+      style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', marginLeft: 2 }}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }}
+    >
+      <HelpCircle size={13} style={{ color: '#94a3b8', cursor: 'help' }} />
+      {open && (
+        <span
+          role="tooltip"
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 8px)',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1000,
+            width: 280,
+            maxWidth: 'calc(100vw - 32px)',
+            padding: '10px 12px',
+            borderRadius: 10,
+            background: '#0f2d3d',
+            color: '#fff',
+            fontSize: 12,
+            fontWeight: 400,
+            lineHeight: 1.55,
+            letterSpacing: 'normal',
+            textTransform: 'none',
+            boxShadow: '0 8px 24px rgba(15,45,61,0.25)',
+            pointerEvents: 'none',
+          }}
+        >
+          <span
+            style={{
+              content: '""',
+              position: 'absolute',
+              bottom: '100%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: 0,
+              height: 0,
+              borderLeft: '6px solid transparent',
+              borderRight: '6px solid transparent',
+              borderBottom: '6px solid #0f2d3d',
+            }}
+          />
+          {text}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/* ══════════════════════════════════════════
+   VERDICT PREMIUM — 3 blocs
    ══════════════════════════════════════════ */
 
 function VerdictPremium({ verdict, analyses }: { verdict: VerdictV2; analyses: AnalyseLite[] }) {
@@ -358,9 +417,6 @@ function VerdictPremium({ verdict, analyses }: { verdict: VerdictV2; analyses: A
   const bestBien = analyses[bestIdx];
   const bestScore = bestBien?.score ?? 0;
   const bestColor = getScoreColor(bestScore);
-
-  const kpis = verdict.kpis_differenciants || [];
-  const hasKpis = kpis.length > 0;
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
@@ -432,24 +488,7 @@ function VerdictPremium({ verdict, analyses }: { verdict: VerdictV2; analyses: A
         </div>
       </div>
 
-      {/* ─── BLOC 2 — 3 KPIs différenciants ─── */}
-      {hasKpis && (
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, paddingLeft: 2 }}>
-            <ArrowLeftRight size={14} style={{ color: '#2a7d9c' }} />
-            <span style={{ fontSize: 11, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.12em' }}>
-              CE QUI LES DIFFÉRENCIE LE PLUS
-            </span>
-          </div>
-          <div className="rcp-kpi-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${kpis.length}, 1fr)`, gap: 12 }}>
-            {kpis.slice(0, 3).map((kpi, ki) => (
-              <KpiCard key={ki} kpi={kpi} analyses={analyses} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ─── BLOC 3 — Analyse croisée Verimo ─── */}
+      {/* ─── BLOC 2 — Analyse croisée Verimo (avec tooltip explicatif) ─── */}
       {verdict.analyse_croisee && (
         <div style={{
           position: 'relative',
@@ -465,6 +504,9 @@ function VerdictPremium({ verdict, analyses }: { verdict: VerdictV2; analyses: A
             <span style={{ fontSize: 11, fontWeight: 800, color: '#0f2d3d', letterSpacing: '0.12em' }}>
               ANALYSE CROISÉE VERIMO
             </span>
+            <InfoTooltip
+              text="Verimo va plus loin que la simple comparaison de chiffres : nous analysons les liens entre plusieurs critères (ex : un DPE faible combiné à un fonds travaux insuffisant révèle une copropriété qui n'anticipe pas ses rénovations). Cette lecture croisée met en lumière des risques ou des forces que vous ne verriez pas en lisant les données séparément."
+            />
           </div>
           <p style={{ fontSize: 14.5, lineHeight: 1.65, color: '#0f172a', margin: 0, fontWeight: 500 }}>
             {verdict.analyse_croisee}
@@ -528,54 +570,6 @@ function VerdictPremium({ verdict, analyses }: { verdict: VerdictV2; analyses: A
   );
 }
 
-/* ─── KPI Card ─── */
-function KpiCard({ kpi, analyses }: { kpi: KpiDifferenciant; analyses: AnalyseLite[] }) {
-  const nbBiens = analyses.length;
-  return (
-    <div style={{ background: '#fff', border: '1.5px solid #edf2f7', borderRadius: 14, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div>
-        <div style={{ fontSize: 10.5, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.12em', marginBottom: 4 }}>
-          {kpi.label.toUpperCase()}
-        </div>
-        {kpi.ecart_label && (
-          <div style={{ fontSize: 12, color: '#2a7d9c', fontWeight: 700 }}>
-            {kpi.ecart_label}
-          </div>
-        )}
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {Array.from({ length: nbBiens }).map((_, i) => {
-          const v = kpi.valeurs?.find(x => x.bien_idx === i);
-          if (!v) {
-            return (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', borderRadius: 8, background: '#fafbfc' }}>
-                <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700 }}>Bien {i + 1}</span>
-                <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>—</span>
-              </div>
-            );
-          }
-          const color = v.rang === 'favorable' ? '#16a34a' : v.rang === 'defavorable' ? '#dc2626' : '#64748b';
-          const bg = v.rang === 'favorable' ? '#f0fdf4' : v.rang === 'defavorable' ? '#fef2f2' : '#fafbfc';
-          const border = v.rang === 'favorable' ? '#bbf7d0' : v.rang === 'defavorable' ? '#fecaca' : '#f1f5f9';
-          return (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 10px', borderRadius: 8, background: bg, border: `1px solid ${border}` }}>
-              <span style={{ fontSize: 11, color: '#0f172a', fontWeight: 700 }}>Bien {i + 1}</span>
-              <span style={{ fontSize: 13, fontWeight: 800, color }}>{v.valeur_affichee}</span>
-            </div>
-          );
-        })}
-      </div>
-
-      {kpi.pourquoi_differenciant && (
-        <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5, paddingTop: 10, borderTop: '1px dashed #e2e8f0', fontStyle: 'italic' }}>
-          {kpi.pourquoi_differenciant}
-        </div>
-      )}
-    </div>
-  );
-}
-
 /* ══════════════════════════════════════════
    VERDICT LEGACY — fallback
    ══════════════════════════════════════════ */
@@ -616,13 +610,6 @@ function ComparaisonDetaillee({ analyses, resultsData, bestIdx }: { analyses: An
     },
     { label: 'Niveau', render: (a: AnalyseLite) => <span style={{ fontSize: 13.5, color: getScoreColor(a.score ?? 0), fontWeight: 700 }}>{getScoreLabel(a.score ?? 0)}</span> },
     { label: 'DPE', render: (_a: AnalyseLite, i: number) => { const d = resultsData[i]; return d ? <DpeCell classe={d.dpe} /> : <span style={{ color: '#94a3b8', fontSize: 13 }}>—</span>; } },
-    {
-      label: 'Travaux votés', render: (_a: AnalyseLite, i: number) => {
-        const d = resultsData[i]; if (!d) return <span style={{ color: '#94a3b8', fontSize: 13 }}>—</span>;
-        const n = d.travaux_votes;
-        return <span style={{ fontSize: 13.5, fontWeight: 600, color: n === 0 ? '#64748b' : n >= 3 ? '#d97706' : '#0f172a' }}>{n} travaux</span>;
-      }
-    },
     {
       label: 'Travaux évoqués', render: (_a: AnalyseLite, i: number) => {
         const d = resultsData[i]; if (!d) return <span style={{ color: '#94a3b8', fontSize: 13 }}>—</span>;
@@ -819,32 +806,14 @@ export default function RapportComparaisonPage() {
   /* ─── Appeler l'edge function comparer ─── */
   const loadVerdict = useCallback(async () => {
     if (ids.length < 2) return;
-    // Check cache
     setVerdictLoading(true);
     setVerdictError(false);
     try {
       const session = (await supabase.auth.getSession()).data.session;
       if (!session) { setVerdictLoading(false); setVerdictError(true); return; }
 
-      // Vérifier le cache côté DB pour savoir si c'est une réouverture
-      const sortedIds = [...ids].sort().join(',');
-      const { data: existing } = await supabase
-        .from('comparaisons')
-        .select('verdict')
-        .eq('user_id', session.user.id)
-        .eq('analyse_ids', sortedIds)
-        .maybeSingle();
-      if (existing?.verdict) {
-        setFromCache(true);
-        // petit délai pour que l'écran de cache s'affiche proprement
-        setTimeout(() => {
-          setVerdict(existing.verdict as VerdictAny);
-          setVerdictLoading(false);
-        }, 1200);
-        return;
-      }
-
-      // Sinon, lancer l'appel edge
+      // On délègue la gestion du cache à l'edge function (qui vérifie la BDD et renvoie `cached: true` le cas échéant).
+      // Cela évite la duplication de logique et les désynchronisations entre le check client et la réalité serveur.
       const res = await fetch(COMPARER_URL, {
         method: 'POST',
         headers: {
@@ -995,27 +964,7 @@ export default function RapportComparaisonPage() {
                 })}
               </div>
 
-              {/* ─── VERDICT (Premium si V2, Legacy sinon, fallback basique si erreur) ─── */}
-              {verdictError && !verdict && (
-                <div style={{ padding: '20px 22px', borderRadius: 16, background: '#fff7ed', border: '1.5px solid #fed7aa' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                    <AlertTriangle size={16} color="#d97706" />
-                    <span style={{ fontSize: 13.5, fontWeight: 800, color: '#9a3412' }}>Verdict indisponible</span>
-                  </div>
-                  <p style={{ fontSize: 13, color: '#7c2d12', lineHeight: 1.6, margin: 0 }}>
-                    Le verdict comparatif n'a pas pu être généré. Les sections ci-dessous restent consultables.
-                  </p>
-                </div>
-              )}
-
-              {verdict && isVerdictV2(verdict) && (
-                <VerdictPremium verdict={verdict} analyses={analyses} />
-              )}
-              {verdict && !isVerdictV2(verdict) && (
-                <VerdictLegacyRender verdict={verdict as VerdictLegacy} />
-              )}
-
-              {/* ─── Sections complémentaires (accordéons) ─── */}
+              {/* ─── Sections complémentaires (accordéons) — AVANT le verdict ─── */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <Accordion title="Comparaison détaillée" icon="📊" defaultOpen>
                   <ComparaisonDetaillee analyses={analyses} resultsData={resultsData} bestIdx={bestIdx} />
@@ -1060,7 +1009,30 @@ export default function RapportComparaisonPage() {
                     </div>
                   </Accordion>
                 )}
+              </div>
 
+              {/* ─── VERDICT VERIMO — placé en fin de page juste avant les documents analysés ─── */}
+              {verdictError && !verdict && (
+                <div style={{ padding: '20px 22px', borderRadius: 16, background: '#fff7ed', border: '1.5px solid #fed7aa' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <AlertTriangle size={16} color="#d97706" />
+                    <span style={{ fontSize: 13.5, fontWeight: 800, color: '#9a3412' }}>Verdict indisponible</span>
+                  </div>
+                  <p style={{ fontSize: 13, color: '#7c2d12', lineHeight: 1.6, margin: 0 }}>
+                    Le verdict comparatif n'a pas pu être généré. Les sections ci-dessus restent consultables.
+                  </p>
+                </div>
+              )}
+
+              {verdict && isVerdictV2(verdict) && (
+                <VerdictPremium verdict={verdict} analyses={analyses} />
+              )}
+              {verdict && !isVerdictV2(verdict) && (
+                <VerdictLegacyRender verdict={verdict as VerdictLegacy} />
+              )}
+
+              {/* ─── Documents analysés — dernier bloc de la page ─── */}
+              <div>
                 <Accordion title="Documents analysés par bien" icon="📁"
                   subtitle={analyses.map((_, i) => {
                     const n = resultsData[i]?.documents_analyses?.length || 0;
