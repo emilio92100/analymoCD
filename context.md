@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet complet — 23 avril 2026 (après sessions 8 à 12)
+# VERIMO — Contexte projet complet — 23 avril 2026 (après sessions 8 à 13)
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -89,7 +89,200 @@ pack3    : price_1TIb51BO4ekMbwz0mmEez47o
 
 ---
 
-## 🆕 Sessions 8 à 12 — 22/23 avril 2026 — Refonte complète page Comparaison
+## 🆕 Session 13 — 23 avril 2026 (soir) — Refonte complète AdminPage + responsive mobile dashboard
+
+### 🎯 Résumé global
+Grosse session sur l'espace admin : refonte des 3 onglets principaux (Vue d'ensemble, Statistiques, Journal des paiements) avec clarification UX, distinction claire entre CA encaissé et analyses lancées, ajout d'un bloc "CA par catégorie" dédié aux Packs. En parallèle, refonte du responsive mobile sur le dashboard client (HomeView, Support, Aide) pour que tout prenne la largeur disponible.
+
+---
+
+### A. AdminPage — Refonte des 3 onglets principaux
+
+**Principe directeur** : séparer clairement trois concepts qui étaient mélangés :
+- **CA encaissé** (argent Stripe réel, basé sur la table `payments`)
+- **Analyses lancées** (travail fourni, basé sur la table `analyses`, payantes + gratuites)
+- **Crédits offerts** (acquisition via codes promo, indicateur distinct)
+
+#### 🏠 Onglet "Vue d'ensemble" — photo du mois en cours
+
+Filtre non modifiable : toujours sur **le mois courant** (titre dynamique "Activité de ce mois-ci — avril 2026").
+
+Structure finale :
+1. **Bloc hero** : CA de {mois courant} en gros + comparaison mois dernier ("↑ +X€ vs mois dernier (Y€)" ou "Premier mois de CA" si pas de CA avant).
+2. **3 cartes "Ce mois"** :
+   - NOUVEAUX CLIENTS : X inscrits ce mois
+   - **ANALYSES LANCÉES PAR LES UTILISATEURS** : X ce mois, avec détail **Simple : X · Complète : X** uniquement (PAS de Pack 2/3 car les analyses individuelles ont toujours `type='document'` ou `'complete'`, jamais `'pack2'` ou `'pack3'`)
+   - TICKET MOYEN : X€ par paiement payant
+3. **Bloc "💰 CA par catégorie ce mois"** (NOUVEAU) : 4 cartes avec le CA ventilé par produit Stripe :
+   - Analyse Simple · Analyse Complète · Pack 2 Biens · Pack 3 Biens
+   - Chaque carte affiche le montant et le nombre de ventes
+   - Classification basée sur le parsing de la description du paiement (`desc.includes('pack 3')`, etc.)
+4. **Bloc "À lire"** : messages + demandes pro non lus (orange si > 0, vert "Tout est à jour ✓" sinon), avec boutons d'action directs
+5. **Actions rapides** : grille de boutons (avec "Paiements" renommé en "Journal des paiements")
+
+#### 📊 Onglet "Statistiques" — analyse historique filtrable
+
+Filtres période : **7j / 30j / 3m / 12m / Depuis le début / Personnalisé** (ajout "Depuis le début" en plus des filtres existants). Titre dynamique "Analyse de l'activité sur les 30 derniers jours" / "depuis le début" / etc.
+
+Structure finale :
+1. **Bloc "💰 Chiffre d'affaires"** : CA encaissé (gros bloc vert dégradé) + Ticket moyen (paiements payants uniquement)
+2. **Bloc "👥 Nouveaux clients et analyses lancées"** :
+   - NOUVEAUX CLIENTS
+   - **ANALYSES LANCÉES PAR LES UTILISATEURS** avec uniquement Simple + Complète, mention "dont X gratuites" si applicable (analyses sans `stripe_payment_id`)
+3. **Bloc "💰 CA par catégorie"** (NOUVEAU) : même logique que Vue d'ensemble mais filtrable par période, 4 cartes (Simple / Complète / Pack 2 / Pack 3)
+4. **Bloc "🎁 Crédits offerts"** (conditionnel — affiché seulement si > 0) : crédits Simple + Complète offerts via codes promo, indicateur d'acquisition
+5. **Graphique CA hebdo** — 8 dernières semaines (barres dégradé bleu)
+6. **Graphique inscriptions hebdo** — 8 dernières semaines (barres dégradé violet) + total sur 8 semaines
+
+#### 💰 Onglet "Journal des paiements" (anciennement "Paiements")
+
+**Renommé** pour clarifier son rôle : liste détaillée de toutes les transactions, pas de doublons avec Stats.
+
+Changements :
+- Titre : "Journal des paiements"
+- Sous-titre : "Historique détaillé de toutes les transactions Stripe et crédits offerts"
+- **Suppression des 4 KPIs en haut** (Total période / Paiements / Crédits gratuits / Éligibles remboursement) — doublon avec Stats désormais
+- Filtre "⚠ Éligibles remboursement" renommé en "⏱ Remboursables (< 14j)"
+- Liste détaillée inchangée : filtres période/type, recherche, export CSV, lien Stripe direct
+
+---
+
+### B. Fix RLS admin — Admin voit toutes les données
+
+**Problème** : l'admin (hello@verimo.fr) ne voyait que ses propres analyses/paiements depuis l'interface via Supabase JS car les policies RLS étaient strictement `auth.uid() = user_id`.
+
+**Fix** : création d'une fonction `public.is_admin()` SECURITY DEFINER qui check `role='admin'` sur la table `profiles`, puis ajout de policies additives pour admin :
+- SELECT / UPDATE / DELETE sur `analyses`
+- SELECT / UPDATE sur `profiles`
+- SELECT sur `payments` (+ activation RLS `payments` qui ne l'était pas)
+
+**Migration SQL** appliquée : `supabase-migration-admin-policies.sql` (exécutée par Alex dans le SQL editor Supabase).
+
+**Sécurité vérifiée** : un user normal (non-admin) voit toujours uniquement ses propres données. Les policies additives ne s'activent que si `is_admin() = true`.
+
+---
+
+### C. Fix webhook Stripe — lien direct vers le paiement
+
+**Problème** : dans AdminPage, le bouton "Ouvrir dans Stripe" sur un paiement ouvrait la liste filtrée Stripe au lieu du paiement spécifique, car le champ `stripe_payment_id` n'était pas rempli.
+
+**Fix** : modification de la edge function `stripe-webhook` directement dans le dashboard Supabase. Extraction du `paymentIntentId` depuis `session.payment_intent` (gestion `typeof string ? : .id`) et insertion dans `payments.stripe_payment_id`.
+
+⚠️ **Les anciens paiements** n'ont pas ce champ rempli (antérieurs au fix), ils continuent d'ouvrir la liste Stripe. Seuls les nouveaux paiements auront le lien direct.
+
+---
+
+### D. Fix recherche globale ⌘K admin
+
+**Problème** : la recherche globale (Cmd+K) échouait silencieusement et renvoyait toujours vide, même pour des adresses qui existaient clairement en base.
+
+**Cause** : la requête utilisait `.or('address.ilike.%q%,adresse_bien.ilike.%q%,title.ilike.%q%')` mais la colonne `adresse_bien` **n'existe pas** dans la table `analyses` (le vrai nom c'est `address`). Supabase remontait une erreur silencieuse sur le champ inexistant et toute la requête échouait.
+
+**Fix** : retrait de `adresse_bien` de la requête `.or()`. Requête finale : `.or('address.ilike.%q%,title.ilike.%q%')`.
+
+**Fix secondaire** : le clic sur un résultat "analyse" ouvre désormais la fiche détail de l'analyse (via `focusAnalysisId` passé à AnalysesTab) au lieu de la fiche user.
+
+---
+
+### E. Responsive mobile — Dashboard client
+
+**Problème identifié sur plusieurs pages** : sur mobile, le contenu n'utilisait pas toute la largeur de l'écran. Gros espace vide à gauche, cartes écrasées, texte coupé.
+
+**Cause racine** : dans `DashboardPage.tsx`, le `<main>` avait un padding fixe de `28px 24px`. Sur un écran de 375px, 48px bouffés par les marges = ~13% d'écran perdu. Et les composants internes avaient leur propre padding en plus.
+
+#### DashboardPage.tsx — Fix structurel global
+
+Ajout de la classe `dashboard-main` sur le `<main>` et règles CSS mobile :
+```css
+@media (max-width: 767px) {
+  .dashboard-main { padding: 16px 12px !important; }
+  /* Force tous les conteneurs enfants à prendre 100% */
+  .dashboard-main > div,
+  .dashboard-main > section {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  /* Réduire le padding interne des grosses cards */
+  .dashboard-main [style*="padding: '28px'"],
+  .dashboard-main [style*="padding:28px"] {
+    padding: 18px !important;
+  }
+}
+```
+
+**Topbar mobile agrandie** de 54px → **62px** pour meilleure ergonomie au pouce :
+- Icône menu ☰ : 20px → **24px**
+- Titre page : 14px → **15px gras**
+- Padding : 12px → 14px
+
+#### HomeView.tsx — Stats en 1 colonne sur mobile
+
+Les 3 cartes (Total analyses / Dernière analyse / Crédits) étaient en 2 colonnes sur mobile, ce qui écrasait "Dernière analyse" avec l'adresse coupée `...`.
+
+Fix :
+- `@media (max-width: 640px)` → `.stats-grid { grid-template-columns: 1fr !important }` (1 seule colonne)
+- Adresse : retrait de `whiteSpace: nowrap` + `textOverflow: ellipsis`, remplacé par `wordBreak: break-word` → l'adresse wrappe sur 2 lignes au lieu d'être coupée
+
+#### Support.tsx — FAQ + formulaire contact
+
+Problème : le bloc "Comment pouvons-nous vous aider ?" avait icône à gauche + texte à droite (flex horizontal), ce qui écrasait le texte sur mobile. Les réponses FAQ dépliées avaient un `padding-left: 61px` (pour aligner le texte sous le titre, pas sous l'icône), ce qui donnait l'impression que le texte commençait au milieu.
+
+Fix :
+- Ajout classe `support-header` sur le bloc flex : `flex-direction: column !important` sur mobile + padding réduit (18px/18px au lieu de 22px/26px)
+- Ajout classe `faq-answer` sur les réponses dépliées : `padding: 0 14px 14px 14px !important` sur mobile (au lieu de `0 15px 14px 61px`)
+
+#### Aide.tsx — Page "Aide & Méthode"
+
+Plusieurs corrections sur 3 blocs distincts :
+
+1. **Bloc "💡 Conseil important Verimo"** : restructuré en 2 zones
+   - Ligne 1 : icône 💡 + titre "💡 Conseil important Verimo" côte à côte (classe `conseil-title-row`)
+   - Ligne 2 : description pleine largeur en dessous (classe `conseil-desc`)
+   - Padding card réduit 24/28px → 18/16px sur mobile (classe `aide-card-padding`)
+
+2. **Bloc "Comment nous calculons la note /20"** — sous-bloc bleu "On démarre toujours de la note maximale" :
+   - Icône 20 réduite sur mobile : 48×48 → **38×38** (classe `demarre-20`)
+   - Titre reste à côté du 20
+   - Description pleine largeur en dessous via `flex-wrap: wrap` + `flexBasis: 100%` sur la description (classes `demarre-block`, `demarre-text`, `demarre-desc`)
+
+3. **Blocs "Échelle de notation"** (17-20, 14-16, etc.) :
+   - Restructuration en 3 enfants flex directs : `scale-range`, `scale-label`, `scale-desc`
+   - Le parent a `flex-wrap: wrap`, donc la description (avec `flex-basis: 100%`) passe toujours sur une nouvelle ligne
+   - Ligne 1 : `[17-20]` + `[Bien irréprochable]` côte à côte
+   - Ligne 2 : description pleine largeur
+   - Fonctionne sur desktop ET mobile avec le même markup
+
+---
+
+### Fichiers modifiés session 13
+
+**Frontend (à pousser sur GitHub)** :
+```
+src/pages/AdminPage.tsx                 → Refonte DashboardTab + StatsTab + PaymentsTab, retrait KpiCard / PLAN_PRICES / TrendingUp inutilisés
+src/pages/DashboardPage.tsx             → Classe .dashboard-main + règles CSS mobile responsive + topbar agrandie (62px)
+src/pages/dashboard/HomeView.tsx        → Stats en 1 colonne mobile + adresse wrap
+src/pages/dashboard/Support.tsx         → Classes support-header + faq-answer + règles CSS mobile
+src/pages/dashboard/Aide.tsx            → Refonte 3 blocs (conseil, démarre, scale) + règles CSS mobile
+```
+
+**Backend (déjà appliqué en prod)** :
+```
+supabase-migration-admin-policies.sql   → Fonction is_admin() + policies admin sur analyses/profiles/payments
+supabase/functions/stripe-webhook       → Extraction paymentIntentId dans payments.stripe_payment_id
+```
+
+---
+
+### Règles UX apprises cette session
+
+1. **"CA encaissé" ≠ "Analyses lancées"** : l'argent Stripe et le travail fourni sont 2 métriques distinctes, ne JAMAIS les mélanger dans un même bloc.
+2. **Pack 2 / Pack 3 ne sont pas des types d'analyses** : ce sont des produits de paiement qui donnent des crédits Complète. Les analyses individuelles ont toujours `type='document'` ou `'complete'`. Les Packs n'apparaissent donc QUE dans les blocs "CA par catégorie" (vente), jamais dans les blocs "Analyses lancées" (consommation).
+3. **Analyses gratuites** : analyses sans `stripe_payment_id` lié = faites via code promo ou crédit offert. Les compter dans "Analyses lancées" avec mention "dont X gratuites", mais pas dans le CA.
+4. **Mobile : force 100% de largeur** : le pattern `flex horizontal avec icône + texte` écrase toujours le texte sur mobile. Règle simple : sur mobile, icône AU-DESSUS du titre (classe avec `flex-direction: column`), ou alors icône + titre côte à côte MAIS description pleine largeur en dessous via `flex-wrap`.
+
+---
+
+
 
 ### 🎯 Résumé global
 Gros chantier sur la comparaison de biens : refonte UX, passage en page dédiée plein écran, ajout d'un verdict premium enrichi, harmonisation des écrans de chargement dans tout le dashboard, fix de plusieurs bugs critiques.
@@ -528,16 +721,33 @@ supabase/functions/
 - [ ] Tester sélecteur type_bien en production
 - [ ] Tester syndic multi-PV (stable / nouveau_elu / rotation_frequente)
 - [ ] Tester détection rigoureuse du gestionnaire
-- [ ] Tester rendu mobile
+- [ ] Tester rendu mobile des autres pages dashboard (MesAnalyses, Compte, Tarifs, NouvelleAnalyse, Compare)
 - [ ] Tester onglets colorés
 - [ ] Tester RapportPage sur iPhone
 - [ ] Tester retour accueil iPhone après préchargement App.tsx
-- [ ] HomeView : retravailler présentation générale
 - [ ] Stripe TEST → production
 - [ ] Analyses bloquées > 20 min → badge "Échoué"
 - [ ] Système dossiers par bien
 - [ ] App.css : vestige Vite, peut être supprimé
 - [ ] Optimisation coût API Claude : prompt caching (réduire 90% input tokens répétés)
+- [ ] **Bouton "Marquer comme remboursée"** dans fiche détail analyse admin (nécessite colonne `refunded_at` ou statut dédié)
+- [ ] **Bouton "Relancer l'analyse"** depuis l'admin (complexe : docs supprimés RGPD après analyse)
+- [ ] **Synchro `last_sign_in_at`** auth.users → profiles via trigger SQL ou edge function
+- [ ] **Chat admin ↔ client** (gros chantier reporté — système de messagerie bidirectionnelle)
+
+### ✅ Fait récemment (session 13 — 23 avril 2026 soir)
+
+- [x] **AdminPage** : refonte Vue d'ensemble axée mois courant (CA, nouveaux clients, analyses lancées Simple/Complète, ticket moyen, CA par catégorie, à lire, actions rapides)
+- [x] **AdminPage** : refonte Statistiques avec filtre "Depuis le début" + bloc CA par catégorie filtrable + bloc crédits offerts conditionnel
+- [x] **AdminPage** : Paiements → "Journal des paiements" (suppression des 4 KPIs redondants)
+- [x] **Distinction claire** : CA encaissé (payments) vs Analyses lancées (analyses, Simple/Complète uniquement) vs Crédits offerts (acquisition)
+- [x] **RLS admin** : fonction `is_admin()` + policies additives sur analyses/profiles/payments (migration SQL appliquée)
+- [x] **Webhook Stripe** : extraction `paymentIntentId` dans `payments.stripe_payment_id` pour lien direct vers le paiement
+- [x] **Recherche globale ⌘K** : fix colonne `adresse_bien` inexistante (remplacée par `address`) + clic analyse ouvre fiche détail
+- [x] **Responsive mobile dashboard** : DashboardPage.tsx avec padding réduit sur mobile + force 100% largeur + topbar agrandie 62px
+- [x] **HomeView mobile** : stats en 1 colonne, adresse wrap au lieu de coupée
+- [x] **Support mobile** : icône au-dessus du titre + padding réduit + réponses FAQ pleine largeur
+- [x] **Aide mobile** : bloc Conseil restructuré, bloc "20" compact, échelle notation avec description pleine largeur en wrap
 
 ### ✅ Fait récemment (sessions 8-12 — 22/23 avril 2026)
 
