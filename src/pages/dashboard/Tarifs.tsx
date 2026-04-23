@@ -3,6 +3,7 @@ import { FileText, ShieldCheck, GitCompare, BarChart2, CreditCard, CheckCircle, 
 import { supabase } from '../../lib/supabase';
 import { markFreePreviewUsed } from '../../lib/analyses';
 import { useCredits, type Credits } from '../../hooks/useCredits';
+import DashboardLoader from '../../components/DashboardLoader';
 
 type PromoResult = {
   id: string;
@@ -214,7 +215,7 @@ function CheckoutModal({ plan, onClose }: {
 
 export default function Tarifs() {
   const [creditsToast, setCreditsToast] = useState<string | null>(null);
-  const { credits, fetchCredits } = useCredits();
+  const { credits, fetchCredits, loadingCredits } = useCredits();
   const [detailPlan, setDetailPlan] = useState<string | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<null | { id: string; label: string; price: string; priceNum: number; color: string; creditLabel: string }>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
@@ -236,6 +237,8 @@ export default function Tarifs() {
     { id: 'pack2', label: 'Pack 2 Biens', price: '29,90€', priceNum: 29.90, desc: 'Comparez 2 biens côte à côte. 14,95€ / bien.', creditLabel: '2 crédits complets', creditType: 'complete', color: '#1a5068', icon: GitCompare, badge: '−25%', details: ['2 analyses complètes incluses', 'Tout ce qui est dans l\'analyse complète', 'Comparaison côte à côte', 'Économisez 10€ vs 2 achats séparés'] },
     { id: 'pack3', label: 'Pack 3 Biens', price: '39,90€', priceNum: 39.90, desc: 'Le meilleur rapport qualité/prix. 13,30€ / bien.', creditLabel: '3 crédits complets', creditType: 'complete', color: '#1a5068', icon: BarChart2, badge: '−33%', details: ['3 analyses complètes incluses', 'Tout ce qui est dans l\'analyse complète', 'Comparaison et classement', 'Économisez 20€ vs 3 achats séparés'] },
   ];
+
+  if (loadingCredits) return <DashboardLoader message="Chargement des tarifs…" />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
