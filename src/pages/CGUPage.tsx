@@ -77,7 +77,13 @@ L'utilisateur garantit qu'il dispose des droits nécessaires sur les documents q
 
 Le paiement est effectué en ligne via Stripe, prestataire de paiement sécurisé. Verimo ne stocke aucune donnée bancaire.
 
-Les achats de crédits d'analyse sont fermes et définitifs. Conformément à l'article L.221-28 du Code de la consommation, le droit de rétractation de 14 jours ne s'applique pas aux contenus numériques dont l'exécution a commencé avec l'accord exprès de l'utilisateur.
+Droit de rétractation — Conformément à l'article L221-28, 13° du Code de la consommation, les contenus numériques fournis sur support immatériel dont l'exécution commence avec l'accord exprès du consommateur et après son renoncement exprès à son droit de rétractation ne peuvent faire l'objet d'une rétractation.
+
+Au moment du paiement, une case à cocher est présentée à l'utilisateur pour qu'il donne son accord exprès au démarrage immédiat du service et reconnaisse perdre son droit de rétractation une fois l'analyse lancée. Cette validation est obligatoire pour finaliser l'achat.
+
+En pratique :
+• Les crédits non utilisés (aucune analyse lancée) peuvent faire l'objet d'un remboursement dans les 14 jours suivant l'achat, sur simple demande à hello@verimo.fr.
+• Les crédits déjà utilisés (analyse lancée, rapport généré) ne sont pas remboursables — le service est alors considéré comme exécuté.
 
 En cas d'anomalie de facturation, l'utilisateur peut contacter hello@verimo.fr dans un délai de 30 jours.`
           },
@@ -146,12 +152,16 @@ Conformément aux articles L.612-1 et suivants du Code de la consommation, l'uti
 E-mail : hello@verimo.fr
 Site : https://verimo.fr`
           },
-        ].map((section, i) => (
-          <div key={i} style={{ marginBottom: 40 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f2d3d', marginBottom: 12 }}>{section.title}</h2>
-            <p style={{ fontSize: 15, color: '#475569', lineHeight: 1.8, whiteSpace: 'pre-line' }}>{section.content}</p>
-          </div>
-        ))}
+        ].map((section, i) => {
+          // Ancre simplifiée pour section 6 (Tarifs et paiement) → /cgu#retractation
+          const anchor = i === 5 ? 'retractation' : undefined;
+          return (
+            <div key={i} id={anchor} style={{ marginBottom: 40, scrollMarginTop: 100 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f2d3d', marginBottom: 12 }}>{section.title}</h2>
+              <p style={{ fontSize: 15, color: '#475569', lineHeight: 1.8, whiteSpace: 'pre-line' }}>{section.content}</p>
+            </div>
+          );
+        })}
 
         <div style={{ marginTop: 48, padding: 24, background: '#f0f7fb', borderRadius: 16, border: '1px solid rgba(42,125,156,0.15)' }}>
           <p style={{ fontSize: 14, color: '#2a7d9c', fontWeight: 600, marginBottom: 4 }}>Une question sur nos conditions ?</p>
