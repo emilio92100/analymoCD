@@ -4291,7 +4291,7 @@ export default function RapportPage() {
       const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlc3pyYXlyb21sZGZnZXRxYXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MzI5NTUsImV4cCI6MjA2MTAwODk1NX0.XsqzBPDMfHRFKgMhJxoLhgVWZMdV5YnFKM3VCBe9hOk' },
-        body: JSON.stringify({ priceId, userId: session.user.id, successUrl }),
+        body: JSON.stringify({ priceId, userId: session.user.id, successUrl, retractationWaiverAt: new Date().toISOString() }),
       });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
