@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  BookOpen, Star, Lightbulb, FileText, CheckCircle2,
-  AlertTriangle, Sparkles, ShieldCheck, LifeBuoy, ChevronDown,
-  TrendingUp, Building2, Info, ArrowRight,
+  BookOpen, Star, Lightbulb, CheckCircle2,
+  AlertTriangle, Sparkles, LifeBuoy, ChevronDown,
+  TrendingUp, Info, ArrowRight,
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -70,7 +70,7 @@ const scale = [
   { r: '0 – 6', l: 'Bien à éviter', desc: "Risques majeurs identifiés, il est préférable de renoncer.", c: '#dc2626', bg: '#fef2f2', bord: '#fecaca' },
 ];
 
-type GlossEntry = { t: string; d: string; icon?: string };
+type GlossEntry = { t: string; d: string };
 type GlossCategory = { cat: string; color: string; bg: string; items: GlossEntry[] };
 
 const glossaire: GlossCategory[] = [
