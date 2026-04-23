@@ -168,11 +168,22 @@ export default function Support() {
           from { opacity: 0; transform: translateY(8px); }
           to { opacity: 1; transform: translateY(0); }
         }
+        @media (max-width: 640px) {
+          .support-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            padding: 18px 18px !important;
+            gap: 12px !important;
+          }
+          .faq-answer {
+            padding: 0 14px 14px 14px !important;
+          }
+        }
       `}</style>
 
       {/* FORMULAIRE EN HAUT */}
       <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-        <div style={{ padding: '22px 26px', background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', borderBottom: '1px solid #fed7aa', display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+        <div className="support-header" style={{ padding: '22px 26px', background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', borderBottom: '1px solid #fed7aa', display: 'flex', alignItems: 'flex-start', gap: 16 }}>
           <div style={{ width: 44, height: 44, borderRadius: 12, background: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(217,119,6,0.25)' }}>
             <Mail size={20} style={{ color: '#fff' }} />
           </div>
@@ -298,7 +309,7 @@ export default function Support() {
 
                             <div style={{ display: 'grid', gridTemplateRows: qOpen ? '1fr' : '0fr', transition: 'grid-template-rows 0.3s ease' }}>
                               <div style={{ overflow: 'hidden' }}>
-                                <div style={{ padding: '0 15px 14px 61px', fontSize: 13, color: '#475569', lineHeight: 1.7 }}>
+                                <div className="faq-answer" style={{ padding: '0 15px 14px 61px', fontSize: 13, color: '#475569', lineHeight: 1.7 }}>
                                   {item.a}
                                 </div>
                               </div>
