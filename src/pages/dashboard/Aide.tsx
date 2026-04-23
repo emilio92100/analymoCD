@@ -218,22 +218,22 @@ function NotationBlock() {
 
   return (
     <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 16, overflow: 'hidden' }}>
-      <div style={{ padding: '22px 24px', background: 'linear-gradient(135deg, #0f2d3d, #1a4a60)', display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      <div className="notation-header" style={{ padding: '22px 24px', background: 'linear-gradient(135deg, #0f2d3d, #1a4a60)', display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div className="notation-header-icon" style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Star size={20} style={{ color: '#fff' }} />
         </div>
-        <div>
+        <div className="notation-header-text" style={{ flex: 1 }}>
           <div style={{ fontSize: 17, fontWeight: 800, color: '#fff', marginBottom: 3 }}>Comment nous calculons la note /20</div>
           <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>Transparence totale sur notre méthode</div>
         </div>
       </div>
 
       <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px', background: '#f0f7fb', borderRadius: 12, border: '1px solid #bae3f5' }}>
-          <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#2a7d9c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, fontWeight: 900, flexShrink: 0 }}>20</div>
-          <div>
+        <div className="demarre-block" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px', background: '#f0f7fb', borderRadius: 12, border: '1px solid #bae3f5' }}>
+          <div className="demarre-20" style={{ width: 48, height: 48, borderRadius: '50%', background: '#2a7d9c', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, fontWeight: 900, flexShrink: 0 }}>20</div>
+          <div className="demarre-text" style={{ flex: 1 }}>
             <div style={{ fontSize: 14.5, fontWeight: 800, color: '#0f172a', marginBottom: 3 }}>On démarre toujours de la note maximale</div>
-            <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.55 }}>Notre moteur d'analyse retire des points selon les risques détectés dans vos documents, et en ajoute pour les points positifs identifiés.</div>
+            <div className="demarre-desc" style={{ fontSize: 13, color: '#475569', lineHeight: 1.55 }}>Notre moteur d'analyse retire des points selon les risques détectés dans vos documents, et en ajoute pour les points positifs identifiés.</div>
           </div>
         </div>
 
@@ -255,12 +255,10 @@ function NotationBlock() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ fontSize: 12.5, color: '#64748b', marginBottom: 2 }}>Comment interpréter votre note :</div>
               {scale.map((s, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderRadius: 12, background: s.bg, border: `1.5px solid ${s.bord}` }}>
-                  <div style={{ minWidth: 90, fontSize: 17, fontWeight: 900, color: s.c }}>{s.r}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14.5, fontWeight: 800, color: s.c, marginBottom: 3 }}>{s.l}</div>
-                    <div style={{ fontSize: 12.5, color: s.c, opacity: 0.85, lineHeight: 1.5 }}>{s.desc}</div>
-                  </div>
+                <div key={i} className="scale-item" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' as const, gap: '8px 14px', padding: '14px 18px', borderRadius: 12, background: s.bg, border: `1.5px solid ${s.bord}` }}>
+                  <div className="scale-range" style={{ minWidth: 90, fontSize: 17, fontWeight: 900, color: s.c }}>{s.r}</div>
+                  <div className="scale-label" style={{ flex: 1, fontSize: 14.5, fontWeight: 800, color: s.c }}>{s.l}</div>
+                  <div className="scale-desc" style={{ flexBasis: '100%', fontSize: 12.5, color: s.c, opacity: 0.85, lineHeight: 1.5 }}>{s.desc}</div>
                 </div>
               ))}
             </div>
@@ -385,13 +383,43 @@ export default function Aide() {
         @media (max-width: 640px) {
           .aide-sommaire-grid { grid-template-columns: 1fr 1fr !important; }
           .notation-tabs { flex-direction: column !important; }
-          .conseil-header {
-            flex-direction: column !important;
-            align-items: flex-start !important;
+          .aide-card-padding {
+            padding: 18px 16px !important;
+          }
+          /* Bloc "Comment nous calculons la note /20" : icône plus petite, texte wrappe */
+          .notation-header {
+            padding: 18px 16px !important;
+          }
+          .notation-header-icon {
+            width: 40px !important;
+            height: 40px !important;
+          }
+          /* Bloc "On démarre toujours" : 20 plus petit côté titre, description pleine largeur en dessous */
+          .demarre-block {
+            flex-wrap: wrap !important;
+            padding: 14px 14px !important;
             gap: 12px !important;
           }
-          .aide-card-padding {
-            padding: 18px 18px !important;
+          .demarre-20 {
+            width: 38px !important;
+            height: 38px !important;
+            font-size: 15px !important;
+          }
+          .demarre-text {
+            flex: 1 1 calc(100% - 52px) !important;
+            min-width: 0 !important;
+          }
+          .demarre-desc {
+            flex-basis: 100% !important;
+            margin-top: 6px !important;
+          }
+          /* Échelle notation : note + titre sur ligne 1, description pleine largeur dessous (desktop et mobile - flex-wrap déjà dans styles) */
+          .scale-item {
+            padding: 14px 16px !important;
+          }
+          .scale-range {
+            min-width: auto !important;
+            font-size: 16px !important;
           }
         }
       `}</style>
@@ -401,16 +429,14 @@ export default function Aide() {
 
       {/* CONSEIL VERIMO EN HAUT */}
       <div className="aide-card-padding" style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', border: '1.5px solid #fed7aa', borderRadius: 16, padding: '24px 28px', boxShadow: '0 4px 16px rgba(217,119,6,0.08)' }}>
-        <div className="conseil-header" style={{ display: 'flex', gap: 18, alignItems: 'flex-start', marginBottom: 20 }}>
+        <div className="conseil-title-row" style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 14 }}>
           <div style={{ width: 48, height: 48, borderRadius: 12, background: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(217,119,6,0.3)' }}>
             <Lightbulb size={22} style={{ color: '#fff' }} />
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 16, fontWeight: 800, color: '#92400e', marginBottom: 6 }}>💡 Conseil important Verimo</div>
-            <div style={{ fontSize: 14, color: '#78350f', lineHeight: 1.65 }}>
-              <strong>Plus vous fournissez de documents, plus la note /20 sera précise et le rapport détaillé.</strong> Voici les documents qui permettent à notre moteur d'analyse de couvrir tous les aspects d'un bien, selon votre cas :
-            </div>
-          </div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: '#92400e' }}>💡 Conseil important Verimo</div>
+        </div>
+        <div className="conseil-desc" style={{ fontSize: 14, color: '#78350f', lineHeight: 1.65, marginBottom: 20 }}>
+          <strong>Plus vous fournissez de documents, plus la note /20 sera précise et le rapport détaillé.</strong> Voici les documents qui permettent à notre moteur d'analyse de couvrir tous les aspects d'un bien, selon votre cas :
         </div>
 
         <div className="docs-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
