@@ -11,7 +11,7 @@ import {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const etapes = [
-  { num: '1', title: 'Rassemblez vos documents', desc: "PV d'AG, règlement de copropriété, diagnostics, appels de charges, DPE, compromis — rassemblez tout au même endroit." },
+  { num: '1', title: 'Rassemblez vos documents', desc: "Rassemblez les documents disponibles sur votre bien : diagnostics, DPE, compromis, et selon votre cas — PV d'AG et règlement de copropriété pour un bien en copro, documents d'urbanisme et justificatifs de travaux pour une maison individuelle." },
   { num: '2', title: 'Choisissez votre analyse', desc: "Analyse Simple (4,90€) pour un seul document, ou Analyse Complète (19,90€) pour un rapport global avec note /20." },
   { num: '3', title: 'Uploadez en quelques secondes', desc: "Glissez-déposez vos fichiers PDF, Word ou images directement dans l'espace prévu." },
   { num: '4', title: 'Rapport prêt en 30 secondes*', desc: "Note /20, risques détectés, travaux à prévoir et recommandation personnalisée. Téléchargeable en PDF à tout moment." },
@@ -157,10 +157,10 @@ function GlossaireBlock() {
       {glossaire.map((cat, ci) => {
         const isOpen = openCat === ci;
         return (
-          <div key={ci} style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, overflow: 'hidden', transition: 'all 0.2s' }}>
+          <div key={ci} style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, overflow: 'hidden' }}>
             <button
               onClick={() => { setOpenCat(isOpen ? null : ci); setOpenTerm(null); }}
-              style={{ width: '100%', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14, background: isOpen ? cat.bg : '#fff', border: 'none', cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s' }}
+              style={{ width: '100%', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14, background: isOpen ? cat.bg : '#fff', border: 'none', cursor: 'pointer', textAlign: 'left', transition: 'background 0.25s ease' }}
             >
               <div style={{ width: 38, height: 38, borderRadius: 10, background: cat.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <BookOpen size={17} style={{ color: '#fff' }} />
@@ -169,32 +169,39 @@ function GlossaireBlock() {
                 <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>{cat.cat}</div>
                 <div style={{ fontSize: 12, color: '#64748b' }}>{cat.items.length} termes expliqués simplement</div>
               </div>
-              <ChevronDown size={18} style={{ color: cat.color, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
+              <ChevronDown size={18} style={{ color: cat.color, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s ease', flexShrink: 0 }} />
             </button>
-            {isOpen && (
-              <div style={{ padding: '4px 14px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {cat.items.map((item, ti) => {
-                  const key = `${ci}-${ti}`;
-                  const termOpen = openTerm === key;
-                  return (
-                    <div key={ti} style={{ background: termOpen ? cat.bg : '#f8fafc', borderRadius: 10, border: `1px solid ${termOpen ? cat.color + '40' : '#edf2f7'}`, overflow: 'hidden', transition: 'all 0.15s' }}>
-                      <button
-                        onClick={() => setOpenTerm(termOpen ? null : key)}
-                        style={{ width: '100%', padding: '11px 15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
-                      >
-                        <span style={{ fontSize: 13.5, fontWeight: 700, color: termOpen ? cat.color : '#0f172a' }}>{item.t}</span>
-                        <span style={{ width: 22, height: 22, borderRadius: '50%', background: termOpen ? cat.color : '#e2e8f0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, flexShrink: 0 }}>
-                          {termOpen ? '−' : '+'}
-                        </span>
-                      </button>
-                      {termOpen && (
-                        <div style={{ padding: '0 15px 14px', fontSize: 13, color: '#475569', lineHeight: 1.7 }}>{item.d}</div>
-                      )}
-                    </div>
-                  );
-                })}
+
+            {/* Conteneur animé : grid 0fr → 1fr pour animer la hauteur sans la connaître */}
+            <div style={{ display: 'grid', gridTemplateRows: isOpen ? '1fr' : '0fr', transition: 'grid-template-rows 0.35s ease' }}>
+              <div style={{ overflow: 'hidden' }}>
+                <div style={{ padding: '4px 14px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {cat.items.map((item, ti) => {
+                    const key = `${ci}-${ti}`;
+                    const termOpen = openTerm === key;
+                    return (
+                      <div key={ti} style={{ background: termOpen ? cat.bg : '#f8fafc', borderRadius: 10, border: `1px solid ${termOpen ? cat.color + '40' : '#edf2f7'}`, overflow: 'hidden', transition: 'background 0.25s ease, border-color 0.25s ease' }}>
+                        <button
+                          onClick={() => setOpenTerm(termOpen ? null : key)}
+                          style={{ width: '100%', padding: '11px 15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                        >
+                          <span style={{ fontSize: 13.5, fontWeight: 700, color: termOpen ? cat.color : '#0f172a', transition: 'color 0.25s ease' }}>{item.t}</span>
+                          <span style={{ width: 22, height: 22, borderRadius: '50%', background: termOpen ? cat.color : '#e2e8f0', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, flexShrink: 0, transition: 'background 0.25s ease, transform 0.3s ease', transform: termOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                            {termOpen ? '−' : '+'}
+                          </span>
+                        </button>
+                        {/* Animation fluide de la définition */}
+                        <div style={{ display: 'grid', gridTemplateRows: termOpen ? '1fr' : '0fr', transition: 'grid-template-rows 0.3s ease' }}>
+                          <div style={{ overflow: 'hidden' }}>
+                            <div style={{ padding: '0 15px 14px', fontSize: 13, color: '#475569', lineHeight: 1.7 }}>{item.d}</div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            )}
+            </div>
           </div>
         );
       })}
@@ -244,51 +251,53 @@ function NotationBlock() {
           })}
         </div>
 
-        {activeTab === 'echelle' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ fontSize: 12.5, color: '#64748b', marginBottom: 2 }}>Comment interpréter votre note :</div>
-            {scale.map((s, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderRadius: 12, background: s.bg, border: `1.5px solid ${s.bord}` }}>
-                <div style={{ minWidth: 90, fontSize: 17, fontWeight: 900, color: s.c }}>{s.r}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14.5, fontWeight: 800, color: s.c, marginBottom: 3 }}>{s.l}</div>
-                  <div style={{ fontSize: 12.5, color: s.c, opacity: 0.85, lineHeight: 1.5 }}>{s.desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {activeTab === 'bonus' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div style={{ fontSize: 12.5, color: '#64748b', marginBottom: 4 }}>Ces éléments <strong>ajoutent</strong> des points à la note finale :</div>
-            <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, overflow: 'hidden' }}>
-              {bonuses.map((b, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '12px 16px', borderTop: i > 0 ? '1px solid #f0f5f9' : 'none' }}>
-                  <span style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.4 }}>{b.l}</span>
-                  <span style={{ fontSize: 12.5, fontWeight: 800, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '4px 11px', borderRadius: 7, flexShrink: 0, whiteSpace: 'nowrap' }}>{b.v}</span>
+        <div key={activeTab} style={{ animation: 'tabFade 0.35s ease' }}>
+          {activeTab === 'echelle' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ fontSize: 12.5, color: '#64748b', marginBottom: 2 }}>Comment interpréter votre note :</div>
+              {scale.map((s, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderRadius: 12, background: s.bg, border: `1.5px solid ${s.bord}` }}>
+                  <div style={{ minWidth: 90, fontSize: 17, fontWeight: 900, color: s.c }}>{s.r}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14.5, fontWeight: 800, color: s.c, marginBottom: 3 }}>{s.l}</div>
+                    <div style={{ fontSize: 12.5, color: s.c, opacity: 0.85, lineHeight: 1.5 }}>{s.desc}</div>
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
 
-        {activeTab === 'penalites' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ fontSize: 12.5, color: '#64748b', marginBottom: 2 }}>Ces éléments <strong>retirent</strong> des points à la note finale :</div>
-            {penalties.map((p, i) => (
-              <div key={i} style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, overflow: 'hidden' }}>
-                <div style={{ padding: '9px 16px', background: '#fef2f2', fontSize: 11.5, fontWeight: 800, color: '#dc2626', letterSpacing: '0.04em', borderBottom: '1px solid #fecaca' }}>{p.cat.toUpperCase()}</div>
-                {p.items.map((item, j) => (
-                  <div key={j} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '11px 16px', borderTop: j > 0 ? '1px solid #f0f5f9' : 'none' }}>
-                    <span style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.4 }}>{item.l}</span>
-                    <span style={{ fontSize: 12.5, fontWeight: 800, color: '#dc2626', background: '#fef2f2', border: '1px solid #fecaca', padding: '4px 11px', borderRadius: 7, flexShrink: 0, whiteSpace: 'nowrap' }}>{item.v}</span>
+          {activeTab === 'bonus' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ fontSize: 12.5, color: '#64748b', marginBottom: 4 }}>Ces éléments <strong>ajoutent</strong> des points à la note finale :</div>
+              <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, overflow: 'hidden' }}>
+                {bonuses.map((b, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '12px 16px', borderTop: i > 0 ? '1px solid #f0f5f9' : 'none' }}>
+                    <span style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.4 }}>{b.l}</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 800, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '4px 11px', borderRadius: 7, flexShrink: 0, whiteSpace: 'nowrap' }}>{b.v}</span>
                   </div>
                 ))}
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          )}
+
+          {activeTab === 'penalites' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ fontSize: 12.5, color: '#64748b', marginBottom: 2 }}>Ces éléments <strong>retirent</strong> des points à la note finale :</div>
+              {penalties.map((p, i) => (
+                <div key={i} style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, overflow: 'hidden' }}>
+                  <div style={{ padding: '9px 16px', background: '#fef2f2', fontSize: 11.5, fontWeight: 800, color: '#dc2626', letterSpacing: '0.04em', borderBottom: '1px solid #fecaca' }}>{p.cat.toUpperCase()}</div>
+                  {p.items.map((item, j) => (
+                    <div key={j} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '11px 16px', borderTop: j > 0 ? '1px solid #f0f5f9' : 'none' }}>
+                      <span style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.4 }}>{item.l}</span>
+                      <span style={{ fontSize: 12.5, fontWeight: 800, color: '#dc2626', background: '#fef2f2', border: '1px solid #fecaca', padding: '4px 11px', borderRadius: 7, flexShrink: 0, whiteSpace: 'nowrap' }}>{item.v}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div style={{ padding: '13px 17px', background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 10, fontSize: 12.5, color: '#64748b', lineHeight: 1.6, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <Info size={15} style={{ color: '#94a3b8', flexShrink: 0, marginTop: 1 }} />
@@ -355,7 +364,7 @@ export default function Aide() {
   const sections = [
     { id: 'comment', label: 'Comment ça marche', icon: Sparkles, color: '#2a7d9c' },
     { id: 'notation', label: 'Notation /20', icon: Star, color: '#0f2d3d' },
-    { id: 'glossaire', label: 'Glossaire immobilier', icon: BookOpen, color: '#7c3aed' },
+    { id: 'glossaire', label: 'Le jargon immo, traduit', icon: BookOpen, color: '#7c3aed' },
     { id: 'conseils', label: 'Conseils & astuces', icon: Lightbulb, color: '#d97706' },
   ];
 
@@ -365,8 +374,15 @@ export default function Aide() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, animation: 'fadeUp 0.35s ease both', maxWidth: 960, margin: '0 auto' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, animation: 'fadeUp 0.35s ease both' }}>
       <style>{`
+        @keyframes tabFade {
+          from { opacity: 0; transform: translateY(4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @media (max-width: 860px) {
+          .docs-grid { grid-template-columns: 1fr !important; }
+        }
         @media (max-width: 640px) {
           .aide-sommaire-grid { grid-template-columns: 1fr 1fr !important; }
           .notation-tabs { flex-direction: column !important; }
@@ -386,16 +402,142 @@ export default function Aide() {
       </div>
 
       {/* CONSEIL VERIMO EN HAUT */}
-      <div style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', border: '1.5px solid #fed7aa', borderRadius: 16, padding: '22px 26px', display: 'flex', gap: 18, alignItems: 'flex-start', boxShadow: '0 4px 16px rgba(217,119,6,0.08)' }}>
-        <div style={{ width: 48, height: 48, borderRadius: 12, background: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(217,119,6,0.3)' }}>
-          <Lightbulb size={22} style={{ color: '#fff' }} />
+      <div style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', border: '1.5px solid #fed7aa', borderRadius: 16, padding: '24px 28px', boxShadow: '0 4px 16px rgba(217,119,6,0.08)' }}>
+        <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start', marginBottom: 20 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(217,119,6,0.3)' }}>
+            <Lightbulb size={22} style={{ color: '#fff' }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: '#92400e', marginBottom: 6 }}>💡 Conseil important Verimo</div>
+            <div style={{ fontSize: 14, color: '#78350f', lineHeight: 1.65 }}>
+              <strong>Plus vous fournissez de documents, plus la note /20 sera précise et le rapport détaillé.</strong> Voici les documents qui permettent à notre moteur d'analyse de couvrir tous les aspects d'un bien, selon votre cas :
+            </div>
+          </div>
         </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: '#92400e', marginBottom: 6 }}>💡 Conseil important Verimo</div>
-          <div style={{ fontSize: 14, color: '#78350f', lineHeight: 1.7 }}>
-            <strong>Plus vous fournissez de documents pour une analyse complète, plus la note /20 sera précise et le rapport détaillé.</strong>
-            <br /><br />
-            Idéalement : 3 derniers PV d'AG + DPE + règlement de copropriété + appels de charges. Ce combo permet à notre moteur d'analyse d'avoir une vision complète de la santé du bien et de la copropriété.
+
+        <div className="docs-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          {/* COLONNE COPRO */}
+          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #fed7aa', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 12, borderBottom: '1px solid #fef3c7' }}>
+              <span style={{ fontSize: 22 }}>🏢</span>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Appartement ou maison en copropriété</div>
+                <div style={{ fontSize: 11.5, color: '#94a3b8' }}>Bien régi par un syndic et une AG</div>
+              </div>
+            </div>
+
+            {/* Indispensables copro */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
+                <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 5l2 2 4-5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 800, color: '#15803d', letterSpacing: '0.04em' }}>INDISPENSABLES</span>
+              </div>
+              <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {[
+                  'Les 3 derniers PV d\'AG',
+                  'Le règlement de copropriété (et ses modificatifs)',
+                  'Le DPE',
+                  'Les diagnostics obligatoires selon l\'âge du bien',
+                ].map((t, i) => (
+                  <li key={i} style={{ fontSize: 13, color: '#374151', lineHeight: 1.5, paddingLeft: 14, position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 0, top: 8, width: 4, height: 4, borderRadius: '50%', background: '#16a34a' }} />
+                    {t}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Recommandés copro */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
+                <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#2a7d9c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Sparkles size={11} style={{ color: '#fff' }} />
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.04em' }}>POUR ENRICHIR L'ANALYSE</span>
+              </div>
+              <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {[
+                  'Les appels de charges récents',
+                  'Le pré-état daté ou l\'état daté',
+                  'La fiche synthétique de copropriété',
+                  'Le carnet d\'entretien',
+                  'Le DTG (Diagnostic Technique Global)',
+                  'Le compromis de vente (si l\'achat est engagé)',
+                ].map((t, i) => (
+                  <li key={i} style={{ fontSize: 13, color: '#475569', lineHeight: 1.5, paddingLeft: 14, position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 0, top: 8, width: 4, height: 4, borderRadius: '50%', background: '#2a7d9c' }} />
+                    {t}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* COLONNE MAISON */}
+          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #fed7aa', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 12, borderBottom: '1px solid #fef3c7' }}>
+              <span style={{ fontSize: 22 }}>🏠</span>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Maison individuelle</div>
+                <div style={{ fontSize: 11.5, color: '#94a3b8' }}>Bien en pleine propriété, hors copropriété</div>
+              </div>
+            </div>
+
+            {/* Indispensables maison */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
+                <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 5l2 2 4-5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 800, color: '#15803d', letterSpacing: '0.04em' }}>INDISPENSABLES</span>
+              </div>
+              <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {([
+                  'Le DPE',
+                  { main: 'L\'audit énergétique', note: ' (obligatoire si DPE classé E, F ou G*)' },
+                  'Les diagnostics obligatoires selon l\'âge du bien (électricité, gaz, amiante, plomb, termites, ERP)',
+                ] as (string | { main: string; note: string })[]).map((t, i) => (
+                  <li key={i} style={{ fontSize: 13, color: '#374151', lineHeight: 1.5, paddingLeft: 14, position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 0, top: 8, width: 4, height: 4, borderRadius: '50%', background: '#16a34a' }} />
+                    {typeof t === 'string' ? t : <><strong style={{ color: '#374151' }}>{t.main}</strong><span style={{ color: '#64748b', fontStyle: 'italic' }}>{t.note}</span></>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Recommandés maison */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
+                <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#2a7d9c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Sparkles size={11} style={{ color: '#fff' }} />
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.04em' }}>POUR ENRICHIR L'ANALYSE</span>
+              </div>
+              <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {[
+                  'Les justificatifs de travaux récents (toiture, chauffage, isolation…)',
+                  'Les garanties décennales en cours',
+                  'Les documents d\'urbanisme (cadastre, PLU, servitudes éventuelles)',
+                  'La taxe foncière',
+                  'Le compromis de vente (si l\'achat est engagé)',
+                ].map((t, i) => (
+                  <li key={i} style={{ fontSize: 13, color: '#475569', lineHeight: 1.5, paddingLeft: 14, position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 0, top: 8, width: 4, height: 4, borderRadius: '50%', background: '#2a7d9c' }} />
+                    {t}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Note audit énergétique */}
+        <div style={{ marginTop: 16, padding: '14px 18px', background: 'rgba(255,255,255,0.6)', border: '1px solid #fed7aa', borderRadius: 10, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+          <Info size={16} style={{ color: '#d97706', flexShrink: 0, marginTop: 2 }} />
+          <div style={{ fontSize: 12.5, color: '#78350f', lineHeight: 1.6 }}>
+            <strong>*À propos de l'audit énergétique :</strong> depuis la <strong>loi Climat et Résilience</strong>, il est obligatoire pour la vente d'une maison individuelle (ou monopropriété) classée <strong>E, F ou G</strong> au DPE. Ce document complète le DPE avec un scénario chiffré de travaux à réaliser pour améliorer la performance énergétique du bien. Les appartements en copropriété ne sont pas concernés.
           </div>
         </div>
       </div>
@@ -437,7 +579,7 @@ export default function Aide() {
             <BookOpen size={17} style={{ color: '#fff' }} />
           </div>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>Glossaire immobilier</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>Le jargon immo, traduit</div>
             <div style={{ fontSize: 13, color: '#64748b' }}>22 termes essentiels, expliqués simplement</div>
           </div>
         </div>
