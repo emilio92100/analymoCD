@@ -88,8 +88,8 @@ export default function HomeView() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, animation: 'fadeUp 0.35s ease both' }}>
       <style>{`
         @media (max-width: 640px) {
-          .stats-grid { grid-template-columns: 1fr 1fr !important; }
-          .stats-grid > div:last-child { grid-column: span 2; }
+          .stats-grid { grid-template-columns: 1fr !important; }
+          .stats-grid > div:last-child { grid-column: auto !important; }
           .aide-banner { flex-direction: column !important; align-items: flex-start !important; gap: 14px !important; }
           .aide-banner-cta { width: 100% !important; justify-content: center !important; }
         }
@@ -114,7 +114,7 @@ export default function HomeView() {
             {lastAnalyse ? (
               <>
                 <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>{lastAnalyse.date}</div>
-                <div style={{ fontSize: 12, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lastAnalyse.type === 'complete' ? lastAnalyse.adresse_bien : lastAnalyse.nom_document}</div>
+                <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.4, wordBreak: 'break-word' as const }}>{lastAnalyse.type === 'complete' ? lastAnalyse.adresse_bien : lastAnalyse.nom_document}</div>
               </>
             ) : <div style={{ fontSize: 14, color: '#94a3b8' }}>Aucune encore</div>}
           </div>
