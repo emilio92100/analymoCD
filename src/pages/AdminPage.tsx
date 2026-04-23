@@ -2566,8 +2566,8 @@ function GlobalSearchModal({ query, setQuery, onClose, onNavigate }: {
         // Recherche analyses (adresse et titre)
         const { data: analyses } = await supabase
           .from('analyses')
-          .select('id, user_id, address, adresse_bien, title, type, created_at, status')
-          .or(`address.ilike.%${q}%,adresse_bien.ilike.%${q}%,title.ilike.%${q}%`)
+          .select('id, user_id, address, title, type, created_at, status')
+          .or(`address.ilike.%${q}%,title.ilike.%${q}%`)
           .order('created_at', { ascending: false })
           .limit(5);
 
