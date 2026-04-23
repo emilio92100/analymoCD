@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { GitCompare, ShieldCheck, Building2, CheckCircle, ArrowRight, Trash2, Clock, Eye } from 'lucide-react';
 import { useAnalyses, type Analyse } from '../../hooks/useAnalyses';
 import { supabase } from '../../lib/supabase';
+import DashboardLoader from '../../components/DashboardLoader';
 
 /* ══════════════════════════════════════════
    UTILS — score colors / badges
@@ -54,8 +55,8 @@ function CompareWaitingScreen({ biens, fromCache, onCancel }: { biens: string[];
         <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
           style={{ width: 44, height: 44, borderRadius: '50%', border: '4px solid #2a7d9c', borderTopColor: 'transparent' }} />
         <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Chargement du rapport</p>
-          <p style={{ fontSize: 13, color: '#64748b' }}>Récupération de votre comparaison sauvegardée…</p>
+          <p style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Patientez…</p>
+          <p style={{ fontSize: 13, color: '#64748b' }}>Nous ouvrons votre comparaison.</p>
         </div>
       </motion.div>
     );
@@ -176,7 +177,7 @@ type ComparaisonSaved = {
    ══════════════════════════════════════════ */
 export default function Compare() {
   const navigate = useNavigate();
-  const { analyses } = useAnalyses();
+  const { analyses, loading: analysesLoading } = useAnalyses();
   const completedAnalyses = analyses.filter((a: Analyse) => a.type === 'complete' && a.status === 'completed');
   const [selected, setSelected] = useState<string[]>([]);
 
@@ -267,6 +268,9 @@ export default function Compare() {
       setLaunched(false);
     }
   };
+
+  /* ─── Loader initial pendant le chargement des analyses ─── */
+  if (analysesLoading) return <DashboardLoader message="Chargement de vos biens analysés…" />;
 
   /* ─── États vides ─── */
   if (completedAnalyses.length === 0) return (
