@@ -40,7 +40,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
   const SB_BG = '#0e3a4a';
   const SB_ACTIVE_BG = 'rgba(255,255,255,0.1)';
   const SB_ACCENT = '#5dbfe0';
-  const SB_TEXT = 'rgba(255,255,255,0.5)';
+  const SB_TEXT = 'rgba(255,255,255,0.75)';
   const SB_TEXT_ACTIVE = '#ffffff';
   const SB_MUTED = 'rgba(255,255,255,0.25)';
 
@@ -48,9 +48,10 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
     <aside style={{ width:260, minHeight:'100vh', height:'100%', background:SB_BG, display:'flex', flexDirection:'column' }}>
       {/* Logo */}
       <div style={{ height:68, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 18px', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
-        <Link to="/" onClick={onClose} style={{ display:'flex', alignItems:'center', gap:9, textDecoration:'none' }}>
-          <div style={{ width:30, height:30, borderRadius:8, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:700, color:'#fff' }}>V</div>
-          <span style={{ fontSize:16, fontWeight:700, color:'#fff', letterSpacing:'-0.01em' }}>verimo</span>
+        <Link to="/" onClick={onClose} style={{ display:'flex', alignItems:'center', padding:'4px 0', textDecoration:'none' }}>
+          <div style={{ background:'#fff', borderRadius:10, padding:'4px 8px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <img src="/logo.png" alt="Verimo" style={{ height:36, objectFit:'contain' }}/>
+          </div>
         </Link>
         {onClose && <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.4)', padding:4 }}><X size={18}/></button>}
       </div>
@@ -71,7 +72,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
         <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
           {[{ label:'Document', value:credits.document }, { label:'Complète', value:credits.complete }].map(c=>(
             <div key={c.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'5px 8px', borderRadius:7, background:'rgba(255,255,255,0.03)' }}>
-              <span style={{ fontSize:11, color:SB_TEXT, fontWeight:500 }}>{c.label}</span>
+              <span style={{ fontSize:11, color:'rgba(255,255,255,0.65)', fontWeight:500 }}>{c.label}</span>
               <span style={{ fontSize:12, fontWeight:800, color:c.value>0?SB_ACCENT:'rgba(255,255,255,0.2)' }}>{c.value} crédit{c.value>1?'s':''}</span>
             </div>
           ))}
@@ -91,7 +92,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
             <Link key={item.to} to={item.to} onClick={onClose}
               style={{
                 display:'flex', alignItems:'center', gap:10, padding:'9px 12px', textDecoration:'none',
-                fontSize:13, fontWeight:active?600:400, color:active?SB_TEXT_ACTIVE:SB_TEXT,
+                fontSize:13, fontWeight:active?700:500, color:active?SB_TEXT_ACTIVE:SB_TEXT,
                 background:active?SB_ACTIVE_BG:'transparent', transition:'all 0.15s',
                 borderLeft:active?`3px solid ${SB_ACCENT}`:'3px solid transparent',
                 borderRadius:0,
