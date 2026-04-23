@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useCredits } from '../../hooks/useCredits';
+import DashboardLoader from '../../components/DashboardLoader';
 
 export default function Compte() {
   const [user, setUser] = useState({ name: '', email: '' });
@@ -16,7 +17,7 @@ export default function Compte() {
   const [provider, setProvider] = useState('');
   const [createdAt, setCreatedAt] = useState('');
   const [analysesCount, setAnalysesCount] = useState(0);
-  const { credits } = useCredits();
+  const { credits, loadingCredits } = useCredits();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user: u } }) => {
@@ -76,6 +77,8 @@ export default function Compte() {
     if (error) { setPwdError('Erreur : ' + error.message); }
     else { setPwdMsg('Mot de passe modifié avec succès !'); setPwd({ current: '', next: '', confirm: '' }); setTimeout(() => { setPwdMsg(''); setPwdSection(false); }, 3000); }
   };
+
+  if (loadingCredits || paymentsLoading) return <DashboardLoader message="Chargement de votre compte…" />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
