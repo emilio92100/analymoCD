@@ -179,7 +179,10 @@ export default function Support() {
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 17, fontWeight: 800, color: '#92400e', marginBottom: 4 }}>Comment pouvons-nous vous aider ?</div>
             <div style={{ fontSize: 13.5, color: '#78350f', lineHeight: 1.6 }}>
-              Écrivez-nous, nous revenons vers vous sous 24h en moyenne. 💡 <strong>Astuce</strong> : la réponse se trouve peut-être déjà dans notre FAQ juste en dessous — jetez-y un œil avant !
+              Écrivez-nous, nous revenons vers vous sous 24h en moyenne.
+            </div>
+            <div style={{ fontSize: 13.5, color: '#78350f', lineHeight: 1.6, marginTop: 6 }}>
+              💡 <strong>Astuce</strong> : la réponse se trouve peut-être déjà dans notre FAQ juste en dessous — jetez-y un œil avant !
             </div>
           </div>
         </div>
