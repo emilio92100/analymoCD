@@ -611,6 +611,7 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
     newClientsMonth: 0,
     analysesThisMonth: 0,
     analysesByType: { document: 0, complete: 0, pack2: 0, pack3: 0 },
+    caByCategory: { document: { count: 0, total: 0 }, complete: { count: 0, total: 0 }, pack2: { count: 0, total: 0 }, pack3: { count: 0, total: 0 } },
     ticketMoyen: 0,
     messagesUnread: 0,
     proUnread: 0,
@@ -633,7 +634,7 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         { count: msgUnread },
         { count: proUnreadCount },
       ] = await Promise.all([
-        supabase.from('payments').select('amount').eq('status', 'completed').gt('amount', 0).gte('created_at', startOfMonth),
+        supabase.from('payments').select('amount,description').eq('status', 'completed').gt('amount', 0).gte('created_at', startOfMonth),
         supabase.from('payments').select('amount').eq('status', 'completed').gt('amount', 0).gte('created_at', startOfPrevMonth).lte('created_at', endOfPrevMonth),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', startOfMonth),
         supabase.from('analyses').select('type').gte('created_at', startOfMonth),
@@ -646,6 +647,17 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
       const caMonthPrev = (paymentsPrevMonth || []).reduce((s, p) => s + (p.amount || 0), 0);
       const ticketMoyen = monthPayments.length > 0 ? caMonth / monthPayments.length : 0;
 
+      // CA par catégorie basé sur la description des paiements
+      const caByCategory = { document: { count: 0, total: 0 }, complete: { count: 0, total: 0 }, pack2: { count: 0, total: 0 }, pack3: { count: 0, total: 0 } };
+      monthPayments.forEach(p => {
+        const desc = (p.description || '').toLowerCase();
+        const amt = p.amount || 0;
+        if (desc.includes('pack 3')) { caByCategory.pack3.count++; caByCategory.pack3.total += amt; }
+        else if (desc.includes('pack 2')) { caByCategory.pack2.count++; caByCategory.pack2.total += amt; }
+        else if (desc.includes('complète')) { caByCategory.complete.count++; caByCategory.complete.total += amt; }
+        else if (desc.includes('document') || desc.includes('simple')) { caByCategory.document.count++; caByCategory.document.total += amt; }
+      });
+
       const analysesByType = { document: 0, complete: 0, pack2: 0, pack3: 0 };
       (analysesMonth || []).forEach(a => {
         if (a.type in analysesByType) analysesByType[a.type as keyof typeof analysesByType]++;
@@ -657,6 +669,7 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         newClientsMonth: newClients || 0,
         analysesThisMonth: (analysesMonth || []).length,
         analysesByType,
+        caByCategory,
         ticketMoyen,
         messagesUnread: msgUnread || 0,
         proUnread: proUnreadCount || 0,
@@ -719,23 +732,21 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         {/* Analyses avec détail par type */}
         <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', padding: '20px 22px', gridColumn: 'span 2' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>Analyses réalisées</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>Analyses lancées par les utilisateurs</div>
             <FileText size={16} style={{ color: '#7c3aed' }} />
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 12 }}>
             <div style={{ fontSize: 32, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{data.analysesThisMonth}</div>
             <div style={{ fontSize: 11, color: '#94a3b8' }}>ce mois (payantes + gratuites)</div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
             {[
               { label: 'Simple', value: data.analysesByType.document, color: '#64748b' },
               { label: 'Complète', value: data.analysesByType.complete, color: '#2a7d9c' },
-              { label: 'Pack 2', value: data.analysesByType.pack2, color: '#7c3aed' },
-              { label: 'Pack 3', value: data.analysesByType.pack3, color: '#f0a500' },
             ].map((t, i) => (
-              <div key={i} style={{ padding: '8px 10px', borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+              <div key={i} style={{ padding: '10px 14px', borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8' }}>{t.label}</div>
-                <div style={{ fontSize: 16, fontWeight: 900, color: t.value > 0 ? t.color : '#cbd5e1' }}>{t.value}</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: t.value > 0 ? t.color : '#cbd5e1' }}>{t.value}</div>
               </div>
             ))}
           </div>
@@ -749,6 +760,33 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
           </div>
           <div style={{ fontSize: 32, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{data.ticketMoyen.toFixed(2).replace('.', ',')}€</div>
           <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Par paiement ce mois</div>
+        </div>
+      </div>
+
+      {/* BLOC CA PAR CATÉGORIE */}
+      <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', padding: '20px 22px', marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>💰 CA par catégorie ce mois</div>
+            <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>Détail des ventes Stripe par produit</div>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginTop: 14 }}>
+          {[
+            { key: 'document' as const, label: 'Analyse Simple', color: '#64748b', bg: '#f8fafc' },
+            { key: 'complete' as const, label: 'Analyse Complète', color: '#2a7d9c', bg: '#f0f7fb' },
+            { key: 'pack2' as const, label: 'Pack 2 Biens', color: '#7c3aed', bg: '#f5f3ff' },
+            { key: 'pack3' as const, label: 'Pack 3 Biens', color: '#f0a500', bg: '#fffbeb' },
+          ].map(t => {
+            const d = data.caByCategory[t.key];
+            return (
+              <div key={t.key} style={{ padding: '14px 16px', borderRadius: 10, background: d.count > 0 ? t.bg : '#fafbfc', border: `1px solid ${d.count > 0 ? t.color + '30' : '#edf2f7'}` }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 4 }}>{t.label}</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: d.count > 0 ? t.color : '#cbd5e1', lineHeight: 1 }}>{d.total.toFixed(2).replace('.', ',')}€</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{d.count} vente{d.count > 1 ? 's' : ''}</div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -951,9 +989,41 @@ function StatsTab() {
   const typesMeta = [
     { key: 'document' as const, label: 'Simple', color: '#64748b' },
     { key: 'complete' as const, label: 'Complète', color: '#2a7d9c' },
-    { key: 'pack2' as const, label: 'Pack 2', color: '#7c3aed' },
-    { key: 'pack3' as const, label: 'Pack 3', color: '#f0a500' },
   ];
+
+  // CA par catégorie : re-calcul depuis les infos en base
+  const [caByCategory, setCaByCategory] = useState({
+    document: { count: 0, total: 0 },
+    complete: { count: 0, total: 0 },
+    pack2: { count: 0, total: 0 },
+    pack3: { count: 0, total: 0 },
+  });
+
+  useEffect(() => {
+    const loadCa = async () => {
+      const { start, end } = getRange();
+      if (!start || !end) return;
+      const { data: payments } = await supabase
+        .from('payments')
+        .select('amount,description')
+        .eq('status', 'completed')
+        .gt('amount', 0)
+        .gte('created_at', start)
+        .lte('created_at', end);
+
+      const cat = { document: { count: 0, total: 0 }, complete: { count: 0, total: 0 }, pack2: { count: 0, total: 0 }, pack3: { count: 0, total: 0 } };
+      (payments || []).forEach(p => {
+        const desc = (p.description || '').toLowerCase();
+        const amt = p.amount || 0;
+        if (desc.includes('pack 3')) { cat.pack3.count++; cat.pack3.total += amt; }
+        else if (desc.includes('pack 2')) { cat.pack2.count++; cat.pack2.total += amt; }
+        else if (desc.includes('complète')) { cat.complete.count++; cat.complete.total += amt; }
+        else if (desc.includes('document') || desc.includes('simple')) { cat.document.count++; cat.document.total += amt; }
+      });
+      setCaByCategory(cat);
+    };
+    loadCa();
+  }, [getRange]);
 
   return (
     <div>
@@ -997,7 +1067,7 @@ function StatsTab() {
 
       {/* BLOC 2 — Clients et analyses */}
       <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px', marginBottom: 14 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 16 }}>👥 Clients et analyses {periodLabel}</div>
+        <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 16 }}>👥 Nouveaux clients et analyses lancées {periodLabel}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
           {/* Nouveaux clients */}
           <div style={{ padding: '16px', borderRadius: 12, background: '#f0f7fb', border: '1px solid #bae3f5' }}>
@@ -1007,25 +1077,48 @@ function StatsTab() {
           </div>
           {/* Analyses totales */}
           <div style={{ padding: '16px', borderRadius: 12, background: '#f5f3ff', border: '1px solid #ddd6fe', gridColumn: 'span 2' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', letterSpacing: '0.1em', marginBottom: 4 }}>ANALYSES RÉALISÉES</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', letterSpacing: '0.1em', marginBottom: 4 }}>ANALYSES LANCÉES PAR LES UTILISATEURS</div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
               <div style={{ fontSize: 26, fontWeight: 900, color: '#0f2d3d' }}>{stats.analysesTotal}</div>
               <div style={{ fontSize: 11, color: '#7c3aed' }}>Payantes et gratuites confondues</div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
               {typesMeta.map(t => {
                 const total = stats.analysesByType[t.key];
                 const free = stats.freeAnalysesByType[t.key];
                 return (
-                  <div key={t.key} style={{ padding: '8px 10px', borderRadius: 8, background: '#fff' }}>
+                  <div key={t.key} style={{ padding: '10px 14px', borderRadius: 8, background: '#fff' }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8' }}>{t.label}</div>
-                    <div style={{ fontSize: 18, fontWeight: 900, color: total > 0 ? t.color : '#cbd5e1' }}>{total}</div>
-                    {free > 0 && <div style={{ fontSize: 9, color: '#7c3aed', marginTop: 2 }}>dont {free} gratuit{free > 1 ? 's' : ''}</div>}
+                    <div style={{ fontSize: 20, fontWeight: 900, color: total > 0 ? t.color : '#cbd5e1' }}>{total}</div>
+                    {free > 0 && <div style={{ fontSize: 10, color: '#7c3aed', marginTop: 2 }}>dont {free} gratuit{free > 1 ? 's' : ''}</div>}
                   </div>
                 );
               })}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* BLOC CA PAR CATÉGORIE */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px', marginBottom: 14 }}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>💰 CA par catégorie {periodLabel}</div>
+        <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>Détail des ventes Stripe par produit</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+          {[
+            { key: 'document' as const, label: 'Analyse Simple', color: '#64748b', bg: '#f8fafc' },
+            { key: 'complete' as const, label: 'Analyse Complète', color: '#2a7d9c', bg: '#f0f7fb' },
+            { key: 'pack2' as const, label: 'Pack 2 Biens', color: '#7c3aed', bg: '#f5f3ff' },
+            { key: 'pack3' as const, label: 'Pack 3 Biens', color: '#f0a500', bg: '#fffbeb' },
+          ].map(t => {
+            const d = caByCategory[t.key];
+            return (
+              <div key={t.key} style={{ padding: '14px 16px', borderRadius: 10, background: d.count > 0 ? t.bg : '#fafbfc', border: `1px solid ${d.count > 0 ? t.color + '30' : '#edf2f7'}` }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 4 }}>{t.label}</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: d.count > 0 ? t.color : '#cbd5e1', lineHeight: 1 }}>{d.total.toFixed(2).replace('.', ',')}€</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{d.count} vente{d.count > 1 ? 's' : ''}</div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
