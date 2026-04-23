@@ -987,7 +987,7 @@ export default function RapportComparaisonPage() {
       </div>
 
       {/* ─── Body ─── */}
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 20px 48px' }}>
+      <div className="rcp-body" style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 20px 48px' }}>
         {/* Écran d'attente ou résultat */}
         {verdictLoading && (
           <WaitingScreen biens={adresses} fromCache={fromCache} />
@@ -1250,6 +1250,14 @@ export default function RapportComparaisonPage() {
           .rcp-biens-grid { grid-template-columns: 1fr !important; }
           .rcp-section-grid { grid-template-columns: 1fr !important; }
           .rcp-btn-detail-label { display: none; }
+        }
+        @media (max-width: 640px) {
+          .rcp-body { padding: 16px 8px 40px !important; }
+          .rcp-body > div { gap: 12px !important; }
+          .rcp-body [style*="padding: '20px 22px'"],
+          .rcp-body [style*="padding:20px"] { padding: 14px 10px !important; }
+          .rcp-body [style*="borderRadius: 16"],
+          .rcp-body [style*="borderRadius:16"] { border-radius: 12px !important; }
         }
       `}</style>
     </div>
