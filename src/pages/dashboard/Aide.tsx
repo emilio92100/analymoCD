@@ -385,6 +385,14 @@ export default function Aide() {
         @media (max-width: 640px) {
           .aide-sommaire-grid { grid-template-columns: 1fr 1fr !important; }
           .notation-tabs { flex-direction: column !important; }
+          .conseil-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 12px !important;
+          }
+          .aide-card-padding {
+            padding: 18px 18px !important;
+          }
         }
       `}</style>
 
@@ -392,8 +400,8 @@ export default function Aide() {
       <p style={{ fontSize: 14, color: '#64748b', margin: '0', lineHeight: 1.5 }}>Tout comprendre sur Verimo et notre méthode d'analyse</p>
 
       {/* CONSEIL VERIMO EN HAUT */}
-      <div style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', border: '1.5px solid #fed7aa', borderRadius: 16, padding: '24px 28px', boxShadow: '0 4px 16px rgba(217,119,6,0.08)' }}>
-        <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start', marginBottom: 20 }}>
+      <div className="aide-card-padding" style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', border: '1.5px solid #fed7aa', borderRadius: 16, padding: '24px 28px', boxShadow: '0 4px 16px rgba(217,119,6,0.08)' }}>
+        <div className="conseil-header" style={{ display: 'flex', gap: 18, alignItems: 'flex-start', marginBottom: 20 }}>
           <div style={{ width: 48, height: 48, borderRadius: 12, background: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(217,119,6,0.3)' }}>
             <Lightbulb size={22} style={{ color: '#fff' }} />
           </div>
