@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import {
   LayoutDashboard, Users, FileText, Mail, BarChart2,
   Search, X, Check, AlertTriangle, Shield, CreditCard,
-  Trash2, RefreshCw, Eye, EyeOff, TrendingUp, ArrowRight,
+  Trash2, RefreshCw, Eye, EyeOff, ArrowRight,
   LogOut, Send, UserPlus, CheckCircle, Download, Tag,
   Bell, ChevronLeft, Plus, Copy, Briefcase, Euro, ExternalLink,
   Clock, User,
@@ -79,7 +79,6 @@ const stripeUrl = (id?: string) => {
 };
 const getScoreColor = (s: number) => s >= 14 ? '#16a34a' : s >= 10 ? '#d97706' : '#dc2626';
 const getScoreBg = (s: number) => s >= 14 ? '#f0fdf4' : s >= 10 ? '#fffbeb' : '#fef2f2';
-const PLAN_PRICES: Record<string, number> = { document: 4.90, complete: 19.90, pack2: 29.90, pack3: 39.90 };
 const PLAN_LABELS: Record<string, string> = { document: 'Simple', complete: 'Complète', pack2: 'Pack 2', pack3: 'Pack 3' };
 const PLAN_COLORS: Record<string, string> = { document: '#64748b', complete: '#2a7d9c', pack2: '#7c3aed', pack3: '#f0a500' };
 
@@ -102,20 +101,6 @@ function generateCode() {
 /* ══════════════════════════════════════════
    COMPOSANTS UI
 ══════════════════════════════════════════ */
-function KpiCard({ label, value, sub, color, icon, delay = 0 }: { label: string; value: string | number; sub?: string; color: string; icon: React.ReactNode; delay?: number }) {
-  return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay }}
-      style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '20px 22px', boxShadow: '0 1px 6px rgba(0,0,0,0.04)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.08em' }}>{label}</span>
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: `${color}12`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{icon}</div>
-      </div>
-      <div style={{ fontSize: 32, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em', lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 6 }}>{sub}</div>}
-    </motion.div>
-  );
-}
-
 function Badge({ color, bg, children }: { color: string; bg: string; children: React.ReactNode }) {
   return <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 11, fontWeight: 700, color, background: bg, padding: '3px 9px', borderRadius: 100, whiteSpace: 'nowrap' as const }}>{children}</span>;
 }
@@ -620,15 +605,15 @@ function BannerTab({ showToast, logAction }: { showToast: (m: string) => void; l
   );
 }
 function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
-  const [kpis, setKpis] = useState({
+  const [data, setData] = useState({
     caMonth: 0,
     caMonthPrev: 0,
-    caByType: { document: { count: 0, total: 0 }, complete: { count: 0, total: 0 }, pack2: { count: 0, total: 0 }, pack3: { count: 0, total: 0 } },
-    newClientsWeek: 0,
-    analysesInProgress: 0,
+    newClientsMonth: 0,
+    analysesThisMonth: 0,
+    analysesByType: { document: 0, complete: 0, pack2: 0, pack3: 0 },
+    ticketMoyen: 0,
     messagesUnread: 0,
     proUnread: 0,
-    refundableCount: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -639,23 +624,19 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
       const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
       const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
-      const startOfWeek = new Date(Date.now() - 7 * 86400000).toISOString();
-      const cutoff14j = new Date(Date.now() - 14 * 86400000).toISOString();
 
       const [
         { data: paymentsMonth },
         { data: paymentsPrevMonth },
-        { count: refundable },
         { count: newClients },
-        { count: inProgress },
+        { data: analysesMonth },
         { count: msgUnread },
         { count: proUnreadCount },
       ] = await Promise.all([
-        supabase.from('payments').select('amount,description').eq('status', 'completed').gt('amount', 0).gte('created_at', startOfMonth),
+        supabase.from('payments').select('amount').eq('status', 'completed').gt('amount', 0).gte('created_at', startOfMonth),
         supabase.from('payments').select('amount').eq('status', 'completed').gt('amount', 0).gte('created_at', startOfPrevMonth).lte('created_at', endOfPrevMonth),
-        supabase.from('payments').select('*', { count: 'exact', head: true }).eq('status', 'completed').gt('amount', 0).gte('created_at', cutoff14j),
-        supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', startOfWeek),
-        supabase.from('analyses').select('*', { count: 'exact', head: true }).in('status', ['processing', 'pending']),
+        supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', startOfMonth),
+        supabase.from('analyses').select('type').gte('created_at', startOfMonth),
         supabase.from('contact_messages').select('*', { count: 'exact', head: true }).eq('read', false),
         supabase.from('contact_pro').select('*', { count: 'exact', head: true }).eq('read', false),
       ]);
@@ -663,73 +644,57 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
       const monthPayments = paymentsMonth || [];
       const caMonth = monthPayments.reduce((s, p) => s + (p.amount || 0), 0);
       const caMonthPrev = (paymentsPrevMonth || []).reduce((s, p) => s + (p.amount || 0), 0);
+      const ticketMoyen = monthPayments.length > 0 ? caMonth / monthPayments.length : 0;
 
-      // Décomposition par type du mois en cours
-      const caByType = { document: { count: 0, total: 0 }, complete: { count: 0, total: 0 }, pack2: { count: 0, total: 0 }, pack3: { count: 0, total: 0 } };
-      monthPayments.forEach(p => {
-        const desc = (p.description || '').toLowerCase();
-        const amt = p.amount || 0;
-        if (desc.includes('pack 3')) { caByType.pack3.count++; caByType.pack3.total += amt; }
-        else if (desc.includes('pack 2')) { caByType.pack2.count++; caByType.pack2.total += amt; }
-        else if (desc.includes('complète')) { caByType.complete.count++; caByType.complete.total += amt; }
-        else if (desc.includes('document') || desc.includes('simple')) { caByType.document.count++; caByType.document.total += amt; }
+      const analysesByType = { document: 0, complete: 0, pack2: 0, pack3: 0 };
+      (analysesMonth || []).forEach(a => {
+        if (a.type in analysesByType) analysesByType[a.type as keyof typeof analysesByType]++;
       });
 
-      setKpis({
+      setData({
         caMonth,
         caMonthPrev,
-        caByType,
-        newClientsWeek: newClients || 0,
-        analysesInProgress: inProgress || 0,
+        newClientsMonth: newClients || 0,
+        analysesThisMonth: (analysesMonth || []).length,
+        analysesByType,
+        ticketMoyen,
         messagesUnread: msgUnread || 0,
         proUnread: proUnreadCount || 0,
-        refundableCount: refundable || 0,
       });
       setLoading(false);
     };
     load();
   }, []);
 
-  // Calcul de l'évolution vs mois précédent
-  const evolPct = kpis.caMonthPrev > 0
-    ? ((kpis.caMonth - kpis.caMonthPrev) / kpis.caMonthPrev) * 100
-    : (kpis.caMonth > 0 ? 100 : 0);
-  const evolLabel = kpis.caMonthPrev === 0 && kpis.caMonth > 0
-    ? 'Premier mois de CA'
-    : kpis.caMonthPrev === 0
-      ? 'Pas de CA mois dernier'
-      : evolPct >= 0
-        ? `+${evolPct.toFixed(0)}% vs mois dernier (${kpis.caMonthPrev.toFixed(2).replace('.', ',')}€)`
-        : `${evolPct.toFixed(0)}% vs mois dernier (${kpis.caMonthPrev.toFixed(2).replace('.', ',')}€)`;
+  const diff = data.caMonth - data.caMonthPrev;
+  const diffLabel = data.caMonthPrev === 0 && data.caMonth > 0
+    ? `Premier mois de CA · +${data.caMonth.toFixed(2).replace('.', ',')}€ vs mois dernier (0€)`
+    : data.caMonthPrev === 0
+      ? 'Pas de CA ce mois ni le mois dernier'
+      : diff >= 0
+        ? `↑ +${diff.toFixed(2).replace('.', ',')}€ vs mois dernier (${data.caMonthPrev.toFixed(2).replace('.', ',')}€)`
+        : `↓ ${diff.toFixed(2).replace('.', ',')}€ vs mois dernier (${data.caMonthPrev.toFixed(2).replace('.', ',')}€)`;
 
   const currentMonthLabel = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-
-  const typesBreakdown = [
-    { key: 'document', label: 'Analyse Simple' },
-    { key: 'complete', label: 'Analyse Complète' },
-    { key: 'pack2', label: 'Pack 2 Biens' },
-    { key: 'pack3', label: 'Pack 3 Biens' },
-  ] as const;
-
-  const toTraiter = kpis.messagesUnread + kpis.proUnread + kpis.refundableCount;
+  const toTraiter = data.messagesUnread + data.proUnread;
 
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Vue d'ensemble</h1>
-        <p style={{ fontSize: 13, color: '#94a3b8' }}>Ce qui se passe maintenant sur Verimo</p>
+        <p style={{ fontSize: 13, color: '#94a3b8' }}>Activité de ce mois-ci ({currentMonthLabel})</p>
       </div>
 
-      {/* BLOC HERO — CA du mois en cours */}
-      <div style={{ background: 'linear-gradient(135deg,#0f2d3d,#1a4a60)', borderRadius: 18, padding: '28px 30px', marginBottom: 16, position: 'relative' as const, overflow: 'hidden' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap' as const, gap: 16 }}>
+      {/* BLOC HERO — CA du mois */}
+      <div style={{ background: 'linear-gradient(135deg,#0f2d3d,#1a4a60)', borderRadius: 18, padding: '28px 30px', marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap' as const, gap: 16 }}>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em', textTransform: 'uppercase' as const, marginBottom: 6 }}>
               CA de {currentMonthLabel}
             </div>
-            <div style={{ fontSize: 48, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em', lineHeight: 1 }}>{kpis.caMonth.toFixed(2).replace('.', ',')}€</div>
-            <div style={{ fontSize: 12, color: evolPct >= 0 ? '#7dd3f0' : '#fca5a5', marginTop: 8, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
-              {evolPct >= 0 ? '↑' : '↓'} {evolLabel}
+            <div style={{ fontSize: 48, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em', lineHeight: 1 }}>{data.caMonth.toFixed(2).replace('.', ',')}€</div>
+            <div style={{ fontSize: 13, color: diff >= 0 ? '#7dd3f0' : '#fca5a5', marginTop: 10, fontWeight: 600 }}>
+              {diffLabel}
             </div>
           </div>
           <button onClick={() => onNavigate('stats')}
@@ -737,48 +702,87 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
             Voir les statistiques <ArrowRight size={13} />
           </button>
         </div>
+      </div>
 
-        {/* Décomposition par type ce mois */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
-          {typesBreakdown.map(t => {
-            const data = kpis.caByType[t.key];
-            return (
-              <div key={t.key} style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 12, padding: '14px 16px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>{t.label}</div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: '#fff', lineHeight: 1 }}>{data.total.toFixed(2).replace('.', ',')}€</div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>{data.count} vente{data.count > 1 ? 's' : ''}</div>
+      {/* BLOC "CE MOIS-CI" — 3 cartes */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14, marginBottom: 16 }}>
+        {/* Nouveaux clients */}
+        <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', padding: '20px 22px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>Nouveaux clients</div>
+            <UserPlus size={16} style={{ color: '#2a7d9c' }} />
+          </div>
+          <div style={{ fontSize: 32, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{data.newClientsMonth}</div>
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Inscrits ce mois</div>
+        </div>
+
+        {/* Analyses avec détail par type */}
+        <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', padding: '20px 22px', gridColumn: 'span 2' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>Analyses réalisées</div>
+            <FileText size={16} style={{ color: '#7c3aed' }} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 12 }}>
+            <div style={{ fontSize: 32, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{data.analysesThisMonth}</div>
+            <div style={{ fontSize: 11, color: '#94a3b8' }}>ce mois (payantes + gratuites)</div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+            {[
+              { label: 'Simple', value: data.analysesByType.document, color: '#64748b' },
+              { label: 'Complète', value: data.analysesByType.complete, color: '#2a7d9c' },
+              { label: 'Pack 2', value: data.analysesByType.pack2, color: '#7c3aed' },
+              { label: 'Pack 3', value: data.analysesByType.pack3, color: '#f0a500' },
+            ].map((t, i) => (
+              <div key={i} style={{ padding: '8px 10px', borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8' }}>{t.label}</div>
+                <div style={{ fontSize: 16, fontWeight: 900, color: t.value > 0 ? t.color : '#cbd5e1' }}>{t.value}</div>
               </div>
-            );
-          })}
+            ))}
+          </div>
+        </div>
+
+        {/* Ticket moyen */}
+        <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', padding: '20px 22px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>Ticket moyen</div>
+            <CreditCard size={16} style={{ color: '#f0a500' }} />
+          </div>
+          <div style={{ fontSize: 32, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{data.ticketMoyen.toFixed(2).replace('.', ',')}€</div>
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Par paiement ce mois</div>
         </div>
       </div>
 
-      {/* KPIs — Santé actuelle */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
-        <KpiCard
-          label="Nouveaux clients"
-          value={kpis.newClientsWeek}
-          sub="Cette semaine"
-          color="#2a7d9c"
-          icon={<UserPlus size={16} color="#2a7d9c" />}
-          delay={0}
-        />
-        <KpiCard
-          label="Analyses en cours"
-          value={kpis.analysesInProgress}
-          sub="En traitement"
-          color="#7c3aed"
-          icon={<FileText size={16} color="#7c3aed" />}
-          delay={0.05}
-        />
-        <KpiCard
-          label="À traiter"
-          value={toTraiter}
-          sub={`${kpis.messagesUnread} msg · ${kpis.proUnread} pro · ${kpis.refundableCount} rembours.`}
-          color={toTraiter > 0 ? '#f0a500' : '#16a34a'}
-          icon={<Bell size={16} color={toTraiter > 0 ? '#f0a500' : '#16a34a'} />}
-          delay={0.1}
-        />
+      {/* BLOC "À LIRE" */}
+      <div style={{ background: toTraiter > 0 ? '#fffbeb' : '#fff', borderRadius: 14, border: toTraiter > 0 ? '1.5px solid #fde68a' : '1.5px solid #edf2f7', padding: '18px 22px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: toTraiter > 0 ? '#fef3c7' : '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Bell size={18} style={{ color: toTraiter > 0 ? '#d97706' : '#16a34a' }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: toTraiter > 0 ? '#78350f' : '#0f172a' }}>
+              {toTraiter > 0 ? `${toTraiter} élément${toTraiter > 1 ? 's' : ''} à lire` : 'Tout est à jour ✓'}
+            </div>
+            <div style={{ fontSize: 12, color: toTraiter > 0 ? '#92400e' : '#94a3b8', marginTop: 2 }}>
+              {data.messagesUnread} message{data.messagesUnread > 1 ? 's' : ''} non lu{data.messagesUnread > 1 ? 's' : ''} · {data.proUnread} demande{data.proUnread > 1 ? 's' : ''} pro non lue{data.proUnread > 1 ? 's' : ''}
+            </div>
+          </div>
+        </div>
+        {toTraiter > 0 && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            {data.messagesUnread > 0 && (
+              <button onClick={() => onNavigate('messages')}
+                style={{ padding: '8px 14px', borderRadius: 9, background: '#fff', border: '1px solid #fde68a', color: '#d97706', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Mail size={12} /> Messages
+              </button>
+            )}
+            {data.proUnread > 0 && (
+              <button onClick={() => onNavigate('demandes_pro')}
+                style={{ padding: '8px 14px', borderRadius: 9, background: '#fff', border: '1px solid #fde68a', color: '#d97706', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Briefcase size={12} /> Pro
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Actions rapides */}
@@ -787,24 +791,20 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
           {([
             { label: 'Gérer les utilisateurs', icon: Users, color: '#2a7d9c', tab: 'users' },
-            { label: 'Voir les paiements', icon: Euro, color: '#16a34a', tab: 'payments' },
+            { label: 'Journal des paiements', icon: Euro, color: '#16a34a', tab: 'payments' },
             { label: 'Voir les analyses', icon: FileText, color: '#7c3aed', tab: 'analyses' },
-            { label: 'Messages', icon: Mail, color: '#f0a500', tab: 'messages', badge: kpis.messagesUnread },
-            { label: 'Demandes Pro', icon: Briefcase, color: '#0f2d3d', tab: 'demandes_pro', badge: kpis.proUnread },
-            { label: 'Codes promo', icon: Tag, color: '#16a34a', tab: 'promos' },
             { label: 'Statistiques', icon: BarChart2, color: '#2a7d9c', tab: 'stats' },
+            { label: 'Codes promo', icon: Tag, color: '#16a34a', tab: 'promos' },
+            { label: 'Bannière', icon: Bell, color: '#0f2d3d', tab: 'banner' },
           ] as const).map((a, i) => (
             <button key={i} onClick={() => onNavigate(a.tab as TabId)}
-              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 11, background: '#f8fafc', border: '1.5px solid #edf2f7', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s', position: 'relative' as const }}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 11, background: '#f8fafc', border: '1.5px solid #edf2f7', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}
               onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.background = `${a.color}08`; el.style.borderColor = `${a.color}30`; }}
               onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.background = '#f8fafc'; el.style.borderColor = '#edf2f7'; }}>
               <div style={{ width: 34, height: 34, borderRadius: 9, background: `${a.color}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <a.icon size={15} style={{ color: a.color }} />
               </div>
               <span style={{ fontSize: 13, fontWeight: 600, color: '#374151', flex: 1 }}>{a.label}</span>
-              {'badge' in a && a.badge && a.badge > 0 ? (
-                <span style={{ fontSize: 10, fontWeight: 800, color: '#fff', background: '#dc2626', padding: '2px 7px', borderRadius: 6 }}>{a.badge}</span>
-              ) : null}
               <ArrowRight size={13} style={{ color: '#cbd5e1' }} />
             </button>
           ))}
@@ -819,17 +819,30 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
 /* ══════════════════════════════════════════
    STATS TAB
 ══════════════════════════════════════════ */
-type Period = '7j' | '30j' | '3m' | '12m' | 'custom';
+type StatsPeriod = '7j' | '30j' | '3m' | '12m' | 'all' | 'custom';
 
 function StatsTab() {
-  const [period, setPeriod] = useState<Period>('30j');
+  const [period, setPeriod] = useState<StatsPeriod>('30j');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
-  const [stats, setStats] = useState({ newUsers: 0, totalUsers: 0, totalAnalyses: 0, completedAnalyses: 0, ca: 0, ticketMoyen: 0, byType: {} as Record<string, number> });
+  const [stats, setStats] = useState({
+    ca: 0,
+    ticketMoyen: 0,
+    paymentsCount: 0,
+    newUsers: 0,
+    analysesTotal: 0,
+    analysesByType: { document: 0, complete: 0, pack2: 0, pack3: 0 },
+    freeAnalysesByType: { document: 0, complete: 0, pack2: 0, pack3: 0 },
+    creditsOffered: { document: 0, complete: 0 },
+  });
   const [weeklyData, setWeeklyData] = useState<{ week: string; ca: number; users: number }[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const getRange = useCallback(() => {
-    const now = new Date(); const end = now.toISOString(); let start = new Date(now);
+    const now = new Date();
+    const end = now.toISOString();
+    if (period === 'all') return { start: '2020-01-01T00:00:00Z', end };
+    const start = new Date(now);
     if (period === '7j') start.setDate(now.getDate() - 7);
     else if (period === '30j') start.setDate(now.getDate() - 30);
     else if (period === '3m') start.setMonth(now.getMonth() - 3);
@@ -840,24 +853,59 @@ function StatsTab() {
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
       const { start, end } = getRange();
-      if (!start || !end) return;
-      const [{ count: newUsers }, { count: totalUsers }, { data: analyses }, { count: totalAnalyses }, { data: paymentsData }] = await Promise.all([
-        supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end),
-        supabase.from('profiles').select('*', { count: 'exact', head: true }),
-        supabase.from('analyses').select('type,status,created_at').gte('created_at', start).lte('created_at', end),
-        supabase.from('analyses').select('*', { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end),
-        supabase.from('payments').select('amount,created_at,status').eq('status', 'completed').gte('created_at', start).lte('created_at', end),
-      ]);
-      const completed = (analyses || []).filter(a => a.status === 'completed');
-      // CA basé sur les VRAIS paiements Stripe (table payments), plus les vraies ventes
-      const realPayments = (paymentsData || []).filter(p => p.amount > 0);
-      const ca = realPayments.reduce((s, p) => s + (p.amount || 0), 0);
-      const ticketMoyen = realPayments.length > 0 ? ca / realPayments.length : 0;
-      const byType = (analyses || []).reduce((acc, a) => ({ ...acc, [a.type]: (acc[a.type] || 0) + 1 }), {} as Record<string, number>);
-      setStats({ newUsers: newUsers || 0, totalUsers: totalUsers || 0, totalAnalyses: totalAnalyses || 0, completedAnalyses: completed.length, ca, ticketMoyen, byType });
+      if (!start || !end) { setLoading(false); return; }
 
-      // Weekly chart data (last 8 weeks) — basé sur les vrais paiements
+      const [
+        { data: paymentsData },
+        { count: newUsers },
+        { data: analyses },
+        { data: freePaymentsData },
+      ] = await Promise.all([
+        supabase.from('payments').select('amount').eq('status', 'completed').gt('amount', 0).gte('created_at', start).lte('created_at', end),
+        supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', start).lte('created_at', end),
+        supabase.from('analyses').select('type,paid,stripe_payment_id,created_at').gte('created_at', start).lte('created_at', end),
+        supabase.from('payments').select('credits_added,credit_type').eq('status', 'completed').eq('amount', 0).gte('created_at', start).lte('created_at', end),
+      ]);
+
+      const payments = paymentsData || [];
+      const ca = payments.reduce((s, p) => s + (p.amount || 0), 0);
+      const paymentsCount = payments.length;
+      const ticketMoyen = paymentsCount > 0 ? ca / paymentsCount : 0;
+
+      // Analyses par type
+      const analysesByType = { document: 0, complete: 0, pack2: 0, pack3: 0 };
+      const freeAnalysesByType = { document: 0, complete: 0, pack2: 0, pack3: 0 };
+      (analyses || []).forEach(a => {
+        if (a.type in analysesByType) {
+          analysesByType[a.type as keyof typeof analysesByType]++;
+          // Analyse gratuite = pas liée à un paiement Stripe réel
+          if (!a.stripe_payment_id) {
+            freeAnalysesByType[a.type as keyof typeof freeAnalysesByType]++;
+          }
+        }
+      });
+
+      // Crédits offerts
+      const creditsOffered = { document: 0, complete: 0 };
+      (freePaymentsData || []).forEach(p => {
+        if (p.credit_type === 'document') creditsOffered.document += (p.credits_added || 0);
+        else if (p.credit_type === 'complete') creditsOffered.complete += (p.credits_added || 0);
+      });
+
+      setStats({
+        ca,
+        ticketMoyen,
+        paymentsCount,
+        newUsers: newUsers || 0,
+        analysesTotal: (analyses || []).length,
+        analysesByType,
+        freeAnalysesByType,
+        creditsOffered,
+      });
+
+      // Graphiques 8 dernières semaines (toujours)
       const weeks: { week: string; ca: number; users: number }[] = [];
       const now = new Date();
       for (let i = 7; i >= 0; i--) {
@@ -877,18 +925,41 @@ function StatsTab() {
         weeks.push({ week: label, ca: wCa, users: wUsers || 0 });
       }
       setWeeklyData(weeks);
+      setLoading(false);
     };
     load();
   }, [getRange]);
 
   const maxCa = Math.max(...weeklyData.map(w => w.ca), 1);
-  const periods: { id: Period; label: string }[] = [{ id: '7j', label: '7 jours' }, { id: '30j', label: '30 jours' }, { id: '3m', label: '3 mois' }, { id: '12m', label: '12 mois' }, { id: 'custom', label: 'Personnalisé' }];
+  const maxU = Math.max(...weeklyData.map(w => w.users), 1);
+  const periods: { id: StatsPeriod; label: string }[] = [
+    { id: '7j', label: '7 jours' },
+    { id: '30j', label: '30 jours' },
+    { id: '3m', label: '3 mois' },
+    { id: '12m', label: '12 mois' },
+    { id: 'all', label: 'Depuis le début' },
+    { id: 'custom', label: 'Personnalisé' },
+  ];
+
+  const periodLabel = period === 'all' ? 'depuis le début' :
+    period === '7j' ? 'sur les 7 derniers jours' :
+    period === '30j' ? 'sur les 30 derniers jours' :
+    period === '3m' ? 'sur les 3 derniers mois' :
+    period === '12m' ? 'sur les 12 derniers mois' :
+    'sur la période personnalisée';
+
+  const typesMeta = [
+    { key: 'document' as const, label: 'Simple', color: '#64748b' },
+    { key: 'complete' as const, label: 'Complète', color: '#2a7d9c' },
+    { key: 'pack2' as const, label: 'Pack 2', color: '#7c3aed' },
+    { key: 'pack3' as const, label: 'Pack 3', color: '#f0a500' },
+  ];
 
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Statistiques</h1>
-        <p style={{ fontSize: 13, color: '#94a3b8' }}>Performance sur la période sélectionnée</p>
+        <p style={{ fontSize: 13, color: '#94a3b8' }}>Analyse de l'activité {periodLabel}</p>
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' as const, alignItems: 'center' }}>
@@ -907,16 +978,81 @@ function StatsTab() {
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 24 }}>
-        <KpiCard label="Nouveaux inscrits" value={stats.newUsers} sub={`sur ${stats.totalUsers} clients au total`} color="#2a7d9c" icon={<Users size={16} color="#2a7d9c" />} />
-        <KpiCard label="Analyses lancées" value={stats.totalAnalyses} sub={`dont ${stats.completedAnalyses} complétées`} color="#7c3aed" icon={<FileText size={16} color="#7c3aed" />} />
-        <KpiCard label="CA période" value={`${stats.ca.toFixed(2).replace('.', ',')}€`} sub="Paiements Stripe encaissés" color="#16a34a" icon={<TrendingUp size={16} color="#16a34a" />} />
-        <KpiCard label="Ticket moyen" value={`${stats.ticketMoyen.toFixed(2).replace('.', ',')}€`} sub="Par paiement" color="#f0a500" icon={<CreditCard size={16} color="#f0a500" />} />
+      {/* BLOC 1 — CA et argent */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px', marginBottom: 14 }}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 16 }}>💰 Chiffre d'affaires {periodLabel}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+          <div style={{ padding: '16px', borderRadius: 12, background: 'linear-gradient(135deg,#16a34a,#14532d)', color: '#fff' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.7, letterSpacing: '0.1em', marginBottom: 4 }}>CA ENCAISSÉ</div>
+            <div style={{ fontSize: 26, fontWeight: 900 }}>{stats.ca.toFixed(2).replace('.', ',')}€</div>
+            <div style={{ fontSize: 11, opacity: 0.65, marginTop: 4 }}>{stats.paymentsCount} paiement{stats.paymentsCount > 1 ? 's' : ''} Stripe</div>
+          </div>
+          <div style={{ padding: '16px', borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 4 }}>TICKET MOYEN</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: '#0f172a' }}>{stats.ticketMoyen.toFixed(2).replace('.', ',')}€</div>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Par paiement payant</div>
+          </div>
+        </div>
       </div>
 
-      {/* Graphique CA semaine par semaine */}
-      <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '24px', marginBottom: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 20 }}>CA par semaine (8 dernières semaines)</div>
+      {/* BLOC 2 — Clients et analyses */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px', marginBottom: 14 }}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 16 }}>👥 Clients et analyses {periodLabel}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+          {/* Nouveaux clients */}
+          <div style={{ padding: '16px', borderRadius: 12, background: '#f0f7fb', border: '1px solid #bae3f5' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.1em', marginBottom: 4 }}>NOUVEAUX CLIENTS</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: '#0f2d3d' }}>{stats.newUsers}</div>
+            <div style={{ fontSize: 11, color: '#2a7d9c', marginTop: 4 }}>Inscrits {periodLabel}</div>
+          </div>
+          {/* Analyses totales */}
+          <div style={{ padding: '16px', borderRadius: 12, background: '#f5f3ff', border: '1px solid #ddd6fe', gridColumn: 'span 2' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', letterSpacing: '0.1em', marginBottom: 4 }}>ANALYSES RÉALISÉES</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
+              <div style={{ fontSize: 26, fontWeight: 900, color: '#0f2d3d' }}>{stats.analysesTotal}</div>
+              <div style={{ fontSize: 11, color: '#7c3aed' }}>Payantes et gratuites confondues</div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+              {typesMeta.map(t => {
+                const total = stats.analysesByType[t.key];
+                const free = stats.freeAnalysesByType[t.key];
+                return (
+                  <div key={t.key} style={{ padding: '8px 10px', borderRadius: 8, background: '#fff' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8' }}>{t.label}</div>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: total > 0 ? t.color : '#cbd5e1' }}>{total}</div>
+                    {free > 0 && <div style={{ fontSize: 9, color: '#7c3aed', marginTop: 2 }}>dont {free} gratuit{free > 1 ? 's' : ''}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* BLOC 3 — Crédits offerts */}
+      {(stats.creditsOffered.document > 0 || stats.creditsOffered.complete > 0) && (
+        <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px', marginBottom: 14 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>🎁 Crédits offerts {periodLabel}</div>
+          <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>Distribués via codes promo (acquisition)</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+            <div style={{ padding: '14px 16px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em' }}>ANALYSE SIMPLE</div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: '#64748b', marginTop: 4 }}>{stats.creditsOffered.document}</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>crédit{stats.creditsOffered.document > 1 ? 's' : ''} offert{stats.creditsOffered.document > 1 ? 's' : ''}</div>
+            </div>
+            <div style={{ padding: '14px 16px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em' }}>ANALYSE COMPLÈTE</div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: '#2a7d9c', marginTop: 4 }}>{stats.creditsOffered.complete}</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>crédit{stats.creditsOffered.complete > 1 ? 's' : ''} offert{stats.creditsOffered.complete > 1 ? 's' : ''}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Graphique CA 8 dernières semaines */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '24px', marginBottom: 14 }}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>📈 CA par semaine</div>
+        <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 20 }}>Évolution des paiements Stripe sur les 8 dernières semaines</div>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 120 }}>
           {weeklyData.map((w, i) => (
             <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 6 }}>
@@ -930,23 +1066,20 @@ function StatsTab() {
         </div>
       </div>
 
-      {/* Graphique inscriptions semaine par semaine */}
-      <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '24px', marginBottom: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Inscriptions par semaine (8 dernières semaines)</div>
-        <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 20 }}>Nouveaux comptes créés chaque semaine</div>
+      {/* Graphique inscriptions 8 dernières semaines */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '24px', marginBottom: 14 }}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>👤 Inscriptions par semaine</div>
+        <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 20 }}>Nouveaux comptes créés sur les 8 dernières semaines</div>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 120 }}>
-          {weeklyData.map((w, i) => {
-            const maxU = Math.max(...weeklyData.map(x => x.users), 1);
-            return (
-              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 6 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed' }}>{w.users > 0 ? w.users : ''}</div>
-                <motion.div initial={{ height: 0 }} animate={{ height: `${Math.max((w.users / maxU) * 80, w.users > 0 ? 4 : 0)}px` }}
-                  transition={{ duration: 0.6, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] }}
-                  style={{ width: '100%', background: w.users > 0 ? 'linear-gradient(to top,#7c3aed,#c4b5fd)' : '#f1f5f9', borderRadius: '6px 6px 0 0', minHeight: 4 }} />
-                <div style={{ fontSize: 9, color: '#94a3b8', textAlign: 'center' as const }}>{w.week}</div>
-              </div>
-            );
-          })}
+          {weeklyData.map((w, i) => (
+            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 6 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed' }}>{w.users > 0 ? w.users : ''}</div>
+              <motion.div initial={{ height: 0 }} animate={{ height: `${Math.max((w.users / maxU) * 80, w.users > 0 ? 4 : 0)}px` }}
+                transition={{ duration: 0.6, delay: i * 0.05, ease: [0.22, 1, 0.36, 1] }}
+                style={{ width: '100%', background: w.users > 0 ? 'linear-gradient(to top,#7c3aed,#c4b5fd)' : '#f1f5f9', borderRadius: '6px 6px 0 0', minHeight: 4 }} />
+              <div style={{ fontSize: 9, color: '#94a3b8', textAlign: 'center' as const }}>{w.week}</div>
+            </div>
+          ))}
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: '#7c3aed' }}>
@@ -955,38 +1088,10 @@ function StatsTab() {
         </div>
       </div>
 
-      {/* Répartition par plan */}
-      <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 20 }}>Répartition par plan</div>
-        {Object.entries(PLAN_LABELS).map(([type, label]) => {
-          const count = stats.byType[type] || 0;
-          const pct = stats.totalAnalyses ? Math.round((count / stats.totalAnalyses) * 100) : 0;
-          const revenue = count * (PLAN_PRICES[type] || 0);
-          return (
-            <div key={type} style={{ marginBottom: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: 3, background: PLAN_COLORS[type] }} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>{label}</span>
-                </div>
-                <div style={{ display: 'flex', gap: 16, fontSize: 12 }}>
-                  <span style={{ fontWeight: 700, color: PLAN_COLORS[type] }}>{count} analyse{count > 1 ? 's' : ''}</span>
-                  <span style={{ color: '#94a3b8' }}>{pct}%</span>
-                  <span style={{ fontWeight: 700, color: '#16a34a' }}>{revenue.toFixed(0)}€</span>
-                </div>
-              </div>
-              <div style={{ height: 8, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
-                <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-                  style={{ height: '100%', background: PLAN_COLORS[type], borderRadius: 99 }} />
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {loading && <div style={{ textAlign: 'center' as const, color: '#94a3b8', fontSize: 12, marginTop: 16 }}>Chargement...</div>}
     </div>
   );
 }
-
 /* ══════════════════════════════════════════
    USERS TAB
 ══════════════════════════════════════════ */
@@ -2494,9 +2599,6 @@ function PaymentsTab({ onOpenUser, showToast }: { onOpenUser: (userId: string) =
       || (p.stripe_session_id || '').toLowerCase().includes(q);
   });
 
-  const totalPeriod = filtered.filter(p => p.status === 'completed').reduce((s, p) => s + (p.amount || 0), 0);
-  const totalCount = filtered.filter(p => p.status === 'completed' && p.amount > 0).length;
-
   const doExport = () => {
     exportCSV(filtered.map(p => ({
       date: fmtDateTime(p.created_at),
@@ -2513,48 +2615,17 @@ function PaymentsTab({ onOpenUser, showToast }: { onOpenUser: (userId: string) =
     showToast('Export CSV téléchargé');
   };
 
-  const counts = {
-    all: payments.length,
-    paid: payments.filter(p => p.amount > 0).length,
-    free: payments.filter(p => p.amount === 0).length,
-    refundable: payments.filter(p => p.amount > 0 && daysSince(p.created_at) < 14).length,
-  };
-
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap' as const, gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Paiements</h1>
-          <p style={{ fontSize: 13, color: '#94a3b8' }}>Tous les paiements et crédits offerts</p>
+          <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Journal des paiements</h1>
+          <p style={{ fontSize: 13, color: '#94a3b8' }}>Historique détaillé de toutes les transactions Stripe et crédits offerts</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={doExport} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#374151', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
             <Download size={14} /> CSV
           </button>
-        </div>
-      </div>
-
-      {/* KPIs période */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
-        <div style={{ background: 'linear-gradient(135deg,#16a34a,#14532d)', borderRadius: 14, padding: '18px 20px', color: '#fff' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.7, letterSpacing: '0.1em', marginBottom: 4 }}>TOTAL PÉRIODE</div>
-          <div style={{ fontSize: 26, fontWeight: 900 }}>{totalPeriod.toFixed(2)}€</div>
-          <div style={{ fontSize: 11, opacity: 0.6, marginTop: 4 }}>{totalCount} paiement{totalCount > 1 ? 's' : ''}</div>
-        </div>
-        <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', padding: '18px 20px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 4 }}>PAIEMENTS</div>
-          <div style={{ fontSize: 26, fontWeight: 900, color: '#0f172a' }}>{counts.paid}</div>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Total depuis le début</div>
-        </div>
-        <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', padding: '18px 20px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 4 }}>CRÉDITS GRATUITS</div>
-          <div style={{ fontSize: 26, fontWeight: 900, color: '#7c3aed' }}>{counts.free}</div>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Via codes promo</div>
-        </div>
-        <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', padding: '18px 20px' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 4 }}>ÉLIGIBLES REMBOURSEMENT</div>
-          <div style={{ fontSize: 26, fontWeight: 900, color: '#d97706' }}>{counts.refundable}</div>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>&lt; 14 jours</div>
         </div>
       </div>
 
@@ -2579,7 +2650,7 @@ function PaymentsTab({ onOpenUser, showToast }: { onOpenUser: (userId: string) =
           { id: 'all', label: 'Tous les paiements', color: '#64748b' },
           { id: 'paid', label: '💳 Payants', color: '#16a34a' },
           { id: 'free', label: '🎁 Gratuits', color: '#7c3aed' },
-          { id: 'refundable', label: '⚠ Éligibles remboursement', color: '#d97706' },
+          { id: 'refundable', label: '⏱ Remboursables (< 14j)', color: '#d97706' },
         ] as const).map(f => (
           <button key={f.id} onClick={() => setFilter(f.id)}
             style={{ padding: '8px 14px', borderRadius: 10, border: `1.5px solid ${filter === f.id ? f.color : '#edf2f7'}`, background: filter === f.id ? `${f.color}12` : '#fff', color: filter === f.id ? f.color : '#64748b', fontSize: 12, fontWeight: filter === f.id ? 700 : 500, cursor: 'pointer' }}>
