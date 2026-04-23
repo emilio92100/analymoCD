@@ -30,49 +30,75 @@ const navItems = [
   { to: '/dashboard/support',       icon: LifeBuoy,        label: 'Support / Aide' },
 ];
 
+/* ═══════════════════════════════════════════
+   SIDEBAR TEAL VERIMO
+═══════════════════════════════════════════ */
 function Sidebar({ onClose }: { onClose?: () => void }) {
   const location = useLocation();
   const { credits } = useCredits();
+
+  const SB_BG = '#0e3a4a';
+  const SB_ACTIVE_BG = 'rgba(255,255,255,0.1)';
+  const SB_ACCENT = '#5dbfe0';
+  const SB_TEXT = 'rgba(255,255,255,0.5)';
+  const SB_TEXT_ACTIVE = '#ffffff';
+  const SB_MUTED = 'rgba(255,255,255,0.25)';
+
   return (
-    <aside style={{ width:260, minHeight:'100vh', height:'100%', background:'#fff', display:'flex', flexDirection:'column', borderRight:'1px solid #edf2f7', boxShadow:'2px 0 16px rgba(15,45,61,0.05)' }}>
-      <div style={{ height:68, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 20px', borderBottom:'1px solid #f0f5f9', flexShrink:0 }}>
-        <Link to="/" onClick={onClose} style={{ display: 'flex', justifyContent: 'center', padding: '8px 0' }}><img src="/logo.png" alt="Verimo" style={{ height: 52, objectFit: 'contain' }}/></Link>
-        {onClose && <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'#94a3b8', padding:4 }}><X size={18}/></button>}
+    <aside style={{ width:260, minHeight:'100vh', height:'100%', background:SB_BG, display:'flex', flexDirection:'column' }}>
+      {/* Logo */}
+      <div style={{ height:68, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 18px', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
+        <Link to="/" onClick={onClose} style={{ display:'flex', alignItems:'center', gap:9, textDecoration:'none' }}>
+          <div style={{ width:30, height:30, borderRadius:8, background:'rgba(255,255,255,0.12)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:700, color:'#fff' }}>V</div>
+          <span style={{ fontSize:16, fontWeight:700, color:'#fff', letterSpacing:'-0.01em' }}>verimo</span>
+        </Link>
+        {onClose && <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.4)', padding:4 }}><X size={18}/></button>}
       </div>
-      <div style={{ padding:'16px 14px 10px' }}>
+
+      {/* CTA Nouvelle analyse */}
+      <div style={{ padding:'14px 14px 8px' }}>
         <Link to="/dashboard/nouvelle-analyse" onClick={onClose}
-          style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'12px', borderRadius:12, background:'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color:'#fff', textDecoration:'none', fontSize:14, fontWeight:700, boxShadow:'0 4px 14px rgba(42,125,156,0.3)', transition:'all 0.2s' }}
-          onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 6px 20px rgba(42,125,156,0.42)'; el.style.transform='translateY(-1px)'; }}
-          onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.boxShadow='0 4px 14px rgba(42,125,156,0.3)'; el.style.transform='translateY(0)'; }}>
+          style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'11px', borderRadius:10, background:'#2a7d9c', color:'#fff', textDecoration:'none', fontSize:13, fontWeight:700, transition:'all 0.2s' }}
+          onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.background='#358da8'; }}
+          onMouseOut={e=>{ const el=e.currentTarget as HTMLElement; el.style.background='#2a7d9c'; }}>
           <Plus size={15} strokeWidth={2.5}/> Nouvelle analyse
         </Link>
       </div>
-      <div style={{ margin:'0 14px 8px', padding:'12px', borderRadius:10, background:'#f8fafc', border:'1px solid #edf2f7' }}>
-        <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.12em', marginBottom:8 }}>CRÉDITS RESTANTS</div>
-        <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
-          {[{ label:'Document', value:credits.document, color:'#2a7d9c' }, { label:'Complète', value:credits.complete, color:'#0f2d3d' }].map(c=>(
-            <div key={c.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'6px 8px', borderRadius:8, background:'#f8fafc', border:'1px solid #edf2f7' }}>
-              <span style={{ fontSize:11, color:'#64748b', fontWeight:600 }}>{c.label}</span>
-              <span style={{ fontSize:12, fontWeight:900, color:c.value>0?c.color:'#94a3b8' }}>{c.value} crédit{c.value>1?'s':''} restant{c.value>1?'s':''}</span>
+
+      {/* Crédits — juste sous le CTA comme l'actuel */}
+      <div style={{ margin:'0 14px 6px', padding:'10px 12px', borderRadius:9, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ fontSize:10, fontWeight:700, color:SB_MUTED, letterSpacing:'0.1em', marginBottom:7 }}>CRÉDITS RESTANTS</div>
+        <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+          {[{ label:'Document', value:credits.document }, { label:'Complète', value:credits.complete }].map(c=>(
+            <div key={c.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'5px 8px', borderRadius:7, background:'rgba(255,255,255,0.03)' }}>
+              <span style={{ fontSize:11, color:SB_TEXT, fontWeight:500 }}>{c.label}</span>
+              <span style={{ fontSize:12, fontWeight:800, color:c.value>0?SB_ACCENT:'rgba(255,255,255,0.2)' }}>{c.value} crédit{c.value>1?'s':''}</span>
             </div>
           ))}
         </div>
-        <Link to="/dashboard/tarifs" onClick={onClose} style={{ display:'block', marginTop:8, fontSize:11, fontWeight:700, color:'#2a7d9c', textDecoration:'none', textAlign:'center' }}>
+        <Link to="/dashboard/tarifs" onClick={onClose} style={{ display:'block', marginTop:7, fontSize:11, fontWeight:700, color:SB_ACCENT, textDecoration:'none', textAlign:'center' }}>
           {credits.document===0&&credits.complete===0?'+ Acheter une analyse':'+ Recharger'}
         </Link>
       </div>
+
+      {/* Navigation */}
       <nav style={{ flex:1, padding:'4px 10px', display:'flex', flexDirection:'column', gap:1, overflowY:'auto' }}>
-        <p style={{ fontSize:10, fontWeight:700, color:'#b0bec5', letterSpacing:'0.14em', padding:'8px 10px 5px', textTransform:'uppercase' }}>Menu</p>
+        <p style={{ fontSize:10, fontWeight:700, color:SB_MUTED, letterSpacing:'0.12em', padding:'10px 10px 5px', textTransform:'uppercase' }}>Menu</p>
         {navItems.map(item => {
           const Icon = item.icon;
           const active = location.pathname === item.to;
           return (
             <Link key={item.to} to={item.to} onClick={onClose}
-              style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', borderRadius:10, textDecoration:'none', fontSize:13.5, fontWeight:active?700:500, color:active?'#0f2d3d':'#64748b', background:active?'#f0f7fb':'transparent', transition:'all 0.15s', position:'relative' }}
-              onMouseOver={e=>{ if(!active)(e.currentTarget as HTMLElement).style.background='#f8fafc'; }}
+              style={{
+                display:'flex', alignItems:'center', gap:10, padding:'9px 12px', textDecoration:'none',
+                fontSize:13, fontWeight:active?600:400, color:active?SB_TEXT_ACTIVE:SB_TEXT,
+                background:active?SB_ACTIVE_BG:'transparent', transition:'all 0.15s',
+                borderLeft:active?`3px solid ${SB_ACCENT}`:'3px solid transparent',
+                borderRadius:0,
+              }}
+              onMouseOver={e=>{ if(!active)(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.05)'; }}
               onMouseOut={e=>{ if(!active)(e.currentTarget as HTMLElement).style.background='transparent'; }}>
-              {active&&<div style={{ position:'absolute', left:0, top:'20%', bottom:'20%', width:3, borderRadius:99, background:'#2a7d9c' }}/>}
-              <Icon size={16} style={{ color:active?'#2a7d9c':'#94a3b8', flexShrink:0 }}/>{item.label}
+              <Icon size={16} style={{ color:active?SB_ACCENT:SB_TEXT, flexShrink:0 }}/>{item.label}
             </Link>
           );
         })}
@@ -81,6 +107,9 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
   );
 }
 
+/* ═══════════════════════════════════════════
+   TOPBAR (inchangé dans la logique)
+═══════════════════════════════════════════ */
 function Topbar({ onMenuClick, title }: { onMenuClick:()=>void; title:string }) {
   const { name, email } = useUser();
   const navigate = useNavigate();
@@ -150,6 +179,9 @@ function Topbar({ onMenuClick, title }: { onMenuClick:()=>void; title:string }) 
   );
 }
 
+/* ═══════════════════════════════════════════
+   BANNER (inchangé)
+═══════════════════════════════════════════ */
 function DashboardBanner() {
   const [banner, setBanner] = useState<{ id:string; message:string; type:string }|null>(null);
   const [dismissed, setDismissed] = useState(false);
@@ -191,6 +223,9 @@ function DashboardBanner() {
   );
 }
 
+/* ═══════════════════════════════════════════
+   RAPPORT DASHBOARD (APERÇU — inchangé)
+═══════════════════════════════════════════ */
 function RapportDashboard() {
   const [searchParams] = useSearchParams();
   const id = searchParams.get('id') || '';
@@ -205,7 +240,6 @@ function RapportDashboard() {
       if (data?.is_preview && data?.apercu && !data?.result) {
         setApercuData({ apercu: data.apercu as Record<string, unknown>, type: data.type, id: data.id });
       } else if (data?.result) {
-        // Rapport complet → rediriger vers RapportPage standalone
         window.location.href = `/rapport?id=${id}${action ? '&action=' + action : ''}`;
       }
       setLoading(false);
@@ -339,6 +373,9 @@ function RapportDashboard() {
   );
 }
 
+/* ═══════════════════════════════════════════
+   CONTENU & EXPORT
+═══════════════════════════════════════════ */
 function DashboardContent({ path }: { path:string }) {
   if (path === '/dashboard/nouvelle-analyse') return <NouvelleAnalyse/>;
   if (path === '/dashboard/tarifs')           return <Tarifs/>;
@@ -403,15 +440,13 @@ export default function DashboardPage() {
           .compare-grid { grid-template-columns: 1fr !important; }
           .result-grid { grid-template-columns: 1fr !important; }
           .type-grid { grid-template-columns: 1fr !important; }
-          /* Force tous les conteneurs à prendre 100% de la largeur */
           .dashboard-main > div,
           .dashboard-main > section {
             max-width: 100% !important;
             width: 100% !important;
           }
-          /* Réduire padding interne des cards sur mobile */
           .dashboard-main [style*="padding: '28px'"],
-          .dashboard-main [style*="padding: \"28px\""],
+          .dashboard-main [style*="padding: \\"28px\\""],
           .dashboard-main [style*="padding:28px"] {
             padding: 18px !important;
           }
