@@ -24,6 +24,7 @@ function CheckoutModal({ plan, onClose }: {
   const [promoApplied, setPromoApplied] = useState(false);
   const [payLoading, setPayLoading] = useState(false);
   const [payError, setPayError] = useState('');
+  const [waiverAccepted, setWaiverAccepted] = useState(false);
 
   const applyPromo = async () => {
     if (!promoCode.trim()) return;
@@ -105,6 +106,7 @@ function CheckoutModal({ plan, onClose }: {
         credits_added: toAdd,
         credit_type: creditCol === 'credits_document' ? 'document' : 'complete',
         status: 'completed',
+        retractation_waiver_at: new Date().toISOString(),
       });
 
       // Fermer la modale et afficher un toast de succès
@@ -130,7 +132,7 @@ function CheckoutModal({ plan, onClose }: {
       const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${finalSession.access_token}`, 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlc3pyYXlyb21sZGZnZXRxYXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MzI5NTUsImV4cCI6MjA2MTAwODk1NX0.XsqzBPDMfHRFKgMhJxoLhgVWZMdV5YnFKM3VCBe9hOk' },
-        body: JSON.stringify({ priceId: PRICE_IDS[plan.id], userId: finalSession.user.id, promoCodeId: promoResult?.id ?? null }),
+        body: JSON.stringify({ priceId: PRICE_IDS[plan.id], userId: finalSession.user.id, promoCodeId: promoResult?.id ?? null, retractationWaiverAt: new Date().toISOString() }),
       });
       if (!res.ok) { const err = await res.text(); throw new Error(err || `Erreur ${res.status}`); }
       const data = await res.json();
@@ -185,8 +187,19 @@ function CheckoutModal({ plan, onClose }: {
             )}
             {promoError && <div style={{ fontSize: 12, color: '#dc2626', marginTop: 6, display: 'flex', alignItems: 'center', gap: 5 }}><AlertTriangle size={12} /> {promoError}</div>}
           </div>
-          <button onClick={handlePay} disabled={payLoading}
-            style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: promoResult?.type === 'credits' ? 'linear-gradient(135deg, #7c3aed, #6d28d9)' : `linear-gradient(135deg, ${plan.color}, ${plan.color}cc)`, color: '#fff', fontSize: 15, fontWeight: 800, cursor: payLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: promoResult?.type === 'credits' ? '0 6px 20px rgba(124,58,237,0.35)' : `0 6px 20px ${plan.color}40`, opacity: payLoading ? 0.75 : 1 }}>
+
+          {/* Case à cocher consentement droit de rétractation (obligatoire) */}
+          <label style={{ display: 'flex', gap: 11, alignItems: 'flex-start', padding: '13px 15px', background: waiverAccepted ? '#f0fdf4' : '#fffbeb', border: `1.5px solid ${waiverAccepted ? '#86efac' : '#fde68a'}`, borderRadius: 11, cursor: 'pointer', transition: 'all 0.2s ease' }}>
+            <input type="checkbox" checked={waiverAccepted} onChange={e => setWaiverAccepted(e.target.checked)}
+              style={{ width: 17, height: 17, marginTop: 1, cursor: 'pointer', accentColor: waiverAccepted ? '#16a34a' : '#d97706', flexShrink: 0 }} />
+            <span style={{ fontSize: 12.5, color: waiverAccepted ? '#166534' : '#78350f', lineHeight: 1.55 }}>
+              <strong style={{ color: waiverAccepted ? '#14532d' : '#92400e' }}>Je confirme</strong> que je demande l'exécution immédiate du service et je reconnais perdre mon droit de rétractation de 14 jours une fois l'analyse lancée.{' '}
+              <a href="/cgu#retractation" target="_blank" rel="noopener noreferrer" style={{ color: waiverAccepted ? '#16a34a' : '#d97706', textDecoration: 'underline', fontWeight: 700 }} onClick={e => e.stopPropagation()}>En savoir plus</a>
+            </span>
+          </label>
+
+          <button onClick={handlePay} disabled={payLoading || !waiverAccepted}
+            style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: !waiverAccepted ? '#e2e8f0' : promoResult?.type === 'credits' ? 'linear-gradient(135deg, #7c3aed, #6d28d9)' : `linear-gradient(135deg, ${plan.color}, ${plan.color}cc)`, color: !waiverAccepted ? '#94a3b8' : '#fff', fontSize: 15, fontWeight: 800, cursor: payLoading || !waiverAccepted ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: !waiverAccepted ? 'none' : promoResult?.type === 'credits' ? '0 6px 20px rgba(124,58,237,0.35)' : `0 6px 20px ${plan.color}40`, opacity: payLoading ? 0.75 : 1, transition: 'all 0.2s ease' }}>
             {payLoading
               ? <><div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.35)', borderTopColor: '#fff', animation: 'spin 0.8s linear infinite' }} /> {promoResult?.type === 'credits' ? 'Application en cours…' : 'Redirection…'}</>
               : promoResult?.type === 'credits'
