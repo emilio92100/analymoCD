@@ -851,15 +851,30 @@ export default function RapportComparaisonPage() {
       const data = await res.json();
       console.log('[RapportComparaisonPage] verdict reçu:', data);
       if (data.success && data.verdict) {
+        // BUGFIX : si le verdict est retourné comme string JSON (cas du cache BDD), on le parse.
+        let parsedVerdict: VerdictAny;
+        if (typeof data.verdict === 'string') {
+          try {
+            parsedVerdict = JSON.parse(data.verdict) as VerdictAny;
+            console.log('[RapportComparaisonPage] verdict parsé depuis string:', parsedVerdict);
+          } catch (parseErr) {
+            console.error('[RapportComparaisonPage] impossible de parser le verdict string:', parseErr);
+            setVerdictError(true);
+            setVerdictLoading(false);
+            return;
+          }
+        } else {
+          parsedVerdict = data.verdict as VerdictAny;
+        }
         console.log('[RapportComparaisonPage] verdict structure:', {
-          has_ecarts_cles: !!data.verdict.ecarts_cles,
-          has_profils: Array.isArray(data.verdict.profils),
-          has_analyse_croisee: !!data.verdict.analyse_croisee,
-          has_points_a_approfondir: Array.isArray(data.verdict.points_a_approfondir),
-          has_titre_verdict: !!data.verdict.titre_verdict,
+          has_ecarts_cles: !!(parsedVerdict as VerdictV2).ecarts_cles,
+          has_profils: Array.isArray((parsedVerdict as VerdictV2).profils),
+          has_analyse_croisee: !!(parsedVerdict as VerdictV2).analyse_croisee,
+          has_points_a_approfondir: Array.isArray((parsedVerdict as VerdictV2).points_a_approfondir),
+          has_titre_verdict: !!parsedVerdict.titre_verdict,
           cached: data.cached,
         });
-        setVerdict(data.verdict as VerdictAny);
+        setVerdict(parsedVerdict);
         if (data.cached) setFromCache(true);
       } else {
         console.error('[RapportComparaisonPage] réponse sans verdict:', data);
