@@ -620,22 +620,74 @@ function BannerTab({ showToast, logAction }: { showToast: (m: string) => void; l
   );
 }
 function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
-  const [kpis, setKpis] = useState({ users: 0, analyses: 0, messages: 0, pro: 0, ca: 0 });
+  const [kpis, setKpis] = useState({
+    users: 0,
+    analyses: 0,
+    analysesCompleted: 0,
+    analysesProcessing: 0,
+    analysesFailed: 0,
+    messages: 0,
+    pro: 0,
+    ca: 0,
+    caByType: { document: { count: 0, total: 0 }, complete: { count: 0, total: 0 }, pack2: { count: 0, total: 0 }, pack3: { count: 0, total: 0 } },
+    refundableCount: 0,
+  });
 
   useEffect(() => {
     const load = async () => {
-      const [{ count: u }, { count: a }, { count: m }, { count: p }, { data: paymentsData }] = await Promise.all([
+      const [{ count: u }, { count: a }, { data: analysesData }, { count: m }, { count: p }, { data: paymentsData }] = await Promise.all([
         supabase.from('profiles').select('*', { count: 'exact', head: true }),
         supabase.from('analyses').select('*', { count: 'exact', head: true }),
+        supabase.from('analyses').select('status'),
         supabase.from('contact_messages').select('*', { count: 'exact', head: true }).eq('read', false),
         supabase.from('contact_pro').select('*', { count: 'exact', head: true }).eq('read', false),
-        supabase.from('payments').select('amount').eq('status', 'completed').gt('amount', 0),
+        supabase.from('payments').select('amount,credit_type,credits_added,created_at,description').eq('status', 'completed').gt('amount', 0),
       ]);
-      const ca = (paymentsData || []).reduce((s, p) => s + (p.amount || 0), 0);
-      setKpis({ users: u || 0, analyses: a || 0, messages: m || 0, pro: p || 0, ca });
+
+      const completed = (analysesData || []).filter(x => x.status === 'completed').length;
+      const processing = (analysesData || []).filter(x => x.status === 'processing' || x.status === 'pending').length;
+      const failed = (analysesData || []).filter(x => x.status === 'failed' || x.status === 'error').length;
+
+      const payments = paymentsData || [];
+      const ca = payments.reduce((s, p) => s + (p.amount || 0), 0);
+
+      // Décomposition par type basée sur la description du paiement (contient "Simple", "Complète", "Pack 2", "Pack 3")
+      const caByType = { document: { count: 0, total: 0 }, complete: { count: 0, total: 0 }, pack2: { count: 0, total: 0 }, pack3: { count: 0, total: 0 } };
+      payments.forEach(p => {
+        const desc = (p.description || '').toLowerCase();
+        const amt = p.amount || 0;
+        if (desc.includes('pack 3')) { caByType.pack3.count++; caByType.pack3.total += amt; }
+        else if (desc.includes('pack 2')) { caByType.pack2.count++; caByType.pack2.total += amt; }
+        else if (desc.includes('complète')) { caByType.complete.count++; caByType.complete.total += amt; }
+        else if (desc.includes('document') || desc.includes('simple')) { caByType.document.count++; caByType.document.total += amt; }
+      });
+
+      // Paiements éligibles remboursement (< 14 jours)
+      const now = Date.now();
+      const refundableCount = payments.filter(p => (now - new Date(p.created_at).getTime()) < 14 * 86400000).length;
+
+      setKpis({
+        users: u || 0,
+        analyses: a || 0,
+        analysesCompleted: completed,
+        analysesProcessing: processing,
+        analysesFailed: failed,
+        messages: m || 0,
+        pro: p || 0,
+        ca,
+        caByType,
+        refundableCount,
+      });
     };
     load();
   }, []);
+
+  const typesBreakdown = [
+    { key: 'document', label: 'Analyse Simple', color: '#64748b', bg: '#f8fafc' },
+    { key: 'complete', label: 'Analyse Complète', color: '#2a7d9c', bg: '#f0f7fb' },
+    { key: 'pack2', label: 'Pack 2 Biens', color: '#7c3aed', bg: '#f5f3ff' },
+    { key: 'pack3', label: 'Pack 3 Biens', color: '#f0a500', bg: '#fffbeb' },
+  ] as const;
 
   return (
     <div>
@@ -643,52 +695,69 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Vue d'ensemble</h1>
         <p style={{ fontSize: 13, color: '#94a3b8' }}>Résumé de l'activité Verimo en temps réel</p>
       </div>
+
+      {/* BLOC HERO — CA Total + décomposition par type */}
+      <div style={{ background: 'linear-gradient(135deg,#0f2d3d,#1a4a60)', borderRadius: 18, padding: '28px 30px', marginBottom: 16, position: 'relative' as const, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap' as const, gap: 16 }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em', textTransform: 'uppercase' as const, marginBottom: 6 }}>CA TOTAL RÉEL</div>
+            <div style={{ fontSize: 48, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em', lineHeight: 1 }}>{kpis.ca.toFixed(2).replace('.', ',')}€</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>Basé sur les paiements Stripe encaissés</div>
+          </div>
+          <button onClick={() => onNavigate('payments')}
+            style={{ padding: '10px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+            Voir les paiements <ArrowRight size={13} />
+          </button>
+        </div>
+
+        {/* Décomposition par type */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+          {typesBreakdown.map(t => {
+            const data = kpis.caByType[t.key];
+            return (
+              <div key={t.key} style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 12, padding: '14px 16px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 6 }}>{t.label}</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: '#fff', lineHeight: 1 }}>{data.total.toFixed(2).replace('.', ',')}€</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>{data.count} vente{data.count > 1 ? 's' : ''}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* KPIs essentiels */}
       <div className="admin-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
         <KpiCard label="Utilisateurs" value={kpis.users} color="#2a7d9c" icon={<Users size={16} color="#2a7d9c" />} delay={0} />
-        <KpiCard label="Analyses" value={kpis.analyses} color="#7c3aed" icon={<FileText size={16} color="#7c3aed" />} delay={0.05} />
+        <KpiCard label="Analyses" value={kpis.analyses} sub={`${kpis.analysesCompleted} complétées`} color="#7c3aed" icon={<FileText size={16} color="#7c3aed" />} delay={0.05} />
         <KpiCard label="Messages non lus" value={kpis.messages} color="#f0a500" icon={<Mail size={16} color="#f0a500" />} delay={0.1} />
         <KpiCard label="Demandes Pro" value={kpis.pro} color="#0f2d3d" icon={<Briefcase size={16} color="#0f2d3d" />} delay={0.12} />
-        <KpiCard label="CA estimé" value={`${kpis.ca.toFixed(0)}€`} sub="Analyses complétées" color="#16a34a" icon={<TrendingUp size={16} color="#16a34a" />} delay={0.15} />
+        <KpiCard label="Éligibles remboursement" value={kpis.refundableCount} sub="< 14 jours" color="#d97706" icon={<AlertTriangle size={16} color="#d97706" />} delay={0.15} />
       </div>
-      <div className="admin-overview-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px' }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 16 }}>Actions rapides</div>
-          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
-            {([
-              { label: 'Gérer les utilisateurs', icon: Users, color: '#2a7d9c', tab: 'users' },
-              { label: 'Voir les messages', icon: Mail, color: '#f0a500', tab: 'messages' },
-              { label: 'Demandes Pro', icon: Briefcase, color: '#0f2d3d', tab: 'demandes_pro' },
-              { label: 'Voir les analyses', icon: FileText, color: '#7c3aed', tab: 'analyses' },
-              { label: 'Codes promo', icon: Tag, color: '#16a34a', tab: 'promos' },
-              { label: 'Statistiques', icon: BarChart2, color: '#2a7d9c', tab: 'stats' },
-            ] as const).map((a, i) => (
-              <button key={i} onClick={() => onNavigate(a.tab as TabId)}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 11, background: '#f8fafc', border: '1.5px solid #edf2f7', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}
-                onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.background = `${a.color}08`; el.style.borderColor = `${a.color}30`; }}
-                onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.background = '#f8fafc'; el.style.borderColor = '#edf2f7'; }}>
-                <div style={{ width: 34, height: 34, borderRadius: 9, background: `${a.color}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <a.icon size={15} style={{ color: a.color }} />
-                </div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#374151', flex: 1 }}>{a.label}</span>
-                <ArrowRight size={13} style={{ color: '#cbd5e1' }} />
-              </button>
-            ))}
-          </div>
-        </div>
-        <div style={{ background: 'linear-gradient(135deg,#0f2d3d,#1a4a60)', borderRadius: 16, padding: '24px', display: 'flex', flexDirection: 'column' as const, justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: 10 }}>CA Total Estimé</div>
-            <div style={{ fontSize: 44, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em', lineHeight: 1 }}>{kpis.ca.toFixed(0)}€</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 6 }}>Basé sur les analyses complétées</div>
-          </div>
-          <div style={{ display: 'flex', gap: 20, marginTop: 24 }}>
-            {[{ l: 'Users', v: kpis.users }, { l: 'Analyses', v: kpis.analyses }, { l: 'Messages', v: kpis.messages }, { l: 'Pro', v: kpis.pro }].map((s, i) => (
-              <div key={i}>
-                <div style={{ fontSize: 22, fontWeight: 900, color: '#fff' }}>{s.v}</div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>{s.l}</div>
+
+      {/* Actions rapides */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px' }}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 16 }}>Actions rapides</div>
+        <div className="admin-actions-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
+          {([
+            { label: 'Gérer les utilisateurs', icon: Users, color: '#2a7d9c', tab: 'users' },
+            { label: 'Voir les paiements', icon: Euro, color: '#16a34a', tab: 'payments' },
+            { label: 'Voir les analyses', icon: FileText, color: '#7c3aed', tab: 'analyses' },
+            { label: 'Messages', icon: Mail, color: '#f0a500', tab: 'messages' },
+            { label: 'Demandes Pro', icon: Briefcase, color: '#0f2d3d', tab: 'demandes_pro' },
+            { label: 'Codes promo', icon: Tag, color: '#16a34a', tab: 'promos' },
+            { label: 'Statistiques', icon: BarChart2, color: '#2a7d9c', tab: 'stats' },
+          ] as const).map((a, i) => (
+            <button key={i} onClick={() => onNavigate(a.tab as TabId)}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 11, background: '#f8fafc', border: '1.5px solid #edf2f7', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}
+              onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.background = `${a.color}08`; el.style.borderColor = `${a.color}30`; }}
+              onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.background = '#f8fafc'; el.style.borderColor = '#edf2f7'; }}>
+              <div style={{ width: 34, height: 34, borderRadius: 9, background: `${a.color}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <a.icon size={15} style={{ color: a.color }} />
               </div>
-            ))}
-          </div>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#374151', flex: 1 }}>{a.label}</span>
+              <ArrowRight size={13} style={{ color: '#cbd5e1' }} />
+            </button>
+          ))}
         </div>
       </div>
     </div>
@@ -789,7 +858,7 @@ function StatsTab() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 24 }}>
         <KpiCard label="Nouveaux inscrits" value={stats.newUsers} sub={`/ ${stats.totalUsers} total`} color="#2a7d9c" icon={<Users size={16} color="#2a7d9c" />} />
         <KpiCard label="Analyses lancées" value={stats.totalAnalyses} sub={`${stats.completedAnalyses} complétées`} color="#7c3aed" icon={<FileText size={16} color="#7c3aed" />} />
-        <KpiCard label="CA période" value={`${stats.ca.toFixed(0)}€`} color="#16a34a" icon={<TrendingUp size={16} color="#16a34a" />} />
+        <KpiCard label="CA période" value={`${stats.ca.toFixed(2).replace('.', ',')}€`} color="#16a34a" icon={<TrendingUp size={16} color="#16a34a" />} />
         <KpiCard label="Ticket moyen" value={`${stats.ticketMoyen.toFixed(2)}€`} color="#f0a500" icon={<CreditCard size={16} color="#f0a500" />} />
       </div>
 
