@@ -621,39 +621,52 @@ function BannerTab({ showToast, logAction }: { showToast: (m: string) => void; l
 }
 function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
   const [kpis, setKpis] = useState({
-    users: 0,
-    analyses: 0,
-    analysesCompleted: 0,
-    analysesProcessing: 0,
-    analysesFailed: 0,
-    messages: 0,
-    pro: 0,
-    ca: 0,
+    caMonth: 0,
+    caMonthPrev: 0,
     caByType: { document: { count: 0, total: 0 }, complete: { count: 0, total: 0 }, pack2: { count: 0, total: 0 }, pack3: { count: 0, total: 0 } },
+    newClientsWeek: 0,
+    analysesInProgress: 0,
+    messagesUnread: 0,
+    proUnread: 0,
     refundableCount: 0,
   });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
-      const [{ count: u }, { count: a }, { data: analysesData }, { count: m }, { count: p }, { data: paymentsData }] = await Promise.all([
-        supabase.from('profiles').select('*', { count: 'exact', head: true }),
-        supabase.from('analyses').select('*', { count: 'exact', head: true }),
-        supabase.from('analyses').select('status'),
+      setLoading(true);
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+      const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
+      const startOfWeek = new Date(Date.now() - 7 * 86400000).toISOString();
+      const cutoff14j = new Date(Date.now() - 14 * 86400000).toISOString();
+
+      const [
+        { data: paymentsMonth },
+        { data: paymentsPrevMonth },
+        { count: refundable },
+        { count: newClients },
+        { count: inProgress },
+        { count: msgUnread },
+        { count: proUnreadCount },
+      ] = await Promise.all([
+        supabase.from('payments').select('amount,description').eq('status', 'completed').gt('amount', 0).gte('created_at', startOfMonth),
+        supabase.from('payments').select('amount').eq('status', 'completed').gt('amount', 0).gte('created_at', startOfPrevMonth).lte('created_at', endOfPrevMonth),
+        supabase.from('payments').select('*', { count: 'exact', head: true }).eq('status', 'completed').gt('amount', 0).gte('created_at', cutoff14j),
+        supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', startOfWeek),
+        supabase.from('analyses').select('*', { count: 'exact', head: true }).in('status', ['processing', 'pending']),
         supabase.from('contact_messages').select('*', { count: 'exact', head: true }).eq('read', false),
         supabase.from('contact_pro').select('*', { count: 'exact', head: true }).eq('read', false),
-        supabase.from('payments').select('amount,credit_type,credits_added,created_at,description').eq('status', 'completed').gt('amount', 0),
       ]);
 
-      const completed = (analysesData || []).filter(x => x.status === 'completed').length;
-      const processing = (analysesData || []).filter(x => x.status === 'processing' || x.status === 'pending').length;
-      const failed = (analysesData || []).filter(x => x.status === 'failed' || x.status === 'error').length;
+      const monthPayments = paymentsMonth || [];
+      const caMonth = monthPayments.reduce((s, p) => s + (p.amount || 0), 0);
+      const caMonthPrev = (paymentsPrevMonth || []).reduce((s, p) => s + (p.amount || 0), 0);
 
-      const payments = paymentsData || [];
-      const ca = payments.reduce((s, p) => s + (p.amount || 0), 0);
-
-      // Décomposition par type basée sur la description du paiement (contient "Simple", "Complète", "Pack 2", "Pack 3")
+      // Décomposition par type du mois en cours
       const caByType = { document: { count: 0, total: 0 }, complete: { count: 0, total: 0 }, pack2: { count: 0, total: 0 }, pack3: { count: 0, total: 0 } };
-      payments.forEach(p => {
+      monthPayments.forEach(p => {
         const desc = (p.description || '').toLowerCase();
         const amt = p.amount || 0;
         if (desc.includes('pack 3')) { caByType.pack3.count++; caByType.pack3.total += amt; }
@@ -662,55 +675,70 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         else if (desc.includes('document') || desc.includes('simple')) { caByType.document.count++; caByType.document.total += amt; }
       });
 
-      // Paiements éligibles remboursement (< 14 jours)
-      const now = Date.now();
-      const refundableCount = payments.filter(p => (now - new Date(p.created_at).getTime()) < 14 * 86400000).length;
-
       setKpis({
-        users: u || 0,
-        analyses: a || 0,
-        analysesCompleted: completed,
-        analysesProcessing: processing,
-        analysesFailed: failed,
-        messages: m || 0,
-        pro: p || 0,
-        ca,
+        caMonth,
+        caMonthPrev,
         caByType,
-        refundableCount,
+        newClientsWeek: newClients || 0,
+        analysesInProgress: inProgress || 0,
+        messagesUnread: msgUnread || 0,
+        proUnread: proUnreadCount || 0,
+        refundableCount: refundable || 0,
       });
+      setLoading(false);
     };
     load();
   }, []);
 
+  // Calcul de l'évolution vs mois précédent
+  const evolPct = kpis.caMonthPrev > 0
+    ? ((kpis.caMonth - kpis.caMonthPrev) / kpis.caMonthPrev) * 100
+    : (kpis.caMonth > 0 ? 100 : 0);
+  const evolLabel = kpis.caMonthPrev === 0 && kpis.caMonth > 0
+    ? 'Premier mois de CA'
+    : kpis.caMonthPrev === 0
+      ? 'Pas de CA mois dernier'
+      : evolPct >= 0
+        ? `+${evolPct.toFixed(0)}% vs mois dernier (${kpis.caMonthPrev.toFixed(2).replace('.', ',')}€)`
+        : `${evolPct.toFixed(0)}% vs mois dernier (${kpis.caMonthPrev.toFixed(2).replace('.', ',')}€)`;
+
+  const currentMonthLabel = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
   const typesBreakdown = [
-    { key: 'document', label: 'Analyse Simple', color: '#64748b', bg: '#f8fafc' },
-    { key: 'complete', label: 'Analyse Complète', color: '#2a7d9c', bg: '#f0f7fb' },
-    { key: 'pack2', label: 'Pack 2 Biens', color: '#7c3aed', bg: '#f5f3ff' },
-    { key: 'pack3', label: 'Pack 3 Biens', color: '#f0a500', bg: '#fffbeb' },
+    { key: 'document', label: 'Analyse Simple' },
+    { key: 'complete', label: 'Analyse Complète' },
+    { key: 'pack2', label: 'Pack 2 Biens' },
+    { key: 'pack3', label: 'Pack 3 Biens' },
   ] as const;
+
+  const toTraiter = kpis.messagesUnread + kpis.proUnread + kpis.refundableCount;
 
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Vue d'ensemble</h1>
-        <p style={{ fontSize: 13, color: '#94a3b8' }}>Résumé de l'activité Verimo en temps réel</p>
+        <p style={{ fontSize: 13, color: '#94a3b8' }}>Ce qui se passe maintenant sur Verimo</p>
       </div>
 
-      {/* BLOC HERO — CA Total + décomposition par type */}
+      {/* BLOC HERO — CA du mois en cours */}
       <div style={{ background: 'linear-gradient(135deg,#0f2d3d,#1a4a60)', borderRadius: 18, padding: '28px 30px', marginBottom: 16, position: 'relative' as const, overflow: 'hidden' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap' as const, gap: 16 }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em', textTransform: 'uppercase' as const, marginBottom: 6 }}>CA TOTAL RÉEL</div>
-            <div style={{ fontSize: 48, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em', lineHeight: 1 }}>{kpis.ca.toFixed(2).replace('.', ',')}€</div>
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 6 }}>Basé sur les paiements Stripe encaissés</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em', textTransform: 'uppercase' as const, marginBottom: 6 }}>
+              CA de {currentMonthLabel}
+            </div>
+            <div style={{ fontSize: 48, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em', lineHeight: 1 }}>{kpis.caMonth.toFixed(2).replace('.', ',')}€</div>
+            <div style={{ fontSize: 12, color: evolPct >= 0 ? '#7dd3f0' : '#fca5a5', marginTop: 8, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
+              {evolPct >= 0 ? '↑' : '↓'} {evolLabel}
+            </div>
           </div>
-          <button onClick={() => onNavigate('payments')}
+          <button onClick={() => onNavigate('stats')}
             style={{ padding: '10px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-            Voir les paiements <ArrowRight size={13} />
+            Voir les statistiques <ArrowRight size={13} />
           </button>
         </div>
 
-        {/* Décomposition par type */}
+        {/* Décomposition par type ce mois */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
           {typesBreakdown.map(t => {
             const data = kpis.caByType[t.key];
@@ -725,41 +753,65 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         </div>
       </div>
 
-      {/* KPIs essentiels */}
-      <div className="admin-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
-        <KpiCard label="Utilisateurs" value={kpis.users} color="#2a7d9c" icon={<Users size={16} color="#2a7d9c" />} delay={0} />
-        <KpiCard label="Analyses" value={kpis.analyses} sub={`${kpis.analysesCompleted} complétées`} color="#7c3aed" icon={<FileText size={16} color="#7c3aed" />} delay={0.05} />
-        <KpiCard label="Messages non lus" value={kpis.messages} color="#f0a500" icon={<Mail size={16} color="#f0a500" />} delay={0.1} />
-        <KpiCard label="Demandes Pro" value={kpis.pro} color="#0f2d3d" icon={<Briefcase size={16} color="#0f2d3d" />} delay={0.12} />
-        <KpiCard label="Éligibles remboursement" value={kpis.refundableCount} sub="< 14 jours" color="#d97706" icon={<AlertTriangle size={16} color="#d97706" />} delay={0.15} />
+      {/* KPIs — Santé actuelle */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
+        <KpiCard
+          label="Nouveaux clients"
+          value={kpis.newClientsWeek}
+          sub="Cette semaine"
+          color="#2a7d9c"
+          icon={<UserPlus size={16} color="#2a7d9c" />}
+          delay={0}
+        />
+        <KpiCard
+          label="Analyses en cours"
+          value={kpis.analysesInProgress}
+          sub="En traitement"
+          color="#7c3aed"
+          icon={<FileText size={16} color="#7c3aed" />}
+          delay={0.05}
+        />
+        <KpiCard
+          label="À traiter"
+          value={toTraiter}
+          sub={`${kpis.messagesUnread} msg · ${kpis.proUnread} pro · ${kpis.refundableCount} rembours.`}
+          color={toTraiter > 0 ? '#f0a500' : '#16a34a'}
+          icon={<Bell size={16} color={toTraiter > 0 ? '#f0a500' : '#16a34a'} />}
+          delay={0.1}
+        />
       </div>
 
       {/* Actions rapides */}
       <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px' }}>
         <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 16 }}>Actions rapides</div>
-        <div className="admin-actions-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
           {([
             { label: 'Gérer les utilisateurs', icon: Users, color: '#2a7d9c', tab: 'users' },
             { label: 'Voir les paiements', icon: Euro, color: '#16a34a', tab: 'payments' },
             { label: 'Voir les analyses', icon: FileText, color: '#7c3aed', tab: 'analyses' },
-            { label: 'Messages', icon: Mail, color: '#f0a500', tab: 'messages' },
-            { label: 'Demandes Pro', icon: Briefcase, color: '#0f2d3d', tab: 'demandes_pro' },
+            { label: 'Messages', icon: Mail, color: '#f0a500', tab: 'messages', badge: kpis.messagesUnread },
+            { label: 'Demandes Pro', icon: Briefcase, color: '#0f2d3d', tab: 'demandes_pro', badge: kpis.proUnread },
             { label: 'Codes promo', icon: Tag, color: '#16a34a', tab: 'promos' },
             { label: 'Statistiques', icon: BarChart2, color: '#2a7d9c', tab: 'stats' },
           ] as const).map((a, i) => (
             <button key={i} onClick={() => onNavigate(a.tab as TabId)}
-              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 11, background: '#f8fafc', border: '1.5px solid #edf2f7', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 11, background: '#f8fafc', border: '1.5px solid #edf2f7', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s', position: 'relative' as const }}
               onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.background = `${a.color}08`; el.style.borderColor = `${a.color}30`; }}
               onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.background = '#f8fafc'; el.style.borderColor = '#edf2f7'; }}>
               <div style={{ width: 34, height: 34, borderRadius: 9, background: `${a.color}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <a.icon size={15} style={{ color: a.color }} />
               </div>
               <span style={{ fontSize: 13, fontWeight: 600, color: '#374151', flex: 1 }}>{a.label}</span>
+              {'badge' in a && a.badge && a.badge > 0 ? (
+                <span style={{ fontSize: 10, fontWeight: 800, color: '#fff', background: '#dc2626', padding: '2px 7px', borderRadius: 6 }}>{a.badge}</span>
+              ) : null}
               <ArrowRight size={13} style={{ color: '#cbd5e1' }} />
             </button>
           ))}
         </div>
       </div>
+
+      {loading && <div style={{ textAlign: 'center' as const, color: '#94a3b8', fontSize: 12, marginTop: 16 }}>Chargement...</div>}
     </div>
   );
 }
@@ -856,10 +908,10 @@ function StatsTab() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 24 }}>
-        <KpiCard label="Nouveaux inscrits" value={stats.newUsers} sub={`/ ${stats.totalUsers} total`} color="#2a7d9c" icon={<Users size={16} color="#2a7d9c" />} />
-        <KpiCard label="Analyses lancées" value={stats.totalAnalyses} sub={`${stats.completedAnalyses} complétées`} color="#7c3aed" icon={<FileText size={16} color="#7c3aed" />} />
-        <KpiCard label="CA période" value={`${stats.ca.toFixed(2).replace('.', ',')}€`} color="#16a34a" icon={<TrendingUp size={16} color="#16a34a" />} />
-        <KpiCard label="Ticket moyen" value={`${stats.ticketMoyen.toFixed(2)}€`} color="#f0a500" icon={<CreditCard size={16} color="#f0a500" />} />
+        <KpiCard label="Nouveaux inscrits" value={stats.newUsers} sub={`sur ${stats.totalUsers} clients au total`} color="#2a7d9c" icon={<Users size={16} color="#2a7d9c" />} />
+        <KpiCard label="Analyses lancées" value={stats.totalAnalyses} sub={`dont ${stats.completedAnalyses} complétées`} color="#7c3aed" icon={<FileText size={16} color="#7c3aed" />} />
+        <KpiCard label="CA période" value={`${stats.ca.toFixed(2).replace('.', ',')}€`} sub="Paiements Stripe encaissés" color="#16a34a" icon={<TrendingUp size={16} color="#16a34a" />} />
+        <KpiCard label="Ticket moyen" value={`${stats.ticketMoyen.toFixed(2).replace('.', ',')}€`} sub="Par paiement" color="#f0a500" icon={<CreditCard size={16} color="#f0a500" />} />
       </div>
 
       {/* Graphique CA semaine par semaine */}
