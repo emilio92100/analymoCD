@@ -11,7 +11,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const AI_MODEL = 'claude-sonnet-4-6';
 const AI_VERSION = '2023-06-01';
-const MAX_TOKENS = 4000;
+const MAX_TOKENS = 5000;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -40,6 +40,19 @@ STRUCTURE DE TA RÉPONSE (JSON strict) :
     "cout_annee_1": { "bien_1": 2361, "bien_2": 3209, "bien_3": null, "delta_label": "848 € d'écart sur l'année 1" },
     "dpe": { "bien_1": "E", "bien_2": "E", "bien_3": null, "delta_label": "Même classe" }
   },
+  "kpis_differenciants": [
+    {
+      "label": "Nom court du KPI — ex: 'Coût année 1', 'Travaux évoqués', 'DPE conso', 'Impayés vendeur', 'Documents fournis'",
+      "unite": "€|€/an|kWh/m²/an|nb|classe|%|null",
+      "valeurs": [
+        { "bien_idx": 0, "valeur_brute": 2361, "valeur_affichee": "2 361 €", "rang": "favorable|defavorable|neutre" },
+        { "bien_idx": 1, "valeur_brute": 3209, "valeur_affichee": "3 209 €", "rang": "favorable|defavorable|neutre" }
+      ],
+      "ecart_label": "848 € d'écart — ex: '+36% pour le Bien 2', 'Bien 1 seul concerné', '2 classes d'écart'",
+      "pourquoi_differenciant": "1 phrase courte (10-20 mots) expliquant pourquoi ce KPI fait pencher la balance"
+    }
+  ],
+  "analyse_croisee": "2-3 phrases qui RELIENT des faits entre les biens pour apporter une valeur ajoutée au-delà des chiffres bruts. Factuel strict, aucune projection, aucune estimation de risque futur. Ex: 'Le Bien 1 combine un DPE D et une cotisation fonds travaux en place, ce qui indique une copropriété anticipant sa rénovation. Le Bien 2 cumule DPE E et fonds travaux insuffisant, deux signaux qui portent sur la même problématique de financement des travaux énergétiques.'",
   "profils": [
     {
       "bien_idx": 0,
@@ -71,6 +84,24 @@ RÈGLES DE REMPLISSAGE :
 - ecarts_cles.bien_X null si le bien n existe pas (cas 2 biens : bien_3 = null partout).
 - ecarts_cles.cout_annee_1 : somme de (charges annuelles + fonds ALUR signature + fonds roulement signature + cotisations fonds travaux année 1 + taxe foncière annuelle si disponible dans finances.taxe_fonciere_annuelle). Si pré-état daté manquant, estimer sur charges annuelles seules et le signaler dans le commentaire.
 - ecarts_cles.delta_label : formulation "X d écart" adaptée au type (points, euros, lettres).
+
+RÈGLES POUR kpis_differenciants (EXACTEMENT 3 KPIs) :
+- Tu sélectionnes LIBREMENT les 3 KPIs les plus différenciants — ceux qui créent le plus d écart entre les biens et qui ont le plus de poids dans la décision d achat.
+- Pool de KPIs possibles (choisis les 3 plus pertinents selon les données) : score global, coût année 1, DPE classe, DPE consommation (kWh/m²/an), travaux évoqués (nombre ou montant), travaux votés à la charge de l acheteur, fonds travaux statut (absent/insuffisant/conforme/bien/excellent), procédures judiciaires (nombre), impayés vendeur (oui/non), taxe foncière annuelle, nombre de documents analysés, surface Carrez, prix au m², année de construction, cotisation annuelle fonds travaux.
+- Interdiction de choisir 3 KPIs qui racontent la même chose (ex: pas à la fois "charges annuelles" ET "coût année 1"). Diversifie : 1 financier, 1 technique/bâti, 1 gestion/copro est une bonne répartition.
+- rang = "favorable" pour le bien avec la meilleure valeur sur ce KPI, "defavorable" pour le pire, "neutre" si ex æquo ou très proche (écart < 5%).
+- valeur_brute doit être un nombre pour les montants/counts, une string pour les classes (DPE), ou null si non renseigné.
+- valeur_affichee est formatée pour l affichage (ex: "2 361 €", "Classe E", "3 travaux", "Absent", "Non détectés").
+- ecart_label : formulation chiffrée concise de l écart (ex: "848 € d écart", "+36% pour le Bien 2", "2 classes d écart", "Bien 1 seul concerné", "Écart négligeable").
+- pourquoi_differenciant : 1 phrase courte expliquant la conséquence concrète pour l acheteur (factuel, pas de projection chiffrée).
+- Si un KPI est disponible pour un seul bien (l autre a null), tu peux quand même le choisir si c est un KPI majeur et que l absence de donnée est en soi une information (ex: "Documents fournis" quand un bien a 12 docs et l autre 3).
+
+RÈGLES POUR analyse_croisee :
+- 2-3 phrases maximum, factuelles, qui apportent une valeur ajoutée Verimo : relier des faits entre les biens, identifier des convergences ou divergences thématiques que le lecteur ne verrait pas en lisant les chiffres séparément.
+- INTERDIT : projection chiffrée de risques futurs ("cela pourrait coûter X €"), estimation de perte de valeur, pronostic de votes futurs en AG, calcul de rendement locatif, estimation de durée de rentabilité.
+- AUTORISÉ : relier DPE + fonds travaux, relier procédure + impayés, relier ancienneté du bâti + travaux évoqués, pointer un effet cumulatif factuel déjà présent dans les documents.
+- Ton : analyste froid, constat factuel. Pas de conseil, pas de projection.
+- Si aucune corrélation pertinente à faire (biens très similaires ou données trop maigres), renvoyer une phrase neutre du type : "Les deux biens présentent des profils comparables sur les axes mesurables — la décision finale se jouera sur les préférences personnelles (emplacement, surface, agencement) non couvertes par l analyse documentaire."
 
 RÈGLE TAXE FONCIÈRE DANS COMPARER :
 - Si l un des biens a finances.taxe_fonciere_annuelle renseignée et l autre non, signaler l asymétrie dans alerte_documents ou dans points_a_approfondir (ex: "Demander le dernier avis de taxe foncière du Bien 2 pour une comparaison complète").
