@@ -271,16 +271,23 @@ function PdfButton() {
 
 function WaitingScreen({ biens, fromCache }: { biens: string[]; fromCache: boolean }) {
   const [currentStep, setCurrentStep] = useState(0);
+  // On part en mode "neutre" (UX cache sobre). On ne bascule en mode "génération détaillée"
+  // que si la requête prend plus de 3 secondes ET que ce n'est pas du cache.
+  // Évite de faire flasher l'UX "Analyse en cours" quand c'est juste un cache qui met 1s à arriver.
+  const [showGenerationUI, setShowGenerationUI] = useState(false);
   const n = biens.length;
 
   useEffect(() => {
     if (fromCache) return;
+    // Attendre 3s avant de basculer sur l'UX génération complète (évite le flash sur cache rapide)
+    const tSwitch = setTimeout(() => setShowGenerationUI(true), 3000);
     const t1 = setTimeout(() => setCurrentStep(1), 8000);
     const t2 = setTimeout(() => setCurrentStep(2), 18000);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    return () => { clearTimeout(tSwitch); clearTimeout(t1); clearTimeout(t2); };
   }, [fromCache]);
 
-  if (fromCache) {
+  // UX sobre : cache OU tout début de la requête (avant 3s)
+  if (fromCache || !showGenerationUI) {
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
         style={{ padding: '60px 32px', borderRadius: 20, background: 'linear-gradient(135deg, #f0f7fb, #e8f4fa)', border: '1.5px solid #bae3f5', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, minHeight: 280, justifyContent: 'center' }}>
