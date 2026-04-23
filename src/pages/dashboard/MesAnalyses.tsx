@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Trash2, Copy, Check, Mail, Share2, CheckSquare, Square, X, ExternalLink, Building2, FileText, Eye } from 'lucide-react';
+import { Plus, Search, Trash2, Copy, Check, Mail, Share2, CheckSquare, Square, X, ExternalLink, FileText, Eye } from 'lucide-react';
 import { getOrCreateShareToken } from '../../lib/analyses';
 import { supabase } from '../../lib/supabase';
 import { useAnalyses, type Analyse } from '../../hooks/useAnalyses';
