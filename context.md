@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet complet — 23 avril 2026 (après sessions 8 à 13)
+# VERIMO — Contexte projet complet — 24 avril 2026 (après sessions 8 à 14)
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -85,6 +85,119 @@ pack3    : price_1TIb51BO4ekMbwz0mmEez47o
 /dashboard/rapport?id=XXX     → Aperçus gratuits
 /rapport?id=XXX               → RapportPage standalone (rapports payants)
 /rapport-comparaison?ids=X,Y  → 🆕 RapportComparaisonPage (rapport plein écran 2-3 biens)
+```
+
+---
+
+## 🆕 Session 14 — 24 avril 2026 — Redesign dashboard + corrections prompt analyse + comparaison
+
+### 🎯 Résumé global
+Gros chantier UX/UI : redesign sidebar teal, page Mes Analyses style tableau enrichi, page Compare style premium C3, fusion pré-état daté dans Finances du lot, corrections majeures du prompt d'analyse (fonds travaux lot vs copro, surface Boutin, points de vigilance dynamiques, PV AG manquants).
+
+---
+
+### A. Sidebar — Redesign teal Verimo
+
+- **Fond** : `#0e3a4a` (teal foncé Verimo)
+- **Logo** : texte "verimo" en blanc (pas d'image), fontSize 20, fontWeight 800
+- **Items nav** : opacité 0.75 pour inactifs (avant 0.5), fontWeight 500 (avant 400). Actif = blanc pur, fontWeight 700, barre latérale teal vif `#5dbfe0` à gauche
+- **Crédits** : sous le CTA "Nouvelle analyse" comme avant, mais sur fond teal
+- **CTA** : bouton "Nouvelle analyse" en `#2a7d9c`
+
+### B. Page Mes Analyses — Style tableau enrichi
+
+- **3 sections séparées** : "Analyses complètes" (pastille navy) / "Analyses simples" (pastille teal) / "Aperçus" (pastille amber)
+- **Section header** : pastille colorée + label + compteur + ligne séparatrice
+- **Blocs blancs** avec bordures fines entre les lignes
+- **Score ring SVG** inline (44px) à gauche de chaque analyse complète
+- **Pill recommandation** (Acheter/Négocier/Éviter) + nombre de docs + date
+- **Boutons** : Rapport + Partager + Supprimer à droite
+- **Mode sélection** : checkboxes pour suppression groupée
+- **Responsive mobile** : score ring + texte horizontal, boutons pleine largeur en dessous
+
+### C. Page Compare — Redesign style C3 premium
+
+- **Stepper dots** en haut à droite : ● ● ○ avec compteur "2/3" dynamique
+- **Cards biens** avec bande latérale 76px : gradient teal foncé quand sélectionné (score blanc 24px + check teal), fond gris quand non sélectionné (score coloré)
+- **Badge recommandation** inline sur chaque card
+- **Historique** avec cercles de scores chevauchants (style avatar group) : bordure colorée selon note, cercle pointillé + "?" pour biens supprimés, opacity réduite
+- **Bouton "Consulter"** en gradient teal pour l'historique
+- **Titres courts** dans l'historique (coupés au premier segment d'adresse)
+- **Historique visible même avec 0 ou 1 analyse complète** (avant : bloqué par return immédiat)
+
+### D. RapportPage — Fusion pré-état daté + couleurs onglets
+
+- **Onglet Logement** : couleur par défaut teal (`#2a7d9c`) au lieu de vert, rouge uniquement si alerte diagnostic
+- **Section "Pré-état daté" supprimée** en tant qu'AccordionSection séparé
+- **Tout fusionné dans "Finances de votre lot"** avec mention `(source : pré-état daté)` en italique sur chaque bloc
+- **Bandeau source** bleu en haut quand pré-état daté détecté
+- **Badge** affiche "Pré-état daté du XX/XX/XXXX" quand détecté
+- **Contenu fusionné** : charges futures, fonds travaux à verser au vendeur, situation vendeur, santé financière copro, historique N-1/N-2 — tout dans un seul accordion
+- **Tooltip charges mensuelles** enrichi : "peut inclure des provisions hors budget (appels exceptionnels pour travaux votés)"
+
+### E. RapportComparaisonPage — Améliorations
+
+- **KPI année 1** : label "dépenses estimées année 1 :" au lieu de "année 1 :"
+- **Résumé financier + Travaux évoqués** : ouverts par défaut sur PC (`desktopOpen` prop sur Accordion)
+- **Travaux évoqués** : texte passé de 12.5px à 14px sur desktop
+- **Padding mobile** : réduit à 8px sur les côtés (classe `rcp-body`)
+
+### F. Edge function analyser-run — Corrections majeures du prompt
+
+#### F1. Fonds travaux lot vs copro (RÈGLE CRITIQUE)
+- `finances.fonds_travaux` = cotisation annuelle copro (source PV AG)
+- `pre_etat_date.fonds_travaux_alur` = capital lot à rembourser au vendeur (source pré-état daté)
+- Si SEUL un pré-état daté fourni : `finances.fonds_travaux` reste null, `fonds_travaux_statut = "non_mentionne"` (PAS "insuffisant", PAS de pénalité scoring)
+
+#### F2. pre_etat_date.present obligatoire
+- Si un doc PRE_ETAT_DATE est dans `documents_analyses`, `pre_etat_date.present` DOIT être `true`
+- Sans ce flag toute la section finances du lot (fonds travaux, historique N-1/N-2, charges futures) est INVISIBLE
+
+#### F3. Historique N-1/N-2 obligatoire
+- Si `present=true`, toujours remplir `historique_charges` depuis l'annexe du pré-état daté
+- `budget_appele` = quote-part appelée budget prévisionnel
+- `charges_reelles` = quote-part réelle (après clôture)
+- `provisions_hors_budget` = quote-part appelée hors budget prévisionnel
+
+#### F4. Surface Boutin
+- Si `carrez.surface_type = "boutin"` : point de vigilance auto dans DDT ET synthèse
+- Message : "Surface loi Boutin détectée (location), pas de surface Carrez (vente). Exigez un mesurage Carrez."
+
+#### F5. Points de vigilance — seuils dynamiques
+- Budget copro > 80 000€ → seuil 5 000€
+- Budget copro ≤ 80 000€ → seuil 3 000€
+- Les éléments sous le seuil restent dans les sections détaillées, pas remontés en synthèse
+- **Exclusions explicites** : boîtes aux lettres, peinture, interphones, digicodes, nettoyage, VMC individuelle, serrurerie, moquette, éclairage couloirs
+
+#### F6. PV AG manquants
+- Si < 3 PV fournis : ajout dans `documents_manquants` ("Il manque X PV d'AG sur les 3 obligatoires")
+- 0 PV → "PV des 3 dernières AG (obligatoires)"
+- 1 PV → "Il manque 2 PV d'AG sur les 3 obligatoires"
+- 2 PV → "Il manque 1 PV d'AG sur les 3 obligatoires"
+
+### G. Edge function comparer — Correction verdict
+
+- **Règle titre_verdict** : interdit d'utiliser "malgré un écart de X points" quand le bien recommandé a le meilleur score
+- Formulations imposées : "avec X points d'avance", "se distingue avec un score supérieur"
+- "malgré" réservé UNIQUEMENT au cas d'exception (bien recommandé avec score inférieur)
+
+---
+
+### Fichiers modifiés session 14
+
+**Frontend (à pousser sur GitHub)** :
+```
+src/pages/DashboardPage.tsx             → Sidebar teal + logo texte + nav visible
+src/pages/dashboard/MesAnalyses.tsx     → Style tableau enrichi, 3 sections, score ring
+src/pages/dashboard/Compare.tsx         → Redesign C3 premium + historique accessible 0/1 analyse
+src/pages/RapportPage.tsx               → Fusion pré-état daté dans Finances lot + onglet Logement teal + tooltip charges
+src/pages/RapportComparaisonPage.tsx    → KPI label + desktopOpen + texte travaux + padding mobile
+```
+
+**Backend (à déployer sur Dashboard Supabase)** :
+```
+supabase/functions/analyser-run/index.ts → 6 corrections prompt (fonds travaux, Boutin, vigilance, PV AG, pre_etat_date.present, historique)
+supabase/functions/comparer/index.ts     → Règle titre_verdict anti-"malgré"
 ```
 
 ---
@@ -565,6 +678,11 @@ Fonction `recalculerCategories(rapport, profil)` dans `analyser-run/index.ts`. *
 15. **Chauffage/ECS individuels** (session 9) — Bandeau bleu info : ces consos ne sont pas dans les charges collectives.
 16. **Taxe foncière dans comparaison** — Si renseignée pour les 2 biens, incluse dans `cout_annee_1`. Si seulement 1 bien → signaler asymétrie dans `alerte_documents`.
 17. **Règle de recommandation bien** (comparaison) — PAR DÉFAUT : le bien avec le meilleur score /20. Exception UNIQUEMENT si facteur bloquant réel (travaux >20k€, procédure grave, DPE F/G, impayés >15%, asymétrie doc majeure). Si exception : expliciter POURQUOI dans `titre_verdict` + `comparatif`.
+18. **Fonds travaux lot ≠ copro** (session 14) — `finances.fonds_travaux` = cotisation annuelle copro (PV AG). `pre_etat_date.fonds_travaux_alur` = capital lot à rembourser au vendeur. NE JAMAIS confondre. Si seul pré-état daté fourni, `finances.fonds_travaux` reste null.
+19. **fonds_travaux_statut "non_mentionne"** (session 14) — Si aucune info sur le fonds travaux copro, `fonds_travaux_statut = "non_mentionne"` et AUCUNE pénalité de scoring. Pénalité uniquement si "insuffisant" ou "absent" (document dit explicitement 0€ ou pas de fonds).
+20. **Surface Boutin** (session 14) — Si `carrez.surface_type = "boutin"`, point de vigilance auto : "Surface loi Boutin détectée, exigez un mesurage Carrez". Verimo est focus achat, pas location.
+21. **Points de vigilance — seuils dynamiques** (session 14) — Budget copro > 80k€ → seuil 5 000€. Budget ≤ 80k€ → seuil 3 000€. Éléments sous le seuil = sections détaillées uniquement, pas en synthèse. Exclusions : boîtes aux lettres, peinture, interphones, etc.
+22. **PV AG manquants** (session 14) — Si < 3 PV fournis, ajouter dans `documents_manquants` le nombre manquant. La loi oblige 3 PV.
 
 ---
 
@@ -623,17 +741,17 @@ src/pages/
   MethodePage.tsx
   ContactPage.tsx
   ContactProPage.tsx
-  RapportPage.tsx                    ← ~4210 lignes (session 6+)
-  RapportComparaisonPage.tsx         ← 🆕 ~1250 lignes (sessions 8-12), page plein écran compa
+  RapportPage.tsx                    ← ~4600 lignes (session 14 : fusion pré-état daté)
+  RapportComparaisonPage.tsx         ← ~1270 lignes (session 14 : desktopOpen + padding mobile)
   ExemplePage.tsx
-  DashboardPage.tsx                  ← Shell dashboard
+  DashboardPage.tsx                  ← Shell dashboard + sidebar teal (session 14)
   AdminPage.tsx
   dashboard/
     HomeView.tsx                     ← + DashboardLoader
-    MesAnalyses.tsx                  ← + DashboardLoader
+    MesAnalyses.tsx                  ← Style tableau enrichi, 3 sections, score ring (session 14)
     NouvelleAnalyse.tsx
     DocumentRenderer.tsx
-    Compare.tsx                      ← Sélection + historique uniquement
+    Compare.tsx                      ← Redesign C3 premium + historique accessible 0/1 analyse (session 14)
     Compte.tsx                       ← + DashboardLoader
     Tarifs.tsx                       ← + DashboardLoader
 
@@ -657,14 +775,16 @@ src/index.css                        ← Media queries responsive
 
 supabase/functions/
   analyser/index.ts                  ← Upload PDFs → Files API → déclenche analyser-run
-  analyser-run/index.ts              ← Claude → JSON → recalculerCategories → RGPD (~1120 lignes)
-  comparer/index.ts                  ← 🆕 Schéma V2 + analyse_croisee, sans debug obsolète (~267 lignes)
+  analyser-run/index.ts              ← Claude → JSON → recalculerCategories → RGPD (~1260 lignes, session 14 : 6 corrections prompt)
+  comparer/index.ts                  ← Schéma V2 + analyse_croisee + règle titre_verdict (~270 lignes)
 ```
 
 ---
 
 ## Palette couleurs
 - **Bleu Verimo** : `#2a7d9c`
+- **Teal sidebar** : `#0e3a4a` (session 14)
+- **Teal accent sidebar** : `#5dbfe0` (session 14)
 - **Header dark** : `#0f2d3d`
 - **Accent bleu ciel (Pro)** : `#7dd3fc`
 - **Investisseur violet** : `#7c3aed`
@@ -686,56 +806,52 @@ supabase/functions/
 
 ## 🗂️ Backlog
 
-### 🔴 Priorité haute — Prochaine session : fix bug IA comparaison
+### 🔴 Priorité haute
 
+- [ ] **Barre de progression NouvelleAnalyse.tsx** — Monte trop vite à 87-88% puis stagne. La logique simulée (lignes 222-226) rattrape le `progress` réel trop rapidement. Revoir les paliers pour montée progressive.
+- [ ] **Bouton SOS / Signaler un problème** dans le topbar — Remplacer la cloche (inutile) par un bouton d'assistance rapide. Format à définir : formulaire email, WhatsApp, ou les deux.
 - [ ] **Bug IA recommandation incorrecte** — Claude recommande parfois un bien avec score inférieur sans facteur bloquant réel. Fix en 2 temps (Option 3 validée) :
-  1. Durcir le prompt backend : forcer Claude à expliciter les scores avant la décision, reformuler la règle "meilleur score par défaut" plus fermement
-  2. Ajouter validation automatique côté edge function `comparer` : si `bien_recommande_idx` ≠ meilleur score ET aucun facteur bloquant détectable dans les données, forcer la correction de l'index vers le meilleur score.
+  1. Durcir le prompt backend : forcer Claude à expliciter les scores avant la décision
+  2. Validation automatique côté edge function `comparer` : si `bien_recommande_idx` ≠ meilleur score ET aucun facteur bloquant détectable, forcer correction
 
-### 🟡 Priorité normale — Page comparaison (évolutions possibles après validation offre Pro)
+### 🟡 Priorité normale
 
-- [ ] **Nouveau champ à l'upload** : prix de vente + surface Carrez (saisis manuellement par l'acheteur à l'upload). Permettrait d'afficher prix/m² et de muscler la comparaison. **Bloqué** tant qu'on ne modifie pas le formulaire d'upload.
-- [ ] **Pour l'offre Pro** :
-  - Export PDF blanc label (logo/signature agent)
-  - Annotations perso par bien
-  - Marge de négociation suggérée (basée sur travaux évoqués + fonds insuffisants + procédures)
-  - Comparatif marché local (nécessite data externe type DVF)
-  - Export Excel du tableau comparatif
-  - Partage sécurisé par lien avec expiration
-
-### 🟡 Priorité normale — Restant des sessions précédentes
-
-- [ ] **RapportPage — rendu adaptatif maison** :
-  - Onglet "Logement" → **"Votre futur chez-vous"** quand `type_bien = maison`
-  - Onglet "Procédures" → **"Litiges"** quand `type_bien = maison`
-  - Fallback onglet Litiges maison avec exemples (servitudes, bornage, urbanisme, malfaçons)
-- [ ] **Fix règle pistes de négociation** — `applicable=true` sans gate au score (actuellement gated à <14)
+- [ ] **UX suppression mobile MesAnalyses** — Tap accidentel possible, bouton trop petit ? À investiguer et améliorer.
+- [ ] **Analyse croisée comparaison — meilleur rendu visuel** — Structurer le bloc analyse croisée en sous-sections visuelles (forces/faiblesses par bien, barres comparatives) au lieu d'un bloc de texte.
+- [ ] **Corriger manuellement le bien 2 (167 Vaugirard) en base Supabase** — Déplacer fonds travaux 146,80€ de `finances.fonds_travaux` vers `pre_etat_date.fonds_travaux_alur` + mettre `pre_etat_date.present = true`. Ou relancer l'analyse.
+- [ ] **RapportPage — rendu adaptatif maison** : onglet "Logement" → "Votre futur chez-vous" / onglet "Procédures" → "Litiges"
+- [ ] **Nouveau champ à l'upload** : prix de vente + surface Carrez (saisis manuellement)
+- [ ] **Fix règle pistes de négociation** — `applicable=true` sans gate au score
 - [ ] **ExemplePage — mock maison** — Villeurbanne, 4P 95m², score 12,5/20, DPE E
-- [ ] **Améliorer UX modale "Compléter le dossier"** — ne pas mettre "Oublié" en haut, granularité des étapes à améliorer visuellement
-- [ ] Tester le scoring déterministe en prod sur dossier Edelweiss (diags privatifs, etc.)
-- [ ] Tester carnet d'entretien, modificatifs RCP, fiche synthétique en conditions réelles
-- [ ] Tester countdown permanent et couleurs urgence
+- [ ] **Pour l'offre Pro** : export PDF blanc label, annotations perso, marge négociation, comparatif marché, export Excel, partage sécurisé
 
 ### 🟡 Priorité normale — Tests
 
-- [ ] Tester sélecteur type_bien en production
-- [ ] Tester syndic multi-PV (stable / nouveau_elu / rotation_frequente)
-- [ ] Tester détection rigoureuse du gestionnaire
-- [ ] Tester rendu mobile des autres pages dashboard (MesAnalyses, Compte, Tarifs, NouvelleAnalyse, Compare)
-- [ ] Tester onglets colorés
-- [ ] Tester RapportPage sur iPhone
-- [ ] Tester retour accueil iPhone après préchargement App.tsx
+- [ ] Tester les nouvelles règles prompt en relançant une analyse avec pré-état daté
+- [ ] Tester la page Compare redesign sur mobile
+- [ ] Tester la fusion pré-état daté dans Finances du lot (données N-1/N-2 visibles)
 - [ ] Stripe TEST → production
 - [ ] Analyses bloquées > 20 min → badge "Échoué"
-- [ ] Système dossiers par bien
-- [ ] App.css : vestige Vite, peut être supprimé
-- [ ] Optimisation coût API Claude : prompt caching (réduire 90% input tokens répétés)
-- [ ] **Bouton "Marquer comme remboursée"** dans fiche détail analyse admin (nécessite colonne `refunded_at` ou statut dédié)
-- [ ] **Bouton "Relancer l'analyse"** depuis l'admin (complexe : docs supprimés RGPD après analyse)
-- [ ] **Synchro `last_sign_in_at`** auth.users → profiles via trigger SQL ou edge function
-- [ ] **Chat admin ↔ client** (gros chantier reporté — système de messagerie bidirectionnelle)
+- [ ] Optimisation coût API Claude : prompt caching
+- [ ] **Bouton "Marquer comme remboursée"** dans admin
+- [ ] **Synchro `last_sign_in_at`** auth.users → profiles
 
-### ✅ Fait récemment (session 13 — 23 avril 2026 soir)
+### ✅ Fait récemment (session 14 — 24 avril 2026)
+
+- [x] **Sidebar teal Verimo** : fond #0e3a4a, texte blanc, logo texte "verimo", nav plus visible (opacité 0.75, fontWeight 500)
+- [x] **MesAnalyses redesign** : style tableau enrichi, 3 sections (Complètes/Simples/Aperçus), score ring inline, mode sélection groupée
+- [x] **Compare redesign C3** : bande latérale gradient, stepper dots, cercles scores chevauchants, historique accessible avec 0/1 analyse
+- [x] **Fusion pré-état daté dans Finances du lot** : suppression AccordionSection séparé, tout dans "Finances de votre lot" avec mention source
+- [x] **Onglet Logement teal** : couleur par défaut #2a7d9c au lieu de vert
+- [x] **Tooltip charges mensuelles** enrichi (provisions hors budget)
+- [x] **Prompt : fonds travaux lot vs copro** : règle critique pour ne pas confondre, pas de pénalité scoring si non_mentionne
+- [x] **Prompt : pre_etat_date.present obligatoire** quand doc PRE_ETAT_DATE détecté
+- [x] **Prompt : historique N-1/N-2 obligatoire** si pré-état daté présent
+- [x] **Prompt : surface Boutin** : point de vigilance auto si surface_type = "boutin"
+- [x] **Prompt : seuils vigilance dynamiques** : 5000€ si budget >80k, sinon 3000€, exclusions explicites (boîtes aux lettres, peinture, etc.)
+- [x] **Prompt : PV AG manquants** : si <3 PV fournis, ajout dans documents_manquants
+- [x] **Comparer : titre_verdict** : interdit "malgré" quand bien recommandé a le meilleur score
+- [x] **RapportComparaisonPage** : KPI label "dépenses estimées année 1", blocs ouverts desktop, texte travaux plus grand, padding mobile réduit
 
 - [x] **AdminPage** : refonte Vue d'ensemble axée mois courant (CA, nouveaux clients, analyses lancées Simple/Complète, ticket moyen, CA par catégorie, à lire, actions rapides)
 - [x] **AdminPage** : refonte Statistiques avec filtre "Depuis le début" + bloc CA par catégorie filtrable + bloc crédits offerts conditionnel
