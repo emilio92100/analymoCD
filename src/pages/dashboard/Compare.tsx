@@ -417,13 +417,20 @@ export default function Compare() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* Header */}
-      <div>
-        <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 6 }}>Comparer mes biens</h1>
-        <p style={{ fontSize: 14, color: '#64748b' }}>
-          Sélectionnez 2{maxSelect === 3 ? ' ou 3' : ''} biens à comparer, puis lancez la comparaison
-        </p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* Header compact */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <p style={{ fontSize: 13, color: '#94a3b8', margin: 0 }}>Cliquez sur vos biens pour lancer une comparaison</p>
+        {/* Stepper dots */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 12, color: '#94a3b8' }}>Sélection :</span>
+          <div style={{ display: 'flex', gap: 5 }}>
+            {Array.from({ length: maxSelect }).map((_, i) => (
+              <div key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: i < selected.length ? '#2a7d9c' : 'transparent', border: i < selected.length ? '2px solid #2a7d9c' : '2px solid #cbd5e1', transition: 'all 0.2s' }} />
+            ))}
+          </div>
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#2a7d9c' }}>{selected.length}/{maxSelect}</span>
+        </div>
       </div>
 
       {launchError && (
@@ -432,91 +439,97 @@ export default function Compare() {
         </div>
       )}
 
-      {/* Sélection */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ padding: '14px 18px', background: 'rgba(42,125,156,0.05)', borderRadius: 12, border: '1px solid rgba(42,125,156,0.15)', fontSize: 13, color: '#2a7d9c', fontWeight: 500 }}>
-          <strong>{completedAnalyses.length} analyse{completedAnalyses.length > 1 ? 's' : ''} disponible{completedAnalyses.length > 1 ? 's' : ''}</strong> — Cliquez sur les biens à comparer ci-dessous
-        </div>
-
+      {/* ═══ CARDS BIENS ═══ */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {completedAnalyses.map((a, idx) => {
           const isSel = selected.includes(a.id);
           const selIdx = selected.indexOf(a.id);
           const score = a.score ?? 0;
           const sc = getScoreColor(score);
+          const reco = (a as Analyse & { recommandation?: string }).recommandation;
+          const dpe = (a as Analyse & { dpe?: string }).dpe;
           return (
             <motion.div key={a.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
               onClick={() => toggleSelect(a.id)}
-              style={{ background: '#fff', borderRadius: 14, border: `2px solid ${isSel ? '#2a7d9c' : '#edf2f7'}`, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer', transition: 'all 0.18s', boxShadow: isSel ? '0 0 0 3px rgba(42,125,156,0.1)' : '0 1px 4px rgba(0,0,0,0.04)' }}>
-              <div style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSel ? '#2a7d9c' : '#f4f7f9', border: `1px solid ${isSel ? '#2a7d9c' : '#edf2f7'}`, transition: 'all 0.18s' }}>
-                {isSel ? <span style={{ fontSize: 14, fontWeight: 900, color: '#fff' }}>{selIdx + 1}</span> : <Building2 size={15} style={{ color: '#94a3b8' }} />}
+              style={{ borderRadius: 16, overflow: 'hidden', cursor: launched ? 'default' : 'pointer', display: 'flex', alignItems: 'stretch', border: isSel ? '2px solid #2a7d9c' : '1.5px solid #edf2f7', transition: 'all 0.18s', boxShadow: isSel ? '0 0 0 3px rgba(42,125,156,0.08)' : '0 1px 4px rgba(0,0,0,0.03)' }}>
+              {/* Score band */}
+              <div style={{ width: 76, background: isSel ? 'linear-gradient(180deg, #0e3a4a, #174558)' : '#f8fafc', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '14px 0', flexShrink: 0, borderRight: isSel ? 'none' : '1px solid #edf2f7', position: 'relative', transition: 'all 0.2s' }}>
+                {isSel && (
+                  <div style={{ position: 'absolute', top: 6, left: 6, width: 18, height: 18, borderRadius: 5, background: 'rgba(93,191,224,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <CheckCircle size={11} color="#5dbfe0" />
+                  </div>
+                )}
+                <span style={{ fontSize: 24, fontWeight: 900, color: isSel ? '#fff' : sc, lineHeight: 1 }}>{score.toFixed(1)}</span>
+                <span style={{ fontSize: 10, color: isSel ? 'rgba(255,255,255,0.3)' : '#94a3b8', marginTop: 2 }}>/20</span>
+                <div style={{ width: 20, height: 1, background: isSel ? 'rgba(255,255,255,0.08)' : '#edf2f7', margin: '8px 0 4px' }} />
+                <span style={{ fontSize: 8, color: isSel ? 'rgba(255,255,255,0.35)' : '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Bien {idx + 1}</span>
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.adresse_bien}</div>
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>Analysé le {a.date}</div>
-              </div>
-              {a.score != null && (
-                <div style={{ padding: '4px 10px', borderRadius: 8, background: getScoreBg(score), border: `1px solid ${getScoreBorder(score)}` }}>
-                  <span style={{ fontSize: 15, fontWeight: 900, color: sc }}>{score.toFixed(1)}</span>
-                  <span style={{ fontSize: 10, color: sc, opacity: 0.7 }}>/20</span>
+              {/* Contenu */}
+              <div style={{ flex: 1, padding: '14px 16px', background: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a', lineHeight: 1.3, marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.adresse_bien || 'Adresse en cours…'}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, color: '#94a3b8' }}>{a.date}</span>
+                  {reco && <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 5, background: reco === 'Acheter' ? '#f0fdf4' : reco === 'Négocier' ? '#fffbeb' : '#fef2f2', color: reco === 'Acheter' ? '#166534' : reco === 'Négocier' ? '#92400e' : '#991b1b', fontWeight: 700 }}>{reco}</span>}
                 </div>
-              )}
+              </div>
             </motion.div>
           );
         })}
+      </div>
 
-        {selected.length === 1 && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: '11px 16px', borderRadius: 11, background: 'rgba(42,125,156,0.05)', border: '1px solid rgba(42,125,156,0.15)', fontSize: 13, color: '#2a7d9c', fontWeight: 600 }}>
-            ✓ 1 bien sélectionné — choisissez {maxSelect === 3 ? 'un 2e ou un 3e bien' : 'un 2e bien'} pour continuer
-          </motion.div>
-        )}
+      {/* Info sélection */}
+      {selected.length === 1 && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(42,125,156,0.04)', border: '1px solid rgba(42,125,156,0.12)', fontSize: 12, color: '#2a7d9c', fontWeight: 600 }}>
+          ✓ 1 bien sélectionné — cliquez sur un {maxSelect === 3 ? '2e ou 3e bien' : '2e bien'} pour continuer
+        </motion.div>
+      )}
 
-        {canLaunch && (() => {
-          const sortedSelected = [...selected].sort().join(',');
-          const existingComp = historique.find(c => c.analyse_ids === sortedSelected);
-          if (existingComp) {
-            const dateExist = new Date(existingComp.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-            return (
-              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                style={{ padding: '16px 18px', borderRadius: 14, background: '#f0f7fb', border: '1.5px solid #bae3f5', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 22 }}>📋</span>
-                  <div>
-                    <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0f2d3d', marginBottom: 2 }}>
-                      Comparaison déjà effectuée
-                    </div>
-                    <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
-                      Vous avez déjà comparé ces {selected.length} biens le {dateExist}.
-                    </div>
+      {/* Comparaison existante ou bouton lancer */}
+      {canLaunch && (() => {
+        const sortedSelected = [...selected].sort().join(',');
+        const existingComp = historique.find(c => c.analyse_ids === sortedSelected);
+        if (existingComp) {
+          const dateExist = new Date(existingComp.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+          return (
+            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+              style={{ padding: '16px 18px', borderRadius: 14, background: '#f0f7fb', border: '1.5px solid #bae3f5', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 22 }}>📋</span>
+                <div>
+                  <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0f2d3d', marginBottom: 2 }}>
+                    Comparaison déjà effectuée
+                  </div>
+                  <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
+                    Vous avez déjà comparé ces {selected.length} biens le {dateExist}.
                   </div>
                 </div>
-                <button onClick={() => openComparaison(selected)}
-                  style={{ width: '100%', padding: '13px', borderRadius: 11, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14.5, fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 12px rgba(15,45,61,0.15)' }}>
-                  <Eye size={17} />
-                  Voir le rapport
-                </button>
-              </motion.div>
-            );
-          }
-          return (
-            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
-              <button onClick={handleLaunch}
-                style={{ width: '100%', padding: '15px', borderRadius: 13, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 800, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, boxShadow: '0 4px 16px rgba(15,45,61,0.2)' }}>
-                <GitCompare size={18} />
-                Lancer la comparaison — {selected.length} bien{selected.length > 1 ? 's' : ''} sélectionné{selected.length > 1 ? 's' : ''}
-                <ArrowRight size={16} />
+              </div>
+              <button onClick={() => openComparaison(selected)}
+                style={{ width: '100%', padding: '13px', borderRadius: 11, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14.5, fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 12px rgba(15,45,61,0.15)' }}>
+                <Eye size={17} />
+                Voir le rapport
               </button>
             </motion.div>
           );
-        })()}
-      </div>
+        }
+        return (
+          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+            <button onClick={handleLaunch}
+              style={{ width: '100%', padding: '15px', borderRadius: 13, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 800, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, boxShadow: '0 4px 16px rgba(15,45,61,0.2)' }}>
+              <GitCompare size={18} />
+              Lancer la comparaison — {selected.length} bien{selected.length > 1 ? 's' : ''} sélectionné{selected.length > 1 ? 's' : ''}
+              <ArrowRight size={16} />
+            </button>
+          </motion.div>
+        );
+      })()}
 
-      {/* ─── Historique ─── */}
+      {/* ═══ HISTORIQUE ═══ */}
       {historique.length > 0 && (
         <div style={{ marginTop: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-            <Clock size={15} style={{ color: '#94a3b8' }} />
-            <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Comparaisons précédentes</span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', background: '#f4f7f9', padding: '2px 8px', borderRadius: 6 }}>{historique.length}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Comparaisons précédentes</span>
+            <div style={{ flex: 1, height: 0.5, background: '#f1f5f9' }} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {historique.map((comp) => {
@@ -526,38 +539,44 @@ export default function Compare() {
                 return a ? { titre: a.adresse_bien || a.nom_document || 'Bien sans titre', score: a.score } : { titre: 'Bien supprimé', score: null };
               });
               const date = new Date(comp.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+              const titresCourts = biens.map(b => {
+                const t = b.titre;
+                const parts = t.split(',');
+                if (parts[0].length > 30) return parts[0].substring(0, 28) + '…';
+                return parts[0];
+              });
 
               return (
                 <motion.div key={comp.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                  style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', padding: '14px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', gap: 14 }}>
+                  style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, opacity: biens.some(b => b.titre === 'Bien supprimé') ? 0.55 : 1 }}>
 
-                  <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(42,125,156,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <GitCompare size={18} style={{ color: '#2a7d9c' }} />
+                  {/* Cercles scores chevauchants */}
+                  <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                    {biens.map((b, bi) => (
+                      <div key={bi} style={{ width: 36, height: 36, borderRadius: '50%', border: b.score != null ? `2px solid ${getScoreColor(b.score)}` : '2px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: bi > 0 ? -6 : 0, background: '#fff', zIndex: biens.length - bi }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: b.score != null ? getScoreColor(b.score) : '#94a3b8' }}>{b.score != null ? b.score.toFixed(1) : '?'}</span>
+                      </div>
+                    ))}
                   </div>
 
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {biens.map(b => b.titre).join(' vs ')}
+                      {titresCourts.join(' vs ')}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 11, color: '#94a3b8' }}>{date}</span>
-                      {biens.map((b, bi) => b.score != null && (
-                        <span key={bi} style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: b.score >= 14 ? '#f0fdf4' : b.score >= 10 ? '#fffbeb' : '#fef2f2', color: getScoreColor(b.score), border: `1px solid ${b.score >= 14 ? '#bbf7d0' : b.score >= 10 ? '#fde68a' : '#fecaca'}` }}>
-                          {b.score.toFixed(1)}/20
-                        </span>
-                      ))}
                       {comp.verdict?.titre_verdict && (
-                        <span style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 250 }}>
+                        <span style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>
                           {comp.verdict.titre_verdict}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
                     <button onClick={() => openComparaison(ids)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 9, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.15)', color: '#2a7d9c', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-                      <Eye size={12} /> Voir
+                      style={{ padding: '8px 16px', borderRadius: 10, background: 'linear-gradient(135deg, #0e3a4a, #1a5068)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+                      Consulter
                     </button>
                     <button onClick={() => deleteComparaison(comp.id)}
                       style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: 9, background: '#fff', border: '1px solid #fecaca', color: '#dc2626', cursor: 'pointer' }}>
