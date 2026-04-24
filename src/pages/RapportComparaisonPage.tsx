@@ -204,8 +204,9 @@ function DpeCell({ classe }: { classe: string | null }) {
   );
 }
 
-function Accordion({ title, icon, defaultOpen = false, children, subtitle }: { title: string; icon?: string; defaultOpen?: boolean; children: React.ReactNode; subtitle?: string }) {
-  const [open, setOpen] = useState(defaultOpen);
+function Accordion({ title, icon, defaultOpen = false, children, subtitle, desktopOpen }: { title: string; icon?: string; defaultOpen?: boolean; children: React.ReactNode; subtitle?: string; desktopOpen?: boolean }) {
+  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
+  const [open, setOpen] = useState(defaultOpen || (desktopOpen && isDesktop));
   return (
     <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
       <button
@@ -1077,7 +1078,7 @@ export default function RapportComparaisonPage() {
                           )}
                           {d?.financier?.has_data && d.financier.total_annee_1 > 0 && (
                             <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, fontSize: 12 }}>
-                              <span style={{ color: '#94a3b8' }}>année 1 :</span>
+                              <span style={{ color: '#94a3b8' }}>dépenses estimées année 1 :</span>
                               <span style={{ color: '#0f172a', fontWeight: 700, fontSize: 13 }}>
                                 {Math.round(d.financier.total_annee_1).toLocaleString('fr-FR')} €
                               </span>
@@ -1119,13 +1120,13 @@ export default function RapportComparaisonPage() {
                 </Accordion>
 
                 {resultsData.some(d => d?.financier?.has_data) && (
-                  <Accordion title="Résumé financier — 1ère année" icon="💶">
+                  <Accordion title="Résumé financier — 1ère année" icon="💶" desktopOpen>
                     <ResumeFinancier analyses={analysesDisplay} resultsData={resultsDataDisplay} bestIdx={bestDisplayIdx} displayOrder={displayOrder} />
                   </Accordion>
                 )}
 
                 {resultsData.some(d => d && d.travaux_evoques_list.length > 0) && (
-                  <Accordion title="Travaux évoqués non votés" icon="⚠️" subtitle="à anticiper dans votre budget">
+                  <Accordion title="Travaux évoqués non votés" icon="⚠️" subtitle="à anticiper dans votre budget" desktopOpen>
                     <div className="rcp-section-grid" style={{ display: 'grid', gridTemplateColumns: gridCols, gap: 0 }}>
                       {analysesDisplay.map((a, displayIdx) => {
                         const d = resultsDataDisplay[displayIdx];
@@ -1136,8 +1137,8 @@ export default function RapportComparaisonPage() {
                             {d && d.travaux_evoques_list.length > 0 ? (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 {d.travaux_evoques_list.map((t, ti) => (
-                                  <div key={ti} style={{ display: 'flex', gap: 8, fontSize: 12.5, lineHeight: 1.5, alignItems: 'flex-start' }}>
-                                    <span style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }}>▸</span>
+                                  <div key={ti} style={{ display: 'flex', gap: 8, fontSize: 14, lineHeight: 1.6, alignItems: 'flex-start' }}>
+                                    <span style={{ color: '#d97706', flexShrink: 0, marginTop: 2 }}>▸</span>
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                       <span style={{ color: '#0f172a' }}>{t.label}</span>
                                       {t.montant_estime ? (
