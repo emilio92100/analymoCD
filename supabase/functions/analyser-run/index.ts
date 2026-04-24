@@ -681,6 +681,11 @@ REGLES STATUT SYNDIC (multi-PV) — IMPORTANT : etudier TOUS les PV d AG fournis
 - vie_copropriete.syndic.entrant : nom du syndic actuel/nouveau. En general egal a vie_copropriete.syndic.nom.
 - vie_copropriete.syndic.annee_changement : annee de l AG ou le changement a ete vote (format "AAAA" ou "JJ/MM/AAAA"). Exemple : "2023" si le changement est vote a l AG 2023.
 - vie_copropriete.syndic.nb_ags_analysees : nombre de PV d AG distincts presents dans les documents fournis (pour contexte).
+- RÈGLE PV AG MANQUANTS : la loi oblige le vendeur a fournir les PV des 3 dernieres AG. Compter le nombre de PV d AG distincts dans documents_analyses (type=PV_AG). Si moins de 3 PV fournis, ajouter dans documents_manquants un element precisant combien manquent. Exemples :
+  * 0 PV fourni : ajouter "PV des 3 dernières assemblées générales (obligatoires pour la vente)"
+  * 1 PV fourni : ajouter "Il manque 2 PV d'assemblée générale sur les 3 obligatoires"
+  * 2 PV fournis : ajouter "Il manque 1 PV d'assemblée générale sur les 3 obligatoires"
+  * 3 PV fournis : ne rien ajouter (complet)
 - vie_copropriete.syndic.historique_changements : uniquement si statut = "rotation_frequente", lister les syndics successifs avec leur annee, format : [{ "annee": "2022", "syndic": "LACOUR" }, { "annee": "2023", "syndic": "A2BCD" }, { "annee": "2024", "syndic": "MARTIN" }]. Pour tous les autres statuts, laisser ce champ vide [].
 - IMPORTANT — Non alarmisme : un changement de syndic unique (statut "nouveau_elu") est NORMAL et COURANT, pas un signal negatif. NE JAMAIS mentionner ce changement dans points_vigilance sauf si combine avec : quitus refuse ET changement dans la meme AG, OU procedure en cours contre le syndic sortant. Un simple changement de cabinet sans conflit documente reste neutre ou va dans points_forts.
 - Si statut = "rotation_frequente" (2+ changements sur peu d AGs), mentionner dans points_vigilance : "Instabilite dans la gouvernance : 3 syndics differents identifies sur les 3 dernieres AGs. Cette rotation frequente peut traduire des tensions internes — a approfondir."
@@ -756,12 +761,16 @@ REGLES STATUT SYNDIC (multi-PV) — IMPORTANT : etudier TOUS les PV d AG fournis
   * Si SEUL un pre-etat date est fourni (pas de PV d AG ni fiche synthetique), NE PAS recopier pre_etat_date.fonds_travaux_alur dans finances.fonds_travaux — ce sont deux donnees DIFFERENTES. finances.fonds_travaux doit rester null si aucun PV d AG ou fiche synthetique ne fournit le budget annuel copro du fonds.
   * Consequence scoring : fonds_travaux_statut doit etre calcule a partir de finances.fonds_travaux (cotisation annuelle copro) et finances.budget_total_copro, JAMAIS a partir de pre_etat_date.fonds_travaux_alur (capital lot). Si finances.fonds_travaux est null, mettre fonds_travaux_statut = "non_mentionne", PAS "insuffisant".
 
-- RÈGLE FILTRAGE POINTS DE VIGILANCE SYNTHESE (rapport.points_vigilance) : cette liste est le resume des vrais risques pour l acheteur. N y mettre QUE des elements avec un impact financier significatif (> 500 euros) OU un risque structurel, juridique, sanitaire, ou reglementaire. EXCLURE ABSOLUMENT :
+- RÈGLE FILTRAGE POINTS DE VIGILANCE SYNTHESE (rapport.points_vigilance) : cette liste est le resume des vrais risques pour l acheteur. Le seuil financier depend de la taille de la copropriete :
+  * Si finances.budget_total_copro > 80 000 euros : ne remonter dans rapport.points_vigilance QUE les elements avec un impact financier > 5 000 euros OU un risque structurel, juridique, sanitaire, ou reglementaire.
+  * Si finances.budget_total_copro <= 80 000 euros (ou inconnu) : seuil a 3 000 euros.
+  Les elements en dessous du seuil restent dans les sections detaillees (onglet copro, travaux evoques, PV d AG) — ils ne sont juste PAS remontes dans la synthese rapport.points_vigilance.
+  EXCLURE ABSOLUMENT de rapport.points_vigilance :
   * Travaux mineurs ou d entretien courant : boites aux lettres, peinture cage d escalier, interphones, digicodes, nettoyage, VMC individuelle, serrurerie, moquette parties communes, eclairage couloirs, etc.
   * Travaux deja realises (sauf si appel de fonds encore en cours)
   * Constats neutres sans impact financier (ex: "le syndic a change" sans tension avérée)
   * Frais normaux de transaction (fonds ALUR, honoraires syndic, fonds de roulement)
-  Avant d inclure un element dans rapport.points_vigilance, se poser la question : "Est-ce que cet element peut couter plus de 500 euros a l acheteur ou represente un risque serieux ?" Si non, ne pas l inclure.
+  Avant d inclure un element dans rapport.points_vigilance, se poser la question : "Est-ce que cet element depasse le seuil financier OU represente un risque structurel/juridique/sanitaire serieux ?" Si non, ne pas l inclure — cela ne signifie pas qu on n en parle pas, juste qu on ne le remonte pas en synthese.
 - compromis : si un compromis ou une promesse de vente est fourni, extraire dans lot_achete.compromis : { vendeur, acheteur, notaire_vendeur, notaire_acheteur, agence, prix_net_vendeur, honoraires_agence, honoraires_charge, prix_total, depot_garantie, date_signature, date_acte, bien_libre_a, conditions_suspensives: [{label, detail, date_limite, statut}], clauses_particulieres: [] } INCLURE : travaux urgents chiffres / DPE F ou G uniquement (pas D ou E) / impayes vendeur / procedures judiciaires / gros travaux votes / travaux evoques sans vote depuis plusieurs AG. EXCLURE : DPE A/B/C/D / travaux charge vendeur / constats sans impact financier. Si aucun element ne justifie une negociation, applicable=false et elements=[].
 
 REGLES LOI CLIMAT ET RESILIENCE (profil ${p}) :
