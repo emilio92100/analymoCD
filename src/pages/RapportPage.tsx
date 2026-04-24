@@ -3019,12 +3019,46 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
         </AccordionSection>
       )}
 
-      {/* ── FINANCES DU LOT ── */}
+      {/* ── FINANCES DU LOT (fusion avec données du pré-état daté) ── */}
+      {(() => {
+        type HistoT = { exercice?: string; annee?: number | null; budget_appele?: number | null; charges_reelles?: number | null; provisions_hors_budget?: number | null };
+        type TravauxVT = { label?: string; montant?: number | null };
+        type PreEtatT = {
+          present?: boolean; date?: string | null; syndic?: string | null;
+          impayes_vendeur?: number; fonds_travaux_alur?: number | null;
+          fonds_travaux_ancien?: number | null;
+          fonds_roulement_acheteur?: number | null; fonds_roulement_modalite?: string | null;
+          honoraires_syndic?: number | null;
+          charges_futures?: { montant_trimestriel?: number | null; fonds_travaux_trimestriel?: number | null; montant_annuel?: number | null };
+          travaux_charge_vendeur?: TravauxVT[];
+          procedures_contre_vendeur?: string[];
+          procedures_copro?: string;
+          impayes_copro_global?: number | null;
+          dette_fournisseurs?: number | null;
+          fonds_travaux_copro_global?: number | null;
+          historique_charges?: HistoT[];
+        };
+        const ped = (rapport as Record<string, unknown>).pre_etat_date as PreEtatT | null;
+        const hasPed = ped?.present === true;
+        const totalAnnuel = hasPed ? (ped!.charges_futures?.montant_annuel || ((Number(ped!.charges_futures?.montant_trimestriel || 0) + Number(ped!.charges_futures?.fonds_travaux_trimestriel || 0)) * 4)) : 0;
+        const hasAnyContent = chargesLotNum > 0 || taxeAnnuelle || lot?.impayes_detectes || hasPed;
+
+        return (
       <AccordionSection
-        title="Finances de votre lot" sub="Charges · impayés · historique" icon="💶"
-        status={lot?.impayes_detectes ? 'alert' : 'neutral'}
-        badge={lot?.impayes_detectes ? 'Impayés détectés' : 'Informatif'}
-        defaultOpen={allOpen}>
+        title="Finances de votre lot" sub={hasPed ? 'Charges · fonds travaux · historique N-1/N-2' : 'Charges · impayés · historique'} icon="💶"
+        status={lot?.impayes_detectes || (hasPed && Number(ped!.impayes_vendeur) > 0) ? 'alert' : 'neutral'}
+        badge={hasPed ? (ped!.date ? `Pré-état daté du ${safeStr(ped!.date)}` : 'Pré-état daté détecté') : (lot?.impayes_detectes ? 'Impayés détectés' : 'Informatif')}
+        defaultOpen={allOpen || hasPed}>
+
+        {/* Bandeau source pré-état daté */}
+        {hasPed && (
+          <div style={{ padding: '10px 14px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10, fontSize: 12.5, color: '#075985', lineHeight: 1.55, display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 4 }}>
+            <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>📄</span>
+            <span>
+              <strong>Source</strong> : pré-état daté{ped!.date ? ` du ${safeStr(ped!.date)}` : ''}. Données financières extraites de ce document officiel établi avant la vente.
+            </span>
+          </div>
+        )}
 
         {/* Charges — affichées uniquement si pas déjà dans KPI */}
         {chargesLotNum > 0 && !taxeAnnuelle && (
@@ -3041,6 +3075,36 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
                 <div style={{ fontSize: 36, fontWeight: 500, color: '#1e40af', lineHeight: 1 }}>{chargesMensuellesLot.toLocaleString('fr-FR')} €</div>
               </div>
               <div style={{ fontSize: 12, color: '#3b82f6', marginLeft: 'auto', fontStyle: 'italic', alignSelf: 'flex-end' }}>Charges courantes · hors appels exceptionnels</div>
+            </div>
+          </>
+        )}
+
+        {/* Charges futures (issu du pré-état daté) */}
+        {hasPed && (ped!.charges_futures?.montant_trimestriel || ped!.charges_futures?.fonds_travaux_trimestriel) && (
+          <>
+            <SectionTitle emoji="💸" text="Charges futures à prévoir" tooltip="Montants trimestriels à régler dès votre entrée dans la copropriété (source : pré-état daté)." />
+            <div style={{ border: '0.5px solid #bfdbfe', borderRadius: 10, overflow: 'hidden' }}>
+              <div style={{ padding: '10px 16px', background: '#eff6ff', borderBottom: '0.5px solid #bfdbfe', fontSize: 14, color: '#1e40af' }}>
+                Ces montants seront à régler dès votre entrée dans la copropriété, chaque trimestre. <span style={{ fontSize: 12, fontStyle: 'italic', color: '#3b82f6' }}>(source : pré-état daté)</span>
+              </div>
+              {ped!.charges_futures!.montant_trimestriel && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: ped!.charges_futures!.fonds_travaux_trimestriel ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
+                  <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Charges courantes (budget prévisionnel)</span>
+                  <span style={{ fontSize: 15, fontWeight: 500, color: '#1e40af' }}>{Number(ped!.charges_futures!.montant_trimestriel).toLocaleString('fr-FR')} € / trimestre</span>
+                </div>
+              )}
+              {ped!.charges_futures!.fonds_travaux_trimestriel && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: totalAnnuel > 0 ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
+                  <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Cotisation fonds de travaux ALUR</span>
+                  <span style={{ fontSize: 15, fontWeight: 500, color: '#1e40af' }}>{Number(ped!.charges_futures!.fonds_travaux_trimestriel).toLocaleString('fr-FR')} € / trimestre</span>
+                </div>
+              )}
+              {totalAnnuel > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--color-background-secondary)' }}>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>Total annuel estimé</span>
+                  <span style={{ fontSize: 17, fontWeight: 500, color: '#1e40af' }}>{Number(totalAnnuel).toLocaleString('fr-FR')} € / an</span>
+                </div>
+              )}
             </div>
           </>
         )}
@@ -3068,270 +3132,203 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
           </>
         )}
 
-        {/* Impayés */}
-        {lot?.impayes_detectes && (
-          <div style={{ padding: '12px 16px', background: '#fef2f2', borderRadius: 10, border: '0.5px solid #fecaca', fontSize: 14, color: '#991b1b', lineHeight: 1.6 }}>
-            ⚠️ <strong>Impayés détectés sur ce lot :</strong> {safeStr(lot.impayes_detectes)}. Le vendeur doit apurer cette dette avant la signature de l'acte authentique.
-          </div>
-        )}
-
-        {chargesLotNum === 0 && !taxeAnnuelle && !lot?.impayes_detectes && (
-          <div style={{ padding: '20px', textAlign: 'center' }}>
-            <p style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Uploadez un appel de charges ou un pré-état daté pour obtenir ces informations.</p>
-          </div>
-        )}
-      </AccordionSection>
-
-      {/* ── PRÉ-ÉTAT DATÉ ── */}
-      {(() => {
-        type HistoT = { exercice?: string; annee?: number | null; budget_appele?: number | null; charges_reelles?: number | null; provisions_hors_budget?: number | null };
-        type TravauxVT = { label?: string; montant?: number | null };
-        type PreEtatT = {
-          present?: boolean; date?: string | null; syndic?: string | null;
-          impayes_vendeur?: number; fonds_travaux_alur?: number | null;
-          fonds_travaux_ancien?: number | null;
-          fonds_roulement_acheteur?: number | null; fonds_roulement_modalite?: string | null;
-          honoraires_syndic?: number | null;
-          charges_futures?: { montant_trimestriel?: number | null; fonds_travaux_trimestriel?: number | null; montant_annuel?: number | null };
-          travaux_charge_vendeur?: TravauxVT[];
-          procedures_contre_vendeur?: string[];
-          procedures_copro?: string;
-          impayes_copro_global?: number | null;
-          dette_fournisseurs?: number | null;
-          fonds_travaux_copro_global?: number | null;
-          historique_charges?: HistoT[];
-        };
-        const ped = (rapport as Record<string, unknown>).pre_etat_date as PreEtatT | null;
-        if (!ped?.present) return null;
-        const totalAnnuel = ped.charges_futures?.montant_annuel
-          || ((Number(ped.charges_futures?.montant_trimestriel || 0) + Number(ped.charges_futures?.fonds_travaux_trimestriel || 0)) * 4);
-        return (
-          <AccordionSection
-            title="Pré-état daté" sub="Situation vendeur · charges futures · historique N-1/N-2" icon="📋"
-            status={Number(ped.impayes_vendeur) > 0 ? 'alert' : 'neutral'}
-            badge={ped.date ? `Établi le ${safeStr(ped.date)}` : 'Détecté'}
-            defaultOpen={allOpen}
-            tooltip="Le pré-état daté est établi par le syndic avant la vente. Il récapitule la situation financière du vendeur vis-à-vis de la copropriété et les charges que l'acheteur devra régler.">
-
-            {/* Bandeau source */}
-            <div style={{ padding: '10px 14px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10, fontSize: 12.5, color: '#075985', lineHeight: 1.55, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-              <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>📄</span>
-              <span>
-                <strong>Source</strong> : pré-état daté{ped.date ? ` du ${safeStr(ped.date)}` : ''}. Données extraites de ce document officiel établi avant la vente.
-              </span>
+        {/* Fonds à verser au vendeur (issu du pré-état daté) */}
+        {hasPed && (ped!.fonds_travaux_alur || ped!.fonds_travaux_ancien || ped!.fonds_roulement_acheteur) && (() => {
+          const alur = Number(ped!.fonds_travaux_alur || 0);
+          const ancien = Number(ped!.fonds_travaux_ancien || 0);
+          const roulement = Number(ped!.fonds_roulement_acheteur || 0);
+          const total = alur + ancien + roulement;
+          const nbLignes = [alur, ancien, roulement].filter(v => v > 0).length;
+          return (
+          <>
+            <SectionTitle emoji="💰" text="Sommes à verser au vendeur à la signature" tooltip="Ces montants sont attachés au lot et issus du pré-état daté. Ils vous seront transférés mais vous devrez les rembourser au vendeur en sus du prix de vente, lors de la signature de l'acte authentique." />
+            <div style={{ border: '0.5px solid #fed7aa', borderRadius: 10, overflow: 'hidden', background: '#fffbeb' }}>
+              {ped!.fonds_travaux_alur != null && ped!.fonds_travaux_alur > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: '0.5px solid #fde68a', gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e' }}>Fonds travaux ALUR <span style={{ fontSize: 11, color: '#a16207', fontWeight: 400 }}>(art. 14-2 loi ALUR 2014)</span></div>
+                    <div style={{ fontSize: 13, color: '#a16207', marginTop: 3 }}>Part du fonds de prévoyance obligatoire constituée par le vendeur, attachée au lot. <span style={{ fontStyle: 'italic' }}>(source : pré-état daté)</span></div>
+                  </div>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: '#d97706', flexShrink: 0 }}>{Number(ped!.fonds_travaux_alur).toLocaleString('fr-FR')} €</span>
+                </div>
+              )}
+              {ped!.fonds_travaux_ancien != null && ped!.fonds_travaux_ancien > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: ped!.fonds_roulement_acheteur ? '0.5px solid #fde68a' : (nbLignes > 1 ? '0.5px solid #fde68a' : 'none'), gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e' }}>Fonds travaux « ancien » <span style={{ fontSize: 11, color: '#a16207', fontWeight: 400 }}>(art. 18 loi 1965)</span></div>
+                    <div style={{ fontSize: 13, color: '#a16207', marginTop: 3 }}>Réserve de trésorerie constituée avant la loi ALUR. <span style={{ fontStyle: 'italic' }}>(source : pré-état daté)</span></div>
+                  </div>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: '#d97706', flexShrink: 0 }}>{Number(ped!.fonds_travaux_ancien).toLocaleString('fr-FR')} €</span>
+                </div>
+              )}
+              {ped!.fonds_roulement_acheteur != null && ped!.fonds_roulement_acheteur > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: nbLignes > 1 ? '0.5px solid #fde68a' : 'none', gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e' }}>Fonds de roulement</div>
+                    <div style={{ fontSize: 13, color: '#a16207', marginTop: 3 }}>{ped!.fonds_roulement_modalite === 'remboursement_vendeur' ? 'Avance de trésorerie à rembourser au vendeur.' : 'Reconstitution au syndicat — à verser directement au syndic.'} <span style={{ fontStyle: 'italic' }}>(source : pré-état daté)</span></div>
+                  </div>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: '#d97706', flexShrink: 0 }}>{Number(ped!.fonds_roulement_acheteur).toLocaleString('fr-FR')} €</span>
+                </div>
+              )}
+              {nbLignes > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'rgba(217,119,6,0.1)', gap: 12 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: '#92400e' }}>Total à prévoir à la signature</span>
+                  <span style={{ fontSize: 18, fontWeight: 800, color: '#d97706', flexShrink: 0 }}>{total.toLocaleString('fr-FR')} €</span>
+                </div>
+              )}
             </div>
+          </>
+          );
+        })()}
 
-            {/* Situation vendeur */}
-            <SectionTitle emoji="👤" text="Situation du vendeur" />
+        {/* Situation vendeur (issu du pré-état daté) */}
+        {hasPed && (
+          <>
+            <SectionTitle emoji="👤" text="Situation du vendeur" tooltip="Données extraites du pré-état daté — récapitulatif de la situation financière du vendeur vis-à-vis de la copropriété." />
             <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
                 <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Impayés de charges du vendeur</span>
-                <span style={{ fontSize: 14, fontWeight: 500, color: Number(ped.impayes_vendeur) === 0 ? '#16a34a' : '#dc2626' }}>
-                  {Number(ped.impayes_vendeur) === 0 ? '✓ Vendeur à jour' : `${Number(ped.impayes_vendeur).toLocaleString('fr-FR')} € impayés`}
+                <span style={{ fontSize: 14, fontWeight: 500, color: Number(ped!.impayes_vendeur) === 0 ? '#16a34a' : '#dc2626' }}>
+                  {Number(ped!.impayes_vendeur) === 0 ? '✓ Vendeur à jour' : `${Number(ped!.impayes_vendeur).toLocaleString('fr-FR')} € impayés`}
                 </span>
               </div>
-              {(ped.procedures_contre_vendeur ?? []).length === 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: ped.honoraires_syndic ? '0.5px solid var(--color-border-tertiary)' : 'none', background: 'var(--color-background-secondary)' }}>
+              {(ped!.procedures_contre_vendeur ?? []).length === 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: ped!.honoraires_syndic ? '0.5px solid var(--color-border-tertiary)' : 'none', background: 'var(--color-background-secondary)' }}>
                   <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Procédures contre le vendeur</span>
                   <span style={{ fontSize: 14, fontWeight: 500, color: '#16a34a' }}>✓ Aucune</span>
                 </div>
               )}
-              {ped.honoraires_syndic && (
+              {ped!.honoraires_syndic && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', gap: 12 }}>
                   <div>
                     <div style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Frais d'établissement du document</div>
                     <div style={{ fontSize: 13, color: '#16a34a', marginTop: 3 }}>✓ À la charge du vendeur — rien à payer pour vous</div>
                   </div>
-                  <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-secondary)', flexShrink: 0 }}>{Number(ped.honoraires_syndic).toLocaleString('fr-FR')} €</span>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-secondary)', flexShrink: 0 }}>{Number(ped!.honoraires_syndic).toLocaleString('fr-FR')} €</span>
                 </div>
               )}
             </div>
+          </>
+        )}
 
-            {/* Fonds à verser au vendeur */}
-            {(ped.fonds_travaux_alur || ped.fonds_travaux_ancien || ped.fonds_roulement_acheteur) && (() => {
-              const alur = Number(ped.fonds_travaux_alur || 0);
-              const ancien = Number(ped.fonds_travaux_ancien || 0);
-              const roulement = Number(ped.fonds_roulement_acheteur || 0);
-              const total = alur + ancien + roulement;
-              const nbLignes = [alur, ancien, roulement].filter(v => v > 0).length;
-              return (
-              <>
-                <SectionTitle emoji="💰" text="Sommes à verser au vendeur à la signature" tooltip="Ces montants sont attachés au lot. Ils vous seront transférés mais vous devrez les rembourser au vendeur en sus du prix de vente, lors de la signature de l'acte authentique." />
-                <div style={{ border: '0.5px solid #fed7aa', borderRadius: 10, overflow: 'hidden', background: '#fffbeb' }}>
-                  {ped.fonds_travaux_alur != null && ped.fonds_travaux_alur > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: '0.5px solid #fde68a', gap: 12 }}>
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e' }}>Fonds travaux ALUR <span style={{ fontSize: 11, color: '#a16207', fontWeight: 400 }}>(art. 14-2 loi ALUR 2014)</span></div>
-                        <div style={{ fontSize: 13, color: '#a16207', marginTop: 3 }}>Part du fonds de prévoyance obligatoire constituée par le vendeur, attachée au lot.</div>
-                      </div>
-                      <span style={{ fontSize: 16, fontWeight: 700, color: '#d97706', flexShrink: 0 }}>{Number(ped.fonds_travaux_alur).toLocaleString('fr-FR')} €</span>
-                    </div>
-                  )}
-                  {ped.fonds_travaux_ancien != null && ped.fonds_travaux_ancien > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: ped.fonds_roulement_acheteur ? '0.5px solid #fde68a' : (nbLignes > 1 ? '0.5px solid #fde68a' : 'none'), gap: 12 }}>
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e' }}>Fonds travaux « ancien » <span style={{ fontSize: 11, color: '#a16207', fontWeight: 400 }}>(art. 18 loi 1965)</span></div>
-                        <div style={{ fontSize: 13, color: '#a16207', marginTop: 3 }}>Réserve de trésorerie constituée avant la loi ALUR. Distinct du fonds ALUR, mais suit la même logique : attaché au lot et à rembourser au vendeur.</div>
-                      </div>
-                      <span style={{ fontSize: 16, fontWeight: 700, color: '#d97706', flexShrink: 0 }}>{Number(ped.fonds_travaux_ancien).toLocaleString('fr-FR')} €</span>
-                    </div>
-                  )}
-                  {ped.fonds_roulement_acheteur != null && ped.fonds_roulement_acheteur > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: nbLignes > 1 ? '0.5px solid #fde68a' : 'none', gap: 12 }}>
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 500, color: '#92400e' }}>Fonds de roulement</div>
-                        <div style={{ fontSize: 13, color: '#a16207', marginTop: 3 }}>{ped.fonds_roulement_modalite === 'remboursement_vendeur' ? 'Avance de trésorerie à rembourser au vendeur.' : 'Reconstitution au syndicat — à verser directement au syndic.'}</div>
-                      </div>
-                      <span style={{ fontSize: 16, fontWeight: 700, color: '#d97706', flexShrink: 0 }}>{Number(ped.fonds_roulement_acheteur).toLocaleString('fr-FR')} €</span>
-                    </div>
-                  )}
-                  {nbLignes > 1 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'rgba(217,119,6,0.1)', gap: 12 }}>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: '#92400e' }}>Total à prévoir à la signature</span>
-                      <span style={{ fontSize: 18, fontWeight: 800, color: '#d97706', flexShrink: 0 }}>{total.toLocaleString('fr-FR')} €</span>
-                    </div>
-                  )}
+        {/* Impayés lot */}
+        {!hasPed && lot?.impayes_detectes && (
+          <div style={{ padding: '12px 16px', background: '#fef2f2', borderRadius: 10, border: '0.5px solid #fecaca', fontSize: 14, color: '#991b1b', lineHeight: 1.6 }}>
+            ⚠️ <strong>Impayés détectés sur ce lot :</strong> {safeStr(lot.impayes_detectes)}. Le vendeur doit apurer cette dette avant la signature de l'acte authentique.
+          </div>
+        )}
+
+        {/* Travaux charge vendeur (issu du pré-état daté) */}
+        {hasPed && (ped!.travaux_charge_vendeur ?? []).length > 0 && (
+          <>
+            <SectionTitle emoji="⚖️" text="Travaux votés à la charge du vendeur" />
+            <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
+              <div style={{ padding: '10px 16px', background: '#eff6ff', borderBottom: '0.5px solid #bfdbfe', fontSize: 14, color: '#1e40af' }}>
+                Ces travaux ont été votés avant le compromis — ils restent à la charge du vendeur, sans impact pour vous. <span style={{ fontSize: 12, fontStyle: 'italic', color: '#3b82f6' }}>(source : pré-état daté)</span>
+              </div>
+              {ped!.travaux_charge_vendeur!.map((t, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: i < ped!.travaux_charge_vendeur!.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none', background: i % 2 === 0 ? 'var(--color-background-primary)' : 'var(--color-background-secondary)' }}>
+                  <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>{safeStr(t.label)}</span>
+                  {t.montant && <span style={{ fontSize: 14, fontWeight: 500, color: '#d97706', flexShrink: 0, marginLeft: 16 }}>{Number(t.montant).toLocaleString('fr-FR')} €</span>}
                 </div>
-              </>
-              );
-            })()}
+              ))}
+            </div>
+          </>
+        )}
 
-            {/* Charges futures */}
-            {(ped.charges_futures?.montant_trimestriel || ped.charges_futures?.fonds_travaux_trimestriel) && (
-              <>
-                <SectionTitle emoji="💸" text="Charges futures à prévoir" />
-                <div style={{ border: '0.5px solid #bfdbfe', borderRadius: 10, overflow: 'hidden' }}>
-                  <div style={{ padding: '10px 16px', background: '#eff6ff', borderBottom: '0.5px solid #bfdbfe', fontSize: 14, color: '#1e40af' }}>
-                    Ces montants seront à régler dès votre entrée dans la copropriété, chaque trimestre.
+        {/* Santé financière copro (issu du pré-état daté) */}
+        {hasPed && (ped!.impayes_copro_global != null || ped!.dette_fournisseurs != null) && (
+          <>
+            <SectionTitle emoji="🏢" text="Santé financière de la copropriété" tooltip="Données issues du pré-état daté — vision globale des impayés et dettes au niveau de la copropriété." />
+            <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
+              {ped!.impayes_copro_global != null && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: ped!.dette_fournisseurs != null ? '0.5px solid var(--color-border-tertiary)' : 'none', gap: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Impayés globaux copropriété</div>
+                    <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 3 }}>Charges en attente de régularisation à la date d'édition</div>
                   </div>
-                  {ped.charges_futures.montant_trimestriel && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: ped.charges_futures.fonds_travaux_trimestriel ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
-                      <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Charges courantes (budget prévisionnel)</span>
-                      <span style={{ fontSize: 15, fontWeight: 500, color: '#1e40af' }}>{Number(ped.charges_futures.montant_trimestriel).toLocaleString('fr-FR')} € / trimestre</span>
-                    </div>
-                  )}
-                  {ped.charges_futures.fonds_travaux_trimestriel && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: totalAnnuel > 0 ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
-                      <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Cotisation fonds de travaux ALUR</span>
-                      <span style={{ fontSize: 15, fontWeight: 500, color: '#1e40af' }}>{Number(ped.charges_futures.fonds_travaux_trimestriel).toLocaleString('fr-FR')} € / trimestre</span>
-                    </div>
-                  )}
-                  {totalAnnuel > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--color-background-secondary)' }}>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>Total annuel estimé</span>
-                      <span style={{ fontSize: 17, fontWeight: 500, color: '#1e40af' }}>{Number(totalAnnuel).toLocaleString('fr-FR')} € / an</span>
-                    </div>
-                  )}
+                  <span style={{ fontSize: 14, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>{Number(ped!.impayes_copro_global).toLocaleString('fr-FR')} €</span>
                 </div>
-              </>
-            )}
-
-            {/* Travaux charge vendeur */}
-            {(ped.travaux_charge_vendeur ?? []).length > 0 && (
-              <>
-                <SectionTitle emoji="⚖️" text="Travaux votés à la charge du vendeur" />
-                <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
-                  <div style={{ padding: '10px 16px', background: '#eff6ff', borderBottom: '0.5px solid #bfdbfe', fontSize: 14, color: '#1e40af' }}>
-                    Ces travaux ont été votés avant le compromis — ils restent à la charge du vendeur, sans impact pour vous.
-                  </div>
-                  {ped.travaux_charge_vendeur!.map((t, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: i < ped.travaux_charge_vendeur!.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none', background: i % 2 === 0 ? 'var(--color-background-primary)' : 'var(--color-background-secondary)' }}>
-                      <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>{safeStr(t.label)}</span>
-                      {t.montant && <span style={{ fontSize: 14, fontWeight: 500, color: '#d97706', flexShrink: 0, marginLeft: 16 }}>{Number(t.montant).toLocaleString('fr-FR')} €</span>}
-                    </div>
-                  ))}
+              )}
+              {ped!.dette_fournisseurs != null && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', gap: 12 }}>
+                  <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Dette fournisseurs</span>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>{Number(ped!.dette_fournisseurs).toLocaleString('fr-FR')} €</span>
                 </div>
-              </>
-            )}
+              )}
+              <div style={{ padding: '12px 16px', background: '#fff7ed', borderTop: '0.5px solid #fed7aa', fontSize: 14, color: '#92400e', lineHeight: 1.6 }}>
+                Les impayés globaux sont <strong>normaux dans toute copropriété</strong> — ils deviennent préoccupants uniquement s'ils dépassent significativement un trimestre de budget collectif.
+              </div>
+            </div>
+          </>
+        )}
 
-            {/* Santé financière copro */}
-            {(ped.impayes_copro_global != null || ped.dette_fournisseurs != null) && (
-              <>
-                <SectionTitle emoji="🏢" text="Santé financière de la copropriété" />
-                <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
-                  {ped.impayes_copro_global != null && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px 16px', borderBottom: ped.dette_fournisseurs != null ? '0.5px solid var(--color-border-tertiary)' : 'none', gap: 12 }}>
-                      <div>
-                        <div style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Impayés globaux copropriété</div>
-                        <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 3 }}>Charges en attente de régularisation à la date d'édition</div>
-                      </div>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>{Number(ped.impayes_copro_global).toLocaleString('fr-FR')} €</span>
-                    </div>
-                  )}
-                  {ped.dette_fournisseurs != null && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', gap: 12 }}>
-                      <span style={{ fontSize: 14, color: 'var(--color-text-primary)' }}>Dette fournisseurs</span>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>{Number(ped.dette_fournisseurs).toLocaleString('fr-FR')} €</span>
-                    </div>
-                  )}
-                  <div style={{ padding: '12px 16px', background: '#fff7ed', borderTop: '0.5px solid #fed7aa', fontSize: 14, color: '#92400e', lineHeight: 1.6 }}>
-                    Les impayés globaux sont <strong>normaux dans toute copropriété</strong> — ils deviennent préoccupants uniquement s'ils dépassent significativement un trimestre de budget collectif.
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Historique charges N-1 / N-2 */}
-            {(ped.historique_charges ?? []).filter(h => h.budget_appele || h.charges_reelles || h.provisions_hors_budget).length > 0 && (() => {
-              const hist = ped.historique_charges!.filter(h => h.budget_appele || h.charges_reelles || h.provisions_hors_budget);
-              // Colonnes dynamiques : on affiche une colonne uniquement si au moins 1 ligne a la donnée
-              const showBudget = hist.some(h => h.budget_appele);
-              const showReel = hist.some(h => h.charges_reelles);
-              const showProvisions = hist.some(h => h.provisions_hors_budget);
-              const showEcart = showBudget && showReel;
-              const columns: { key: string; label: string; tooltip?: string }[] = [{ key: 'exercice', label: 'Exercice' }];
-              if (showBudget) columns.push({ key: 'budget', label: 'Budget voté', tooltip: 'Budget prévisionnel voté en AG pour l\'exercice — correspond aux charges courantes appelées au vendeur.' });
-              if (showReel) columns.push({ key: 'reel', label: 'Charges réelles', tooltip: 'Charges effectivement dépensées après clôture de l\'exercice.' });
-              if (showProvisions) columns.push({ key: 'provisions', label: 'Provisions hors budget', tooltip: 'Appels exceptionnels pour financer des travaux votés, en plus du budget courant (art. 44 du décret).' });
-              if (showEcart) columns.push({ key: 'ecart', label: 'Écart' });
-              return (
-              <>
-                <SectionTitle emoji="📊" text="Historique des charges du lot" tooltip="Données issues du pré-état daté, annexe 3ème partie. Permet de comparer ce qui était prévu (budget voté) et ce qui a été réellement dépensé ou appelé en plus." />
-                <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
-                  <div style={{ padding: '10px 16px', background: 'var(--color-background-secondary)', borderBottom: '0.5px solid var(--color-border-tertiary)', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
-                    💡 <strong>Comment lire ce tableau ?</strong> Le <strong>budget voté</strong> correspond aux charges courantes prévues. Les <strong>provisions hors budget</strong> sont les appels exceptionnels (travaux). Un écart important et répété mérite attention.
-                  </div>
-                  <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ background: 'var(--color-background-secondary)' }}>
-                        {columns.map((c, i) => (
-                          <th key={c.key} style={{ padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right' as const, fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', borderBottom: '0.5px solid var(--color-border-tertiary)', whiteSpace: 'nowrap' }}>
-                            {c.tooltip ? <Tooltip text={c.tooltip}>{c.label}</Tooltip> : c.label}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {hist.map((h, i, arr) => {
-                        const ecart = h.charges_reelles && h.budget_appele ? Number(h.charges_reelles) - Number(h.budget_appele) : null;
-                        return (
-                          <tr key={i} style={{ borderBottom: i < arr.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none', background: i % 2 === 0 ? 'var(--color-background-primary)' : 'var(--color-background-secondary)' }}>
-                            <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--color-text-primary)', fontWeight: 500 }}>{safeStr(h.exercice)}{h.annee ? ` (${h.annee})` : ''}</td>
-                            {showBudget && <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--color-text-primary)', textAlign: 'right' as const, whiteSpace: 'nowrap' }}>{h.budget_appele ? `${Number(h.budget_appele).toLocaleString('fr-FR')} €` : '—'}</td>}
-                            {showReel && <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', textAlign: 'right' as const, whiteSpace: 'nowrap' }}>{h.charges_reelles ? `${Number(h.charges_reelles).toLocaleString('fr-FR')} €` : '—'}</td>}
-                            {showProvisions && <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 500, color: h.provisions_hors_budget ? '#d97706' : 'var(--color-text-secondary)', textAlign: 'right' as const, whiteSpace: 'nowrap' }}>{h.provisions_hors_budget ? `+${Number(h.provisions_hors_budget).toLocaleString('fr-FR')} €` : '—'}</td>}
-                            {showEcart && (
-                              <td style={{ padding: '12px 16px', textAlign: 'right' as const }}>
-                                {ecart !== null && (
-                                  <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 9px', borderRadius: 20, background: ecart > 0 ? '#fef2f2' : '#f0fdf4', color: ecart > 0 ? '#dc2626' : '#16a34a', whiteSpace: 'nowrap' }}>
-                                    {ecart > 0 ? '+' : ''}{ecart.toLocaleString('fr-FR')} €
-                                  </span>
-                                )}
-                              </td>
+        {/* Historique charges N-1 / N-2 (issu du pré-état daté) */}
+        {hasPed && (ped!.historique_charges ?? []).filter(h => h.budget_appele || h.charges_reelles || h.provisions_hors_budget).length > 0 && (() => {
+          const hist = ped!.historique_charges!.filter(h => h.budget_appele || h.charges_reelles || h.provisions_hors_budget);
+          const showBudget = hist.some(h => h.budget_appele);
+          const showReel = hist.some(h => h.charges_reelles);
+          const showProvisions = hist.some(h => h.provisions_hors_budget);
+          const showEcart = showBudget && showReel;
+          const columns: { key: string; label: string; tooltip?: string }[] = [{ key: 'exercice', label: 'Exercice' }];
+          if (showBudget) columns.push({ key: 'budget', label: 'Budget voté', tooltip: 'Budget prévisionnel voté en AG pour l\'exercice — correspond aux charges courantes appelées au vendeur.' });
+          if (showReel) columns.push({ key: 'reel', label: 'Charges réelles', tooltip: 'Charges effectivement dépensées après clôture de l\'exercice.' });
+          if (showProvisions) columns.push({ key: 'provisions', label: 'Provisions hors budget', tooltip: 'Appels exceptionnels pour financer des travaux votés, en plus du budget courant (art. 44 du décret).' });
+          if (showEcart) columns.push({ key: 'ecart', label: 'Écart' });
+          return (
+          <>
+            <SectionTitle emoji="📊" text="Historique des charges du lot" tooltip="Données issues du pré-état daté, annexe 3ème partie. Permet de comparer ce qui était prévu (budget voté) et ce qui a été réellement dépensé ou appelé en plus." />
+            <div style={{ border: '0.5px solid var(--color-border-tertiary)', borderRadius: 10, overflow: 'hidden' }}>
+              <div style={{ padding: '10px 16px', background: 'var(--color-background-secondary)', borderBottom: '0.5px solid var(--color-border-tertiary)', fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+                💡 <strong>Comment lire ce tableau ?</strong> Le <strong>budget voté</strong> correspond aux charges courantes prévues. Les <strong>provisions hors budget</strong> sont les appels exceptionnels (travaux). <span style={{ fontStyle: 'italic' }}>(source : pré-état daté)</span>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: 'var(--color-background-secondary)' }}>
+                    {columns.map((c, i) => (
+                      <th key={c.key} style={{ padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right' as const, fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', borderBottom: '0.5px solid var(--color-border-tertiary)', whiteSpace: 'nowrap' }}>
+                        {c.tooltip ? <Tooltip text={c.tooltip}>{c.label}</Tooltip> : c.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {hist.map((h, i, arr) => {
+                    const ecart = h.charges_reelles && h.budget_appele ? Number(h.charges_reelles) - Number(h.budget_appele) : null;
+                    return (
+                      <tr key={i} style={{ borderBottom: i < arr.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none', background: i % 2 === 0 ? 'var(--color-background-primary)' : 'var(--color-background-secondary)' }}>
+                        <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--color-text-primary)', fontWeight: 500 }}>{safeStr(h.exercice)}{h.annee ? ` (${h.annee})` : ''}</td>
+                        {showBudget && <td style={{ padding: '12px 16px', fontSize: 14, color: 'var(--color-text-primary)', textAlign: 'right' as const, whiteSpace: 'nowrap' }}>{h.budget_appele ? `${Number(h.budget_appele).toLocaleString('fr-FR')} €` : '—'}</td>}
+                        {showReel && <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)', textAlign: 'right' as const, whiteSpace: 'nowrap' }}>{h.charges_reelles ? `${Number(h.charges_reelles).toLocaleString('fr-FR')} €` : '—'}</td>}
+                        {showProvisions && <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 500, color: h.provisions_hors_budget ? '#d97706' : 'var(--color-text-secondary)', textAlign: 'right' as const, whiteSpace: 'nowrap' }}>{h.provisions_hors_budget ? `+${Number(h.provisions_hors_budget).toLocaleString('fr-FR')} €` : '—'}</td>}
+                        {showEcart && (
+                          <td style={{ padding: '12px 16px', textAlign: 'right' as const }}>
+                            {ecart !== null && (
+                              <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 9px', borderRadius: 20, background: ecart > 0 ? '#fef2f2' : '#f0fdf4', color: ecart > 0 ? '#dc2626' : '#16a34a', whiteSpace: 'nowrap' }}>
+                                {ecart > 0 ? '+' : ''}{ecart.toLocaleString('fr-FR')} €
+                              </span>
                             )}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                  </div>
-                </div>
-              </>
-              );
-            })()}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              </div>
+            </div>
+          </>
+          );
+        })()}
 
-          </AccordionSection>
+        {/* Empty state */}
+        {!hasAnyContent && (
+          <div style={{ padding: '20px', textAlign: 'center' }}>
+            <p style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Uploadez un appel de charges ou un pré-état daté pour obtenir ces informations.</p>
+          </div>
+        )}
+      </AccordionSection>
         );
       })()}
 
@@ -4160,7 +4157,7 @@ export function RapportViewExemple({ rapport, defaultTab = 'synthese', onComplem
   const tabs: { id: TabId; label: string; icon: React.ReactNode; dotColor: string }[] = [
     { id: 'synthese', label: 'Synthèse', icon: <Star size={14} />, dotColor: '#22c55e' },
     ...(hasCopro ? [{ id: 'copropriete' as TabId, label: 'Copropriété', icon: <Building2 size={14} />, dotColor: rapport.travaux_a_prevoir.length > 0 ? '#f97316' : '#22c55e' }] : []),
-    { id: 'logement', label: logementLabel, icon: logementIcon, dotColor: rapport.diagnostics.some((d: Record<string, unknown>) => d.alerte && d.perimetre === 'lot_privatif') ? '#ef4444' : '#22c55e' },
+    { id: 'logement', label: logementLabel, icon: logementIcon, dotColor: rapport.diagnostics.some((d: Record<string, unknown>) => d.alerte && d.perimetre === 'lot_privatif') ? '#ef4444' : '#2a7d9c' },
     { id: 'procedures', label: 'Procédures', icon: <Gavel size={14} />, dotColor: rapport.procedures_en_cours ? '#ef4444' : '#22c55e' },
     { id: 'documents', label: 'Documents', icon: <FileText size={14} />, dotColor: '#94a3b8' },
   ];
@@ -4396,7 +4393,7 @@ export default function RapportPage() {
   const tabs: { id: TabId; label: string; icon: React.ReactNode; dotColor: string }[] = [
     { id: 'synthese', label: 'Synthèse', icon: <Star size={14} />, dotColor: '#22c55e' },
     ...(hasCopro ? [{ id: 'copropriete' as TabId, label: 'Copropriété', icon: <Building2 size={14} />, dotColor: rapport.travaux_a_prevoir.length > 0 ? '#f97316' : '#22c55e' }] : []),
-    { id: 'logement', label: logementLabel, icon: logementIcon, dotColor: rapport.diagnostics.some((d: Record<string, unknown>) => d.alerte && d.perimetre === 'lot_privatif') ? '#ef4444' : '#22c55e' },
+    { id: 'logement', label: logementLabel, icon: logementIcon, dotColor: rapport.diagnostics.some((d: Record<string, unknown>) => d.alerte && d.perimetre === 'lot_privatif') ? '#ef4444' : '#2a7d9c' },
     { id: 'procedures', label: 'Procédures', icon: <Gavel size={14} />, dotColor: rapport.procedures_en_cours ? '#ef4444' : '#22c55e' },
     { id: 'documents', label: 'Documents', icon: <FileText size={14} />, dotColor: '#94a3b8' },
   ];
