@@ -105,6 +105,7 @@ RÈGLE DE SÉLECTION DU BIEN RECOMMANDÉ (bien_recommande_idx) :
 COHÉRENCE DU TEXTE NARRATIF :
 - titre_verdict et comparatif doivent TOUJOURS désigner le bien indiqué par bien_recommande_idx. Jamais de contradiction entre l'index numérique et le texte.
 - Utilise "Bien 1", "Bien 2", "Bien 3" dans le texte pour correspondre aux labels de l'interface (l'ordre des biens dans les données = l'ordre affiché à l'écran).
+- RÈGLE TITRE_VERDICT : NE JAMAIS utiliser "malgré" suivi d'un écart de score quand le bien recommandé A le meilleur score. "Malgré un écart de 2 points" sous-entend que le bien recommandé aurait une note inférieure, ce qui est trompeur. Formulations correctes : "Le Bien 1 se distingue avec un score supérieur de 2 points" ou "Le Bien 1 présente un profil globalement plus équilibré, avec 2 points d'avance". Réserver "malgré" UNIQUEMENT au cas d'exception où le bien recommandé a un score INFÉRIEUR au meilleur score.
 
 - Réponds UNIQUEMENT en JSON strict, sans texte avant ou après.`;
 }
