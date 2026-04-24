@@ -24,12 +24,6 @@ function ScoreBadge({ score, size = 'sm' }: { score: number; size?: 'sm' | 'md' 
 function getScoreColor(s: number) {
   if (s >= 17) return '#15803d'; if (s >= 14) return '#16a34a'; if (s >= 10) return '#d97706'; if (s >= 7) return '#ea580c'; return '#dc2626';
 }
-function getScoreBg(s: number) {
-  if (s >= 14) return '#f0fdf4'; if (s >= 10) return '#fffbeb'; if (s >= 7) return '#fff7ed'; return '#fef2f2';
-}
-function getScoreBorder(s: number) {
-  if (s >= 17) return '#bbf7d0'; if (s >= 14) return '#d1fae5'; if (s >= 10) return '#fde68a'; if (s >= 7) return '#fed7aa'; return '#fecaca';
-}
 
 const COMPARER_URL = 'https://veszrayromldfgetqaxb.supabase.co/functions/v1/comparer';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlc3pyYXlyb21sZGZnZXRxYXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MzI5NTUsImV4cCI6MjA2MTAwODk1NX0.XsqzBPDMfHRFKgMhJxoLhgVWZMdV5YnFKM3VCBe9hOk';
@@ -443,11 +437,9 @@ export default function Compare() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {completedAnalyses.map((a, idx) => {
           const isSel = selected.includes(a.id);
-          const selIdx = selected.indexOf(a.id);
           const score = a.score ?? 0;
           const sc = getScoreColor(score);
           const reco = (a as Analyse & { recommandation?: string }).recommandation;
-          const dpe = (a as Analyse & { dpe?: string }).dpe;
           return (
             <motion.div key={a.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}
               onClick={() => toggleSelect(a.id)}
