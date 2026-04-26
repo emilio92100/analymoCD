@@ -432,7 +432,7 @@ function CTAFinal() {
               marginRight: 'auto',
             }}
           >
-            Uploadez vos documents et recevez un rapport clair en quelques minutes<span style={{ color: '#7dd3fc' }}>*</span>.
+            Uploadez vos documents et recevez un rapport clair en quelques minutes<span style={{ color: '#7dd3fc' }}>*</span>.<br />
             Vos données sont supprimées automatiquement après analyse.
           </p>
           <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
