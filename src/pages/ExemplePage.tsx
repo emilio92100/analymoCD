@@ -256,8 +256,8 @@ const MOCK_PVAG_SIMPLE = {
 function SegmentedToggle({ mode, onChange }: { mode: 'complete' | 'simple'; onChange: (m: 'complete' | 'simple') => void }) {
   // Ordre : simple en premier, complète en second (par défaut)
   const options = [
-    { id: 'simple' as const, icon: FileText, label: 'Analyse simple', price: '4,90 € · un document' },
-    { id: 'complete' as const, icon: HomeIcon, label: 'Analyse complète', price: '19,90 € · dossier complet' },
+    { id: 'simple' as const, icon: FileText, label: 'Analyse simple', price: 'Un document' },
+    { id: 'complete' as const, icon: HomeIcon, label: 'Analyse complète', price: 'Dossier complet' },
   ];
 
   return (
@@ -284,7 +284,7 @@ function SegmentedToggle({ mode, onChange }: { mode: 'complete' | 'simple'; onCh
               onClick={() => onChange(opt.id)}
               className={`seg-toggle-btn${active ? ' seg-toggle-btn-active' : ''}`}
               style={{
-                padding: '18px 36px',
+                padding: '20px 42px',
                 borderRadius: 999,
                 border: 'none',
                 background: 'transparent',
@@ -293,7 +293,7 @@ function SegmentedToggle({ mode, onChange }: { mode: 'complete' | 'simple'; onCh
                 display: 'flex',
                 alignItems: 'center',
                 gap: 14,
-                minWidth: 260,
+                minWidth: 290,
                 position: 'relative',
                 zIndex: 1,
                 transition: 'color 0.3s ease',
@@ -427,12 +427,12 @@ function CTAFinal() {
               color: 'rgba(255,255,255,0.8)',
               lineHeight: 1.65,
               marginBottom: 34,
-              maxWidth: 580,
+              maxWidth: 680,
               marginLeft: 'auto',
               marginRight: 'auto',
             }}
           >
-            Uploadez vos documents et recevez un rapport clair en moins de 30 secondes<span style={{ color: '#7dd3fc' }}>*</span>.
+            Uploadez vos documents et recevez un rapport clair en quelques minutes<span style={{ color: '#7dd3fc' }}>*</span>.
             Vos données sont supprimées automatiquement après analyse.
           </p>
           <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -493,7 +493,7 @@ function CTAFinal() {
           </div>
           {/* Mention astérisque */}
           <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 20, lineHeight: 1.5 }}>
-            * Pour les documents nativement numériques (PDF texte). Les documents scannés peuvent nécessiter un délai supplémentaire.
+            * Analyse simple : résultat en ~30 secondes (1 document PDF natif). Analyse complète : généralement prête en quelques minutes selon le nombre de documents.
           </p>
         </div>
       </div>
