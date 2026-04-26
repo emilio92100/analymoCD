@@ -54,14 +54,14 @@ const profiles = [
     id: 'agent', icon: Building2, emoji: '🏢', label: 'Agent immobilier',
     tagline: 'Différenciez-vous. Rassurez vos acquéreurs.',
     headline: 'Un service premium qui vous différencie de la concurrence.',
-    description: 'Intégrez Verimo à votre process de vente. Vos acquéreurs reçoivent une analyse claire des documents avant même la visite. Résultat : décisions plus rapides, moins de rétractations, et des clients qui vous recommandent.',
+    description: 'Intégrez Verimo à votre process de vente. Lorsqu\'un acquéreur montre un intérêt sérieux, envoyez-lui un rapport clair sur l\'état de la copropriété pour le rassurer et accélérer sa prise de décision. Résultat : moins de rétractations, des signatures plus rapides, et des clients qui vous recommandent.',
     benefits: [
       { icon: Handshake, title: 'Prise de mandat', text: 'Un argument différenciant face à vos concurrents lors de la prise de mandat.' },
       { icon: Zap, title: 'Signatures accélérées', text: 'Vos acquéreurs comprennent le bien dès le départ. Moins de doutes, moins de rétractations.' },
       { icon: Star, title: 'Bouche-à-oreille', text: 'Un service premium que vos clients recommandent autour d\'eux.' },
       { icon: BarChart3, title: 'Rapport co-brandable', text: 'Partagez le rapport Verimo avec votre identité visuelle.' },
     ],
-    stats: [{ value: '-40%', label: 'rétractations' }, { value: '30s', label: 'par analyse' }, { value: '100%', label: 'objectif' }],
+    stats: [{ value: '-40%', label: 'rétractations' }, { value: '30s*', label: 'par analyse' }, { value: '100%', label: 'objectif' }],
     color: '#2a7d9c', lightBg: '#f0f7fb',
   },
   {
@@ -72,7 +72,7 @@ const profiles = [
     benefits: [
       { icon: Target, title: 'Comparaison objective', text: 'Score /20 par bien pour identifier les meilleures opportunités en un coup d\'œil.' },
       { icon: PieChart, title: 'Impact chiffré', text: 'Charges, fonds travaux, impayés — tout est chiffré pour calculer votre vraie rentabilité.' },
-      { icon: Clock, title: 'Gain de temps', text: '30 secondes au lieu de 2 heures par dossier. Multipliez vos acquisitions.' },
+      { icon: Clock, title: 'Gain de temps', text: '30 secondes* au lieu de 2 heures par dossier. Multipliez vos acquisitions.' },
       { icon: Eye, title: 'Risques détectés', text: 'Procédures judiciaires, travaux lourds, DPE F/G — repérez ce que le vendeur ne dit pas.' },
     ],
     stats: [{ value: '10x', label: 'plus rapide' }, { value: '/20', label: 'score objectif' }, { value: '∞', label: 'sans expiration' }],
@@ -82,14 +82,14 @@ const profiles = [
     id: 'marchand', icon: Key, emoji: '🔑', label: 'Marchand de bien',
     tagline: 'Achetez, transformez, revendez — sans surprises.',
     headline: 'Chaque lot caché, chaque risque non détecté, c\'est de la marge perdue.',
-    description: 'Division, rénovation, revente en bloc — votre rentabilité dépend de la précision de votre analyse documentaire. Verimo extrait en 30 secondes les travaux votés, les restrictions du règlement de copropriété, les procédures en cours et les charges réelles.',
+    description: 'Division, rénovation, revente en bloc — votre rentabilité dépend de la précision de votre analyse documentaire. Verimo extrait en 30 secondes* les travaux votés, les restrictions du règlement de copropriété, les procédures en cours et les charges réelles.',
     benefits: [
       { icon: Target, title: 'Due diligence express', text: 'Travaux votés, impayés, procédures, DPE — tout ce qui impacte votre prix de revient en un rapport.' },
       { icon: PieChart, title: 'Marge chiffrée', text: 'Charges réelles, fonds travaux, appels de fonds exceptionnels — calculez votre rentabilité nette.' },
       { icon: Eye, title: 'Restrictions détectées', text: 'Interdiction de division, usage commercial limité, servitudes — repéré avant la signature.' },
-      { icon: Zap, title: 'Volume & rapidité', text: 'Analysez 10 dossiers par jour. 30 secondes par bien, zéro page lue.' },
+      { icon: Zap, title: 'Volume & rapidité', text: 'Analysez 10 dossiers par jour. 30 secondes* par bien, zéro page lue.' },
     ],
-    stats: [{ value: '30s', label: 'par dossier' }, { value: '/20', label: 'score objectif' }, { value: '10+', label: 'biens / jour' }],
+    stats: [{ value: '30s*', label: 'par dossier' }, { value: '/20', label: 'score objectif' }, { value: '10+', label: 'biens / jour' }],
     color: '#d97706', lightBg: '#fffbeb',
   },
   {
@@ -195,7 +195,7 @@ function HeroSection({ setActiveProfileIdx }: { setActiveProfileIdx: (i: number)
 
         <motion.p variants={up} initial="hidden" animate="show" custom={2}
           className="text-base md:text-xl text-white/55 leading-relaxed max-w-5xl mx-auto mb-10">
-          Agents immobiliers, investisseurs, marchands de bien, notaires — intégrez un outil d'analyse documentaire intelligent à votre activité. Score /20, risques chiffrés, rapport en 30 secondes.
+          Agents immobiliers, investisseurs, marchands de bien, notaires — intégrez un outil d'analyse documentaire intelligent à votre activité. Score /20, risques chiffrés, rapport en 30 secondes*.
         </motion.p>
 
         {/* 3 profils en cartes */}
@@ -244,7 +244,7 @@ function HeroSection({ setActiveProfileIdx }: { setActiveProfileIdx: (i: number)
 /* ═══ RUBAN DE STATS ═════════════════════════════════════════ */
 function StatsRibbon() {
   const stats = [
-    { value: '30s', label: 'Analyse complète', icon: Zap },
+    { value: '30s*', label: 'Analyse complète', icon: Zap },
     { value: '/20', label: 'Score objectif par bien', icon: BarChart3 },
     { value: '0', label: 'Documents conservés', icon: Lock },
     { value: '100%', label: 'Conforme RGPD', icon: ShieldCheck },
@@ -366,7 +366,7 @@ function HowItWorksProSection() {
   const steps = [
     { n: '01', title: 'Contactez-nous', desc: 'Remplissez le formulaire. Un conseiller vous recontacte sous 24h pour comprendre votre activité et vos besoins.', icon: Users, color: '#2a7d9c' },
     { n: '02', title: 'Offre sur mesure', desc: 'Nous configurons votre espace avec un volume de crédits adapté et des options spécifiques à votre métier.', icon: Target, color: '#1a5e78' },
-    { n: '03', title: 'Analysez & partagez', desc: 'Déposez vos documents, recevez vos rapports en 30 secondes. Partagez-les avec vos clients en un clic.', icon: Zap, color: '#0f2d3d' },
+    { n: '03', title: 'Analysez & partagez', desc: 'Déposez vos documents, recevez vos rapports en 30 secondes*. Partagez-les avec vos clients en un clic.', icon: Zap, color: '#0f2d3d' },
   ];
   return (
     <section className="py-20 md:py-28 px-4 md:px-6" style={{ background: '#f8fafc' }}>
@@ -585,6 +585,9 @@ function CtaFinalSection() {
               <div key={label} className="flex items-center gap-2 text-sm text-white/30 font-medium"><I size={14} /> {label}</div>
             ))}
           </div>
+        </Reveal>
+        <Reveal delay={5}>
+          <p className="text-xs text-white/20 mt-12">* 30 secondes en moyenne pour les PDF nativement numériques. Les documents scannés peuvent nécessiter un délai supplémentaire.</p>
         </Reveal>
       </div>
     </section>
