@@ -248,7 +248,7 @@ function HeroSection() {
           </motion.div>
           <motion.p variants={up} initial="hidden" animate="show" custom={2.5}
             className="text-xs text-slate-400 mt-4 text-center max-w-[340px] italic leading-relaxed">
-            * Pour les documents nativement numériques (PDF texte).
+            * Analyse simple : ~30s (1 document PDF natif). Analyse complète : quelques minutes selon le nombre de documents.
           </motion.p>
         </div>
 
@@ -296,7 +296,7 @@ function HeroSection() {
 
             <motion.p variants={up} initial="hidden" animate="show" custom={3}
               className="text-xs text-slate-400 mb-7 max-w-[420px] italic leading-relaxed">
-              * Pour les documents nativement numériques (PDF texte). Les documents scannés peuvent nécessiter un délai supplémentaire.
+              * Analyse simple : résultat en ~30 secondes (1 document PDF natif). Analyse complète : généralement prête en quelques minutes selon le nombre de documents.
             </motion.p>
 
             <motion.div variants={up} initial="hidden" animate="show" custom={4}
@@ -1410,7 +1410,7 @@ function ApercuRapportSection() {
     <section className="py-12 md:py-20 px-4 md:px-6 bg-[#f4f7f9]">
       <div className="max-w-5xl mx-auto">
         <SectionTitle label="Exemple de rapport" title="Ce que vous" accent="recevez."
-          sub="Voici ce que Verimo vous fournit en moins de 30 secondes*." />
+          sub="Voici ce que Verimo vous fournit en quelques minutes*." />
 
         <Reveal>
           <div className="bg-white rounded-2xl md:rounded-3xl shadow-xl border border-slate-100 overflow-hidden" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
@@ -1723,7 +1723,7 @@ function FaqSection() {
     {
       q: "Ça fonctionne avec tous les types de documents ?",
       emoji: "📄",
-      a: "Verimo traite les PDF nativement numériques (fichiers texte exportés depuis Word, Adobe, etc.) en moins de 30 secondes*. Les documents scannés ou photographiés peuvent nécessiter un délai supplémentaire selon la qualité. Les formats Word, JPEG ou PNG ne sont pas pris en charge — convertissez-les d'abord en PDF.",
+      a: "L'analyse simple (1 document) est prête en environ 30 secondes pour un PDF natif. L'analyse complète (plusieurs documents) prend généralement entre 1 et 5 minutes selon le nombre et la taille des fichiers. Les documents scannés peuvent nécessiter un délai supplémentaire. Les formats Word, JPEG ou PNG ne sont pas pris en charge — convertissez-les d'abord en PDF.",
     },
     {
       q: "Et si je n'ai qu'un seul document ?",
