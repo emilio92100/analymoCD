@@ -72,7 +72,7 @@ const profiles = [
     benefits: [
       { icon: Target, title: 'Comparaison objective', text: 'Score /20 par bien pour identifier les meilleures opportunités en un coup d\'œil.' },
       { icon: PieChart, title: 'Impact chiffré', text: 'Charges, fonds travaux, impayés — tout est chiffré pour calculer votre vraie rentabilité.' },
-      { icon: Clock, title: 'Gain de temps', text: '30 secondes* au lieu de 2 heures par dossier. Multipliez vos acquisitions.' },
+      { icon: Clock, title: 'Gain de temps', text: 'Quelques minutes* au lieu de 2 heures par dossier. Multipliez vos acquisitions.' },
       { icon: Eye, title: 'Risques détectés', text: 'Procédures judiciaires, travaux lourds, DPE F/G — repérez ce que le vendeur ne dit pas.' },
     ],
     stats: [{ value: '10x', label: 'plus rapide' }, { value: '/20', label: 'score objectif' }, { value: '∞', label: 'sans expiration' }],
@@ -82,14 +82,14 @@ const profiles = [
     id: 'marchand', icon: Key, emoji: '🔑', label: 'Marchand de bien',
     tagline: 'Achetez, transformez, revendez — sans surprises.',
     headline: 'Chaque lot caché, chaque risque non détecté, c\'est de la marge perdue.',
-    description: 'Division, rénovation, revente en bloc — votre rentabilité dépend de la précision de votre analyse documentaire. Verimo extrait en 30 secondes* les travaux votés, les restrictions du règlement de copropriété, les procédures en cours et les charges réelles.',
+    description: 'Division, rénovation, revente en bloc — votre rentabilité dépend de la précision de votre analyse documentaire. Verimo extrait en quelques minutes* les travaux votés, les restrictions du règlement de copropriété, les procédures en cours et les charges réelles.',
     benefits: [
       { icon: Target, title: 'Due diligence express', text: 'Travaux votés, impayés, procédures, DPE — tout ce qui impacte votre prix de revient en un rapport.' },
       { icon: PieChart, title: 'Marge chiffrée', text: 'Charges réelles, fonds travaux, appels de fonds exceptionnels — calculez votre rentabilité nette.' },
       { icon: Eye, title: 'Restrictions détectées', text: 'Interdiction de division, usage commercial limité, servitudes — repéré avant la signature.' },
       { icon: Zap, title: 'Passez à l\'échelle', text: 'Screenez des dizaines de biens par semaine. Verimo fait la lecture pour vous, vous ne gardez que les bonnes affaires.' },
     ],
-    stats: [{ value: '30s*', label: 'par dossier' }, { value: '/20', label: 'score objectif' }, { value: '10+', label: 'biens / jour' }],
+    stats: [{ value: '~3min*', label: 'par dossier' }, { value: '/20', label: 'score objectif' }, { value: '10+', label: 'biens / jour' }],
     color: '#d97706', lightBg: '#fffbeb',
   },
   {
@@ -114,7 +114,7 @@ const faqPro = [
   { icon: BarChart3, q: 'Existe-t-il des tarifs volume pour les professionnels ?', a: 'Oui, nous proposons des offres adaptées au volume et aux besoins spécifiques de chaque professionnel. Contactez-nous via le formulaire pour recevoir une proposition personnalisée.' },
   { icon: Eye, q: 'Puis-je partager les rapports avec mes clients ?', a: 'Oui. Chaque rapport peut être partagé via un lien sécurisé ou exporté en PDF. Pour les agents immobiliers, nous travaillons sur une option co-branding avec votre identité visuelle.' },
   { icon: FileText, q: 'Quels types de documents peut-on analyser ?', a: 'PV d\'assemblée générale, règlements de copropriété, diagnostics techniques (DPE, amiante, électricité, gaz…), appels de charges, compromis de vente, états datés, DTG, carnets d\'entretien, et bien d\'autres.' },
-  { icon: Zap, q: 'Combien de temps prend une analyse ?', a: 'En moyenne 30 secondes pour les documents nativement numériques (PDF texte). Les documents scannés peuvent nécessiter un délai supplémentaire de quelques minutes pour la reconnaissance optique.' },
+  { icon: Zap, q: 'Combien de temps prend une analyse ?', a: 'L\'analyse simple (1 document) est prête en environ 30 secondes pour un PDF natif. L\'analyse complète (plusieurs documents) prend généralement entre 1 et 5 minutes selon le nombre et la taille des fichiers. Les documents scannés peuvent nécessiter un délai supplémentaire.' },
   { icon: ShieldCheck, q: 'Verimo est-il conforme au RGPD ?', a: 'Oui. Hébergement européen, chiffrement AES-256 au repos, TLS en transit, suppression automatique après traitement, politique de confidentialité transparente et droit à l\'effacement garanti.' },
   { icon: Clock, q: 'Combien de temps pour mettre en place l\'offre pro ?', a: '48 heures maximum. Après votre premier échange avec notre équipe, nous configurons votre espace et vous pouvez commencer à analyser immédiatement. Aucune intégration technique nécessaire.' },
 ];
@@ -244,7 +244,7 @@ function HeroSection({ setActiveProfileIdx }: { setActiveProfileIdx: (i: number)
 /* ═══ RUBAN DE STATS ═════════════════════════════════════════ */
 function StatsRibbon() {
   const stats = [
-    { value: '30s*', label: 'Analyse complète', icon: Zap },
+    { value: '30s*', label: 'par document', icon: Zap },
     { value: '/20', label: 'Score objectif par bien', icon: BarChart3 },
     { value: '0', label: 'Documents conservés', icon: Lock },
     { value: '100%', label: 'Conforme RGPD', icon: ShieldCheck },
@@ -366,7 +366,7 @@ function HowItWorksProSection() {
   const steps = [
     { n: '01', title: 'Contactez-nous', desc: 'Remplissez le formulaire. Un conseiller vous recontacte sous 24h pour comprendre votre activité et vos besoins.', icon: Users, color: '#2a7d9c' },
     { n: '02', title: 'Offre sur mesure', desc: 'Nous configurons votre espace avec un volume de crédits adapté et des options spécifiques à votre métier.', icon: Target, color: '#1a5e78' },
-    { n: '03', title: 'Analysez & partagez', desc: 'Déposez vos documents, recevez vos rapports en 30 secondes*. Partagez-les avec vos clients en un clic.', icon: Zap, color: '#0f2d3d' },
+    { n: '03', title: 'Analysez & partagez', desc: 'Déposez vos documents, recevez vos rapports en quelques minutes*. Partagez-les avec vos clients en un clic.', icon: Zap, color: '#0f2d3d' },
   ];
   return (
     <section className="py-20 md:py-28 px-4 md:px-6" style={{ background: '#f8fafc' }}>
@@ -587,7 +587,7 @@ function CtaFinalSection() {
           </div>
         </Reveal>
         <Reveal delay={5}>
-          <p className="text-sm text-white/50 mt-10">* 30 secondes en moyenne pour les PDF nativement numériques. Les documents scannés peuvent nécessiter un délai supplémentaire.</p>
+          <p className="text-sm text-white/50 mt-10">* Analyse simple : résultat en ~30 secondes (1 document PDF natif). Analyse complète : généralement prête en quelques minutes selon le nombre de documents.</p>
         </Reveal>
       </div>
     </section>
