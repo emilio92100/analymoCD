@@ -122,6 +122,8 @@ const faqPro = [
 
 /* ═══ PAGE ═══════════════════════════════════════════════════ */
 export default function ProPage() {
+  const [activeProfileIdx, setActiveProfileIdx] = useState(0);
+
   useSEO({
     title: 'Verimo Pro — Outil d’analyse pour professionnels de l’immobilier',
     description: "Verimo Pro pour agents, investisseurs, marchands de biens et notaires : analyse de documents en volume, tableaux de bord, gains de temps et sécurisation des dossiers.",
@@ -130,9 +132,9 @@ export default function ProPage() {
 
   return (
     <div className="bg-white text-[#0f172a] antialiased overflow-x-hidden" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      <HeroSection />
+      <HeroSection setActiveProfileIdx={setActiveProfileIdx} />
       <StatsRibbon />
-      <ProfilesSection />
+      <ProfilesSection activeIdx={activeProfileIdx} setActiveIdx={setActiveProfileIdx} />
       <HowItWorksProSection />
       <TestimonialsSection />
       <SecuritySection />
@@ -144,7 +146,7 @@ export default function ProPage() {
 
 
 /* ═══ HERO ═══════════════════════════════════════════════════ */
-function HeroSection() {
+function HeroSection({ setActiveProfileIdx }: { setActiveProfileIdx: (i: number) => void }) {
   /* Forcer la navbar en blanc opaque sur cette page (fond sombre) */
   useEffect(() => {
     const nav = document.querySelector('header nav') as HTMLElement | null;
@@ -205,12 +207,13 @@ function HeroSection() {
             { emoji: '🔑', label: 'Marchands de bien', desc: 'Sécurisez vos opérations' },
             { emoji: '⚖️', label: 'Notaires', desc: 'Accélérez vos dossiers' },
           ].map((p, i) => (
-            <div key={i} className="rounded-2xl px-5 py-4 text-center"
-              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <button key={i} className="rounded-2xl px-5 py-4 text-center cursor-pointer transition-all duration-200 hover:scale-[1.03]"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+              onClick={() => { setActiveProfileIdx(i); setTimeout(() => { document.getElementById('profils')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50); }}>
               <span className="text-2xl block mb-2">{p.emoji}</span>
               <div className="text-sm font-bold text-white mb-1">{p.label}</div>
               <div className="text-xs text-white/40">{p.desc}</div>
-            </div>
+            </button>
           ))}
         </motion.div>
 
@@ -267,8 +270,7 @@ function StatsRibbon() {
 
 
 /* ═══ PROFILS ════════════════════════════════════════════════ */
-function ProfilesSection() {
-  const [activeIdx, setActiveIdx] = useState(0);
+function ProfilesSection({ activeIdx, setActiveIdx }: { activeIdx: number; setActiveIdx: (i: number) => void }) {
   const active = profiles[activeIdx];
 
   return (
