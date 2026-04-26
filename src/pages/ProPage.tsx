@@ -587,7 +587,7 @@ function CtaFinalSection() {
           </div>
         </Reveal>
         <Reveal delay={5}>
-          <p className="text-xs text-white/20 mt-12">* 30 secondes en moyenne pour les PDF nativement numériques. Les documents scannés peuvent nécessiter un délai supplémentaire.</p>
+          <p className="text-sm text-white/50 mt-10">* 30 secondes en moyenne pour les PDF nativement numériques. Les documents scannés peuvent nécessiter un délai supplémentaire.</p>
         </Reveal>
       </div>
     </section>
