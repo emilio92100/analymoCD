@@ -14,7 +14,7 @@ const etapes = [
   { num: '1', title: 'Rassemblez vos documents', desc: "Rassemblez les documents disponibles sur votre bien : diagnostics, DPE, compromis, et selon votre cas — PV d'AG et règlement de copropriété pour un bien en copro, documents d'urbanisme et justificatifs de travaux pour une maison individuelle." },
   { num: '2', title: 'Choisissez votre analyse', desc: "Analyse Simple (4,90€) pour un seul document, ou Analyse Complète (19,90€) pour un rapport global avec note /20." },
   { num: '3', title: 'Uploadez en quelques secondes', desc: "Glissez-déposez vos fichiers PDF, Word ou images directement dans l'espace prévu." },
-  { num: '4', title: 'Rapport prêt en 30 secondes*', desc: "Note /20, risques détectés, travaux à prévoir et recommandation personnalisée. Téléchargeable en PDF à tout moment." },
+  { num: '4', title: 'Rapport prêt en quelques minutes*', desc: "Note /20, risques détectés, travaux à prévoir et recommandation personnalisée. Téléchargeable en PDF à tout moment." },
 ];
 
 const penalties = [
