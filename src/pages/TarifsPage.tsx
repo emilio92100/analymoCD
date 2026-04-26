@@ -561,7 +561,7 @@ export default function TarifsPage() {
 
       <section style={{ padding: '0 20px 24px', textAlign: 'center' as const }}>
         <p style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic' }}>
-          * Pour les documents PDF nativement numériques. Les documents scannés peuvent nécessiter un délai supplémentaire.
+          * Analyse simple : résultat en ~30 secondes (1 document PDF natif). Analyse complète : généralement prête en quelques minutes selon le nombre de documents.
         </p>
       </section>
 
