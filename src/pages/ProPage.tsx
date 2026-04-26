@@ -195,7 +195,7 @@ function HeroSection({ setActiveProfileIdx }: { setActiveProfileIdx: (i: number)
 
         <motion.p variants={up} initial="hidden" animate="show" custom={2}
           className="text-base md:text-xl text-white/55 leading-relaxed max-w-5xl mx-auto mb-10">
-          Agents immobiliers, investisseurs, marchands de bien, notaires — intégrez un outil d'analyse documentaire intelligent à votre activité. Score /20, risques chiffrés, rapport en 30 secondes*.
+          Agents immobiliers, investisseurs, marchands de bien, notaires — intégrez un outil d'analyse documentaire intelligent à votre activité. Score /20, risques chiffrés, rapport en quelques minutes*.
         </motion.p>
 
         {/* 3 profils en cartes */}
@@ -579,13 +579,7 @@ function CtaFinalSection() {
             </Link>
           </div>
         </Reveal>
-        <Reveal delay={4}>
-          <div className="flex flex-wrap justify-center gap-6">
-            {[{ icon: ShieldCheck, label: 'Données chiffrées' }, { icon: Lock, label: 'Conforme RGPD' }, { icon: Clock, label: 'Réponse sous 24h' }].map(({ icon: I, label }) => (
-              <div key={label} className="flex items-center gap-2 text-sm text-white/30 font-medium"><I size={14} /> {label}</div>
-            ))}
-          </div>
-        </Reveal>
+
         <Reveal delay={5}>
           <p className="text-sm text-white/50 mt-10">* Analyse simple : résultat en ~30 secondes (1 document PDF natif). Analyse complète : généralement prête en quelques minutes selon le nombre de documents.</p>
         </Reveal>
