@@ -145,7 +145,7 @@ export default function HomeView() {
           <div style={{ background: '#fff', borderRadius: 18, border: '2px dashed #e2e8f0', padding: '48px 32px', textAlign: 'center' }}>
             <div style={{ width: 64, height: 64, borderRadius: 18, background: 'rgba(42,125,156,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}><Sparkles size={28} style={{ color: '#2a7d9c' }} /></div>
             <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Aucune analyse pour le moment</h3>
-            <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 24, lineHeight: 1.6 }}>Déposez vos documents immobiliers et obtenez un rapport complet en moins de 30 secondes*.</p>
+            <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 24, lineHeight: 1.6 }}>Déposez vos documents immobiliers et obtenez un rapport complet en quelques minutes*.</p>
             <Link to="/dashboard/nouvelle-analyse" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 24px', borderRadius: 12, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 16px rgba(15,45,61,0.2)' }}>
               <Plus size={15} /> Lancer ma première analyse
             </Link>
