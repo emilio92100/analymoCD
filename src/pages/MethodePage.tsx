@@ -418,7 +418,7 @@ export default function MethodePage() {
           </nav>
           <div style={{ marginTop: 28, padding: '18px', borderRadius: 14, background: '#f8fafc', border: '1px solid #edf2f7' }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: '#0f2d3d', marginBottom: 6 }}>Analyser un bien</div>
-            <div style={{ fontSize: 14, color: '#94a3b8', marginBottom: 14, lineHeight: 1.5 }}>Score /20 en moins de 30 secondes*</div>
+            <div style={{ fontSize: 14, color: '#94a3b8', marginBottom: 14, lineHeight: 1.5 }}>Score /20 en quelques minutes*</div>
             <Link to="/start" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', borderRadius: 10, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
               Commencer <ArrowRight size={13} />
             </Link>
@@ -792,7 +792,7 @@ export default function MethodePage() {
             <div style={{ borderRadius: 18, background: 'linear-gradient(135deg,#f0f7fb,#e8f4fa)', border: '1.5px solid #bae3f5', padding: '32px 36px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' as const }}>
               <div>
                 <div style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em', marginBottom: 5 }}>Prêt à analyser votre bien ?</div>
-                <div style={{ fontSize: 15, color: '#64748b' }}>Score /20 + rapport complet en moins de 30 secondes*.</div>
+                <div style={{ fontSize: 15, color: '#64748b' }}>Score /20 + rapport complet en quelques minutes*.</div>
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <Link to="/start" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '11px 22px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 14px rgba(42,125,156,0.25)' }}>
