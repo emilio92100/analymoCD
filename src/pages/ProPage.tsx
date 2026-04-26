@@ -95,7 +95,7 @@ const profiles = [
   {
     id: 'notaire', icon: Scale, emoji: '⚖️', label: 'Notaire',
     tagline: 'Sécurisez vos transactions. Gagnez du temps.',
-    headline: '100 pages de PV à éplucher ? Verimo vous fait gagner des heures.',
+    headline: 'Des dizaines de documents par dossier. Verimo les synthétise pour vous.',
     description: 'Avant chaque signature, vous devez éplucher des dizaines de documents. Verimo les analyse et vous livre une synthèse claire : travaux votés, procédures en cours, charges, diagnostics — les points critiques ressortent immédiatement. Vous préparez vos dossiers plus vite et vous ne passez à côté de rien.',
     benefits: [
       { icon: FileText, title: 'Lecture accélérée', text: 'PV d\'AG, diagnostics, états datés — les points critiques sont extraits et hiérarchisés. Fini les heures de lecture.' },
