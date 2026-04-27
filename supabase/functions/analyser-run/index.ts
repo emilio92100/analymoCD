@@ -221,13 +221,151 @@ function recalculerCategories(rapport: RapportShape, profil: string): RapportSha
 
 async function deleteFromFilesAPI(fileId: string, apiKey: string): Promise<void> {
   try {
-    await fetch(`${ANTHROPIC_FILES_URL}/${fileId}`, {
+    const res = await fetch(`${ANTHROPIC_FILES_URL}/${fileId}`, {
       method: 'DELETE',
       headers: { 'x-api-key': apiKey, 'anthropic-version': AI_VERSION, 'anthropic-beta': FILES_BETA },
     });
-    console.log(`[analyser-run] Supprime: ${fileId}`);
-  } catch { console.warn(`[analyser-run] Echec suppression ${fileId}`); }
+    if (res.ok) {
+      console.log(`[analyser-run] Supprimé: ${fileId}`);
+    } else {
+      console.error(`[analyser-run] ⚠️ Echec suppression ${fileId} — HTTP ${res.status}`);
+    }
+  } catch (err) {
+    console.error(`[analyser-run] ⚠️ Erreur réseau suppression ${fileId}:`, err);
+  }
 }
+
+// ══════════════════════════════════════════════════════════════════════
+// REMBOURSEMENT AUTOMATIQUE DU CRÉDIT EN CAS D'ÉCHEC
+// ══════════════════════════════════════════════════════════════════════
+async function refundCredit(analyseId: string, supabaseAdmin: SupabaseClient): Promise<boolean> {
+  try {
+    // Récupérer l'analyse pour connaître le user_id et le type
+    const { data: analyse } = await supabaseAdmin
+      .from('analyses')
+      .select('user_id, type')
+      .eq('id', analyseId)
+      .single();
+    
+    if (!analyse?.user_id || !analyse?.type) {
+      console.warn('[analyser-run] Remboursement impossible — user_id ou type manquant');
+      return false;
+    }
+
+    // Ne pas rembourser les aperçus (gratuits)
+    const creditType = analyse.type;
+    if (creditType !== 'document' && creditType !== 'complete') {
+      console.log(`[analyser-run] Pas de remboursement pour type=${creditType}`);
+      return false;
+    }
+
+    const col = creditType === 'document' ? 'credits_document' : 'credits_complete';
+    
+    // Récupérer le solde actuel
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select(col)
+      .eq('id', analyse.user_id)
+      .single();
+    
+    if (!profile) {
+      console.error('[analyser-run] Profil introuvable pour remboursement');
+      return false;
+    }
+
+    const current = (profile as Record<string, number>)[col] || 0;
+    
+    // Recréditer
+    const { error } = await supabaseAdmin
+      .from('profiles')
+      .update({ [col]: current + 1 })
+      .eq('id', analyse.user_id);
+    
+    if (error) {
+      console.error('[analyser-run] Erreur remboursement:', error.message);
+      return false;
+    }
+
+    console.log(`[analyser-run] ✅ Crédit ${creditType} remboursé pour user ${analyse.user_id} (analyse ${analyseId})`);
+    return true;
+  } catch (err) {
+    console.error('[analyser-run] Erreur remboursement:', err);
+    return false;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// INSERTION D'UNE ALERTE SYSTÈME POUR L'ADMIN
+// ══════════════════════════════════════════════════════════════════════
+async function insertSystemAlert(
+  supabaseAdmin: SupabaseClient,
+  params: {
+    type: string;
+    severity: 'info' | 'warning' | 'critical';
+    title: string;
+    message: string;
+    analyseId?: string;
+    userId?: string;
+    metadata?: Record<string, unknown>;
+  }
+): Promise<void> {
+  try {
+    await supabaseAdmin.from('system_alerts').insert({
+      type: params.type,
+      severity: params.severity,
+      title: params.title,
+      message: params.message,
+      analyse_id: params.analyseId || null,
+      user_id: params.userId || null,
+      metadata: params.metadata || {},
+    });
+    console.log(`[analyser-run] 🔔 Alerte système: ${params.type} — ${params.title}`);
+  } catch (err) {
+    console.error('[analyser-run] Erreur insertion alerte:', err);
+  }
+}
+
+// Helper pour gérer un échec : remboursement + alerte + update status
+async function handleAnalyseFailure(
+  supabaseAdmin: SupabaseClient,
+  analyseId: string,
+  errorType: string,
+  userMessage: string,
+  alertTitle: string,
+  alertSeverity: 'info' | 'warning' | 'critical' = 'warning',
+): Promise<void> {
+  // 1. Rembourser le crédit
+  const refunded = await refundCredit(analyseId, supabaseAdmin);
+  
+  // 2. Récupérer le user_id pour l'alerte
+  const { data: analyse } = await supabaseAdmin
+    .from('analyses')
+    .select('user_id, type')
+    .eq('id', analyseId)
+    .single();
+
+  // 3. Insérer l'alerte système
+  await insertSystemAlert(supabaseAdmin, {
+    type: errorType,
+    severity: alertSeverity,
+    title: alertTitle,
+    message: userMessage,
+    analyseId,
+    userId: analyse?.user_id || undefined,
+    metadata: { refunded, analyseType: analyse?.type || 'unknown' },
+  });
+
+  // 4. Mettre à jour le status de l'analyse
+  const finalMsg = refunded 
+    ? userMessage 
+    : userMessage.replace('Votre crédit a été remboursé automatiquement.', 'Contactez le support pour le remboursement de votre crédit.');
+  
+  await supabaseAdmin.from('analyses').update({ 
+    status: 'failed', 
+    progress_message: finalMsg 
+  }).eq('id', analyseId);
+}
+
 
 async function callAI(params: {
   system: string; userContent: unknown[]; maxTokens: number; apiKey: string;
@@ -247,6 +385,7 @@ async function callAI(params: {
       });
       if (res.status === 429) { if (attempt < 3) { await sleep(Math.pow(2, attempt) * 5000); continue; } return { text: '', error: 'rate_limit' }; }
       if (res.status === 529 || res.status === 503) { if (attempt < 3) { await sleep(15000); continue; } return { text: '', error: 'overload' }; }
+      if (res.status === 401 || res.status === 403) { const e = await res.text(); console.error(`[analyser-run] ⚠️ CRITIQUE — Anthropic ${res.status} (billing/auth):`, e); return { text: '', error: 'api_billing' }; }
       if (!res.ok) { const e = await res.text(); console.error(`[analyser-run] Anthropic ${res.status}:`, e); return { text: '', error: `api_error_${res.status}` }; }
       const d = await res.json();
       const text = d.content?.find((b: { type: string }) => b.type === 'text')?.text ?? '';
@@ -1004,12 +1143,17 @@ async function runAnalyseWithData(
     await Promise.all(fileIds.map(id => deleteFromFilesAPI(id, apiKey)));
 
     if (result.error || !report) {
-      const msg = result.error === 'rate_limit' ? 'Notre outil est momentanément surchargé. Votre crédit a été remboursé. Réessayez dans 2 à 3 minutes.'
-        : result.error === 'overload' ? 'Notre outil est temporairement indisponible. Votre crédit a été remboursé. Réessayez dans quelques minutes.'
-        : (result.error && result.error.startsWith('api_error_5')) ? 'Notre outil rencontre une perturbation temporaire. Votre crédit a été remboursé. Réessayez dans quelques minutes.'
-        : !report ? 'Une erreur est survenue lors de la génération. Votre crédit a été remboursé. Réessayez ou contactez le support.'
-        : 'Erreur inattendue. Votre crédit a été remboursé. Contactez le support.';
-      await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: msg }).eq('id', analyseId);
+      if (result.error === 'api_billing') {
+        await handleAnalyseFailure(supabaseAdmin, analyseId, 'api_billing', 'Notre service rencontre un problème technique. Notre équipe est informée. Votre crédit a été remboursé automatiquement.', 'Solde API épuisé — analyses bloquées', 'critical');
+      } else if (result.error === 'rate_limit') {
+        await handleAnalyseFailure(supabaseAdmin, analyseId, 'rate_limit', 'Notre outil est momentanément surchargé. Votre crédit a été remboursé automatiquement. Réessayez dans 2 à 3 minutes.', 'Rate limit atteint');
+      } else if (result.error === 'overload') {
+        await handleAnalyseFailure(supabaseAdmin, analyseId, 'overload', 'Notre outil est temporairement indisponible. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Serveur surchargé');
+      } else if (result.error && result.error.startsWith('api_error_5')) {
+        await handleAnalyseFailure(supabaseAdmin, analyseId, 'api_error', 'Notre outil rencontre une perturbation temporaire. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Erreur serveur API');
+      } else {
+        await handleAnalyseFailure(supabaseAdmin, analyseId, 'analysis_failed', 'Une erreur est survenue lors de la génération. Votre crédit a été remboursé automatiquement. Réessayez ou contactez le support.', 'Échec génération rapport');
+      }
       return;
     }
 
@@ -1069,14 +1213,14 @@ async function runAnalyseWithData(
     const { error: updateError } = await supabaseAdmin.from('analyses').update(updateData).eq('id', analyseId);
     if (updateError) {
       console.error('[analyser-run] ERREUR UPDATE:', updateError.message);
-      await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: 'Erreur sauvegarde. Contactez le support.' }).eq('id', analyseId);
+      await handleAnalyseFailure(supabaseAdmin, analyseId, 'save_error', 'Erreur lors de la sauvegarde du rapport. Votre crédit a été remboursé automatiquement. Contactez le support.', 'Erreur sauvegarde rapport');
     } else {
       console.log(`[analyser-run] ${analyseId} termin\u00e9e avec succ\u00e8s (mode: ${mode}).`);
     }
   } catch (err) {
     console.error('[analyser-run] Erreur:', err);
     if (fileIds.length > 0) await Promise.all(fileIds.map(id => deleteFromFilesAPI(id, apiKey)));
-    await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: 'Erreur inattendue. Contactez le support.' }).eq('id', analyseId);
+    await handleAnalyseFailure(supabaseAdmin, analyseId, 'unexpected_error', 'Erreur inattendue. Votre crédit a été remboursé automatiquement. Contactez le support.', 'Erreur inattendue analyse');
   }
 }
 
@@ -1097,7 +1241,7 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
     const typeBienDeclare = (analyse.type_bien_declare as string) || null;
 
     if (files.length === 0) {
-      await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: 'Aucun fichier trouv\u00e9.' }).eq('id', analyseId);
+      await handleAnalyseFailure(supabaseAdmin, analyseId, 'no_files', 'Aucun fichier trouvé. Votre crédit a été remboursé automatiquement. Réessayez.', 'Aucun fichier trouvé');
       return;
     }
 
@@ -1153,12 +1297,17 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
     await Promise.all(fileIds.map(id => deleteFromFilesAPI(id, apiKey)));
 
     if (result.error || !report) {
-      const msg = result.error === 'rate_limit' ? 'Notre outil est momentanément surchargé. Votre crédit a été remboursé. Réessayez dans 2 à 3 minutes.'
-        : result.error === 'overload' ? 'Notre outil est temporairement indisponible. Votre crédit a été remboursé. Réessayez dans quelques minutes.'
-        : (result.error && result.error.startsWith('api_error_5')) ? 'Notre outil rencontre une perturbation temporaire. Votre crédit a été remboursé. Réessayez dans quelques minutes.'
-        : !report ? 'Une erreur est survenue lors de la génération. Votre crédit a été remboursé. Réessayez ou contactez le support.'
-        : 'Erreur inattendue. Votre crédit a été remboursé. Contactez le support.';
-      await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: msg }).eq('id', analyseId);
+      if (result.error === 'api_billing') {
+        await handleAnalyseFailure(supabaseAdmin, analyseId, 'api_billing', 'Notre service rencontre un problème technique. Notre équipe est informée. Votre crédit a été remboursé automatiquement.', 'Solde API épuisé — analyses bloquées', 'critical');
+      } else if (result.error === 'rate_limit') {
+        await handleAnalyseFailure(supabaseAdmin, analyseId, 'rate_limit', 'Notre outil est momentanément surchargé. Votre crédit a été remboursé automatiquement. Réessayez dans 2 à 3 minutes.', 'Rate limit atteint');
+      } else if (result.error === 'overload') {
+        await handleAnalyseFailure(supabaseAdmin, analyseId, 'overload', 'Notre outil est temporairement indisponible. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Serveur surchargé');
+      } else if (result.error && result.error.startsWith('api_error_5')) {
+        await handleAnalyseFailure(supabaseAdmin, analyseId, 'api_error', 'Notre outil rencontre une perturbation temporaire. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.', 'Erreur serveur API');
+      } else {
+        await handleAnalyseFailure(supabaseAdmin, analyseId, 'analysis_failed', 'Une erreur est survenue lors de la génération. Votre crédit a été remboursé automatiquement. Réessayez ou contactez le support.', 'Échec génération rapport');
+      }
       return;
     }
 
@@ -1197,14 +1346,14 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
     const { error: updateError } = await supabaseAdmin.from('analyses').update(updateData).eq('id', analyseId);
     if (updateError) {
       console.error('[analyser-run] ERREUR UPDATE:', updateError.message);
-      await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: 'Erreur sauvegarde. Contactez le support.' }).eq('id', analyseId);
+      await handleAnalyseFailure(supabaseAdmin, analyseId, 'save_error', 'Erreur lors de la sauvegarde du rapport. Votre crédit a été remboursé automatiquement. Contactez le support.', 'Erreur sauvegarde rapport');
     } else {
       console.log(`[analyser-run] ${analyseId} termin\u00e9e avec succ\u00e8s.`);
     }
   } catch (err) {
     console.error('[analyser-run] Erreur:', err);
     if (fileIds.length > 0) await Promise.all(fileIds.map(id => deleteFromFilesAPI(id, apiKey)));
-    await supabaseAdmin.from('analyses').update({ status: 'failed', progress_message: 'Erreur inattendue. Contactez le support.' }).eq('id', analyseId);
+    await handleAnalyseFailure(supabaseAdmin, analyseId, 'unexpected_error', 'Erreur inattendue. Votre crédit a été remboursé automatiquement. Contactez le support.', 'Erreur inattendue analyse');
   }
 }
 
