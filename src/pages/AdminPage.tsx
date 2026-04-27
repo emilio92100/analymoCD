@@ -213,8 +213,6 @@ export default function AdminPage() {
       setLoading(false);
       // Unread messages count
       const { count } = await supabase.from('contact_messages').select('*', { count: 'exact', head: true }).eq('read', false);
-      // Unread system alerts count
-      const { count: alertsCount } = await supabase.from('system_alerts').select('*', { count: 'exact', head: true }).eq('resolved', false);
       setUnreadCount(count || 0);
       // Unread pro demands count
       const { count: proCount } = await supabase.from('contact_pro').select('*', { count: 'exact', head: true }).eq('read', false);
