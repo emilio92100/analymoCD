@@ -159,7 +159,7 @@ export default function ContactProPage() {
   const activeProfile = profileTypes.find(p => p.id === profileType);
 
   const handleSubmit = async () => {
-    if (!profileType || !nom || !prenom || !email || !rgpd) return;
+    if (!profileType || !nom || !prenom || !email || !telephone || !rgpd) return;
     setSending(true);
 
     const profileData: Record<string, unknown> = {};
@@ -178,7 +178,7 @@ export default function ContactProPage() {
 
     await supabase.from('contact_pro').insert({
       profile_type: profileType,
-      nom, prenom, email, telephone: telephone || null, ville: ville || null,
+      nom, prenom, email, telephone, ville: ville || null,
       volume: volume || null, message: message || null,
       profile_data: profileData,
       rgpd_consent: rgpd,
@@ -285,7 +285,7 @@ export default function ContactProPage() {
                     </div>
                     <Field label="Email professionnel" required><input style={inputStyle} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="jean.dupont@agence.fr" /></Field>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }} className="form-grid-2">
-                      <Field label="Téléphone"><input style={inputStyle} type="tel" value={telephone} onChange={e => setTelephone(e.target.value)} placeholder="06 12 34 56 78" /></Field>
+                      <Field label="Téléphone" required><input style={inputStyle} type="tel" value={telephone} onChange={e => setTelephone(e.target.value)} placeholder="06 12 34 56 78" /></Field>
                       <Field label="Ville / Région d'activité"><input style={inputStyle} value={ville} onChange={e => setVille(e.target.value)} placeholder="Lyon, Rhône-Alpes" /></Field>
                     </div>
                   </div>
@@ -436,12 +436,12 @@ export default function ContactProPage() {
                   </label>
                 </div>
 
-                <button onClick={handleSubmit} disabled={!profileType || !nom || !prenom || !email || !rgpd || sending}
+                <button onClick={handleSubmit} disabled={!profileType || !nom || !prenom || !email || !telephone || !rgpd || sending}
                   style={{
                     width: '100%', padding: '16px', borderRadius: 16, border: 'none', cursor: 'pointer',
-                    background: (!profileType || !nom || !prenom || !email || !rgpd) ? '#cbd5e1' : 'linear-gradient(135deg, #2a7d9c, #0f2d3d)',
+                    background: (!profileType || !nom || !prenom || !email || !telephone || !rgpd) ? '#cbd5e1' : 'linear-gradient(135deg, #2a7d9c, #0f2d3d)',
                     color: '#fff', fontSize: 16, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                    boxShadow: (!profileType || !nom || !prenom || !email || !rgpd) ? 'none' : '0 4px 20px rgba(42,125,156,0.3)',
+                    boxShadow: (!profileType || !nom || !prenom || !email || !telephone || !rgpd) ? 'none' : '0 4px 20px rgba(42,125,156,0.3)',
                     transition: 'all 0.2s', fontFamily: "'DM Sans', system-ui, sans-serif",
                   }}>
                   {sending ? 'Envoi en cours...' : (<><Send size={18} /> Envoyer ma demande</>)}
