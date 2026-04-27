@@ -11,6 +11,8 @@ import {
   Clock, User,
 } from 'lucide-react';
 
+
+
 /* ══════════════════════════════════════════
    TYPES
 ══════════════════════════════════════════ */
@@ -173,7 +175,7 @@ function ActionBtn({ icon, label, color = '#64748b', bg = '#f8fafc', border = '#
 /* ══════════════════════════════════════════
    ADMIN PAGE ROOT
 ══════════════════════════════════════════ */
-type TabId = 'dashboard' | 'users' | 'analyses' | 'payments' | 'messages' | 'demandes_pro' | 'stats' | 'promos' | 'logs' | 'banner';
+type TabId = 'dashboard' | 'users' | 'analyses' | 'payments' | 'messages' | 'demandes_pro' | 'stats' | 'promos' | 'logs' | 'banner' | 'alerts';
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -211,6 +213,8 @@ export default function AdminPage() {
       setLoading(false);
       // Unread messages count
       const { count } = await supabase.from('contact_messages').select('*', { count: 'exact', head: true }).eq('read', false);
+      // Unread system alerts count
+      const { count: alertsCount } = await supabase.from('system_alerts').select('*', { count: 'exact', head: true }).eq('resolved', false);
       setUnreadCount(count || 0);
       // Unread pro demands count
       const { count: proCount } = await supabase.from('contact_pro').select('*', { count: 'exact', head: true }).eq('read', false);
@@ -260,6 +264,7 @@ export default function AdminPage() {
     { id: 'messages', label: 'Messages', icon: Mail, badge: unreadCount },
     { id: 'demandes_pro', label: 'Demandes Pro', icon: Briefcase, badge: proUnreadCount },
     { id: 'promos', label: 'Codes promo', icon: Tag },
+    { id: 'alerts', label: 'Alertes système', icon: AlertTriangle },
     { id: 'banner', label: 'Bannière', icon: Bell },
     { id: 'logs', label: 'Historique', icon: Bell },
   ];
@@ -446,6 +451,7 @@ export default function AdminPage() {
               {activeTab === 'messages' && <MessagesTab onConfirm={setConfirm} showToast={showToast} onReadChange={setUnreadCount} />}
               {activeTab === 'demandes_pro' && <DemandesProTab onConfirm={setConfirm} showToast={showToast} onReadChange={setProUnreadCount} />}
               {activeTab === 'promos' && <PromosTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} />}
+              {activeTab === 'alerts' && <SystemAlertsTab showToast={showToast} />}
               {activeTab === 'banner' && <BannerTab showToast={showToast} logAction={logAction} />}
               {activeTab === 'logs' && <LogsTab />}
             </motion.div>
@@ -480,6 +486,131 @@ export default function AdminPage() {
 /* ══════════════════════════════════════════
    BANNER TAB
 ══════════════════════════════════════════ */
+/* ═══ ALERTES SYSTÈME ══════════════════════════════════════════════ */
+function SystemAlertsTab({ showToast }: { showToast: (msg: string) => void }) {
+  const [alerts, setAlerts] = useState<Array<{
+    id: string; created_at: string; type: string; severity: string;
+    title: string; message: string; analyse_id: string | null;
+    user_id: string | null; resolved: boolean; resolved_at: string | null;
+    metadata: Record<string, unknown>;
+  }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'unresolved' | 'critical'>('unresolved');
+
+  const fetchAlerts = useCallback(async () => {
+    setLoading(true);
+    let query = supabase.from('system_alerts').select('*').order('created_at', { ascending: false }).limit(100);
+    if (filter === 'unresolved') query = query.eq('resolved', false);
+    if (filter === 'critical') query = query.eq('severity', 'critical').eq('resolved', false);
+    const { data } = await query;
+    setAlerts(data || []);
+    setLoading(false);
+  }, [filter]);
+
+  useEffect(() => { fetchAlerts(); }, [fetchAlerts]);
+
+  const resolveAlert = async (id: string) => {
+    await supabase.from('system_alerts').update({ resolved: true, resolved_at: new Date().toISOString() }).eq('id', id);
+    showToast('Alerte marquée comme résolue');
+    fetchAlerts();
+  };
+
+  const resolveAll = async () => {
+    await supabase.from('system_alerts').update({ resolved: true, resolved_at: new Date().toISOString() }).eq('resolved', false);
+    showToast('Toutes les alertes ont été résolues');
+    fetchAlerts();
+  };
+
+  const severityConfig: Record<string, { bg: string; border: string; icon: string; color: string }> = {
+    critical: { bg: '#fef2f2', border: '#fecaca', icon: '🔴', color: '#dc2626' },
+    warning: { bg: '#fffbeb', border: '#fde68a', icon: '🟡', color: '#d97706' },
+    info: { bg: '#eff6ff', border: '#bfdbfe', icon: '🔵', color: '#2563eb' },
+  };
+
+  const typeLabels: Record<string, string> = {
+    api_billing: 'Solde API',
+    rate_limit: 'Rate limit',
+    overload: 'Surcharge serveur',
+    api_error: 'Erreur API',
+    analysis_failed: 'Échec analyse',
+    save_error: 'Erreur sauvegarde',
+    unexpected_error: 'Erreur inattendue',
+    no_files: 'Fichiers manquants',
+    refund: 'Remboursement',
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap' as const, gap: 12 }}>
+        <div>
+          <h2 style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Alertes système</h2>
+          <p style={{ fontSize: 13, color: '#94a3b8' }}>Erreurs API, remboursements automatiques, problèmes techniques</p>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {(['unresolved', 'critical', 'all'] as const).map(f => (
+            <button key={f} onClick={() => setFilter(f)}
+              style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: filter === f ? '1.5px solid #2a7d9c' : '1px solid #e2e8f0', background: filter === f ? '#f0f7fb' : '#fff', color: filter === f ? '#2a7d9c' : '#64748b' }}>
+              {f === 'unresolved' ? 'Non résolues' : f === 'critical' ? '🔴 Critiques' : 'Toutes'}
+            </button>
+          ))}
+          {alerts.some(a => !a.resolved) && (
+            <button onClick={resolveAll}
+              style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1px solid #bbf7d0', background: '#f0fdf4', color: '#15803d' }}>
+              ✓ Tout résoudre
+            </button>
+          )}
+        </div>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Chargement...</div>
+      ) : alerts.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 60 }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Aucune alerte {filter === 'unresolved' ? 'en attente' : filter === 'critical' ? 'critique' : ''}</div>
+          <div style={{ fontSize: 13, color: '#94a3b8' }}>Tout fonctionne normalement</div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {alerts.map(alert => {
+            const sev = severityConfig[alert.severity] || severityConfig.info;
+            const refunded = alert.metadata?.refunded === true;
+            const analyseType = (alert.metadata?.analyseType as string) || '';
+            return (
+              <div key={alert.id} style={{ background: alert.resolved ? '#fafbfc' : sev.bg, border: `1.5px solid ${alert.resolved ? '#e2e8f0' : sev.border}`, borderRadius: 14, padding: '16px 20px', opacity: alert.resolved ? 0.6 : 1, transition: 'opacity 0.2s' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' as const }}>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <span>{sev.icon}</span>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>{alert.title}</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: '#f1f5f9', color: '#64748b' }}>{typeLabels[alert.type] || alert.type}</span>
+                    </div>
+                    <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.5, marginBottom: 8 }}>{alert.message}</p>
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' as const, fontSize: 11, color: '#94a3b8' }}>
+                      <span>{new Date(alert.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                      {alert.analyse_id && <span>Analyse: {alert.analyse_id.slice(0, 8)}...</span>}
+                      {analyseType && <span>Type: {analyseType}</span>}
+                      {refunded && <span style={{ color: '#15803d', fontWeight: 700 }}>✓ Crédit remboursé</span>}
+                      {alert.resolved && alert.resolved_at && <span style={{ color: '#2a7d9c' }}>Résolu le {new Date(alert.resolved_at).toLocaleDateString('fr-FR')}</span>}
+                    </div>
+                  </div>
+                  {!alert.resolved && (
+                    <button onClick={() => resolveAlert(alert.id)}
+                      style={{ padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', whiteSpace: 'nowrap' as const }}>
+                      Résoudre
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 function BannerTab({ showToast, logAction }: { showToast: (m: string) => void; logAction: (a: string, t?: string) => Promise<void> }) {
   const [banner, setBanner] = useState<{ id: string; message: string; type: string; active: boolean } | null>(null);
   const [message, setMessage] = useState('');
