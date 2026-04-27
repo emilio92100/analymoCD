@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet complet — 24 avril 2026 (après sessions 8 à 14)
+# VERIMO — Contexte projet complet — 27 avril 2026 (après sessions 8 à 15)
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -804,15 +804,138 @@ supabase/functions/
 
 ---
 
+
+---
+
+## 🆕 Session 15 — 27 avril 2026 — Messaging temps d'analyse, page Pro, remboursement backend, alertes admin
+
+### 🎯 Résumé global
+Harmonisation du messaging "30 secondes" vs "quelques minutes" sur tout le site (7 fichiers), refonte des textes de la page Pro (4 onglets métier), remboursement automatique des crédits côté backend en cas d'échec, popup modal d'erreur frontend, nouvel onglet "Alertes système" dans l'admin.
+
+---
+
+### A. Messaging temps d'analyse — harmonisation complète
+
+**Règle établie :**
+- **Analyse simple** (1 document, 4,90€) → "30 secondes*" — c'est vrai pour un PDF natif
+- **Analyse complète** (multi-documents, 19,90€) → "quelques minutes*" — prend 1 à 5 min selon le nombre de docs
+- **Disclaimers unifiés** sur toutes les pages : "Analyse simple : résultat en ~30 secondes (1 document PDF natif). Analyse complète : généralement prête en quelques minutes selon le nombre de documents."
+- **Témoignages** : non touchés (restent tels quels)
+
+**Fichiers modifiés (7) :**
+- `HomePage.tsx` — 2 disclaimers mis à jour, FAQ réécrite, "Voici ce que Verimo vous fournit en quelques minutes*"
+- `ProPage.tsx` — hero "rapport en quelques minutes*", investisseur/marchand/HowItWorks modifiés, StatsRibbon label "par document", FAQ réécrite, disclaimer en bas
+- `ExemplePage.tsx` — CTA final "en quelques minutes*", toggle agrandi (padding 20px/42px, minWidth 290), prix retirés du toggle (garde "Un document"/"Dossier complet"), sous-texte sur 2 lignes avec `<br />`
+- `TarifsPage.tsx` — disclaimer mis à jour
+- `MethodePage.tsx` — "Score /20 en quelques minutes*" (×2)
+- `dashboard/Aide.tsx` — "Rapport prêt en quelques minutes*"
+- `dashboard/HomeView.tsx` — "rapport complet en quelques minutes*"
+
+**Pages non modifiées (accroches "30s" gardées volontairement) :**
+- SignupPage.tsx — "Créez votre compte en 30 secondes" (parle du compte, pas de l'analyse)
+- dashboard/Tarifs.tsx — "Résultat en 30 secondes*" sur la carte Analyse Simple (contexte correct)
+
+### B. Page Pro — refonte textes et UX
+
+- **Boutons KPI hero cliquables** : les 4 cartes (Agent, Investisseur, Marchand, Notaire) scrollent vers la section #profils et activent le bon onglet. State `activeProfileIdx` remonté dans ProPage, passé en props à HeroSection et ProfilesSection.
+- **Agent immo** : description reformulée — "partagez-lui un rapport complet sur le bien" (plus de mention copropriété)
+- **Marchand de bien** : benefit "Passez à l'échelle" — "Screenez des dizaines de biens par semaine. Verimo fait la lecture pour vous, vous ne gardez que les bonnes affaires."
+- **Notaire** — tout revu :
+  - Headline : "Des dizaines de documents par dossier. Verimo les synthétise pour vous."
+  - Description : accent sur le gain de temps concret pour préparer les dossiers
+  - Benefits : "Lecture accélérée", "Rien ne passe entre les mailles", "Un service en plus pour vos clients", "Conforme & sécurisé"
+- **3 badges CTA final supprimés** (Données chiffrées / Conforme RGPD / Réponse sous 24h) — redondant avec le sous-texte
+
+### C. Remboursement automatique backend — analyser-run
+
+**Problème résolu :** le crédit était débité avant l'analyse (côté frontend) et remboursé côté frontend uniquement. Si l'utilisateur ferme son navigateur pendant l'analyse et que l'analyse échoue, le crédit était perdu.
+
+**Solution :** 3 nouvelles fonctions dans `analyser-run` :
+- `refundCredit(analyseId, supabaseAdmin)` — recrédite le bon type (simple/complète) en lisant `analyses.user_id` et `analyses.type`
+- `insertSystemAlert(supabaseAdmin, params)` — insère une alerte dans la table `system_alerts`
+- `handleAnalyseFailure(supabaseAdmin, analyseId, errorType, userMessage, alertTitle, alertSeverity)` — centralise : rembourser + alerter + marquer failed
+
+**7 points de "failed"** dans analyser-run utilisent maintenant `handleAnalyseFailure` (les deux fonctions runAnalyseWithData et runAnalyse legacy).
+
+**Gestion 401/403 ajoutée :** si le solde API Anthropic est à 0, pas de retry (inutile), alerte "critical" pour l'admin, message utilisateur neutre sans mention d'IA.
+
+**Suppression RGPD améliorée :** vérification du statut HTTP du DELETE (avant : silencieux en cas d'échec).
+
+### D. Popup modal erreur — NouvelleAnalyse.tsx
+
+**Avant :** bandeau rouge "Fichier non accepté" pour toutes les erreurs (même rate limit).
+**Après :** popup modal centré avec :
+- Icône warning orange
+- Titre "Analyse interrompue"
+- Message d'erreur adapté au type de problème
+- Badge vert "Votre crédit analyse [simple/complète] a été remboursé automatiquement"
+- Bouton "Compris" + croix pour fermer
+- Le bandeau rouge reste pour les erreurs de validation fichier (mauvais format, etc.)
+
+### E. Onglet "Alertes système" — AdminPage.tsx
+
+Nouvel onglet dans l'admin avec icône AlertTriangle :
+- Filtres : Non résolues / Critiques / Toutes
+- Chaque alerte : sévérité (🔴🟡🔵), titre, message, date, analyse concernée, type crédit, remboursement effectué
+- Boutons "Résoudre" par alerte et "Tout résoudre"
+- Alerte critique rouge pour solde API épuisé
+- Table Supabase `system_alerts` (migration SQL fournie)
+
+### F. Architecture — analyse des performances
+
+**Constat (via logs Supabase) :**
+- Uploads 11 docs : ~9 secondes (séquentiel, déjà rapide) → pas besoin de paralléliser
+- Appel Claude 11 docs : ~5 minutes → c'est le vrai goulot, incompressible
+- Paralléliser les uploads ne gagnerait que ~6-7 secondes sur 5 minutes → pas pertinent
+
+**Rate limits (Niveau 2 API Anthropic) :**
+- 1000 requêtes/minute, 450K tokens d'entrée/minute → très large, pas de risque
+- Queue / jitter non nécessaires pour la concurrence
+- **Limite réelle : 500$/mois de dépenses** — plafond du Niveau 2, non modifiable sans passer au Niveau 3 (400$ de dépôt cumulé requis)
+
+**Architecture analyser / analyser-run :** bien pensée — analyser fait les uploads et répond immédiatement au frontend, analyser-run tourne en background via EdgeRuntime.waitUntil. Pas de timeout HTTP.
+
+---
+
+### Fichiers modifiés session 15
+
+**Frontend (à pousser sur GitHub) :**
+```
+src/pages/HomePage.tsx              → Disclaimers + FAQ temps d'analyse
+src/pages/ProPage.tsx               → Textes onglets métier + boutons KPI cliquables + messaging temps
+src/pages/ExemplePage.tsx           → Toggle agrandi sans prix + CTA 2 lignes + messaging temps
+src/pages/TarifsPage.tsx            → Disclaimer temps d'analyse
+src/pages/MethodePage.tsx           → "quelques minutes" au lieu de "30 secondes"
+src/pages/dashboard/Aide.tsx        → "quelques minutes"
+src/pages/dashboard/HomeView.tsx    → "quelques minutes"
+src/pages/dashboard/NouvelleAnalyse.tsx → Popup modal erreur + state analyseError
+src/pages/AdminPage.tsx             → Onglet "Alertes système" + suppression alertsCount inutilisé
+```
+
+**Backend (à déployer sur Dashboard Supabase) :**
+```
+supabase/functions/analyser-run/index.ts → refundCredit + insertSystemAlert + handleAnalyseFailure + gestion 401/403
+```
+
+**Migration SQL (à exécuter dans Supabase SQL Editor) :**
+```
+supabase-migration-system-alerts.sql → Table system_alerts + RLS + index
+```
+
+
 ## 🗂️ Backlog
 
 ### 🔴 Priorité haute
 
+- [ ] **Supprimer le flow aperçu gratuit** — Retirer complètement le mode aperçu (step apercu, lancerApercu, bandeau offre gratuite, createApercu, markFreePreviewUsed, modes apercu_complete/apercu_document). Impacte ~12 fichiers : NouvelleAnalyse.tsx, analyses.ts, analyse-client.ts, MesAnalyses.tsx, HomeView.tsx, DashboardPage.tsx, AdminPage.tsx, App.tsx, useAnalyses.ts, types/index.ts, Tarifs.tsx, analyser-run. La page Exemple suffit comme démo. Le produit d'appel à 4,90€ remplace l'aperçu.
+- [ ] **Veille réglementaire — mise à jour prompt analyser-run** — Claude connaît les lois jusqu'à mai 2025. Vérifier sur Légifrance et ajouter au prompt : DPE collectif obligatoire toutes copros (<50 lots depuis jan 2026), PPT obligatoire transmis à l'acquéreur dès compromis (jan 2026), décret n°2025-1292 du 22/12/2025 (emprunt collectif dans état daté, travaux isolation parties communes par copropriétaire), mise à jour obligatoire RCP (loi ÉLAN). Vérifier chaque point sur sources officielles avant d'ajouter.
+- [ ] **Prompt caching API Anthropic** — Le prompt système fait 700+ lignes, identique à chaque appel. Avec le caching, ~90% d'économie sur ces tokens. Critique vu le plafond de 500$/mois (Niveau 2). Implémenter en même temps que la mise à jour réglementaire du prompt.
 - [ ] **Barre de progression NouvelleAnalyse.tsx** — Monte trop vite à 87-88% puis stagne. La logique simulée (lignes 222-226) rattrape le `progress` réel trop rapidement. Revoir les paliers pour montée progressive.
 - [ ] **Bouton SOS / Signaler un problème** dans le topbar — Remplacer la cloche (inutile) par un bouton d'assistance rapide. Format à définir : formulaire email, WhatsApp, ou les deux.
 - [ ] **Bug IA recommandation incorrecte** — Claude recommande parfois un bien avec score inférieur sans facteur bloquant réel. Fix en 2 temps (Option 3 validée) :
   1. Durcir le prompt backend : forcer Claude à expliciter les scores avant la décision
   2. Validation automatique côté edge function `comparer` : si `bien_recommande_idx` ≠ meilleur score ET aucun facteur bloquant détectable, forcer correction
+- [ ] **Passer API Anthropic au Niveau 3** — Déposer 400$ cumulés pour débloquer un plafond mensuel plus élevé. Configurer alerte à 80% dans la console Anthropic.
 
 ### 🟡 Priorité normale
 
@@ -831,8 +954,6 @@ supabase/functions/
 - [ ] Tester la page Compare redesign sur mobile
 - [ ] Tester la fusion pré-état daté dans Finances du lot (données N-1/N-2 visibles)
 - [ ] Stripe TEST → production
-- [ ] Analyses bloquées > 20 min → badge "Échoué"
-- [ ] Optimisation coût API Claude : prompt caching
 - [ ] **Bouton "Marquer comme remboursée"** dans admin
 - [ ] **Synchro `last_sign_in_at`** auth.users → profiles
 
