@@ -112,6 +112,7 @@ export default function NouvelleAnalyse() {
   const [apercuId, setApercuId] = useState<string | null>(null);
   const [freePreviewUsed, setFreePreviewUsed] = useState<boolean>(() => checkFreePreviewUsedSync());
   const [error, setError] = useState('');
+  const [analyseError, setAnalyseError] = useState<{ message: string; creditType?: string } | null>(null);
   const [isAnalysing, setIsAnalysing] = useState(false);
   const [profil, setProfil] = useState<'rp' | 'invest' | null>(null);
   const [animatedProgress, setAnimatedProgress] = useState(0);
@@ -177,6 +178,55 @@ export default function NouvelleAnalyse() {
         await supabase.from('profiles').update({ [col]: current + 1 }).eq('id', user.id);
       }
     } catch { /* silencieux */ }
+  };
+
+
+  // ─── Popup modal d'erreur analyse ──────────────────────────
+  const AnalyseErrorPopup = () => {
+    if (!analyseError) return null;
+    const creditLabel = analyseError.creditType === 'document' ? 'simple' : analyseError.creditType === 'complete' ? 'complète' : '';
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', padding: 16 }}>
+        <div style={{ background: '#fff', borderRadius: 20, padding: '32px 28px', maxWidth: 460, width: '100%', position: 'relative', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+          {/* Bouton fermer */}
+          <button onClick={() => setAnalyseError(null)}
+            style={{ position: 'absolute', top: 14, right: 14, width: 32, height: 32, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 18, fontWeight: 700 }}>
+            ×
+          </button>
+          
+          {/* Icône warning */}
+          <div style={{ width: 56, height: 56, borderRadius: 16, background: '#fff7ed', border: '2px solid #fed7aa', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+            <AlertTriangle size={28} color="#d97706" />
+          </div>
+          
+          {/* Titre */}
+          <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', textAlign: 'center', marginBottom: 12 }}>
+            Analyse interrompue
+          </h3>
+          
+          {/* Message d'erreur */}
+          <p style={{ fontSize: 14, color: '#64748b', textAlign: 'center', lineHeight: 1.6, marginBottom: 20 }}>
+            {analyseError.message}
+          </p>
+          
+          {/* Badge remboursement */}
+          {creditLabel && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 16px', borderRadius: 12, background: '#f0fdf4', border: '1px solid #bbf7d0', marginBottom: 20 }}>
+              <span style={{ fontSize: 16 }}>✓</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#15803d' }}>
+                Votre crédit analyse {creditLabel} a été remboursé automatiquement
+              </span>
+            </div>
+          )}
+          
+          {/* Bouton */}
+          <button onClick={() => setAnalyseError(null)}
+            style={{ width: '100%', padding: '14px 24px', borderRadius: 12, background: '#0f2d3d', color: '#fff', fontSize: 15, fontWeight: 700, border: 'none', cursor: 'pointer' }}>
+            Compris
+          </button>
+        </div>
+      </div>
+    );
   };
 
   // ─── Animation barre de progression ─────────────────────
@@ -322,7 +372,7 @@ export default function NouvelleAnalyse() {
     const analyseId = analyseDB?.id || null;
     if (!analyseId) {
       await refundCredit(creditType);
-      setError("Impossible de créer l'analyse. Votre crédit a été remboursé. Veuillez réessayer.");
+      setAnalyseError({ message: "Impossible de créer l'analyse. Votre crédit a été remboursé automatiquement.", creditType });
       setStep('upload'); resetUpload(); setIsAnalysing(false); return;
     }
     const result = await lancerAnalyseEdge({ files, mode: type, analyseId, profil: profil || 'rp', typeBienDeclare, onProgress: handleProgress });
@@ -330,7 +380,7 @@ export default function NouvelleAnalyse() {
       await refundCredit(creditType);
       await markAnalyseFailed(analyseId);
       setStep('upload'); resetUpload();
-      setError(result.errorMessage || "Une erreur est survenue. Votre crédit a été remboursé automatiquement.");
+      setAnalyseError({ message: result.errorMessage || "Une erreur est survenue. Votre crédit a été remboursé automatiquement.", creditType });
       setIsAnalysing(false);
       console.error('[Verimo] Erreur analyse:', result.errorMessage);
       return;
@@ -530,6 +580,8 @@ export default function NouvelleAnalyse() {
       </div>
 
       {/* Erreur bloquante */}
+      <AnalyseErrorPopup />
+
       {error && (
         <div style={{ padding: '14px 16px', borderRadius: 12, background: '#fef2f2', border: '1px solid #fecaca', marginBottom: 16 }}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: error.includes('\n') ? 8 : 0 }}>
