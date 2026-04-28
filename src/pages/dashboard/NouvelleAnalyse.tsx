@@ -118,6 +118,15 @@ export default function NouvelleAnalyse() {
   const [animatedProgress, setAnimatedProgress] = useState(0);
   const animRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Masquer le bandeau "analyse offerte" pour les pros
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+      if (data?.role === 'pro') setFreePreviewUsed(true);
+    });
+  }, []);
+
   // ─── UX messages rotatifs pendant l'analyse ────────────────
   const [rotatingMsgIdx, setRotatingMsgIdx] = useState(0);
   const [analyseStartTime, setAnalyseStartTime] = useState<number | null>(null);
