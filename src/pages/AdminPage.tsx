@@ -2788,6 +2788,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled 
   const [invitations, setInvitations] = useState<ProInvitation[]>([]);
   const [clientAnalyses, setClientAnalyses] = useState<{ id: string; title: string; address?: string; status: string; score?: number; created_at: string }[]>([]);
   const [clientShares, setClientShares] = useState<{ id: string; recipient_name: string; recipient_email: string; sent_at: string; opened_at?: string }[]>([]);
+  const [clientSubscription, setClientSubscription] = useState<{ plan: string; status: string; current_period_end?: string; credits_complete_total: number; credits_complete_used: number; credits_simple_total: number; credits_simple_used: number } | null>(null);
   const [sendingInvite, setSendingInvite] = useState(false);
 
   // Form state
@@ -2852,6 +2853,9 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled 
     // Shares
     const { data: sh } = await supabase.from('report_shares').select('id, recipient_name, recipient_email, sent_at, opened_at').eq('sender_id', client.id).order('sent_at', { ascending: false }).limit(20);
     setClientShares((sh || []) as typeof clientShares);
+    // Subscription
+    const { data: sub } = await supabase.from('pro_subscriptions').select('*').eq('user_id', client.id).eq('status', 'active').maybeSingle();
+    setClientSubscription(sub as typeof clientSubscription);
   };
 
   const handleCreate = async () => {
@@ -2974,6 +2978,28 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled 
               </div>
             </div>
 
+            {/* Abonnement */}
+            <div style={{ marginTop: 16, padding: '14px 16px', borderRadius: 12, background: clientSubscription ? '#f0f7fb' : '#f8fafc', border: `1px solid ${clientSubscription ? '#d0e8f0' : '#edf2f7'}` }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 8 }}>Abonnement</div>
+              {clientSubscription ? (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 15, fontWeight: 800, color: '#0f2d3d' }}>Plan {clientSubscription.plan === 'starter' ? 'Starter' : 'Power'}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: 100, border: '1px solid #bbf7d0' }}>Actif</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
+                    <div style={{ color: '#64748b' }}>Complètes : <strong style={{ color: '#0f172a' }}>{clientSubscription.credits_complete_used}/{clientSubscription.credits_complete_total}</strong> utilisées</div>
+                    <div style={{ color: '#64748b' }}>Simples : <strong style={{ color: '#0f172a' }}>{clientSubscription.credits_simple_used}/{clientSubscription.credits_simple_total}</strong> utilisées</div>
+                  </div>
+                  {clientSubscription.current_period_end && (
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Renouvellement le {fmtDate(clientSubscription.current_period_end)}</div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, color: '#94a3b8' }}>Aucun abonnement actif</div>
+              )}
+            </div>
+
             {/* Invitations */}
             {invitations.length > 0 && (
               <div style={{ marginTop: 16, padding: 12, borderRadius: 10, background: invitations[0].accepted_at ? '#f0fdf4' : '#fffbeb', border: `1px solid ${invitations[0].accepted_at ? '#bbf7d0' : '#fde68a'}` }}>
@@ -3075,7 +3101,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled 
       {/* Modal création */}
       <AnimatePresence>
         {showCreate && (
-          <Modal title="Créer un client pro" onClose={() => setShowCreate(false)} width={560}>
+          <Modal title="Créer un client pro" onClose={() => setShowCreate(false)} width={640}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
               <div><label style={labelStyle}>Nom complet *</label><input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} style={inputStyle} placeholder="Jean Dupont" /></div>
               <div><label style={labelStyle}>Email *</label><input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={inputStyle} placeholder="jean@agence.fr" type="email" /></div>
