@@ -2984,7 +2984,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled 
               {clientSubscription ? (
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontSize: 15, fontWeight: 800, color: '#0f2d3d' }}>Plan {clientSubscription.plan === 'starter' ? 'Starter' : 'Power'}</span>
+                    <span style={{ fontSize: 15, fontWeight: 800, color: '#0f2d3d' }}>Plan {clientSubscription.plan === 'decouverte' ? 'Découverte' : clientSubscription.plan === 'starter' ? 'Starter' : 'Power'}</span>
                     <span style={{ fontSize: 11, fontWeight: 600, color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: 100, border: '1px solid #bbf7d0' }}>Actif</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
@@ -3131,6 +3131,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled 
               <label style={labelStyle}>Plan recommandé</label>
               <select value={form.pro_recommended_plan} onChange={e => setForm(f => ({ ...f, pro_recommended_plan: e.target.value }))} style={inputStyle}>
                 <option value="">Aucun (le pro choisira)</option>
+                <option value="decouverte">Découverte — 19,90€ HT/mois</option>
                 <option value="starter">Starter — 49,90€ HT/mois</option>
                 <option value="power">Power — 89,90€ HT/mois</option>
               </select>
