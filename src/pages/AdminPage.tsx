@@ -450,7 +450,7 @@ export default function AdminPage() {
               {activeTab === 'payments' && <PaymentsTab onOpenUser={(id) => { setFocusUserId(id); setActiveTab('users'); }} showToast={showToast} />}
               {activeTab === 'messages' && <MessagesTab onConfirm={setConfirm} showToast={showToast} onReadChange={setUnreadCount} />}
               {activeTab === 'demandes_pro' && <DemandesProTab onConfirm={setConfirm} showToast={showToast} onReadChange={setProUnreadCount} onCreatePro={(d) => { setCreateProFromDemande(d); setActiveTab('clients'); }} />}
-              {activeTab === 'clients' && <ClientsProTab showToast={showToast} logAction={logAction} onConfirm={setConfirm} prefillDemande={createProFromDemande} onPrefillHandled={() => setCreateProFromDemande(null)} />}
+              {activeTab === 'clients' && <ClientsProTab showToast={showToast} logAction={logAction} prefillDemande={createProFromDemande} onPrefillHandled={() => setCreateProFromDemande(null)} />}
               {activeTab === 'promos' && <PromosTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} />}
               {activeTab === 'alerts' && <SystemAlertsTab showToast={showToast} />}
               {activeTab === 'banner' && <BannerTab showToast={showToast} logAction={logAction} />}
@@ -2777,8 +2777,8 @@ type ProClient = {
 };
 type ProInvitation = { id: string; profile_id: string; email: string; token: string; sent_at?: string; accepted_at?: string; created_at: string };
 
-function ClientsProTab({ showToast, logAction, onConfirm, prefillDemande, onPrefillHandled }: {
-  showToast: (m: string) => void; logAction: (a: string, t?: string) => Promise<void>; onConfirm: (a: ConfirmAction) => void;
+function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled }: {
+  showToast: (m: string) => void; logAction: (a: string, t?: string) => Promise<void>;
   prefillDemande: Record<string, unknown> | null; onPrefillHandled: () => void;
 }) {
   const [clients, setClients] = useState<ProClient[]>([]);
