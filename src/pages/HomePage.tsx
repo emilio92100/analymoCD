@@ -1192,21 +1192,25 @@ function HowItWorksSection() {
       emoji: '🔎',
       title: 'Vous avez trouvé LE bien',
       desc: "Visite faite, coup de cœur confirmé. L'agent vous transmet les documents — et là, c'est le mur.",
+      descDesktop: "Visite faite, coup de cœur confirmé.\nL'agent vous transmet les documents\n— et là, c'est le mur.",
     },
     {
       emoji: '📄',
       title: 'Vous nous les confiez',
       desc: "PV d'AG, diagnostics, règlement… Déposez vos PDF sur Verimo.\n30 secondes, c'est analysé.",
+      descDesktop: "PV d'AG, diagnostics, règlement…\nDéposez vos PDF sur Verimo.\n30 secondes, c'est analysé.",
     },
     {
       emoji: '✅',
       title: "Vous comprenez l'essentiel",
       desc: "Score /20, travaux, charges, risques cachés — tout est clair en un rapport.",
+      descDesktop: "Score /20, travaux, charges,\nrisques cachés — tout est clair\nen un rapport.",
     },
     {
       emoji: '🎯',
       title: 'Vous décidez en confiance',
       desc: "Offrir, négocier ou passer votre chemin — en connaissance de cause.",
+      descDesktop: "Offrir, négocier ou passer\nvotre chemin — en connaissance\nde cause.",
     },
   ];
 
@@ -1275,7 +1279,7 @@ function HowItWorksSection() {
                 {/* Titre */}
                 <h3 className="text-base font-bold text-[#0f172a] mb-2">{s.title}</h3>
                 {/* Description */}
-                <p className="text-sm text-slate-500 leading-relaxed whitespace-pre-line max-w-[200px]">{s.desc}</p>
+                <p className="text-sm text-slate-500 leading-relaxed whitespace-pre-line max-w-[200px]">{s.descDesktop}</p>
               </motion.div>
             ))}
           </div>
