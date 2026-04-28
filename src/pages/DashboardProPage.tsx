@@ -134,7 +134,7 @@ function SidebarPro({ subscription, onClose }: { subscription: ProSubscription |
       <div style={{ height: 68, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
         <Link to="/" onClick={onClose} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 20, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>verimo</span>
-          <span style={{ background: `linear-gradient(135deg, ${ACCENT}, #38bdf8)`, color: '#0a1f2d', fontSize: 9, fontWeight: 800, padding: '2px 8px', borderRadius: 100, letterSpacing: '0.08em' }}>PRO</span>
+          <span style={{ background: `linear-gradient(135deg, ${ACCENT}, #38bdf8)`, color: '#0a1f2d', fontSize: 9, fontWeight: 800, padding: '2px 8px', borderRadius: 100, letterSpacing: '0.08em' }}>ACCÈS PRO</span>
         </Link>
         {onClose && <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: 4 }}><X size={18} /></button>}
       </div>
@@ -291,7 +291,7 @@ function HomeViewPro({ proProfile, subscription, analyses, shares }: { proProfil
   const lastShares = shares.slice(0, 3);
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ marginBottom: 28 }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Bonjour {prenom}</h1>
         {proProfile.pro_company_name && <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>{proProfile.pro_company_name}</p>}
@@ -408,9 +408,8 @@ function MesDossiersPro({ analyses, shares, onSendReport }: { analyses: ProAnaly
   });
 
   return (
-    <div style={{ maxWidth: 960, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap' as const, gap: 12 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: 0 }}>Mes dossiers</h1>
+    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 20, flexWrap: 'wrap' as const, gap: 12 }}>
         <Link to="/dashboard/nouvelle-analyse" style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 700 }}>
           <Plus size={14} /> Nouvelle analyse
         </Link>
@@ -577,7 +576,7 @@ ${senderName}${senderCompany ? '\n' + senderCompany : ''}`;
           <button onClick={onClose} style={{ background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 8, cursor: 'pointer', color: '#94a3b8', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Nom du client *</label>
             <input value={recipientName} onChange={e => setRecipientName(e.target.value)} placeholder="Dupont"
@@ -636,12 +635,11 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
   ];
 
   return (
-    <div style={{ maxWidth: 700, margin: '0 auto' }}>
-      <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Mon abonnement</h1>
+    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       <p style={{ fontSize: 14, color: '#64748b', marginBottom: 28 }}>Choisissez le plan adapté à votre activité.</p>
 
       {/* Plans */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
+      <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
         {plans.map(plan => {
           const isActive = subscription?.plan === plan.id && subscription?.status === 'active';
           return (
@@ -704,7 +702,7 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
       <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 22px', marginBottom: 20 }}>
         <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Besoin de plus ?</h3>
         <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 16 }}>Achetez des analyses à l'unité en complément de votre abonnement.</p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div style={{ padding: 16, borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7', textAlign: 'center' }}>
             <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>14,90€ <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>HT</span></div>
             <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Analyse complète</div>
@@ -814,8 +812,7 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
   const labelStyle: React.CSSProperties = { display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 };
 
   return (
-    <div style={{ maxWidth: 640, margin: '0 auto' }}>
-      <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 24 }}>Mon compte</h1>
+    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
 
       {/* Informations personnelles (toujours modifiable) */}
       <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '22px 24px', marginBottom: 20 }}>
@@ -956,7 +953,7 @@ function DossierDetail({ analysisId, analyses, shares, onSendReport, onBack }: {
   const scoreNiveau = result?.score_niveau as string | undefined;
 
   return (
-    <div style={{ maxWidth: 700, margin: '0 auto' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: 13, fontWeight: 600, marginBottom: 16, padding: 0 }}>
         ← Retour aux dossiers
       </button>
@@ -1161,6 +1158,7 @@ export default function DashboardProPage() {
             width: 100% !important;
           }
           .compte-grid { grid-template-columns: 1fr !important; }
+          .plans-grid { grid-template-columns: 1fr !important; }
         }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
