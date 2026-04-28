@@ -3,13 +3,12 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, FolderOpen, Plus, GitCompare, User, LifeBuoy,
-  LogOut, Menu, X, ChevronDown, Shield, CreditCard, BookOpen,
-  Send, Eye, Trash2, Search, Filter, ExternalLink, Clock,
-  CheckCircle, AlertTriangle, Upload, Building2, Mail, Phone,
-  ChevronRight, Zap, Star, ArrowRight,
+  LogOut, Menu, X, ChevronDown, CreditCard, BookOpen,
+  Send, Eye, Search, Clock,
+  CheckCircle, Upload, Mail,
+  ChevronRight, ArrowRight,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useUser } from '../hooks/useUser';
 
 // Réutiliser les vues existantes
 import NouvelleAnalyse from './dashboard/NouvelleAnalyse';
@@ -888,8 +887,8 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
 /* ══════════════════════════════════════════
    DOSSIER DETAIL
 ══════════════════════════════════════════ */
-function DossierDetail({ analysisId, analyses, shares, proProfile, onSendReport, onBack }: {
-  analysisId: string; analyses: ProAnalysis[]; shares: ReportShare[]; proProfile: ProProfile; onSendReport: (id: string) => void; onBack: () => void;
+function DossierDetail({ analysisId, analyses, shares, onSendReport, onBack }: {
+  analysisId: string; analyses: ProAnalysis[]; shares: ReportShare[]; onSendReport: (id: string) => void; onBack: () => void;
 }) {
   const analysis = analyses.find(a => a.id === analysisId);
   const dossierShares = shares.filter(s => s.analysis_id === analysisId);
@@ -1027,7 +1026,7 @@ export default function DashboardProPage() {
 
   const renderContent = () => {
     if (dossierMatch) {
-      return <DossierDetail analysisId={dossierMatch[1]} analyses={analyses} shares={shares} proProfile={proProfile} onSendReport={setSendReportId} onBack={() => navigate('/dashboard/dossiers')} />;
+      return <DossierDetail analysisId={dossierMatch[1]} analyses={analyses} shares={shares} onSendReport={setSendReportId} onBack={() => navigate('/dashboard/dossiers')} />;
     }
     if (path === '/dashboard/dossiers') return <MesDossiersPro analyses={analyses} shares={shares} onSendReport={setSendReportId} />;
     if (path === '/dashboard/nouvelle-analyse') return <NouvelleAnalyse />;
