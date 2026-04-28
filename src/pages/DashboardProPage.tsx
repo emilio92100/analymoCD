@@ -629,22 +629,145 @@ ${senderName}${senderCompany ? '\n' + senderCompany : ''}`;
    MON ABONNEMENT
 ══════════════════════════════════════════ */
 function MonAbonnement({ subscription }: { subscription: ProSubscription | null }) {
+  const [loading, setLoading] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string>('');
+
   const plans = [
-    { id: 'starter', name: 'Starter', price: '49,90', completes: 5, simples: 15, popular: false },
-    { id: 'power', name: 'Power', price: '89,90', completes: 10, simples: 30, popular: true },
+    { id: 'decouverte', name: 'Découverte', price: '19,90', completes: 1, simples: 3, popular: false, tagline: 'Pour découvrir Verimo Pro' },
+    { id: 'starter', name: 'Starter', price: '49,90', completes: 5, simples: 15, popular: true, tagline: 'Pour un usage régulier' },
+    { id: 'power', name: 'Power', price: '89,90', completes: 10, simples: 30, popular: false, tagline: 'Pour un usage soutenu' },
   ];
+
+  const isSubscribed = subscription?.status === 'active';
+
+  // Détecter le retour de Stripe Checkout (?checkout=success ou ?checkout=cancel)
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const checkout = url.searchParams.get('checkout');
+    if (checkout === 'success') {
+      setErrorMsg('');
+      // Nettoyer l'URL
+      url.searchParams.delete('checkout');
+      window.history.replaceState({}, '', url.toString());
+      // Petit reload pour récupérer la subscription mise à jour
+      setTimeout(() => window.location.reload(), 500);
+    } else if (checkout === 'cancel') {
+      setErrorMsg('Paiement annulé. Vous pouvez réessayer quand vous voulez.');
+      url.searchParams.delete('checkout');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []);
+
+  async function handleSubscribe(planId: string) {
+    setLoading(`subscribe:${planId}`);
+    setErrorMsg('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Vous devez être connecté');
+
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://veszrayromldfgetqaxb.supabase.co'}/functions/v1/pro-checkout-create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ mode: 'subscribe', plan: planId }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur lors de la création du checkout');
+
+      if (data.upgraded) {
+        // Cas upgrade direct (sans Checkout) → on rafraîchit
+        window.location.reload();
+      } else if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (e: any) {
+      setErrorMsg(e.message || 'Une erreur est survenue');
+      setLoading(null);
+    }
+  }
+
+  async function handleBuyUnit(unitType: 'complete' | 'document', quantity: number = 1) {
+    setLoading(`unit:${unitType}`);
+    setErrorMsg('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Vous devez être connecté');
+
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://veszrayromldfgetqaxb.supabase.co'}/functions/v1/pro-checkout-create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ mode: 'buy_unit', unit_type: unitType, quantity }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.error === 'subscription_required') {
+          setErrorMsg(data.message || 'Les tarifs unitaires sont réservés aux abonnés.');
+        } else {
+          throw new Error(data.error || 'Erreur lors de l\'achat');
+        }
+        setLoading(null);
+        return;
+      }
+
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (e: any) {
+      setErrorMsg(e.message || 'Une erreur est survenue');
+      setLoading(null);
+    }
+  }
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       <p style={{ fontSize: 14, color: '#64748b', marginBottom: 28 }}>Choisissez le plan adapté à votre activité.</p>
 
+      {/* Message d'erreur global */}
+      {errorMsg && (
+        <div style={{ marginBottom: 20, padding: '12px 16px', borderRadius: 12, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: 13, fontWeight: 600 }}>
+          {errorMsg}
+        </div>
+      )}
+
+      {/* Crédits restants si abonné */}
+      {isSubscribed && (
+        <div style={{ marginBottom: 24, padding: '16px 20px', borderRadius: 14, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#15803d', textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 8 }}>Crédits restants ce mois</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div>
+              <span style={{ fontSize: 22, fontWeight: 800, color: '#0f172a' }}>
+                {Math.max(0, (subscription?.credits_complete_total || 0) - (subscription?.credits_complete_used || 0))}
+              </span>
+              <span style={{ fontSize: 13, color: '#64748b', marginLeft: 6 }}>/ {subscription?.credits_complete_total || 0} complètes</span>
+            </div>
+            <div>
+              <span style={{ fontSize: 22, fontWeight: 800, color: '#0f172a' }}>
+                {Math.max(0, (subscription?.credits_simple_total || 0) - (subscription?.credits_simple_used || 0))}
+              </span>
+              <span style={{ fontSize: 13, color: '#64748b', marginLeft: 6 }}>/ {subscription?.credits_simple_total || 0} simples</span>
+            </div>
+          </div>
+          {subscription?.current_period_end && (
+            <div style={{ marginTop: 10, fontSize: 12, color: '#64748b' }}>Renouvellement le {fmtDate(subscription.current_period_end)}</div>
+          )}
+        </div>
+      )}
+
       {/* Plans */}
-      <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
+      <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 28 }}>
         {plans.map(plan => {
           const isActive = subscription?.plan === plan.id && subscription?.status === 'active';
+          const btnLoading = loading === `subscribe:${plan.id}`;
           return (
             <div key={plan.id} style={{
-              borderRadius: 18, padding: 24, position: 'relative',
+              borderRadius: 18, padding: 22, position: 'relative',
               background: '#fff', border: isActive ? '2px solid #2a7d9c' : plan.popular ? '2px solid #7dd3fc' : '1.5px solid #edf2f7',
               boxShadow: plan.popular ? '0 8px 32px rgba(42,125,156,0.1)' : 'none',
             }}>
@@ -655,42 +778,47 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
                 <span style={{ position: 'absolute', top: -10, right: 16, background: '#16a34a', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 12px', borderRadius: 100 }}>Actif</span>
               )}
 
-              <h3 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>{plan.name}</h3>
+              <h3 style={{ fontSize: 19, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>{plan.name}</h3>
+              <p style={{ fontSize: 11, color: '#94a3b8', margin: '0 0 14px 0', minHeight: 16 }}>{plan.tagline}</p>
               <div style={{ marginBottom: 16 }}>
-                <span style={{ fontSize: 32, fontWeight: 800, color: '#0f172a' }}>{plan.price}€</span>
-                <span style={{ fontSize: 13, color: '#94a3b8', marginLeft: 4 }}>HT / mois</span>
+                <span style={{ fontSize: 30, fontWeight: 800, color: '#0f172a' }}>{plan.price}€</span>
+                <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 4 }}>HT / mois</span>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 18 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <CheckCircle size={14} style={{ color: '#16a34a', flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, color: '#374151' }}><strong>{plan.completes}</strong> analyses complètes</span>
+                  <CheckCircle size={13} style={{ color: '#16a34a', flexShrink: 0 }} />
+                  <span style={{ fontSize: 12.5, color: '#374151' }}><strong>{plan.completes}</strong> analyse{plan.completes > 1 ? 's' : ''} complète{plan.completes > 1 ? 's' : ''}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <CheckCircle size={14} style={{ color: '#16a34a', flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, color: '#374151' }}><strong>{plan.simples}</strong> analyses simples</span>
+                  <CheckCircle size={13} style={{ color: '#16a34a', flexShrink: 0 }} />
+                  <span style={{ fontSize: 12.5, color: '#374151' }}><strong>{plan.simples}</strong> analyse{plan.simples > 1 ? 's' : ''} simple{plan.simples > 1 ? 's' : ''}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <CheckCircle size={14} style={{ color: '#16a34a', flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, color: '#374151' }}>Envoi de rapports aux clients</span>
+                  <CheckCircle size={13} style={{ color: '#16a34a', flexShrink: 0 }} />
+                  <span style={{ fontSize: 12.5, color: '#374151' }}>Dashboard pro + branding</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <CheckCircle size={14} style={{ color: '#16a34a', flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, color: '#374151' }}>Branding personnalisé</span>
+                  <CheckCircle size={13} style={{ color: '#16a34a', flexShrink: 0 }} />
+                  <span style={{ fontSize: 12.5, color: '#374151' }}>Envoi de rapports clients</span>
                 </div>
               </div>
 
               {isActive ? (
-                <div style={{ padding: '11px', borderRadius: 11, background: '#f0fdf4', border: '1px solid #bbf7d0', textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#16a34a' }}>
-                  Plan actif — Renouvellement {subscription?.current_period_end ? fmtDate(subscription.current_period_end) : '—'}
+                <div style={{ padding: '11px', borderRadius: 11, background: '#f0fdf4', border: '1px solid #bbf7d0', textAlign: 'center', fontSize: 12.5, fontWeight: 700, color: '#16a34a' }}>
+                  Plan actif
                 </div>
               ) : (
-                <button style={{
-                  width: '100%', padding: '12px', borderRadius: 11, border: 'none', cursor: 'pointer',
-                  background: plan.popular ? 'linear-gradient(135deg,#2a7d9c,#0f2d3d)' : '#0f172a',
-                  color: '#fff', fontSize: 14, fontWeight: 700,
-                }}>
-                  {subscription ? 'Changer de plan' : 'Choisir ce plan'}
+                <button
+                  disabled={btnLoading}
+                  onClick={() => handleSubscribe(plan.id)}
+                  style={{
+                    width: '100%', padding: '12px', borderRadius: 11, border: 'none',
+                    cursor: btnLoading ? 'wait' : 'pointer',
+                    background: plan.popular ? 'linear-gradient(135deg,#2a7d9c,#0f2d3d)' : '#0f172a',
+                    color: '#fff', fontSize: 13.5, fontWeight: 700, opacity: btnLoading ? 0.6 : 1,
+                  }}>
+                  {btnLoading ? 'Redirection…' : (subscription ? 'Changer pour ce plan' : 'Choisir ce plan')}
                 </button>
               )}
             </div>
@@ -700,26 +828,61 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
 
       {/* Achats unitaires */}
       <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 22px', marginBottom: 20 }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Besoin de plus ?</h3>
-        <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 16 }}>Achetez des analyses à l'unité en complément de votre abonnement.</p>
-        <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <div style={{ padding: 16, borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7', textAlign: 'center' }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>14,90€ <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>HT</span></div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Analyse complète</div>
-            <button style={{ marginTop: 10, padding: '8px 16px', borderRadius: 8, background: '#0f172a', color: '#fff', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Acheter</button>
+        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Acheter à l'unité</h3>
+        <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 16 }}>
+          {isSubscribed
+            ? 'Achats supplémentaires en complément de votre abonnement.'
+            : 'Tarifs préférentiels réservés aux abonnés Verimo Pro.'}
+        </p>
+        {!isSubscribed && (
+          <div style={{ marginBottom: 16, padding: '11px 14px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fde68a', fontSize: 12.5, color: '#92400e' }}>
+            ⚠️ Pour acheter à ces tarifs, vous devez souscrire un abonnement Verimo Pro (ci-dessus).
           </div>
-          <div style={{ padding: 16, borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7', textAlign: 'center' }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>3,90€ <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>HT</span></div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Analyse simple</div>
-            <button style={{ marginTop: 10, padding: '8px 16px', borderRadius: 8, background: '#0f172a', color: '#fff', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Acheter</button>
+        )}
+        <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {/* Analyse complète */}
+          <div style={{ padding: 16, borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7', textAlign: 'center', opacity: isSubscribed ? 1 : 0.7 }}>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>9,90€ <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>HT</span></div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4, marginBottom: 10 }}>Analyse complète</div>
+            <button
+              disabled={!isSubscribed || loading === 'unit:complete'}
+              onClick={() => handleBuyUnit('complete', 1)}
+              title={!isSubscribed ? 'Abonnement requis' : ''}
+              style={{
+                padding: '8px 16px', borderRadius: 8,
+                background: isSubscribed ? '#0f172a' : '#cbd5e1',
+                color: '#fff', border: 'none', fontSize: 12, fontWeight: 700,
+                cursor: isSubscribed ? (loading === 'unit:complete' ? 'wait' : 'pointer') : 'not-allowed',
+                opacity: loading === 'unit:complete' ? 0.6 : 1,
+              }}>
+              {loading === 'unit:complete' ? 'Redirection…' : 'Acheter'}
+            </button>
+          </div>
+          {/* Analyse simple */}
+          <div style={{ padding: 16, borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7', textAlign: 'center', opacity: isSubscribed ? 1 : 0.7 }}>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>2,90€ <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>HT</span></div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4, marginBottom: 10 }}>Analyse simple</div>
+            <button
+              disabled={!isSubscribed || loading === 'unit:document'}
+              onClick={() => handleBuyUnit('document', 1)}
+              title={!isSubscribed ? 'Abonnement requis' : ''}
+              style={{
+                padding: '8px 16px', borderRadius: 8,
+                background: isSubscribed ? '#0f172a' : '#cbd5e1',
+                color: '#fff', border: 'none', fontSize: 12, fontWeight: 700,
+                cursor: isSubscribed ? (loading === 'unit:document' ? 'wait' : 'pointer') : 'not-allowed',
+                opacity: loading === 'unit:document' ? 0.6 : 1,
+              }}>
+              {loading === 'unit:document' ? 'Redirection…' : 'Acheter'}
+            </button>
           </div>
         </div>
       </div>
 
       {/* Agences */}
       <div style={{ background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderRadius: 16, padding: '20px 22px', border: '1px solid #d0e8f0', textAlign: 'center' }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f2d3d', marginBottom: 6 }}>Vous êtes une agence ?</h3>
-        <p style={{ fontSize: 13, color: '#64748b', marginBottom: 14 }}>Contactez-nous pour une offre sur mesure adaptée à votre équipe.</p>
+        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f2d3d', marginBottom: 6 }}>Volumes importants ou besoins spécifiques ?</h3>
+        <p style={{ fontSize: 13, color: '#64748b', marginBottom: 14 }}>Agences, cabinets, équipes : contactez-nous pour une offre sur mesure.</p>
         <Link to="/contact-pro" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 20px', borderRadius: 10, background: '#0f2d3d', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 700 }}>
           Nous contacter <ArrowRight size={14} />
         </Link>
