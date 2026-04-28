@@ -734,6 +734,7 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
    MON COMPTE PRO
 ══════════════════════════════════════════ */
 function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate: () => void }) {
+  const isLocked = proProfile.pro_onboarding_done === true;
   const [form, setForm] = useState({
     full_name: proProfile.full_name || '',
     telephone: proProfile.telephone || '',
@@ -747,6 +748,7 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [showLockConfirm, setShowLockConfirm] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(proProfile.pro_logo_url || null);
 
@@ -759,10 +761,15 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
   };
 
   const handleSave = async () => {
+    // Si pas encore verrouillé, demander confirmation
+    if (!isLocked && !showLockConfirm) {
+      setShowLockConfirm(true);
+      return;
+    }
+
     setSaving(true);
     let logoUrl = proProfile.pro_logo_url;
 
-    // Upload logo si nouveau
     if (logoFile) {
       const ext = logoFile.name.split('.').pop();
       const path = `${proProfile.id}/logo.${ext}`;
@@ -773,12 +780,28 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
       }
     }
 
-    const { error } = await supabase.from('profiles').update({
-      ...form,
+    const updateData: Record<string, unknown> = {
+      full_name: form.full_name,
+      telephone: form.telephone,
+      pro_contact_email: form.pro_contact_email,
+      pro_contact_phone: form.pro_contact_phone,
       pro_logo_url: logoUrl,
-    }).eq('id', proProfile.id);
+    };
+
+    // Si pas encore verrouillé, sauvegarder aussi les champs pro et verrouiller
+    if (!isLocked) {
+      updateData.pro_company_name = form.pro_company_name;
+      updateData.pro_company_address = form.pro_company_address;
+      updateData.pro_siret = form.pro_siret;
+      updateData.pro_ville = form.pro_ville;
+      updateData.pro_network = form.pro_network;
+      updateData.pro_onboarding_done = true;
+    }
+
+    const { error } = await supabase.from('profiles').update(updateData).eq('id', proProfile.id);
 
     setSaving(false);
+    setShowLockConfirm(false);
     if (!error) {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -787,16 +810,17 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
   };
 
   const inputStyle = { width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 14, outline: 'none', boxSizing: 'border-box' as const, background: '#f8fafc', fontFamily: 'inherit' };
-  const labelStyle = { display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 };
+  const lockedInputStyle = { ...inputStyle, background: '#f1f5f9', color: '#94a3b8', cursor: 'not-allowed' as const };
+  const labelStyle: React.CSSProperties = { display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 };
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto' }}>
       <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 24 }}>Mon compte</h1>
 
-      {/* Identité */}
+      {/* Informations personnelles (toujours modifiable) */}
       <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '22px 24px', marginBottom: 20 }}>
         <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 16 }}>Informations personnelles</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <div>
             <label style={labelStyle}>Nom complet</label>
             <input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} style={inputStyle} />
@@ -808,11 +832,24 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
         </div>
       </div>
 
-      {/* Identité pro */}
+      {/* Identité professionnelle */}
       <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '22px 24px', marginBottom: 20 }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 16 }}>Mon identité professionnelle</h3>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0 }}>Mon identité professionnelle</h3>
+          {isLocked && <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', background: '#f1f5f9', padding: '3px 10px', borderRadius: 100 }}>🔒 Verrouillé</span>}
+        </div>
+        {isLocked && (
+          <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>
+            Ces informations ne sont plus modifiables. Pour toute modification, contactez le support.
+          </p>
+        )}
+        {!isLocked && (
+          <p style={{ fontSize: 12, color: '#d97706', marginBottom: 16, background: '#fffbeb', padding: '8px 12px', borderRadius: 8, border: '1px solid #fde68a' }}>
+            Vérifiez bien ces informations avant d'enregistrer. Une fois validées, elles ne seront plus modifiables.
+          </p>
+        )}
 
-        {/* Logo */}
+        {/* Logo (toujours modifiable) */}
         <div style={{ marginBottom: 16 }}>
           <label style={labelStyle}>Logo</label>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -833,37 +870,37 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+        <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
           <div>
             <label style={labelStyle}>Nom commercial</label>
-            <input value={form.pro_company_name} onChange={e => setForm(f => ({ ...f, pro_company_name: e.target.value }))} placeholder="Dupont Immobilier" style={inputStyle} />
+            <input value={form.pro_company_name} onChange={e => !isLocked && setForm(f => ({ ...f, pro_company_name: e.target.value }))} placeholder="Dupont Immobilier" style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
           </div>
           <div>
             <label style={labelStyle}>Réseau</label>
-            <input value={form.pro_network} onChange={e => setForm(f => ({ ...f, pro_network: e.target.value }))} placeholder="IAD, Safti, Indépendant..." style={inputStyle} />
+            <input value={form.pro_network} onChange={e => !isLocked && setForm(f => ({ ...f, pro_network: e.target.value }))} placeholder="IAD, Safti, Indépendant..." style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+        <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
           <div>
             <label style={labelStyle}>SIRET</label>
-            <input value={form.pro_siret} onChange={e => setForm(f => ({ ...f, pro_siret: e.target.value }))} style={inputStyle} />
+            <input value={form.pro_siret} onChange={e => !isLocked && setForm(f => ({ ...f, pro_siret: e.target.value }))} style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
           </div>
           <div>
             <label style={labelStyle}>Ville / Zone d'activité</label>
-            <input value={form.pro_ville} onChange={e => setForm(f => ({ ...f, pro_ville: e.target.value }))} style={inputStyle} />
+            <input value={form.pro_ville} onChange={e => !isLocked && setForm(f => ({ ...f, pro_ville: e.target.value }))} style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
           </div>
         </div>
         <div>
           <label style={labelStyle}>Adresse professionnelle</label>
-          <input value={form.pro_company_address} onChange={e => setForm(f => ({ ...f, pro_company_address: e.target.value }))} style={inputStyle} />
+          <input value={form.pro_company_address} onChange={e => !isLocked && setForm(f => ({ ...f, pro_company_address: e.target.value }))} style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
         </div>
       </div>
 
-      {/* Coordonnées client */}
+      {/* Coordonnées client (toujours modifiable) */}
       <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '22px 24px', marginBottom: 20 }}>
         <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Coordonnées visibles par vos clients</h3>
         <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>Ces informations apparaissent sur les rapports envoyés. Si le client répond au mail, sa réponse arrivera sur l'email de contact ci-dessous.</p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <div>
             <label style={labelStyle}>Email de contact</label>
             <input value={form.pro_contact_email} onChange={e => setForm(f => ({ ...f, pro_contact_email: e.target.value }))} placeholder={proProfile.email || ''} style={inputStyle} />
@@ -875,11 +912,29 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
         </div>
       </div>
 
+      {/* Confirmation de verrouillage */}
+      {showLockConfirm && (
+        <div style={{ background: '#fffbeb', borderRadius: 14, border: '1.5px solid #fde68a', padding: '18px 20px', marginBottom: 16 }}>
+          <p style={{ fontSize: 14, fontWeight: 700, color: '#92400e', marginBottom: 8 }}>Confirmez vos informations professionnelles</p>
+          <p style={{ fontSize: 13, color: '#92400e', lineHeight: 1.6, marginBottom: 14 }}>
+            Une fois enregistrées, les informations suivantes ne seront plus modifiables sans passer par le support : nom commercial, réseau, SIRET, ville et adresse professionnelle.
+          </p>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => setShowLockConfirm(false)} style={{ flex: 1, padding: '11px', borderRadius: 10, background: '#fff', border: '1.5px solid #edf2f7', color: '#64748b', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Modifier</button>
+            <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: '11px', borderRadius: 10, background: '#d97706', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
+              {saving ? 'Enregistrement...' : 'Confirmer et verrouiller'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Save */}
-      <button onClick={handleSave} disabled={saving}
-        style={{ width: '100%', padding: '14px', borderRadius: 14, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 800, opacity: saving ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-        {saving ? 'Enregistrement...' : saved ? '✓ Enregistré !' : 'Enregistrer les modifications'}
-      </button>
+      {!showLockConfirm && (
+        <button onClick={handleSave} disabled={saving}
+          style={{ width: '100%', padding: '14px', borderRadius: 14, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 800, opacity: saving ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          {saving ? 'Enregistrement...' : saved ? '✓ Enregistré !' : isLocked ? 'Enregistrer les modifications' : 'Vérifier et enregistrer'}
+        </button>
+      )}
     </div>
   );
 }
@@ -1096,10 +1151,19 @@ export default function DashboardProPage() {
           .desktop-sidebar { display: none !important; }
           .mobile-menu-btn { display: flex !important; }
           .topbar-cta { display: none !important; }
-          header { padding: 0 14px !important; height: 62px !important; }
+          header { padding: 0 14px !important; height: 62px !important; gap: 10px !important; }
+          .mobile-menu-btn svg { width: 24px !important; height: 24px !important; }
+          .topbar-title { font-size: 15px !important; font-weight: 800 !important; }
           .dashboard-main { padding: 16px 12px !important; }
+          .dashboard-main > div,
+          .dashboard-main > section {
+            max-width: 100% !important;
+            width: 100% !important;
+          }
+          .compte-grid { grid-template-columns: 1fr !important; }
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
       `}</style>
     </div>
   );
