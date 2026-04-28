@@ -2941,10 +2941,16 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled 
                 {selected.pro_ville && <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>{selected.pro_ville}</p>}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
-                <button onClick={() => sendInvitation(selected.id, invitations.some(inv => inv.sent_at))} disabled={sendingInvite}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: sendingInvite ? 0.7 : 1 }}>
-                  <Send size={12} /> {sendingInvite ? 'Envoi...' : invitations.some(inv => inv.sent_at) ? 'Renvoyer le mail' : 'Envoyer mail de connexion'}
-                </button>
+                {invitations.some(inv => inv.accepted_at) ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', fontSize: 12, fontWeight: 700 }}>
+                    <CheckCircle size={12} /> Compte activé
+                  </span>
+                ) : (
+                  <button onClick={() => sendInvitation(selected.id, invitations.some(inv => inv.sent_at))} disabled={sendingInvite}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: sendingInvite ? 0.7 : 1 }}>
+                    <Send size={12} /> {sendingInvite ? 'Envoi...' : invitations.some(inv => inv.sent_at) ? 'Renvoyer le mail' : 'Envoyer mail de connexion'}
+                  </button>
+                )}
               </div>
             </div>
 
