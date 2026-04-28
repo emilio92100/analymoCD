@@ -4,7 +4,7 @@ import { motion, useInView, AnimatePresence } from "framer-motion";
 import type { Variants } from "framer-motion";
 import {
   ArrowRight, CheckCircle, AlertTriangle, FileText,
-  TrendingUp, Clock, Check, X, ChevronRight,
+  TrendingUp, Clock, ChevronRight,
   ShieldCheck, Trash2,
   Download, Lock, Eye, ChevronDown, Briefcase,
 } from "lucide-react";
@@ -773,101 +773,6 @@ function PhaseResultMini() {
         <Download size={7} /> Télécharger PDF
       </motion.div>
     </motion.div>
-  );
-}
-
-
-/* ═══ AVANT / APRÈS ════════════════════════════════════════ */
-function AvantApresSection() {
-
-  const items = [
-    { icon: '📄', before: "40 pages de PV illisibles à parcourir seul", after: "Rapport structuré et clair en 30 secondes*" },
-    { icon: '⚖️', before: "Jargon juridique incompréhensible", after: "Informations clés expliquées simplement" },
-    { icon: '🏗️', before: "Travaux découverts après la signature", after: "Risques et travaux détectés en amont" },
-    { icon: '💰', before: "Mauvaises surprises financières", after: "Charges, fonds travaux et impayés chiffrés" },
-    { icon: '🎯', before: "Décision prise dans l'incertitude totale", after: "Décision éclairée, offre négociée en confiance" },
-  ];
-
-  return (
-    <section className="py-12 md:py-20 px-4 md:px-6 bg-white">
-      <div className="max-w-5xl mx-auto">
-        <SectionTitle label="Avant / Après" title="Deux façons d'acheter." accent="Une seule bonne." />
-
-        {/* Tableau comparatif côte à côte */}
-        <Reveal>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-
-            {/* Colonne AVEC VERIMO — à gauche */}
-            <div className="rounded-2xl overflow-hidden border border-green-100 shadow-sm">
-              <div className="bg-[#0f2d3d] px-5 py-4 flex items-center gap-3">
-                <div className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center shrink-0">
-                  <Check size={14} className="text-white" strokeWidth={3} />
-                </div>
-                <span className="text-white font-black text-base">Avec Verimo</span>
-              </div>
-              <div className="bg-[#f0fdf4] p-4 flex flex-col gap-2.5">
-                {items.map((item, i) => (
-                  <motion.div key={i}
-                    initial={{ opacity: 0, x: -16 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.07, duration: 0.35 }}
-                    className="flex items-start gap-3 p-3.5 rounded-xl bg-white border border-green-100 shadow-sm">
-                    <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0 bg-green-50 border border-green-100">
-                      {item.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-[#15803d] leading-snug">{item.after}</p>
-                    </div>
-                    <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center shrink-0 mt-0.5">
-                      <Check size={11} className="text-white" strokeWidth={3} />
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-
-            {/* Colonne SANS VERIMO — à droite */}
-            <div className="rounded-2xl overflow-hidden border border-red-200 shadow-sm">
-              <div className="bg-red-50 px-5 py-4 flex items-center gap-3 border-b border-red-100">
-                <div className="w-7 h-7 rounded-full bg-red-500 flex items-center justify-center shrink-0">
-                  <X size={14} className="text-white" strokeWidth={3} />
-                </div>
-                <span className="text-red-700 font-black text-base">Sans Verimo</span>
-              </div>
-              <div className="bg-[#fff5f5] p-4 flex flex-col gap-2.5">
-                {items.map((item, i) => (
-                  <motion.div key={i}
-                    initial={{ opacity: 0, x: 16 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.07, duration: 0.35 }}
-                    className="flex items-start gap-3 p-3.5 rounded-xl bg-white border border-red-100">
-                    <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0 bg-red-50 border border-red-100">
-                      {item.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-red-500 font-medium leading-snug line-through decoration-red-400">{item.before}</p>
-                    </div>
-                    <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center shrink-0 mt-0.5">
-                      <X size={11} className="text-white" strokeWidth={3} />
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-
-          </div>
-        </Reveal>
-
-        <Reveal className="text-center mt-10 md:mt-12">
-          <Link to="/start"
-            className="inline-flex items-center gap-2 px-7 md:px-9 py-3.5 md:py-4 rounded-2xl bg-[#0f2d3d] text-white text-sm md:text-base font-bold hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
-            Lancer mon analyse <ArrowRight size={16} />
-          </Link>
-        </Reveal>
-      </div>
-    </section>
   );
 }
 
