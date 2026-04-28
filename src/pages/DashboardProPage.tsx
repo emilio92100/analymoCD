@@ -747,6 +747,10 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showLockConfirm, setShowLockConfirm] = useState(false);
+  const [showModifRequest, setShowModifRequest] = useState(false);
+  const [modifMessage, setModifMessage] = useState('');
+  const [modifSending, setModifSending] = useState(false);
+  const [modifSent, setModifSent] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(proProfile.pro_logo_url || null);
 
@@ -836,9 +840,15 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
           {isLocked && <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', background: '#f1f5f9', padding: '3px 10px', borderRadius: 100 }}>🔒 Verrouillé</span>}
         </div>
         {isLocked && (
-          <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>
-            Ces informations ne sont plus modifiables. Pour toute modification, contactez le support.
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
+            <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>
+              Ces informations ne sont plus modifiables directement.
+            </p>
+            <button onClick={() => { setModifMessage(''); setModifSent(false); setShowModifRequest(true); }}
+              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 8, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#2a7d9c', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
+              Demander une modification
+            </button>
+          </div>
         )}
         {!isLocked && (
           <p style={{ fontSize: 12, color: '#d97706', marginBottom: 16, background: '#fffbeb', padding: '8px 12px', borderRadius: 8, border: '1px solid #fde68a' }}>
@@ -921,6 +931,68 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
             <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: '11px', borderRadius: 10, background: '#d97706', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
               {saving ? 'Enregistrement...' : 'Confirmer et verrouiller'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal demande de modification */}
+      {showModifRequest && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(2px)' }}>
+          <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 480, boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>Demander une modification</h3>
+              <button onClick={() => setShowModifRequest(false)} style={{ background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 8, cursor: 'pointer', color: '#94a3b8', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
+            </div>
+
+            {modifSent ? (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
+                <h4 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>Demande envoyée</h4>
+                <p style={{ fontSize: 13, color: '#64748b', lineHeight: 1.6 }}>Notre équipe reviendra vers vous sous 24 heures.</p>
+                <button onClick={() => setShowModifRequest(false)} style={{ marginTop: 16, padding: '10px 24px', borderRadius: 10, background: '#0f172a', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Fermer</button>
+              </div>
+            ) : (
+              <>
+                <div style={{ padding: '12px 14px', borderRadius: 10, background: '#f0f7fb', border: '1px solid #d0e8f0', marginBottom: 16 }}>
+                  <p style={{ fontSize: 12, color: '#2a7d9c', margin: 0, lineHeight: 1.6 }}>
+                    Pour des raisons de sécurité, toute modification de votre identité professionnelle est vérifiée par notre équipe avant validation. Décrivez les changements souhaités ci-dessous.
+                  </p>
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Objet</label>
+                  <input value="Demande de modification — Identité professionnelle" readOnly
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, background: '#f1f5f9', color: '#94a3b8', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Décrivez les modifications souhaitées</label>
+                  <textarea value={modifMessage} onChange={e => setModifMessage(e.target.value)} rows={4}
+                    placeholder="Ex : Je souhaite modifier mon nom commercial de 'RT Conseils' à 'RT Immobilier Conseils' suite à un changement de raison sociale..."
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', background: '#f8fafc', fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.6 }} />
+                </div>
+
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => setShowModifRequest(false)} style={{ flex: 1, padding: '11px', borderRadius: 11, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#64748b', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Annuler</button>
+                  <button onClick={async () => {
+                    if (!modifMessage.trim()) return;
+                    setModifSending(true);
+                    await supabase.from('contact_messages').insert({
+                      name: proProfile.full_name || 'Client Pro',
+                      email: proProfile.email || '',
+                      subject: 'Demande de modification — Identité professionnelle',
+                      message: `[PRO — ${proProfile.pro_company_name || ''}]\n\nClient : ${proProfile.full_name} (${proProfile.email})\nTél : ${proProfile.telephone || 'non renseigné'}\nProfil : ${proProfile.pro_profile_type || ''}\n\n--- Modifications demandées ---\n${modifMessage}`,
+                      read: false,
+                    });
+                    setModifSending(false);
+                    setModifSent(true);
+                  }} disabled={!modifMessage.trim() || modifSending}
+                    style={{ flex: 1, padding: '11px', borderRadius: 11, background: !modifMessage.trim() ? '#cbd5e1' : 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: modifSending ? 0.7 : 1 }}>
+                    {modifSending ? 'Envoi...' : 'Soumettre la demande'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
