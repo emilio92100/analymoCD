@@ -39,6 +39,8 @@ const MentionsLegalesPage = lazy(() => import('./pages/MentionsLegalesPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const ProPage = lazy(() => import('./pages/ProPage'));
 const ContactProPage = lazy(() => import('./pages/ContactProPage'));
+const DashboardProPage = lazy(() => import('./pages/DashboardProPage'));
+const SetupAccountPage = lazy(() => import('./pages/SetupAccountPage'));
 
 // ─── Écran de chargement premium ─────────────────────────────
 function LoadingScreen() {
@@ -255,6 +257,25 @@ function SessionManager() {
   return null;
 }
 
+/* ─── Smart Dashboard — redirige vers pro ou particulier ──── */
+function SmartDashboard() {
+  const [role, setRole] = useState<string | null>(null);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) { setChecked(true); return; }
+      const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+      setRole(data?.role || 'user');
+      setChecked(true);
+    });
+  }, []);
+
+  if (!checked) return <LoadingScreen />;
+  if (role === 'pro') return <DashboardProPage />;
+  return <DashboardPage />;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -279,18 +300,23 @@ export default function App() {
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/mot-de-passe-oublie" element={<ForgotPasswordPage />} />
           <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/setup-account" element={<SetupAccountPage />} />
           <Route path="/admin" element={<AdminPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/dashboard/nouvelle-analyse" element={<DashboardPage />} />
-          <Route path="/dashboard/analyses" element={<DashboardPage />} />
-          <Route path="/dashboard/compare" element={<DashboardPage />} />
-          <Route path="/dashboard/aide" element={<DashboardPage />} />
-          <Route path="/dashboard/compte" element={<DashboardPage />} />
-          <Route path="/dashboard/support" element={<DashboardPage />} />
-          <Route path="/dashboard/tarifs" element={<DashboardPage />} />
-          <Route path="/dashboard/rapport" element={<DashboardPage />} />
+          <Route path="/dashboard" element={<SmartDashboard />} />
+          <Route path="/dashboard/nouvelle-analyse" element={<SmartDashboard />} />
+          <Route path="/dashboard/analyses" element={<SmartDashboard />} />
+          <Route path="/dashboard/dossiers" element={<SmartDashboard />} />
+          <Route path="/dashboard/dossier/:id" element={<SmartDashboard />} />
+          <Route path="/dashboard/compare" element={<SmartDashboard />} />
+          <Route path="/dashboard/aide" element={<SmartDashboard />} />
+          <Route path="/dashboard/compte" element={<SmartDashboard />} />
+          <Route path="/dashboard/support" element={<SmartDashboard />} />
+          <Route path="/dashboard/tarifs" element={<SmartDashboard />} />
+          <Route path="/dashboard/abonnement" element={<SmartDashboard />} />
+          <Route path="/dashboard/rapport" element={<SmartDashboard />} />
           <Route path="/rapport" element={<RapportPage />} />
           <Route path="/rapport/partage/:token" element={<RapportPartagePage />} />
+          <Route path="/rapport-partage" element={<RapportPartagePage />} />
           <Route path="/rapport/print" element={<RapportPrintPage />} />
           <Route path="/rapport-comparaison" element={<RapportComparaisonPage />} />
           <Route path="*" element={<PublicLayout><NotFoundPage /></PublicLayout>} />
