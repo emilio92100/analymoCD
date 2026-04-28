@@ -7,8 +7,8 @@ import {
   Search, X, Check, AlertTriangle, Shield, CreditCard,
   Trash2, RefreshCw, Eye, EyeOff, ArrowRight,
   LogOut, Send, UserPlus, CheckCircle, Download, Tag,
-  Bell, ChevronLeft, Plus, Copy, Briefcase, Euro, ExternalLink,
-  Clock, User,
+  Bell, ChevronLeft, ChevronRight, Plus, Copy, Briefcase, Euro, ExternalLink,
+  Clock, User, Building2,
 } from 'lucide-react';
 
 
@@ -175,7 +175,7 @@ function ActionBtn({ icon, label, color = '#64748b', bg = '#f8fafc', border = '#
 /* ══════════════════════════════════════════
    ADMIN PAGE ROOT
 ══════════════════════════════════════════ */
-type TabId = 'dashboard' | 'users' | 'analyses' | 'payments' | 'messages' | 'demandes_pro' | 'stats' | 'promos' | 'logs' | 'banner' | 'alerts';
+type TabId = 'dashboard' | 'users' | 'analyses' | 'payments' | 'messages' | 'demandes_pro' | 'stats' | 'promos' | 'logs' | 'banner' | 'alerts' | 'clients';
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -193,6 +193,7 @@ export default function AdminPage() {
   // Recherche globale
   const [globalSearch, setGlobalSearch] = useState('');
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [createProFromDemande, setCreateProFromDemande] = useState<Record<string, unknown> | null>(null);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg); setTimeout(() => setToast(''), 3000);
@@ -261,6 +262,7 @@ export default function AdminPage() {
     { id: 'payments', label: 'Paiements', icon: Euro },
     { id: 'messages', label: 'Messages', icon: Mail, badge: unreadCount },
     { id: 'demandes_pro', label: 'Demandes Pro', icon: Briefcase, badge: proUnreadCount },
+    { id: 'clients', label: 'Clients Pro', icon: Building2 },
     { id: 'promos', label: 'Codes promo', icon: Tag },
     { id: 'alerts', label: 'Alertes système', icon: AlertTriangle },
     { id: 'banner', label: 'Bannière', icon: Bell },
@@ -447,7 +449,8 @@ export default function AdminPage() {
               {activeTab === 'analyses' && <AnalysesTab onOpenUser={(id) => { setFocusUserId(id); setActiveTab('users'); }} focusAnalysisId={focusAnalysisId} onFocusAnalysisHandled={() => setFocusAnalysisId(null)} />}
               {activeTab === 'payments' && <PaymentsTab onOpenUser={(id) => { setFocusUserId(id); setActiveTab('users'); }} showToast={showToast} />}
               {activeTab === 'messages' && <MessagesTab onConfirm={setConfirm} showToast={showToast} onReadChange={setUnreadCount} />}
-              {activeTab === 'demandes_pro' && <DemandesProTab onConfirm={setConfirm} showToast={showToast} onReadChange={setProUnreadCount} />}
+              {activeTab === 'demandes_pro' && <DemandesProTab onConfirm={setConfirm} showToast={showToast} onReadChange={setProUnreadCount} onCreatePro={(d) => { setCreateProFromDemande(d); setActiveTab('clients'); }} />}
+              {activeTab === 'clients' && <ClientsProTab showToast={showToast} logAction={logAction} onConfirm={setConfirm} prefillDemande={createProFromDemande} onPrefillHandled={() => setCreateProFromDemande(null)} />}
               {activeTab === 'promos' && <PromosTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} />}
               {activeTab === 'alerts' && <SystemAlertsTab showToast={showToast} />}
               {activeTab === 'banner' && <BannerTab showToast={showToast} logAction={logAction} />}
@@ -2563,7 +2566,7 @@ type ContactPro = {
   id: string; profile_type: string; nom: string; prenom: string; email: string;
   telephone?: string; ville?: string; volume?: string; message?: string;
   profile_data: Record<string, unknown>; rgpd_consent: boolean; read: boolean;
-  notes_admin?: string; created_at: string;
+  notes_admin?: string; created_at: string; converted_profile_id?: string; converted_at?: string;
 };
 
 const proTypeBadge: Record<string, { label: string; color: string; bg: string; border: string }> = {
@@ -2573,7 +2576,7 @@ const proTypeBadge: Record<string, { label: string; color: string; bg: string; b
   autre: { label: '💼 Autre', color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' },
 };
 
-function DemandesProTab({ onConfirm, showToast, onReadChange }: { onConfirm: (a: ConfirmAction) => void; showToast: (m: string) => void; onReadChange: (n: number) => void }) {
+function DemandesProTab({ onConfirm, showToast, onReadChange, onCreatePro }: { onConfirm: (a: ConfirmAction) => void; showToast: (m: string) => void; onReadChange: (n: number) => void; onCreatePro?: (d: Record<string, unknown>) => void }) {
   const [demandes, setDemandes] = useState<ContactPro[]>([]);
   const [selected, setSelected] = useState<ContactPro | null>(null);
   const [loading, setLoading] = useState(true);
@@ -2743,10 +2746,379 @@ function DemandesProTab({ onConfirm, showToast, onReadChange }: { onConfirm: (a:
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                 <Trash2 size={13} /> Supprimer
               </button>
+              {onCreatePro && !selected.converted_profile_id && (
+                <button onClick={() => onCreatePro({ ...selected, contact_pro_id: selected.id })}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, background: '#0f2d3d', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                  <UserPlus size={13} /> Créer compte pro
+                </button>
+              )}
+              {selected.converted_profile_id && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 16px', borderRadius: 11, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', fontSize: 13, fontWeight: 700 }}>
+                  <CheckCircle size={13} /> Compte créé
+                </span>
+              )}
             </div>
           </motion.div>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   CLIENTS PRO TAB
+══════════════════════════════════════════ */
+type ProClient = {
+  id: string; full_name?: string; email?: string; telephone?: string; role: string;
+  pro_profile_type?: string; pro_company_name?: string; pro_ville?: string; pro_network?: string;
+  pro_notes_admin?: string; pro_created_at?: string; pro_recommended_plan?: string;
+  pro_onboarding_done?: boolean; credits_document?: number; credits_complete?: number;
+  suspended?: boolean; created_at: string;
+};
+type ProInvitation = { id: string; profile_id: string; email: string; token: string; sent_at?: string; accepted_at?: string; created_at: string };
+
+function ClientsProTab({ showToast, logAction, onConfirm, prefillDemande, onPrefillHandled }: {
+  showToast: (m: string) => void; logAction: (a: string, t?: string) => Promise<void>; onConfirm: (a: ConfirmAction) => void;
+  prefillDemande: Record<string, unknown> | null; onPrefillHandled: () => void;
+}) {
+  const [clients, setClients] = useState<ProClient[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [selected, setSelected] = useState<ProClient | null>(null);
+  const [invitations, setInvitations] = useState<ProInvitation[]>([]);
+  const [clientAnalyses, setClientAnalyses] = useState<{ id: string; title: string; address?: string; status: string; score?: number; created_at: string }[]>([]);
+  const [clientShares, setClientShares] = useState<{ id: string; recipient_name: string; recipient_email: string; sent_at: string; opened_at?: string }[]>([]);
+  const [sendingInvite, setSendingInvite] = useState(false);
+
+  // Form state
+  const [form, setForm] = useState({
+    full_name: '', email: '', telephone: '',
+    pro_profile_type: 'agent', pro_company_name: '', pro_company_address: '',
+    pro_siret: '', pro_ville: '', pro_network: '',
+    pro_notes_admin: '', pro_recommended_plan: '' as string,
+    credits_document: '0', credits_complete: '0',
+    contact_pro_id: '' as string,
+  });
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
+
+  const loadClients = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase.from('profiles').select('*').eq('role', 'pro').order('pro_created_at', { ascending: false });
+    setClients((data || []) as ProClient[]);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadClients(); }, [loadClients]);
+
+  // Prefill from demande pro
+  useEffect(() => {
+    if (prefillDemande) {
+      const d = prefillDemande as Record<string, string>;
+      const pd = (prefillDemande.profile_data || {}) as Record<string, string>;
+      setForm({
+        full_name: `${d.prenom || ''} ${d.nom || ''}`.trim(),
+        email: d.email || '',
+        telephone: d.telephone || '',
+        pro_profile_type: d.profile_type || 'agent',
+        pro_company_name: pd.nomAgence || pd.nomSociete || pd.nomEtude || pd.nomStructure || pd.nomSocieteMarchand || '',
+        pro_company_address: pd.adresseAgence || pd.adresseEtude || '',
+        pro_siret: pd.siret || pd.rsac || pd.siretMarchand || '',
+        pro_ville: d.ville || pd.zoneGeographique || '',
+        pro_network: pd.reseau || '',
+        pro_notes_admin: d.message ? `Demande originale : ${d.message}` : '',
+        pro_recommended_plan: '',
+        credits_document: '0',
+        credits_complete: '0',
+        contact_pro_id: d.contact_pro_id || d.id || '',
+      });
+      setShowCreate(true);
+      onPrefillHandled();
+    }
+  }, [prefillDemande, onPrefillHandled]);
+
+  const loadClientDetail = async (client: ProClient) => {
+    setSelected(client);
+    // Invitations
+    const { data: inv } = await supabase.from('pro_invitations').select('*').eq('profile_id', client.id).order('created_at', { ascending: false });
+    setInvitations((inv || []) as ProInvitation[]);
+    // Analyses
+    const { data: anal } = await supabase.from('analyses').select('id, title, address, status, created_at, result').eq('user_id', client.id).order('created_at', { ascending: false }).limit(20);
+    setClientAnalyses((anal || []).map((a: Record<string, unknown>) => ({
+      id: a.id as string, title: a.title as string, address: a.address as string | undefined,
+      status: a.status as string, created_at: a.created_at as string,
+      score: (a.result && typeof a.result === 'object' && 'score' in (a.result as Record<string, unknown>)) ? (a.result as Record<string, number>).score : undefined,
+    })));
+    // Shares
+    const { data: sh } = await supabase.from('report_shares').select('id, recipient_name, recipient_email, sent_at, opened_at').eq('sender_id', client.id).order('sent_at', { ascending: false }).limit(20);
+    setClientShares((sh || []) as typeof clientShares);
+  };
+
+  const handleCreate = async () => {
+    if (!form.email || !form.full_name) { setCreateError('Nom et email obligatoires.'); return; }
+    setCreating(true); setCreateError('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+        body: JSON.stringify({ action: 'create_pro', ...form }),
+      });
+      const data = await res.json();
+      if (data.error) { setCreateError(data.error); setCreating(false); return; }
+      await logAction('Compte pro créé', form.email);
+      showToast(`Compte pro ${form.email} créé`);
+      setShowCreate(false);
+      setForm({ full_name: '', email: '', telephone: '', pro_profile_type: 'agent', pro_company_name: '', pro_company_address: '', pro_siret: '', pro_ville: '', pro_network: '', pro_notes_admin: '', pro_recommended_plan: '', credits_document: '0', credits_complete: '0', contact_pro_id: '' });
+      loadClients();
+    } catch (e) { setCreateError(String(e)); }
+    setCreating(false);
+  };
+
+  const sendInvitation = async (profileId: string, isResend = false) => {
+    setSendingInvite(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+        body: JSON.stringify({ action: isResend ? 'resend_pro_invitation' : 'send_pro_invitation', profile_id: profileId }),
+      });
+      const data = await res.json();
+      if (data.error) { showToast('Erreur : ' + data.error); } else {
+        showToast(`Mail envoyé à ${data.sent_to}`);
+        await logAction(isResend ? 'Mail connexion renvoyé' : 'Mail connexion envoyé', data.sent_to);
+        if (selected) loadClientDetail(selected);
+      }
+    } catch { showToast('Erreur envoi mail'); }
+    setSendingInvite(false);
+  };
+
+  const proTypeBadges: Record<string, { label: string; color: string; bg: string }> = {
+    agent: { label: '🏢 Agent', color: '#2a7d9c', bg: '#f0f7fb' },
+    investisseur: { label: '📈 Investisseur', color: '#7c3aed', bg: '#f5f3ff' },
+    marchand: { label: '🔑 Marchand', color: '#d97706', bg: '#fffbeb' },
+    notaire: { label: '⚖️ Notaire', color: '#0f2d3d', bg: '#f4f7f9' },
+    autre: { label: '💼 Autre', color: '#64748b', bg: '#f8fafc' },
+  };
+
+  const inputStyle = { width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 14, outline: 'none', boxSizing: 'border-box' as const, background: '#f8fafc', fontFamily: 'inherit' };
+  const labelStyle: React.CSSProperties = { display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Clients Pro</h1>
+          <p style={{ fontSize: 13, color: '#94a3b8' }}>{clients.length} client{clients.length > 1 ? 's' : ''} pro</p>
+        </div>
+        <button onClick={() => { setForm({ full_name: '', email: '', telephone: '', pro_profile_type: 'agent', pro_company_name: '', pro_company_address: '', pro_siret: '', pro_ville: '', pro_network: '', pro_notes_admin: '', pro_recommended_plan: '', credits_document: '0', credits_complete: '0', contact_pro_id: '' }); setCreateError(''); setShowCreate(true); }}
+          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          <UserPlus size={14} /> Créer un client pro
+        </button>
+      </div>
+
+      {/* Liste des clients */}
+      {selected ? (
+        /* ── Fiche client détaillée ── */
+        <div>
+          <button onClick={() => setSelected(null)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: 13, fontWeight: 600, marginBottom: 16, padding: 0 }}>
+            <ChevronLeft size={14} /> Retour à la liste
+          </button>
+
+          {/* Header fiche */}
+          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: 24, marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                  {(() => { const b = proTypeBadges[selected.pro_profile_type || 'autre'] || proTypeBadges.autre; return <span style={{ fontSize: 12, fontWeight: 700, color: b.color, background: b.bg, padding: '3px 10px', borderRadius: 8 }}>{b.label}</span>; })()}
+                  {selected.suspended && <span style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', background: '#fef2f2', padding: '2px 8px', borderRadius: 6 }}>Suspendu</span>}
+                </div>
+                <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>{selected.full_name}</h2>
+                <p style={{ fontSize: 13, color: '#2a7d9c', margin: 0 }}>{selected.email}</p>
+                {selected.telephone && <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>{selected.telephone}</p>}
+                {selected.pro_company_name && <p style={{ fontSize: 14, fontWeight: 600, color: '#374151', margin: '6px 0 0' }}>{selected.pro_company_name}{selected.pro_network ? ` · ${selected.pro_network}` : ''}</p>}
+                {selected.pro_ville && <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>{selected.pro_ville}</p>}
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+                <button onClick={() => sendInvitation(selected.id, invitations.some(inv => inv.sent_at))} disabled={sendingInvite}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: sendingInvite ? 0.7 : 1 }}>
+                  <Send size={12} /> {sendingInvite ? 'Envoi...' : invitations.some(inv => inv.sent_at) ? 'Renvoyer le mail' : 'Envoyer mail de connexion'}
+                </button>
+              </div>
+            </div>
+
+            {/* Stats rapides */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+              <div style={{ padding: '10px 12px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7', textAlign: 'center' as const }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{selected.credits_complete || 0}</div>
+                <div style={{ fontSize: 10, color: '#94a3b8' }}>Crédits complètes</div>
+              </div>
+              <div style={{ padding: '10px 12px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7', textAlign: 'center' as const }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{selected.credits_document || 0}</div>
+                <div style={{ fontSize: 10, color: '#94a3b8' }}>Crédits simples</div>
+              </div>
+              <div style={{ padding: '10px 12px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7', textAlign: 'center' as const }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{clientAnalyses.length}</div>
+                <div style={{ fontSize: 10, color: '#94a3b8' }}>Analyses</div>
+              </div>
+              <div style={{ padding: '10px 12px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7', textAlign: 'center' as const }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{clientShares.length}</div>
+                <div style={{ fontSize: 10, color: '#94a3b8' }}>Envois clients</div>
+              </div>
+            </div>
+
+            {/* Invitations */}
+            {invitations.length > 0 && (
+              <div style={{ marginTop: 16, padding: 12, borderRadius: 10, background: invitations[0].accepted_at ? '#f0fdf4' : '#fffbeb', border: `1px solid ${invitations[0].accepted_at ? '#bbf7d0' : '#fde68a'}` }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: invitations[0].accepted_at ? '#16a34a' : '#d97706' }}>
+                  {invitations[0].accepted_at
+                    ? `✅ Compte activé le ${fmtDateTime(invitations[0].accepted_at)}`
+                    : invitations[0].sent_at
+                      ? `📧 Mail envoyé le ${fmtDateTime(invitations[0].sent_at)} — en attente d'activation`
+                      : '⏳ Invitation créée, mail non encore envoyé'}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Analyses du client */}
+          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: 20, marginBottom: 16 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 12 }}>Historique des analyses</h3>
+            {clientAnalyses.length === 0 ? <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center' as const, padding: 16 }}>Aucune analyse.</p> : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {clientAnalyses.map(a => (
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: '#f8fafc' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{a.address || a.title}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDate(a.created_at)} · {a.status}</div>
+                    </div>
+                    {a.score != null && <span style={{ fontSize: 14, fontWeight: 800, color: a.score >= 14 ? '#16a34a' : a.score >= 10 ? '#d97706' : '#dc2626' }}>{a.score}/20</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Envois clients */}
+          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: 20, marginBottom: 16 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 12 }}>Envois aux clients</h3>
+            {clientShares.length === 0 ? <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center' as const, padding: 16 }}>Aucun envoi.</p> : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {clientShares.map(s => (
+                  <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: '#f8fafc' }}>
+                    <Send size={13} style={{ color: '#2a7d9c', flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{s.recipient_name}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8' }}>{s.recipient_email}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' as const }}>
+                      <div style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDate(s.sent_at)}</div>
+                      {s.opened_at ? <span style={{ fontSize: 10, color: '#16a34a', fontWeight: 600 }}>Ouvert</span> : <span style={{ fontSize: 10, color: '#94a3b8' }}>En attente</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Notes admin */}
+          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: 20 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 12 }}>Notes admin</h3>
+            <textarea value={selected.pro_notes_admin || ''} onChange={async (e) => {
+              const val = e.target.value;
+              setSelected(prev => prev ? { ...prev, pro_notes_admin: val } : null);
+              await supabase.from('profiles').update({ pro_notes_admin: val }).eq('id', selected.id);
+            }} rows={4} placeholder="Notes internes sur ce client..."
+              style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', background: '#f8fafc', fontFamily: 'inherit', resize: 'vertical' }} />
+          </div>
+        </div>
+      ) : (
+        /* ── Liste ── */
+        <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
+          {loading ? <div style={{ padding: 40, textAlign: 'center' as const, color: '#94a3b8' }}>Chargement...</div>
+            : clients.length === 0 ? (
+              <div style={{ padding: '52px 32px', textAlign: 'center' as const }}>
+                <Building2 size={36} style={{ color: '#e2e8f0', margin: '0 auto 14px', display: 'block' }} />
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#94a3b8' }}>Aucun client pro</div>
+                <p style={{ fontSize: 13, color: '#cbd5e1', marginTop: 6 }}>Créez votre premier client pro avec le bouton ci-dessus.</p>
+              </div>
+            ) : clients.map((c, i) => {
+              const b = proTypeBadges[c.pro_profile_type || 'autre'] || proTypeBadges.autre;
+              return (
+                <div key={c.id} onClick={() => loadClientDetail(c)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderBottom: i < clients.length - 1 ? '1px solid #f8fafc' : 'none', cursor: 'pointer', transition: 'background 0.1s' }}
+                  onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#fafcfd'}
+                  onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+                    {(c.full_name?.charAt(0) || 'P').toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{c.full_name}</div>
+                    <div style={{ fontSize: 12, color: '#94a3b8' }}>{c.email}{c.pro_company_name ? ` · ${c.pro_company_name}` : ''}</div>
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: b.color, background: b.bg, padding: '3px 10px', borderRadius: 8 }}>{b.label}</span>
+                  <span style={{ fontSize: 11, color: '#94a3b8' }}>{c.pro_created_at ? fmtDate(c.pro_created_at) : fmtDate(c.created_at)}</span>
+                  <ChevronRight size={14} style={{ color: '#cbd5e1' }} />
+                </div>
+              );
+            })}
+        </div>
+      )}
+
+      {/* Modal création */}
+      <AnimatePresence>
+        {showCreate && (
+          <Modal title="Créer un client pro" onClose={() => setShowCreate(false)} width={560}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+              <div><label style={labelStyle}>Nom complet *</label><input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} style={inputStyle} placeholder="Jean Dupont" /></div>
+              <div><label style={labelStyle}>Email *</label><input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={inputStyle} placeholder="jean@agence.fr" type="email" /></div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+              <div><label style={labelStyle}>Téléphone</label><input value={form.telephone} onChange={e => setForm(f => ({ ...f, telephone: e.target.value }))} style={inputStyle} placeholder="06 12 34 56 78" /></div>
+              <div>
+                <label style={labelStyle}>Profil métier</label>
+                <select value={form.pro_profile_type} onChange={e => setForm(f => ({ ...f, pro_profile_type: e.target.value }))} style={inputStyle}>
+                  <option value="agent">Agent immobilier</option>
+                  <option value="investisseur">Investisseur</option>
+                  <option value="marchand">Marchand de bien</option>
+                  <option value="notaire">Notaire</option>
+                  <option value="autre">Autre</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+              <div><label style={labelStyle}>Société</label><input value={form.pro_company_name} onChange={e => setForm(f => ({ ...f, pro_company_name: e.target.value }))} style={inputStyle} placeholder="Agence Dupont" /></div>
+              <div><label style={labelStyle}>Réseau</label><input value={form.pro_network} onChange={e => setForm(f => ({ ...f, pro_network: e.target.value }))} style={inputStyle} placeholder="IAD, Safti, Indépendant..." /></div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+              <div><label style={labelStyle}>SIRET</label><input value={form.pro_siret} onChange={e => setForm(f => ({ ...f, pro_siret: e.target.value }))} style={inputStyle} /></div>
+              <div><label style={labelStyle}>Ville / Zone</label><input value={form.pro_ville} onChange={e => setForm(f => ({ ...f, pro_ville: e.target.value }))} style={inputStyle} /></div>
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Plan recommandé</label>
+              <select value={form.pro_recommended_plan} onChange={e => setForm(f => ({ ...f, pro_recommended_plan: e.target.value }))} style={inputStyle}>
+                <option value="">Aucun (le pro choisira)</option>
+                <option value="starter">Starter — 49,90€ HT/mois</option>
+                <option value="power">Power — 89,90€ HT/mois</option>
+              </select>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+              <div><label style={labelStyle}>Crédits simples offerts</label><input type="number" value={form.credits_document} onChange={e => setForm(f => ({ ...f, credits_document: e.target.value }))} style={inputStyle} min="0" /></div>
+              <div><label style={labelStyle}>Crédits complètes offerts</label><input type="number" value={form.credits_complete} onChange={e => setForm(f => ({ ...f, credits_complete: e.target.value }))} style={inputStyle} min="0" /></div>
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={labelStyle}>Notes admin</label>
+              <textarea value={form.pro_notes_admin} onChange={e => setForm(f => ({ ...f, pro_notes_admin: e.target.value }))} rows={3} style={{ ...inputStyle, resize: 'vertical' as const }} placeholder="Notes internes..." />
+            </div>
+            {createError && <div style={{ padding: '10px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', marginBottom: 12, fontSize: 13, color: '#dc2626' }}>{createError}</div>}
+            <button onClick={handleCreate} disabled={creating || !form.email || !form.full_name}
+              style={{ width: '100%', padding: '13px', borderRadius: 12, background: (!form.email || !form.full_name) ? '#cbd5e1' : 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: creating ? 0.7 : 1 }}>
+              {creating ? 'Création en cours...' : 'Créer le client pro'}
+            </button>
+          </Modal>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
