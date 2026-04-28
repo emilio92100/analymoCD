@@ -22,23 +22,24 @@ export default function SetupAccountPage() {
     if (!token) { setError('Lien invalide.'); setLoading(false); return; }
 
     const checkToken = async () => {
-      // On utilise un appel direct car l'user n'est pas encore connecté
-      // On passe par la RPC publique
-      const { data, error: fetchErr } = await supabase
-        .from('pro_invitations')
-        .select('*, profiles(full_name, pro_recommended_plan)')
-        .eq('token', token)
-        .is('accepted_at', null)
-        .maybeSingle();
-
-      if (fetchErr || !data) {
-        setError('Ce lien est invalide ou a déjà été utilisé.');
+      try {
+        const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+          body: JSON.stringify({ action: 'verify_pro_token', token }),
+        });
+        const data = await res.json();
+        if (data.error || !data.valid) {
+          setError('Ce lien est invalide ou a déjà été utilisé.');
+          setLoading(false);
+          return;
+        }
+        setInvitation({ email: data.email, profile_id: data.profile_id, profiles: { full_name: data.full_name, pro_recommended_plan: data.pro_recommended_plan } });
         setLoading(false);
-        return;
+      } catch {
+        setError('Erreur de connexion. Réessayez.');
+        setLoading(false);
       }
-
-      setInvitation(data);
-      setLoading(false);
     };
 
     checkToken();
