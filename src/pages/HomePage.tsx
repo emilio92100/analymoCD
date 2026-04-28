@@ -1392,15 +1392,15 @@ function ScoreSection() {
       <div className="max-w-5xl mx-auto">
         <SectionTitle label="Notre méthode" title="Un score objectif" accent="sur 20 points." sub="Chaque bien reçoit une note calculée à partir de 5 catégories analysées dans vos documents. Une méthode claire que vous pouvez vérifier à chaque étape." />
 
-        <div className="grid md:grid-cols-2 gap-6 md:gap-8 items-start">
+        <div className="grid md:grid-cols-2 gap-6 md:gap-8 items-stretch">
 
           {/* Gauche — catégories */}
           <Reveal>
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden h-full flex flex-col">
               <div className="px-6 py-4 border-b border-slate-100">
                 <p className="text-xs font-bold text-[#2a7d9c] uppercase tracking-widest">5 catégories analysées</p>
               </div>
-              <div className="p-4 flex flex-col gap-2">
+              <div className="p-4 flex flex-col gap-2 flex-1">
                 {cats.map((cat, i) => (
                   <div key={i} className="flex items-center justify-between px-4 py-3 rounded-xl bg-slate-50 border border-slate-100">
                     <div className="flex items-center gap-3">
@@ -1420,13 +1420,13 @@ function ScoreSection() {
             </div>
           </Reveal>
 
-          {/* Droite — échelle */}
+          {/* Droite — échelle + CTAs */}
           <Reveal delay={1}>
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden h-full flex flex-col">
               <div className="px-6 py-4 border-b border-slate-100">
                 <p className="text-xs font-bold text-[#2a7d9c] uppercase tracking-widest">L'échelle des notes</p>
               </div>
-              <div className="p-4 flex flex-col gap-2">
+              <div className="p-4 flex flex-col gap-2 flex-1">
                 {levels.map((level, i) => (
                   <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: level.bg, border: `1px solid ${level.border}` }}>
                     <span className="text-base font-black min-w-[70px]" style={{ color: level.c }}>{level.r}</span>
@@ -1434,21 +1434,19 @@ function ScoreSection() {
                   </div>
                 ))}
               </div>
+              <div className="px-4 pb-4 pt-2 flex flex-col gap-2">
+                <Link to="/methode"
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold text-[#2a7d9c] border border-[#2a7d9c]/20 bg-white hover:bg-[#2a7d9c]/5 transition-colors">
+                  Voir la méthode complète <ArrowRight size={14} />
+                </Link>
+                <Link to="/exemple"
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold text-white bg-[#0f2d3d] hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
+                  Voir un exemple complet de rapport <ArrowRight size={14} />
+                </Link>
+              </div>
             </div>
           </Reveal>
         </div>
-
-        {/* CTAs sous les 2 cards */}
-        <Reveal className="mt-8 md:mt-10 flex flex-col sm:flex-row justify-center items-center gap-3">
-          <Link to="/methode"
-            className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold text-[#2a7d9c] border border-[#2a7d9c]/20 bg-white hover:bg-[#2a7d9c]/5 transition-colors w-full sm:w-auto">
-            Voir la méthode complète <ArrowRight size={14} />
-          </Link>
-          <Link to="/exemple"
-            className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl text-sm font-bold text-white bg-[#0f2d3d] hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200 w-full sm:w-auto">
-            Voir un exemple complet de rapport <ArrowRight size={14} />
-          </Link>
-        </Reveal>
       </div>
     </section>
   );
