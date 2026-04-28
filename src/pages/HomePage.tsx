@@ -1190,23 +1190,23 @@ function HowItWorksSection() {
   const steps = [
     {
       emoji: '🔎',
-      title: 'Vous visitez',
-      desc: "L'agent vous envoie les documents. Vous ne comprenez pas tout — c'est normal.",
+      title: 'Vous avez trouvé LE bien',
+      desc: "Visite faite, coup de cœur confirmé. L'agent vous transmet les documents — et là, c'est le mur.",
     },
     {
       emoji: '📄',
-      title: 'Vous uploadez',
-      desc: "Déposez vos PDF sur Verimo.\n30 secondes, c'est analysé.",
+      title: 'Vous nous les confiez',
+      desc: "PV d'AG, diagnostics, règlement… Déposez vos PDF sur Verimo.\n30 secondes, c'est analysé.",
     },
     {
       emoji: '✅',
-      title: 'Vous comprenez',
-      desc: "Score /20, risques, budget réel — tout est clair et actionnable.",
+      title: "Vous comprenez l'essentiel",
+      desc: "Score /20, travaux, charges, risques cachés — tout est clair en un rapport.",
     },
     {
       emoji: '🎯',
-      title: 'Vous décidez',
-      desc: "Offre, négociation ou renoncement — en toute confiance.",
+      title: 'Vous décidez en confiance',
+      desc: "Offrir, négocier ou passer votre chemin — en connaissance de cause.",
     },
   ];
 
