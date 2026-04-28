@@ -135,12 +135,11 @@ export default function HomePage() {
   return (
     <div className="bg-white text-[#0f172a] antialiased overflow-x-hidden" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <HeroSection />
-      <ProblemSolutionSection />
-      <ApercuRapportSection />
-      <AvantApresSection />
-      <ForWhoSection />
-      <ScoreSection />
       <HowItWorksSection />
+      <ApercuRapportSection />
+      <ProblemSolutionSection />
+      <ScoreSection />
+      <ForWhoSection />
       <AvisSection />
       <SecuriteSection />
       <FaqSection />
