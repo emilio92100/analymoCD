@@ -97,7 +97,7 @@ function PdfButtonInline() {
 export default function NouvelleAnalyse() {
   const { credits, deductCredit } = useCredits();
   const [searchParams] = useSearchParams();
-  const [step, setStep] = useState<'choice' | 'type_bien' | 'profil' | 'upload' | 'analyse' | 'apercu' | 'result'>('choice');
+  const [step, setStep] = useState<'choice' | 'folder_select' | 'type_bien' | 'profil' | 'upload' | 'analyse' | 'apercu' | 'result'>('choice');
   const [type, setType] = useState<'document' | 'complete' | null>(null);
   const [typeBienDeclare, setTypeBienDeclare] = useState<TypeBien | null>(null);
   const [files, setFiles] = useState<File[]>([]);
@@ -126,6 +126,13 @@ export default function NouvelleAnalyse() {
   // ─── Détection rôle utilisateur (pro / particulier) ────────
   const [userRole, setUserRole] = useState<'pro' | 'particulier' | null>(null);
   const [proCredits, setProCredits] = useState<{ complete: number; document: number } | null>(null);
+
+  // ─── Dossier sélectionné (pros uniquement) ────────────────
+  type FolderLite = { id: string; name: string; property_address?: string | null; property_city?: string | null };
+  const [selectedFolder, setSelectedFolder] = useState<FolderLite | null>(null);
+  const [proFolders, setProFolders] = useState<FolderLite[]>([]);
+  const [foldersLoading, setFoldersLoading] = useState(false);
+  const [showCreateFolderInline, setShowCreateFolderInline] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -173,6 +180,37 @@ export default function NouvelleAnalyse() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // ─── Chargement des dossiers du pro + lecture URL ?folder=… ───
+  useEffect(() => {
+    if (userRole !== 'pro') return;
+    let cancelled = false;
+    (async () => {
+      setFoldersLoading(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: folders } = await supabase
+          .from('pro_folders')
+          .select('id, name, property_address, property_city')
+          .eq('user_id', user.id)
+          .order('updated_at', { ascending: false });
+        if (cancelled) return;
+        setProFolders(folders || []);
+
+        // Si l'URL contient ?folder=ID, on pré-sélectionne ce dossier
+        const folderIdFromUrl = searchParams.get('folder');
+        if (folderIdFromUrl && folders) {
+          const found = folders.find(f => f.id === folderIdFromUrl);
+          if (found) setSelectedFolder(found);
+        }
+      } catch (e) {
+        console.error('Erreur chargement dossiers:', e);
+      }
+      if (!cancelled) setFoldersLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [userRole, searchParams]);
 
   // ─── UX messages rotatifs pendant l'analyse ────────────────
   const [rotatingMsgIdx, setRotatingMsgIdx] = useState(0);
@@ -424,7 +462,7 @@ export default function NouvelleAnalyse() {
     setStep('analyse'); setError(''); setFileWarnings([]); setProgress(5);
     setProgressMsg('Préparation des documents…'); setProgressDoc({ current: 0, total: files.length });
     const docNames = files.map(f => f.name);
-    const analyseDB = await createAnalyse(type, files[0].name, profil || 'rp', docNames, typeBienDeclare);
+    const analyseDB = await createAnalyse(type, files[0].name, profil || 'rp', docNames, typeBienDeclare, selectedFolder?.id || null);
     const analyseId = analyseDB?.id || null;
     if (!analyseId) {
       await refundCredit(creditType);
@@ -488,7 +526,10 @@ export default function NouvelleAnalyse() {
             if (isLoadingRole) return; // attendre que le rôle soit chargé
             if (isPro) {
               if (!proHasDocumentCredits) { window.location.href = '/dashboard/abonnement'; return; }
-              setType('document'); setStep('type_bien'); return;
+              setType('document');
+              // Pro : on passe par l'étape choix dossier sauf si déjà pré-sélectionné via URL
+              setStep(selectedFolder ? 'type_bien' : 'folder_select');
+              return;
             }
             if (freePreviewUsed && credits.document === 0) { window.location.href = '/dashboard/tarifs'; return; }
             setType('document'); setStep('type_bien');
@@ -523,7 +564,9 @@ export default function NouvelleAnalyse() {
             if (isLoadingRole) return;
             if (isPro) {
               if (!proHasCompleteCredits) { window.location.href = '/dashboard/abonnement'; return; }
-              setType('complete'); setStep('type_bien'); return;
+              setType('complete');
+              setStep(selectedFolder ? 'type_bien' : 'folder_select');
+              return;
             }
             if (freePreviewUsed && credits.complete === 0) { window.location.href = '/dashboard/tarifs'; return; }
             setType('complete'); setStep('type_bien');
@@ -562,10 +605,41 @@ export default function NouvelleAnalyse() {
   }
 
 
+  /* ── CHOIX DOSSIER (pros uniquement) */
+  if (step === 'folder_select' && type) return (
+    <FolderSelectStep
+      folders={proFolders}
+      loading={foldersLoading}
+      type={type}
+      onBack={() => { setStep('choice'); setSelectedFolder(null); }}
+      onSelect={(folder) => { setSelectedFolder(folder); setStep('type_bien'); }}
+      onCreate={() => setShowCreateFolderInline(true)}
+      showCreateModal={showCreateFolderInline}
+      onCreateClose={() => setShowCreateFolderInline(false)}
+      onCreated={(folder) => {
+        // Le dossier vient d'être créé : on l'ajoute à la liste, on le sélectionne, on passe à l'étape suivante
+        setProFolders(prev => [folder, ...prev]);
+        setSelectedFolder(folder);
+        setShowCreateFolderInline(false);
+        setStep('type_bien');
+      }}
+    />
+  );
+
+
   /* ── TYPE DE BIEN (nouvelle étape — session 4) */
   if (step === 'type_bien' && type) return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <button onClick={() => { setStep('choice'); setTypeBienDeclare(null); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
+      <button onClick={() => {
+          // Pro : retour vers folder_select. Particulier : retour vers choice.
+          if (userRole === 'pro') { setStep('folder_select'); }
+          else { setStep('choice'); }
+          setTypeBienDeclare(null);
+        }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 16, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
+
+      {/* Bandeau dossier sélectionné (pros uniquement) */}
+      {userRole === 'pro' && selectedFolder && <FolderBanner folder={selectedFolder} />}
+
       <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 8 }}>Quel type de bien analysez-vous ?</h1>
       <p style={{ fontSize: 14, color: '#64748b', marginBottom: 28, lineHeight: 1.6 }}>Verimo adapte son analyse aux spécificités de votre bien — une copropriété et une maison n'ont pas les mêmes risques.</p>
 
@@ -641,7 +715,11 @@ export default function NouvelleAnalyse() {
   /* ── PROFIL */
   if (step === 'profil' && type) return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <button onClick={() => { setStep('type_bien'); setProfil(null); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
+      <button onClick={() => { setStep('type_bien'); setProfil(null); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 16, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
+
+      {/* Bandeau dossier sélectionné (pros uniquement) */}
+      {userRole === 'pro' && selectedFolder && <FolderBanner folder={selectedFolder} />}
+
       <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 8 }}>Ce bien, c'est pour vous ?</h1>
       <p style={{ fontSize: 14, color: '#64748b', marginBottom: 32, lineHeight: 1.6 }}>Votre profil d'achat influence la notation du bien — notamment sur le DPE et les charges.</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -680,7 +758,11 @@ export default function NouvelleAnalyse() {
   /* ── UPLOAD */
   if (step === 'upload' && plan) return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <button onClick={() => { setStep('profil'); resetUpload(); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
+      <button onClick={() => { setStep('profil'); resetUpload(); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 16, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
+
+      {/* Bandeau dossier sélectionné (pros uniquement) */}
+      {userRole === 'pro' && selectedFolder && <FolderBanner folder={selectedFolder} />}
+
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24, padding: '16px 18px', background: '#fff', borderRadius: 14, border: '1px solid #edf2f7' }}>
         <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           {type === 'complete' ? <ShieldCheck size={19} style={{ color: '#2a7d9c' }} /> : <FileText size={19} style={{ color: '#2a7d9c' }} />}
@@ -1191,4 +1273,453 @@ export default function NouvelleAnalyse() {
   }
 
   return null;
+}
+
+/* ══════════════════════════════════════════
+   COMPOSANT : Bandeau "Pour le dossier ..."
+   (affiché à toutes les étapes après sélection)
+══════════════════════════════════════════ */
+function FolderBanner({ folder }: { folder: { id: string; name: string; property_address?: string | null; property_city?: string | null } }) {
+  const subtitle = [folder.property_address, folder.property_city].filter(Boolean).join(', ');
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '11px 16px',
+        marginBottom: 18,
+        borderRadius: 12,
+        background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)',
+        border: '1px solid #d0e8f0',
+      }}>
+      <div style={{ width: 32, height: 32, borderRadius: 9, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(42,125,156,0.12)' }}>
+        <Building2 size={15} style={{ color: '#2a7d9c' }} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.04em', textTransform: 'uppercase' as const }}>Analyse pour le dossier</div>
+        <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f2d3d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{folder.name}</div>
+        {subtitle && <div style={{ fontSize: 11.5, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{subtitle}</div>}
+      </div>
+    </motion.div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   ÉTAPE : Choix du dossier (pros uniquement)
+══════════════════════════════════════════ */
+type FolderLite = { id: string; name: string; property_address?: string | null; property_city?: string | null };
+
+function FolderSelectStep({ folders, loading, type, onBack, onSelect, onCreate, showCreateModal, onCreateClose, onCreated }: {
+  folders: FolderLite[];
+  loading: boolean;
+  type: 'document' | 'complete';
+  onBack: () => void;
+  onSelect: (folder: FolderLite) => void;
+  onCreate: () => void;
+  showCreateModal: boolean;
+  onCreateClose: () => void;
+  onCreated: (folder: FolderLite) => void;
+}) {
+  const [search, setSearch] = useState('');
+  const filtered = folders.filter(f => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      f.name.toLowerCase().includes(q) ||
+      (f.property_address || '').toLowerCase().includes(q) ||
+      (f.property_city || '').toLowerCase().includes(q)
+    );
+  });
+
+  return (
+    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <button onClick={onBack} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
+
+      <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 8 }}>
+        Pour quel dossier ?
+      </h1>
+      <p style={{ fontSize: 14, color: '#64748b', marginBottom: 24, lineHeight: 1.6 }}>
+        Choisissez le dossier dans lequel cette analyse {type === 'complete' ? 'complète' : 'simple'} sera classée. Vous pourrez la retrouver à tout moment dans la fiche du dossier.
+      </p>
+
+      {/* Bouton créer un nouveau dossier */}
+      <button onClick={onCreate}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+          padding: '16px 20px', marginBottom: 18,
+          borderRadius: 14,
+          background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)',
+          border: '1.5px dashed #2a7d9c',
+          cursor: 'pointer', textAlign: 'left' as const,
+          transition: 'all 0.15s',
+        }}
+        onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'linear-gradient(135deg, #e8f4f8, #d0e8f0)'; el.style.transform = 'translateY(-1px)'; }}
+        onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'linear-gradient(135deg, #f0f7fb, #e8f4f8)'; el.style.transform = 'translateY(0)'; }}>
+        <div style={{ width: 38, height: 38, borderRadius: 10, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(42,125,156,0.15)' }}>
+          <Sparkles size={17} style={{ color: '#2a7d9c' }} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: '#0f2d3d', marginBottom: 2 }}>+ Créer un nouveau dossier</div>
+          <div style={{ fontSize: 12, color: '#64748b' }}>Pour un nouveau bien — vous reprendrez cette analyse juste après</div>
+        </div>
+        <ArrowRight size={16} style={{ color: '#2a7d9c', flexShrink: 0 }} />
+      </button>
+
+      {/* Recherche + dossiers existants */}
+      {folders.length > 0 && (
+        <>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 10 }}>
+            Ou choisissez un dossier existant
+          </div>
+          {folders.length > 4 && (
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Rechercher un dossier..."
+              style={{ width: '100%', padding: '9px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const, marginBottom: 12, background: '#fff', fontFamily: 'inherit' }} />
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+            {filtered.map(f => (
+              <button key={f.id} onClick={() => onSelect(f)}
+                style={{
+                  padding: '14px 16px', borderRadius: 12,
+                  background: '#fff', border: '1.5px solid #edf2f7',
+                  cursor: 'pointer', textAlign: 'left' as const,
+                  transition: 'all 0.15s',
+                  display: 'flex', alignItems: 'center', gap: 12,
+                }}
+                onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.boxShadow = '0 4px 14px rgba(42,125,156,0.1)'; el.style.transform = 'translateY(-1px)'; }}
+                onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.boxShadow = 'none'; el.style.transform = 'translateY(0)'; }}>
+                <div style={{ width: 34, height: 34, borderRadius: 9, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Building2 size={15} style={{ color: '#2a7d9c' }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{f.name}</div>
+                  {(f.property_address || f.property_city) && (
+                    <div style={{ fontSize: 11.5, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                      {[f.property_address, f.property_city].filter(Boolean).join(', ')}
+                    </div>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+          {filtered.length === 0 && search && (
+            <div style={{ padding: 24, textAlign: 'center' as const, fontSize: 13, color: '#94a3b8', background: '#f8fafc', borderRadius: 12, border: '1px dashed #e2e8f0' }}>
+              Aucun dossier ne correspond à « {search} ».
+            </div>
+          )}
+        </>
+      )}
+
+      {/* État vide : aucun dossier encore créé */}
+      {!loading && folders.length === 0 && (
+        <div style={{ padding: 32, textAlign: 'center' as const, background: '#fff', borderRadius: 14, border: '1px solid #edf2f7' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 11, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+            <Building2 size={20} style={{ color: '#2a7d9c' }} />
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Vous n'avez pas encore de dossier</div>
+          <div style={{ fontSize: 12.5, color: '#64748b', lineHeight: 1.6 }}>Cliquez ci-dessus pour en créer un. Cela ne prendra que quelques secondes.</div>
+        </div>
+      )}
+
+      {loading && (
+        <div style={{ padding: 24, textAlign: 'center' as const, fontSize: 13, color: '#94a3b8' }}>Chargement de vos dossiers…</div>
+      )}
+
+      {/* Modale de création de dossier inline */}
+      <AnimatePresence>
+        {showCreateModal && (
+          <InlineModalCreateFolder onClose={onCreateClose} onCreated={onCreated} />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   MODAL : Création de dossier (version inline pour NouvelleAnalyse)
+   Réutilisable depuis le flow d'analyse, retourne directement le folder créé
+══════════════════════════════════════════ */
+function InlineModalCreateFolder({ onClose, onCreated }: { onClose: () => void; onCreated: (folder: FolderLite) => void }) {
+  const [address, setAddress] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [city, setCity] = useState('');
+  const [name, setName] = useState('');
+  const [internalNote, setInternalNote] = useState('');
+  const [nameTouched, setNameTouched] = useState(false);
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
+  const [cityLoading, setCityLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const [addressSuggestions, setAddressSuggestions] = useState<Array<{ label: string; postcode: string; city: string }>>([]);
+  const [addressLoading, setAddressLoading] = useState(false);
+  const [showAddressDropdown, setShowAddressDropdown] = useState(false);
+  const [addressFocused, setAddressFocused] = useState(false);
+  const lastPostalCodeQueriedRef = useRef<string>('');
+  const addressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Auto-génération nom dossier
+  useEffect(() => {
+    if (nameTouched) return;
+    const parts = [];
+    if (address.trim()) parts.push(address.trim());
+    if (city.trim()) parts.push(city.trim());
+    setName(parts.join(', '));
+  }, [address, city, nameTouched]);
+
+  // Auto-complétion code postal -> ville
+  useEffect(() => {
+    const cp = postalCode.trim();
+    if (cp.length !== 5) {
+      setCityOptions([]);
+      if (cp.length === 0 && lastPostalCodeQueriedRef.current) {
+        setCity('');
+        lastPostalCodeQueriedRef.current = '';
+      }
+      return;
+    }
+    if (lastPostalCodeQueriedRef.current && lastPostalCodeQueriedRef.current !== cp) {
+      setCity('');
+    }
+    lastPostalCodeQueriedRef.current = cp;
+    setCityLoading(true);
+    fetch(`https://geo.api.gouv.fr/communes?codePostal=${cp}&fields=nom&format=json&limit=10`)
+      .then(r => r.json())
+      .then((data: { nom: string }[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const cities = data.map(c => c.nom);
+          setCityOptions(cities);
+          if (cities.length === 1) setCity(cities[0]);
+        } else {
+          setCityOptions([]);
+        }
+      })
+      .catch(() => setCityOptions([]))
+      .finally(() => setCityLoading(false));
+  }, [postalCode]);
+
+  // Auto-complétion adresse via Etalab
+  useEffect(() => {
+    if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
+    const q = address.trim();
+    if (q.length < 4) { setAddressSuggestions([]); return; }
+    addressDebounceRef.current = setTimeout(() => {
+      setAddressLoading(true);
+      fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(q)}&limit=5&autocomplete=1`)
+        .then(r => r.json())
+        .then((data: any) => {
+          if (data?.features && Array.isArray(data.features)) {
+            const suggestions = data.features
+              .map((f: any) => ({ label: f.properties?.label || '', postcode: f.properties?.postcode || '', city: f.properties?.city || '' }))
+              .filter((s: any) => s.label);
+            setAddressSuggestions(suggestions);
+          } else {
+            setAddressSuggestions([]);
+          }
+        })
+        .catch(() => setAddressSuggestions([]))
+        .finally(() => setAddressLoading(false));
+    }, 300);
+    return () => { if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current); };
+  }, [address]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  function selectAddressSuggestion(s: { label: string; postcode: string; city: string }) {
+    const streetOnly = s.label.split(',')[0].trim();
+    setAddress(streetOnly);
+    if (s.postcode) setPostalCode(s.postcode);
+    if (s.city) setCity(s.city);
+    setAddressSuggestions([]);
+    setShowAddressDropdown(false);
+  }
+
+  async function handleSubmit() {
+    if (!name.trim()) {
+      setErrorMsg('Le nom du dossier est obligatoire.');
+      return;
+    }
+    setSubmitting(true);
+    setErrorMsg('');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Vous devez être connecté');
+
+      const { data, error } = await supabase
+        .from('pro_folders')
+        .insert({
+          user_id: user.id,
+          name: name.trim(),
+          property_address: address.trim() || null,
+          property_postal_code: postalCode.trim() || null,
+          property_city: city.trim() || null,
+          internal_note: internalNote.trim() || null,
+        })
+        .select('id, name, property_address, property_city')
+        .single();
+
+      if (error) throw error;
+      onCreated(data as FolderLite);
+    } catch (e: any) {
+      setErrorMsg(e.message || 'Erreur lors de la création du dossier.');
+      setSubmitting(false);
+    }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 13px', borderRadius: 10, border: '1.5px solid #edf2f7',
+    fontSize: 13.5, outline: 'none', boxSizing: 'border-box' as const, background: '#fff',
+    fontFamily: 'inherit', color: '#0f172a',
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 540, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 30px 80px rgba(15,45,61,0.35)' }}>
+
+        {/* Header */}
+        <div style={{ padding: '22px 24px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Building2 size={18} style={{ color: '#2a7d9c' }} />
+            </div>
+            <div>
+              <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>Nouveau dossier</h2>
+              <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0 0' }}>Vous reprendrez votre analyse juste après</p>
+            </div>
+          </div>
+          <button onClick={onClose} title="Fermer"
+            style={{ width: 32, height: 32, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <span style={{ fontSize: 16, color: '#64748b', lineHeight: 1 }}>×</span>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '20px 24px 8px' }}>
+          {/* Adresse + autocomplétion */}
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>
+              Adresse du bien <span style={{ color: '#cbd5e1', fontWeight: 500, marginLeft: 6, textTransform: 'none' as const, fontSize: 10.5 }}>(optionnel)</span>
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input value={address}
+                onChange={e => { setAddress(e.target.value); setShowAddressDropdown(true); }}
+                onFocus={() => { setAddressFocused(true); setShowAddressDropdown(true); }}
+                onBlur={() => { setAddressFocused(false); setTimeout(() => setShowAddressDropdown(false), 150); }}
+                placeholder="Commencez à taper… (ex: 12 rue de Rivoli)"
+                autoComplete="off"
+                style={inputStyle} />
+
+              {showAddressDropdown && addressFocused && (addressSuggestions.length > 0 || addressLoading) && (
+                <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: '#fff', border: '1.5px solid #edf2f7', borderRadius: 10, boxShadow: '0 12px 32px rgba(15,45,61,0.12)', zIndex: 10, maxHeight: 240, overflowY: 'auto' as const }}>
+                  {addressLoading && addressSuggestions.length === 0 ? (
+                    <div style={{ padding: '12px 14px', fontSize: 12, color: '#94a3b8', fontStyle: 'italic' as const }}>Recherche d'adresses…</div>
+                  ) : (
+                    addressSuggestions.map((s, i) => (
+                      <button key={i}
+                        onMouseDown={(e) => { e.preventDefault(); selectAddressSuggestion(s); }}
+                        style={{ width: '100%', textAlign: 'left' as const, padding: '10px 14px', background: 'transparent', border: 'none', borderBottom: i < addressSuggestions.length - 1 ? '1px solid #f1f5f9' : 'none', cursor: 'pointer', fontSize: 13, color: '#0f172a', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 8 }}
+                        onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#f8fafc'}
+                        onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.label}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Code postal + Ville */}
+          <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 12, marginBottom: 14 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>
+                Code postal <span style={{ color: '#cbd5e1', fontWeight: 500, marginLeft: 6, textTransform: 'none' as const, fontSize: 10.5 }}>(optionnel)</span>
+              </label>
+              <input value={postalCode} onChange={e => {
+                  const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 5);
+                  setPostalCode(v);
+                }}
+                placeholder="75001"
+                inputMode="numeric"
+                style={inputStyle} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>
+                Ville <span style={{ color: '#cbd5e1', fontWeight: 500, marginLeft: 6, textTransform: 'none' as const, fontSize: 10.5 }}>(optionnel)</span>
+              </label>
+              {cityOptions.length > 1 ? (
+                <select value={city} onChange={e => setCity(e.target.value)} style={{ ...inputStyle, paddingRight: 28, cursor: 'pointer' }}>
+                  <option value="">Choisir…</option>
+                  {cityOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              ) : (
+                <input value={city} onChange={e => setCity(e.target.value)}
+                  placeholder={cityLoading ? 'Recherche…' : 'Paris 1er'}
+                  style={inputStyle} />
+              )}
+            </div>
+          </div>
+
+          {/* Nom du dossier */}
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>
+              Nom du dossier <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>
+            </label>
+            <input value={name} onChange={e => { setName(e.target.value); setNameTouched(true); }}
+              placeholder="Ex: 12 rue de Rivoli, Paris 1er"
+              style={inputStyle} />
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, fontStyle: 'italic' as const }}>Auto-rempli depuis l'adresse, modifiable</div>
+          </div>
+
+          {/* Note interne */}
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>
+              Note interne <span style={{ color: '#cbd5e1', fontWeight: 500, marginLeft: 6, textTransform: 'none' as const, fontSize: 10.5 }}>(optionnel)</span>
+            </label>
+            <textarea value={internalNote} onChange={e => setInternalNote(e.target.value)}
+              placeholder="Ex: Mandat exclusif signé le 03/05, voisin bruyant"
+              rows={3}
+              style={{ ...inputStyle, resize: 'vertical' as const, minHeight: 60, fontFamily: 'inherit' }} />
+          </div>
+
+          {errorMsg && (
+            <div style={{ marginTop: 8, padding: '10px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: 12.5, fontWeight: 600 }}>
+              {errorMsg}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '12px 24px 22px', display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid #f1f5f9' }}>
+          <button onClick={onClose} disabled={submitting}
+            style={{ padding: '10px 18px', borderRadius: 10, background: '#fff', color: '#64748b', border: '1.5px solid #edf2f7', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600 }}>
+            Annuler
+          </button>
+          <button onClick={handleSubmit} disabled={submitting || !name.trim()}
+            style={{
+              padding: '10px 22px', borderRadius: 10, border: 'none',
+              background: submitting || !name.trim() ? '#cbd5e1' : 'linear-gradient(135deg,#2a7d9c,#0f2d3d)',
+              color: '#fff', cursor: submitting || !name.trim() ? 'not-allowed' : 'pointer',
+              fontSize: 13, fontWeight: 700,
+            }}>
+            {submitting ? 'Création…' : 'Créer le dossier'}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
 }
