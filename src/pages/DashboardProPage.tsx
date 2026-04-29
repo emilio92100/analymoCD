@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -7,6 +7,8 @@ import {
   Send, Eye, Search, Clock,
   CheckCircle, Upload, Mail,
   ChevronRight, ArrowRight,
+  MapPin, Trash2, Pencil, AlertTriangle, FileText, Phone,
+  UserPlus, UserCheck, Folder, Users,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -60,6 +62,7 @@ type ProAnalysis = {
   address?: string;
   created_at: string;
   result?: Record<string, unknown>;
+  folder_id?: string | null;
 };
 
 type ReportShare = {
@@ -70,6 +73,23 @@ type ReportShare = {
   recipient_email: string;
   sent_at: string;
   opened_at?: string;
+};
+
+type ProFolder = {
+  id: string;
+  user_id: string;
+  name: string;
+  property_address?: string | null;
+  property_postal_code?: string | null;
+  property_city?: string | null;
+  internal_note?: string | null;
+  created_at: string;
+  updated_at: string;
+  // Stats chargées séparément
+  analyses_count?: number;
+  sellers_count?: number;
+  buyers_count?: number;
+  last_analysis_date?: string | null;
 };
 
 /* ══════════════════════════════════════════
@@ -397,116 +417,535 @@ function HomeViewPro({ proProfile, subscription, analyses, shares }: { proProfil
 /* ══════════════════════════════════════════
    MES DOSSIERS (VUE PORTEFEUILLE)
 ══════════════════════════════════════════ */
-function MesDossiersPro({ analyses, shares, onSendReport }: { analyses: ProAnalysis[]; shares: ReportShare[]; onSendReport: (id: string) => void }) {
+function MesDossiersPro() {
+  const [folders, setFolders] = useState<ProFolder[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<'date' | 'score'>('date');
-  const [filterType, setFilterType] = useState<'all' | 'complete' | 'document'>('all');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [folderToDelete, setFolderToDelete] = useState<ProFolder | null>(null);
   const navigate = useNavigate();
 
-  const completed = analyses.filter(a => a.status === 'completed');
-  const filtered = completed.filter(a => {
-    if (filterType !== 'all' && a.type !== filterType) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return (a.address || '').toLowerCase().includes(q) || (a.title || '').toLowerCase().includes(q);
+  const loadFolders = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setLoading(false); return; }
+
+      // Charge les dossiers
+      const { data: foldersData, error } = await supabase
+        .from('pro_folders')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        console.error('Erreur chargement dossiers:', error);
+        setLoading(false);
+        return;
+      }
+
+      // Charge les stats pour chaque dossier (analyses, vendeurs, acheteurs)
+      const foldersWithStats = await Promise.all((foldersData || []).map(async (f) => {
+        try {
+          const { data: stats } = await supabase.rpc('get_folder_stats', { p_folder_id: f.id });
+          if (stats && Array.isArray(stats) && stats.length > 0) {
+            const s = stats[0];
+            return {
+              ...f,
+              analyses_count: s.analyses_count || 0,
+              sellers_count: s.sellers_count || 0,
+              buyers_count: s.buyers_count || 0,
+              last_analysis_date: s.last_analysis_date,
+            };
+          }
+        } catch {}
+        return { ...f, analyses_count: 0, sellers_count: 0, buyers_count: 0 };
+      }));
+
+      setFolders(foldersWithStats);
+    } catch (e) {
+      console.error('Erreur:', e);
     }
-    return true;
-  }).sort((a, b) => {
-    if (sortBy === 'score') {
-      const sa = getScore(a.result as Record<string, unknown>) || 0;
-      const sb = getScore(b.result as Record<string, unknown>) || 0;
-      return sb - sa;
-    }
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadFolders(); }, [loadFolders]);
+
+  const filtered = folders.filter(f => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      f.name.toLowerCase().includes(q) ||
+      (f.property_address || '').toLowerCase().includes(q) ||
+      (f.property_city || '').toLowerCase().includes(q)
+    );
   });
+
+  async function handleDelete(folder: ProFolder) {
+    try {
+      const { error } = await supabase.from('pro_folders').delete().eq('id', folder.id);
+      if (error) throw error;
+      setFolderToDelete(null);
+      await loadFolders();
+    } catch (e: any) {
+      alert('Erreur lors de la suppression : ' + (e.message || 'inconnue'));
+    }
+  }
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 20, flexWrap: 'wrap' as const, gap: 12 }}>
-        <Link to="/dashboard/nouvelle-analyse" style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 700 }}>
-          <Plus size={14} /> Nouvelle analyse
-        </Link>
+      {/* Header avec bouton Créer */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap' as const, gap: 12 }}>
+        <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
+          {folders.length === 0 ? 'Organisez vos analyses par dossier (un dossier = un bien).' : `${folders.length} dossier${folders.length > 1 ? 's' : ''}`}
+        </p>
+        <button onClick={() => setShowCreateModal(true)}
+          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
+          <Plus size={14} /> Créer un dossier
+        </button>
       </div>
 
-      {/* Filtres */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' as const }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+      {/* Search */}
+      {folders.length > 0 && (
+        <div style={{ position: 'relative', marginBottom: 16 }}>
           <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher une adresse..."
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher un dossier..."
             style={{ width: '100%', padding: '9px 12px 9px 34px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', background: '#fff', fontFamily: 'inherit' }} />
         </div>
-        <select value={filterType} onChange={e => setFilterType(e.target.value as 'all' | 'complete' | 'document')}
-          style={{ padding: '9px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, background: '#fff', fontFamily: 'inherit', cursor: 'pointer' }}>
-          <option value="all">Toutes</option>
-          <option value="complete">Complètes</option>
-          <option value="document">Simples</option>
-        </select>
-        <select value={sortBy} onChange={e => setSortBy(e.target.value as 'date' | 'score')}
-          style={{ padding: '9px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, background: '#fff', fontFamily: 'inherit', cursor: 'pointer' }}>
-          <option value="date">Plus récentes</option>
-          <option value="score">Meilleur score</option>
-        </select>
-      </div>
+      )}
 
       {/* Liste */}
-      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', overflow: 'hidden' }}>
-        {filtered.length === 0 ? (
-          <div style={{ padding: 40, textAlign: 'center' }}>
-            <FolderOpen size={32} style={{ color: '#cbd5e1', marginBottom: 12 }} />
-            <p style={{ fontSize: 14, color: '#94a3b8', margin: 0 }}>Aucun dossier trouvé.</p>
+      {loading ? (
+        <div style={{ padding: 60, textAlign: 'center', background: '#fff', borderRadius: 16, border: '1px solid #edf2f7' }}>
+          <div style={{ fontSize: 13, color: '#94a3b8' }}>Chargement…</div>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div style={{ padding: 60, textAlign: 'center', background: '#fff', borderRadius: 16, border: '1px solid #edf2f7' }}>
+          <div style={{ width: 56, height: 56, borderRadius: 14, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <Folder size={28} style={{ color: '#2a7d9c' }} />
           </div>
-        ) : (
-          filtered.map((a, i) => {
-            const score = getScore(a.result as Record<string, unknown>);
-            const dpe = getDPE(a.result as Record<string, unknown>);
-            const shareCount = shares.filter(s => s.analysis_id === a.id).length;
-            const dpeStyle = dpe ? DPE_COLORS[dpe] : null;
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>
+            {search ? 'Aucun dossier trouvé' : 'Aucun dossier pour le moment'}
+          </h3>
+          <p style={{ fontSize: 13, color: '#94a3b8', margin: '0 0 20px 0', maxWidth: 380, marginLeft: 'auto', marginRight: 'auto' }}>
+            {search ? "Essayez avec d'autres mots-clés." : "Créez votre premier dossier pour organiser vos analyses par bien."}
+          </p>
+          {!search && (
+            <button onClick={() => setShowCreateModal(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '11px 22px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
+              <Plus size={14} /> Créer mon premier dossier
+            </button>
+          )}
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 14 }}>
+          {filtered.map((f) => (
+            <FolderCard key={f.id} folder={f}
+              onClick={() => navigate(`/dashboard/dossier/${f.id}`)}
+              onDelete={() => setFolderToDelete(f)} />
+          ))}
+        </div>
+      )}
 
-            return (
-              <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderBottom: i < filtered.length - 1 ? '1px solid #f1f5f9' : 'none', cursor: 'pointer', transition: 'background 0.1s' }}
-                onClick={() => navigate(`/dashboard/dossier/${a.id}`)}
-                onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#fafcfd'}
-                onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
-
-                {/* Score */}
-                {score !== null ? <ScoreRing score={score} size={42} /> : <div style={{ width: 42, height: 42, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>—</div>}
-
-                {/* Infos */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.address || a.title}</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-                    {a.type === 'complete' ? 'Complète' : 'Simple'} · {fmtDate(a.created_at)}
-                  </div>
-                </div>
-
-                {/* DPE */}
-                {dpe && dpeStyle && (
-                  <span style={{ fontSize: 12, fontWeight: 700, color: dpeStyle.color, background: dpeStyle.bg, padding: '3px 10px', borderRadius: 8 }}>DPE {dpe}</span>
-                )}
-
-                {/* Envois */}
-                {shareCount > 0 ? (
-                  <span style={{ fontSize: 11, fontWeight: 600, color: '#2a7d9c', background: '#f0f7fb', padding: '3px 10px', borderRadius: 100 }}>{shareCount} envoi{shareCount > 1 ? 's' : ''}</span>
-                ) : (
-                  <span style={{ fontSize: 11, color: '#cbd5e1' }}>—</span>
-                )}
-
-                {/* Actions */}
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button onClick={e => { e.stopPropagation(); onSendReport(a.id); }} title="Envoyer au client"
-                    style={{ width: 32, height: 32, borderRadius: 8, background: '#f0f7fb', border: '1px solid #d0e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Send size={13} style={{ color: '#2a7d9c' }} />
-                  </button>
-                  <button onClick={e => { e.stopPropagation(); window.open(`/rapport?id=${a.id}`, '_blank'); }} title="Voir le rapport"
-                    style={{ width: 32, height: 32, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Eye size={13} style={{ color: '#64748b' }} />
-                  </button>
-                </div>
-              </div>
-            );
-          })
+      {/* Modale création */}
+      <AnimatePresence>
+        {showCreateModal && (
+          <ModalCreateFolder
+            onClose={() => setShowCreateModal(false)}
+            onCreated={(folder) => {
+              setShowCreateModal(false);
+              loadFolders();
+              // Naviguer vers le détail du dossier créé
+              setTimeout(() => navigate(`/dashboard/dossier/${folder.id}`), 100);
+            }}
+          />
         )}
+      </AnimatePresence>
+
+      {/* Modale suppression */}
+      <AnimatePresence>
+        {folderToDelete && (
+          <ModalDeleteFolder
+            folder={folderToDelete}
+            onClose={() => setFolderToDelete(null)}
+            onConfirm={() => handleDelete(folderToDelete)}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   FOLDER CARD — Carte d'un dossier dans la liste
+══════════════════════════════════════════ */
+function FolderCard({ folder, onClick, onDelete }: { folder: ProFolder; onClick: () => void; onDelete: () => void }) {
+  const hasAddress = folder.property_address || folder.property_city;
+  const stats = [
+    { label: folder.analyses_count === 1 ? 'analyse' : 'analyses', value: folder.analyses_count || 0, color: '#2a7d9c' },
+    { label: folder.sellers_count === 1 ? 'vendeur' : 'vendeurs', value: folder.sellers_count || 0, color: '#7c3aed' },
+    { label: folder.buyers_count === 1 ? 'acheteur' : 'acheteurs', value: folder.buyers_count || 0, color: '#16a34a' },
+  ];
+  return (
+    <div onClick={onClick}
+      style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: 18, cursor: 'pointer', transition: 'all 0.2s', position: 'relative' }}
+      onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.boxShadow = '0 8px 24px rgba(42,125,156,0.08)'; el.style.transform = 'translateY(-2px)'; }}
+      onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.boxShadow = 'none'; el.style.transform = 'translateY(0)'; }}>
+
+      {/* Bouton supprimer (apparait au hover) */}
+      <button onClick={e => { e.stopPropagation(); onDelete(); }} title="Supprimer ce dossier"
+        className="folder-delete-btn"
+        style={{ position: 'absolute', top: 10, right: 10, width: 28, height: 28, borderRadius: 7, background: '#fef2f2', border: '1px solid #fee2e2', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.15s' }}>
+        <Trash2 size={13} style={{ color: '#dc2626' }} />
+      </button>
+
+      <style>{`
+        div:hover > .folder-delete-btn { opacity: 1 !important; }
+      `}</style>
+
+      {/* Icône + Nom */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+        <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Folder size={18} style={{ color: '#2a7d9c' }} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0, paddingRight: 30 }}>
+          <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a', margin: 0, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+            {folder.name}
+          </h3>
+          {hasAddress && (
+            <div style={{ fontSize: 11.5, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+              <MapPin size={11} style={{ flexShrink: 0, color: '#94a3b8' }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {[folder.property_address, folder.property_city].filter(Boolean).join(', ')}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Stats */}
+      <div style={{ display: 'flex', gap: 16, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+        {stats.map((s, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+            <span style={{ fontSize: 16, fontWeight: 800, color: s.value > 0 ? s.color : '#cbd5e1' }}>{s.value}</span>
+            <span style={{ fontSize: 11, color: '#94a3b8' }}>{s.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Date de dernière modif */}
+      <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 10 }}>
+        Modifié le {fmtDate(folder.updated_at)}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   MODAL : CRÉATION DOSSIER
+══════════════════════════════════════════ */
+function ModalCreateFolder({ onClose, onCreated }: { onClose: () => void; onCreated: (folder: ProFolder) => void }) {
+  const [address, setAddress] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [city, setCity] = useState('');
+  const [name, setName] = useState('');
+  const [internalNote, setInternalNote] = useState('');
+  const [nameTouched, setNameTouched] = useState(false); // si l'utilisateur a manuellement modifié le nom
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
+  const [cityLoading, setCityLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // Auto-génération du nom du dossier
+  useEffect(() => {
+    if (nameTouched) return; // ne pas écraser si l'utilisateur a modifié manuellement
+    const parts = [];
+    if (address.trim()) parts.push(address.trim());
+    if (city.trim()) parts.push(city.trim());
+    setName(parts.join(', '));
+  }, [address, city, nameTouched]);
+
+  // Auto-complétion code postal → ville (API gouv.fr)
+  useEffect(() => {
+    const cp = postalCode.trim();
+    if (cp.length !== 5) {
+      setCityOptions([]);
+      return;
+    }
+    setCityLoading(true);
+    fetch(`https://geo.api.gouv.fr/communes?codePostal=${cp}&fields=nom&format=json&limit=10`)
+      .then(r => r.json())
+      .then((data: { nom: string }[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const cities = data.map(c => c.nom);
+          setCityOptions(cities);
+          // Si une seule ville trouvée et que l'user n'a rien tapé : auto-remplit
+          if (cities.length === 1 && !city.trim()) setCity(cities[0]);
+        } else {
+          setCityOptions([]);
+        }
+      })
+      .catch(() => setCityOptions([]))
+      .finally(() => setCityLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postalCode]);
+
+  // ESC pour fermer
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  async function handleSubmit() {
+    if (!name.trim()) {
+      setErrorMsg('Le nom du dossier est obligatoire.');
+      return;
+    }
+    setSubmitting(true);
+    setErrorMsg('');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Vous devez être connecté');
+
+      const { data, error } = await supabase
+        .from('pro_folders')
+        .insert({
+          user_id: user.id,
+          name: name.trim(),
+          property_address: address.trim() || null,
+          property_postal_code: postalCode.trim() || null,
+          property_city: city.trim() || null,
+          internal_note: internalNote.trim() || null,
+        })
+        .select('*')
+        .single();
+
+      if (error) throw error;
+      onCreated(data as ProFolder);
+    } catch (e: any) {
+      setErrorMsg(e.message || 'Erreur lors de la création du dossier.');
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        onClick={e => e.stopPropagation()}
+        style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 520, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 30px 80px rgba(15,45,61,0.35)' }}>
+
+        {/* Header */}
+        <div style={{ padding: '22px 24px 12px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0 }}>Nouveau dossier</h2>
+            <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0 0' }}>Organisez vos analyses par bien immobilier</p>
+          </div>
+          <button onClick={onClose}
+            style={{ width: 32, height: 32, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={15} style={{ color: '#64748b' }} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '20px 24px 8px' }}>
+
+          {/* Adresse */}
+          <Field label="Adresse du bien" optional>
+            <input value={address} onChange={e => setAddress(e.target.value)}
+              placeholder="12 rue de Rivoli"
+              style={inputStyle} />
+          </Field>
+
+          {/* Code postal + Ville */}
+          <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 10, marginBottom: 14 }}>
+            <Field label="Code postal" optional>
+              <input value={postalCode} onChange={e => {
+                  const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 5);
+                  setPostalCode(v);
+                }}
+                placeholder="75001"
+                inputMode="numeric"
+                style={inputStyle} />
+            </Field>
+            <Field label="Ville" optional>
+              {cityOptions.length > 1 ? (
+                <select value={city} onChange={e => setCity(e.target.value)} style={{ ...inputStyle, paddingRight: 28 }}>
+                  <option value="">Choisir…</option>
+                  {cityOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              ) : (
+                <input value={city} onChange={e => setCity(e.target.value)}
+                  placeholder={cityLoading ? 'Recherche…' : 'Paris 1er'}
+                  style={inputStyle} />
+              )}
+            </Field>
+          </div>
+
+          {/* Nom du dossier (auto-rempli) */}
+          <Field label="Nom du dossier" required hint="Auto-rempli depuis l'adresse, modifiable">
+            <input value={name} onChange={e => { setName(e.target.value); setNameTouched(true); }}
+              placeholder="Ex: 12 rue de Rivoli, Paris 1er"
+              style={inputStyle} />
+          </Field>
+
+          {/* Note interne */}
+          <Field label="Note interne" optional>
+            <textarea value={internalNote} onChange={e => setInternalNote(e.target.value)}
+              placeholder="Ex: Mandat exclusif signé le 03/05, voisin bruyant"
+              rows={3}
+              style={{ ...inputStyle, resize: 'vertical' as const, minHeight: 60, fontFamily: 'inherit' }} />
+          </Field>
+
+          {errorMsg && (
+            <div style={{ marginTop: 8, padding: '10px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: 12.5, fontWeight: 600 }}>
+              {errorMsg}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '12px 24px 22px', display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid #f1f5f9' }}>
+          <button onClick={onClose} disabled={submitting}
+            style={{ padding: '10px 18px', borderRadius: 10, background: '#fff', color: '#64748b', border: '1.5px solid #edf2f7', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600 }}>
+            Annuler
+          </button>
+          <button onClick={handleSubmit} disabled={submitting || !name.trim()}
+            style={{
+              padding: '10px 22px', borderRadius: 10, border: 'none',
+              background: submitting || !name.trim() ? '#cbd5e1' : 'linear-gradient(135deg,#2a7d9c,#0f2d3d)',
+              color: '#fff', cursor: submitting || !name.trim() ? 'not-allowed' : 'pointer',
+              fontSize: 13, fontWeight: 700,
+            }}>
+            {submitting ? 'Création…' : 'Créer le dossier'}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   MODAL : SUPPRESSION DOSSIER
+══════════════════════════════════════════ */
+function ModalDeleteFolder({ folder, onClose, onConfirm }: { folder: ProFolder; onClose: () => void; onConfirm: () => void }) {
+  const [submitting, setSubmitting] = useState(false);
+  const [confirmInput, setConfirmInput] = useState('');
+  const expectedConfirm = 'SUPPRIMER';
+  const canDelete = confirmInput.trim().toUpperCase() === expectedConfirm;
+  const hasAnalyses = (folder.analyses_count || 0) > 0;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        onClick={e => e.stopPropagation()}
+        style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 460, boxShadow: '0 30px 80px rgba(15,45,61,0.35)', overflow: 'hidden' }}>
+
+        {/* Header avec icône warning */}
+        <div style={{ padding: '24px 24px 20px', textAlign: 'center', background: 'linear-gradient(135deg, #fef2f2, #fee2e2)' }}>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+            <AlertTriangle size={22} style={{ color: '#dc2626' }} />
+          </div>
+          <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>Supprimer ce dossier ?</h2>
+          <p style={{ fontSize: 13, color: '#7f1d1d', margin: '6px 0 0 0' }}>Cette action est définitive et irréversible.</p>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '20px 24px' }}>
+          <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 10, background: '#fafafa', border: '1px solid #f1f5f9' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>{folder.name}</div>
+            {folder.property_address && (
+              <div style={{ fontSize: 11.5, color: '#64748b' }}>{folder.property_address}{folder.property_city ? `, ${folder.property_city}` : ''}</div>
+            )}
+          </div>
+
+          <div style={{ marginBottom: 16, fontSize: 13, color: '#0f172a', lineHeight: 1.55 }}>
+            Tout sera supprimé définitivement :
+            <ul style={{ margin: '8px 0 0 0', paddingLeft: 22, color: '#475569' }}>
+              {hasAnalyses && <li><strong>{folder.analyses_count}</strong> analyse{(folder.analyses_count || 0) > 1 ? 's' : ''} (rapports détaillés)</li>}
+              {(folder.sellers_count || 0) > 0 && <li><strong>{folder.sellers_count}</strong> vendeur{(folder.sellers_count || 0) > 1 ? 's' : ''}</li>}
+              {(folder.buyers_count || 0) > 0 && <li><strong>{folder.buyers_count}</strong> acheteur{(folder.buyers_count || 0) > 1 ? 's' : ''}</li>}
+              <li>Toutes les notes du dossier</li>
+            </ul>
+          </div>
+
+          <div style={{ marginBottom: 6, fontSize: 12.5, fontWeight: 600, color: '#475569' }}>
+            Pour confirmer, tapez <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: 4, fontSize: 12, color: '#dc2626', fontWeight: 700 }}>{expectedConfirm}</code> ci-dessous :
+          </div>
+          <input value={confirmInput} onChange={e => setConfirmInput(e.target.value)} autoFocus
+            placeholder={expectedConfirm}
+            style={{ ...inputStyle, borderColor: canDelete ? '#dc2626' : '#edf2f7' }} />
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '12px 24px 22px', display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid #f1f5f9' }}>
+          <button onClick={onClose} disabled={submitting}
+            style={{ padding: '10px 18px', borderRadius: 10, background: '#fff', color: '#64748b', border: '1.5px solid #edf2f7', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600 }}>
+            Annuler
+          </button>
+          <button onClick={() => { setSubmitting(true); onConfirm(); }} disabled={!canDelete || submitting}
+            style={{
+              padding: '10px 22px', borderRadius: 10, border: 'none',
+              background: canDelete && !submitting ? '#dc2626' : '#fecaca',
+              color: '#fff', cursor: canDelete && !submitting ? 'pointer' : 'not-allowed',
+              fontSize: 13, fontWeight: 700,
+            }}>
+            {submitting ? 'Suppression…' : 'Supprimer définitivement'}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   STYLES PARTAGÉS POUR LES MODALES
+══════════════════════════════════════════ */
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 13px',
+  borderRadius: 10,
+  border: '1.5px solid #edf2f7',
+  fontSize: 13.5,
+  outline: 'none',
+  boxSizing: 'border-box' as const,
+  background: '#fff',
+  fontFamily: 'inherit',
+  color: '#0f172a',
+};
+
+function Field({ label, required, optional, hint, children }: { label: string; required?: boolean; optional?: boolean; hint?: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>
+        {label}
+        {required && <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>}
+        {optional && <span style={{ color: '#cbd5e1', fontWeight: 500, marginLeft: 6, textTransform: 'none' as const, fontSize: 10.5 }}>(optionnel)</span>}
+      </label>
+      {children}
+      {hint && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, fontStyle: 'italic' as const }}>{hint}</div>}
     </div>
   );
 }
@@ -1187,13 +1626,188 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
 /* ══════════════════════════════════════════
    DOSSIER DETAIL
 ══════════════════════════════════════════ */
-function DossierDetail({ analysisId, analyses, shares, onSendReport, onBack }: {
+/* ══════════════════════════════════════════
+   DOSSIER DETAIL — Vue détaillée d'un dossier
+══════════════════════════════════════════ */
+function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => void }) {
+  const [folder, setFolder] = useState<ProFolder | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  const navigate = useNavigate();
+
+  const loadFolder = useCallback(async () => {
+    setLoading(true);
+    setNotFound(false);
+    try {
+      const { data, error } = await supabase
+        .from('pro_folders')
+        .select('*')
+        .eq('id', folderId)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) { setNotFound(true); setLoading(false); return; }
+
+      // Charger les stats
+      try {
+        const { data: stats } = await supabase.rpc('get_folder_stats', { p_folder_id: folderId });
+        if (stats && Array.isArray(stats) && stats.length > 0) {
+          const s = stats[0];
+          setFolder({
+            ...data,
+            analyses_count: s.analyses_count || 0,
+            sellers_count: s.sellers_count || 0,
+            buyers_count: s.buyers_count || 0,
+          });
+        } else {
+          setFolder({ ...data, analyses_count: 0, sellers_count: 0, buyers_count: 0 });
+        }
+      } catch {
+        setFolder({ ...data, analyses_count: 0, sellers_count: 0, buyers_count: 0 });
+      }
+    } catch (e) {
+      console.error('Erreur chargement dossier:', e);
+      setNotFound(true);
+    }
+    setLoading(false);
+  }, [folderId]);
+
+  useEffect(() => { loadFolder(); }, [loadFolder]);
+
+  if (loading) {
+    return (
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: 60, textAlign: 'center' }}>
+        <div style={{ fontSize: 13, color: '#94a3b8' }}>Chargement du dossier…</div>
+      </div>
+    );
+  }
+
+  if (notFound || !folder) {
+    return (
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: 60, textAlign: 'center', background: '#fff', borderRadius: 16, border: '1px solid #edf2f7' }}>
+        <Folder size={32} style={{ color: '#cbd5e1', marginBottom: 12 }} />
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>Dossier introuvable</h3>
+        <p style={{ fontSize: 13, color: '#94a3b8', margin: '0 0 20px 0' }}>Ce dossier n'existe pas ou a été supprimé.</p>
+        <button onClick={onBack}
+          style={{ padding: '10px 20px', borderRadius: 10, background: '#0f2d3d', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
+          ← Retour aux dossiers
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: 13, fontWeight: 600, marginBottom: 16, padding: 0 }}>
+        ← Retour aux dossiers
+      </button>
+
+      {/* Header dossier */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '22px 24px', marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+          <div style={{ width: 52, height: 52, borderRadius: 12, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Folder size={24} style={{ color: '#2a7d9c' }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', margin: 0, marginBottom: 4 }}>{folder.name}</h2>
+            {(folder.property_address || folder.property_city) && (
+              <div style={{ fontSize: 13, color: '#64748b', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <MapPin size={13} style={{ color: '#94a3b8', flexShrink: 0 }} />
+                <span>{[folder.property_address, folder.property_postal_code, folder.property_city].filter(Boolean).join(', ')}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {folder.internal_note && (
+          <div style={{ marginTop: 14, padding: '11px 14px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fef3c7', fontSize: 12.5, color: '#78350f', fontStyle: 'italic' as const }}>
+            📝 {folder.internal_note}
+          </div>
+        )}
+      </div>
+
+      {/* Actions principales (vendeurs / acheteurs / analyses) — désactivées pour V1 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 16 }}>
+        <ActionButton icon={UserCheck} label="Ajouter un vendeur" comingSoon />
+        <ActionButton icon={UserPlus} label="Ajouter un acheteur" comingSoon />
+        <ActionButton icon={Plus} label="Lancer une analyse"
+          onClick={() => navigate(`/dashboard/nouvelle-analyse?folder=${folder.id}`)} />
+      </div>
+
+      {/* Section Vendeurs (placeholder) */}
+      <SectionEmpty title="Vendeurs" icon={UserCheck} count={folder.sellers_count} comingSoon />
+
+      {/* Section Acheteurs (placeholder) */}
+      <SectionEmpty title="Acheteurs" icon={UserPlus} count={folder.buyers_count} comingSoon />
+
+      {/* Section Analyses (placeholder pour V1) */}
+      <SectionEmpty title="Analyses" icon={FileText} count={folder.analyses_count} comingSoon />
+
+      {/* Note bas de page */}
+      <div style={{ marginTop: 24, padding: '14px 18px', borderRadius: 12, background: '#f0f7fb', border: '1px solid #d0e8f0', fontSize: 12.5, color: '#0f2d3d', textAlign: 'center' }}>
+        🚧 La gestion des vendeurs, acheteurs et analyses depuis le dossier sera disponible très prochainement.
+      </div>
+    </div>
+  );
+}
+
+function ActionButton({ icon: Icon, label, onClick, comingSoon }: { icon: React.ElementType; label: string; onClick?: () => void; comingSoon?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={comingSoon}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderRadius: 12,
+        background: comingSoon ? '#f8fafc' : '#fff',
+        border: comingSoon ? '1.5px dashed #e2e8f0' : '1.5px solid #edf2f7',
+        cursor: comingSoon ? 'not-allowed' : 'pointer',
+        textAlign: 'left' as const,
+        transition: 'all 0.15s',
+        opacity: comingSoon ? 0.65 : 1,
+      }}
+      onMouseOver={e => { if (!comingSoon) { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.background = '#fafdfe'; } }}
+      onMouseOut={e => { if (!comingSoon) { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.background = '#fff'; } }}>
+      <div style={{ width: 32, height: 32, borderRadius: 8, background: comingSoon ? '#f1f5f9' : 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <Icon size={15} style={{ color: comingSoon ? '#94a3b8' : '#2a7d9c' }} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{label}</div>
+        {comingSoon && <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 1 }}>Bientôt disponible</div>}
+      </div>
+    </button>
+  );
+}
+
+function SectionEmpty({ title, icon: Icon, count, comingSoon }: { title: string; icon: React.ElementType; count?: number; comingSoon?: boolean }) {
+  return (
+    <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 22px', marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Icon size={15} style={{ color: '#94a3b8' }} />
+          {title}
+          {count !== undefined && count > 0 && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '2px 8px', borderRadius: 100 }}>{count}</span>
+          )}
+        </h3>
+      </div>
+      <p style={{ fontSize: 12.5, color: '#94a3b8', margin: 0, fontStyle: 'italic' as const }}>
+        {comingSoon ? 'La gestion arrive bientôt.' : 'Aucun élément.'}
+      </p>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   ANALYSE DETAIL — Vue détaillée d'UNE analyse (depuis ?id=...)
+   (Conservée mais plus utilisée par défaut, gardée pour rétrocompatibilité)
+══════════════════════════════════════════ */
+function AnalyseDetail({ analysisId, analyses, shares, onSendReport, onBack }: {
   analysisId: string; analyses: ProAnalysis[]; shares: ReportShare[]; onSendReport: (id: string) => void; onBack: () => void;
 }) {
   const analysis = analyses.find(a => a.id === analysisId);
   const dossierShares = shares.filter(s => s.analysis_id === analysisId);
 
-  if (!analysis) return <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Dossier introuvable.</div>;
+  if (!analysis) return <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Analyse introuvable.</div>;
 
   const score = getScore(analysis.result as Record<string, unknown>);
   const dpe = getDPE(analysis.result as Record<string, unknown>);
@@ -1326,9 +1940,9 @@ export default function DashboardProPage() {
 
   const renderContent = () => {
     if (dossierMatch) {
-      return <DossierDetail analysisId={dossierMatch[1]} analyses={analyses} shares={shares} onSendReport={setSendReportId} onBack={() => navigate('/dashboard/dossiers')} />;
+      return <DossierDetail folderId={dossierMatch[1]} onBack={() => navigate('/dashboard/dossiers')} />;
     }
-    if (path === '/dashboard/dossiers') return <MesDossiersPro analyses={analyses} shares={shares} onSendReport={setSendReportId} />;
+    if (path === '/dashboard/dossiers') return <MesDossiersPro />;
     if (path === '/dashboard/nouvelle-analyse') return <NouvelleAnalyse />;
     if (path === '/dashboard/compare') return <Compare />;
     if (path === '/dashboard/abonnement') return <MonAbonnement subscription={subscription} />;
