@@ -7,8 +7,8 @@ import {
   Send, Eye, Search, Clock,
   CheckCircle, Upload, Mail,
   ChevronRight, ArrowRight,
-  MapPin, Trash2, Pencil, AlertTriangle, FileText, Phone,
-  UserPlus, UserCheck, Folder, Users,
+  MapPin, Trash2, AlertTriangle, FileText,
+  UserPlus, UserCheck, Folder,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -1793,86 +1793,6 @@ function SectionEmpty({ title, icon: Icon, count, comingSoon }: { title: string;
       <p style={{ fontSize: 12.5, color: '#94a3b8', margin: 0, fontStyle: 'italic' as const }}>
         {comingSoon ? 'La gestion arrive bientôt.' : 'Aucun élément.'}
       </p>
-    </div>
-  );
-}
-
-/* ══════════════════════════════════════════
-   ANALYSE DETAIL — Vue détaillée d'UNE analyse (depuis ?id=...)
-   (Conservée mais plus utilisée par défaut, gardée pour rétrocompatibilité)
-══════════════════════════════════════════ */
-function AnalyseDetail({ analysisId, analyses, shares, onSendReport, onBack }: {
-  analysisId: string; analyses: ProAnalysis[]; shares: ReportShare[]; onSendReport: (id: string) => void; onBack: () => void;
-}) {
-  const analysis = analyses.find(a => a.id === analysisId);
-  const dossierShares = shares.filter(s => s.analysis_id === analysisId);
-
-  if (!analysis) return <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Analyse introuvable.</div>;
-
-  const score = getScore(analysis.result as Record<string, unknown>);
-  const dpe = getDPE(analysis.result as Record<string, unknown>);
-  const result = analysis.result as Record<string, unknown> | undefined;
-  const scoreNiveau = result?.score_niveau as string | undefined;
-
-  return (
-    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: 13, fontWeight: 600, marginBottom: 16, padding: 0 }}>
-        ← Retour aux dossiers
-      </button>
-
-      {/* Header */}
-      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '22px 24px', marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-          {score !== null && <ScoreRing score={score} size={64} />}
-          <div style={{ flex: 1 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>{analysis.address || analysis.title}</h2>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' as const }}>
-              {scoreNiveau && <span style={{ fontSize: 12, fontWeight: 600, color: '#2a7d9c', background: '#f0f7fb', padding: '2px 10px', borderRadius: 100 }}>{scoreNiveau}</span>}
-              {dpe && <span style={{ fontSize: 12, fontWeight: 700, color: DPE_COLORS[dpe]?.color, background: DPE_COLORS[dpe]?.bg, padding: '2px 10px', borderRadius: 8 }}>DPE {dpe}</span>}
-              <span style={{ fontSize: 12, color: '#94a3b8' }}>{analysis.type === 'complete' ? 'Complète' : 'Simple'} · {fmtDate(analysis.created_at)}</span>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-          <button onClick={() => onSendReport(analysis.id)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', borderRadius: 10, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-            <Send size={14} /> Envoyer au client
-          </button>
-          <a href={`/rapport?id=${analysis.id}`} target="_blank" rel="noopener noreferrer"
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', borderRadius: 10, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#374151', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
-            <Eye size={14} /> Voir le rapport complet
-          </a>
-        </div>
-      </div>
-
-      {/* Historique envois */}
-      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '22px 24px' }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 14 }}>Historique des envois</h3>
-        {dossierShares.length === 0 ? (
-          <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center', padding: 16 }}>Aucun envoi pour ce dossier.</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {dossierShares.map(s => (
-              <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
-                <Mail size={14} style={{ color: '#2a7d9c', flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{s.recipient_firstname} {s.recipient_name}</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8' }}>{s.recipient_email}</div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDate(s.sent_at)}</div>
-                  {s.opened_at ? (
-                    <span style={{ fontSize: 10, fontWeight: 600, color: '#16a34a' }}>Ouvert le {fmtDate(s.opened_at)}</span>
-                  ) : (
-                    <span style={{ fontSize: 10, color: '#94a3b8' }}>En attente</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
