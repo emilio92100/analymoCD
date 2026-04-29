@@ -606,14 +606,14 @@ function FolderCard({ folder, onClick, onDelete }: { folder: ProFolder; onClick:
       <div style={{ display: 'flex', gap: 16, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
         {stats.map((s, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-            <span style={{ fontSize: 16, fontWeight: 800, color: s.value > 0 ? s.color : '#cbd5e1' }}>{s.value}</span>
-            <span style={{ fontSize: 11, color: '#94a3b8' }}>{s.label}</span>
+            <span style={{ fontSize: 16, fontWeight: 800, color: s.value > 0 ? s.color : '#94a3b8' }}>{s.value}</span>
+            <span style={{ fontSize: 11, color: '#64748b' }}>{s.label}</span>
           </div>
         ))}
       </div>
 
       {/* Date de dernière modif */}
-      <div style={{ fontSize: 10.5, color: '#cbd5e1', marginTop: 10 }}>
+      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 10 }}>
         Modifié le {fmtDate(folder.updated_at)}
       </div>
     </div>
@@ -635,6 +635,14 @@ function ModalCreateFolder({ onClose, onCreated }: { onClose: () => void; onCrea
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Autocomplétion adresse via API Adresse Etalab
+  const [addressSuggestions, setAddressSuggestions] = useState<Array<{ label: string; postcode: string; city: string }>>([]);
+  const [addressLoading, setAddressLoading] = useState(false);
+  const [showAddressDropdown, setShowAddressDropdown] = useState(false);
+  const [addressFocused, setAddressFocused] = useState(false);
+  const lastPostalCodeQueriedRef = useRef<string>('');
+  const addressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Auto-génération du nom du dossier
   useEffect(() => {
     if (nameTouched) return; // ne pas écraser si l'utilisateur a modifié manuellement
@@ -645,12 +653,23 @@ function ModalCreateFolder({ onClose, onCreated }: { onClose: () => void; onCrea
   }, [address, city, nameTouched]);
 
   // Auto-complétion code postal → ville (API gouv.fr)
+  // ✨ Fix : reset la ville à chaque changement de CP, pas juste si elle est vide
   useEffect(() => {
     const cp = postalCode.trim();
     if (cp.length !== 5) {
       setCityOptions([]);
+      // Si le CP devient invalide, on reset la ville aussi (sauf si l'user l'a modifié manuellement)
+      if (cp.length === 0 && lastPostalCodeQueriedRef.current) {
+        setCity('');
+        lastPostalCodeQueriedRef.current = '';
+      }
       return;
     }
+    // Si le CP a changé depuis la dernière requête, on reset l'ancienne ville
+    if (lastPostalCodeQueriedRef.current && lastPostalCodeQueriedRef.current !== cp) {
+      setCity('');
+    }
+    lastPostalCodeQueriedRef.current = cp;
     setCityLoading(true);
     fetch(`https://geo.api.gouv.fr/communes?codePostal=${cp}&fields=nom&format=json&limit=10`)
       .then(r => r.json())
@@ -658,16 +677,54 @@ function ModalCreateFolder({ onClose, onCreated }: { onClose: () => void; onCrea
         if (Array.isArray(data) && data.length > 0) {
           const cities = data.map(c => c.nom);
           setCityOptions(cities);
-          // Si une seule ville trouvée et que l'user n'a rien tapé : auto-remplit
-          if (cities.length === 1 && !city.trim()) setCity(cities[0]);
+          // Si une seule ville trouvée → auto-remplit (même si city avait une ancienne valeur, on l'écrase)
+          if (cities.length === 1) setCity(cities[0]);
         } else {
           setCityOptions([]);
         }
       })
       .catch(() => setCityOptions([]))
       .finally(() => setCityLoading(false));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postalCode]);
+
+  // Autocomplétion adresse via API Etalab (api-adresse.data.gouv.fr)
+  useEffect(() => {
+    // Annule la requête précédente si nouvelle frappe
+    if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
+
+    const q = address.trim();
+    if (q.length < 4) {
+      setAddressSuggestions([]);
+      return;
+    }
+
+    // Debounce 300ms pour ne pas spammer l'API
+    addressDebounceRef.current = setTimeout(() => {
+      setAddressLoading(true);
+      fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(q)}&limit=5&autocomplete=1`)
+        .then(r => r.json())
+        .then((data: any) => {
+          if (data?.features && Array.isArray(data.features)) {
+            const suggestions = data.features
+              .map((f: any) => ({
+                label: f.properties?.label || '',
+                postcode: f.properties?.postcode || '',
+                city: f.properties?.city || '',
+              }))
+              .filter((s: any) => s.label);
+            setAddressSuggestions(suggestions);
+          } else {
+            setAddressSuggestions([]);
+          }
+        })
+        .catch(() => setAddressSuggestions([]))
+        .finally(() => setAddressLoading(false));
+    }, 300);
+
+    return () => {
+      if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
+    };
+  }, [address]);
 
   // ESC pour fermer
   useEffect(() => {
@@ -675,6 +732,16 @@ function ModalCreateFolder({ onClose, onCreated }: { onClose: () => void; onCrea
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
+
+  function selectAddressSuggestion(s: { label: string; postcode: string; city: string }) {
+    // On extrait juste la partie "numéro + rue" de l'adresse complète (avant la virgule)
+    const streetOnly = s.label.split(',')[0].trim();
+    setAddress(streetOnly);
+    if (s.postcode) setPostalCode(s.postcode);
+    if (s.city) setCity(s.city);
+    setAddressSuggestions([]);
+    setShowAddressDropdown(false);
+  }
 
   async function handleSubmit() {
     if (!name.trim()) {
@@ -712,24 +779,28 @@ function ModalCreateFolder({ onClose, onCreated }: { onClose: () => void; onCrea
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       transition={{ duration: 0.15 }}
-      onClick={onClose}
+      // ✨ Fix : pas de fermeture au clic backdrop (l'utilisateur perdrait son travail)
       style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 10, scale: 0.98 }}
         transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        onClick={e => e.stopPropagation()}
-        style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 520, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 30px 80px rgba(15,45,61,0.35)' }}>
+        style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 540, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 30px 80px rgba(15,45,61,0.35)' }}>
 
         {/* Header */}
-        <div style={{ padding: '22px 24px 12px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0 }}>Nouveau dossier</h2>
-            <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0 0' }}>Organisez vos analyses par bien immobilier</p>
+        <div style={{ padding: '22px 24px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Folder size={18} style={{ color: '#2a7d9c' }} />
+            </div>
+            <div>
+              <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>Nouveau dossier</h2>
+              <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0 0' }}>Organisez vos analyses par bien immobilier</p>
+            </div>
           </div>
-          <button onClick={onClose}
-            style={{ width: 32, height: 32, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={onClose} title="Fermer"
+            style={{ width: 32, height: 32, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <X size={15} style={{ color: '#64748b' }} />
           </button>
         </div>
@@ -737,15 +808,48 @@ function ModalCreateFolder({ onClose, onCreated }: { onClose: () => void; onCrea
         {/* Body */}
         <div style={{ padding: '20px 24px 8px' }}>
 
-          {/* Adresse */}
-          <Field label="Adresse du bien" optional>
-            <input value={address} onChange={e => setAddress(e.target.value)}
-              placeholder="12 rue de Rivoli"
-              style={inputStyle} />
+          {/* Adresse + autocomplétion */}
+          <Field label="Adresse du bien" optional icon={MapPin}>
+            <div style={{ position: 'relative' }}>
+              <input value={address}
+                onChange={e => { setAddress(e.target.value); setShowAddressDropdown(true); }}
+                onFocus={() => { setAddressFocused(true); setShowAddressDropdown(true); }}
+                onBlur={() => {
+                  setAddressFocused(false);
+                  // Délai pour laisser le clic sur une suggestion fonctionner
+                  setTimeout(() => setShowAddressDropdown(false), 150);
+                }}
+                placeholder="Commencez à taper… (ex: 12 rue de Rivoli)"
+                autoComplete="off"
+                style={inputStyle} />
+
+              {/* Dropdown suggestions */}
+              {showAddressDropdown && addressFocused && (addressSuggestions.length > 0 || addressLoading) && (
+                <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: '#fff', border: '1.5px solid #edf2f7', borderRadius: 10, boxShadow: '0 12px 32px rgba(15,45,61,0.12)', zIndex: 10, maxHeight: 240, overflowY: 'auto' as const }}>
+                  {addressLoading && addressSuggestions.length === 0 ? (
+                    <div style={{ padding: '12px 14px', fontSize: 12, color: '#94a3b8', fontStyle: 'italic' as const }}>Recherche d'adresses…</div>
+                  ) : (
+                    addressSuggestions.map((s, i) => (
+                      <button key={i}
+                        onMouseDown={(e) => { e.preventDefault(); selectAddressSuggestion(s); }}
+                        style={{
+                          width: '100%', textAlign: 'left' as const, padding: '10px 14px', background: 'transparent', border: 'none', borderBottom: i < addressSuggestions.length - 1 ? '1px solid #f1f5f9' : 'none', cursor: 'pointer', fontSize: 13, color: '#0f172a', fontFamily: 'inherit',
+                          display: 'flex', alignItems: 'center', gap: 8,
+                        }}
+                        onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#f8fafc'}
+                        onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                        <MapPin size={12} style={{ color: '#94a3b8', flexShrink: 0 }} />
+                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.label}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           </Field>
 
-          {/* Code postal + Ville */}
-          <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 10, marginBottom: 14 }}>
+          {/* Code postal + Ville (alignés sur la même ligne) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 12, marginBottom: 14 }}>
             <Field label="Code postal" optional>
               <input value={postalCode} onChange={e => {
                   const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 5);
@@ -757,7 +861,7 @@ function ModalCreateFolder({ onClose, onCreated }: { onClose: () => void; onCrea
             </Field>
             <Field label="Ville" optional>
               {cityOptions.length > 1 ? (
-                <select value={city} onChange={e => setCity(e.target.value)} style={{ ...inputStyle, paddingRight: 28 }}>
+                <select value={city} onChange={e => setCity(e.target.value)} style={{ ...inputStyle, paddingRight: 28, cursor: 'pointer' }}>
                   <option value="">Choisir…</option>
                   {cityOptions.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
@@ -770,14 +874,14 @@ function ModalCreateFolder({ onClose, onCreated }: { onClose: () => void; onCrea
           </div>
 
           {/* Nom du dossier (auto-rempli) */}
-          <Field label="Nom du dossier" required hint="Auto-rempli depuis l'adresse, modifiable">
+          <Field label="Nom du dossier" required hint="Auto-rempli depuis l'adresse, modifiable" icon={Folder}>
             <input value={name} onChange={e => { setName(e.target.value); setNameTouched(true); }}
               placeholder="Ex: 12 rue de Rivoli, Paris 1er"
               style={inputStyle} />
           </Field>
 
           {/* Note interne */}
-          <Field label="Note interne" optional>
+          <Field label="Note interne" optional icon={FileText}>
             <textarea value={internalNote} onChange={e => setInternalNote(e.target.value)}
               placeholder="Ex: Mandat exclusif signé le 03/05, voisin bruyant"
               rows={3}
@@ -820,7 +924,10 @@ function ModalDeleteFolder({ folder, onClose, onConfirm }: { folder: ProFolder; 
   const [confirmInput, setConfirmInput] = useState('');
   const expectedConfirm = 'SUPPRIMER';
   const canDelete = confirmInput.trim().toUpperCase() === expectedConfirm;
-  const hasAnalyses = (folder.analyses_count || 0) > 0;
+  const analysesCount = folder.analyses_count || 0;
+  const sellersCount = folder.sellers_count || 0;
+  const buyersCount = folder.buyers_count || 0;
+  const hasContent = analysesCount + sellersCount + buyersCount > 0;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -832,70 +939,133 @@ function ModalDeleteFolder({ folder, onClose, onConfirm }: { folder: ProFolder; 
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       transition={{ duration: 0.15 }}
-      onClick={onClose}
       style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 10, scale: 0.98 }}
         transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        onClick={e => e.stopPropagation()}
-        style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 460, boxShadow: '0 30px 80px rgba(15,45,61,0.35)', overflow: 'hidden' }}>
+        style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 480, boxShadow: '0 30px 80px rgba(15,45,61,0.35)', overflow: 'hidden' }}>
 
-        {/* Header avec icône warning */}
-        <div style={{ padding: '24px 24px 20px', textAlign: 'center', background: 'linear-gradient(135deg, #fef2f2, #fee2e2)' }}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
-            <AlertTriangle size={22} style={{ color: '#dc2626' }} />
-          </div>
-          <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>Supprimer ce dossier ?</h2>
-          <p style={{ fontSize: 13, color: '#7f1d1d', margin: '6px 0 0 0' }}>Cette action est définitive et irréversible.</p>
+        {/* Header avec bandeau rouge dégradé */}
+        <div style={{ padding: '26px 28px 22px', textAlign: 'center', background: 'linear-gradient(135deg, #fef2f2, #fee2e2)', position: 'relative', borderBottom: '1px solid #fecaca' }}>
+          <button onClick={onClose} title="Fermer"
+            style={{ position: 'absolute', top: 14, right: 14, width: 30, height: 30, borderRadius: 8, background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(220,38,38,0.18)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={14} style={{ color: '#7f1d1d' }} />
+          </button>
+          <motion.div
+            initial={{ scale: 0.6, rotate: -10 }} animate={{ scale: 1, rotate: 0 }} transition={{ delay: 0.1, type: 'spring', stiffness: 280, damping: 18 }}
+            style={{ width: 56, height: 56, borderRadius: 14, background: 'linear-gradient(135deg, #fee2e2, #fecaca)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', boxShadow: '0 6px 20px rgba(220,38,38,0.18)' }}>
+            <Trash2 size={26} style={{ color: '#dc2626' }} />
+          </motion.div>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0, marginBottom: 6 }}>Supprimer définitivement ce dossier ?</h2>
+          <p style={{ fontSize: 13, color: '#991b1b', margin: 0, fontWeight: 500 }}>
+            Cette action ne peut pas être annulée.
+          </p>
         </div>
 
         {/* Body */}
-        <div style={{ padding: '20px 24px' }}>
-          <div style={{ marginBottom: 16, padding: '12px 14px', borderRadius: 10, background: '#fafafa', border: '1px solid #f1f5f9' }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>{folder.name}</div>
-            {folder.property_address && (
-              <div style={{ fontSize: 11.5, color: '#64748b' }}>{folder.property_address}{folder.property_city ? `, ${folder.property_city}` : ''}</div>
+        <div style={{ padding: '22px 28px 18px' }}>
+
+          {/* Carte du dossier concerné */}
+          <div style={{ marginBottom: 18, padding: '14px 16px', borderRadius: 11, background: '#f8fafc', border: '1px solid #edf2f7', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 9, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Folder size={16} style={{ color: '#2a7d9c' }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{folder.name}</div>
+              {(folder.property_address || folder.property_city) && (
+                <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                  {[folder.property_address, folder.property_city].filter(Boolean).join(', ')}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Bandeau d'avertissement clair */}
+          <div style={{ padding: '14px 16px', borderRadius: 11, background: '#fffbeb', border: '1px solid #fde68a', marginBottom: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: hasContent ? 10 : 0 }}>
+              <AlertTriangle size={16} style={{ color: '#92400e', flexShrink: 0, marginTop: 1 }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#78350f', marginBottom: 3 }}>
+                  Le dossier <strong>et tout son contenu</strong> seront supprimés
+                </div>
+                <div style={{ fontSize: 12, color: '#92400e', lineHeight: 1.55 }}>
+                  Toutes les données associées à ce dossier disparaîtront définitivement de Verimo.
+                </div>
+              </div>
+            </div>
+
+            {hasContent && (
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #fcd34d', display: 'flex', flexDirection: 'column' as const, gap: 7 }}>
+                {analysesCount > 0 && (
+                  <DeleteItem icon={FileText} label={`${analysesCount} analyse${analysesCount > 1 ? 's' : ''}`} sublabel={`Rapport${analysesCount > 1 ? 's' : ''} détaillé${analysesCount > 1 ? 's' : ''} (score, recommandations…)`} />
+                )}
+                {sellersCount > 0 && (
+                  <DeleteItem icon={UserCheck} label={`${sellersCount} vendeur${sellersCount > 1 ? 's' : ''}`} sublabel="Coordonnées et notes" />
+                )}
+                {buyersCount > 0 && (
+                  <DeleteItem icon={UserPlus} label={`${buyersCount} acheteur${buyersCount > 1 ? 's' : ''}`} sublabel="Coordonnées et notes" />
+                )}
+                {folder.internal_note && (
+                  <DeleteItem icon={FileText} label="Note interne" sublabel="Annotations privées du dossier" />
+                )}
+              </div>
             )}
           </div>
 
-          <div style={{ marginBottom: 16, fontSize: 13, color: '#0f172a', lineHeight: 1.55 }}>
-            Tout sera supprimé définitivement :
-            <ul style={{ margin: '8px 0 0 0', paddingLeft: 22, color: '#475569' }}>
-              {hasAnalyses && <li><strong>{folder.analyses_count}</strong> analyse{(folder.analyses_count || 0) > 1 ? 's' : ''} (rapports détaillés)</li>}
-              {(folder.sellers_count || 0) > 0 && <li><strong>{folder.sellers_count}</strong> vendeur{(folder.sellers_count || 0) > 1 ? 's' : ''}</li>}
-              {(folder.buyers_count || 0) > 0 && <li><strong>{folder.buyers_count}</strong> acheteur{(folder.buyers_count || 0) > 1 ? 's' : ''}</li>}
-              <li>Toutes les notes du dossier</li>
-            </ul>
+          {/* Champ de confirmation */}
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8 }}>
+              Pour confirmer, tapez <code style={{ background: '#fee2e2', padding: '2px 8px', borderRadius: 5, fontSize: 12, color: '#991b1b', fontWeight: 800, fontFamily: 'monospace' as const, letterSpacing: '0.5px' }}>{expectedConfirm}</code> ci-dessous
+            </label>
+            <input value={confirmInput} onChange={e => setConfirmInput(e.target.value)} autoFocus
+              placeholder={`Tapez ${expectedConfirm} pour confirmer`}
+              style={{
+                ...inputStyle,
+                borderColor: canDelete ? '#dc2626' : confirmInput.length > 0 ? '#fde68a' : '#edf2f7',
+                background: canDelete ? '#fef2f2' : '#fff',
+                fontWeight: 700,
+                letterSpacing: '0.3px',
+              }} />
           </div>
-
-          <div style={{ marginBottom: 6, fontSize: 12.5, fontWeight: 600, color: '#475569' }}>
-            Pour confirmer, tapez <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: 4, fontSize: 12, color: '#dc2626', fontWeight: 700 }}>{expectedConfirm}</code> ci-dessous :
-          </div>
-          <input value={confirmInput} onChange={e => setConfirmInput(e.target.value)} autoFocus
-            placeholder={expectedConfirm}
-            style={{ ...inputStyle, borderColor: canDelete ? '#dc2626' : '#edf2f7' }} />
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '12px 24px 22px', display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid #f1f5f9' }}>
+        <div style={{ padding: '14px 28px 22px', display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid #f1f5f9' }}>
           <button onClick={onClose} disabled={submitting}
-            style={{ padding: '10px 18px', borderRadius: 10, background: '#fff', color: '#64748b', border: '1.5px solid #edf2f7', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600 }}>
+            style={{ padding: '11px 18px', borderRadius: 10, background: '#fff', color: '#475569', border: '1.5px solid #e2e8f0', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700 }}>
             Annuler
           </button>
           <button onClick={() => { setSubmitting(true); onConfirm(); }} disabled={!canDelete || submitting}
             style={{
-              padding: '10px 22px', borderRadius: 10, border: 'none',
-              background: canDelete && !submitting ? '#dc2626' : '#fecaca',
+              padding: '11px 22px', borderRadius: 10, border: 'none',
+              background: canDelete && !submitting ? 'linear-gradient(135deg, #dc2626, #991b1b)' : '#fecaca',
               color: '#fff', cursor: canDelete && !submitting ? 'pointer' : 'not-allowed',
               fontSize: 13, fontWeight: 700,
+              boxShadow: canDelete && !submitting ? '0 4px 14px rgba(220,38,38,0.3)' : 'none',
+              display: 'flex', alignItems: 'center', gap: 6,
             }}>
-            {submitting ? 'Suppression…' : 'Supprimer définitivement'}
+            {submitting ? 'Suppression…' : <><Trash2 size={13} /> Supprimer définitivement</>}
           </button>
         </div>
       </motion.div>
     </motion.div>
+  );
+}
+
+/* Item d'élément à supprimer dans la liste */
+function DeleteItem({ icon: Icon, label, sublabel }: { icon: React.ElementType; label: string; sublabel: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(146,64,14,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <Icon size={11} style={{ color: '#92400e' }} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#78350f' }}>{label}</span>
+        <span style={{ fontSize: 11, color: '#92400e', marginLeft: 6, fontStyle: 'italic' as const }}>{sublabel}</span>
+      </div>
+    </div>
   );
 }
 
@@ -915,13 +1085,16 @@ const inputStyle: React.CSSProperties = {
   color: '#0f172a',
 };
 
-function Field({ label, required, optional, hint, children }: { label: string; required?: boolean; optional?: boolean; hint?: string; children: React.ReactNode }) {
+function Field({ label, required, optional, hint, icon: Icon, children }: { label: string; required?: boolean; optional?: boolean; hint?: string; icon?: React.ElementType; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 14 }}>
-      <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>
-        {label}
-        {required && <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>}
-        {optional && <span style={{ color: '#cbd5e1', fontWeight: 500, marginLeft: 6, textTransform: 'none' as const, fontSize: 10.5 }}>(optionnel)</span>}
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>
+        {Icon && <Icon size={12} style={{ color: '#94a3b8', flexShrink: 0 }} />}
+        <span>
+          {label}
+          {required && <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>}
+          {optional && <span style={{ color: '#cbd5e1', fontWeight: 500, marginLeft: 6, textTransform: 'none' as const, fontSize: 10.5 }}>(optionnel)</span>}
+        </span>
       </label>
       {children}
       {hint && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, fontStyle: 'italic' as const }}>{hint}</div>}
