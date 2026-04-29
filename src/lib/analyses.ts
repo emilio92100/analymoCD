@@ -102,6 +102,7 @@ export async function createAnalyse(
   profil: 'rp' | 'invest',
   documentNames?: string[],
   typeBienDeclare?: TypeBien | null,
+  folderId?: string | null,
 ): Promise<AnalyseDB | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -118,6 +119,7 @@ export async function createAnalyse(
       paid: true,
       document_names: documentNames || [],
       type_bien_declare: typeBienDeclare || null,
+      folder_id: folderId || null,
     })
     .select()
     .single();
