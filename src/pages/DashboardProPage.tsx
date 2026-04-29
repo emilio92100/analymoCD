@@ -436,21 +436,23 @@ function MesDossiersPro() {
       }
 
       // Charge les stats pour chaque dossier (analyses, vendeurs, acheteurs)
+      // On fait 3 count en parallèle par dossier (RLS s'applique côté user, donc pas de souci de droits)
       const foldersWithStats = await Promise.all((foldersData || []).map(async (f) => {
         try {
-          const { data: stats } = await supabase.rpc('get_folder_stats', { p_folder_id: f.id });
-          if (stats && Array.isArray(stats) && stats.length > 0) {
-            const s = stats[0];
-            return {
-              ...f,
-              analyses_count: s.analyses_count || 0,
-              sellers_count: s.sellers_count || 0,
-              buyers_count: s.buyers_count || 0,
-              last_analysis_date: s.last_analysis_date,
-            };
-          }
-        } catch {}
-        return { ...f, analyses_count: 0, sellers_count: 0, buyers_count: 0 };
+          const [analysesRes, sellersRes, buyersRes] = await Promise.all([
+            supabase.from('analyses').select('id', { count: 'exact', head: true }).eq('folder_id', f.id),
+            supabase.from('pro_folder_sellers').select('id', { count: 'exact', head: true }).eq('folder_id', f.id),
+            supabase.from('pro_folder_buyers').select('id', { count: 'exact', head: true }).eq('folder_id', f.id),
+          ]);
+          return {
+            ...f,
+            analyses_count: analysesRes.count || 0,
+            sellers_count: sellersRes.count || 0,
+            buyers_count: buyersRes.count || 0,
+          };
+        } catch {
+          return { ...f, analyses_count: 0, sellers_count: 0, buyers_count: 0 };
+        }
       }));
 
       setFolders(foldersWithStats);
@@ -1818,20 +1820,19 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
       if (error) throw error;
       if (!data) { setNotFound(true); setLoading(false); return; }
 
-      // Charger les stats
+      // Charger les stats (counts directs, plus fiable que la RPC)
       try {
-        const { data: stats } = await supabase.rpc('get_folder_stats', { p_folder_id: folderId });
-        if (stats && Array.isArray(stats) && stats.length > 0) {
-          const s = stats[0];
-          setFolder({
-            ...data,
-            analyses_count: s.analyses_count || 0,
-            sellers_count: s.sellers_count || 0,
-            buyers_count: s.buyers_count || 0,
-          });
-        } else {
-          setFolder({ ...data, analyses_count: 0, sellers_count: 0, buyers_count: 0 });
-        }
+        const [analysesRes, sellersRes, buyersRes] = await Promise.all([
+          supabase.from('analyses').select('id', { count: 'exact', head: true }).eq('folder_id', folderId),
+          supabase.from('pro_folder_sellers').select('id', { count: 'exact', head: true }).eq('folder_id', folderId),
+          supabase.from('pro_folder_buyers').select('id', { count: 'exact', head: true }).eq('folder_id', folderId),
+        ]);
+        setFolder({
+          ...data,
+          analyses_count: analysesRes.count || 0,
+          sellers_count: sellersRes.count || 0,
+          buyers_count: buyersRes.count || 0,
+        });
       } catch {
         setFolder({ ...data, analyses_count: 0, sellers_count: 0, buyers_count: 0 });
       }
