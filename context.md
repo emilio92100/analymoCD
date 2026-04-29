@@ -346,9 +346,8 @@ supabase/functions/
 
 ### 🔴 Priorité haute
 
-- [ ] **Stripe abonnements pro** — Créer les produits Starter (49,90€ HT/mois) et Power (89,90€ HT/mois) dans Stripe. Webhook recharge crédits mensuels. Boutons "Choisir ce plan" fonctionnels dans MonAbonnement. Achats unitaires (14,90€/3,90€). Upgrade immédiat avec reset cycle.
 - [ ] **UX dashboard pro — layout** — Contenu trop centré/étroit sur certaines pages. Appliquer le même responsive que le dashboard particulier. Page tarifs mobile : plans en 1 colonne (déjà corrigé via classe plans-grid, à vérifier).
-- [ ] **Admin — fiche client pro enrichie** — Lien "Voir fiche pro" depuis onglet Utilisateurs si role=pro. Badge pro visible dans la liste Utilisateurs. Boutons reset/suspendre/supprimer sur la fiche client pro. Historique centralisé (analyses + envois + messages + abonnement).
+- [ ] **Admin — fiche client pro enrichie** — Lien "Voir fiche pro" depuis onglet Utilisateurs si role=pro. Boutons reset/suspendre/supprimer sur la fiche client pro. Historique centralisé (analyses + envois + messages + abonnement).
 - [ ] **Admin — messages pro tagués** — Quand un pro envoie une demande de modification, le message arrive tagué [PRO] dans Messages. Ajouter un lien vers la fiche client pro dans le message.
 - [ ] **Supprimer le flow aperçu gratuit** — Retirer complètement le mode aperçu (~12 fichiers impactés). La page Exemple suffit comme démo, le produit d'appel à 4,90€ remplace l'aperçu.
 - [ ] **Veille réglementaire — prompt analyser-run** — DPE collectif copros <50 lots (jan 2026), PPT obligatoire (jan 2026), décret emprunt collectif (déc 2025), mise à jour RCP (loi ÉLAN).
@@ -383,3 +382,160 @@ supabase/functions/
 - [x] Config pro.verimo.fr (DNS OVH + Vercel + Supabase Auth)
 - [x] SEO : data-nosnippet sur footer + réindexation Search Console
 - [x] Responsive mobile dashboard pro (plans-grid, compte-grid en 1 colonne)
+
+
+### ✅ Fait (session 17 — 28 avril 2026 soir : Stripe Pro)
+
+- [x] **Stripe TEST configuré** — 5 produits créés avec Price IDs :
+  - DECOUVERTE 19,90€/1+3 → `price_1TRKJMBO4ekMbwz0mOh2hUxI`
+  - STARTER 49,90€/5+15 (Populaire) → `price_1TRKOZBO4ekMbwz0cAzSz8P8`
+  - POWER 89,90€/10+30 → `price_1TRKPaBO4ekMbwz01mAualMR`
+  - UNIT_COMPLETE 9,90€ → `price_1TRKQtBO4ekMbwz0Tqi4GeKK`
+  - UNIT_SIMPLE 2,90€ → `price_1TRKRmBO4ekMbwz0ynLNDwn4`
+- [x] **Migration SQL Stripe Pro** (`migration-stripe-pro.sql`) — extension `pro_subscriptions` + `pro_unit_purchases`, 4 fonctions PG (`get_pro_credits_balance`, `consume_pro_credit`, `reset_pro_subscription_credits`, `upgrade_pro_subscription_credits`), RLS
+- [x] **Edge function `stripe-webhook-pro`** déployée à `https://veszrayromldfgetqaxb.supabase.co/functions/v1/stripe-webhook-pro` avec secret `STRIPE_WEBHOOK_SECRET_PRO`
+- [x] **Edge function `stripe-checkout-create-pro`** pour générer les sessions Checkout
+- [x] **MonAbonnement (Pro)** — boutons "Choisir ce plan" fonctionnels (DECOUVERTE/STARTER/POWER), achats unitaires (Complète/Simple), upgrade Option B = cumul de crédits
+
+
+### ✅ Fait (session 18 — 29 avril 2026 : Dossiers Pro + Nouvelle Analyse)
+
+#### Système de dossiers (Livrable 2)
+- [x] **Migration `migration-pro-folders.sql`** appliquée :
+  - Tables `pro_folders`, `pro_folder_sellers`, `pro_folder_buyers`
+  - Champ `analyses.folder_id` ON DELETE CASCADE
+  - Fonction `get_folder_stats()` créée mais DÉPRÉCIÉE (RLS issue avec SECURITY DEFINER) → remplacée par 3 counts directs côté frontend
+- [x] **DashboardProPage.tsx — Mes Dossiers** (~3273 lignes) :
+  - Liste dossiers + popup création (autocomplete adresse Etalab + CP→ville geo.api.gouv.fr)
+  - Suppression sécurisée "tape SUPPRIMER"
+  - **Vendeurs** (2B-1) : ajout/édition/suppression, couleur violet, animations motion layout, toast notifications
+  - **Acheteurs** (2B-2) : même pattern, couleur vert, + champ status (candidat/sérieux/compromis/abandonné) avec badges colorés
+  - Layout 2 colonnes vendeurs|acheteurs sur desktop (responsive)
+  - **Tooltips custom** instantanés (composant `InfoTooltip` Verimo dark blue popover, animation fade+scale, flèche)
+  - **Modifier infos dossier** (2B-4) : bouton ✏️ dans header → ModalEditFolder
+  - Composant `Field` avec support : required, optional, hint, tooltip, icon
+
+#### Nouvelle Analyse refonte (Livrable 3)
+- [x] **`src/lib/analyses.ts`** : `createAnalyse` accepte param `folderId` (6e arg)
+- [x] **`NouvelleAnalyse.tsx`** (1725 lignes) :
+  - Nouvelle étape `folder_select` entre `choice` et `type_bien`
+  - Capture `?folder=ID` depuis URL → skip folder_select si pré-sélectionné
+  - Composant `FolderBanner` visible toutes étapes (type_bien, profil, upload) : "Analyse pour le dossier — [name]"
+  - `FolderSelectStep` : autocomplete Etalab, liste dossiers existants, "+ Créer nouveau dossier" inline modal
+  - Flow particulier inchangé
+  - `analyses.folder_id` rempli automatiquement
+
+
+### ✅ Fait (session 19 — 29 avril 2026 soir : Crédits offerts par admin)
+
+- [x] **Migration `migration-credit-grants.sql`** appliquée :
+  - Table `credit_grants` (audit log : user_id, granted_by, credit_type, quantity, reason, created_at)
+  - Trigger PG `apply_credit_grant` qui détecte le rôle et route le crédit :
+    - Pro → INSERT dans `pro_unit_purchases`
+    - Particulier → UPDATE `profiles.credits_*`
+  - RLS : user voit ses grants, admin gère tout
+- [x] **AdminPage.tsx** :
+  - Refonte modale "Modifier crédits" → "Ajouter des crédits" (les DEUX modales : liste + détail)
+  - Form : Type chips Complète/Simple, Quantity stepper +/− (max 100), Raison textarea obligatoire (max 500 chars)
+  - Bouton renommé avec icon `Plus`
+  - Badge "⚡ pro" (bleu Verimo `#2a7d9c`/bg `#f0f7fb`) ajouté en liste users + fiche détail
+- [x] **Hotfix `hotfix-pro-unit-purchases-v2.sql` à appliquer** — corrige le trigger qui utilisait `credit_type` au lieu de `type` (vraie colonne BDD), idem `amount` au lieu de `amount_paid_ht`
+
+
+---
+
+## 🗂️ TO DO — au reveil (priorité demain)
+
+### 🔴 ÉTAPE 1 — Finir le système crédits offerts (30 min)
+
+1. **Appliquer le hotfix SQL** (~/mnt/user-data/outputs/hotfix-pro-unit-purchases-v2.sql)
+   - Supabase → SQL Editor → coller → Run
+   - Doit afficher "Success. No rows returned"
+
+2. **Vérifier les fonctions PG existantes** — `get_pro_credits_balance` et `consume_pro_credit` ont été écrites avec `credit_type` (qui n'existe pas) en session 17. Lancer dans SQL Editor :
+   ```sql
+   SELECT pg_get_functiondef('public.get_pro_credits_balance'::regproc);
+   SELECT pg_get_functiondef('public.consume_pro_credit'::regproc);
+   ```
+   Si elles utilisent `credit_type`, il faut un **3e hotfix** qui les recrée avec `type`.
+
+3. **Pusher AdminPage.tsx** sur GitHub (déjà livré, type-check OK)
+
+4. **Tester le flow complet** :
+   - Admin → ajoute 5 crédits Complète à compte test pro avec raison "test trigger"
+   - Vérif sidebar pro : doit afficher 5 ✅
+   - Vérif page Nouvelle analyse : doit afficher 5 crédits dispos ✅
+   - Lancer une vraie analyse → vérif décrémentation à 4
+
+### 🟠 ÉTAPE 2 — Historique côté client (Livrable 3 bis, ~45 min)
+
+Section "Historique des crédits" dans **MonAbonnement** (côté Pro), affichant par ordre antichronologique :
+- Achats Stripe (lus depuis `pro_unit_purchases` où `amount > 0`)
+- Crédits offerts (lus depuis `credit_grants`) avec icône 🎁 + raison
+
+Idem côté Particulier (à voir où exactement, peut-être dans Compte ou Tarifs).
+
+### 🟡 ÉTAPE 3 — Livrable 2B-3 : Liste analyses dans DossierDetail (~30 min)
+
+Maintenant que les nouvelles analyses ont `folder_id`, afficher dans la fiche dossier :
+- Section "Analyses du dossier"
+- Pour chaque analyse : score /20, DPE, date, type (Simple/Complète), bouton "Voir le rapport"
+- Query : `analyses.folder_id = currentFolder.id`
+
+### 🟡 ÉTAPE 4 — Livrable 4 : Compare.tsx avec regroupement par dossier (~1h)
+
+Dans la page Comparer (dashboard pro), regrouper visuellement les analyses par dossier :
+- Section pliable par dossier
+- Visualisation des biens d'un même dossier côte à côte
+- Possibilité de comparer entre dossiers ou au sein d'un dossier
+
+### 🟢 ÉTAPE 5 — Bonus / améliorations à voir
+
+- Page admin : voir l'historique des crédits attribués sur la fiche d'un user (qui a reçu, quand, combien, pourquoi)
+- Améliorer le verdict en sortie de comparaison (refonte présentation rapport)
+- Validation UX duplicate detection dossiers
+
+
+---
+
+## 🔑 État au coucher 29 avril (à reprendre demain)
+
+**Bug en cours** : Admin a ajouté 5 crédits Complète à un compte pro test, mais :
+- Tableau de bord pro : voit 5 ✅ (fallback `proProfile.credits_*`)
+- Sidebar pro : voit 0 ❌ (lit `pro_subscriptions` uniquement, pas d'abo actif)
+- Nouvelle analyse pro : voit 0 ❌ (lit `get_pro_credits_balance` qui pointe sur `credit_type` inexistant)
+
+**Cause** : ma session 17 a créé les fonctions PG en supposant que la colonne s'appelait `credit_type`, alors qu'en BDD c'est `type`. La table `pro_unit_purchases` a aussi `amount` (pas `amount_paid_ht`).
+
+**Solution en cours** : hotfix v2 corrige le trigger d'insertion. Reste à vérifier si `get_pro_credits_balance` et `consume_pro_credit` ont besoin du même fix.
+
+
+---
+
+## 📁 Fichiers livrés en attente de push GitHub
+
+- ✅ `src/pages/AdminPage.tsx` (3713 lignes) — Ajouter crédits + badge pro — type-check OK
+- ✅ `src/pages/dashboard/NouvelleAnalyse.tsx` (1725 lignes) — flow folder_select — type-check OK, déjà pushé
+- ✅ `src/lib/analyses.ts` — createAnalyse avec folderId — type-check OK, déjà pushé
+- ✅ `src/pages/DashboardProPage.tsx` (3273 lignes) — système dossiers complet — déjà pushé
+
+## 📁 SQL à exécuter
+
+- ✅ `migration-pro-folders.sql` — appliquée
+- ✅ `migration-credit-grants.sql` — appliquée
+- ⏳ `hotfix-pro-unit-purchases-v2.sql` — **À APPLIQUER demain matin en priorité**
+
+
+---
+
+## 📊 Architecture crédits pro (récap pour ne plus se perdre)
+
+**Sources de crédits pro** (lues par sidebar et NouvelleAnalyse via `get_pro_credits_balance`) :
+
+1. **Abonnement** → `pro_subscriptions` (colonnes `credits_complete_total/used` et `credits_simple_total/used`) — recharge mensuelle via webhook Stripe
+2. **Achats unitaires** → `pro_unit_purchases` (colonne `type` = 'complete'|'simple', `quantity`, `credits_remaining`, `amount` en centimes) — jamais expirés
+3. **Crédits offerts** → table `credit_grants` (audit log) + trigger qui crée auto un `pro_unit_purchases` avec `amount=0`
+
+**Sources de crédits particulier** :
+- `profiles.credits_document` et `profiles.credits_complete` (système legacy unique)
+- `credit_grants` met à jour ces colonnes via trigger
