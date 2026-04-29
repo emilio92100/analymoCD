@@ -104,6 +104,28 @@ type ProFolderSeller = {
   created_at: string;
 };
 
+type BuyerStatus = 'candidat' | 'serieux' | 'compromis' | 'abandonne';
+
+type ProFolderBuyer = {
+  id: string;
+  folder_id: string;
+  civility?: string | null;
+  first_name?: string | null;
+  last_name: string;
+  email?: string | null;
+  phone?: string | null;
+  status: BuyerStatus;
+  note?: string | null;
+  created_at: string;
+};
+
+const BUYER_STATUS_CONFIG: Record<BuyerStatus, { label: string; bg: string; color: string; border: string }> = {
+  candidat: { label: 'Candidat', bg: '#f1f5f9', color: '#475569', border: '#cbd5e1' },
+  serieux: { label: 'Sérieux', bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' },
+  compromis: { label: 'Compromis signé', bg: '#dcfce7', color: '#166534', border: '#86efac' },
+  abandonne: { label: 'Abandonné', bg: '#fef2f2', color: '#991b1b', border: '#fecaca' },
+};
+
 /* ══════════════════════════════════════════
    HELPERS
 ══════════════════════════════════════════ */
@@ -1798,15 +1820,19 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
 function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => void }) {
   const [folder, setFolder] = useState<ProFolder | null>(null);
   const [sellers, setSellers] = useState<ProFolderSeller[]>([]);
+  const [buyers, setBuyers] = useState<ProFolderBuyer[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [showSellerModal, setShowSellerModal] = useState(false);
   const [editingSeller, setEditingSeller] = useState<ProFolderSeller | null>(null);
   const [sellerToDelete, setSellerToDelete] = useState<ProFolderSeller | null>(null);
+  const [showBuyerModal, setShowBuyerModal] = useState(false);
+  const [editingBuyer, setEditingBuyer] = useState<ProFolderBuyer | null>(null);
+  const [buyerToDelete, setBuyerToDelete] = useState<ProFolderBuyer | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const navigate = useNavigate();
 
-  // Charge complet (au mount) : dossier + stats + vendeurs
+  // Charge complet (au mount) : dossier + stats + vendeurs + acheteurs
   const loadFolder = useCallback(async () => {
     setLoading(true);
     setNotFound(false);
@@ -1837,13 +1863,21 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
         setFolder({ ...data, analyses_count: 0, sellers_count: 0, buyers_count: 0 });
       }
 
-      // Charger les vendeurs
-      const { data: sellersData } = await supabase
-        .from('pro_folder_sellers')
-        .select('*')
-        .eq('folder_id', folderId)
-        .order('created_at', { ascending: true });
-      setSellers(sellersData || []);
+      // Charger les vendeurs et acheteurs en parallèle
+      const [sellersResult, buyersResult] = await Promise.all([
+        supabase
+          .from('pro_folder_sellers')
+          .select('*')
+          .eq('folder_id', folderId)
+          .order('created_at', { ascending: true }),
+        supabase
+          .from('pro_folder_buyers')
+          .select('*')
+          .eq('folder_id', folderId)
+          .order('created_at', { ascending: true }),
+      ]);
+      setSellers(sellersResult.data || []);
+      setBuyers(buyersResult.data || []);
     } catch (e) {
       console.error('Erreur chargement dossier:', e);
       setNotFound(true);
@@ -1861,8 +1895,18 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
       .eq('folder_id', folderId)
       .order('created_at', { ascending: true });
     setSellers(sellersData || []);
-    // Met à jour aussi le compteur dans le folder
     setFolder(prev => prev ? { ...prev, sellers_count: (sellersData || []).length } : prev);
+  }, [folderId]);
+
+  // Recharge silencieuse des acheteurs
+  const reloadBuyers = useCallback(async () => {
+    const { data: buyersData } = await supabase
+      .from('pro_folder_buyers')
+      .select('*')
+      .eq('folder_id', folderId)
+      .order('created_at', { ascending: true });
+    setBuyers(buyersData || []);
+    setFolder(prev => prev ? { ...prev, buyers_count: (buyersData || []).length } : prev);
   }, [folderId]);
 
   // Toast auto-dismiss après 3s
@@ -1894,6 +1938,31 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
     reloadSellers();
     setToast({
       message: action === 'created' ? 'Vendeur ajouté' : 'Vendeur modifié',
+      type: 'success',
+    });
+  }
+
+  async function handleDeleteBuyer(buyer: ProFolderBuyer) {
+    // UX optimiste
+    setBuyers(prev => prev.filter(b => b.id !== buyer.id));
+    setFolder(prev => prev ? { ...prev, buyers_count: Math.max(0, (prev.buyers_count || 1) - 1) } : prev);
+    setBuyerToDelete(null);
+    try {
+      const { error } = await supabase.from('pro_folder_buyers').delete().eq('id', buyer.id);
+      if (error) throw error;
+      setToast({ message: 'Acheteur supprimé', type: 'success' });
+    } catch (e: any) {
+      setToast({ message: 'Erreur lors de la suppression', type: 'error' });
+      reloadBuyers();
+    }
+  }
+
+  function handleBuyerSaved(action: 'created' | 'updated') {
+    setShowBuyerModal(false);
+    setEditingBuyer(null);
+    reloadBuyers();
+    setToast({
+      message: action === 'created' ? 'Acheteur ajouté' : 'Acheteur modifié',
       type: 'success',
     });
   }
@@ -1953,7 +2022,7 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
       {/* Actions principales */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 16 }}>
         <ActionButton icon={UserCheck} label="Ajouter un vendeur" onClick={() => { setEditingSeller(null); setShowSellerModal(true); }} />
-        <ActionButton icon={UserPlus} label="Ajouter un acheteur" comingSoon />
+        <ActionButton icon={UserPlus} label="Ajouter un acheteur" onClick={() => { setEditingBuyer(null); setShowBuyerModal(true); }} />
         <ActionButton icon={Plus} label="Lancer une analyse"
           onClick={() => navigate(`/dashboard/nouvelle-analyse?folder=${folder.id}`)} />
       </div>
@@ -1966,8 +2035,13 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
         onDelete={(s) => setSellerToDelete(s)}
       />
 
-      {/* Section Acheteurs (placeholder pour 2B-2) */}
-      <SectionEmpty title="Acheteurs" icon={UserPlus} count={folder.buyers_count} comingSoon />
+      {/* Section Acheteurs */}
+      <SectionAcheteurs
+        buyers={buyers}
+        onAdd={() => { setEditingBuyer(null); setShowBuyerModal(true); }}
+        onEdit={(b) => { setEditingBuyer(b); setShowBuyerModal(true); }}
+        onDelete={(b) => setBuyerToDelete(b)}
+      />
 
       {/* Section Analyses (placeholder pour 2B-3) */}
       <SectionEmpty title="Analyses" icon={FileText} count={folder.analyses_count} comingSoon />
@@ -1991,6 +2065,29 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
             seller={sellerToDelete}
             onClose={() => setSellerToDelete(null)}
             onConfirm={() => handleDeleteSeller(sellerToDelete)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Modale ajout/édition acheteur */}
+      <AnimatePresence>
+        {showBuyerModal && (
+          <ModalBuyer
+            folderId={folderId}
+            buyer={editingBuyer}
+            onClose={() => { setShowBuyerModal(false); setEditingBuyer(null); }}
+            onSaved={(action) => handleBuyerSaved(action)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Modale suppression acheteur */}
+      <AnimatePresence>
+        {buyerToDelete && (
+          <ModalDeleteBuyer
+            buyer={buyerToDelete}
+            onClose={() => setBuyerToDelete(null)}
+            onConfirm={() => handleDeleteBuyer(buyerToDelete)}
           />
         )}
       </AnimatePresence>
@@ -2321,6 +2418,357 @@ function ModalDeleteSeller({ seller, onClose, onConfirm }: {
             <Trash2 size={20} style={{ color: '#dc2626' }} />
           </div>
           <h2 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0, marginBottom: 4 }}>Supprimer ce vendeur ?</h2>
+          <p style={{ fontSize: 12.5, color: '#991b1b', margin: 0 }}>
+            <strong>{fullName}</strong> sera retiré du dossier.
+          </p>
+        </div>
+
+        <div style={{ padding: '14px 24px 20px', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button onClick={onClose} disabled={submitting}
+            style={{ padding: '10px 18px', borderRadius: 10, background: '#fff', color: '#475569', border: '1.5px solid #e2e8f0', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700 }}>
+            Annuler
+          </button>
+          <button onClick={() => { setSubmitting(true); onConfirm(); }} disabled={submitting}
+            style={{
+              padding: '10px 18px', borderRadius: 10, border: 'none',
+              background: 'linear-gradient(135deg, #dc2626, #991b1b)',
+              color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer',
+              fontSize: 13, fontWeight: 700,
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+            {submitting ? 'Suppression…' : <><Trash2 size={13} /> Supprimer</>}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   SECTION ACHETEURS
+══════════════════════════════════════════ */
+function SectionAcheteurs({ buyers, onAdd, onEdit, onDelete }: {
+  buyers: ProFolderBuyer[];
+  onAdd: () => void;
+  onEdit: (b: ProFolderBuyer) => void;
+  onDelete: (b: ProFolderBuyer) => void;
+}) {
+  return (
+    <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 22px', marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: buyers.length > 0 ? 14 : 6 }}>
+        <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <UserPlus size={15} style={{ color: '#94a3b8' }} />
+          Acheteur{buyers.length > 1 ? 's' : ''}
+          {buyers.length > 0 && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: 100 }}>{buyers.length}</span>
+          )}
+        </h3>
+        {buyers.length > 0 && (
+          <button onClick={onAdd}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+            <Plus size={12} /> Ajouter
+          </button>
+        )}
+      </div>
+
+      {buyers.length === 0 ? (
+        <div style={{ padding: '12px 0' }}>
+          <p style={{ fontSize: 12.5, color: '#94a3b8', margin: '0 0 12px 0', fontStyle: 'italic' as const }}>
+            Aucun acheteur enregistré pour ce dossier.
+          </p>
+          <button onClick={onAdd}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, background: '#f0fdf4', border: '1px dashed #86efac', color: '#16a34a', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+            <Plus size={12} /> Ajouter un acheteur
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+          <AnimatePresence initial={false}>
+            {buyers.map(b => <BuyerCard key={b.id} buyer={b} onEdit={() => onEdit(b)} onDelete={() => onDelete(b)} />)}
+          </AnimatePresence>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BuyerCard({ buyer, onEdit, onDelete }: { buyer: ProFolderBuyer; onEdit: () => void; onDelete: () => void }) {
+  const fullName = [buyer.civility, buyer.first_name, buyer.last_name].filter(Boolean).join(' ');
+  const statusCfg = BUYER_STATUS_CONFIG[buyer.status];
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: -8, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.94, height: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0 }}
+      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+      style={{ padding: '12px 14px', borderRadius: 11, background: 'linear-gradient(135deg, #fafafa, #f8fafc)', border: '1px solid #f1f5f9', position: 'relative' as const, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <UserPlus size={16} style={{ color: '#16a34a' }} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const, marginBottom: 3 }}>
+            <span style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a' }}>{fullName || buyer.last_name}</span>
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: statusCfg.color, background: statusCfg.bg, padding: '2px 8px', borderRadius: 100, border: `1px solid ${statusCfg.border}` }}>
+              {statusCfg.label}
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '4px 14px', fontSize: 11.5, color: '#64748b' }}>
+            {buyer.email && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Mail size={11} style={{ color: '#94a3b8' }} />
+                <a href={`mailto:${buyer.email}`} style={{ color: '#64748b', textDecoration: 'none' }}>{buyer.email}</a>
+              </span>
+            )}
+            {buyer.phone && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ color: '#94a3b8' }}>📞</span>
+                <a href={`tel:${buyer.phone}`} style={{ color: '#64748b', textDecoration: 'none' }}>{buyer.phone}</a>
+              </span>
+            )}
+          </div>
+          {buyer.note && (
+            <div style={{ marginTop: 8, padding: '7px 10px', borderRadius: 7, background: '#fffbeb', border: '1px solid #fef3c7', fontSize: 11.5, color: '#78350f', fontStyle: 'italic' as const }}>
+              {buyer.note}
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+          <button onClick={onEdit} title="Modifier"
+            style={{ width: 28, height: 28, borderRadius: 7, background: '#fff', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Pencil size={12} style={{ color: '#64748b' }} />
+          </button>
+          <button onClick={onDelete} title="Supprimer"
+            style={{ width: 28, height: 28, borderRadius: 7, background: '#fef2f2', border: '1px solid #fee2e2', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Trash2 size={12} style={{ color: '#dc2626' }} />
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   MODAL : AJOUT / ÉDITION ACHETEUR
+══════════════════════════════════════════ */
+function ModalBuyer({ folderId, buyer, onClose, onSaved }: {
+  folderId: string;
+  buyer: ProFolderBuyer | null;
+  onClose: () => void;
+  onSaved: (action: 'created' | 'updated') => void;
+}) {
+  const isEditing = !!buyer;
+  const [civility, setCivility] = useState(buyer?.civility || 'M.');
+  const [firstName, setFirstName] = useState(buyer?.first_name || '');
+  const [lastName, setLastName] = useState(buyer?.last_name || '');
+  const [email, setEmail] = useState(buyer?.email || '');
+  const [phone, setPhone] = useState(buyer?.phone || '');
+  const [status, setStatus] = useState<BuyerStatus>(buyer?.status || 'candidat');
+  const [note, setNote] = useState(buyer?.note || '');
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  async function handleSubmit() {
+    if (!lastName.trim()) {
+      setErrorMsg('Le nom est obligatoire.');
+      return;
+    }
+    setSubmitting(true);
+    setErrorMsg('');
+    try {
+      const payload = {
+        folder_id: folderId,
+        civility: civility || null,
+        first_name: firstName.trim() || null,
+        last_name: lastName.trim(),
+        email: email.trim() || null,
+        phone: phone.trim() || null,
+        status,
+        note: note.trim() || null,
+      };
+      if (isEditing && buyer) {
+        const { error } = await supabase.from('pro_folder_buyers').update(payload).eq('id', buyer.id);
+        if (error) throw error;
+        onSaved('updated');
+      } else {
+        const { error } = await supabase.from('pro_folder_buyers').insert(payload);
+        if (error) throw error;
+        onSaved('created');
+      }
+    } catch (e: any) {
+      setErrorMsg(e.message || 'Erreur lors de l\'enregistrement.');
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 540, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 30px 80px rgba(15,45,61,0.35)' }}>
+
+        {/* Header */}
+        <div style={{ padding: '22px 24px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <UserPlus size={18} style={{ color: '#16a34a' }} />
+            </div>
+            <div>
+              <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                {isEditing ? 'Modifier l\'acheteur' : 'Ajouter un acheteur'}
+              </h2>
+              <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0 0' }}>
+                {isEditing ? 'Mettez à jour les informations de l\'acheteur' : 'Renseignez les informations de l\'acheteur potentiel'}
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} title="Fermer"
+            style={{ width: 32, height: 32, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <X size={15} style={{ color: '#64748b' }} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '20px 24px 8px' }}>
+
+          {/* Civilité + Prénom + Nom */}
+          <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 1fr', gap: 10, marginBottom: 14 }}>
+            <Field label="Civilité" optional>
+              <select value={civility} onChange={e => setCivility(e.target.value)} style={{ ...inputStyle, paddingRight: 28, cursor: 'pointer' }}>
+                <option value="M.">M.</option>
+                <option value="Mme">Mme</option>
+                <option value="M. et Mme">M. et Mme</option>
+                <option value="Société">Société</option>
+              </select>
+            </Field>
+            <Field label="Prénom" optional>
+              <input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Sophie" style={inputStyle} />
+            </Field>
+            <Field label="Nom" required>
+              <input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Dupont" style={inputStyle} />
+            </Field>
+          </div>
+
+          {/* Email */}
+          <Field label="Email" optional icon={Mail}>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="sophie.dupont@email.fr" style={inputStyle} />
+          </Field>
+
+          {/* Téléphone */}
+          <Field label="Téléphone" optional>
+            <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="06 12 34 56 78" style={inputStyle} />
+          </Field>
+
+          {/* Statut */}
+          <Field label="Statut" required hint="Évolution de l'acheteur dans le processus de vente">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+              {(Object.keys(BUYER_STATUS_CONFIG) as BuyerStatus[]).map(s => {
+                const cfg = BUYER_STATUS_CONFIG[s];
+                const isSelected = status === s;
+                return (
+                  <button key={s} type="button" onClick={() => setStatus(s)}
+                    style={{
+                      padding: '9px 12px', borderRadius: 9,
+                      background: isSelected ? cfg.bg : '#fff',
+                      border: `1.5px solid ${isSelected ? cfg.border : '#edf2f7'}`,
+                      color: isSelected ? cfg.color : '#475569',
+                      cursor: 'pointer',
+                      fontSize: 12.5, fontWeight: 700,
+                      textAlign: 'left' as const,
+                      transition: 'all 0.15s',
+                    }}>
+                    {isSelected && '✓ '}{cfg.label}
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
+
+          {/* Note */}
+          <Field label="Note interne" optional icon={FileText}>
+            <textarea value={note} onChange={e => setNote(e.target.value)}
+              placeholder="Ex: Apport 30%, finance par crédit, visite prévue le 15/05"
+              rows={3}
+              style={{ ...inputStyle, resize: 'vertical' as const, minHeight: 60, fontFamily: 'inherit' }} />
+          </Field>
+
+          {errorMsg && (
+            <div style={{ marginTop: 8, padding: '10px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: 12.5, fontWeight: 600 }}>
+              {errorMsg}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '12px 24px 22px', display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid #f1f5f9' }}>
+          <button onClick={onClose} disabled={submitting}
+            style={{ padding: '10px 18px', borderRadius: 10, background: '#fff', color: '#64748b', border: '1.5px solid #edf2f7', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600 }}>
+            Annuler
+          </button>
+          <button onClick={handleSubmit} disabled={submitting || !lastName.trim()}
+            style={{
+              padding: '10px 22px', borderRadius: 10, border: 'none',
+              background: submitting || !lastName.trim() ? '#cbd5e1' : 'linear-gradient(135deg,#16a34a,#15803d)',
+              color: '#fff', cursor: submitting || !lastName.trim() ? 'not-allowed' : 'pointer',
+              fontSize: 13, fontWeight: 700,
+            }}>
+            {submitting ? 'Enregistrement…' : isEditing ? 'Enregistrer' : 'Ajouter l\'acheteur'}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   MODAL : SUPPRESSION ACHETEUR
+══════════════════════════════════════════ */
+function ModalDeleteBuyer({ buyer, onClose, onConfirm }: {
+  buyer: ProFolderBuyer; onClose: () => void; onConfirm: () => void;
+}) {
+  const [submitting, setSubmitting] = useState(false);
+  const fullName = [buyer.civility, buyer.first_name, buyer.last_name].filter(Boolean).join(' ') || buyer.last_name;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001, padding: 16 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 420, boxShadow: '0 30px 80px rgba(15,45,61,0.35)', overflow: 'hidden' }}>
+
+        <div style={{ padding: '22px 24px 18px', textAlign: 'center', background: 'linear-gradient(135deg, #fef2f2, #fee2e2)', position: 'relative' as const }}>
+          <button onClick={onClose} title="Fermer"
+            style={{ position: 'absolute', top: 12, right: 12, width: 28, height: 28, borderRadius: 7, background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(220,38,38,0.18)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X size={13} style={{ color: '#7f1d1d' }} />
+          </button>
+          <div style={{ width: 44, height: 44, borderRadius: 11, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+            <Trash2 size={20} style={{ color: '#dc2626' }} />
+          </div>
+          <h2 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0, marginBottom: 4 }}>Supprimer cet acheteur ?</h2>
           <p style={{ fontSize: 12.5, color: '#991b1b', margin: 0 }}>
             <strong>{fullName}</strong> sera retiré du dossier.
           </p>
