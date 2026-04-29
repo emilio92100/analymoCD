@@ -449,10 +449,14 @@ export default function NouvelleAnalyse() {
   /* ── CHOICE */
   if (step === 'choice') {
     const isPro = userRole === 'pro';
+    const isParticulier = userRole === 'particulier';
+    const isLoadingRole = userRole === null; // tant qu'on ne sait pas, on affiche un état neutre
     const proHasCompleteCredits = isPro && (proCredits?.complete || 0) > 0;
     const proHasDocumentCredits = isPro && (proCredits?.document || 0) > 0;
     // Bandeau "analyse offerte" : seulement pour les particuliers qui n'ont pas encore utilisé leur aperçu
-    const showFreeBanner = userRole === 'particulier' && !freePreviewUsed;
+    const showFreeBanner = isParticulier && !freePreviewUsed;
+    // Affichage des prix particulier : uniquement quand on a confirmé que c'est un particulier qui a déjà utilisé son aperçu
+    const showParticulierPrices = isParticulier && freePreviewUsed;
 
     return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
@@ -481,6 +485,7 @@ export default function NouvelleAnalyse() {
       )}
       <div className="type-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         <button onClick={() => {
+            if (isLoadingRole) return; // attendre que le rôle soit chargé
             if (isPro) {
               if (!proHasDocumentCredits) { window.location.href = '/dashboard/abonnement'; return; }
               setType('document'); setStep('type_bien'); return;
@@ -488,32 +493,34 @@ export default function NouvelleAnalyse() {
             if (freePreviewUsed && credits.document === 0) { window.location.href = '/dashboard/tarifs'; return; }
             setType('document'); setStep('type_bien');
           }}
-          style={{ padding: '28px 24px', borderRadius: 20, border: '1.5px solid #edf2f7', background: '#fff', cursor: 'pointer', textAlign: 'left', transition: 'all 0.18s', position: 'relative', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+          style={{ padding: '28px 24px', borderRadius: 20, border: '1.5px solid #edf2f7', background: '#fff', cursor: isLoadingRole ? 'wait' : 'pointer', textAlign: 'left', transition: 'all 0.18s', position: 'relative', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', opacity: isLoadingRole ? 0.6 : 1 }}
           onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.boxShadow = '0 8px 28px rgba(42,125,156,0.1)'; el.style.transform = 'translateY(-2px)'; }}
           onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'; el.style.transform = 'translateY(0)'; }}>
           {isPro ? (
             <div style={{ position: 'absolute', top: 14, right: 14, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: proHasDocumentCredits ? '#f0fdf4' : '#f8fafc', color: proHasDocumentCredits ? '#16a34a' : '#94a3b8', border: `1px solid ${proHasDocumentCredits ? '#bbf7d0' : '#e2e8f0'}` }}>
               {(proCredits?.document || 0) > 0 ? `${proCredits?.document} crédit${(proCredits?.document || 0) > 1 ? 's' : ''} restant${(proCredits?.document || 0) > 1 ? 's' : ''}` : '0 crédit'}
             </div>
-          ) : freePreviewUsed && (
+          ) : showParticulierPrices && (
             <div style={{ position: 'absolute', top: 14, right: 14, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: credits.document > 0 ? '#f0fdf4' : '#f8fafc', color: credits.document > 0 ? '#16a34a' : '#94a3b8', border: `1px solid ${credits.document > 0 ? '#bbf7d0' : '#e2e8f0'}` }}>
               {credits.document > 0 ? `${credits.document} crédit${credits.document > 1 ? 's' : ''} restant${credits.document > 1 ? 's' : ''}` : '0 crédit'}
             </div>
           )}
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginTop: (isPro || freePreviewUsed) ? 8 : 0 }}><FileText size={24} style={{ color: '#2a7d9c' }} /></div>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginTop: (isPro || showParticulierPrices) ? 8 : 0 }}><FileText size={24} style={{ color: '#2a7d9c' }} /></div>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Analyse d&apos;un seul document</div>
           <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.7, marginBottom: 20 }}>Retenez l&apos;essentiel d&apos;un document précis :<br /><span style={{ color: '#94a3b8' }}>Règlement de copro, PV d&apos;AG, diagnostic, DPE, appel de charges…</span><br /><span style={{ fontSize: 11, color: '#cbd5e1' }}>1 fichier PDF uniquement</span></div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 28 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 5 }}>
-              {isPro
+              {isLoadingRole ? null
+                : isPro
                 ? (proHasDocumentCredits ? <><ArrowRight size={14} /> Lancer l&apos;analyse</> : <><Lock size={13} /> Souscrire un abonnement</>)
                 : (freePreviewUsed && credits.document === 0 ? <><Lock size={13} /> Acheter un crédit</> : <><ArrowRight size={14} /> Commencer</>)
               }
             </span>
-            {!isPro && freePreviewUsed && <span style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>4,90€</span>}
+            {showParticulierPrices && <span style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>4,90€</span>}
           </div>
         </button>
         <button onClick={() => {
+            if (isLoadingRole) return;
             if (isPro) {
               if (!proHasCompleteCredits) { window.location.href = '/dashboard/abonnement'; return; }
               setType('complete'); setStep('type_bien'); return;
@@ -521,7 +528,7 @@ export default function NouvelleAnalyse() {
             if (freePreviewUsed && credits.complete === 0) { window.location.href = '/dashboard/tarifs'; return; }
             setType('complete'); setStep('type_bien');
           }}
-          style={{ padding: '28px 24px', borderRadius: 20, border: '1.5px solid transparent', background: 'linear-gradient(145deg, #0f2d3d, #1a5068)', cursor: 'pointer', textAlign: 'left', transition: 'all 0.18s', position: 'relative', overflow: 'hidden', boxShadow: '0 4px 20px rgba(15,45,61,0.15)' }}
+          style={{ padding: '28px 24px', borderRadius: 20, border: '1.5px solid transparent', background: 'linear-gradient(145deg, #0f2d3d, #1a5068)', cursor: isLoadingRole ? 'wait' : 'pointer', textAlign: 'left', transition: 'all 0.18s', position: 'relative', overflow: 'hidden', boxShadow: '0 4px 20px rgba(15,45,61,0.15)', opacity: isLoadingRole ? 0.6 : 1 }}
           onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.boxShadow = '0 12px 40px rgba(15,45,61,0.28)'; el.style.transform = 'translateY(-2px)'; }}
           onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.boxShadow = '0 4px 20px rgba(15,45,61,0.15)'; el.style.transform = 'translateY(0)'; }}>
           <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(42,125,156,0.2)', pointerEvents: 'none' }} />
@@ -530,22 +537,23 @@ export default function NouvelleAnalyse() {
             <div style={{ position: 'absolute', top: 14, right: 14, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: proHasCompleteCredits ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
               {(proCredits?.complete || 0) > 0 ? `${proCredits?.complete} crédit${(proCredits?.complete || 0) > 1 ? 's' : ''} restant${(proCredits?.complete || 0) > 1 ? 's' : ''}` : '0 crédit'}
             </div>
-          ) : freePreviewUsed && (
+          ) : showParticulierPrices && (
             <div style={{ position: 'absolute', top: 14, right: 14, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: credits.complete > 0 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
               {credits.complete > 0 ? `${credits.complete} crédit${credits.complete > 1 ? 's' : ''} restant${credits.complete > 1 ? 's' : ''}` : '0 crédit'}
             </div>
           )}
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginTop: (isPro || freePreviewUsed) ? 18 : 10 }}><ShieldCheck size={24} style={{ color: '#fff' }} /></div>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginTop: (isPro || showParticulierPrices) ? 18 : 10 }}><ShieldCheck size={24} style={{ color: '#fff' }} /></div>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#fff', marginBottom: 8 }}>Analyse complète d&apos;un logement</div>
           <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, marginBottom: 20 }}>Déposez tous vos documents d&apos;un seul coup :<br /><span style={{ color: 'rgba(255,255,255,0.45)' }}>PV AG 2022/2023/2024, règlement copro, DPE, diagnostic électricité, amiante…</span><br /><span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>Rapport détaillé avec score /20 et recommandation.</span></div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 28 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.85)', display: 'flex', alignItems: 'center', gap: 5 }}>
-              {isPro
+              {isLoadingRole ? null
+                : isPro
                 ? (proHasCompleteCredits ? <>Lancer l&apos;analyse <ArrowRight size={14} /></> : <>Souscrire un abonnement <ArrowRight size={14} /></>)
                 : (freePreviewUsed && credits.complete === 0 ? <>Acheter un crédit <ArrowRight size={14} /></> : <>Commencer l&apos;audit <ArrowRight size={14} /></>)
               }
             </span>
-            {!isPro && freePreviewUsed && <span style={{ fontSize: 22, fontWeight: 900, color: '#fff' }}>19,90€</span>}
+            {showParticulierPrices && <span style={{ fontSize: 22, fontWeight: 900, color: '#fff' }}>19,90€</span>}
           </div>
         </button>
       </div>
