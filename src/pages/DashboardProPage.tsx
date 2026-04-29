@@ -4,8 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, FolderOpen, Plus, GitCompare, User, LifeBuoy,
   LogOut, Menu, X, ChevronDown, CreditCard, BookOpen,
-  Send, Eye, Search, Clock,
-  CheckCircle, Upload, Mail,
+  Send, Search, Clock,
+  CheckCircle, Upload,
   ChevronRight, ArrowRight,
   MapPin, Trash2, AlertTriangle, FileText,
   UserPlus, UserCheck, Folder,
@@ -98,27 +98,6 @@ type ProFolder = {
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 const getScore = (r: Record<string, unknown> | undefined) => r && typeof r === 'object' && 'score' in r ? (r as { score: number }).score : null;
 const getScoreColor = (s: number) => s >= 17 ? '#16a34a' : s >= 14 ? '#2a7d9c' : s >= 10 ? '#d97706' : s >= 7 ? '#ea580c' : '#dc2626';
-const getDPE = (r: Record<string, unknown> | undefined): string | null => {
-  if (!r || typeof r !== 'object') return null;
-  const cats = r.categories as Record<string, unknown> | undefined;
-  if (!cats) return null;
-  const dp = cats.diags_privatifs as Record<string, unknown> | undefined;
-  if (!dp) return null;
-  const details = dp.details as Array<{ label: string; message: string }> | undefined;
-  if (!details) return null;
-  for (const d of details) {
-    const m = d.message?.match(/classe\s+([A-G])/i) || d.label?.match(/DPE\s+([A-G])/i);
-    if (m) return m[1].toUpperCase();
-  }
-  return null;
-};
-
-const DPE_COLORS: Record<string, { bg: string; color: string }> = {
-  A: { bg: '#f0fdf4', color: '#16a34a' }, B: { bg: '#f0fdf4', color: '#22c55e' },
-  C: { bg: '#fefce8', color: '#a3e635' }, D: { bg: '#fefce8', color: '#d97706' },
-  E: { bg: '#fff7ed', color: '#ea580c' }, F: { bg: '#fef2f2', color: '#dc2626' },
-  G: { bg: '#fef2f2', color: '#991b1b' },
-};
 
 /* ══════════════════════════════════════════
    NAV
