@@ -1801,8 +1801,10 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
   const [showSellerModal, setShowSellerModal] = useState(false);
   const [editingSeller, setEditingSeller] = useState<ProFolderSeller | null>(null);
   const [sellerToDelete, setSellerToDelete] = useState<ProFolderSeller | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const navigate = useNavigate();
 
+  // Charge complet (au mount) : dossier + stats + vendeurs
   const loadFolder = useCallback(async () => {
     setLoading(true);
     setNotFound(false);
@@ -1850,15 +1852,49 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
 
   useEffect(() => { loadFolder(); }, [loadFolder]);
 
+  // Recharge silencieuse des vendeurs (sans loader full-page)
+  const reloadSellers = useCallback(async () => {
+    const { data: sellersData } = await supabase
+      .from('pro_folder_sellers')
+      .select('*')
+      .eq('folder_id', folderId)
+      .order('created_at', { ascending: true });
+    setSellers(sellersData || []);
+    // Met à jour aussi le compteur dans le folder
+    setFolder(prev => prev ? { ...prev, sellers_count: (sellersData || []).length } : prev);
+  }, [folderId]);
+
+  // Toast auto-dismiss après 3s
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
   async function handleDeleteSeller(seller: ProFolderSeller) {
+    // UX optimiste : on retire de la liste tout de suite
+    setSellers(prev => prev.filter(s => s.id !== seller.id));
+    setFolder(prev => prev ? { ...prev, sellers_count: Math.max(0, (prev.sellers_count || 1) - 1) } : prev);
+    setSellerToDelete(null);
     try {
       const { error } = await supabase.from('pro_folder_sellers').delete().eq('id', seller.id);
       if (error) throw error;
-      setSellerToDelete(null);
-      await loadFolder();
+      setToast({ message: 'Vendeur supprimé', type: 'success' });
     } catch (e: any) {
-      alert('Erreur lors de la suppression : ' + (e.message || 'inconnue'));
+      // Rollback : on recharge depuis la BDD
+      setToast({ message: 'Erreur lors de la suppression', type: 'error' });
+      reloadSellers();
     }
+  }
+
+  function handleSellerSaved(action: 'created' | 'updated') {
+    setShowSellerModal(false);
+    setEditingSeller(null);
+    reloadSellers();
+    setToast({
+      message: action === 'created' ? 'Vendeur ajouté' : 'Vendeur modifié',
+      type: 'success',
+    });
   }
 
   if (loading) {
@@ -1942,7 +1978,7 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
             folderId={folderId}
             seller={editingSeller}
             onClose={() => { setShowSellerModal(false); setEditingSeller(null); }}
-            onSaved={() => { setShowSellerModal(false); setEditingSeller(null); loadFolder(); }}
+            onSaved={(action) => handleSellerSaved(action)}
           />
         )}
       </AnimatePresence>
@@ -1957,7 +1993,38 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
           />
         )}
       </AnimatePresence>
+
+      {/* Toast notification */}
+      <AnimatePresence>
+        {toast && <Toast message={toast.message} type={toast.type} />}
+      </AnimatePresence>
     </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   TOAST — Notification flottante
+══════════════════════════════════════════ */
+function Toast({ message, type }: { message: string; type: 'success' | 'error' }) {
+  const isSuccess = type === 'success';
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30, scale: 0.92 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 10, scale: 0.96 }}
+      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+      style={{
+        position: 'fixed', bottom: 28, right: 28, zIndex: 1100,
+        background: '#fff', borderRadius: 12,
+        padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 10,
+        boxShadow: '0 12px 32px rgba(15,45,61,0.18)',
+        border: `1.5px solid ${isSuccess ? '#bbf7d0' : '#fecaca'}`,
+      }}>
+      <div style={{ width: 28, height: 28, borderRadius: 8, background: isSuccess ? '#f0fdf4' : '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        {isSuccess ? <CheckCircle size={14} style={{ color: '#16a34a' }} /> : <AlertTriangle size={14} style={{ color: '#dc2626' }} />}
+      </div>
+      <span style={{ fontSize: 13, fontWeight: 700, color: isSuccess ? '#15803d' : '#991b1b' }}>{message}</span>
+    </motion.div>
   );
 }
 
@@ -2000,7 +2067,9 @@ function SectionVendeurs({ sellers, onAdd, onEdit, onDelete }: {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
-          {sellers.map(s => <SellerCard key={s.id} seller={s} onEdit={() => onEdit(s)} onDelete={() => onDelete(s)} />)}
+          <AnimatePresence initial={false}>
+            {sellers.map(s => <SellerCard key={s.id} seller={s} onEdit={() => onEdit(s)} onDelete={() => onDelete(s)} />)}
+          </AnimatePresence>
         </div>
       )}
     </div>
@@ -2010,7 +2079,13 @@ function SectionVendeurs({ sellers, onAdd, onEdit, onDelete }: {
 function SellerCard({ seller, onEdit, onDelete }: { seller: ProFolderSeller; onEdit: () => void; onDelete: () => void }) {
   const fullName = [seller.civility, seller.first_name, seller.last_name].filter(Boolean).join(' ');
   return (
-    <div style={{ padding: '12px 14px', borderRadius: 11, background: 'linear-gradient(135deg, #fafafa, #f8fafc)', border: '1px solid #f1f5f9', position: 'relative' as const }}>
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: -8, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.94, height: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0 }}
+      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+      style={{ padding: '12px 14px', borderRadius: 11, background: 'linear-gradient(135deg, #fafafa, #f8fafc)', border: '1px solid #f1f5f9', position: 'relative' as const, overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #f5f3ff, #ede9fe)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <UserCheck size={16} style={{ color: '#7c3aed' }} />
@@ -2048,7 +2123,7 @@ function SellerCard({ seller, onEdit, onDelete }: { seller: ProFolderSeller; onE
           </button>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -2059,7 +2134,7 @@ function ModalSeller({ folderId, seller, onClose, onSaved }: {
   folderId: string;
   seller: ProFolderSeller | null;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (action: 'created' | 'updated') => void;
 }) {
   const isEditing = !!seller;
   const [civility, setCivility] = useState(seller?.civility || 'M.');
@@ -2097,11 +2172,12 @@ function ModalSeller({ folderId, seller, onClose, onSaved }: {
       if (isEditing && seller) {
         const { error } = await supabase.from('pro_folder_sellers').update(payload).eq('id', seller.id);
         if (error) throw error;
+        onSaved('updated');
       } else {
         const { error } = await supabase.from('pro_folder_sellers').insert(payload);
         if (error) throw error;
+        onSaved('created');
       }
-      onSaved();
     } catch (e: any) {
       setErrorMsg(e.message || 'Erreur lors de l\'enregistrement.');
       setSubmitting(false);
