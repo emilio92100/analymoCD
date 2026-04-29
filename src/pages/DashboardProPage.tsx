@@ -1384,13 +1384,88 @@ function Field({ label, required, optional, hint, tooltip, icon: Icon, children 
           {required && <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>}
           {optional && <span style={{ color: '#cbd5e1', fontWeight: 500, marginLeft: 6, textTransform: 'none' as const, fontSize: 10.5 }}>(optionnel)</span>}
         </span>
-        {tooltip && (
-          <span title={tooltip} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', background: '#e2e8f0', color: '#64748b', fontSize: 9, fontWeight: 800, cursor: 'help', textTransform: 'none' as const, letterSpacing: 0 }}>?</span>
-        )}
+        {tooltip && <InfoTooltip text={tooltip} />}
       </label>
       {children}
       {hint && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, fontStyle: 'italic' as const }}>{hint}</div>}
     </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   TOOLTIP — Pastille "?" avec popover instantané
+══════════════════════════════════════════ */
+function InfoTooltip({ text }: { text: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+      onClick={() => setShow(s => !s)}
+      style={{
+        position: 'relative' as const,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 16,
+        height: 16,
+        borderRadius: '50%',
+        background: show ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#e2e8f0',
+        color: show ? '#fff' : '#64748b',
+        fontSize: 10,
+        fontWeight: 800,
+        cursor: 'help',
+        textTransform: 'none' as const,
+        letterSpacing: 0,
+        transition: 'all 0.15s',
+        flexShrink: 0,
+      }}>
+      i
+      <AnimatePresence>
+        {show && (
+          <motion.span
+            initial={{ opacity: 0, y: 6, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.96 }}
+            transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+              position: 'absolute',
+              bottom: 'calc(100% + 8px)',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              background: 'linear-gradient(135deg, #1e3a4d, #0f2d3d)',
+              color: '#fff',
+              padding: '9px 12px',
+              borderRadius: 8,
+              fontSize: 11.5,
+              fontWeight: 500,
+              lineHeight: 1.5,
+              letterSpacing: 0,
+              textTransform: 'none' as const,
+              width: 240,
+              boxShadow: '0 8px 24px rgba(15,45,61,0.28)',
+              zIndex: 1500,
+              pointerEvents: 'none' as const,
+              fontFamily: 'inherit',
+              textAlign: 'left' as const,
+            }}>
+            {text}
+            {/* Petite flèche pointant vers le bas */}
+            <span style={{
+              position: 'absolute',
+              top: '100%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: 0,
+              height: 0,
+              borderLeft: '5px solid transparent',
+              borderRight: '5px solid transparent',
+              borderTop: '5px solid #0f2d3d',
+            }} />
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </span>
   );
 }
 
