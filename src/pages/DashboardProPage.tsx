@@ -160,7 +160,7 @@ function SidebarPro({ subscription, onClose }: { subscription: ProSubscription |
         </div>
         {subscription ? (
           <div style={{ marginTop: 7, fontSize: 10, color: 'rgba(255,255,255,0.35)', textAlign: 'center' }}>
-            Plan {subscription.plan === 'starter' ? 'Starter' : 'Power'} · Renouvellement {subscription.current_period_end ? fmtDate(subscription.current_period_end) : '—'}
+            Plan {subscription.plan === 'decouverte' ? 'Découverte' : subscription.plan === 'starter' ? 'Starter' : subscription.plan === 'power' ? 'Power' : subscription.plan} · Renouvellement {subscription.current_period_end ? fmtDate(subscription.current_period_end) : '—'}
           </div>
         ) : (
           <Link to="/dashboard/abonnement" onClick={onClose} style={{ display: 'block', marginTop: 7, fontSize: 11, fontWeight: 700, color: ACCENT, textDecoration: 'none', textAlign: 'center' }}>
@@ -297,6 +297,32 @@ function HomeViewPro({ proProfile, subscription, analyses, shares }: { proProfil
         {proProfile.pro_company_name && <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>{proProfile.pro_company_name}</p>}
       </div>
 
+      {/* Pas d'abonnement ? Bandeau remonté en haut */}
+      {!subscription && (
+        <div style={{ background: 'linear-gradient(135deg, #0a1f2d, #1a4a5e)', borderRadius: 16, padding: 24, marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' as const }}>
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 800, color: '#fff', marginBottom: 4 }}>Activez votre abonnement</h3>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', margin: 0 }}>Choisissez Découverte, Starter ou Power pour commencer à analyser vos dossiers.</p>
+          </div>
+          <Link to="/dashboard/abonnement" style={{ padding: '11px 24px', borderRadius: 10, background: '#fff', color: '#0f2d3d', textDecoration: 'none', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' as const }}>
+            Voir les offres <ArrowRight size={14} style={{ verticalAlign: 'middle', marginLeft: 4 }} />
+          </Link>
+        </div>
+      )}
+
+      {/* Abonné mais plus de crédits ? Bandeau invitation upgrade ou achat unitaire */}
+      {subscription && creditsLeft === 0 && (
+        <div style={{ background: 'linear-gradient(135deg, #fef3c7, #fde68a)', borderRadius: 16, padding: '18px 22px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' as const, border: '1px solid #fcd34d' }}>
+          <div>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#92400e', marginBottom: 2 }}>Vos crédits du mois sont épuisés</h3>
+            <p style={{ fontSize: 12.5, color: '#92400e', margin: 0 }}>Passez à un plan supérieur ou achetez à l'unité au tarif abonné.</p>
+          </div>
+          <Link to="/dashboard/abonnement" style={{ padding: '10px 20px', borderRadius: 10, background: '#92400e', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' as const }}>
+            Gérer <ArrowRight size={14} style={{ verticalAlign: 'middle', marginLeft: 4 }} />
+          </Link>
+        </div>
+      )}
+
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 32 }}>
         {stats.map((s, i) => (
@@ -311,19 +337,6 @@ function HomeViewPro({ proProfile, subscription, analyses, shares }: { proProfil
           </div>
         ))}
       </div>
-
-      {/* Pas d'abonnement ? */}
-      {!subscription && (
-        <div style={{ background: 'linear-gradient(135deg, #0a1f2d, #1a4a5e)', borderRadius: 16, padding: 24, marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' as const }}>
-          <div>
-            <h3 style={{ fontSize: 16, fontWeight: 800, color: '#fff', marginBottom: 4 }}>Activez votre abonnement</h3>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', margin: 0 }}>Choisissez le plan Starter ou Power pour commencer à analyser.</p>
-          </div>
-          <Link to="/dashboard/abonnement" style={{ padding: '11px 24px', borderRadius: 10, background: '#fff', color: '#0f2d3d', textDecoration: 'none', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' as const }}>
-            Voir les offres <ArrowRight size={14} style={{ verticalAlign: 'middle', marginLeft: 4 }} />
-          </Link>
-        </div>
-      )}
 
       {/* Derniers dossiers */}
       <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 22px', marginBottom: 20 }}>
