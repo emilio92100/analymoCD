@@ -953,6 +953,259 @@ function ModalCreateFolder({ onClose, onCreated }: { onClose: () => void; onCrea
 }
 
 /* ══════════════════════════════════════════
+   MODAL : ÉDITION DOSSIER (modifier nom/adresse/note)
+══════════════════════════════════════════ */
+function ModalEditFolder({ folder, onClose, onSaved }: {
+  folder: ProFolder;
+  onClose: () => void;
+  onSaved: (updated: Partial<ProFolder>) => void;
+}) {
+  const [name, setName] = useState(folder.name);
+  const [address, setAddress] = useState(folder.property_address || '');
+  const [postalCode, setPostalCode] = useState(folder.property_postal_code || '');
+  const [city, setCity] = useState(folder.property_city || '');
+  const [internalNote, setInternalNote] = useState(folder.internal_note || '');
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
+  const [cityLoading, setCityLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // Autocomplétion adresse via API Adresse Etalab
+  const [addressSuggestions, setAddressSuggestions] = useState<Array<{ label: string; postcode: string; city: string }>>([]);
+  const [addressLoading, setAddressLoading] = useState(false);
+  const [showAddressDropdown, setShowAddressDropdown] = useState(false);
+  const [addressFocused, setAddressFocused] = useState(false);
+  const lastPostalCodeQueriedRef = useRef<string>(folder.property_postal_code || '');
+  const addressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Auto-complétion code postal → ville (API gouv.fr)
+  useEffect(() => {
+    const cp = postalCode.trim();
+    if (cp.length !== 5) {
+      setCityOptions([]);
+      return;
+    }
+    if (lastPostalCodeQueriedRef.current && lastPostalCodeQueriedRef.current !== cp) {
+      setCity('');
+    }
+    lastPostalCodeQueriedRef.current = cp;
+    setCityLoading(true);
+    fetch(`https://geo.api.gouv.fr/communes?codePostal=${cp}&fields=nom&format=json&limit=10`)
+      .then(r => r.json())
+      .then((data: { nom: string }[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const cities = data.map(c => c.nom);
+          setCityOptions(cities);
+          if (cities.length === 1 && cities[0] !== city) setCity(cities[0]);
+        } else {
+          setCityOptions([]);
+        }
+      })
+      .catch(() => setCityOptions([]))
+      .finally(() => setCityLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postalCode]);
+
+  // Autocomplétion adresse via Etalab
+  useEffect(() => {
+    if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
+    const q = address.trim();
+    if (q.length < 4) { setAddressSuggestions([]); return; }
+    addressDebounceRef.current = setTimeout(() => {
+      setAddressLoading(true);
+      fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(q)}&limit=5&autocomplete=1`)
+        .then(r => r.json())
+        .then((data: any) => {
+          if (data?.features && Array.isArray(data.features)) {
+            const suggestions = data.features
+              .map((f: any) => ({ label: f.properties?.label || '', postcode: f.properties?.postcode || '', city: f.properties?.city || '' }))
+              .filter((s: any) => s.label);
+            setAddressSuggestions(suggestions);
+          } else {
+            setAddressSuggestions([]);
+          }
+        })
+        .catch(() => setAddressSuggestions([]))
+        .finally(() => setAddressLoading(false));
+    }, 300);
+    return () => { if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current); };
+  }, [address]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  function selectAddressSuggestion(s: { label: string; postcode: string; city: string }) {
+    const streetOnly = s.label.split(',')[0].trim();
+    setAddress(streetOnly);
+    if (s.postcode) setPostalCode(s.postcode);
+    if (s.city) setCity(s.city);
+    setAddressSuggestions([]);
+    setShowAddressDropdown(false);
+  }
+
+  async function handleSubmit() {
+    if (!name.trim()) {
+      setErrorMsg('Le nom du dossier est obligatoire.');
+      return;
+    }
+    setSubmitting(true);
+    setErrorMsg('');
+    try {
+      const payload = {
+        name: name.trim(),
+        property_address: address.trim() || null,
+        property_postal_code: postalCode.trim() || null,
+        property_city: city.trim() || null,
+        internal_note: internalNote.trim() || null,
+      };
+      const { error } = await supabase.from('pro_folders').update(payload).eq('id', folder.id);
+      if (error) throw error;
+      onSaved(payload);
+    } catch (e: any) {
+      setErrorMsg(e.message || 'Erreur lors de l\'enregistrement.');
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 540, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 30px 80px rgba(15,45,61,0.35)' }}>
+
+        {/* Header */}
+        <div style={{ padding: '22px 24px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Pencil size={16} style={{ color: '#2a7d9c' }} />
+            </div>
+            <div>
+              <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>Modifier le dossier</h2>
+              <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0 0' }}>Mettez à jour les informations du bien</p>
+            </div>
+          </div>
+          <button onClick={onClose} title="Fermer"
+            style={{ width: 32, height: 32, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <X size={15} style={{ color: '#64748b' }} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '20px 24px 8px' }}>
+
+          {/* Adresse + autocomplétion */}
+          <Field label="Adresse du bien" optional icon={MapPin}>
+            <div style={{ position: 'relative' }}>
+              <input value={address}
+                onChange={e => { setAddress(e.target.value); setShowAddressDropdown(true); }}
+                onFocus={() => { setAddressFocused(true); setShowAddressDropdown(true); }}
+                onBlur={() => { setAddressFocused(false); setTimeout(() => setShowAddressDropdown(false), 150); }}
+                placeholder="Commencez à taper… (ex: 12 rue de Rivoli)"
+                autoComplete="off"
+                style={inputStyle} />
+
+              {showAddressDropdown && addressFocused && (addressSuggestions.length > 0 || addressLoading) && (
+                <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: '#fff', border: '1.5px solid #edf2f7', borderRadius: 10, boxShadow: '0 12px 32px rgba(15,45,61,0.12)', zIndex: 10, maxHeight: 240, overflowY: 'auto' as const }}>
+                  {addressLoading && addressSuggestions.length === 0 ? (
+                    <div style={{ padding: '12px 14px', fontSize: 12, color: '#94a3b8', fontStyle: 'italic' as const }}>Recherche d'adresses…</div>
+                  ) : (
+                    addressSuggestions.map((s, i) => (
+                      <button key={i}
+                        onMouseDown={(e) => { e.preventDefault(); selectAddressSuggestion(s); }}
+                        style={{
+                          width: '100%', textAlign: 'left' as const, padding: '10px 14px', background: 'transparent', border: 'none', borderBottom: i < addressSuggestions.length - 1 ? '1px solid #f1f5f9' : 'none', cursor: 'pointer', fontSize: 13, color: '#0f172a', fontFamily: 'inherit',
+                          display: 'flex', alignItems: 'center', gap: 8,
+                        }}
+                        onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#f8fafc'}
+                        onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                        <MapPin size={12} style={{ color: '#94a3b8', flexShrink: 0 }} />
+                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.label}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          </Field>
+
+          {/* Code postal + Ville */}
+          <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 12, marginBottom: 14 }}>
+            <Field label="Code postal" optional>
+              <input value={postalCode} onChange={e => {
+                  const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 5);
+                  setPostalCode(v);
+                }}
+                placeholder="75001"
+                inputMode="numeric"
+                style={inputStyle} />
+            </Field>
+            <Field label="Ville" optional>
+              {cityOptions.length > 1 ? (
+                <select value={city} onChange={e => setCity(e.target.value)} style={{ ...inputStyle, paddingRight: 28, cursor: 'pointer' }}>
+                  <option value="">Choisir…</option>
+                  {cityOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              ) : (
+                <input value={city} onChange={e => setCity(e.target.value)}
+                  placeholder={cityLoading ? 'Recherche…' : 'Paris 1er'}
+                  style={inputStyle} />
+              )}
+            </Field>
+          </div>
+
+          {/* Nom du dossier */}
+          <Field label="Nom du dossier" required icon={Folder}>
+            <input value={name} onChange={e => setName(e.target.value)}
+              placeholder="Ex: 12 rue de Rivoli, Paris 1er"
+              style={inputStyle} />
+          </Field>
+
+          {/* Note interne */}
+          <Field label="Note interne" optional icon={FileText}>
+            <textarea value={internalNote} onChange={e => setInternalNote(e.target.value)}
+              placeholder="Ex: Mandat exclusif signé le 03/05, voisin bruyant"
+              rows={3}
+              style={{ ...inputStyle, resize: 'vertical' as const, minHeight: 60, fontFamily: 'inherit' }} />
+          </Field>
+
+          {errorMsg && (
+            <div style={{ marginTop: 8, padding: '10px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: 12.5, fontWeight: 600 }}>
+              {errorMsg}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '12px 24px 22px', display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid #f1f5f9' }}>
+          <button onClick={onClose} disabled={submitting}
+            style={{ padding: '10px 18px', borderRadius: 10, background: '#fff', color: '#64748b', border: '1.5px solid #edf2f7', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600 }}>
+            Annuler
+          </button>
+          <button onClick={handleSubmit} disabled={submitting || !name.trim()}
+            style={{
+              padding: '10px 22px', borderRadius: 10, border: 'none',
+              background: submitting || !name.trim() ? '#cbd5e1' : 'linear-gradient(135deg,#2a7d9c,#0f2d3d)',
+              color: '#fff', cursor: submitting || !name.trim() ? 'not-allowed' : 'pointer',
+              fontSize: 13, fontWeight: 700,
+            }}>
+            {submitting ? 'Enregistrement…' : 'Enregistrer'}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ══════════════════════════════════════════
    MODAL : SUPPRESSION DOSSIER
 ══════════════════════════════════════════ */
 function ModalDeleteFolder({ folder, onClose, onConfirm }: { folder: ProFolder; onClose: () => void; onConfirm: () => void }) {
@@ -1121,7 +1374,7 @@ const inputStyle: React.CSSProperties = {
   color: '#0f172a',
 };
 
-function Field({ label, required, optional, hint, icon: Icon, children }: { label: string; required?: boolean; optional?: boolean; hint?: string; icon?: React.ElementType; children: React.ReactNode }) {
+function Field({ label, required, optional, hint, tooltip, icon: Icon, children }: { label: string; required?: boolean; optional?: boolean; hint?: string; tooltip?: string; icon?: React.ElementType; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 14 }}>
       <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>
@@ -1131,6 +1384,9 @@ function Field({ label, required, optional, hint, icon: Icon, children }: { labe
           {required && <span style={{ color: '#dc2626', marginLeft: 3 }}>*</span>}
           {optional && <span style={{ color: '#cbd5e1', fontWeight: 500, marginLeft: 6, textTransform: 'none' as const, fontSize: 10.5 }}>(optionnel)</span>}
         </span>
+        {tooltip && (
+          <span title={tooltip} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14, borderRadius: '50%', background: '#e2e8f0', color: '#64748b', fontSize: 9, fontWeight: 800, cursor: 'help', textTransform: 'none' as const, letterSpacing: 0 }}>?</span>
+        )}
       </label>
       {children}
       {hint && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, fontStyle: 'italic' as const }}>{hint}</div>}
@@ -1829,6 +2085,7 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
   const [showBuyerModal, setShowBuyerModal] = useState(false);
   const [editingBuyer, setEditingBuyer] = useState<ProFolderBuyer | null>(null);
   const [buyerToDelete, setBuyerToDelete] = useState<ProFolderBuyer | null>(null);
+  const [showEditFolderModal, setShowEditFolderModal] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const navigate = useNavigate();
 
@@ -2001,7 +2258,7 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
           <div style={{ width: 52, height: 52, borderRadius: 12, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Folder size={24} style={{ color: '#2a7d9c' }} />
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', margin: 0, marginBottom: 4 }}>{folder.name}</h2>
             {(folder.property_address || folder.property_city) && (
               <div style={{ fontSize: 13, color: '#64748b', display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -2010,6 +2267,12 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
               </div>
             )}
           </div>
+          <button onClick={() => setShowEditFolderModal(true)} title="Modifier les infos du dossier"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, background: '#fff', border: '1.5px solid #edf2f7', color: '#475569', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, flexShrink: 0, transition: 'all 0.15s' }}
+            onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.color = '#2a7d9c'; }}
+            onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.color = '#475569'; }}>
+            <Pencil size={12} /> Modifier
+          </button>
         </div>
 
         {folder.internal_note && (
@@ -2027,21 +2290,22 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
           onClick={() => navigate(`/dashboard/nouvelle-analyse?folder=${folder.id}`)} />
       </div>
 
-      {/* Section Vendeurs */}
-      <SectionVendeurs
-        sellers={sellers}
-        onAdd={() => { setEditingSeller(null); setShowSellerModal(true); }}
-        onEdit={(s) => { setEditingSeller(s); setShowSellerModal(true); }}
-        onDelete={(s) => setSellerToDelete(s)}
-      />
+      {/* Sections Vendeurs + Acheteurs en 2 colonnes */}
+      <div className="folder-people-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 12, marginBottom: 12 }}>
+        <SectionVendeurs
+          sellers={sellers}
+          onAdd={() => { setEditingSeller(null); setShowSellerModal(true); }}
+          onEdit={(s) => { setEditingSeller(s); setShowSellerModal(true); }}
+          onDelete={(s) => setSellerToDelete(s)}
+        />
 
-      {/* Section Acheteurs */}
-      <SectionAcheteurs
-        buyers={buyers}
-        onAdd={() => { setEditingBuyer(null); setShowBuyerModal(true); }}
-        onEdit={(b) => { setEditingBuyer(b); setShowBuyerModal(true); }}
-        onDelete={(b) => setBuyerToDelete(b)}
-      />
+        <SectionAcheteurs
+          buyers={buyers}
+          onAdd={() => { setEditingBuyer(null); setShowBuyerModal(true); }}
+          onEdit={(b) => { setEditingBuyer(b); setShowBuyerModal(true); }}
+          onDelete={(b) => setBuyerToDelete(b)}
+        />
+      </div>
 
       {/* Section Analyses (placeholder pour 2B-3) */}
       <SectionEmpty title="Analyses" icon={FileText} count={folder.analyses_count} comingSoon />
@@ -2092,6 +2356,21 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
         )}
       </AnimatePresence>
 
+      {/* Modale édition du dossier */}
+      <AnimatePresence>
+        {showEditFolderModal && folder && (
+          <ModalEditFolder
+            folder={folder}
+            onClose={() => setShowEditFolderModal(false)}
+            onSaved={(updated) => {
+              setShowEditFolderModal(false);
+              setFolder(prev => prev ? { ...prev, ...updated } : prev);
+              setToast({ message: 'Dossier mis à jour', type: 'success' });
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Toast notification */}
       <AnimatePresence>
         {toast && <Toast message={toast.message} type={toast.type} />}
@@ -2136,7 +2415,7 @@ function SectionVendeurs({ sellers, onAdd, onEdit, onDelete }: {
   onDelete: (s: ProFolderSeller) => void;
 }) {
   return (
-    <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 22px', marginBottom: 12 }}>
+    <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 22px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: sellers.length > 0 ? 14 : 6 }}>
         <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
           <UserCheck size={15} style={{ color: '#94a3b8' }} />
@@ -2337,12 +2616,12 @@ function ModalSeller({ folderId, seller, onClose, onSaved }: {
           </div>
 
           {/* Email */}
-          <Field label="Email" optional icon={Mail}>
+          <Field label="Email" optional icon={Mail} tooltip="Utile pour envoyer le rapport d'analyse directement par email à cette personne depuis votre espace.">
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="jean.martin@email.fr" style={inputStyle} />
           </Field>
 
           {/* Téléphone */}
-          <Field label="Téléphone" optional>
+          <Field label="Téléphone" optional tooltip="Utile pour rappeler facilement votre interlocuteur depuis la fiche dossier.">
             <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="06 12 34 56 78" style={inputStyle} />
           </Field>
 
@@ -2454,7 +2733,7 @@ function SectionAcheteurs({ buyers, onAdd, onEdit, onDelete }: {
   onDelete: (b: ProFolderBuyer) => void;
 }) {
   return (
-    <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 22px', marginBottom: 12 }}>
+    <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 22px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: buyers.length > 0 ? 14 : 6 }}>
         <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
           <UserPlus size={15} style={{ color: '#94a3b8' }} />
@@ -2663,12 +2942,12 @@ function ModalBuyer({ folderId, buyer, onClose, onSaved }: {
           </div>
 
           {/* Email */}
-          <Field label="Email" optional icon={Mail}>
+          <Field label="Email" optional icon={Mail} tooltip="Utile pour envoyer le rapport d'analyse directement par email à cette personne depuis votre espace.">
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="sophie.dupont@email.fr" style={inputStyle} />
           </Field>
 
           {/* Téléphone */}
-          <Field label="Téléphone" optional>
+          <Field label="Téléphone" optional tooltip="Utile pour rappeler facilement votre interlocuteur depuis la fiche dossier.">
             <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="06 12 34 56 78" style={inputStyle} />
           </Field>
 
