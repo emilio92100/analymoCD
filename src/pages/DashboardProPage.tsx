@@ -54,6 +54,15 @@ type ProSubscription = {
   current_period_end?: string;
 };
 
+type ProCredits = {
+  abo_complete_remaining: number;
+  abo_document_remaining: number;
+  unit_complete_remaining: number;
+  unit_document_remaining: number;
+  total_complete: number;
+  total_document: number;
+};
+
 type ProAnalysis = {
   id: string;
   type: string;
@@ -149,7 +158,7 @@ const proNavItems = [
 /* ══════════════════════════════════════════
    SIDEBAR PRO
 ══════════════════════════════════════════ */
-function SidebarPro({ subscription, onClose }: { subscription: ProSubscription | null; onClose?: () => void }) {
+function SidebarPro({ subscription, proCredits, onClose }: { subscription: ProSubscription | null; proCredits: ProCredits | null; onClose?: () => void }) {
   const location = useLocation();
 
   const BG = '#0a1f2d';
@@ -158,8 +167,8 @@ function SidebarPro({ subscription, onClose }: { subscription: ProSubscription |
   const TEXT_ACTIVE = '#ffffff';
   const MUTED = 'rgba(255,255,255,0.25)';
 
-  const creditsComplete = subscription ? (subscription.credits_complete_total - subscription.credits_complete_used) : 0;
-  const creditsSimple = subscription ? (subscription.credits_simple_total - subscription.credits_simple_used) : 0;
+  const creditsComplete = proCredits?.total_complete ?? 0;
+  const creditsSimple = proCredits?.total_document ?? 0;
 
   return (
     <aside style={{ width: 260, minHeight: '100vh', height: '100%', background: BG, display: 'flex', flexDirection: 'column' }}>
@@ -306,11 +315,11 @@ function ScoreRing({ score, size = 40 }: { score: number; size?: number }) {
 /* ══════════════════════════════════════════
    HOME VIEW PRO
 ══════════════════════════════════════════ */
-function HomeViewPro({ proProfile, subscription, analyses, shares }: { proProfile: ProProfile; subscription: ProSubscription | null; analyses: ProAnalysis[]; shares: ReportShare[] }) {
+function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares }: { proProfile: ProProfile; subscription: ProSubscription | null; proCredits: ProCredits | null; analyses: ProAnalysis[]; shares: ReportShare[] }) {
   const prenom = proProfile.full_name?.split(' ')[0] || 'Pro';
   const completedAnalyses = analyses.filter(a => a.status === 'completed');
   const thisMonth = analyses.filter(a => { const d = new Date(a.created_at); const now = new Date(); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });
-  const creditsLeft = subscription ? (subscription.credits_complete_total - subscription.credits_complete_used) + (subscription.credits_simple_total - subscription.credits_simple_used) : (proProfile.credits_document || 0) + (proProfile.credits_complete || 0);
+  const creditsLeft = (proCredits?.total_complete ?? 0) + (proCredits?.total_document ?? 0);
   const totalShares = shares.length;
 
   const stats = [
@@ -3204,6 +3213,7 @@ export default function DashboardProPage() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [proProfile, setProProfile] = useState<ProProfile | null>(null);
   const [subscription, setSubscription] = useState<ProSubscription | null>(null);
+  const [proCredits, setProCredits] = useState<ProCredits | null>(null);
   const [analyses, setAnalyses] = useState<ProAnalysis[]>([]);
   const [shares, setShares] = useState<ReportShare[]>([]);
   const [loading, setLoading] = useState(true);
@@ -3222,6 +3232,11 @@ export default function DashboardProPage() {
     // Subscription
     const { data: sub } = await supabase.from('pro_subscriptions').select('*').eq('user_id', user.id).eq('status', 'active').maybeSingle();
     setSubscription(sub as ProSubscription | null);
+
+    // Credits balance (agrège abo + unitaires + offerts)
+    const { data: credits } = await supabase.rpc('get_pro_credits_balance', { p_user_id: user.id });
+    if (credits && credits.length > 0) setProCredits(credits[0] as ProCredits);
+    else setProCredits(null);
 
     // Analyses
     const { data: anal } = await supabase.from('analyses').select('id, type, status, title, address, created_at, result').eq('user_id', user.id).order('created_at', { ascending: false });
@@ -3267,7 +3282,7 @@ export default function DashboardProPage() {
     if (path === '/dashboard/compte') return <ComptePro proProfile={proProfile} onUpdate={loadData} />;
     if (path === '/dashboard/aide') return <Aide />;
     if (path === '/dashboard/support') return <Support />;
-    return <HomeViewPro proProfile={proProfile} subscription={subscription} analyses={analyses} shares={shares} />;
+    return <HomeViewPro proProfile={proProfile} subscription={subscription} proCredits={proCredits} analyses={analyses} shares={shares} />;
   };
 
   return (
@@ -3275,7 +3290,7 @@ export default function DashboardProPage() {
       {/* Sidebar desktop */}
       <div className="desktop-sidebar" style={{ width: 260, flexShrink: 0 }}>
         <div style={{ position: 'fixed', top: 0, left: 0, width: 260, height: '100vh', zIndex: 50, overflowY: 'auto' }}>
-          <SidebarPro subscription={subscription} />
+          <SidebarPro subscription={subscription} proCredits={proCredits} />
         </div>
       </div>
 
@@ -3286,7 +3301,7 @@ export default function DashboardProPage() {
             <div onClick={() => setMobileOpen(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(15,45,61,0.45)' }} />
             <motion.div initial={{ x: -260 }} animate={{ x: 0 }} exit={{ x: -260 }} transition={{ type: 'spring', stiffness: 320, damping: 32 }}
               style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 260 }}>
-              <SidebarPro subscription={subscription} onClose={() => setMobileOpen(false)} />
+              <SidebarPro subscription={subscription} proCredits={proCredits} onClose={() => setMobileOpen(false)} />
             </motion.div>
           </motion.div>
         )}
