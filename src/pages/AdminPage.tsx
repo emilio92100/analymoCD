@@ -1462,7 +1462,7 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
     const { error } = await supabase.from('credit_grants').insert({
       user_id: selectedUser.id,
       granted_by: currentAdmin?.id || null,
-      credit_type: form.credit_type, // 'complete' ou 'simple'
+      credit_type: form.credit_type === 'simple' ? 'document' : form.credit_type, // BDD attend 'document' ou 'complete'
       quantity: form.credit_quantity,
       reason: form.credit_reason.trim(),
     });
