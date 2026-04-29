@@ -110,7 +110,12 @@ export default function NouvelleAnalyse() {
   const [result, setResult] = useState<AnalyseResult | null>(null);
   const [apercu, setApercu] = useState<ApercuResult | null>(null);
   const [apercuId, setApercuId] = useState<string | null>(null);
-  const [freePreviewUsed, setFreePreviewUsed] = useState<boolean>(() => checkFreePreviewUsedSync());
+  const [freePreviewUsed, setFreePreviewUsed] = useState<boolean>(() => {
+    // Initialement on suppose "true" (pas de bandeau) pour éviter le flash chez les pros.
+    // Le useEffect ci-dessous remet à false si l'utilisateur est un particulier
+    // qui n'a pas encore utilisé son aperçu gratuit.
+    return checkFreePreviewUsedSync() || true; // toujours true au mount
+  });
   const [error, setError] = useState('');
   const [analyseError, setAnalyseError] = useState<{ message: string; creditType?: string } | null>(null);
   const [isAnalysing, setIsAnalysing] = useState(false);
@@ -118,13 +123,55 @@ export default function NouvelleAnalyse() {
   const [animatedProgress, setAnimatedProgress] = useState(0);
   const animRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Masquer le bandeau "analyse offerte" pour les pros
+  // ─── Détection rôle utilisateur (pro / particulier) ────────
+  const [userRole, setUserRole] = useState<'pro' | 'particulier' | null>(null);
+  const [proCredits, setProCredits] = useState<{ complete: number; document: number } | null>(null);
+
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return;
-      const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-      if (data?.role === 'pro') setFreePreviewUsed(true);
-    });
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        if (!cancelled) {
+          setUserRole('particulier');
+          // Pour un user non connecté ou particulier, on revient sur la valeur localStorage
+          setFreePreviewUsed(checkFreePreviewUsedSync());
+        }
+        return;
+      }
+
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+      const role = profile?.role === 'pro' ? 'pro' : 'particulier';
+      if (cancelled) return;
+
+      setUserRole(role);
+
+      if (role === 'pro') {
+        // Pour un pro, pas de bandeau d'analyse offerte (logique particulier)
+        setFreePreviewUsed(true);
+        // Charger les crédits pro (abo + unitaires) via la fonction PG
+        try {
+          const { data: balance } = await supabase.rpc('get_pro_credits_balance', { p_user_id: user.id });
+          if (cancelled) return;
+          if (balance && Array.isArray(balance) && balance.length > 0) {
+            const b = balance[0];
+            setProCredits({
+              complete: b.total_complete || 0,
+              document: b.total_document || 0,
+            });
+          } else {
+            setProCredits({ complete: 0, document: 0 });
+          }
+        } catch (e) {
+          console.error('Erreur chargement crédits pro:', e);
+          setProCredits({ complete: 0, document: 0 });
+        }
+      } else {
+        // Particulier : on lit la vraie valeur depuis le localStorage
+        setFreePreviewUsed(checkFreePreviewUsedSync());
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   // ─── UX messages rotatifs pendant l'analyse ────────────────
@@ -400,12 +447,19 @@ export default function NouvelleAnalyse() {
   };
 
   /* ── CHOICE */
-  if (step === 'choice') return (
-    <div style={{ maxWidth: 900, margin: '0 auto' }}>
+  if (step === 'choice') {
+    const isPro = userRole === 'pro';
+    const proHasCompleteCredits = isPro && (proCredits?.complete || 0) > 0;
+    const proHasDocumentCredits = isPro && (proCredits?.document || 0) > 0;
+    // Bandeau "analyse offerte" : seulement pour les particuliers qui n'ont pas encore utilisé leur aperçu
+    const showFreeBanner = userRole === 'particulier' && !freePreviewUsed;
+
+    return (
+    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       <Link to="/dashboard" style={{ fontSize: 13, color: '#94a3b8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</Link>
       <h1 style={{ fontSize: 'clamp(22px,3vw,28px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 6 }}>Que souhaitez-vous analyser ?</h1>
-      <p style={{ fontSize: 14, color: '#64748b', marginBottom: !freePreviewUsed ? 16 : 32 }}>Choisissez le mode d'analyse adapté à votre besoin.</p>
-      {!freePreviewUsed && (
+      <p style={{ fontSize: 14, color: '#64748b', marginBottom: showFreeBanner ? 16 : 32 }}>Choisissez le mode d'analyse adapté à votre besoin.</p>
+      {showFreeBanner && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderRadius: 14, background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', marginBottom: 28, boxShadow: '0 4px 16px rgba(15,45,61,0.18)' }}>
           <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Sparkles size={16} style={{ color: '#fff' }} /></div>
           <div style={{ flex: 1 }}>
@@ -415,55 +469,94 @@ export default function NouvelleAnalyse() {
           <span style={{ fontSize: 10, fontWeight: 800, color: '#0f2d3d', background: '#fff', padding: '4px 12px', borderRadius: 100, whiteSpace: 'nowrap', flexShrink: 0 }}>OFFERT</span>
         </div>
       )}
+      {isPro && proCredits && (proCredits.complete === 0 && proCredits.document === 0) && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderRadius: 14, background: 'linear-gradient(135deg, #fef3c7, #fde68a)', marginBottom: 28, border: '1px solid #fcd34d' }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(146,64,14,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><AlertTriangle size={16} style={{ color: '#92400e' }} /></div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#92400e', marginBottom: 2 }}>Aucun crédit disponible</div>
+            <div style={{ fontSize: 12.5, color: '#92400e', lineHeight: 1.5 }}>Souscrivez un abonnement ou achetez à l'unité pour démarrer une analyse.</div>
+          </div>
+          <Link to="/dashboard/abonnement" style={{ fontSize: 12, fontWeight: 800, color: '#fff', background: '#92400e', padding: '8px 14px', borderRadius: 8, textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>Voir les offres</Link>
+        </div>
+      )}
       <div className="type-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-        <button onClick={() => { if (freePreviewUsed && credits.document === 0) { window.location.href = '/dashboard/tarifs'; return; } setType('document'); setStep('type_bien'); }}
+        <button onClick={() => {
+            if (isPro) {
+              if (!proHasDocumentCredits) { window.location.href = '/dashboard/abonnement'; return; }
+              setType('document'); setStep('type_bien'); return;
+            }
+            if (freePreviewUsed && credits.document === 0) { window.location.href = '/dashboard/tarifs'; return; }
+            setType('document'); setStep('type_bien');
+          }}
           style={{ padding: '28px 24px', borderRadius: 20, border: '1.5px solid #edf2f7', background: '#fff', cursor: 'pointer', textAlign: 'left', transition: 'all 0.18s', position: 'relative', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
           onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.boxShadow = '0 8px 28px rgba(42,125,156,0.1)'; el.style.transform = 'translateY(-2px)'; }}
           onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'; el.style.transform = 'translateY(0)'; }}>
-          {freePreviewUsed && (
+          {isPro ? (
+            <div style={{ position: 'absolute', top: 14, right: 14, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: proHasDocumentCredits ? '#f0fdf4' : '#f8fafc', color: proHasDocumentCredits ? '#16a34a' : '#94a3b8', border: `1px solid ${proHasDocumentCredits ? '#bbf7d0' : '#e2e8f0'}` }}>
+              {(proCredits?.document || 0) > 0 ? `${proCredits?.document} crédit${(proCredits?.document || 0) > 1 ? 's' : ''} restant${(proCredits?.document || 0) > 1 ? 's' : ''}` : '0 crédit'}
+            </div>
+          ) : freePreviewUsed && (
             <div style={{ position: 'absolute', top: 14, right: 14, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: credits.document > 0 ? '#f0fdf4' : '#f8fafc', color: credits.document > 0 ? '#16a34a' : '#94a3b8', border: `1px solid ${credits.document > 0 ? '#bbf7d0' : '#e2e8f0'}` }}>
               {credits.document > 0 ? `${credits.document} crédit${credits.document > 1 ? 's' : ''} restant${credits.document > 1 ? 's' : ''}` : '0 crédit'}
             </div>
           )}
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginTop: freePreviewUsed ? 8 : 0 }}><FileText size={24} style={{ color: '#2a7d9c' }} /></div>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginTop: (isPro || freePreviewUsed) ? 8 : 0 }}><FileText size={24} style={{ color: '#2a7d9c' }} /></div>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Analyse d&apos;un seul document</div>
           <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.7, marginBottom: 20 }}>Retenez l&apos;essentiel d&apos;un document précis :<br /><span style={{ color: '#94a3b8' }}>Règlement de copro, PV d&apos;AG, diagnostic, DPE, appel de charges…</span><br /><span style={{ fontSize: 11, color: '#cbd5e1' }}>1 fichier PDF uniquement</span></div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 5 }}>
-              {freePreviewUsed && credits.document === 0 ? <><Lock size={13} /> Acheter un crédit</> : <><ArrowRight size={14} /> Commencer</>}
+              {isPro
+                ? (proHasDocumentCredits ? <><ArrowRight size={14} /> Lancer l&apos;analyse</> : <><Lock size={13} /> Souscrire un abonnement</>)
+                : (freePreviewUsed && credits.document === 0 ? <><Lock size={13} /> Acheter un crédit</> : <><ArrowRight size={14} /> Commencer</>)
+              }
             </span>
-            {freePreviewUsed && <span style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>4,90€</span>}
+            {!isPro && freePreviewUsed && <span style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>4,90€</span>}
           </div>
         </button>
-        <button onClick={() => { if (freePreviewUsed && credits.complete === 0) { window.location.href = '/dashboard/tarifs'; return; } setType('complete'); setStep('type_bien'); }}
+        <button onClick={() => {
+            if (isPro) {
+              if (!proHasCompleteCredits) { window.location.href = '/dashboard/abonnement'; return; }
+              setType('complete'); setStep('type_bien'); return;
+            }
+            if (freePreviewUsed && credits.complete === 0) { window.location.href = '/dashboard/tarifs'; return; }
+            setType('complete'); setStep('type_bien');
+          }}
           style={{ padding: '28px 24px', borderRadius: 20, border: '1.5px solid transparent', background: 'linear-gradient(145deg, #0f2d3d, #1a5068)', cursor: 'pointer', textAlign: 'left', transition: 'all 0.18s', position: 'relative', overflow: 'hidden', boxShadow: '0 4px 20px rgba(15,45,61,0.15)' }}
           onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.boxShadow = '0 12px 40px rgba(15,45,61,0.28)'; el.style.transform = 'translateY(-2px)'; }}
           onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.boxShadow = '0 4px 20px rgba(15,45,61,0.15)'; el.style.transform = 'translateY(0)'; }}>
           <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(42,125,156,0.2)', pointerEvents: 'none' }} />
           <div style={{ position: 'absolute', top: 14, left: 14, fontSize: 9, fontWeight: 800, color: '#fff', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)', padding: '3px 10px', borderRadius: 100 }}>★ RECOMMANDÉ</div>
-          {freePreviewUsed && (
+          {isPro ? (
+            <div style={{ position: 'absolute', top: 14, right: 14, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: proHasCompleteCredits ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
+              {(proCredits?.complete || 0) > 0 ? `${proCredits?.complete} crédit${(proCredits?.complete || 0) > 1 ? 's' : ''} restant${(proCredits?.complete || 0) > 1 ? 's' : ''}` : '0 crédit'}
+            </div>
+          ) : freePreviewUsed && (
             <div style={{ position: 'absolute', top: 14, right: 14, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: credits.complete > 0 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
               {credits.complete > 0 ? `${credits.complete} crédit${credits.complete > 1 ? 's' : ''} restant${credits.complete > 1 ? 's' : ''}` : '0 crédit'}
             </div>
           )}
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginTop: freePreviewUsed ? 18 : 10 }}><ShieldCheck size={24} style={{ color: '#fff' }} /></div>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginTop: (isPro || freePreviewUsed) ? 18 : 10 }}><ShieldCheck size={24} style={{ color: '#fff' }} /></div>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#fff', marginBottom: 8 }}>Analyse complète d&apos;un logement</div>
           <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, marginBottom: 20 }}>Déposez tous vos documents d&apos;un seul coup :<br /><span style={{ color: 'rgba(255,255,255,0.45)' }}>PV AG 2022/2023/2024, règlement copro, DPE, diagnostic électricité, amiante…</span><br /><span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>Rapport détaillé avec score /20 et recommandation.</span></div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.85)', display: 'flex', alignItems: 'center', gap: 5 }}>
-              {freePreviewUsed && credits.complete === 0 ? <>Acheter un crédit <ArrowRight size={14} /></> : <>Commencer l&apos;audit <ArrowRight size={14} /></>}
+              {isPro
+                ? (proHasCompleteCredits ? <>Lancer l&apos;analyse <ArrowRight size={14} /></> : <>Souscrire un abonnement <ArrowRight size={14} /></>)
+                : (freePreviewUsed && credits.complete === 0 ? <>Acheter un crédit <ArrowRight size={14} /></> : <>Commencer l&apos;audit <ArrowRight size={14} /></>)
+              }
             </span>
-            {freePreviewUsed && <span style={{ fontSize: 22, fontWeight: 900, color: '#fff' }}>19,90€</span>}
+            {!isPro && freePreviewUsed && <span style={{ fontSize: 22, fontWeight: 900, color: '#fff' }}>19,90€</span>}
           </div>
         </button>
       </div>
     </div>
-  );
+    );
+  }
 
 
   /* ── TYPE DE BIEN (nouvelle étape — session 4) */
   if (step === 'type_bien' && type) return (
-    <div style={{ maxWidth: 900, margin: '0 auto' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       <button onClick={() => { setStep('choice'); setTypeBienDeclare(null); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
       <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 8 }}>Quel type de bien analysez-vous ?</h1>
       <p style={{ fontSize: 14, color: '#64748b', marginBottom: 28, lineHeight: 1.6 }}>Verimo adapte son analyse aux spécificités de votre bien — une copropriété et une maison n'ont pas les mêmes risques.</p>
@@ -539,7 +632,7 @@ export default function NouvelleAnalyse() {
 
   /* ── PROFIL */
   if (step === 'profil' && type) return (
-    <div style={{ maxWidth: 900, margin: '0 auto' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       <button onClick={() => { setStep('type_bien'); setProfil(null); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
       <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 8 }}>Ce bien, c'est pour vous ?</h1>
       <p style={{ fontSize: 14, color: '#64748b', marginBottom: 32, lineHeight: 1.6 }}>Votre profil d'achat influence la notation du bien — notamment sur le DPE et les charges.</p>
@@ -578,7 +671,7 @@ export default function NouvelleAnalyse() {
   /* ── UPLOAD */
   /* ── UPLOAD */
   if (step === 'upload' && plan) return (
-    <div style={{ maxWidth: 900, margin: '0 auto' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       <button onClick={() => { setStep('profil'); resetUpload(); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24, padding: '16px 18px', background: '#fff', borderRadius: 14, border: '1px solid #edf2f7' }}>
         <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
