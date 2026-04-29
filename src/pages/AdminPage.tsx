@@ -1335,7 +1335,7 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [userAnalyses, setUserAnalyses] = useState<AdminAnalyse[]>([]);
   const [userPayments, setUserPayments] = useState<AdminPayment[]>([]);
-  const [form, setForm] = useState({ email: '', password: '', name: '', credits_doc: 0, credits_complete: 0 });
+  const [form, setForm] = useState({ email: '', password: '', name: '', credits_doc: 0, credits_complete: 0, credit_type: 'complete' as 'complete' | 'simple', credit_quantity: 1, credit_reason: '' });
   const [feedback, setFeedback] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -1441,25 +1441,56 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
     setSending(false);
   };
 
-  const handleSetCredits = async () => {
+  const handleAddCredits = async () => {
     if (!selectedUser) return;
+    if (!form.credit_reason.trim()) {
+      showToast('La raison est obligatoire');
+      return;
+    }
+    if (form.credit_quantity < 1) {
+      showToast('Quantité invalide');
+      return;
+    }
     setSending(true);
 
-    const { error } = await supabase.from('profiles')
-      .update({
-        credits_document: form.credits_doc,
-        credits_complete: form.credits_complete,
-      })
-      .eq('id', selectedUser.id);
-    if (error) { showToast('Erreur : ' + error.message); setSending(false); return; }
-    await logAction('Crédits modifiés', `${selectedUser.email} → doc:${form.credits_doc} ana:${form.credits_complete}`);
+    // On récupère l'admin actuel pour granted_by
+    const { data: { user: currentAdmin } } = await supabase.auth.getUser();
+
+    // INSERT dans credit_grants → le trigger Postgres répercute automatiquement :
+    //   - Si user pro → crée pro_unit_purchases (visible sidebar/NouvelleAnalyse)
+    //   - Si user particulier → met à jour profiles.credits_*
+    const { error } = await supabase.from('credit_grants').insert({
+      user_id: selectedUser.id,
+      granted_by: currentAdmin?.id || null,
+      credit_type: form.credit_type, // 'complete' ou 'simple'
+      quantity: form.credit_quantity,
+      reason: form.credit_reason.trim(),
+    });
+
+    if (error) {
+      showToast('Erreur : ' + error.message);
+      setSending(false);
+      return;
+    }
+
+    await logAction(
+      'Crédits offerts',
+      `${selectedUser.email} → +${form.credit_quantity} ${form.credit_type === 'complete' ? 'complète' : 'simple'} · ${form.credit_reason.trim()}`
+    );
     setSending(false);
     setModal(null);
-    if (detailUser?.id === selectedUser.id) {
-      setDetailUser(u => u ? { ...u, credits_document: form.credits_doc, credits_complete: form.credits_complete } : u);
-    }
+
+    // Reset le form pour la prochaine fois
+    setForm(f => ({ ...f, credit_type: 'complete', credit_quantity: 1, credit_reason: '' }));
+
+    // Refresh des données
     await loadUsers();
-    showToast(`Crédits mis à jour pour ${selectedUser.email}`);
+    if (detailUser?.id === selectedUser.id) {
+      // Recharger les crédits affichés depuis la BDD
+      const { data: refreshed } = await supabase.from('profiles').select('*').eq('id', selectedUser.id).single();
+      if (refreshed) setDetailUser(u => u ? { ...u, ...refreshed } : u);
+    }
+    showToast(`+${form.credit_quantity} crédit${form.credit_quantity > 1 ? 's' : ''} ${form.credit_type === 'complete' ? 'Complète' : 'Simple'} ajouté${form.credit_quantity > 1 ? 's' : ''} à ${selectedUser.email}`);
   };
 
   const doExport = () => {
@@ -1498,6 +1529,7 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
               )}
               <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 10, flexWrap: 'wrap' as const }}>
                 {detailUser.role === 'admin' && <Badge color="#7c3aed" bg="#f5f3ff">admin</Badge>}
+                {detailUser.role === 'pro' && <Badge color="#2a7d9c" bg="#f0f7fb">⚡ pro</Badge>}
                 {detailUser.suspended && <Badge color="#dc2626" bg="#fef2f2">suspendu</Badge>}
                 {detailUser.email_verified === true
                   ? <Badge color="#16a34a" bg="#f0fdf4">✓ {detailUser.provider === 'google' ? 'via Google' : 'via Email'}</Badge>
@@ -1519,9 +1551,9 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
               ))}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8, marginTop: 16 }}>
-              <button onClick={() => { setSelectedUser(detailUser); setForm(f => ({ ...f, credits_doc: detailUser.credits_document || 0, credits_complete: detailUser.credits_complete || 0 })); setModal('credits'); }}
+              <button onClick={() => { setSelectedUser(detailUser); setForm(f => ({ ...f, credit_type: 'complete', credit_quantity: 1, credit_reason: '' })); setModal('credits'); }}
                 style={{ padding: '10px', borderRadius: 10, background: '#f0f7fb', border: '1.5px solid #bae3f5', color: '#2a7d9c', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                <CreditCard size={14} /> Modifier les crédits
+                <Plus size={14} /> Ajouter des crédits
               </button>
               <button onClick={() => onConfirm({ title: 'Réinitialiser le mot de passe', message: `Un email de réinitialisation sera envoyé à ${detailUser.email}.`, confirmLabel: "Envoyer l'email", variant: 'info', onConfirm: async () => { await supabase.auth.resetPasswordForEmail(detailUser.email, { redirectTo: 'https://verimo.fr/auth/reset-password' }); showToast(`Email envoyé`); } })}
                 style={{ padding: '10px', borderRadius: 10, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#64748b', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
@@ -1624,12 +1656,96 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
 
         <AnimatePresence>
           {modal === 'credits' && selectedUser && (
-            <Modal title={`Crédits — ${selectedUser.email}`} onClose={() => setModal(null)}>
+            <Modal title={`Ajouter des crédits — ${selectedUser.email}`} onClose={() => setModal(null)}>
               <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
-                <Input label="Crédits Analyse Simple" type="number" value={form.credits_doc} onChange={e => setForm(f => ({ ...f, credits_doc: parseInt(e.target.value) || 0 }))} />
-                <Input label="Crédits Analyse Complète" type="number" value={form.credits_complete} onChange={e => setForm(f => ({ ...f, credits_complete: parseInt(e.target.value) || 0 }))} />
-                <button onClick={handleSetCredits} style={{ padding: '12px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  <Check size={15} /> Enregistrer
+
+                {/* Bandeau d'info */}
+                <div style={{ padding: '11px 14px', borderRadius: 10, background: '#f0f7fb', border: '1px solid #bae3f5', fontSize: 12, color: '#0f2d3d', lineHeight: 1.5 }}>
+                  Les crédits offerts seront automatiquement utilisables par {selectedUser.role === 'pro' ? 'le pro depuis son dashboard et la page Nouvelle analyse' : 'le particulier sur son compte'}. La raison sera visible dans son historique.
+                </div>
+
+                {/* Type de crédit */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>
+                    Type de crédit <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    {(['complete', 'simple'] as const).map(t => {
+                      const isSelected = form.credit_type === t;
+                      const config = t === 'complete'
+                        ? { label: 'Complète', desc: 'Tous documents · score /20', bg: '#0f2d3d', color: '#fff' }
+                        : { label: 'Simple', desc: '1 document · analyse ciblée', bg: '#f0f7fb', color: '#2a7d9c' };
+                      return (
+                        <button key={t} type="button" onClick={() => setForm(f => ({ ...f, credit_type: t }))}
+                          style={{
+                            padding: '12px 14px', borderRadius: 10,
+                            background: isSelected ? config.bg : '#fff',
+                            border: `1.5px solid ${isSelected ? config.bg : '#edf2f7'}`,
+                            cursor: 'pointer', textAlign: 'left' as const,
+                            transition: 'all 0.15s',
+                          }}>
+                          <div style={{ fontSize: 13, fontWeight: 800, color: isSelected ? config.color : '#0f172a', marginBottom: 2 }}>
+                            {isSelected && '✓ '}{config.label}
+                          </div>
+                          <div style={{ fontSize: 11, color: isSelected ? (t === 'complete' ? 'rgba(255,255,255,0.7)' : config.color) : '#94a3b8' }}>
+                            {config.desc}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Quantité */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>
+                    Quantité <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <button type="button" onClick={() => setForm(f => ({ ...f, credit_quantity: Math.max(1, f.credit_quantity - 1) }))}
+                      style={{ width: 36, height: 36, borderRadius: 9, background: '#fff', border: '1.5px solid #edf2f7', color: '#475569', fontSize: 18, fontWeight: 700, cursor: 'pointer' }}>−</button>
+                    <input type="number" min={1} max={100} value={form.credit_quantity}
+                      onChange={e => setForm(f => ({ ...f, credit_quantity: Math.max(1, Math.min(100, parseInt(e.target.value) || 1)) }))}
+                      style={{ flex: 1, padding: '10px 14px', borderRadius: 9, border: '1.5px solid #edf2f7', fontSize: 14, fontWeight: 700, color: '#0f172a', outline: 'none', textAlign: 'center' as const, background: '#fff' }} />
+                    <button type="button" onClick={() => setForm(f => ({ ...f, credit_quantity: Math.min(100, f.credit_quantity + 1) }))}
+                      style={{ width: 36, height: 36, borderRadius: 9, background: '#fff', border: '1.5px solid #edf2f7', color: '#475569', fontSize: 18, fontWeight: 700, cursor: 'pointer' }}>+</button>
+                  </div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, fontStyle: 'italic' as const }}>
+                    Max 100 crédits par ajout
+                  </div>
+                </div>
+
+                {/* Raison */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>
+                    Raison de l'ajout <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <textarea
+                    value={form.credit_reason}
+                    onChange={e => setForm(f => ({ ...f, credit_reason: e.target.value }))}
+                    placeholder="Ex: Compensation bug analyse&#10;Geste commercial&#10;Test interne&#10;Crédit promotionnel"
+                    rows={3}
+                    maxLength={500}
+                    style={{ width: '100%', padding: '10px 13px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const, background: '#fff', fontFamily: 'inherit', color: '#0f172a', resize: 'vertical' as const, minHeight: 70 }}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 4 }}>
+                    <span style={{ color: '#94a3b8', fontStyle: 'italic' as const }}>Visible par le client dans son historique</span>
+                    <span style={{ color: form.credit_reason.length > 450 ? '#dc2626' : '#cbd5e1' }}>{form.credit_reason.length}/500</span>
+                  </div>
+                </div>
+
+                {/* Bouton */}
+                <button onClick={handleAddCredits} disabled={sending || !form.credit_reason.trim() || form.credit_quantity < 1}
+                  style={{
+                    padding: '12px', borderRadius: 11,
+                    background: sending || !form.credit_reason.trim() || form.credit_quantity < 1
+                      ? '#cbd5e1'
+                      : 'linear-gradient(135deg,#2a7d9c,#0f2d3d)',
+                    border: 'none', color: '#fff', fontSize: 14, fontWeight: 700,
+                    cursor: sending || !form.credit_reason.trim() || form.credit_quantity < 1 ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+                  }}>
+                  {sending ? 'Ajout en cours…' : <><Plus size={15} /> Ajouter {form.credit_quantity} crédit{form.credit_quantity > 1 ? 's' : ''} {form.credit_type === 'complete' ? 'Complète' : 'Simple'}</>}
                 </button>
               </div>
             </Modal>
@@ -1695,6 +1811,7 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
                 <div style={{ fontSize: 11, color: '#94a3b8' }}>{user.email}</div>
                 <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
                   {user.role === 'admin' && <Badge color="#7c3aed" bg="#f5f3ff">admin</Badge>}
+                  {user.role === 'pro' && <Badge color="#2a7d9c" bg="#f0f7fb">⚡ pro</Badge>}
                   {user.suspended && <Badge color="#dc2626" bg="#fef2f2">suspendu</Badge>}
                   {user.email_verified === true
                     ? <Badge color="#16a34a" bg="#f0fdf4">✓ {user.provider === 'google' ? 'via Google' : 'via Email'}</Badge>
