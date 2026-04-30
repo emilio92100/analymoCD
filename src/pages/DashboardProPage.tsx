@@ -1929,16 +1929,17 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
       )}
 
       {/* ═══ SECTION 2 : Choisir / Changer de plan ═══ */}
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ marginBottom: 22, padding: '20px 24px', borderRadius: 14, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', border: '1px solid #d0e8f0' }}>
-          <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d', marginBottom: 6, letterSpacing: '-0.02em' }}>
+      <div style={{ marginBottom: 28, borderRadius: 20, border: '1.5px solid #d0e8f0', overflow: 'hidden', background: '#fff' }}>
+        <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderBottom: '1px solid #d0e8f0' }}>
+          <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d', marginBottom: 4, letterSpacing: '-0.02em' }}>
             {isSubscribed ? 'Changer de plan' : 'Choisissez votre plan'}
           </h2>
           <p style={{ fontSize: 15, color: '#64748b', margin: 0 }}>
             {isSubscribed ? 'Vous pouvez upgrader ou changer de formule à tout moment.' : 'Sélectionnez la formule adaptée à votre activité.'}
           </p>
         </div>
-        <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+        <div style={{ padding: '20px 20px 24px' }}>
+          <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
           {plans.map(plan => {
             const isActive = subscription?.plan === plan.id && subscription?.status === 'active';
             const btnLoading = loading === `subscribe:${plan.id}`;
@@ -1988,18 +1989,21 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
             );
           })}
         </div>
+        </div>
       </div>
 
       {/* ═══ SECTION 3 : Achats unitaires + Code promo (une seule ligne) ═══ */}
-      <div style={{ marginBottom: 16, padding: '20px 24px', borderRadius: 14, background: isSubscribed ? 'linear-gradient(135deg, #f0fdf4, #ecfdf5)' : 'linear-gradient(135deg, #fffbeb, #fef3c7)', border: isSubscribed ? '1px solid #bbf7d0' : '1px solid #fde68a' }}>
-        <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d', marginBottom: 6, letterSpacing: '-0.02em' }}>Crédits supplémentaires</h2>
-        <p style={{ fontSize: 15, color: '#64748b', margin: 0 }}>
-          {isSubscribed
-            ? 'Besoin de plus d\'analyses ? Achetez à l\'unité ou utilisez un code promo.'
-            : 'Les achats unitaires à tarif préférentiel sont réservés aux abonnés Verimo Pro.'}
-        </p>
-      </div>
-      <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 28 }}>
+      <div style={{ marginBottom: 28, borderRadius: 20, border: isSubscribed ? '1.5px solid #bbf7d0' : '1.5px solid #fde68a', overflow: 'hidden', background: '#fff' }}>
+        <div style={{ padding: '20px 24px', background: isSubscribed ? 'linear-gradient(135deg, #f0fdf4, #ecfdf5)' : 'linear-gradient(135deg, #fffbeb, #fef3c7)', borderBottom: isSubscribed ? '1px solid #bbf7d0' : '1px solid #fde68a' }}>
+          <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d', marginBottom: 4, letterSpacing: '-0.02em' }}>Crédits supplémentaires</h2>
+          <p style={{ fontSize: 15, color: '#64748b', margin: 0 }}>
+            {isSubscribed
+              ? 'Besoin de plus d\'analyses ? Achetez à l\'unité ou utilisez un code promo.'
+              : 'Les achats unitaires à tarif préférentiel sont réservés aux abonnés Verimo Pro.'}
+          </p>
+        </div>
+        <div style={{ padding: '20px' }}>
+      <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
         {/* Analyse complète */}
         <div style={{ padding: '20px', borderRadius: 16, background: '#fff', border: '1.5px solid #edf2f7', textAlign: 'center', opacity: isSubscribed ? 1 : 0.55 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 8 }}>ACHAT UNITAIRE</div>
@@ -2038,6 +2042,8 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
           {promoError && <div style={{ marginTop: 8, fontSize: 12, color: '#dc2626', fontWeight: 600, textAlign: 'center' }}>{promoError}</div>}
           {promoSuccess && <div style={{ marginTop: 8, fontSize: 12, color: '#16a34a', fontWeight: 600, textAlign: 'center' }}>{promoSuccess}</div>}
         </div>
+        </div>
+      </div>
       </div>
 
       {/* ═══ SECTION 4 : Agences ═══ */}
