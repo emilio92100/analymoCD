@@ -546,9 +546,11 @@ function PdfButton({ rapportId: _rapportId }: { rapportId: string }) {
 ══════════════════════════════════ */
 export type RapportData = ReturnType<typeof buildRapport>;
 
-function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: boolean }) {
+function RapportHeader({ rapport, isShared, backUrl }: { rapport: RapportData; isShared: boolean; backUrl?: string }) {
   const scoreColor = getScoreColor(rapport.score);
   const isComplete = rapport.type === 'complete';
+  const backTo = backUrl || '/dashboard/analyses';
+  const backLabel = backUrl?.includes('/dossier/') ? 'Mon dossier' : 'Mes analyses';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -557,8 +559,8 @@ function RapportHeader({ rapport, isShared }: { rapport: RapportData; isShared: 
         {/* Topbar nav */}
         <div className="rapport-topnav" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           {!isShared ? (
-            <Link to="/dashboard/analyses" className="topnav-back-btn" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#fff', textDecoration: 'none', padding: '8px 14px', borderRadius: 9, background: '#2a7d9c', flexShrink: 0, whiteSpace: 'nowrap' }}>
-              <ChevronLeft size={14} /> <span className="topnav-back-label">Mes analyses</span>
+            <Link to={backTo} className="topnav-back-btn" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#fff', textDecoration: 'none', padding: '8px 14px', borderRadius: 9, background: '#2a7d9c', flexShrink: 0, whiteSpace: 'nowrap' }}>
+              <ChevronLeft size={14} /> <span className="topnav-back-label">{backLabel}</span>
             </Link>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>
@@ -4216,6 +4218,7 @@ export default function RapportPage() {
   const [rapport, setRapport] = useState<RapportData | null>(null);
   const [apercuData, setApercuData] = useState<{ apercu: Record<string, unknown>; type: string; id: string } | null>(null);
   const [documentResult, setDocumentResult] = useState<Record<string, unknown> | null>(null);
+  const [backUrl, setBackUrl] = useState('/dashboard/analyses');
 
   const loadRapport = useCallback(async () => {
     setLoading(true);
@@ -4235,6 +4238,20 @@ export default function RapportPage() {
     }
 
     if (!id) { setLoading(false); return; }
+
+    // Déterminer le bon lien retour selon le rôle et le dossier
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+      const { data: analyse } = await supabase.from('analyses').select('folder_id').eq('id', id).single();
+      if (profile?.role === 'pro' && analyse?.folder_id) {
+        setBackUrl(`/dashboard/dossier/${analyse.folder_id}`);
+      } else if (profile?.role === 'pro') {
+        setBackUrl('/dashboard');
+      } else {
+        setBackUrl('/dashboard/analyses');
+      }
+    }
 
     const MAX_ATTEMPTS = 36;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
@@ -4296,7 +4313,7 @@ export default function RapportPage() {
     return (
       <div style={{ minHeight: '100vh', background: '#f5f9fb', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
         <header style={{ background: '#fff', borderBottom: '1px solid #edf2f7', position: 'sticky', top: 0, zIndex: 40, padding: '0 24px', height: 60, display: 'flex', alignItems: 'center', gap: 14 }}>
-          <Link to="/dashboard/analyses" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, color: '#64748b', textDecoration: 'none' }}><ChevronLeft size={15} /> Mes analyses</Link>
+          <Link to={backUrl} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, color: '#64748b', textDecoration: 'none' }}><ChevronLeft size={15} /> Mes analyses</Link>
           <div style={{ width: 1, height: 18, background: '#edf2f7' }} />
           <span style={{ fontSize: 10, fontWeight: 800, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '3px 10px', borderRadius: 100 }}>APERÇU GRATUIT</span>
         </header>
@@ -4341,7 +4358,7 @@ export default function RapportPage() {
               <button onClick={lancerPaiement} style={{ padding: '13px', borderRadius: 12, background: '#fff', color: '#0f2d3d', fontSize: 14, fontWeight: 800, border: 'none', cursor: 'pointer' }}>
                 Débloquer — {isComplete ? '19,90€' : '4,90€'}
               </button>
-              <Link to="/dashboard/analyses" style={{ display: 'block', textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}>← Mes analyses</Link>
+              <Link to={backUrl} style={{ display: 'block', textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}>← Mes analyses</Link>
             </div>
           </div>
         </div>
@@ -4362,13 +4379,13 @@ export default function RapportPage() {
         `}</style>
         {/* Bouton sticky mobile */}
         <div className="doc-back-sticky" style={{ display: 'none', position: 'sticky', top: 0, zIndex: 100, background: '#f5f9fb', padding: '8px 12px', borderBottom: '1px solid #edf2f7' }}>
-          <Link to="/dashboard/analyses" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#fff', textDecoration: 'none', padding: '8px 14px', borderRadius: 9, background: '#2a7d9c' }}>
+          <Link to={backUrl} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#fff', textDecoration: 'none', padding: '8px 14px', borderRadius: 9, background: '#2a7d9c' }}>
             <ChevronLeft size={13} /> Mes analyses
           </Link>
         </div>
         <div className="doc-simple-wrapper" style={{ maxWidth: 1250, margin: '0 auto', padding: '20px 28px' }}>
           <div className="doc-back-desktop" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Link to="/dashboard/analyses" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: '#fff', textDecoration: 'none', padding: '9px 18px', borderRadius: 9, background: '#2a7d9c', flexShrink: 0 }}>
+            <Link to={backUrl} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600, color: '#fff', textDecoration: 'none', padding: '9px 18px', borderRadius: 9, background: '#2a7d9c', flexShrink: 0 }}>
               <ChevronLeft size={15} /> Mes analyses
             </Link>
           </div>
@@ -4402,7 +4419,7 @@ export default function RapportPage() {
     <div className="rapport-wrapper" style={{ minHeight: '100vh', background: '#f5f9fb', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <div className="rapport-inner" style={{ maxWidth: 1250, margin: '0 auto', padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-        <RapportHeader rapport={rapport} isShared={isShared} />
+        <RapportHeader rapport={rapport} isShared={isShared} backUrl={backUrl} />
 
         {/* Bandeau re-upload */}
         {showReupload && (
