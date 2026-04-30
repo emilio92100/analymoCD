@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, FolderOpen, Plus, GitCompare, User, LifeBuoy,
   LogOut, Menu, X, ChevronDown, CreditCard, BookOpen,
-  Send, Search, Clock,
+  Send, Search, Clock, Bell,
   CheckCircle, Upload, Mail,
   ChevronRight, ArrowRight,
   MapPin, Trash2, AlertTriangle, FileText, Pencil,
@@ -237,10 +237,16 @@ function SidebarPro({ subscription, proCredits, onClose }: { subscription: ProSu
 /* ══════════════════════════════════════════
    TOPBAR PRO
 ══════════════════════════════════════════ */
-function TopbarPro({ onMenuClick, title, proProfile }: { onMenuClick: () => void; title: string; proProfile: ProProfile | null }) {
+function TopbarPro({ onMenuClick, title, proProfile, unreadCount, notifications, onMarkAllRead, onClickNotification }: {
+  onMenuClick: () => void; title: string; proProfile: ProProfile | null;
+  unreadCount?: number; notifications?: { id: string; analysisId: string; title: string; createdAt: string; read: boolean }[];
+  onMarkAllRead?: () => void; onClickNotification?: (analysisId: string) => void;
+}) {
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const bellRef = useRef<HTMLDivElement>(null);
   const name = proProfile?.full_name?.split(' ')[0] || 'Pro';
   const email = proProfile?.email || '';
   const company = proProfile?.pro_company_name || '';
@@ -248,10 +254,11 @@ function TopbarPro({ onMenuClick, title, proProfile }: { onMenuClick: () => void
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setDropdownOpen(false);
+      if (bellRef.current && !bellRef.current.contains(e.target as Node)) setBellOpen(false);
     };
-    if (dropdownOpen) document.addEventListener('mousedown', handleClickOutside);
+    if (dropdownOpen || bellOpen) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [dropdownOpen]);
+  }, [dropdownOpen, bellOpen]);
 
   const handleLogout = () => { localStorage.clear(); supabase.auth.signOut(); window.location.replace('/'); };
 
@@ -259,6 +266,60 @@ function TopbarPro({ onMenuClick, title, proProfile }: { onMenuClick: () => void
     <header style={{ height: 68, background: '#fff', borderBottom: '1px solid #edf2f7', display: 'flex', alignItems: 'center', padding: '0 24px', gap: 12, position: 'sticky', top: 0, zIndex: 40, flexShrink: 0 }}>
       <button className="mobile-menu-btn" onClick={onMenuClick} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0f2d3d', padding: 4, display: 'none' }}><Menu size={20} /></button>
       <p className="topbar-title" style={{ flex: 1, fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>{title}</p>
+
+      {/* Cloche notifications */}
+      <div ref={bellRef} style={{ position: 'relative' }}>
+        <button onClick={() => { setBellOpen(!bellOpen); if (!bellOpen && onMarkAllRead) onMarkAllRead(); }}
+          style={{ width: 36, height: 36, borderRadius: 9, background: bellOpen ? '#f0f7fb' : '#f8fafc', border: `1px solid ${bellOpen ? '#c7dde8' : '#edf2f7'}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', position: 'relative', transition: 'all 0.15s' }}>
+          <Bell size={16} />
+          {(unreadCount || 0) > 0 && (
+            <span style={{
+              position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 100,
+              background: '#dc2626', color: '#fff', fontSize: 10, fontWeight: 800,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px',
+              border: '2px solid #fff',
+            }}>{unreadCount}</span>
+          )}
+        </button>
+        {bellOpen && (
+          <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: 320, background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', boxShadow: '0 16px 48px rgba(0,0,0,0.12)', zIndex: 9999, overflow: 'hidden' }}>
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid #f0f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Notifications</span>
+            </div>
+            <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+              {(!notifications || notifications.length === 0) ? (
+                <div style={{ padding: '24px 16px', textAlign: 'center' }}>
+                  <Bell size={20} style={{ color: '#e2e8f0', marginBottom: 8 }} />
+                  <p style={{ fontSize: 12.5, color: '#94a3b8', margin: 0 }}>Aucune notification</p>
+                </div>
+              ) : (
+                notifications.slice(0, 10).map(n => (
+                  <button key={n.id}
+                    onClick={() => { setBellOpen(false); if (onClickNotification) onClickNotification(n.analysisId); }}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
+                      background: n.read ? '#fff' : '#f0f7fb', border: 'none', borderBottom: '1px solid #f0f5f9',
+                      cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.1s',
+                    }}
+                    onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#f8fafc'; }}
+                    onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = n.read ? '#fff' : '#f0f7fb'; }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <CheckCircle size={15} style={{ color: '#16a34a' }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: n.read ? 500 : 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                        Rapport prêt
+                      </div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{n.title}</div>
+                    </div>
+                    <span style={{ fontSize: 10, color: '#94a3b8', flexShrink: 0 }}>{fmtDate(n.createdAt)}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
 
       <div ref={dropdownRef} style={{ position: 'relative' }}>
         <button onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -2161,6 +2222,7 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
   const [folder, setFolder] = useState<ProFolder | null>(null);
   const [sellers, setSellers] = useState<ProFolderSeller[]>([]);
   const [buyers, setBuyers] = useState<ProFolderBuyer[]>([]);
+  const [folderAnalyses, setFolderAnalyses] = useState<ProAnalysis[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [showSellerModal, setShowSellerModal] = useState(false);
@@ -2204,8 +2266,8 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
         setFolder({ ...data, analyses_count: 0, sellers_count: 0, buyers_count: 0 });
       }
 
-      // Charger les vendeurs et acheteurs en parallèle
-      const [sellersResult, buyersResult] = await Promise.all([
+      // Charger les vendeurs, acheteurs et analyses en parallèle
+      const [sellersResult, buyersResult, analysesResult] = await Promise.all([
         supabase
           .from('pro_folder_sellers')
           .select('*')
@@ -2216,9 +2278,15 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
           .select('*')
           .eq('folder_id', folderId)
           .order('created_at', { ascending: true }),
+        supabase
+          .from('analyses')
+          .select('id, type, status, title, address, created_at, result')
+          .eq('folder_id', folderId)
+          .order('created_at', { ascending: false }),
       ]);
       setSellers(sellersResult.data || []);
       setBuyers(buyersResult.data || []);
+      setFolderAnalyses((analysesResult.data || []) as ProAnalysis[]);
     } catch (e) {
       console.error('Erreur chargement dossier:', e);
       setNotFound(true);
@@ -2391,8 +2459,78 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
         />
       </div>
 
-      {/* Section Analyses (placeholder pour 2B-3) */}
-      <SectionEmpty title="Analyses" icon={FileText} count={folder.analyses_count} comingSoon />
+      {/* Section Analyses du dossier */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 22px', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: folderAnalyses.length > 0 ? 14 : 6 }}>
+          <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <FileText size={15} style={{ color: '#94a3b8' }} />
+            Analyses
+            {folderAnalyses.length > 0 && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '2px 8px', borderRadius: 100 }}>{folderAnalyses.length}</span>
+            )}
+          </h3>
+          <button onClick={() => navigate(`/dashboard/nouvelle-analyse?folder=${folder.id}`)}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, background: '#f0f7fb', border: '1px solid #c7dde8', color: '#2a7d9c', cursor: 'pointer', fontSize: 11.5, fontWeight: 700 }}>
+            <Plus size={12} /> Nouvelle
+          </button>
+        </div>
+        {folderAnalyses.length === 0 ? (
+          <p style={{ fontSize: 12.5, color: '#94a3b8', margin: 0, fontStyle: 'italic' as const }}>Aucune analyse pour ce dossier.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {folderAnalyses.map(a => {
+              const score = getScore(a.result as Record<string, unknown>);
+              const isCompleted = a.status === 'completed';
+              const isPending = a.status === 'pending' || a.status === 'processing';
+              const isFailed = a.status === 'failed';
+              return (
+                <div key={a.id}
+                  onClick={() => isCompleted ? (window.location.href = `/rapport?id=${a.id}`) : undefined}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', borderRadius: 12,
+                    background: isFailed ? '#fef2f2' : '#f8fafc', border: `1px solid ${isFailed ? '#fecaca' : '#edf2f7'}`,
+                    cursor: isCompleted ? 'pointer' : 'default', transition: 'all 0.15s',
+                  }}
+                  onMouseOver={e => { if (isCompleted) { (e.currentTarget as HTMLElement).style.borderColor = '#2a7d9c'; (e.currentTarget as HTMLElement).style.background = '#fafdfe'; } }}
+                  onMouseOut={e => { if (isCompleted) { (e.currentTarget as HTMLElement).style.borderColor = '#edf2f7'; (e.currentTarget as HTMLElement).style.background = '#f8fafc'; } }}>
+                  {score !== null && isCompleted && <ScoreRing score={score} size={38} />}
+                  {isPending && (
+                    <div style={{ width: 38, height: 38, borderRadius: '50%', border: '3px solid #e2e8f0', borderTopColor: '#2a7d9c', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+                  )}
+                  {isFailed && (
+                    <div style={{ width: 38, height: 38, borderRadius: '50%', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <AlertTriangle size={16} style={{ color: '#dc2626' }} />
+                    </div>
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                      {a.address || a.title}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span>{fmtDate(a.created_at)}</span>
+                      <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#cbd5e1' }} />
+                      <span>{a.type === 'complete' ? 'Complète' : 'Simple'}</span>
+                      {score !== null && (
+                        <>
+                          <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#cbd5e1' }} />
+                          <span style={{ fontWeight: 700, color: getScoreColor(score) }}>{score}/20</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {isPending && <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fffbeb', padding: '3px 10px', borderRadius: 100, border: '1px solid #fef3c7' }}>En cours</span>}
+                  {isFailed && <span style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', background: '#fef2f2', padding: '3px 10px', borderRadius: 100, border: '1px solid #fecaca' }}>Échoué</span>}
+                  {isCompleted && (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      Voir le rapport <ChevronRight size={13} />
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Modale ajout/édition vendeur */}
       <AnimatePresence>
@@ -3220,6 +3358,11 @@ export default function DashboardProPage() {
   const [sendReportId, setSendReportId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
 
+  // ─── Notifications : rapports terminés ────────────────────
+  type ProNotification = { id: string; analysisId: string; title: string; createdAt: string; read: boolean };
+  const [notifications, setNotifications] = useState<ProNotification[]>([]);
+  const prevAnalysesRef = useRef<ProAnalysis[]>([]);
+
   const loadData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { navigate('/connexion'); return; }
@@ -3250,6 +3393,54 @@ export default function DashboardProPage() {
   }, [navigate]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Polling toutes les 15s pour détecter les analyses qui passent à "completed"
+  useEffect(() => {
+    if (loading) return;
+    const interval = setInterval(async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: fresh } = await supabase.from('analyses').select('id, type, status, title, address, created_at, result').eq('user_id', user.id).order('created_at', { ascending: false });
+      if (!fresh) return;
+      const freshAnalyses = fresh as ProAnalysis[];
+
+      // Détecter les nouvelles analyses terminées
+      const prev = prevAnalysesRef.current;
+      if (prev.length > 0) {
+        const newlyCompleted = freshAnalyses.filter(a =>
+          a.status === 'completed' && prev.find(p => p.id === a.id && p.status !== 'completed')
+        );
+        if (newlyCompleted.length > 0) {
+          setNotifications(n => [
+            ...newlyCompleted.map(a => ({
+              id: `notif-${a.id}`,
+              analysisId: a.id,
+              title: a.address || a.title || 'Analyse',
+              createdAt: new Date().toISOString(),
+              read: false,
+            })),
+            ...n,
+          ]);
+          // Rafraîchir les crédits aussi
+          const { data: credits } = await supabase.rpc('get_pro_credits_balance', { p_user_id: user.id });
+          if (credits && credits.length > 0) setProCredits(credits[0] as ProCredits);
+        }
+      }
+      prevAnalysesRef.current = freshAnalyses;
+      setAnalyses(freshAnalyses);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [loading]);
+
+  // Initialiser prevAnalysesRef au premier chargement
+  useEffect(() => {
+    if (analyses.length > 0 && prevAnalysesRef.current.length === 0) {
+      prevAnalysesRef.current = analyses;
+    }
+  }, [analyses]);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+  const markAllRead = () => setNotifications(n => n.map(x => ({ ...x, read: true })));
 
   if (loading) {
     return (
@@ -3309,7 +3500,9 @@ export default function DashboardProPage() {
 
       {/* Main */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <TopbarPro onMenuClick={() => setMobileOpen(true)} title={title} proProfile={proProfile} />
+        <TopbarPro onMenuClick={() => setMobileOpen(true)} title={title} proProfile={proProfile}
+          unreadCount={unreadCount} notifications={notifications} onMarkAllRead={markAllRead}
+          onClickNotification={(id) => { window.location.href = `/rapport?id=${id}`; }} />
         <main className="dashboard-main" style={{ flex: 1, padding: '28px 24px', overflowX: 'hidden' }}>
           {renderContent()}
         </main>
