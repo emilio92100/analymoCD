@@ -266,12 +266,9 @@ export default function NouvelleAnalyse() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       if (userRole === 'pro') {
-        // Pro : on re-crédite la ligne pro_unit_purchases la plus récente qui a été décrémentée
-        // On incrémente credits_remaining de la ligne la plus récente avec type = creditType
-        await supabase.rpc('refund_pro_credit', { p_user_id: user.id, p_credit_type: creditType }).catch(() => {
-          // Fallback si la fonction n'existe pas encore : on ne fait rien silencieusement
-          console.warn('[Verimo] refund_pro_credit non disponible, refund ignoré');
-        });
+        // Pro : on re-crédite via la fonction PG
+        const { error: refundErr } = await supabase.rpc('refund_pro_credit', { p_user_id: user.id, p_credit_type: creditType });
+        if (refundErr) console.warn('[Verimo] refund_pro_credit erreur:', refundErr.message);
       } else {
         const col = creditType === 'document' ? 'credits_document' : 'credits_complete';
         const { data } = await supabase.from('profiles').select(col).eq('id', user.id).single();
