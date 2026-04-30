@@ -1673,6 +1673,43 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
   const [loading, setLoading] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
+  // Historique crédits
+  type CreditHistoryItem = { id: string; description: string; amount: number; source: string; created_at: string };
+  const [creditHistory, setCreditHistory] = useState<CreditHistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setHistoryLoading(false); return; }
+      const [{ data: purchases }, { data: grants }] = await Promise.all([
+        supabase.from('pro_unit_purchases').select('id, type, quantity, amount, purchased_at, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(30),
+        supabase.from('credit_grants').select('id, credit_type, quantity, reason, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(30),
+      ]);
+      const purchaseItems: CreditHistoryItem[] = (purchases || [])
+        .filter((p: Record<string, unknown>) => (p.amount as number) > 0) // exclure les offerts (amount=0, déjà dans grants)
+        .map((p: Record<string, unknown>) => ({
+          id: `pu-${p.id}`,
+          description: `${p.quantity} crédit${(p.quantity as number) > 1 ? 's' : ''} ${p.type === 'complete' ? 'Complète' : 'Simple'}`,
+          amount: p.amount as number,
+          source: 'Achat unitaire',
+          created_at: new Date((p.purchased_at || p.created_at) as string).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
+          _ts: new Date((p.purchased_at || p.created_at) as string).getTime(),
+        }));
+      const grantItems: CreditHistoryItem[] = (grants || []).map((g: Record<string, unknown>) => ({
+        id: `gr-${g.id}`,
+        description: `+${g.quantity} crédit${(g.quantity as number) > 1 ? 's' : ''} ${g.credit_type === 'complete' ? 'Complète' : 'Simple'} offert${(g.quantity as number) > 1 ? 's' : ''}${g.reason ? ` — ${g.reason}` : ''}`,
+        amount: 0,
+        source: 'Crédits offerts 🎁',
+        created_at: new Date(g.created_at as string).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
+        _ts: new Date(g.created_at as string).getTime(),
+      }));
+      const all = [...purchaseItems, ...grantItems].sort((a, b) => ((b as unknown as { _ts: number })._ts || 0) - ((a as unknown as { _ts: number })._ts || 0));
+      setCreditHistory(all);
+      setHistoryLoading(false);
+    })();
+  }, []);
+
   const plans = [
     { id: 'decouverte', name: 'Découverte', price: '19,90', completes: 1, simples: 3, popular: false, tagline: 'Pour découvrir Verimo Pro' },
     { id: 'starter', name: 'Starter', price: '49,90', completes: 5, simples: 15, popular: true, tagline: 'Pour un usage régulier' },
@@ -1927,6 +1964,65 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
         <Link to="/contact-pro" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 20px', borderRadius: 10, background: '#0f2d3d', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 700 }}>
           Nous contacter <ArrowRight size={14} />
         </Link>
+      </div>
+
+      {/* Abonnement actif */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 22px', marginTop: 20 }}>
+        <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <CreditCard size={15} style={{ color: '#2a7d9c' }} /> Abonnement
+        </h3>
+        {isSubscribed && subscription ? (
+          <div style={{ padding: '12px 16px', borderRadius: 10, background: '#f0f7fb', border: '1px solid #d0e8f0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{ fontSize: 15, fontWeight: 800, color: '#0f2d3d' }}>Plan {subscription.plan === 'decouverte' ? 'Découverte' : subscription.plan === 'starter' ? 'Starter' : subscription.plan === 'power' ? 'Power' : subscription.plan}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: 100, border: '1px solid #bbf7d0' }}>Actif</span>
+            </div>
+            {subscription.current_period_end && (
+              <div style={{ fontSize: 12, color: '#64748b' }}>Renouvellement le {fmtDate(subscription.current_period_end)}</div>
+            )}
+          </div>
+        ) : (
+          <div style={{ padding: '12px 16px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+            <span style={{ fontSize: 13, color: '#94a3b8' }}>Aucun abonnement actif</span>
+          </div>
+        )}
+      </div>
+
+      {/* Historique des crédits */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 22px', marginTop: 14 }}>
+        <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Clock size={15} style={{ color: '#94a3b8' }} /> Historique des crédits
+          {creditHistory.length > 0 && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '2px 8px', borderRadius: 100 }}>{creditHistory.length}</span>
+          )}
+        </h3>
+        {historyLoading ? (
+          <div style={{ textAlign: 'center', padding: 20, color: '#94a3b8', fontSize: 13 }}>Chargement…</div>
+        ) : creditHistory.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 20, color: '#94a3b8', fontSize: 13, fontStyle: 'italic' }}>Aucun historique de crédits</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {creditHistory.map((h, i) => (
+              <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderBottom: i < creditHistory.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: h.amount > 0 ? '#f0fdf4' : '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {h.amount > 0
+                    ? <CreditCard size={14} style={{ color: '#16a34a' }} />
+                    : <CheckCircle size={14} style={{ color: '#7c3aed' }} />
+                  }
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{h.description}</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>{h.created_at}</span>
+                    <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#cbd5e1' }} />
+                    <span style={{ fontWeight: 600, color: h.source.includes('🎁') ? '#7c3aed' : '#2a7d9c' }}>{h.source}</span>
+                  </div>
+                </div>
+                {h.amount > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: '#16a34a' }}>{h.amount.toFixed(2)}€</span>}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
