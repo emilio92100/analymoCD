@@ -43,21 +43,38 @@ export default function Compte() {
     setPaymentsLoading(true);
     const { data: { user: u } } = await supabase.auth.getUser();
     if (!u) { setPaymentsLoading(false); return; }
-    const { data } = await supabase
-      .from('payments')
-      .select('id, description, amount, credit_type, promo_code, created_at')
-      .eq('user_id', u.id)
-      .order('created_at', { ascending: false })
-      .limit(20);
-    if (data) {
-      setPayments(data.map(p => ({
-        id: p.id,
-        description: p.description || 'Achat',
-        amount: p.amount,
-        source: p.promo_code && p.amount === 0 ? 'Code promo' : 'Paiement sécurisé Stripe',
-        created_at: new Date(p.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
-      })));
-    }
+    const [{ data }, { data: grants }] = await Promise.all([
+      supabase
+        .from('payments')
+        .select('id, description, amount, credit_type, promo_code, created_at')
+        .eq('user_id', u.id)
+        .order('created_at', { ascending: false })
+        .limit(20),
+      supabase
+        .from('credit_grants')
+        .select('id, credit_type, quantity, reason, created_at')
+        .eq('user_id', u.id)
+        .order('created_at', { ascending: false })
+        .limit(20),
+    ]);
+    const paymentItems = (data || []).map(p => ({
+      id: p.id,
+      description: p.description || 'Achat',
+      amount: p.amount,
+      source: p.promo_code && p.amount === 0 ? 'Code promo' : 'Paiement sécurisé Stripe',
+      created_at_raw: new Date(p.created_at).getTime(),
+      created_at: new Date(p.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
+    }));
+    const grantItems = (grants || []).map((g: Record<string, unknown>) => ({
+      id: `grant-${g.id}`,
+      description: `+${g.quantity} crédit${(g.quantity as number) > 1 ? 's' : ''} ${g.credit_type === 'complete' ? 'Complète' : 'Simple'} offert${(g.quantity as number) > 1 ? 's' : ''}${g.reason ? ` — ${g.reason}` : ''}`,
+      amount: 0,
+      source: 'Crédits offerts 🎁',
+      created_at_raw: new Date(g.created_at as string).getTime(),
+      created_at: new Date(g.created_at as string).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
+    }));
+    const all = [...paymentItems, ...grantItems].sort((a, b) => b.created_at_raw - a.created_at_raw);
+    setPayments(all);
     setPaymentsLoading(false);
   };
 
