@@ -175,6 +175,22 @@ export default function Compare() {
   const completedAnalyses = analyses.filter((a: Analyse) => a.type === 'complete' && a.status === 'completed');
   const [selected, setSelected] = useState<string[]>([]);
 
+  // Noms des dossiers pour les analyses pro
+  const [folderNames, setFolderNames] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (analysesLoading) return;
+    const folderIds = [...new Set(completedAnalyses.map(a => a.folder_id).filter(Boolean))] as string[];
+    if (folderIds.length === 0) return;
+    supabase.from('pro_folders').select('id, name').in('id', folderIds).then(({ data }) => {
+      if (data) {
+        const map: Record<string, string> = {};
+        data.forEach((f: { id: string; name: string }) => { map[f.id] = f.name; });
+        setFolderNames(map);
+      }
+    });
+  }, [analysesLoading, completedAnalyses.length]);
+
   // Génération du verdict
   const [launched, setLaunched] = useState(false);
   const [launchError, setLaunchError] = useState<string | null>(null);
@@ -458,11 +474,16 @@ export default function Compare() {
               </div>
               {/* Contenu */}
               <div style={{ flex: 1, padding: '14px 16px', background: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a', lineHeight: 1.3, marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.adresse_bien || 'Adresse en cours…'}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', lineHeight: 1.3, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.adresse_bien || 'Adresse en cours…'}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: a.folder_id ? 4 : 0 }}>
                   <span style={{ fontSize: 11, color: '#94a3b8' }}>{a.date}</span>
                   {reco && <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 5, background: reco === 'Acheter' ? '#f0fdf4' : reco === 'Négocier' ? '#fffbeb' : '#fef2f2', color: reco === 'Acheter' ? '#166534' : reco === 'Négocier' ? '#92400e' : '#991b1b', fontWeight: 700 }}>{reco}</span>}
                 </div>
+                {a.folder_id && folderNames[a.folder_id] && (
+                  <div style={{ fontSize: 11, color: '#2a7d9c', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 10, opacity: 0.6 }}>📁</span> Dossier {folderNames[a.folder_id]}
+                  </div>
+                )}
               </div>
             </motion.div>
           );
