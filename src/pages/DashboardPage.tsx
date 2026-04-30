@@ -458,6 +458,7 @@ export default function DashboardPage() {
   // ─── Notifications : rapports terminés ────────────────────
   type PartNotification = { id: string; analysisId: string; title: string; createdAt: string; read: boolean };
   const [notifications, setNotifications] = useState<PartNotification[]>([]);
+  const [notifToast, setNotifToast] = useState<string | null>(null);
   const prevAnalysesRef = useRef<{ id: string; status: string }[]>([]);
 
   useEffect(() => {
@@ -499,6 +500,9 @@ export default function DashboardPage() {
             })),
             ...n,
           ]);
+          // Toast auto-dismiss 5s
+          setNotifToast('Votre analyse est prête !');
+          setTimeout(() => setNotifToast(null), 5000);
         }
       }
       prevAnalysesRef.current = fresh;
@@ -538,6 +542,17 @@ export default function DashboardPage() {
           <DashboardContent path={location.pathname}/>
         </main>
       </div>
+
+      {/* Toast notification analyse prête */}
+      <AnimatePresence>
+        {notifToast && (
+          <motion.div initial={{ opacity: 0, y: -20, x: 20 }} animate={{ opacity: 1, y: 0, x: 0 }} exit={{ opacity: 0, y: -20 }}
+            style={{ position: 'fixed', top: 80, right: 24, background: '#fff', color: '#0f172a', padding: '14px 20px', borderRadius: 14, fontSize: 13, fontWeight: 700, zIndex: 9999, boxShadow: '0 12px 40px rgba(0,0,0,0.15)', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <CheckCircle size={18} style={{ color: '#16a34a', flexShrink: 0 }} />
+            {notifToast}
+          </motion.div>
+        )}
+      </AnimatePresence>
       <style>{`
         @media (max-width: 767px) {
           .desktop-sidebar { display: none !important; }
