@@ -30,10 +30,11 @@ type AdminAnalyse = {
   completed_at?: string;
 };
 type AdminPayment = {
-  id: string; user_id: string; amount: number; currency: string;
+  id: string; user_id: string; amount: number; currency?: string;
   description?: string; stripe_session_id?: string; stripe_payment_id?: string;
   promo_code?: string; credits_added?: number; credit_type?: string;
   status: string; created_at: string; retractation_waiver_at?: string;
+  _source?: string;
 };
 type ContactMessage = {
   id: string; name: string; email: string; subject?: string;
@@ -1332,6 +1333,7 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<'create' | 'invite' | 'credits' | null>(null);
   const [detailUser, setDetailUser] = useState<AdminUser | null>(null);
+  const [proCreditsBalance, setProCreditsBalance] = useState<{ total_complete: number; total_document: number } | null>(null);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [userAnalyses, setUserAnalyses] = useState<AdminAnalyse[]>([]);
   const [userPayments, setUserPayments] = useState<AdminPayment[]>([]);
@@ -1355,12 +1357,38 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
 
   const openDetail = useCallback(async (user: AdminUser) => {
     setDetailUser(user);
-    const [{ data: analyses }, { data: payments }] = await Promise.all([
+    setProCreditsBalance(null);
+    const [{ data: analyses }, { data: payments }, { data: grants }] = await Promise.all([
       supabase.from('analyses').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('payments').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+      supabase.from('credit_grants').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
     ]);
     setUserAnalyses(analyses || []);
-    setUserPayments(payments || []);
+
+    // Fusionner payments + credit_grants dans un seul historique
+    const grantPayments = (grants || []).map((g: Record<string, unknown>) => ({
+      id: `grant-${g.id}`,
+      user_id: user.id,
+      amount: 0,
+      status: 'completed',
+      description: `+${g.quantity} crédit${(g.quantity as number) > 1 ? 's' : ''} ${g.credit_type === 'complete' ? 'Complète' : 'Simple'} offert${(g.quantity as number) > 1 ? 's' : ''} — ${g.reason || 'Aucune raison'}`,
+      credits_added: g.quantity,
+      credit_type: g.credit_type,
+      promo_code: null,
+      stripe_session_id: null,
+      stripe_payment_id: null,
+      retractation_waiver_at: null,
+      created_at: g.created_at,
+      _source: 'admin_grant',
+    }));
+    const allPayments = [...(payments || []), ...grantPayments].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    setUserPayments(allPayments as AdminPayment[]);
+
+    // Pour les pros, charger le vrai solde de crédits
+    if (user.role === 'pro') {
+      const { data: credits } = await supabase.rpc('get_pro_credits_balance', { p_user_id: user.id });
+      if (credits && credits.length > 0) setProCreditsBalance(credits[0]);
+    }
   }, []);
 
   // Si focusUserId est passé (venant d'une analyse ou d'un paiement), ouvrir direct la fiche
@@ -1489,6 +1517,11 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
       // Recharger les crédits affichés depuis la BDD
       const { data: refreshed } = await supabase.from('profiles').select('*').eq('id', selectedUser.id).single();
       if (refreshed) setDetailUser(u => u ? { ...u, ...refreshed } : u);
+      // Rafraîchir aussi les crédits pro si c'est un pro
+      if (selectedUser.role === 'pro') {
+        const { data: credits } = await supabase.rpc('get_pro_credits_balance', { p_user_id: selectedUser.id });
+        if (credits && credits.length > 0) setProCreditsBalance(credits[0]);
+      }
     }
     showToast(`+${form.credit_quantity} crédit${form.credit_quantity > 1 ? 's' : ''} ${form.credit_type === 'complete' ? 'Complète' : 'Simple'} ajouté${form.credit_quantity > 1 ? 's' : ''} à ${selectedUser.email}`);
   };
@@ -1539,8 +1572,8 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
               {[
-                { l: 'Crédits Simple', v: detailUser.credits_document || 0, c: '#2a7d9c' },
-                { l: 'Crédits Complet', v: detailUser.credits_complete || 0, c: '#7c3aed' },
+                { l: 'Crédits Simple', v: detailUser.role === 'pro' ? (proCreditsBalance?.total_document ?? '…') : (detailUser.credits_document || 0), c: '#2a7d9c' },
+                { l: 'Crédits Complet', v: detailUser.role === 'pro' ? (proCreditsBalance?.total_complete ?? '…') : (detailUser.credits_complete || 0), c: '#7c3aed' },
                 { l: 'Analyses', v: userAnalyses.length, c: '#16a34a' },
                 { l: 'Total dépensé', v: `${totalSpent.toFixed(2)}€`, c: '#f0a500' },
               ].map((s, i) => (
@@ -1607,7 +1640,11 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
                           {p.promo_code && <span style={{ color: '#7c3aed', fontWeight: 700, marginLeft: 6 }}>· Code {p.promo_code}</span>}
                         </div>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginTop: 8 }}>
-                          {p.retractation_waiver_at && (
+                          {p._source === 'admin_grant' && (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', background: '#f5f3ff', padding: '3px 7px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 3 }}>
+                              🎁 Offert par Admin
+                            </span>
+                          )}
                             <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 7px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 3 }}>
                               <CheckCircle size={9} /> Consentement le {fmtDateTime(p.retractation_waiver_at)}
                             </span>
@@ -2986,6 +3023,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled 
   const [clientAnalyses, setClientAnalyses] = useState<{ id: string; title: string; address?: string; status: string; score?: number; created_at: string }[]>([]);
   const [clientShares, setClientShares] = useState<{ id: string; recipient_name: string; recipient_email: string; sent_at: string; opened_at?: string }[]>([]);
   const [clientSubscription, setClientSubscription] = useState<{ plan: string; status: string; current_period_end?: string; credits_complete_total: number; credits_complete_used: number; credits_simple_total: number; credits_simple_used: number } | null>(null);
+  const [proClientCredits, setProClientCredits] = useState<{ total_complete: number; total_document: number } | null>(null);
   const [sendingInvite, setSendingInvite] = useState(false);
 
   // Form state
@@ -3053,6 +3091,10 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled 
     // Subscription
     const { data: sub } = await supabase.from('pro_subscriptions').select('*').eq('user_id', client.id).eq('status', 'active').maybeSingle();
     setClientSubscription(sub as typeof clientSubscription);
+    // Crédits pro (agrège abo + unitaires + offerts)
+    const { data: credits } = await supabase.rpc('get_pro_credits_balance', { p_user_id: client.id });
+    if (credits && credits.length > 0) setProClientCredits(credits[0]);
+    else setProClientCredits(null);
   };
 
   const handleCreate = async () => {
@@ -3158,11 +3200,11 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled 
             {/* Stats rapides */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
               <div style={{ padding: '10px 12px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7', textAlign: 'center' as const }}>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{selected.credits_complete || 0}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{proClientCredits?.total_complete ?? (selected.credits_complete || 0)}</div>
                 <div style={{ fontSize: 10, color: '#94a3b8' }}>Crédits complètes</div>
               </div>
               <div style={{ padding: '10px 12px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7', textAlign: 'center' as const }}>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{selected.credits_document || 0}</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{proClientCredits?.total_document ?? (selected.credits_document || 0)}</div>
                 <div style={{ fontSize: 10, color: '#94a3b8' }}>Crédits simples</div>
               </div>
               <div style={{ padding: '10px 12px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7', textAlign: 'center' as const }}>
