@@ -1673,6 +1673,89 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
   const [loading, setLoading] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
+  // Code promo
+  const [promoCode, setPromoCode] = useState('');
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoError, setPromoError] = useState('');
+  const [promoSuccess, setPromoSuccess] = useState('');
+
+  const handlePromoApply = async () => {
+    if (!promoCode.trim()) return;
+    setPromoLoading(true); setPromoError(''); setPromoSuccess('');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Non connecté');
+
+      // Vérifier le code
+      const { data: promo, error: promoErr } = await supabase.from('promo_codes').select('*').eq('code', promoCode.trim().toUpperCase()).eq('active', true).single();
+      if (promoErr || !promo) { setPromoError('Code invalide ou expiré.'); setPromoLoading(false); return; }
+      if (promo.expires_at && new Date(promo.expires_at) < new Date()) { setPromoError('Ce code a expiré.'); setPromoLoading(false); return; }
+      if (promo.max_uses && promo.uses_count >= promo.max_uses) { setPromoError("Ce code a atteint sa limite d'utilisation."); setPromoLoading(false); return; }
+      if (promo.restricted_email && promo.restricted_email !== user.email) { setPromoError("Ce code n'est pas disponible pour votre compte."); setPromoLoading(false); return; }
+
+      // Vérifier anti-doublon
+      const { data: alreadyUsed } = await supabase.from('promo_uses').select('id').eq('code_id', promo.id).eq('user_id', user.id).single();
+      if (alreadyUsed) { setPromoError('Vous avez déjà utilisé ce code.'); setPromoLoading(false); return; }
+
+      if (promo.type !== 'credits') { setPromoError('Ce code n\'est pas compatible avec votre compte pro.'); setPromoLoading(false); return; }
+
+      const creditType = promo.credit_type === 'document' ? 'document' : 'complete';
+      const toAdd = promo.value;
+
+      // Ajouter via credit_grants (le trigger crée la ligne pro_unit_purchases)
+      const { error: grantErr } = await supabase.from('credit_grants').insert({
+        user_id: user.id,
+        granted_by: null,
+        credit_type: creditType,
+        quantity: toAdd,
+        reason: `Code promo ${promo.code}`,
+      });
+      if (grantErr) throw new Error('Impossible d\'ajouter les crédits.');
+
+      // Enregistrer l'usage
+      await supabase.from('promo_uses').insert({ code_id: promo.id, user_id: user.id });
+      await supabase.rpc('increment_promo_uses', { code_id: promo.id });
+
+      // Enregistrer dans payments pour l'historique
+      await supabase.from('payments').insert({
+        user_id: user.id,
+        amount: 0,
+        currency: 'eur',
+        description: `${toAdd} crédit${toAdd > 1 ? 's' : ''} ${creditType === 'complete' ? 'Complète' : 'Simple'} offert${toAdd > 1 ? 's' : ''} · Code ${promo.code}`,
+        promo_code: promo.code,
+        credits_added: toAdd,
+        credit_type: creditType,
+        status: 'completed',
+      });
+
+      setPromoSuccess(`+${toAdd} crédit${toAdd > 1 ? 's' : ''} ${creditType === 'complete' ? 'Complète' : 'Simple'} ajouté${toAdd > 1 ? 's' : ''} !`);
+      setPromoCode('');
+
+      // Rafraîchir l'historique
+      const { data: { user: u2 } } = await supabase.auth.getUser();
+      if (u2) {
+        const [{ data: purchases }, { data: grants }] = await Promise.all([
+          supabase.from('pro_unit_purchases').select('id, type, quantity, amount, purchased_at, created_at').eq('user_id', u2.id).order('created_at', { ascending: false }).limit(30),
+          supabase.from('credit_grants').select('id, credit_type, quantity, reason, created_at').eq('user_id', u2.id).order('created_at', { ascending: false }).limit(30),
+        ]);
+        const pItems: CreditHistoryItem[] = (purchases || []).filter((p: Record<string, unknown>) => (p.amount as number) > 0).map((p: Record<string, unknown>) => ({
+          id: `pu-${p.id}`, description: `${p.quantity} crédit${(p.quantity as number) > 1 ? 's' : ''} ${p.type === 'complete' ? 'Complète' : 'Simple'}`,
+          amount: p.amount as number, source: 'Achat unitaire',
+          created_at: new Date((p.purchased_at || p.created_at) as string).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
+          _ts: new Date((p.purchased_at || p.created_at) as string).getTime(),
+        }));
+        const gItems: CreditHistoryItem[] = (grants || []).map((g: Record<string, unknown>) => ({
+          id: `gr-${g.id}`, description: `+${g.quantity} crédit${(g.quantity as number) > 1 ? 's' : ''} ${g.credit_type === 'complete' ? 'Complète' : 'Simple'} offert${(g.quantity as number) > 1 ? 's' : ''}${g.reason ? ` — ${g.reason}` : ''}`,
+          amount: 0, source: (g.reason as string || '').includes('Code promo') ? 'Code promo' : 'Crédits offerts 🎁',
+          created_at: new Date(g.created_at as string).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
+          _ts: new Date(g.created_at as string).getTime(),
+        }));
+        setCreditHistory([...pItems, ...gItems].sort((a, b) => ((b as unknown as { _ts: number })._ts || 0) - ((a as unknown as { _ts: number })._ts || 0)));
+      }
+    } catch (e) { setPromoError((e as Error).message); }
+    setPromoLoading(false);
+  };
+
   // Historique crédits
   type CreditHistoryItem = { id: string; description: string; amount: number; source: string; created_at: string };
   const [creditHistory, setCreditHistory] = useState<CreditHistoryItem[]>([]);
@@ -1700,7 +1783,7 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
         id: `gr-${g.id}`,
         description: `+${g.quantity} crédit${(g.quantity as number) > 1 ? 's' : ''} ${g.credit_type === 'complete' ? 'Complète' : 'Simple'} offert${(g.quantity as number) > 1 ? 's' : ''}${g.reason ? ` — ${g.reason}` : ''}`,
         amount: 0,
-        source: 'Crédits offerts 🎁',
+        source: (g.reason as string || '').includes('Code promo') ? 'Code promo' : 'Crédits offerts 🎁',
         created_at: new Date(g.created_at as string).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
         _ts: new Date(g.created_at as string).getTime(),
       }));
@@ -1955,6 +2038,35 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Code promo */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 22px', marginBottom: 20 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Code promo</h3>
+        <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 14 }}>Vous avez un code ? Entrez-le ici pour recevoir vos crédits.</p>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <input
+            type="text"
+            value={promoCode}
+            onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoError(''); setPromoSuccess(''); }}
+            placeholder="Entrez votre code"
+            style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, fontWeight: 600, letterSpacing: '0.05em', outline: 'none' }}
+          />
+          <button
+            disabled={promoLoading || !promoCode.trim()}
+            onClick={handlePromoApply}
+            style={{
+              padding: '10px 20px', borderRadius: 10, border: 'none',
+              background: promoCode.trim() ? 'linear-gradient(135deg,#2a7d9c,#0f2d3d)' : '#cbd5e1',
+              color: '#fff', fontSize: 13, fontWeight: 700,
+              cursor: promoCode.trim() ? (promoLoading ? 'wait' : 'pointer') : 'not-allowed',
+              opacity: promoLoading ? 0.6 : 1,
+            }}>
+            {promoLoading ? 'Vérification…' : 'Appliquer'}
+          </button>
+        </div>
+        {promoError && <div style={{ marginTop: 10, fontSize: 12.5, color: '#dc2626', fontWeight: 600 }}>{promoError}</div>}
+        {promoSuccess && <div style={{ marginTop: 10, fontSize: 12.5, color: '#16a34a', fontWeight: 600 }}>{promoSuccess}</div>}
       </div>
 
       {/* Agences */}
