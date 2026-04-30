@@ -29,6 +29,7 @@ export type AnalyseDB = {
   share_token: string | null;
   complement_date: string | null;
   complement_doc_names: string[] | null;
+  folder_id: string | null;
   created_at: string;
 };
 
