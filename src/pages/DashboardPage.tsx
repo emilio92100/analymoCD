@@ -109,12 +109,20 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
 /* ═══════════════════════════════════════════
    TOPBAR (inchangé dans la logique)
 ═══════════════════════════════════════════ */
-function Topbar({ onMenuClick, title }: { onMenuClick:()=>void; title:string }) {
+function Topbar({ onMenuClick, title, unreadCount, notifications, onMarkAllRead, onClickNotification }: {
+  onMenuClick:()=>void; title:string;
+  unreadCount?: number; notifications?: { id: string; analysisId: string; title: string; createdAt: string; read: boolean }[];
+  onMarkAllRead?: () => void; onClickNotification?: (analysisId: string) => void;
+}) {
   const { name, email } = useUser();
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const bellRef = useRef<HTMLDivElement>(null);
+
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -127,10 +135,11 @@ function Topbar({ onMenuClick, title }: { onMenuClick:()=>void; title:string }) 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setDropdownOpen(false);
+      if (bellRef.current && !bellRef.current.contains(e.target as Node)) setBellOpen(false);
     };
-    if (dropdownOpen) document.addEventListener('mousedown', handleClickOutside);
+    if (dropdownOpen || bellOpen) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [dropdownOpen]);
+  }, [dropdownOpen, bellOpen]);
 
   const handleLogout = () => { localStorage.clear(); supabase.auth.signOut(); window.location.replace('/'); };
 
@@ -138,7 +147,61 @@ function Topbar({ onMenuClick, title }: { onMenuClick:()=>void; title:string }) 
     <header style={{ height:68, background:'#fff', borderBottom:'1px solid #edf2f7', display:'flex', alignItems:'center', padding:'0 24px', gap:12, position:'sticky', top:0, zIndex:40, flexShrink:0 }}>
       <button className="mobile-menu-btn" onClick={onMenuClick} style={{ background:'none', border:'none', cursor:'pointer', color:'#0f2d3d', padding:4, display:'none' }}><Menu size={20}/></button>
       <p className="topbar-title" style={{ flex:1, fontSize:17, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em', margin:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{title}</p>
-      <button style={{ width:36, height:36, borderRadius:9, background:'#f8fafc', border:'1px solid #edf2f7', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#94a3b8' }}><Bell size={15}/></button>
+
+      {/* Cloche notifications */}
+      <div ref={bellRef} style={{ position: 'relative' }}>
+        <button onClick={() => { setBellOpen(!bellOpen); if (!bellOpen && onMarkAllRead) onMarkAllRead(); }}
+          style={{ width:36, height:36, borderRadius:9, background: bellOpen ? '#f0f7fb' : '#f8fafc', border:`1px solid ${bellOpen ? '#c7dde8' : '#edf2f7'}`, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#94a3b8', position: 'relative', transition: 'all 0.15s' }}>
+          <Bell size={15}/>
+          {(unreadCount || 0) > 0 && (
+            <span style={{
+              position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 100,
+              background: '#dc2626', color: '#fff', fontSize: 10, fontWeight: 800,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px',
+              border: '2px solid #fff',
+            }}>{unreadCount}</span>
+          )}
+        </button>
+        {bellOpen && (
+          <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: 320, background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', boxShadow: '0 16px 48px rgba(0,0,0,0.12)', zIndex: 9999, overflow: 'hidden' }}>
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid #f0f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Notifications</span>
+            </div>
+            <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+              {(!notifications || notifications.length === 0) ? (
+                <div style={{ padding: '24px 16px', textAlign: 'center' }}>
+                  <Bell size={20} style={{ color: '#e2e8f0', marginBottom: 8 }} />
+                  <p style={{ fontSize: 12.5, color: '#94a3b8', margin: 0 }}>Aucune notification</p>
+                </div>
+              ) : (
+                notifications.slice(0, 10).map(n => (
+                  <button key={n.id}
+                    onClick={() => { setBellOpen(false); if (onClickNotification) onClickNotification(n.analysisId); }}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
+                      background: n.read ? '#fff' : '#f0f7fb', border: 'none', borderBottom: '1px solid #f0f5f9',
+                      cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.1s',
+                    }}
+                    onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#f8fafc'; }}
+                    onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = n.read ? '#fff' : '#f0f7fb'; }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <CheckCircle size={15} style={{ color: '#16a34a' }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: n.read ? 500 : 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                        Rapport prêt
+                      </div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{n.title}</div>
+                    </div>
+                    <span style={{ fontSize: 10, color: '#94a3b8', flexShrink: 0 }}>{fmtDate(n.createdAt)}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
       {isAdmin && (
         <button onClick={()=>navigate('/admin')} style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:9, background:'linear-gradient(135deg,#0f2d3d,#1a4a60)', border:'none', cursor:'pointer', color:'#fff', fontSize:12, fontWeight:700, whiteSpace:'nowrap' }}>
           <Shield size={13}/> Espace Admin
@@ -392,11 +455,59 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // ─── Notifications : rapports terminés ────────────────────
+  type PartNotification = { id: string; analysisId: string; title: string; createdAt: string; read: boolean };
+  const [notifications, setNotifications] = useState<PartNotification[]>([]);
+  const prevAnalysesRef = useRef<{ id: string; status: string }[]>([]);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) navigate('/connexion');
     });
   }, [navigate]);
+
+  // Polling toutes les 15s pour détecter les analyses qui passent à "completed"
+  useEffect(() => {
+    // Premier chargement
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from('analyses').select('id, status, title, address').eq('user_id', user.id);
+      if (data) prevAnalysesRef.current = data;
+    };
+    init();
+
+    const interval = setInterval(async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: fresh } = await supabase.from('analyses').select('id, status, title, address').eq('user_id', user.id);
+      if (!fresh) return;
+
+      const prev = prevAnalysesRef.current;
+      if (prev.length > 0) {
+        const newlyCompleted = fresh.filter(a =>
+          a.status === 'completed' && prev.find(p => p.id === a.id && p.status !== 'completed')
+        );
+        if (newlyCompleted.length > 0) {
+          setNotifications(n => [
+            ...newlyCompleted.map(a => ({
+              id: `notif-${a.id}`,
+              analysisId: a.id,
+              title: (a as Record<string, string>).address || (a as Record<string, string>).title || 'Analyse',
+              createdAt: new Date().toISOString(),
+              read: false,
+            })),
+            ...n,
+          ]);
+        }
+      }
+      prevAnalysesRef.current = fresh;
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+  const markAllRead = () => setNotifications(n => n.map(x => ({ ...x, read: true })));
 
   const title = navItems.find(i => i.to === location.pathname)?.label || 'Mon espace';
 
@@ -419,7 +530,9 @@ export default function DashboardPage() {
         )}
       </AnimatePresence>
       <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0 }}>
-        <Topbar onMenuClick={()=>setMobileOpen(true)} title={title}/>
+        <Topbar onMenuClick={()=>setMobileOpen(true)} title={title}
+          unreadCount={unreadCount} notifications={notifications} onMarkAllRead={markAllRead}
+          onClickNotification={(id) => { window.location.href = `/rapport?id=${id}`; }} />
         <DashboardBanner/>
         <main className="dashboard-main" style={{ flex:1, padding:'28px 24px', overflowX:'hidden' }}>
           <DashboardContent path={location.pathname}/>
