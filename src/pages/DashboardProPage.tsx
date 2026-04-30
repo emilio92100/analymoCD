@@ -3323,25 +3323,6 @@ function ActionButton({ icon: Icon, label, onClick, comingSoon }: { icon: React.
   );
 }
 
-function SectionEmpty({ title, icon: Icon, count, comingSoon }: { title: string; icon: React.ElementType; count?: number; comingSoon?: boolean }) {
-  return (
-    <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 22px', marginBottom: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Icon size={15} style={{ color: '#94a3b8' }} />
-          {title}
-          {count !== undefined && count > 0 && (
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '2px 8px', borderRadius: 100 }}>{count}</span>
-          )}
-        </h3>
-      </div>
-      <p style={{ fontSize: 12.5, color: '#94a3b8', margin: 0, fontStyle: 'italic' as const }}>
-        {comingSoon ? 'La gestion arrive bientôt.' : 'Aucun élément.'}
-      </p>
-    </div>
-  );
-}
-
 /* ══════════════════════════════════════════
    DASHBOARD PRO — EXPORT
 ══════════════════════════════════════════ */
