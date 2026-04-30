@@ -265,11 +265,20 @@ export default function NouvelleAnalyse() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const col = creditType === 'document' ? 'credits_document' : 'credits_complete';
-      const { data } = await supabase.from('profiles').select(col).eq('id', user.id).single();
-      if (data) {
-        const current = (data as Record<string, number>)[col] || 0;
-        await supabase.from('profiles').update({ [col]: current + 1 }).eq('id', user.id);
+      if (userRole === 'pro') {
+        // Pro : on re-crédite la ligne pro_unit_purchases la plus récente qui a été décrémentée
+        // On incrémente credits_remaining de la ligne la plus récente avec type = creditType
+        await supabase.rpc('refund_pro_credit', { p_user_id: user.id, p_credit_type: creditType }).catch(() => {
+          // Fallback si la fonction n'existe pas encore : on ne fait rien silencieusement
+          console.warn('[Verimo] refund_pro_credit non disponible, refund ignoré');
+        });
+      } else {
+        const col = creditType === 'document' ? 'credits_document' : 'credits_complete';
+        const { data } = await supabase.from('profiles').select(col).eq('id', user.id).single();
+        if (data) {
+          const current = (data as Record<string, number>)[col] || 0;
+          await supabase.from('profiles').update({ [col]: current + 1 }).eq('id', user.id);
+        }
       }
     } catch { /* silencieux */ }
   };
@@ -457,7 +466,18 @@ export default function NouvelleAnalyse() {
     if (isAnalysing) return;
     setIsAnalysing(true);
     const creditType = type === 'document' ? 'document' : 'complete';
-    const ok = await deductCredit(creditType);
+
+    // Déduction crédit selon le rôle
+    let ok = false;
+    if (userRole === 'pro') {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase.rpc('consume_pro_credit', { p_user_id: user.id, p_credit_type: creditType });
+        ok = data === true;
+      }
+    } else {
+      ok = await deductCredit(creditType);
+    }
     if (!ok) { setError("Vous n'avez plus de crédit disponible. Veuillez recharger votre compte."); setIsAnalysing(false); return; }
     setStep('analyse'); setError(''); setFileWarnings([]); setProgress(5);
     setProgressMsg('Préparation des documents…'); setProgressDoc({ current: 0, total: files.length });
