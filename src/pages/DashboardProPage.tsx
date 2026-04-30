@@ -1802,19 +1802,22 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
   const isSubscribed = subscription?.status === 'active';
 
   // Détecter le retour de Stripe Checkout (?checkout=success ou ?checkout=cancel)
+  const [successPopup, setSuccessPopup] = useState<'subscribe' | 'upgrade' | 'unit' | null>(null);
+
   useEffect(() => {
     const url = new URL(window.location.href);
     const checkout = url.searchParams.get('checkout');
+    const checkoutType = url.searchParams.get('type'); // subscribe, upgrade, unit
     if (checkout === 'success') {
       setErrorMsg('');
-      // Nettoyer l'URL
       url.searchParams.delete('checkout');
+      url.searchParams.delete('type');
       window.history.replaceState({}, '', url.toString());
-      // Petit reload pour récupérer la subscription mise à jour
-      setTimeout(() => window.location.reload(), 500);
+      setSuccessPopup(checkoutType === 'unit' ? 'unit' : checkoutType === 'upgrade' ? 'upgrade' : 'subscribe');
     } else if (checkout === 'cancel') {
       setErrorMsg('Paiement annulé. Vous pouvez réessayer quand vous voulez.');
       url.searchParams.delete('checkout');
+      url.searchParams.delete('type');
       window.history.replaceState({}, '', url.toString());
     }
   }, []);
@@ -1839,8 +1842,9 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
       if (!res.ok) throw new Error(data.error || 'Erreur lors de la création du checkout');
 
       if (data.upgraded) {
-        // Cas upgrade direct (sans Checkout) → on rafraîchit
-        window.location.reload();
+        // Cas upgrade direct (sans Checkout)
+        setSuccessPopup('upgrade');
+        setLoading(null);
       } else if (data.url) {
         window.location.href = data.url;
       }
@@ -1895,6 +1899,43 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
           {errorMsg}
         </div>
       )}
+
+      {/* Popup succès paiement */}
+      <AnimatePresence>
+        {successPopup && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', padding: 16 }}
+            onClick={() => { setSuccessPopup(null); window.location.reload(); }}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              style={{ background: '#fff', borderRadius: 24, padding: '36px 32px', maxWidth: 440, width: '100%', textAlign: 'center', boxShadow: '0 24px 64px rgba(0,0,0,0.2)', position: 'relative' }}>
+              <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', border: '3px solid #bbf7d0' }}>
+                <CheckCircle size={36} style={{ color: '#16a34a' }} />
+              </div>
+              <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 8, letterSpacing: '-0.02em' }}>
+                {successPopup === 'subscribe' ? 'Abonnement activé !' : successPopup === 'upgrade' ? 'Plan mis à jour !' : 'Crédits ajoutés !'}
+              </h2>
+              <p style={{ fontSize: 15, color: '#64748b', lineHeight: 1.7, marginBottom: 28 }}>
+                {successPopup === 'subscribe'
+                  ? 'Votre abonnement Verimo Pro est maintenant actif. Vos crédits sont disponibles immédiatement.'
+                  : successPopup === 'upgrade'
+                  ? 'Votre plan a été mis à jour avec succès. Vos nouveaux crédits sont disponibles.'
+                  : 'Vos crédits supplémentaires ont été ajoutés à votre compte.'}
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <Link to="/dashboard/nouvelle-analyse"
+                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px 28px', borderRadius: 14, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 800, textDecoration: 'none', boxShadow: '0 8px 24px rgba(15,45,61,0.2)' }}>
+                  Lancer une analyse <ArrowRight size={16} />
+                </Link>
+                <button onClick={() => { setSuccessPopup(null); window.location.reload(); }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#94a3b8', padding: '8px' }}>
+                  Fermer
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ═══ SECTION 1 : Abonnement actif ═══ */}
       {isSubscribed && subscription && (
