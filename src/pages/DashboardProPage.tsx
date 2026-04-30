@@ -3342,6 +3342,7 @@ export default function DashboardProPage() {
   // ─── Notifications : rapports terminés ────────────────────
   type ProNotification = { id: string; analysisId: string; title: string; createdAt: string; read: boolean };
   const [notifications, setNotifications] = useState<ProNotification[]>([]);
+  const [notifToast, setNotifToast] = useState<string | null>(null);
   const prevAnalysesRef = useRef<ProAnalysis[]>([]);
 
   const loadData = useCallback(async () => {
@@ -3402,6 +3403,9 @@ export default function DashboardProPage() {
             })),
             ...n,
           ]);
+          // Toast auto-dismiss 5s
+          setNotifToast('Votre analyse est prête !');
+          setTimeout(() => setNotifToast(null), 5000);
           // Rafraîchir les crédits aussi
           const { data: credits } = await supabase.rpc('get_pro_credits_balance', { p_user_id: user.id });
           if (credits && credits.length > 0) setProCredits(credits[0] as ProCredits);
@@ -3508,6 +3512,17 @@ export default function DashboardProPage() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
             style={{ position: 'fixed', bottom: 24, right: 24, background: '#0f2d3d', color: '#fff', padding: '12px 20px', borderRadius: 12, fontSize: 13, fontWeight: 700, zIndex: 9999, boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
             ✓ {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Toast notification analyse prête */}
+      <AnimatePresence>
+        {notifToast && (
+          <motion.div initial={{ opacity: 0, y: -20, x: 20 }} animate={{ opacity: 1, y: 0, x: 0 }} exit={{ opacity: 0, y: -20 }}
+            style={{ position: 'fixed', top: 80, right: 24, background: '#fff', color: '#0f172a', padding: '14px 20px', borderRadius: 14, fontSize: 13, fontWeight: 700, zIndex: 9999, boxShadow: '0 12px 40px rgba(0,0,0,0.15)', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <CheckCircle size={18} style={{ color: '#16a34a', flexShrink: 0 }} />
+            {notifToast}
           </motion.div>
         )}
       </AnimatePresence>
