@@ -1645,6 +1645,7 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
                               🎁 Offert par Admin
                             </span>
                           )}
+                          {p.retractation_waiver_at && (
                             <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 7px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 3 }}>
                               <CheckCircle size={9} /> Consentement le {fmtDateTime(p.retractation_waiver_at)}
                             </span>
