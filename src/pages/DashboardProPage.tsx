@@ -1888,249 +1888,190 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <p style={{ fontSize: 14, color: '#64748b', marginBottom: 28 }}>Choisissez le plan adapté à votre activité.</p>
 
       {/* Message d'erreur global */}
       {errorMsg && (
-        <div style={{ marginBottom: 20, padding: '12px 16px', borderRadius: 12, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: 13, fontWeight: 600 }}>
+        <div style={{ marginBottom: 20, padding: '14px 18px', borderRadius: 12, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: 14, fontWeight: 600 }}>
           {errorMsg}
         </div>
       )}
 
-      {/* Crédits restants si abonné */}
-      {isSubscribed && (
-        <div style={{ marginBottom: 24, padding: '16px 20px', borderRadius: 14, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#15803d', textTransform: 'uppercase' as const, letterSpacing: '0.05em', marginBottom: 8 }}>Crédits restants ce mois</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div>
-              <span style={{ fontSize: 22, fontWeight: 800, color: '#0f172a' }}>
-                {Math.max(0, (subscription?.credits_complete_total || 0) - (subscription?.credits_complete_used || 0))}
-              </span>
-              <span style={{ fontSize: 13, color: '#64748b', marginLeft: 6 }}>/ {subscription?.credits_complete_total || 0} complètes</span>
+      {/* ═══ SECTION 1 : Abonnement actif ═══ */}
+      {isSubscribed && subscription && (
+        <div style={{ marginBottom: 28, padding: '22px 26px', borderRadius: 18, background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: -30, right: -30, width: 140, height: 140, borderRadius: '50%', background: 'rgba(42,125,156,0.15)', pointerEvents: 'none' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+            <span style={{ fontSize: 18, fontWeight: 800, color: '#fff' }}>
+              Plan {subscription.plan === 'decouverte' ? 'Découverte' : subscription.plan === 'starter' ? 'Starter' : subscription.plan === 'power' ? 'Power' : subscription.plan}
+            </span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 10px', borderRadius: 100 }}>Actif</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#fff' }}>
+                {Math.max(0, (subscription.credits_complete_total || 0) - (subscription.credits_complete_used || 0))}
+                <span style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>/ {subscription.credits_complete_total || 0}</span>
+              </div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>Crédits complètes</div>
             </div>
-            <div>
-              <span style={{ fontSize: 22, fontWeight: 800, color: '#0f172a' }}>
-                {Math.max(0, (subscription?.credits_simple_total || 0) - (subscription?.credits_simple_used || 0))}
-              </span>
-              <span style={{ fontSize: 13, color: '#64748b', marginLeft: 6 }}>/ {subscription?.credits_simple_total || 0} simples</span>
+            <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#fff' }}>
+                {Math.max(0, (subscription.credits_simple_total || 0) - (subscription.credits_simple_used || 0))}
+                <span style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>/ {subscription.credits_simple_total || 0}</span>
+              </div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>Crédits simples</div>
             </div>
           </div>
-          {subscription?.current_period_end && (
-            <div style={{ marginTop: 10, fontSize: 12, color: '#64748b' }}>Renouvellement le {fmtDate(subscription.current_period_end)}</div>
+          {subscription.current_period_end && (
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>Renouvellement le {fmtDate(subscription.current_period_end)}</div>
           )}
         </div>
       )}
 
-      {/* Plans */}
-      <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 28 }}>
-        {plans.map(plan => {
-          const isActive = subscription?.plan === plan.id && subscription?.status === 'active';
-          const btnLoading = loading === `subscribe:${plan.id}`;
-          return (
-            <div key={plan.id} style={{
-              borderRadius: 18, padding: 22, position: 'relative',
-              background: '#fff', border: isActive ? '2px solid #2a7d9c' : plan.popular ? '2px solid #7dd3fc' : '1.5px solid #edf2f7',
-              boxShadow: plan.popular ? '0 8px 32px rgba(42,125,156,0.1)' : 'none',
-            }}>
-              {plan.popular && !isActive && (
-                <span style={{ position: 'absolute', top: -10, right: 16, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 12px', borderRadius: 100 }}>Recommandé</span>
-              )}
-              {isActive && (
-                <span style={{ position: 'absolute', top: -10, right: 16, background: '#16a34a', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 12px', borderRadius: 100 }}>Actif</span>
-              )}
-
-              <h3 style={{ fontSize: 19, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>{plan.name}</h3>
-              <p style={{ fontSize: 11, color: '#94a3b8', margin: '0 0 14px 0', minHeight: 16 }}>{plan.tagline}</p>
-              <div style={{ marginBottom: 16 }}>
-                <span style={{ fontSize: 30, fontWeight: 800, color: '#0f172a' }}>{plan.price}€</span>
-                <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 4 }}>HT / mois</span>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 18 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <CheckCircle size={13} style={{ color: '#16a34a', flexShrink: 0 }} />
-                  <span style={{ fontSize: 12.5, color: '#374151' }}><strong>{plan.completes}</strong> analyse{plan.completes > 1 ? 's' : ''} complète{plan.completes > 1 ? 's' : ''}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <CheckCircle size={13} style={{ color: '#16a34a', flexShrink: 0 }} />
-                  <span style={{ fontSize: 12.5, color: '#374151' }}><strong>{plan.simples}</strong> analyse{plan.simples > 1 ? 's' : ''} simple{plan.simples > 1 ? 's' : ''}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <CheckCircle size={13} style={{ color: '#16a34a', flexShrink: 0 }} />
-                  <span style={{ fontSize: 12.5, color: '#374151' }}>Dashboard pro + branding</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <CheckCircle size={13} style={{ color: '#16a34a', flexShrink: 0 }} />
-                  <span style={{ fontSize: 12.5, color: '#374151' }}>Envoi de rapports clients</span>
-                </div>
-              </div>
-
-              {isActive ? (
-                <div style={{ padding: '11px', borderRadius: 11, background: '#f0fdf4', border: '1px solid #bbf7d0', textAlign: 'center', fontSize: 12.5, fontWeight: 700, color: '#16a34a' }}>
-                  Plan actif
-                </div>
-              ) : (
-                <button
-                  disabled={btnLoading}
-                  onClick={() => handleSubscribe(plan.id)}
-                  style={{
-                    width: '100%', padding: '12px', borderRadius: 11, border: 'none',
-                    cursor: btnLoading ? 'wait' : 'pointer',
-                    background: plan.popular ? 'linear-gradient(135deg,#2a7d9c,#0f2d3d)' : '#0f172a',
-                    color: '#fff', fontSize: 13.5, fontWeight: 700, opacity: btnLoading ? 0.6 : 1,
-                  }}>
-                  {btnLoading ? 'Redirection…' : (subscription ? 'Changer pour ce plan' : 'Choisir ce plan')}
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Achats unitaires */}
-      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 22px', marginBottom: 20 }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Acheter à l'unité</h3>
-        <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 16 }}>
-          {isSubscribed
-            ? 'Achats supplémentaires en complément de votre abonnement.'
-            : 'Tarifs préférentiels réservés aux abonnés Verimo Pro.'}
+      {/* ═══ SECTION 2 : Choisir / Changer de plan ═══ */}
+      <div style={{ marginBottom: 28 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>
+          {isSubscribed ? 'Changer de plan' : 'Choisissez votre plan'}
+        </h2>
+        <p style={{ fontSize: 14, color: '#64748b', marginBottom: 20 }}>
+          {isSubscribed ? 'Vous pouvez upgrader ou changer de formule à tout moment.' : 'Sélectionnez la formule adaptée à votre activité.'}
         </p>
-        {!isSubscribed && (
-          <div style={{ marginBottom: 16, padding: '11px 14px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fde68a', fontSize: 12.5, color: '#92400e' }}>
-            ⚠️ Pour acheter à ces tarifs, vous devez souscrire un abonnement Verimo Pro (ci-dessus).
-          </div>
-        )}
-        <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          {/* Analyse complète */}
-          <div style={{ padding: 16, borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7', textAlign: 'center', opacity: isSubscribed ? 1 : 0.7 }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>9,90€ <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>HT</span></div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4, marginBottom: 10 }}>Analyse complète</div>
-            <button
-              disabled={!isSubscribed || loading === 'unit:complete'}
-              onClick={() => handleBuyUnit('complete', 1)}
-              title={!isSubscribed ? 'Abonnement requis' : ''}
-              style={{
-                padding: '8px 16px', borderRadius: 8,
-                background: isSubscribed ? '#0f172a' : '#cbd5e1',
-                color: '#fff', border: 'none', fontSize: 12, fontWeight: 700,
-                cursor: isSubscribed ? (loading === 'unit:complete' ? 'wait' : 'pointer') : 'not-allowed',
-                opacity: loading === 'unit:complete' ? 0.6 : 1,
+        <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+          {plans.map(plan => {
+            const isActive = subscription?.plan === plan.id && subscription?.status === 'active';
+            const btnLoading = loading === `subscribe:${plan.id}`;
+            return (
+              <div key={plan.id} style={{
+                borderRadius: 18, padding: 22, position: 'relative',
+                background: '#fff', border: isActive ? '2px solid #2a7d9c' : plan.popular ? '2px solid #7dd3fc' : '1.5px solid #edf2f7',
+                boxShadow: plan.popular ? '0 8px 32px rgba(42,125,156,0.1)' : 'none',
               }}>
-              {loading === 'unit:complete' ? 'Redirection…' : 'Acheter'}
-            </button>
-          </div>
-          {/* Analyse simple */}
-          <div style={{ padding: 16, borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7', textAlign: 'center', opacity: isSubscribed ? 1 : 0.7 }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>2,90€ <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>HT</span></div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 4, marginBottom: 10 }}>Analyse simple</div>
-            <button
-              disabled={!isSubscribed || loading === 'unit:document'}
-              onClick={() => handleBuyUnit('document', 1)}
-              title={!isSubscribed ? 'Abonnement requis' : ''}
-              style={{
-                padding: '8px 16px', borderRadius: 8,
-                background: isSubscribed ? '#0f172a' : '#cbd5e1',
-                color: '#fff', border: 'none', fontSize: 12, fontWeight: 700,
-                cursor: isSubscribed ? (loading === 'unit:document' ? 'wait' : 'pointer') : 'not-allowed',
-                opacity: loading === 'unit:document' ? 0.6 : 1,
-              }}>
-              {loading === 'unit:document' ? 'Redirection…' : 'Acheter'}
-            </button>
-          </div>
+                {plan.popular && !isActive && (
+                  <span style={{ position: 'absolute', top: -10, right: 16, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 12px', borderRadius: 100 }}>Recommandé</span>
+                )}
+                {isActive && (
+                  <span style={{ position: 'absolute', top: -10, right: 16, background: '#16a34a', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 12px', borderRadius: 100 }}>Votre plan</span>
+                )}
+                <h3 style={{ fontSize: 19, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>{plan.name}</h3>
+                <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 14px 0', minHeight: 16 }}>{plan.tagline}</p>
+                <div style={{ marginBottom: 16 }}>
+                  <span style={{ fontSize: 30, fontWeight: 800, color: '#0f172a' }}>{plan.price}€</span>
+                  <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 4 }}>HT / mois</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 18 }}>
+                  {[
+                    `${plan.completes} analyse${plan.completes > 1 ? 's' : ''} complète${plan.completes > 1 ? 's' : ''}`,
+                    `${plan.simples} analyse${plan.simples > 1 ? 's' : ''} simple${plan.simples > 1 ? 's' : ''}`,
+                    'Dashboard pro + branding',
+                    'Envoi de rapports clients',
+                  ].map((feat, fi) => (
+                    <div key={fi} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <CheckCircle size={13} style={{ color: '#16a34a', flexShrink: 0 }} />
+                      <span style={{ fontSize: 13, color: '#374151' }}>{feat}</span>
+                    </div>
+                  ))}
+                </div>
+                {isActive ? (
+                  <div style={{ padding: '11px', borderRadius: 11, background: '#f0fdf4', border: '1px solid #bbf7d0', textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#16a34a' }}>
+                    Plan actif
+                  </div>
+                ) : (
+                  <button disabled={btnLoading} onClick={() => handleSubscribe(plan.id)}
+                    style={{ width: '100%', padding: '12px', borderRadius: 11, border: 'none', cursor: btnLoading ? 'wait' : 'pointer',
+                      background: plan.popular ? 'linear-gradient(135deg,#2a7d9c,#0f2d3d)' : '#0f172a', color: '#fff', fontSize: 14, fontWeight: 700, opacity: btnLoading ? 0.6 : 1 }}>
+                    {btnLoading ? 'Redirection…' : (subscription ? 'Passer à ce plan' : 'Choisir ce plan')}
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Code promo */}
-      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 22px', marginBottom: 20 }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Code promo</h3>
-        <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 14 }}>Vous avez un code ? Entrez-le ici pour recevoir vos crédits.</p>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <input
-            type="text"
-            value={promoCode}
-            onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoError(''); setPromoSuccess(''); }}
-            placeholder="Entrez votre code"
-            style={{ flex: 1, padding: '10px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, fontWeight: 600, letterSpacing: '0.05em', outline: 'none' }}
-          />
-          <button
-            disabled={promoLoading || !promoCode.trim()}
-            onClick={handlePromoApply}
-            style={{
-              padding: '10px 20px', borderRadius: 10, border: 'none',
-              background: promoCode.trim() ? 'linear-gradient(135deg,#2a7d9c,#0f2d3d)' : '#cbd5e1',
-              color: '#fff', fontSize: 13, fontWeight: 700,
-              cursor: promoCode.trim() ? (promoLoading ? 'wait' : 'pointer') : 'not-allowed',
-              opacity: promoLoading ? 0.6 : 1,
-            }}>
+      {/* ═══ SECTION 3 : Achats unitaires + Code promo (une seule ligne) ═══ */}
+      <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 28 }}>
+        {/* Analyse complète */}
+        <div style={{ padding: '20px', borderRadius: 16, background: '#fff', border: '1.5px solid #edf2f7', textAlign: 'center', opacity: isSubscribed ? 1 : 0.6 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 8 }}>ACHAT UNITAIRE</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#0f172a' }}>9,90€ <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>HT</span></div>
+          <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, marginBottom: 14 }}>Analyse complète</div>
+          <button disabled={!isSubscribed || loading === 'unit:complete'} onClick={() => handleBuyUnit('complete', 1)}
+            style={{ width: '100%', padding: '10px', borderRadius: 10, background: isSubscribed ? '#0f172a' : '#cbd5e1', color: '#fff', border: 'none', fontSize: 13, fontWeight: 700,
+              cursor: isSubscribed ? (loading === 'unit:complete' ? 'wait' : 'pointer') : 'not-allowed', opacity: loading === 'unit:complete' ? 0.6 : 1 }}>
+            {loading === 'unit:complete' ? 'Redirection…' : 'Acheter'}
+          </button>
+          {!isSubscribed && <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 6 }}>Abonnement requis</div>}
+        </div>
+        {/* Analyse simple */}
+        <div style={{ padding: '20px', borderRadius: 16, background: '#fff', border: '1.5px solid #edf2f7', textAlign: 'center', opacity: isSubscribed ? 1 : 0.6 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 8 }}>ACHAT UNITAIRE</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#0f172a' }}>2,90€ <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>HT</span></div>
+          <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, marginBottom: 14 }}>Analyse simple</div>
+          <button disabled={!isSubscribed || loading === 'unit:document'} onClick={() => handleBuyUnit('document', 1)}
+            style={{ width: '100%', padding: '10px', borderRadius: 10, background: isSubscribed ? '#0f172a' : '#cbd5e1', color: '#fff', border: 'none', fontSize: 13, fontWeight: 700,
+              cursor: isSubscribed ? (loading === 'unit:document' ? 'wait' : 'pointer') : 'not-allowed', opacity: loading === 'unit:document' ? 0.6 : 1 }}>
+            {loading === 'unit:document' ? 'Redirection…' : 'Acheter'}
+          </button>
+          {!isSubscribed && <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 6 }}>Abonnement requis</div>}
+        </div>
+        {/* Code promo */}
+        <div style={{ padding: '20px', borderRadius: 16, background: '#fff', border: '1.5px solid #edf2f7', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 8, textAlign: 'center' }}>CODE PROMO</div>
+          <input type="text" value={promoCode} onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoError(''); setPromoSuccess(''); }}
+            placeholder="Votre code" style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 14, fontWeight: 700, letterSpacing: '0.06em', outline: 'none', textAlign: 'center', marginBottom: 10, boxSizing: 'border-box' }} />
+          <button disabled={promoLoading || !promoCode.trim()} onClick={handlePromoApply}
+            style={{ width: '100%', padding: '10px', borderRadius: 10, border: 'none',
+              background: promoCode.trim() ? 'linear-gradient(135deg,#7c3aed,#5b21b6)' : '#cbd5e1', color: '#fff', fontSize: 13, fontWeight: 700,
+              cursor: promoCode.trim() ? (promoLoading ? 'wait' : 'pointer') : 'not-allowed', opacity: promoLoading ? 0.6 : 1 }}>
             {promoLoading ? 'Vérification…' : 'Appliquer'}
           </button>
+          {promoError && <div style={{ marginTop: 8, fontSize: 11, color: '#dc2626', fontWeight: 600, textAlign: 'center' }}>{promoError}</div>}
+          {promoSuccess && <div style={{ marginTop: 8, fontSize: 11, color: '#16a34a', fontWeight: 600, textAlign: 'center' }}>{promoSuccess}</div>}
         </div>
-        {promoError && <div style={{ marginTop: 10, fontSize: 12.5, color: '#dc2626', fontWeight: 600 }}>{promoError}</div>}
-        {promoSuccess && <div style={{ marginTop: 10, fontSize: 12.5, color: '#16a34a', fontWeight: 600 }}>{promoSuccess}</div>}
       </div>
 
-      {/* Agences */}
-      <div style={{ background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderRadius: 16, padding: '20px 22px', border: '1px solid #d0e8f0', textAlign: 'center' }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f2d3d', marginBottom: 6 }}>Volumes importants ou besoins spécifiques ?</h3>
-        <p style={{ fontSize: 13, color: '#64748b', marginBottom: 14 }}>Agences, cabinets, équipes : contactez-nous pour une offre sur mesure.</p>
-        <Link to="/contact-pro" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 20px', borderRadius: 10, background: '#0f2d3d', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 700 }}>
+      {/* ═══ SECTION 4 : Agences ═══ */}
+      <div style={{ background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderRadius: 16, padding: '22px 26px', border: '1px solid #d0e8f0', textAlign: 'center', marginBottom: 28 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f2d3d', marginBottom: 6 }}>Volumes importants ou besoins spécifiques ?</h3>
+        <p style={{ fontSize: 14, color: '#64748b', marginBottom: 14 }}>Agences, cabinets, équipes : contactez-nous pour une offre sur mesure.</p>
+        <Link to="/contact-pro" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '11px 22px', borderRadius: 10, background: '#0f2d3d', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 700 }}>
           Nous contacter <ArrowRight size={14} />
         </Link>
       </div>
 
-      {/* Abonnement actif */}
-      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 22px', marginTop: 20 }}>
-        <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <CreditCard size={15} style={{ color: '#2a7d9c' }} /> Abonnement
-        </h3>
-        {isSubscribed && subscription ? (
-          <div style={{ padding: '12px 16px', borderRadius: 10, background: '#f0f7fb', border: '1px solid #d0e8f0' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <span style={{ fontSize: 15, fontWeight: 800, color: '#0f2d3d' }}>Plan {subscription.plan === 'decouverte' ? 'Découverte' : subscription.plan === 'starter' ? 'Starter' : subscription.plan === 'power' ? 'Power' : subscription.plan}</span>
-              <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: 100, border: '1px solid #bbf7d0' }}>Actif</span>
-            </div>
-            {subscription.current_period_end && (
-              <div style={{ fontSize: 12, color: '#64748b' }}>Renouvellement le {fmtDate(subscription.current_period_end)}</div>
-            )}
-          </div>
-        ) : (
-          <div style={{ padding: '12px 16px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
-            <span style={{ fontSize: 13, color: '#94a3b8' }}>Aucun abonnement actif</span>
-          </div>
-        )}
-      </div>
-
-      {/* Historique des crédits */}
-      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 22px', marginTop: 14 }}>
-        <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Clock size={15} style={{ color: '#94a3b8' }} /> Historique des crédits
+      {/* ═══ SECTION 5 : Historique des crédits ═══ */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
+        <div style={{ padding: '18px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Clock size={16} style={{ color: '#2a7d9c' }} />
+          <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>Historique des crédits</h3>
           {creditHistory.length > 0 && (
             <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '2px 8px', borderRadius: 100 }}>{creditHistory.length}</span>
           )}
-        </h3>
+        </div>
         {historyLoading ? (
-          <div style={{ textAlign: 'center', padding: 20, color: '#94a3b8', fontSize: 13 }}>Chargement…</div>
+          <div style={{ textAlign: 'center', padding: 32, color: '#94a3b8', fontSize: 14 }}>Chargement…</div>
         ) : creditHistory.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 20, color: '#94a3b8', fontSize: 13, fontStyle: 'italic' }}>Aucun historique de crédits</div>
+          <div style={{ textAlign: 'center', padding: 32, color: '#94a3b8', fontSize: 14, fontStyle: 'italic' }}>Aucun historique de crédits</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          <div>
             {creditHistory.map((h, i) => (
-              <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderBottom: i < creditHistory.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: h.amount > 0 ? '#f0fdf4' : '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 24px', borderBottom: i < creditHistory.length - 1 ? '1px solid #f8fafc' : 'none' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: h.amount > 0 ? '#f0fdf4' : h.source.includes('promo') ? '#f5f3ff' : '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   {h.amount > 0
-                    ? <CreditCard size={14} style={{ color: '#16a34a' }} />
-                    : <CheckCircle size={14} style={{ color: '#7c3aed' }} />
+                    ? <CreditCard size={16} style={{ color: '#16a34a' }} />
+                    : h.source.includes('promo') ? <CheckCircle size={16} style={{ color: '#7c3aed' }} />
+                    : <CheckCircle size={16} style={{ color: '#2a7d9c' }} />
                   }
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{h.description}</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{h.description}</div>
+                  <div style={{ fontSize: 12, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
                     <span>{h.created_at}</span>
                     <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#cbd5e1' }} />
-                    <span style={{ fontWeight: 600, color: h.source.includes('🎁') ? '#7c3aed' : '#2a7d9c' }}>{h.source}</span>
+                    <span style={{ fontWeight: 700, color: h.source.includes('🎁') ? '#7c3aed' : h.source.includes('promo') ? '#7c3aed' : '#2a7d9c' }}>{h.source}</span>
                   </div>
                 </div>
-                {h.amount > 0 && <span style={{ fontSize: 12, fontWeight: 700, color: '#16a34a' }}>{h.amount.toFixed(2)}€</span>}
+                {h.amount > 0 && <span style={{ fontSize: 14, fontWeight: 800, color: '#16a34a' }}>{h.amount.toFixed(2)}€</span>}
               </div>
             ))}
           </div>
