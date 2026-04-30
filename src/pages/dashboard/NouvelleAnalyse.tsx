@@ -122,6 +122,13 @@ export default function NouvelleAnalyse() {
   const [profil, setProfil] = useState<'rp' | 'invest' | null>(null);
   const [animatedProgress, setAnimatedProgress] = useState(0);
   const animRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isMountedRef = useRef(true);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
 
   // ─── Détection rôle utilisateur (pro / particulier) ────────
   const [userRole, setUserRole] = useState<'pro' | 'particulier' | null>(null);
@@ -487,17 +494,21 @@ export default function NouvelleAnalyse() {
       setStep('upload'); resetUpload(); setIsAnalysing(false); return;
     }
     const result = await lancerAnalyseEdge({ files, mode: type, analyseId, profil: profil || 'rp', typeBienDeclare, onProgress: handleProgress });
+    if (!isMountedRef.current) return; // User navigated away — don't redirect, the dashboard polling will pick it up
     if (!result.success) {
       await refundCredit(creditType);
       await markAnalyseFailed(analyseId);
+      if (!isMountedRef.current) return;
       setStep('upload'); resetUpload();
       setAnalyseError({ message: result.errorMessage || "Une erreur est survenue. Votre crédit a été remboursé automatiquement.", creditType });
       setIsAnalysing(false);
       console.error('[Verimo] Erreur analyse:', result.errorMessage);
       return;
     }
+    if (!isMountedRef.current) return; // User navigated away
     setProgress(100); setProgressMsg('Rapport prêt !');
     await new Promise(r => setTimeout(r, 1500)); // laisser la barre atteindre 100%
+    if (!isMountedRef.current) return; // User navigated away during the 1.5s wait
     window.location.href = `/rapport?id=${analyseId}`;
   };
 
