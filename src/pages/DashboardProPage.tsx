@@ -1930,12 +1930,14 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
 
       {/* ═══ SECTION 2 : Choisir / Changer de plan ═══ */}
       <div style={{ marginBottom: 28 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>
-          {isSubscribed ? 'Changer de plan' : 'Choisissez votre plan'}
-        </h2>
-        <p style={{ fontSize: 14, color: '#64748b', marginBottom: 20 }}>
-          {isSubscribed ? 'Vous pouvez upgrader ou changer de formule à tout moment.' : 'Sélectionnez la formule adaptée à votre activité.'}
-        </p>
+        <div style={{ marginBottom: 22, padding: '20px 24px', borderRadius: 14, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', border: '1px solid #d0e8f0' }}>
+          <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d', marginBottom: 6, letterSpacing: '-0.02em' }}>
+            {isSubscribed ? 'Changer de plan' : 'Choisissez votre plan'}
+          </h2>
+          <p style={{ fontSize: 15, color: '#64748b', margin: 0 }}>
+            {isSubscribed ? 'Vous pouvez upgrader ou changer de formule à tout moment.' : 'Sélectionnez la formule adaptée à votre activité.'}
+          </p>
+        </div>
         <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
           {plans.map(plan => {
             const isActive = subscription?.plan === plan.id && subscription?.status === 'active';
@@ -1989,9 +1991,9 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
       </div>
 
       {/* ═══ SECTION 3 : Achats unitaires + Code promo (une seule ligne) ═══ */}
-      <div style={{ marginBottom: 12 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Crédits supplémentaires</h2>
-        <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
+      <div style={{ marginBottom: 16, padding: '20px 24px', borderRadius: 14, background: isSubscribed ? 'linear-gradient(135deg, #f0fdf4, #ecfdf5)' : 'linear-gradient(135deg, #fffbeb, #fef3c7)', border: isSubscribed ? '1px solid #bbf7d0' : '1px solid #fde68a' }}>
+        <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d', marginBottom: 6, letterSpacing: '-0.02em' }}>Crédits supplémentaires</h2>
+        <p style={{ fontSize: 15, color: '#64748b', margin: 0 }}>
           {isSubscribed
             ? 'Besoin de plus d\'analyses ? Achetez à l\'unité ou utilisez un code promo.'
             : 'Les achats unitaires à tarif préférentiel sont réservés aux abonnés Verimo Pro.'}
@@ -1999,7 +2001,7 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
       </div>
       <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 28 }}>
         {/* Analyse complète */}
-        <div style={{ padding: '20px', borderRadius: 16, background: '#fff', border: '1.5px solid #edf2f7', textAlign: 'center', opacity: isSubscribed ? 1 : 0.6 }}>
+        <div style={{ padding: '20px', borderRadius: 16, background: '#fff', border: '1.5px solid #edf2f7', textAlign: 'center', opacity: isSubscribed ? 1 : 0.55 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 8 }}>ACHAT UNITAIRE</div>
           <div style={{ fontSize: 24, fontWeight: 800, color: '#0f172a' }}>9,90€ <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>HT</span></div>
           <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, marginBottom: 14 }}>Analyse complète</div>
@@ -2008,10 +2010,10 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
               cursor: isSubscribed ? (loading === 'unit:complete' ? 'wait' : 'pointer') : 'not-allowed', opacity: loading === 'unit:complete' ? 0.6 : 1 }}>
             {loading === 'unit:complete' ? 'Redirection…' : 'Acheter'}
           </button>
-          {!isSubscribed && <div style={{ fontSize: 10, color: '#d97706', marginTop: 8, lineHeight: 1.4 }}>Souscrivez un abonnement pour débloquer ce tarif</div>}
+          {!isSubscribed && <div style={{ fontSize: 12, color: '#d97706', marginTop: 10, lineHeight: 1.4, fontWeight: 600 }}>Abonnement requis</div>}
         </div>
         {/* Analyse simple */}
-        <div style={{ padding: '20px', borderRadius: 16, background: '#fff', border: '1.5px solid #edf2f7', textAlign: 'center', opacity: isSubscribed ? 1 : 0.6 }}>
+        <div style={{ padding: '20px', borderRadius: 16, background: '#fff', border: '1.5px solid #edf2f7', textAlign: 'center', opacity: isSubscribed ? 1 : 0.55 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 8 }}>ACHAT UNITAIRE</div>
           <div style={{ fontSize: 24, fontWeight: 800, color: '#0f172a' }}>2,90€ <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>HT</span></div>
           <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, marginBottom: 14 }}>Analyse simple</div>
@@ -2020,21 +2022,21 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
               cursor: isSubscribed ? (loading === 'unit:document' ? 'wait' : 'pointer') : 'not-allowed', opacity: loading === 'unit:document' ? 0.6 : 1 }}>
             {loading === 'unit:document' ? 'Redirection…' : 'Acheter'}
           </button>
-          {!isSubscribed && <div style={{ fontSize: 10, color: '#d97706', marginTop: 8, lineHeight: 1.4 }}>Souscrivez un abonnement pour débloquer ce tarif</div>}
+          {!isSubscribed && <div style={{ fontSize: 12, color: '#d97706', marginTop: 10, lineHeight: 1.4, fontWeight: 600 }}>Abonnement requis</div>}
         </div>
-        {/* Code promo */}
-        <div style={{ padding: '20px', borderRadius: 16, background: '#fff', border: '1.5px solid #edf2f7', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 8, textAlign: 'center' }}>CODE PROMO</div>
+        {/* Code promo — toujours visible et actif */}
+        <div style={{ padding: '20px', borderRadius: 16, background: 'linear-gradient(135deg, #f5f3ff, #ede9fe)', border: '2px solid #c4b5fd', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <div style={{ fontSize: 11, fontWeight: 800, color: '#7c3aed', letterSpacing: '0.08em', marginBottom: 10, textAlign: 'center' }}>CODE PROMO</div>
           <input type="text" value={promoCode} onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoError(''); setPromoSuccess(''); }}
-            placeholder="Votre code" style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 14, fontWeight: 700, letterSpacing: '0.06em', outline: 'none', textAlign: 'center', marginBottom: 10, boxSizing: 'border-box' }} />
+            placeholder="Votre code" style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '2px solid #ddd6fe', fontSize: 14, fontWeight: 700, letterSpacing: '0.06em', outline: 'none', textAlign: 'center', marginBottom: 10, boxSizing: 'border-box', background: '#fff' }} />
           <button disabled={promoLoading || !promoCode.trim()} onClick={handlePromoApply}
             style={{ width: '100%', padding: '10px', borderRadius: 10, border: 'none',
-              background: promoCode.trim() ? 'linear-gradient(135deg,#7c3aed,#5b21b6)' : '#cbd5e1', color: '#fff', fontSize: 13, fontWeight: 700,
-              cursor: promoCode.trim() ? (promoLoading ? 'wait' : 'pointer') : 'not-allowed', opacity: promoLoading ? 0.6 : 1 }}>
+              background: promoCode.trim() ? 'linear-gradient(135deg,#7c3aed,#5b21b6)' : '#a78bfa', color: '#fff', fontSize: 13, fontWeight: 700,
+              cursor: promoCode.trim() ? (promoLoading ? 'wait' : 'pointer') : 'default', opacity: promoLoading ? 0.6 : 1 }}>
             {promoLoading ? 'Vérification…' : 'Appliquer'}
           </button>
-          {promoError && <div style={{ marginTop: 8, fontSize: 11, color: '#dc2626', fontWeight: 600, textAlign: 'center' }}>{promoError}</div>}
-          {promoSuccess && <div style={{ marginTop: 8, fontSize: 11, color: '#16a34a', fontWeight: 600, textAlign: 'center' }}>{promoSuccess}</div>}
+          {promoError && <div style={{ marginTop: 8, fontSize: 12, color: '#dc2626', fontWeight: 600, textAlign: 'center' }}>{promoError}</div>}
+          {promoSuccess && <div style={{ marginTop: 8, fontSize: 12, color: '#16a34a', fontWeight: 600, textAlign: 'center' }}>{promoSuccess}</div>}
         </div>
       </div>
 
