@@ -1989,6 +1989,14 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
       </div>
 
       {/* ═══ SECTION 3 : Achats unitaires + Code promo (une seule ligne) ═══ */}
+      <div style={{ marginBottom: 12 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Crédits supplémentaires</h2>
+        <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
+          {isSubscribed
+            ? 'Besoin de plus d\'analyses ? Achetez à l\'unité ou utilisez un code promo.'
+            : 'Les achats unitaires à tarif préférentiel sont réservés aux abonnés Verimo Pro.'}
+        </p>
+      </div>
       <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginBottom: 28 }}>
         {/* Analyse complète */}
         <div style={{ padding: '20px', borderRadius: 16, background: '#fff', border: '1.5px solid #edf2f7', textAlign: 'center', opacity: isSubscribed ? 1 : 0.6 }}>
@@ -2000,7 +2008,7 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
               cursor: isSubscribed ? (loading === 'unit:complete' ? 'wait' : 'pointer') : 'not-allowed', opacity: loading === 'unit:complete' ? 0.6 : 1 }}>
             {loading === 'unit:complete' ? 'Redirection…' : 'Acheter'}
           </button>
-          {!isSubscribed && <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 6 }}>Abonnement requis</div>}
+          {!isSubscribed && <div style={{ fontSize: 10, color: '#d97706', marginTop: 8, lineHeight: 1.4 }}>Souscrivez un abonnement pour débloquer ce tarif</div>}
         </div>
         {/* Analyse simple */}
         <div style={{ padding: '20px', borderRadius: 16, background: '#fff', border: '1.5px solid #edf2f7', textAlign: 'center', opacity: isSubscribed ? 1 : 0.6 }}>
@@ -2012,7 +2020,7 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
               cursor: isSubscribed ? (loading === 'unit:document' ? 'wait' : 'pointer') : 'not-allowed', opacity: loading === 'unit:document' ? 0.6 : 1 }}>
             {loading === 'unit:document' ? 'Redirection…' : 'Acheter'}
           </button>
-          {!isSubscribed && <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 6 }}>Abonnement requis</div>}
+          {!isSubscribed && <div style={{ fontSize: 10, color: '#d97706', marginTop: 8, lineHeight: 1.4 }}>Souscrivez un abonnement pour débloquer ce tarif</div>}
         </div>
         {/* Code promo */}
         <div style={{ padding: '20px', borderRadius: 16, background: '#fff', border: '1.5px solid #edf2f7', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
