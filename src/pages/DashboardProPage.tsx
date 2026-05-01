@@ -5,7 +5,7 @@ import {
   LayoutDashboard, FolderOpen, Plus, GitCompare, User, LifeBuoy,
   LogOut, Menu, X, ChevronDown, CreditCard, BookOpen,
   Send, Search, Clock, Bell,
-  CheckCircle, Upload, Mail,
+  CheckCircle, Upload, Mail, Download, XCircle,
   ChevronRight, ArrowRight,
   MapPin, Trash2, AlertTriangle, FileText, Pencil,
   UserPlus, UserCheck, Folder,
@@ -52,6 +52,9 @@ type ProSubscription = {
   credits_simple_used: number;
   current_period_start?: string;
   current_period_end?: string;
+  cancel_at_period_end?: boolean;
+  canceled_at?: string;
+  cancellation_reason?: string;
 };
 
 type ProCredits = {
@@ -1892,8 +1895,173 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
     }
   }
 
+  // ── Cancel flow ──
+  const [cancelStep, setCancelStep] = useState<0 | 1 | 2 | 3>(0); // 0=hidden, 1=confirm, 2=reason, 3=done
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelLoading, setCancelLoading] = useState(false);
+
+  const CANCEL_REASONS = [
+    "Je n'utilise pas assez mes crédits chaque mois",
+    "C'est trop cher pour mon usage",
+    "Il manque des fonctionnalités dont j'ai besoin",
+    "Je change d'outil ou d'organisation",
+    "Le service ne correspond pas à mes attentes",
+    "Je ne souhaite pas répondre",
+  ];
+
+  async function handleCancelSubscription() {
+    setCancelLoading(true);
+    setErrorMsg('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Vous devez être connecté');
+
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://veszrayromldfgetqaxb.supabase.co'}/functions/v1/pro-checkout-create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+        body: JSON.stringify({ mode: 'cancel', reason: cancelReason }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur lors de la résiliation');
+
+      setCancelStep(3);
+    } catch (e: any) {
+      setErrorMsg(e.message || 'Une erreur est survenue');
+      setCancelStep(0);
+    }
+    setCancelLoading(false);
+  }
+
+  // ── Invoices ──
+  type InvoiceItem = { id: string; date: string; description: string; amount: string; pdf_url: string | null; type: 'subscription' | 'unit' | 'promo' | 'grant' };
+  const [invoices, setInvoices] = useState<InvoiceItem[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setInvoicesLoading(false); return; }
+
+      try {
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://veszrayromldfgetqaxb.supabase.co'}/functions/v1/pro-checkout-create`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+          body: JSON.stringify({ mode: 'list_invoices' }),
+        });
+        const data = await res.json();
+        if (data.invoices) setInvoices(data.invoices);
+      } catch { /* silent */ }
+      setInvoicesLoading(false);
+    })();
+  }, [successPopup, cancelStep]);
+
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+
+      {/* ── Cancel Step 1: Popup émotionnel ── */}
+      <AnimatePresence>
+        {cancelStep === 1 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', padding: 16 }}
+            onClick={() => setCancelStep(0)}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              style={{ background: '#fff', borderRadius: 24, padding: '36px 32px', maxWidth: 460, width: '100%', textAlign: 'center', boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
+              <div style={{ fontSize: 56, marginBottom: 16 }}>😢</div>
+              <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 10, letterSpacing: '-0.02em' }}>
+                Vous souhaitez nous quitter ?
+              </h2>
+              <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, marginBottom: 8 }}>
+                Votre abonnement reste actif jusqu'au <strong style={{ color: '#0f172a' }}>{subscription?.current_period_end ? fmtDate(subscription.current_period_end) : '—'}</strong>.
+              </p>
+              <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.6, marginBottom: 28 }}>
+                Après cette date, vous perdrez l'accès à vos crédits d'abonnement. Vos crédits unitaires achetés resteront disponibles.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <button onClick={() => setCancelStep(0)}
+                  style={{ padding: '14px 28px', borderRadius: 14, background: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff', fontSize: 15, fontWeight: 800, border: 'none', cursor: 'pointer', boxShadow: '0 8px 24px rgba(22,163,74,0.25)' }}>
+                  Je reste 💪
+                </button>
+                <button onClick={() => setCancelStep(2)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#94a3b8', padding: '8px' }}>
+                  Continuer la résiliation
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Cancel Step 2: Raison de départ ── */}
+      <AnimatePresence>
+        {cancelStep === 2 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', padding: 16 }}
+            onClick={() => setCancelStep(0)}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              style={{ background: '#fff', borderRadius: 24, padding: '36px 32px', maxWidth: 480, width: '100%', textAlign: 'center', boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
+              <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: '2px solid #fed7aa' }}>
+                <FileText size={26} style={{ color: '#ea580c' }} />
+              </div>
+              <h2 style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', marginBottom: 6 }}>Avant de partir, aidez-nous à nous améliorer</h2>
+              <p style={{ fontSize: 14, color: '#64748b', marginBottom: 22 }}>Pourriez-vous nous dire pourquoi vous résiliez ?</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24, textAlign: 'left' }}>
+                {CANCEL_REASONS.map(reason => (
+                  <label key={reason} onClick={() => setCancelReason(reason)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderRadius: 12,
+                      background: cancelReason === reason ? '#f0f7fb' : '#f8fafc',
+                      border: cancelReason === reason ? '2px solid #2a7d9c' : '1.5px solid #edf2f7',
+                      cursor: 'pointer', transition: 'all 0.15s' }}>
+                    <div style={{ width: 18, height: 18, borderRadius: '50%', border: cancelReason === reason ? '5px solid #2a7d9c' : '2px solid #cbd5e1', flexShrink: 0, background: '#fff' }} />
+                    <span style={{ fontSize: 13, fontWeight: cancelReason === reason ? 600 : 500, color: cancelReason === reason ? '#0f172a' : '#475569' }}>{reason}</span>
+                  </label>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => { setCancelStep(0); setCancelReason(''); }}
+                  style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 14, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>
+                  Annuler
+                </button>
+                <button disabled={!cancelReason || cancelLoading} onClick={handleCancelSubscription}
+                  style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: cancelReason ? '#dc2626' : '#e5e7eb', fontSize: 14, fontWeight: 700, color: '#fff',
+                    cursor: cancelReason ? (cancelLoading ? 'wait' : 'pointer') : 'default', opacity: cancelLoading ? 0.6 : 1 }}>
+                  {cancelLoading ? 'Résiliation…' : 'Confirmer la résiliation'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Cancel Step 3: Popup confirmation résiliation ── */}
+      <AnimatePresence>
+        {cancelStep === 3 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', padding: 16 }}
+            onClick={() => { setCancelStep(0); window.location.reload(); }}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              style={{ background: '#fff', borderRadius: 24, padding: '36px 32px', maxWidth: 440, width: '100%', textAlign: 'center', boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
+              <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', border: '3px solid #fed7aa' }}>
+                <XCircle size={36} style={{ color: '#ea580c' }} />
+              </div>
+              <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 8 }}>Abonnement résilié</h2>
+              <p style={{ fontSize: 15, color: '#64748b', lineHeight: 1.7, marginBottom: 12 }}>
+                Votre accès reste actif jusqu'au <strong style={{ color: '#0f172a' }}>{subscription?.current_period_end ? fmtDate(subscription.current_period_end) : '—'}</strong>.
+              </p>
+              <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.6, marginBottom: 28 }}>
+                Vous pouvez vous réabonner à tout moment depuis cette page.
+              </p>
+              <button onClick={() => { setCancelStep(0); window.location.reload(); }}
+                style={{ padding: '12px 28px', borderRadius: 12, background: '#0f172a', color: '#fff', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer' }}>
+                Fermer
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Message d'erreur global */}
       {errorMsg && (
@@ -1964,8 +2132,13 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
                   <span style={{ position: 'absolute', top: -10, right: 16, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 12px', borderRadius: 100 }}>Recommandé</span>
                 )}
                 {isActive && (
-                  <span style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: '#16a34a', color: '#fff', fontSize: 11, fontWeight: 700, padding: '4px 16px', borderRadius: 100, whiteSpace: 'nowrap' }}>
-                    Votre plan actuel {subscription?.current_period_end ? `· Renouvellement ${fmtDate(subscription.current_period_end)}` : ''}
+                  <span style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)',
+                    background: subscription?.cancel_at_period_end ? '#ea580c' : '#16a34a',
+                    color: '#fff', fontSize: 11, fontWeight: 700, padding: '4px 16px', borderRadius: 100, whiteSpace: 'nowrap' }}>
+                    {subscription?.cancel_at_period_end
+                      ? `Actif jusqu'au ${subscription?.current_period_end ? fmtDate(subscription.current_period_end) : '—'}`
+                      : `Votre plan actuel ${subscription?.current_period_end ? `· Renouvellement ${fmtDate(subscription.current_period_end)}` : ''}`
+                    }
                   </span>
                 )}
                 <h3 style={{ fontSize: 19, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>{plan.name}</h3>
@@ -2068,44 +2241,79 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
         </Link>
       </div>
 
-      {/* ═══ SECTION 4 : Historique des crédits ═══ */}
-      <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
+      {/* ═══ SECTION 4 : Mes factures ═══ */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', marginBottom: 28 }}>
         <div style={{ padding: '18px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Clock size={16} style={{ color: '#2a7d9c' }} />
-          <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>Historique des crédits</h3>
-          {creditHistory.length > 0 && (
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '2px 8px', borderRadius: 100 }}>{creditHistory.length}</span>
+          <FileText size={16} style={{ color: '#2a7d9c' }} />
+          <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>Mes factures</h3>
+          {invoices.length > 0 && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '2px 8px', borderRadius: 100 }}>{invoices.length}</span>
           )}
         </div>
-        {historyLoading ? (
+        {invoicesLoading ? (
           <div style={{ textAlign: 'center', padding: 32, color: '#94a3b8', fontSize: 14 }}>Chargement…</div>
-        ) : creditHistory.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 32, color: '#94a3b8', fontSize: 14, fontStyle: 'italic' }}>Aucun historique de crédits</div>
+        ) : invoices.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 32, color: '#94a3b8', fontSize: 14, fontStyle: 'italic' }}>Aucune facture</div>
         ) : (
-          <div>
-            {creditHistory.map((h, i) => (
-              <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 24px', borderBottom: i < creditHistory.length - 1 ? '1px solid #f8fafc' : 'none' }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: h.amount > 0 ? '#f0fdf4' : h.source.includes('promo') ? '#f5f3ff' : '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  {h.amount > 0
-                    ? <CreditCard size={16} style={{ color: '#16a34a' }} />
-                    : h.source.includes('promo') ? <CheckCircle size={16} style={{ color: '#7c3aed' }} />
-                    : <CheckCircle size={16} style={{ color: '#2a7d9c' }} />
-                  }
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{h.description}</div>
-                  <div style={{ fontSize: 12, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                    <span>{h.created_at}</span>
-                    <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#cbd5e1' }} />
-                    <span style={{ fontWeight: 700, color: h.source.includes('🎁') ? '#7c3aed' : h.source.includes('promo') ? '#7c3aed' : '#2a7d9c' }}>{h.source}</span>
-                  </div>
-                </div>
-                {h.amount > 0 && <span style={{ fontSize: 14, fontWeight: 800, color: '#16a34a' }}>{h.amount.toFixed(2)}€</span>}
-              </div>
-            ))}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 700, color: '#94a3b8', fontSize: 11, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Date</th>
+                  <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 700, color: '#94a3b8', fontSize: 11, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Description</th>
+                  <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 700, color: '#94a3b8', fontSize: 11, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Type</th>
+                  <th style={{ padding: '10px 16px', textAlign: 'right', fontWeight: 700, color: '#94a3b8', fontSize: 11, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Montant</th>
+                  <th style={{ padding: '10px 16px', textAlign: 'center', fontWeight: 700, color: '#94a3b8', fontSize: 11, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Facture</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.map((inv, i) => (
+                  <tr key={inv.id} style={{ borderBottom: i < invoices.length - 1 ? '1px solid #f8fafc' : 'none' }}>
+                    <td style={{ padding: '12px 16px', color: '#64748b', whiteSpace: 'nowrap' as const }}>{inv.date}</td>
+                    <td style={{ padding: '12px 16px', color: '#0f172a', fontWeight: 600 }}>{inv.description}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100,
+                        background: inv.type === 'subscription' ? '#f0f7fb' : inv.type === 'unit' ? '#f0fdf4' : inv.type === 'promo' ? '#f5f3ff' : '#f0f7fb',
+                        color: inv.type === 'subscription' ? '#2a7d9c' : inv.type === 'unit' ? '#16a34a' : inv.type === 'promo' ? '#7c3aed' : '#2a7d9c',
+                      }}>
+                        {inv.type === 'subscription' ? 'Abonnement' : inv.type === 'unit' ? 'Achat unitaire' : inv.type === 'promo' ? 'Code promo' : 'Crédits offerts'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 800, color: inv.amount === '0,00€' ? '#94a3b8' : '#16a34a' }}>{inv.amount}</td>
+                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                      {inv.pdf_url ? (
+                        <a href={inv.pdf_url} target="_blank" rel="noopener noreferrer"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 12px', borderRadius: 8, background: '#f0f7fb', color: '#2a7d9c', textDecoration: 'none', fontSize: 12, fontWeight: 700, border: '1px solid #d0e8f0' }}>
+                          <Download size={12} /> PDF
+                        </a>
+                      ) : (
+                        <span style={{ fontSize: 12, color: '#cbd5e1' }}>—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
+
+      {/* ═══ Bouton annulation ═══ */}
+      {isSubscribed && !subscription?.cancel_at_period_end && (
+        <div style={{ textAlign: 'center', marginBottom: 20 }}>
+          <button onClick={() => setCancelStep(1)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#dc2626', padding: '8px 16px', opacity: 0.7 }}
+            onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+            onMouseLeave={e => (e.currentTarget.style.opacity = '0.7')}>
+            Annuler mon abonnement
+          </button>
+        </div>
+      )}
+      {subscription?.cancel_at_period_end && (
+        <div style={{ textAlign: 'center', marginBottom: 20, padding: '14px 18px', borderRadius: 12, background: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412', fontSize: 13, fontWeight: 600 }}>
+          ⚠️ Votre abonnement prendra fin le {subscription.current_period_end ? fmtDate(subscription.current_period_end) : '—'}. Vous pouvez vous réabonner à tout moment.
+        </div>
+      )}
     </div>
   );
 }
