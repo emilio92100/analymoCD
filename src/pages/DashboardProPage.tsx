@@ -201,8 +201,10 @@ function SidebarPro({ subscription, proCredits, onClose }: { subscription: ProSu
           ))}
         </div>
         {subscription ? (
-          <div style={{ marginTop: 7, fontSize: 10, color: 'rgba(255,255,255,0.35)', textAlign: 'center' }}>
-            Plan {subscription.plan === 'decouverte' ? 'Découverte' : subscription.plan === 'starter' ? 'Starter' : subscription.plan === 'power' ? 'Power' : subscription.plan} · Renouvellement {subscription.current_period_end ? fmtDate(subscription.current_period_end) : '—'}
+          <div style={{ marginTop: 8, fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.85)', textAlign: 'center', lineHeight: 1.4 }}>
+            Plan {subscription.plan === 'decouverte' ? 'Découverte' : subscription.plan === 'starter' ? 'Starter' : subscription.plan === 'power' ? 'Power' : subscription.plan}
+            <br />
+            <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.65)' }}>Renouvellement {subscription.current_period_end ? fmtDate(subscription.current_period_end) : '—'}</span>
           </div>
         ) : (
           <Link to="/dashboard/abonnement" onClick={onClose} style={{ display: 'block', marginTop: 7, fontSize: 11, fontWeight: 700, color: ACCENT, textDecoration: 'none', textAlign: 'center' }}>
@@ -1937,39 +1939,7 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
         )}
       </AnimatePresence>
 
-      {/* ═══ SECTION 1 : Abonnement actif ═══ */}
-      {isSubscribed && subscription && (
-        <div style={{ marginBottom: 28, padding: '22px 26px', borderRadius: 18, background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: -30, right: -30, width: 140, height: 140, borderRadius: '50%', background: 'rgba(42,125,156,0.15)', pointerEvents: 'none' }} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-            <span style={{ fontSize: 18, fontWeight: 800, color: '#fff' }}>
-              Plan {subscription.plan === 'decouverte' ? 'Découverte' : subscription.plan === 'starter' ? 'Starter' : subscription.plan === 'power' ? 'Power' : subscription.plan}
-            </span>
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 10px', borderRadius: 100 }}>Actif</span>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-            <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#fff' }}>
-                {Math.max(0, (subscription.credits_complete_total || 0) - (subscription.credits_complete_used || 0))}
-                <span style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>/ {subscription.credits_complete_total || 0}</span>
-              </div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>Crédits complètes</div>
-            </div>
-            <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#fff' }}>
-                {Math.max(0, (subscription.credits_simple_total || 0) - (subscription.credits_simple_used || 0))}
-                <span style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginLeft: 4 }}>/ {subscription.credits_simple_total || 0}</span>
-              </div>
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>Crédits simples</div>
-            </div>
-          </div>
-          {subscription.current_period_end && (
-            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>Renouvellement le {fmtDate(subscription.current_period_end)}</div>
-          )}
-        </div>
-      )}
-
-      {/* ═══ SECTION 2 : Choisir / Changer de plan ═══ */}
+      {/* ═══ SECTION 1 : Choisir / Changer de plan ═══ */}
       <div style={{ marginBottom: 28, borderRadius: 20, border: '1.5px solid #d0e8f0', overflow: 'hidden', background: '#fff' }}>
         <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderBottom: '1px solid #d0e8f0' }}>
           <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d', marginBottom: 4, letterSpacing: '-0.02em' }}>
@@ -1994,7 +1964,9 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
                   <span style={{ position: 'absolute', top: -10, right: 16, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 12px', borderRadius: 100 }}>Recommandé</span>
                 )}
                 {isActive && (
-                  <span style={{ position: 'absolute', top: -10, right: 16, background: '#16a34a', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 12px', borderRadius: 100 }}>Votre plan</span>
+                  <span style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: '#16a34a', color: '#fff', fontSize: 11, fontWeight: 700, padding: '4px 16px', borderRadius: 100, whiteSpace: 'nowrap' }}>
+                    Votre plan actuel {subscription?.current_period_end ? `· Renouvellement ${fmtDate(subscription.current_period_end)}` : ''}
+                  </span>
                 )}
                 <h3 style={{ fontSize: 19, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>{plan.name}</h3>
                 <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 14px 0', minHeight: 16 }}>{plan.tagline}</p>
@@ -2033,7 +2005,7 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
         </div>
       </div>
 
-      {/* ═══ SECTION 3 : Achats unitaires + Code promo (une seule ligne) ═══ */}
+      {/* ═══ SECTION 2 : Achats unitaires + Code promo (une seule ligne) ═══ */}
       <div style={{ marginBottom: 28, borderRadius: 20, border: isSubscribed ? '1.5px solid #bbf7d0' : '1.5px solid #fde68a', overflow: 'hidden', background: '#fff' }}>
         <div style={{ padding: '20px 24px', background: isSubscribed ? 'linear-gradient(135deg, #f0fdf4, #ecfdf5)' : 'linear-gradient(135deg, #fffbeb, #fef3c7)', borderBottom: isSubscribed ? '1px solid #bbf7d0' : '1px solid #fde68a' }}>
           <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d', marginBottom: 4, letterSpacing: '-0.02em' }}>Crédits supplémentaires</h2>
@@ -2087,7 +2059,7 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
       </div>
       </div>
 
-      {/* ═══ SECTION 4 : Agences ═══ */}
+      {/* ═══ SECTION 3 : Agences ═══ */}
       <div style={{ background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderRadius: 16, padding: '22px 26px', border: '1px solid #d0e8f0', textAlign: 'center', marginBottom: 28 }}>
         <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f2d3d', marginBottom: 6 }}>Volumes importants ou besoins spécifiques ?</h3>
         <p style={{ fontSize: 14, color: '#64748b', marginBottom: 14 }}>Agences, cabinets, équipes : contactez-nous pour une offre sur mesure.</p>
@@ -2096,7 +2068,7 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
         </Link>
       </div>
 
-      {/* ═══ SECTION 5 : Historique des crédits ═══ */}
+      {/* ═══ SECTION 4 : Historique des crédits ═══ */}
       <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
         <div style={{ padding: '18px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 10 }}>
           <Clock size={16} style={{ color: '#2a7d9c' }} />
