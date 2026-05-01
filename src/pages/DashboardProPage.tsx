@@ -1736,67 +1736,24 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
       setPromoSuccess(`+${toAdd} crédit${toAdd > 1 ? 's' : ''} ${creditType === 'complete' ? 'Complète' : 'Simple'} ajouté${toAdd > 1 ? 's' : ''} !`);
       setPromoCode('');
 
-      // Rafraîchir l'historique
-      const { data: { user: u2 } } = await supabase.auth.getUser();
-      if (u2) {
-        const [{ data: purchases }, { data: grants }] = await Promise.all([
-          supabase.from('pro_unit_purchases').select('id, type, quantity, amount, purchased_at, created_at').eq('user_id', u2.id).order('created_at', { ascending: false }).limit(30),
-          supabase.from('credit_grants').select('id, credit_type, quantity, reason, created_at').eq('user_id', u2.id).order('created_at', { ascending: false }).limit(30),
-        ]);
-        const pItems: CreditHistoryItem[] = (purchases || []).filter((p: Record<string, unknown>) => (p.amount as number) > 0).map((p: Record<string, unknown>) => ({
-          id: `pu-${p.id}`, description: `${p.quantity} crédit${(p.quantity as number) > 1 ? 's' : ''} ${p.type === 'complete' ? 'Complète' : 'Simple'}`,
-          amount: p.amount as number, source: 'Achat unitaire',
-          created_at: new Date((p.purchased_at || p.created_at) as string).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
-          _ts: new Date((p.purchased_at || p.created_at) as string).getTime(),
-        }));
-        const gItems: CreditHistoryItem[] = (grants || []).map((g: Record<string, unknown>) => ({
-          id: `gr-${g.id}`, description: `+${g.quantity} crédit${(g.quantity as number) > 1 ? 's' : ''} ${g.credit_type === 'complete' ? 'Complète' : 'Simple'} offert${(g.quantity as number) > 1 ? 's' : ''}${g.reason ? ` — ${g.reason}` : ''}`,
-          amount: 0, source: (g.reason as string || '').includes('Code promo') ? 'Code promo' : 'Crédits offerts 🎁',
-          created_at: new Date(g.created_at as string).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
-          _ts: new Date(g.created_at as string).getTime(),
-        }));
-        setCreditHistory([...pItems, ...gItems].sort((a, b) => ((b as unknown as { _ts: number })._ts || 0) - ((a as unknown as { _ts: number })._ts || 0)));
-      }
+      // Rafraîchir les factures (le useEffect sur invoices se relance via setInvoicesLoading)
+      setInvoicesLoading(true);
+      try {
+        const { data: { session: s2 } } = await supabase.auth.getSession();
+        if (s2) {
+          const r2 = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://veszrayromldfgetqaxb.supabase.co'}/functions/v1/pro-checkout-create`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${s2.access_token}` },
+            body: JSON.stringify({ mode: 'list_invoices' }),
+          });
+          const d2 = await r2.json();
+          if (d2.invoices) setInvoices(d2.invoices);
+        }
+      } catch { /* silent */ }
+      setInvoicesLoading(false);
     } catch (e) { setPromoError((e as Error).message); }
     setPromoLoading(false);
   };
-
-  // Historique crédits
-  type CreditHistoryItem = { id: string; description: string; amount: number; source: string; created_at: string };
-  const [creditHistory, setCreditHistory] = useState<CreditHistoryItem[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setHistoryLoading(false); return; }
-      const [{ data: purchases }, { data: grants }] = await Promise.all([
-        supabase.from('pro_unit_purchases').select('id, type, quantity, amount, purchased_at, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(30),
-        supabase.from('credit_grants').select('id, credit_type, quantity, reason, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(30),
-      ]);
-      const purchaseItems: CreditHistoryItem[] = (purchases || [])
-        .filter((p: Record<string, unknown>) => (p.amount as number) > 0) // exclure les offerts (amount=0, déjà dans grants)
-        .map((p: Record<string, unknown>) => ({
-          id: `pu-${p.id}`,
-          description: `${p.quantity} crédit${(p.quantity as number) > 1 ? 's' : ''} ${p.type === 'complete' ? 'Complète' : 'Simple'}`,
-          amount: p.amount as number,
-          source: 'Achat unitaire',
-          created_at: new Date((p.purchased_at || p.created_at) as string).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
-          _ts: new Date((p.purchased_at || p.created_at) as string).getTime(),
-        }));
-      const grantItems: CreditHistoryItem[] = (grants || []).map((g: Record<string, unknown>) => ({
-        id: `gr-${g.id}`,
-        description: `+${g.quantity} crédit${(g.quantity as number) > 1 ? 's' : ''} ${g.credit_type === 'complete' ? 'Complète' : 'Simple'} offert${(g.quantity as number) > 1 ? 's' : ''}${g.reason ? ` — ${g.reason}` : ''}`,
-        amount: 0,
-        source: (g.reason as string || '').includes('Code promo') ? 'Code promo' : 'Crédits offerts 🎁',
-        created_at: new Date(g.created_at as string).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
-        _ts: new Date(g.created_at as string).getTime(),
-      }));
-      const all = [...purchaseItems, ...grantItems].sort((a, b) => ((b as unknown as { _ts: number })._ts || 0) - ((a as unknown as { _ts: number })._ts || 0));
-      setCreditHistory(all);
-      setHistoryLoading(false);
-    })();
-  }, []);
 
   const plans = [
     { id: 'decouverte', name: 'Découverte', price: '19,90', completes: 1, simples: 3, popular: false, tagline: 'Pour découvrir Verimo Pro' },
