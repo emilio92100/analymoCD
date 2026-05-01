@@ -1766,7 +1766,7 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
   const isSubscribed = subscription?.status === 'active';
 
   // Détecter le retour de Stripe Checkout (?checkout=success ou ?checkout=cancel)
-  const [successPopup, setSuccessPopup] = useState<'subscribe' | 'upgrade' | 'unit' | null>(null);
+  const [successPopup, setSuccessPopup] = useState<'subscribe' | 'upgrade' | 'unit' | 'reactivate' | null>(null);
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -1890,6 +1890,29 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
       setCancelStep(0);
     }
     setCancelLoading(false);
+  }
+
+  async function handleReactivate() {
+    setLoading('reactivate');
+    setErrorMsg('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Vous devez être connecté');
+
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://veszrayromldfgetqaxb.supabase.co'}/functions/v1/pro-checkout-create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+        body: JSON.stringify({ mode: 'reactivate' }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur lors de la réactivation');
+
+      setSuccessPopup('reactivate');
+    } catch (e: any) {
+      setErrorMsg(e.message || 'Une erreur est survenue');
+    }
+    setLoading(null);
   }
 
   // ── Invoices ──
@@ -2042,13 +2065,15 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
                 <CheckCircle size={36} style={{ color: '#16a34a' }} />
               </div>
               <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 8, letterSpacing: '-0.02em' }}>
-                {successPopup === 'subscribe' ? 'Abonnement activé !' : successPopup === 'upgrade' ? 'Plan mis à jour !' : 'Crédits ajoutés !'}
+                {successPopup === 'subscribe' ? 'Abonnement activé !' : successPopup === 'upgrade' ? 'Plan mis à jour !' : successPopup === 'reactivate' ? 'Abonnement réactivé !' : 'Crédits ajoutés !'}
               </h2>
               <p style={{ fontSize: 15, color: '#64748b', lineHeight: 1.7, marginBottom: 28 }}>
                 {successPopup === 'subscribe'
                   ? 'Votre abonnement Verimo Pro est maintenant actif. Vos crédits sont disponibles immédiatement.'
                   : successPopup === 'upgrade'
                   ? 'Votre plan a été mis à jour avec succès. Vos nouveaux crédits sont disponibles.'
+                  : successPopup === 'reactivate'
+                  ? 'Votre abonnement a été réactivé. Votre accès continue sans interruption.'
                   : 'Vos crédits supplémentaires ont été ajoutés à votre compte.'}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -2121,8 +2146,15 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
                 </div>
                 {isActive ? (
                   subscription?.cancel_at_period_end ? (
-                    <div style={{ padding: '11px', borderRadius: 11, background: '#fff7ed', border: '1px solid #fed7aa', textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#ea580c' }}>
-                      Fin d'abonnement le {subscription?.current_period_end ? fmtDate(subscription.current_period_end) : '—'}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <button onClick={handleReactivate} disabled={loading === 'reactivate'}
+                        style={{ width: '100%', padding: '11px', borderRadius: 11, background: 'linear-gradient(135deg, #16a34a, #15803d)', border: 'none', textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#fff',
+                          cursor: loading === 'reactivate' ? 'wait' : 'pointer', opacity: loading === 'reactivate' ? 0.6 : 1, boxShadow: '0 4px 12px rgba(22,163,74,0.2)' }}>
+                        {loading === 'reactivate' ? 'Réactivation…' : 'Réactiver mon abonnement'}
+                      </button>
+                      <div style={{ fontSize: 11, color: '#ea580c', textAlign: 'center', fontWeight: 600 }}>
+                        Fin prévue le {subscription?.current_period_end ? fmtDate(subscription.current_period_end) : '—'}
+                      </div>
                     </div>
                   ) : (
                     <button onClick={() => setCancelStep(1)}
@@ -2209,18 +2241,22 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
         </Link>
       </div>
 
-      {/* ═══ SECTION 4 : Mes factures ═══ */}
+      {/* ═══ SECTION 4 : Mes factures (paiements uniquement) ═══ */}
+      {(() => {
+        const paidInvoices = invoices.filter(inv => inv.type === 'subscription' || inv.type === 'unit');
+        const grantInvoices = invoices.filter(inv => inv.type === 'promo' || inv.type === 'grant');
+        return (<>
       <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', marginBottom: 28 }}>
         <div style={{ padding: '18px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 10 }}>
           <FileText size={16} style={{ color: '#2a7d9c' }} />
           <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>Mes factures</h3>
-          {invoices.length > 0 && (
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '2px 8px', borderRadius: 100 }}>{invoices.length}</span>
+          {paidInvoices.length > 0 && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '2px 8px', borderRadius: 100 }}>{paidInvoices.length}</span>
           )}
         </div>
         {invoicesLoading ? (
           <div style={{ textAlign: 'center', padding: 32, color: '#94a3b8', fontSize: 14 }}>Chargement…</div>
-        ) : invoices.length === 0 ? (
+        ) : paidInvoices.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 32, color: '#94a3b8', fontSize: 14, fontStyle: 'italic' }}>Aucune facture</div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -2235,19 +2271,19 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
                 </tr>
               </thead>
               <tbody>
-                {invoices.map((inv, i) => (
-                  <tr key={inv.id} style={{ borderBottom: i < invoices.length - 1 ? '1px solid #f8fafc' : 'none' }}>
+                {paidInvoices.map((inv, i) => (
+                  <tr key={inv.id} style={{ borderBottom: i < paidInvoices.length - 1 ? '1px solid #f8fafc' : 'none' }}>
                     <td style={{ padding: '12px 16px', color: '#64748b', whiteSpace: 'nowrap' as const }}>{inv.date}</td>
                     <td style={{ padding: '12px 16px', color: '#0f172a', fontWeight: 600 }}>{inv.description}</td>
                     <td style={{ padding: '12px 16px' }}>
                       <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100,
-                        background: inv.type === 'subscription' ? '#f0f7fb' : inv.type === 'unit' ? '#f0fdf4' : inv.type === 'promo' ? '#f5f3ff' : '#f0f7fb',
-                        color: inv.type === 'subscription' ? '#2a7d9c' : inv.type === 'unit' ? '#16a34a' : inv.type === 'promo' ? '#7c3aed' : '#2a7d9c',
+                        background: inv.type === 'subscription' ? '#f0f7fb' : '#f0fdf4',
+                        color: inv.type === 'subscription' ? '#2a7d9c' : '#16a34a',
                       }}>
-                        {inv.type === 'subscription' ? 'Abonnement' : inv.type === 'unit' ? 'Achat unitaire' : inv.type === 'promo' ? 'Code promo' : 'Crédits offerts'}
+                        {inv.type === 'subscription' ? 'Abonnement' : 'Achat unitaire'}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 800, color: inv.amount === '0,00€' ? '#94a3b8' : '#16a34a' }}>{inv.amount}</td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 800, color: '#16a34a' }}>{inv.amount}</td>
                     <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                       {inv.pdf_url ? (
                         <a href={inv.pdf_url} target="_blank" rel="noopener noreferrer"
@@ -2265,6 +2301,36 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
           </div>
         )}
       </div>
+
+      {/* ═══ SECTION 5 : Crédits offerts ═══ */}
+      {grantInvoices.length > 0 && (
+        <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', marginBottom: 28 }}>
+          <div style={{ padding: '18px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <CheckCircle size={16} style={{ color: '#7c3aed' }} />
+            <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>Crédits offerts</h3>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#7c3aed', background: '#f5f3ff', padding: '2px 8px', borderRadius: 100 }}>{grantInvoices.length}</span>
+          </div>
+          <div>
+            {grantInvoices.map((g, i) => (
+              <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 24px', borderBottom: i < grantInvoices.length - 1 ? '1px solid #f8fafc' : 'none' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: g.type === 'promo' ? '#f5f3ff' : '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <CheckCircle size={16} style={{ color: g.type === 'promo' ? '#7c3aed' : '#2a7d9c' }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>{g.description}</div>
+                  <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>{g.date}</span>
+                    <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#cbd5e1' }} />
+                    <span style={{ fontWeight: 700, color: '#7c3aed' }}>{g.type === 'promo' ? 'Code promo' : 'Crédits offerts 🎁'}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      </>);
+      })()}
 
     </div>
   );
