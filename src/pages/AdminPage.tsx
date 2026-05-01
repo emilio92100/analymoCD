@@ -3023,7 +3023,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled 
   const [invitations, setInvitations] = useState<ProInvitation[]>([]);
   const [clientAnalyses, setClientAnalyses] = useState<{ id: string; title: string; address?: string; status: string; score?: number; created_at: string }[]>([]);
   const [clientShares, setClientShares] = useState<{ id: string; recipient_name: string; recipient_email: string; sent_at: string; opened_at?: string }[]>([]);
-  const [clientSubscription, setClientSubscription] = useState<{ plan: string; status: string; current_period_end?: string; credits_complete_total: number; credits_complete_used: number; credits_simple_total: number; credits_simple_used: number } | null>(null);
+  const [clientSubscription, setClientSubscription] = useState<{ plan: string; status: string; current_period_end?: string; cancel_at_period_end?: boolean; canceled_at?: string; cancellation_reason?: string; credits_complete_total: number; credits_complete_used: number; credits_simple_total: number; credits_simple_used: number } | null>(null);
   const [proClientCredits, setProClientCredits] = useState<{ total_complete: number; total_document: number } | null>(null);
   const [sendingInvite, setSendingInvite] = useState(false);
 
@@ -3090,7 +3090,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled 
     const { data: sh } = await supabase.from('report_shares').select('id, recipient_name, recipient_email, sent_at, opened_at').eq('sender_id', client.id).order('sent_at', { ascending: false }).limit(20);
     setClientShares((sh || []) as typeof clientShares);
     // Subscription
-    const { data: sub } = await supabase.from('pro_subscriptions').select('*').eq('user_id', client.id).eq('status', 'active').maybeSingle();
+    const { data: sub } = await supabase.from('pro_subscriptions').select('*').eq('user_id', client.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
     setClientSubscription(sub as typeof clientSubscription);
     // Crédits pro (agrège abo + unitaires + offerts)
     const { data: credits } = await supabase.rpc('get_pro_credits_balance', { p_user_id: client.id });
@@ -3225,13 +3225,32 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled 
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <span style={{ fontSize: 15, fontWeight: 800, color: '#0f2d3d' }}>Plan {clientSubscription.plan === 'decouverte' ? 'Découverte' : clientSubscription.plan === 'starter' ? 'Starter' : 'Power'}</span>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: 100, border: '1px solid #bbf7d0' }}>Actif</span>
+                    {clientSubscription.status === 'canceled' ? (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: '#dc2626', background: '#fef2f2', padding: '2px 8px', borderRadius: 100, border: '1px solid #fecaca' }}>Résilié</span>
+                    ) : clientSubscription.cancel_at_period_end ? (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: '#ea580c', background: '#fff7ed', padding: '2px 8px', borderRadius: 100, border: '1px solid #fed7aa' }}>Résiliation en cours</span>
+                    ) : (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: 100, border: '1px solid #bbf7d0' }}>Actif</span>
+                    )}
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
-                    <div style={{ color: '#64748b' }}>Complètes : <strong style={{ color: '#0f172a' }}>{clientSubscription.credits_complete_used}/{clientSubscription.credits_complete_total}</strong> utilisées</div>
-                    <div style={{ color: '#64748b' }}>Simples : <strong style={{ color: '#0f172a' }}>{clientSubscription.credits_simple_used}/{clientSubscription.credits_simple_total}</strong> utilisées</div>
-                  </div>
-                  {clientSubscription.current_period_end && (
+                  {clientSubscription.status !== 'canceled' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
+                      <div style={{ color: '#64748b' }}>Complètes : <strong style={{ color: '#0f172a' }}>{clientSubscription.credits_complete_used}/{clientSubscription.credits_complete_total}</strong> utilisées</div>
+                      <div style={{ color: '#64748b' }}>Simples : <strong style={{ color: '#0f172a' }}>{clientSubscription.credits_simple_used}/{clientSubscription.credits_simple_total}</strong> utilisées</div>
+                    </div>
+                  )}
+                  {clientSubscription.cancel_at_period_end && clientSubscription.current_period_end && (
+                    <div style={{ fontSize: 11, color: '#ea580c', marginTop: 6, fontWeight: 600 }}>⚠️ Actif jusqu'au {fmtDate(clientSubscription.current_period_end)}</div>
+                  )}
+                  {clientSubscription.status === 'canceled' && clientSubscription.canceled_at && (
+                    <div style={{ fontSize: 11, color: '#dc2626', marginTop: 6, fontWeight: 600 }}>Résilié le {fmtDate(clientSubscription.canceled_at)}</div>
+                  )}
+                  {clientSubscription.cancellation_reason && (
+                    <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 12, color: '#991b1b' }}>
+                      <span style={{ fontWeight: 700 }}>Raison :</span> {clientSubscription.cancellation_reason}
+                    </div>
+                  )}
+                  {!clientSubscription.cancel_at_period_end && clientSubscription.status !== 'canceled' && clientSubscription.current_period_end && (
                     <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Renouvellement le {fmtDate(clientSubscription.current_period_end)}</div>
                   )}
                 </div>
