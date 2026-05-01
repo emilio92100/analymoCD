@@ -207,7 +207,9 @@ function SidebarPro({ subscription, proCredits, onClose }: { subscription: ProSu
           <div style={{ marginTop: 8, fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.85)', textAlign: 'center', lineHeight: 1.4 }}>
             Plan {subscription.plan === 'decouverte' ? 'Découverte' : subscription.plan === 'starter' ? 'Starter' : subscription.plan === 'power' ? 'Power' : subscription.plan}
             <br />
-            <span style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.65)' }}>Renouvellement {subscription.current_period_end ? fmtDate(subscription.current_period_end) : '—'}</span>
+            <span style={{ fontSize: 10, fontWeight: 500, color: subscription.cancel_at_period_end ? '#fbbf24' : 'rgba(255,255,255,0.65)' }}>
+              {subscription.cancel_at_period_end ? 'Fin d\'abonnement' : 'Renouvellement'} {subscription.current_period_end ? fmtDate(subscription.current_period_end) : '—'}
+            </span>
           </div>
         ) : (
           <Link to="/dashboard/abonnement" onClick={onClose} style={{ display: 'block', marginTop: 7, fontSize: 11, fontWeight: 700, color: ACCENT, textDecoration: 'none', textAlign: 'center' }}>
@@ -2118,9 +2120,18 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
                   ))}
                 </div>
                 {isActive ? (
-                  <div style={{ padding: '11px', borderRadius: 11, background: '#f0fdf4', border: '1px solid #bbf7d0', textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#16a34a' }}>
-                    Plan actif
-                  </div>
+                  subscription?.cancel_at_period_end ? (
+                    <div style={{ padding: '11px', borderRadius: 11, background: '#fff7ed', border: '1px solid #fed7aa', textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#ea580c' }}>
+                      Fin d'abonnement le {subscription?.current_period_end ? fmtDate(subscription.current_period_end) : '—'}
+                    </div>
+                  ) : (
+                    <button onClick={() => setCancelStep(1)}
+                      style={{ width: '100%', padding: '11px', borderRadius: 11, background: '#fff', border: '1.5px solid #fecaca', textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#dc2626', cursor: 'pointer' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}>
+                      Annuler mon abonnement
+                    </button>
+                  )
                 ) : (
                   <button disabled={btnLoading} onClick={() => handleSubscribe(plan.id)}
                     style={{ width: '100%', padding: '12px', borderRadius: 11, border: 'none', cursor: btnLoading ? 'wait' : 'pointer',
@@ -2255,22 +2266,6 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
         )}
       </div>
 
-      {/* ═══ Bouton annulation ═══ */}
-      {isSubscribed && !subscription?.cancel_at_period_end && (
-        <div style={{ textAlign: 'center', marginBottom: 20 }}>
-          <button onClick={() => setCancelStep(1)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#dc2626', padding: '8px 16px', opacity: 0.7 }}
-            onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-            onMouseLeave={e => (e.currentTarget.style.opacity = '0.7')}>
-            Annuler mon abonnement
-          </button>
-        </div>
-      )}
-      {subscription?.cancel_at_period_end && (
-        <div style={{ textAlign: 'center', marginBottom: 20, padding: '14px 18px', borderRadius: 12, background: '#fff7ed', border: '1px solid #fed7aa', color: '#9a3412', fontSize: 13, fontWeight: 600 }}>
-          ⚠️ Votre abonnement prendra fin le {subscription.current_period_end ? fmtDate(subscription.current_period_end) : '—'}. Vous pouvez vous réabonner à tout moment.
-        </div>
-      )}
     </div>
   );
 }
