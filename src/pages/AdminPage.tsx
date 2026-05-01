@@ -3202,19 +3202,19 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
               <div style={{ padding: '10px 12px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7', textAlign: 'center' as const }}>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{proClientCredits?.total_complete ?? (selected.credits_complete || 0)}</div>
-                <div style={{ fontSize: 10, color: '#94a3b8' }}>Crédits complètes</div>
+                <div style={{ fontSize: 10, color: '#94a3b8' }}>Complètes restants</div>
               </div>
               <div style={{ padding: '10px 12px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7', textAlign: 'center' as const }}>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{proClientCredits?.total_document ?? (selected.credits_document || 0)}</div>
-                <div style={{ fontSize: 10, color: '#94a3b8' }}>Crédits simples</div>
+                <div style={{ fontSize: 10, color: '#94a3b8' }}>Simples restants</div>
               </div>
               <div style={{ padding: '10px 12px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7', textAlign: 'center' as const }}>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{clientAnalyses.length}</div>
-                <div style={{ fontSize: 10, color: '#94a3b8' }}>Analyses</div>
+                <div style={{ fontSize: 10, color: '#94a3b8' }}>Analyses effectuées</div>
               </div>
               <div style={{ padding: '10px 12px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7', textAlign: 'center' as const }}>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{clientShares.length}</div>
-                <div style={{ fontSize: 10, color: '#94a3b8' }}>Envois clients</div>
+                <div style={{ fontSize: 10, color: '#94a3b8' }}>Rapports envoyés</div>
               </div>
             </div>
 
