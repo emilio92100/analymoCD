@@ -12,7 +12,7 @@ const isLowPerf = () => isIOS() || (typeof window !== 'undefined' && window.inne
 ══════════════════════════════════════════ */
 const allFeatures = [
   { label: 'Avis Verimo personnalisé', tip: 'Conclusion rédigée par Verimo adaptée à votre profil d\'acheteur', simple: true, complete: true, pack2: true, pack3: true },
-  { label: 'Score /20 + verdict d\'achat', tip: 'Note globale sur 20 avec verdict clair : Acheter, Négocier ou Risqué', simple: false, complete: true, pack2: true, pack3: true },
+  { label: 'Score /20 + recommandation Verimo', tip: 'Note globale sur 20 avec recommandation : Acheter, Négocier ou Prudence', simple: false, complete: true, pack2: true, pack3: true },
   { label: 'Travaux votés et à prévoir', tip: 'Travaux décidés en AG et travaux à anticiper détectés dans vos documents', simple: 'partial', complete: true, pack2: true, pack3: true },
   { label: 'Santé financière copro', tip: 'Charges, fonds travaux, impayés et budget de la copropriété', simple: 'partial', complete: true, pack2: true, pack3: true },
   { label: 'Pistes de négociation', tip: 'Arguments concrets pour négocier le prix, affichés si le score est inférieur à 17/20', simple: false, complete: true, pack2: true, pack3: true },
@@ -87,7 +87,7 @@ const plans = [
 const tableRows = [
   { label: 'Avis Verimo personnalisé', tip: 'Conclusion rédigée par Verimo adaptée à votre profil d\'acheteur', vals: [true, true, true, true], type: 'bool' },
   { label: 'Documents analysés', tip: 'Nombre de fichiers PDF analysables simultanément pour un même bien', vals: ['1 doc', 'Jusqu\'à 15', '2 × 15', '3 × 15'], type: 'text' },
-  { label: 'Score /20 + verdict d\'achat', tip: 'Note globale sur 20 avec verdict clair : Acheter, Négocier ou Risqué', vals: [false, true, true, true], type: 'bool' },
+  { label: 'Score /20 + recommandation Verimo', tip: 'Note globale sur 20 avec recommandation : Acheter, Négocier ou Prudence', vals: [false, true, true, true], type: 'bool' },
   { label: 'Travaux votés et à prévoir', tip: 'Travaux décidés en AG et travaux à anticiper détectés dans vos documents', vals: ['Selon le doc', true, true, true], type: 'text_or_bool' },
   { label: 'Santé financière copro', tip: 'Charges, fonds travaux, impayés et budget de la copropriété', vals: ['Selon le doc', true, true, true], type: 'text_or_bool' },
   { label: 'Pistes de négociation', tip: 'Arguments pour négocier le prix, affichés si le score est inférieur à 17/20', vals: [false, true, true, true], type: 'bool' },
