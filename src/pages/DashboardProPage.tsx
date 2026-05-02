@@ -2701,7 +2701,7 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
   }, [selectedAnalysisIds, generateMessage]);
 
   const toggleRecipient = (id: string) => {
-    setSelectedBuyerIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+    setSelectedRecipientIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   };
   const toggleAnalysis = (id: string) => {
     setSelectedAnalysisIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
