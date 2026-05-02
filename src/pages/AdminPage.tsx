@@ -3168,6 +3168,8 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   focusClientId?: string | null; onFocusClientHandled?: () => void;
 }) {
   const [clients, setClients] = useState<ProClient[]>([]);
+  const [proSubscriptions, setProSubscriptions] = useState<Map<string, string>>(new Map());
+  const [proFilter, setProFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [selected, setSelected] = useState<ProClient | null>(null);
@@ -3200,8 +3202,14 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
 
   const loadClients = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from('profiles').select('*').eq('role', 'pro').order('pro_created_at', { ascending: false });
+    const [{ data }, { data: subs }] = await Promise.all([
+      supabase.from('profiles').select('*').eq('role', 'pro').order('pro_created_at', { ascending: false }),
+      supabase.from('pro_subscriptions').select('user_id, status').eq('status', 'active'),
+    ]);
     setClients((data || []) as ProClient[]);
+    const subMap = new Map<string, string>();
+    (subs || []).forEach((s: any) => subMap.set(s.user_id, s.status));
+    setProSubscriptions(subMap);
     setLoading(false);
   }, []);
 
@@ -3641,34 +3649,58 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
         </div>
       ) : (
         /* ── Liste ── */
-        <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
-          {loading ? <div style={{ padding: 40, textAlign: 'center' as const, color: '#94a3b8' }}>Chargement...</div>
-            : clients.length === 0 ? (
-              <div style={{ padding: '52px 32px', textAlign: 'center' as const }}>
-                <Building2 size={36} style={{ color: '#e2e8f0', margin: '0 auto 14px', display: 'block' }} />
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#94a3b8' }}>Aucun client pro</div>
-                <p style={{ fontSize: 13, color: '#cbd5e1', marginTop: 6 }}>Créez votre premier client pro avec le bouton ci-dessus.</p>
-              </div>
-            ) : clients.map((c, i) => {
-              const b = proTypeBadges[c.pro_profile_type || 'autre'] || proTypeBadges.autre;
-              return (
-                <div key={c.id} onClick={() => loadClientDetail(c)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderBottom: i < clients.length - 1 ? '1px solid #f8fafc' : 'none', cursor: 'pointer', transition: 'background 0.1s' }}
-                  onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#fafcfd'}
-                  onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
-                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
-                    {(c.full_name?.charAt(0) || 'P').toUpperCase()}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{c.full_name}</div>
-                    <div style={{ fontSize: 12, color: '#94a3b8' }}>{c.email}{c.pro_company_name ? ` · ${c.pro_company_name}` : ''}</div>
-                  </div>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: b.color, background: b.bg, padding: '3px 10px', borderRadius: 8 }}>{b.label}</span>
-                  <span style={{ fontSize: 11, color: '#94a3b8' }}>{c.pro_created_at ? fmtDate(c.pro_created_at) : fmtDate(c.created_at)}</span>
-                  <ChevronRight size={14} style={{ color: '#cbd5e1' }} />
+        <div>
+          {/* Filtres Actifs / Inscrits */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+            {([{ id: 'all', label: 'Tous' }, { id: 'active', label: '🟢 Actifs' }, { id: 'inactive', label: 'Inscrits' }] as const).map(f => (
+              <button key={f.id} onClick={() => setProFilter(f.id)}
+                style={{ padding: '7px 14px', borderRadius: 10, border: `1.5px solid ${proFilter === f.id ? '#0f2d3d' : '#edf2f7'}`, background: proFilter === f.id ? '#0f2d3d' : '#fff', color: proFilter === f.id ? '#fff' : '#64748b', fontSize: 12, fontWeight: proFilter === f.id ? 700 : 500, cursor: 'pointer' }}>
+                {f.label} {f.id === 'active' ? `(${clients.filter(c => proSubscriptions.has(c.id)).length})` : f.id === 'inactive' ? `(${clients.filter(c => !proSubscriptions.has(c.id)).length})` : `(${clients.length})`}
+              </button>
+            ))}
+          </div>
+          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
+            {loading ? <div style={{ padding: 40, textAlign: 'center' as const, color: '#94a3b8' }}>Chargement...</div>
+              : clients.length === 0 ? (
+                <div style={{ padding: '52px 32px', textAlign: 'center' as const }}>
+                  <Building2 size={36} style={{ color: '#e2e8f0', margin: '0 auto 14px', display: 'block' }} />
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#94a3b8' }}>Aucun client pro</div>
+                  <p style={{ fontSize: 13, color: '#cbd5e1', marginTop: 6 }}>Créez votre premier client pro avec le bouton ci-dessus.</p>
                 </div>
-              );
-            })}
+              ) : (() => {
+                const filtered = proFilter === 'active' ? clients.filter(c => proSubscriptions.has(c.id))
+                  : proFilter === 'inactive' ? clients.filter(c => !proSubscriptions.has(c.id))
+                  : clients;
+                return filtered.length === 0 ? (
+                  <div style={{ padding: 32, textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Aucun client dans cette catégorie.</div>
+                ) : filtered.map((c, i) => {
+                  const b = proTypeBadges[c.pro_profile_type || 'autre'] || proTypeBadges.autre;
+                  const isActive = proSubscriptions.has(c.id);
+                  return (
+                    <div key={c.id} onClick={() => loadClientDetail(c)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none', cursor: 'pointer', transition: 'background 0.1s' }}
+                      onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#fafcfd'}
+                      onMouseOut={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                      <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+                        {(c.full_name?.charAt(0) || 'P').toUpperCase()}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{c.full_name}</div>
+                        <div style={{ fontSize: 12, color: '#94a3b8' }}>{c.email}{c.pro_company_name ? ` · ${c.pro_company_name}` : ''}</div>
+                      </div>
+                      {isActive ? (
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 10px', borderRadius: 100, border: '1px solid #bbf7d0' }}>Actif</span>
+                      ) : (
+                        <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', background: '#f8fafc', padding: '3px 10px', borderRadius: 100, border: '1px solid #e2e8f0' }}>Inscrit</span>
+                      )}
+                      <span style={{ fontSize: 11, fontWeight: 700, color: b.color, background: b.bg, padding: '3px 10px', borderRadius: 8 }}>{b.label}</span>
+                      <span style={{ fontSize: 11, color: '#94a3b8' }}>{c.pro_created_at ? fmtDate(c.pro_created_at) : fmtDate(c.created_at)}</span>
+                      <ChevronRight size={14} style={{ color: '#cbd5e1' }} />
+                    </div>
+                  );
+                });
+              })()}
+          </div>
         </div>
       )}
 
