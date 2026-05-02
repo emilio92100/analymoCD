@@ -3722,26 +3722,18 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
               <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 400, boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}>
                 <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>🔑 Réinitialiser le mot de passe</h3>
-                <p style={{ fontSize: 13, color: '#94a3b8', margin: '0 0 16px' }}>{selected.full_name} — {selected.email}</p>
-                <input type="text" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Nouveau mot de passe (min 6 caractères)"
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 16, fontFamily: 'inherit' }} />
+                <p style={{ fontSize: 13, color: '#94a3b8', margin: '0 0 16px' }}>Un email de réinitialisation sera envoyé à <strong>{selected.email}</strong>. Le client pourra choisir son nouveau mot de passe.</p>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button onClick={() => setShowResetPwd(false)}
                     style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 13, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Annuler</button>
                   <button onClick={async () => {
-                    if (newPassword.length < 6) { showToast('6 caractères minimum'); return; }
-                    const { data: { session } } = await supabase.auth.getSession();
-                    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://veszrayromldfgetqaxb.supabase.co'}/functions/v1/admin-user-management`, {
-                      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
-                      body: JSON.stringify({ action: 'reset_password', user_id: selected.id, new_password: newPassword }),
-                    });
-                    const data = await res.json();
-                    if (data.error) { showToast('Erreur: ' + data.error); return; }
-                    await logAction(`Mot de passe réinitialisé pour ${selected.full_name}`);
-                    showToast('Mot de passe réinitialisé');
+                    const { error } = await supabase.auth.resetPasswordForEmail(selected.email!, { redirectTo: 'https://verimo.fr/auth/reset-password' });
+                    if (error) { showToast('Erreur: ' + error.message); return; }
+                    await logAction(`Email de reset mdp envoyé à ${selected.full_name} (${selected.email})`);
+                    showToast('Email de réinitialisation envoyé');
                     setShowResetPwd(false);
                   }}
-                    style={{ flex: 1, padding: '11px', borderRadius: 10, border: 'none', background: '#2a7d9c', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer' }}>Réinitialiser</button>
+                    style={{ flex: 1, padding: '11px', borderRadius: 10, border: 'none', background: '#2a7d9c', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer' }}>📧 Envoyer l'email</button>
                 </div>
               </div>
             </div>
@@ -3754,7 +3746,8 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>✉️ Modifier l'email</h3>
                 <p style={{ fontSize: 13, color: '#94a3b8', margin: '0 0 16px' }}>{selected.full_name} — email actuel : {selected.email}</p>
                 <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="Nouvel email"
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 16, fontFamily: 'inherit' }} />
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 8, fontFamily: 'inherit' }} />
+                <p style={{ fontSize: 11, color: '#d97706', margin: '0 0 16px' }}>⚠️ L'email sera modifié immédiatement dans le système. Le client devra utiliser ce nouvel email pour se connecter.</p>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button onClick={() => setShowUpdateEmail(false)}
                     style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 13, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Annuler</button>
