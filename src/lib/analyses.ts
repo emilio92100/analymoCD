@@ -57,6 +57,30 @@ export async function getOrCreateShareToken(id: string): Promise<string | null> 
 
 /* ─── Lire un rapport via share_token (sans auth) ── */
 export async function fetchAnalyseByShareToken(token: string): Promise<AnalyseDB | null> {
+  // D'abord chercher dans report_shares (envois pro → client)
+  const { data: share } = await supabase
+    .from('report_shares')
+    .select('analysis_id')
+    .eq('share_token', token)
+    .maybeSingle();
+
+  if (share?.analysis_id) {
+    // Marquer comme ouvert si pas encore fait
+    await supabase
+      .from('report_shares')
+      .update({ opened_at: new Date().toISOString() })
+      .eq('share_token', token)
+      .is('opened_at', null);
+
+    const { data: analysis } = await supabase
+      .from('analyses')
+      .select('*')
+      .eq('id', share.analysis_id)
+      .single();
+    return analysis || null;
+  }
+
+  // Fallback : chercher dans analyses.share_token (ancien système)
   const { data, error } = await supabase
     .from('analyses')
     .select('*')
