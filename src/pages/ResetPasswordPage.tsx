@@ -15,12 +15,37 @@ export default function ResetPasswordPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Supabase détecte automatiquement le token dans l'URL
-    supabase.auth.onAuthStateChange((event) => {
+    // Méthode 1 : écouter l'événement PASSWORD_RECOVERY
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
         setReady(true);
       }
     });
+
+    // Méthode 2 : vérifier les paramètres d'erreur dans l'URL (lien expiré)
+    const hash = window.location.hash;
+    const params = new URLSearchParams(hash.replace('#', '?'));
+    const errorCode = params.get('error_code');
+    if (errorCode) {
+      setReady(false);
+      return;
+    }
+
+    // Méthode 3 : vérifier si une session existe déjà (token déjà échangé)
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setReady(true);
+      }
+    };
+    
+    // Attendre un peu que Supabase traite le token dans l'URL
+    const timeout = setTimeout(checkSession, 1000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const handleReset = async (e: React.FormEvent) => {
