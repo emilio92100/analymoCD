@@ -847,8 +847,12 @@ function ModalCreateFolder({ onClose, onCreated }: { onClose: () => void; onCrea
   }, [onClose]);
 
   function selectAddressSuggestion(s: { label: string; postcode: string; city: string }) {
-    // On extrait juste la partie "numéro + rue" de l'adresse complète (avant la virgule)
-    const streetOnly = s.label.split(',')[0].trim();
+    // Extraire uniquement la partie rue (sans code postal ni ville)
+    let streetOnly = s.label;
+    // Retirer la ville et le code postal du label
+    if (s.city) streetOnly = streetOnly.replace(new RegExp(`\\s*,?\\s*${s.city.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i'), '');
+    if (s.postcode) streetOnly = streetOnly.replace(new RegExp(`\\s*,?\\s*${s.postcode}\\s*`, 'g'), ' ');
+    streetOnly = streetOnly.replace(/,\s*$/, '').trim();
     setAddress(streetOnly);
     if (s.postcode) setPostalCode(s.postcode);
     if (s.city) setCity(s.city);
@@ -994,7 +998,7 @@ function ModalCreateFolder({ onClose, onCreated }: { onClose: () => void; onCrea
           </Field>
 
           {/* Note interne */}
-          <Field label="Note interne" optional icon={FileText}>
+          <Field label="Note interne" optional icon={FileText} tooltip="Ces informations sont strictement privées et uniquement accessibles par vous. Utilisez cet espace pour noter tout élément utile au suivi de ce dossier.">
             <textarea value={internalNote} onChange={e => setInternalNote(e.target.value)}
               placeholder="Ex: Mandat exclusif signé le 03/05, voisin bruyant"
               rows={3}
@@ -1115,7 +1119,10 @@ function ModalEditFolder({ folder, onClose, onSaved }: {
   }, [onClose]);
 
   function selectAddressSuggestion(s: { label: string; postcode: string; city: string }) {
-    const streetOnly = s.label.split(',')[0].trim();
+    let streetOnly = s.label;
+    if (s.city) streetOnly = streetOnly.replace(new RegExp(`\\s*,?\\s*${s.city.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i'), '');
+    if (s.postcode) streetOnly = streetOnly.replace(new RegExp(`\\s*,?\\s*${s.postcode}\\s*`, 'g'), ' ');
+    streetOnly = streetOnly.replace(/,\s*$/, '').trim();
     setAddress(streetOnly);
     if (s.postcode) setPostalCode(s.postcode);
     if (s.city) setCity(s.city);
@@ -1247,7 +1254,7 @@ function ModalEditFolder({ folder, onClose, onSaved }: {
           </Field>
 
           {/* Note interne */}
-          <Field label="Note interne" optional icon={FileText}>
+          <Field label="Note interne" optional icon={FileText} tooltip="Ces informations sont strictement privées et uniquement accessibles par vous. Utilisez cet espace pour noter tout élément utile au suivi de ce dossier.">
             <textarea value={internalNote} onChange={e => setInternalNote(e.target.value)}
               placeholder="Ex: Mandat exclusif signé le 03/05, voisin bruyant"
               rows={3}
@@ -3269,29 +3276,29 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
                 grouped.get(key)!.push(sh);
               });
               return Array.from(grouped.entries()).map(([email, items]) => (
-                <div key={email} style={{ padding: '14px 16px', borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Mail size={14} style={{ color: '#2a7d9c' }} />
+                <div key={email} style={{ padding: '16px 18px', borderRadius: 14, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Mail size={16} style={{ color: '#2a7d9c' }} />
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>✉️ {items[0].recipient_name}</div>
-                      <div style={{ fontSize: 11, color: '#94a3b8' }}>{email} · {fmtDate(items[0].sent_at)}</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>✉️ {items[0].recipient_name}</div>
+                      <div style={{ fontSize: 12, color: '#94a3b8' }}>{email} · {fmtDate(items[0].sent_at)}</div>
                     </div>
                   </div>
-                  <div style={{ marginLeft: 42, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ marginLeft: 48, display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {items.map(item => {
                       const analysis = folderAnalyses.find(a => a.id === item.analysis_id);
                       const docName = analysis ? (analysis.address || analysis.title || 'Analyse').split(' — ')[0] : 'Analyse';
                       return (
-                        <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 8, background: '#fff', border: '1px solid #edf2f7' }}>
-                          <FileText size={12} style={{ color: '#94a3b8', flexShrink: 0 }} />
-                          <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{docName}</span>
-                          <span style={{ fontSize: 9, color: '#94a3b8', flexShrink: 0 }}>{analysis?.type === 'complete' ? 'Complète' : 'Simple'}</span>
+                        <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10, background: '#fff', border: '1px solid #edf2f7' }}>
+                          <FileText size={14} style={{ color: '#94a3b8', flexShrink: 0 }} />
+                          <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{docName}</span>
+                          <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{analysis?.type === 'complete' ? 'Complète' : 'Simple'}</span>
                           {item.opened_at ? (
-                            <span style={{ fontSize: 9, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: 100, border: '1px solid #bbf7d0', flexShrink: 0 }}>✓ Ouvert</span>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 10px', borderRadius: 100, border: '1px solid #bbf7d0', flexShrink: 0 }}>✓ Ouvert</span>
                           ) : (
-                            <span style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', background: '#f8fafc', padding: '2px 8px', borderRadius: 100, border: '1px solid #e2e8f0', flexShrink: 0 }}>En attente</span>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f8fafc', padding: '3px 10px', borderRadius: 100, border: '1px solid #e2e8f0', flexShrink: 0 }}>En attente</span>
                           )}
                         </div>
                       );
@@ -3638,7 +3645,7 @@ function ModalSeller({ folderId, seller, onClose, onSaved }: {
           </Field>
 
           {/* Note */}
-          <Field label="Note interne" optional icon={FileText}>
+          <Field label="Note interne" optional icon={FileText} tooltip="Ces informations sont strictement privées et uniquement accessibles par vous. Utilisez cet espace pour noter tout élément utile au suivi de ce dossier.">
             <textarea value={note} onChange={e => setNote(e.target.value)}
               placeholder="Ex: Mandat exclusif signé le 03/05, urgent à vendre"
               rows={3}
@@ -3989,7 +3996,7 @@ function ModalBuyer({ folderId, buyer, onClose, onSaved }: {
           </Field>
 
           {/* Note */}
-          <Field label="Note interne" optional icon={FileText}>
+          <Field label="Note interne" optional icon={FileText} tooltip="Ces informations sont strictement privées et uniquement accessibles par vous. Utilisez cet espace pour noter tout élément utile au suivi de ce dossier.">
             <textarea value={note} onChange={e => setNote(e.target.value)}
               placeholder="Ex: Apport 30%, finance par crédit, visite prévue le 15/05"
               rows={3}
