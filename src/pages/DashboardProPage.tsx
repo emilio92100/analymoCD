@@ -755,30 +755,30 @@ function ModalCreateFolder({ onClose, onCreated }: { onClose: () => void; onCrea
   const [addressFocused, setAddressFocused] = useState(false);
   const lastPostalCodeQueriedRef = useRef<string>('');
   const addressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipAddressAutoRef = useRef(false);
+  const skipPostalAutoRef = useRef(false);
 
   // Auto-génération du nom du dossier
   useEffect(() => {
-    if (nameTouched) return; // ne pas écraser si l'utilisateur a modifié manuellement
+    if (nameTouched) return;
     const parts = [];
     if (address.trim()) parts.push(address.trim());
     if (city.trim()) parts.push(city.trim());
     setName(parts.join(', '));
   }, [address, city, nameTouched]);
 
-  // Auto-complétion code postal → ville (API gouv.fr)
-  // ✨ Fix : reset la ville à chaque changement de CP, pas juste si elle est vide
+  // Auto-complétion code postal → ville
   useEffect(() => {
+    if (skipPostalAutoRef.current) { skipPostalAutoRef.current = false; return; }
     const cp = postalCode.trim();
     if (cp.length !== 5) {
       setCityOptions([]);
-      // Si le CP devient invalide, on reset la ville aussi (sauf si l'user l'a modifié manuellement)
       if (cp.length === 0 && lastPostalCodeQueriedRef.current) {
         setCity('');
         lastPostalCodeQueriedRef.current = '';
       }
       return;
     }
-    // Si le CP a changé depuis la dernière requête, on reset l'ancienne ville
     if (lastPostalCodeQueriedRef.current && lastPostalCodeQueriedRef.current !== cp) {
       setCity('');
     }
@@ -790,7 +790,6 @@ function ModalCreateFolder({ onClose, onCreated }: { onClose: () => void; onCrea
         if (Array.isArray(data) && data.length > 0) {
           const cities = data.map(c => c.nom);
           setCityOptions(cities);
-          // Si une seule ville trouvée → auto-remplit (même si city avait une ancienne valeur, on l'écrase)
           if (cities.length === 1) setCity(cities[0]);
         } else {
           setCityOptions([]);
@@ -800,9 +799,9 @@ function ModalCreateFolder({ onClose, onCreated }: { onClose: () => void; onCrea
       .finally(() => setCityLoading(false));
   }, [postalCode]);
 
-  // Autocomplétion adresse via API Etalab (api-adresse.data.gouv.fr)
+  // Autocomplétion adresse via API Etalab
   useEffect(() => {
-    // Annule la requête précédente si nouvelle frappe
+    if (skipAddressAutoRef.current) { skipAddressAutoRef.current = false; return; }
     if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
 
     const q = address.trim();
@@ -847,14 +846,14 @@ function ModalCreateFolder({ onClose, onCreated }: { onClose: () => void; onCrea
   }, [onClose]);
 
   function selectAddressSuggestion(s: { label: string; postcode: string; city: string }) {
-    // Extraire uniquement la partie rue (sans code postal ni ville)
     let streetOnly = s.label;
-    // Retirer la ville et le code postal du label
     if (s.city) streetOnly = streetOnly.replace(new RegExp(`\\s*,?\\s*${s.city.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i'), '');
     if (s.postcode) streetOnly = streetOnly.replace(new RegExp(`\\s*,?\\s*${s.postcode}\\s*`, 'g'), ' ');
     streetOnly = streetOnly.replace(/,\s*$/, '').trim();
+    skipAddressAutoRef.current = true;
+    skipPostalAutoRef.current = true;
     setAddress(streetOnly);
-    if (s.postcode) setPostalCode(s.postcode);
+    if (s.postcode) { lastPostalCodeQueriedRef.current = s.postcode; setPostalCode(s.postcode); }
     if (s.city) setCity(s.city);
     setAddressSuggestions([]);
     setShowAddressDropdown(false);
@@ -966,7 +965,7 @@ function ModalCreateFolder({ onClose, onCreated }: { onClose: () => void; onCrea
           </Field>
 
           {/* Code postal + Ville (alignés sur la même ligne) */}
-          <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 12, marginBottom: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12, marginBottom: 14 }}>
             <Field label="Code postal" optional>
               <input value={postalCode} onChange={e => {
                   const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 5);
@@ -1058,9 +1057,12 @@ function ModalEditFolder({ folder, onClose, onSaved }: {
   const [addressFocused, setAddressFocused] = useState(false);
   const lastPostalCodeQueriedRef = useRef<string>(folder.property_postal_code || '');
   const addressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipAddressAutoRef = useRef(false);
+  const skipPostalAutoRef = useRef(false);
 
-  // Auto-complétion code postal → ville (API gouv.fr)
+  // Auto-complétion code postal → ville
   useEffect(() => {
+    if (skipPostalAutoRef.current) { skipPostalAutoRef.current = false; return; }
     const cp = postalCode.trim();
     if (cp.length !== 5) {
       setCityOptions([]);
@@ -1089,6 +1091,7 @@ function ModalEditFolder({ folder, onClose, onSaved }: {
 
   // Autocomplétion adresse via Etalab
   useEffect(() => {
+    if (skipAddressAutoRef.current) { skipAddressAutoRef.current = false; return; }
     if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
     const q = address.trim();
     if (q.length < 4) { setAddressSuggestions([]); return; }
@@ -1123,8 +1126,10 @@ function ModalEditFolder({ folder, onClose, onSaved }: {
     if (s.city) streetOnly = streetOnly.replace(new RegExp(`\\s*,?\\s*${s.city.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i'), '');
     if (s.postcode) streetOnly = streetOnly.replace(new RegExp(`\\s*,?\\s*${s.postcode}\\s*`, 'g'), ' ');
     streetOnly = streetOnly.replace(/,\s*$/, '').trim();
+    skipAddressAutoRef.current = true;
+    skipPostalAutoRef.current = true;
     setAddress(streetOnly);
-    if (s.postcode) setPostalCode(s.postcode);
+    if (s.postcode) { lastPostalCodeQueriedRef.current = s.postcode; setPostalCode(s.postcode); }
     if (s.city) setCity(s.city);
     setAddressSuggestions([]);
     setShowAddressDropdown(false);
@@ -1222,7 +1227,7 @@ function ModalEditFolder({ folder, onClose, onSaved }: {
           </Field>
 
           {/* Code postal + Ville */}
-          <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: 12, marginBottom: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12, marginBottom: 14 }}>
             <Field label="Code postal" optional>
               <input value={postalCode} onChange={e => {
                   const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 5);
