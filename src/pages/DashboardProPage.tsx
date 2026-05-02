@@ -3316,7 +3316,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
                           <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{docName}</span>
                           <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{analysis?.type === 'complete' ? 'Complète' : 'Simple'}</span>
                           {item.opened_at ? (
-                            <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 10px', borderRadius: 100, border: '1px solid #bbf7d0', flexShrink: 0 }}>✓ Ouvert</span>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 10px', borderRadius: 100, border: '1px solid #bbf7d0', flexShrink: 0 }}>✓ Ouvert le {fmtDate(item.opened_at!)}</span>
                           ) : (
                             <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f8fafc', padding: '3px 10px', borderRadius: 100, border: '1px solid #e2e8f0', flexShrink: 0 }}>En attente</span>
                           )}
