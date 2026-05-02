@@ -785,8 +785,8 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         supabase.from('contact_pro').select('*', { count: 'exact', head: true }).eq('read', false),
         supabase.from('pro_subscriptions').select('plan,current_period_start').gte('current_period_start', startOfMonth),
         supabase.from('pro_subscriptions').select('plan,current_period_start').gte('current_period_start', startOfPrevMonth).lte('current_period_start', endOfPrevMonth),
-        supabase.from('pro_unit_purchases').select('type,quantity,amount').gte('purchased_at', startOfMonth),
-        supabase.from('pro_unit_purchases').select('type,quantity,amount').gte('purchased_at', startOfPrevMonth).lte('purchased_at', endOfPrevMonth),
+        supabase.from('pro_unit_purchases').select('type,quantity,amount').gt('amount', 0).gte('purchased_at', startOfMonth),
+        supabase.from('pro_unit_purchases').select('type,quantity,amount').gt('amount', 0).gte('purchased_at', startOfPrevMonth).lte('purchased_at', endOfPrevMonth),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'pro').gte('created_at', startOfMonth),
       ]);
 
@@ -1117,7 +1117,7 @@ function StatsTab() {
         supabase.from('analyses').select('type,paid,stripe_payment_id,created_at').gte('created_at', start).lte('created_at', end),
         supabase.from('payments').select('credits_added,credit_type').eq('status', 'completed').eq('amount', 0).gte('created_at', start).lte('created_at', end),
         supabase.from('pro_subscriptions').select('plan,current_period_start').gte('current_period_start', start).lte('current_period_start', end),
-        supabase.from('pro_unit_purchases').select('type,quantity,amount').gte('purchased_at', start).lte('purchased_at', end),
+        supabase.from('pro_unit_purchases').select('type,quantity,amount').gt('amount', 0).gte('purchased_at', start).lte('purchased_at', end),
       ]);
 
       const payments = paymentsData || [];
@@ -1183,7 +1183,7 @@ function StatsTab() {
           supabase.from('payments').select('amount').eq('status', 'completed').gt('amount', 0).gte('created_at', ws).lte('created_at', we),
           supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('email_verified', true).gte('created_at', ws).lte('created_at', we),
           supabase.from('pro_subscriptions').select('plan').gte('current_period_start', ws).lte('current_period_start', we),
-          supabase.from('pro_unit_purchases').select('amount').gte('purchased_at', ws).lte('purchased_at', we),
+          supabase.from('pro_unit_purchases').select('amount').gt('amount', 0).gte('purchased_at', ws).lte('purchased_at', we),
         ]);
         const wCaPart = (wPay || []).reduce((s, p) => s + (p.amount || 0), 0);
         const wCaPro = (wProSubs || []).reduce((s, sub: any) => s + (PLAN_PRICES[sub.plan] || 0), 0) + (wProUnits || []).reduce((s, u: any) => s + ((u.amount || 0) / 100), 0);
@@ -3635,10 +3635,11 @@ function PaymentsTab({ onOpenUser, showToast }: { onOpenUser: (userId: string) =
       .order('created_at', { ascending: false })
       .limit(200);
 
-    // Achats unitaires pro
+    // Achats unitaires pro (uniquement les vrais achats, pas les crédits offerts)
     const { data: proUnits } = await supabase
       .from('pro_unit_purchases')
       .select('id, user_id, type, quantity, amount, purchased_at, stripe_session_id')
+      .gt('amount', 0)
       .order('purchased_at', { ascending: false })
       .limit(200);
 
