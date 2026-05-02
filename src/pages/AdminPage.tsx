@@ -3154,6 +3154,8 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [clientShares, setClientShares] = useState<{ id: string; recipient_name: string; recipient_email: string; sent_at: string; opened_at?: string }[]>([]);
   const [clientSubscription, setClientSubscription] = useState<{ plan: string; status: string; current_period_end?: string; cancel_at_period_end?: boolean; canceled_at?: string; cancellation_reason?: string; credits_complete_total: number; credits_complete_used: number; credits_simple_total: number; credits_simple_used: number } | null>(null);
   const [proClientCredits, setProClientCredits] = useState<{ total_complete: number; total_document: number } | null>(null);
+  const [clientInvoices, setClientInvoices] = useState<{ id: string; date: string; description: string; amount: string; pdf_url: string | null; type: string }[]>([]);
+  const [clientInvoicesLoading, setClientInvoicesLoading] = useState(false);
   const [sendingInvite, setSendingInvite] = useState(false);
 
   // Form state
@@ -3225,6 +3227,23 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
     const { data: credits } = await supabase.rpc('get_pro_credits_balance', { p_user_id: client.id });
     if (credits && credits.length > 0) setProClientCredits(credits[0]);
     else setProClientCredits(null);
+
+    // Factures du client via edge function
+    setClientInvoicesLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://veszrayromldfgetqaxb.supabase.co'}/functions/v1/pro-checkout-create`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+          body: JSON.stringify({ mode: 'list_invoices', target_user_id: client.id }),
+        });
+        const data = await res.json();
+        if (data.invoices) setClientInvoices(data.invoices.filter((inv: any) => inv.type === 'subscription' || inv.type === 'unit'));
+        else setClientInvoices([]);
+      }
+    } catch { setClientInvoices([]); }
+    setClientInvoicesLoading(false);
   };
 
   // Auto-open client from external navigation (e.g. from Users tab)
@@ -3446,6 +3465,38 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                       <div style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDate(s.sent_at)}</div>
                       {s.opened_at ? <span style={{ fontSize: 10, color: '#16a34a', fontWeight: 600 }}>Ouvert</span> : <span style={{ fontSize: 10, color: '#94a3b8' }}>En attente</span>}
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Factures du client */}
+          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: 20, marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <Euro size={15} style={{ color: '#16a34a' }} />
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0 }}>Factures</h3>
+              {clientInvoices.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '2px 6px', borderRadius: 100 }}>{clientInvoices.length}</span>}
+            </div>
+            {clientInvoicesLoading ? (
+              <div style={{ textAlign: 'center' as const, padding: 20, color: '#94a3b8', fontSize: 13 }}>Chargement…</div>
+            ) : clientInvoices.length === 0 ? (
+              <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center' as const, padding: 16 }}>Aucune facture.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {clientInvoices.map(inv => (
+                  <div key={inv.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: '#f8fafc' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{inv.description}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8' }}>{inv.date} · <span style={{ fontWeight: 700, color: inv.type === 'subscription' ? '#2a7d9c' : '#16a34a' }}>{inv.type === 'subscription' ? 'Abo' : 'Unitaire'}</span></div>
+                    </div>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: '#16a34a', flexShrink: 0 }}>{inv.amount}</span>
+                    {inv.pdf_url && (
+                      <a href={inv.pdf_url} target="_blank" rel="noopener noreferrer"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '4px 10px', borderRadius: 7, background: '#f0f7fb', color: '#2a7d9c', textDecoration: 'none', fontSize: 11, fontWeight: 700, border: '1px solid #d0e8f0', flexShrink: 0 }}>
+                        <Download size={11} /> PDF
+                      </a>
+                    )}
                   </div>
                 ))}
               </div>
