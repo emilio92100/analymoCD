@@ -156,40 +156,6 @@ export async function createAnalyse(
   return data;
 }
 
-/* ─── Créer un aperçu gratuit ─────────────────── */
-export async function createApercu(
-  type: AnalyseDB['type'],
-  title: string,
-  profil: 'rp' | 'invest',
-  documentNames: string[],
-  typeBienDeclare?: TypeBien | null,
-): Promise<AnalyseDB | null> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  const { data, error } = await supabase
-    .from('analyses')
-    .insert({
-      user_id: user.id,
-      type,
-      status: 'processing',
-      title,
-      profil,
-      is_preview: true,
-      paid: false,
-      document_names: documentNames,
-      type_bien_declare: typeBienDeclare || null,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Erreur createApercu:', error.message);
-    return null;
-  }
-  return data;
-}
-
 /* ─── Sauvegarder le résultat de l'aperçu ──────── */
 export async function updateApercuResult(
   id: string,
@@ -269,61 +235,6 @@ export async function debloquerApercu(id: string): Promise<boolean> {
     return false;
   }
   return true;
-}
-
-/* ─── Marquer l'aperçu gratuit comme utilisé ──── */
-export async function markFreePreviewUsed(): Promise<void> {
-  localStorage.setItem('verimo_free_preview_used', 'true');
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
-  await supabase
-    .from('profiles')
-    .update({ free_preview_used: true })
-    .eq('id', user.id);
-}
-
-/* ─── Annuler le marquage en cas d'échec ──── */
-export async function unmarkFreePreviewUsed(): Promise<void> {
-  localStorage.removeItem('verimo_free_preview_used');
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
-  await supabase
-    .from('profiles')
-    .update({ free_preview_used: false })
-    .eq('id', user.id);
-}
-
-/* ─── Vérifier si l'aperçu gratuit a été utilisé (instantané) ── */
-export function checkFreePreviewUsedSync(): boolean {
-  return localStorage.getItem('verimo_free_preview_used') === 'true';
-}
-
-/* ─── Synchroniser localStorage depuis Supabase (au login) ── */
-export async function syncFreePreviewUsed(): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
-  const { data } = await supabase
-    .from('profiles')
-    .select('free_preview_used')
-    .eq('id', user.id)
-    .single();
-  if (data?.free_preview_used) {
-    localStorage.setItem('verimo_free_preview_used', 'true');
-  } else {
-    localStorage.removeItem('verimo_free_preview_used');
-  }
-}
-
-/* ─── Vérifier si l'aperçu gratuit a été utilisé (async) ── */
-export async function checkFreePreviewUsed(): Promise<boolean> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return true;
-  const { data } = await supabase
-    .from('profiles')
-    .select('free_preview_used')
-    .eq('id', user.id)
-    .single();
-  return data?.free_preview_used ?? false;
 }
 
 /* ─── Marquer une analyse en erreur ───────────── */
