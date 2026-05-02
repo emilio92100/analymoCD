@@ -920,7 +920,7 @@ function ModalCreateFolder({ onClose, onCreated }: { onClose: () => void; onCrea
               <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0 0' }}>Organisez vos analyses par bien immobilier</p>
             </div>
           </div>
-          <button onClick={onClose} title="Fermer"
+          <button onClick={onClose} title="Fermer" className="modal-close-btn"
             style={{ width: 32, height: 32, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <X size={15} style={{ color: '#64748b' }} />
           </button>
@@ -1187,7 +1187,7 @@ function ModalEditFolder({ folder, onClose, onSaved }: {
               <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0 0' }}>Mettez à jour les informations du bien</p>
             </div>
           </div>
-          <button onClick={onClose} title="Fermer"
+          <button onClick={onClose} title="Fermer" className="modal-close-btn"
             style={{ width: 32, height: 32, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <X size={15} style={{ color: '#64748b' }} />
           </button>
@@ -1332,7 +1332,7 @@ function ModalDeleteFolder({ folder, onClose, onConfirm }: { folder: ProFolder; 
 
         {/* Header avec bandeau rouge dégradé */}
         <div style={{ padding: '26px 28px 22px', textAlign: 'center', background: 'linear-gradient(135deg, #fef2f2, #fee2e2)', position: 'relative', borderBottom: '1px solid #fecaca' }}>
-          <button onClick={onClose} title="Fermer"
+          <button onClick={onClose} title="Fermer" className="modal-close-btn"
             style={{ position: 'absolute', top: 14, right: 14, width: 30, height: 30, borderRadius: 8, background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(220,38,38,0.18)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <X size={14} style={{ color: '#7f1d1d' }} />
           </button>
@@ -1491,91 +1491,72 @@ function Field({ label, required, optional, hint, tooltip, icon: Icon, children 
 ══════════════════════════════════════════ */
 function InfoTooltip({ text }: { text: string }) {
   const [show, setShow] = useState(false);
-  const ref = React.useRef<HTMLSpanElement>(null);
-  const [pos, setPos] = useState<'above'|'below'>('above');
-  const [alignRight, setAlignRight] = useState(false);
-
-  const handleToggle = () => {
-    if (!show && ref.current) {
-      const rect = ref.current.getBoundingClientRect();
-      // Si pas assez de place en haut, ouvrir en dessous
-      setPos(rect.top < 120 ? 'below' : 'above');
-      // Si trop à droite, aligner à droite du tooltip
-      setAlignRight(rect.left > window.innerWidth - 200);
-    }
-    setShow(s => !s);
-  };
 
   return (
-    <span
-      ref={ref}
-      onMouseEnter={() => { if (window.innerWidth > 768) { handleToggle(); } }}
-      onMouseLeave={() => { if (window.innerWidth > 768) setShow(false); }}
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleToggle(); }}
-      style={{
-        position: 'relative' as const,
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: 16,
-        height: 16,
-        borderRadius: '50%',
-        background: show ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#e2e8f0',
-        color: show ? '#fff' : '#64748b',
-        fontSize: 10,
-        fontWeight: 800,
-        cursor: 'help',
-        textTransform: 'none' as const,
-        letterSpacing: 0,
-        transition: 'all 0.15s',
-        flexShrink: 0,
-      }}>
-      i
+    <>
+      <span
+        onMouseEnter={() => { if (window.innerWidth > 768) setShow(true); }}
+        onMouseLeave={() => { if (window.innerWidth > 768) setShow(false); }}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShow(s => !s); }}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 16,
+          height: 16,
+          borderRadius: '50%',
+          background: show ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#e2e8f0',
+          color: show ? '#fff' : '#64748b',
+          fontSize: 10,
+          fontWeight: 800,
+          cursor: 'help',
+          textTransform: 'none' as const,
+          letterSpacing: 0,
+          transition: 'all 0.15s',
+          flexShrink: 0,
+        }}>
+        i
+      </span>
       <AnimatePresence>
         {show && (
-          <>
-            {/* Overlay pour fermer au clic extérieur sur mobile */}
-            <div onClick={(e) => { e.stopPropagation(); setShow(false); }} style={{ position: 'fixed', inset: 0, zIndex: 1499 }} />
-            <motion.span
-              initial={{ opacity: 0, y: pos === 'above' ? 6 : -6, scale: 0.92 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: pos === 'above' ? 4 : -4, scale: 0.96 }}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            onClick={(e) => { e.stopPropagation(); setShow(false); }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(15,45,61,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 6 }}
               transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+              onClick={(e) => e.stopPropagation()}
               style={{
-                position: 'absolute',
-                ...(pos === 'above' ? { bottom: 'calc(100% + 8px)' } : { top: 'calc(100% + 8px)' }),
-                ...(alignRight ? { right: 0 } : { left: '50%', transform: 'translateX(-50%)' }),
                 background: 'linear-gradient(135deg, #1e3a4d, #0f2d3d)',
                 color: '#fff',
-                padding: '9px 12px',
-                borderRadius: 8,
-                fontSize: 11.5,
+                padding: '18px 22px',
+                borderRadius: 14,
+                fontSize: 14,
                 fontWeight: 500,
-                lineHeight: 1.5,
-                letterSpacing: 0,
-                textTransform: 'none' as const,
-                width: Math.min(240, typeof window !== 'undefined' ? window.innerWidth - 60 : 240),
-                boxShadow: '0 8px 24px rgba(15,45,61,0.28)',
-                zIndex: 1500,
-                fontFamily: 'inherit',
+                lineHeight: 1.65,
+                maxWidth: 340,
+                width: '100%',
+                boxShadow: '0 20px 60px rgba(15,45,61,0.4)',
                 textAlign: 'left' as const,
+                position: 'relative' as const,
               }}>
               {text}
-              <span style={{
-                position: 'absolute',
-                ...(pos === 'above' ? { top: '100%' } : { bottom: '100%' }),
-                ...(alignRight ? { right: 4 } : { left: '50%', transform: 'translateX(-50%)' }),
-                width: 0,
-                height: 0,
-                borderLeft: '5px solid transparent',
-                borderRight: '5px solid transparent',
-                ...(pos === 'above' ? { borderTop: '5px solid #0f2d3d' } : { borderBottom: '5px solid #1e3a4d' }),
-              }} />
-            </motion.span>
-          </>
+              <button
+                onClick={() => setShow(false)}
+                style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 6, width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', fontSize: 14, fontWeight: 700 }}>
+                ×
+              </button>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
-    </span>
+    </>
   );
 }
 
@@ -3681,7 +3662,7 @@ function ModalSeller({ folderId, seller, onClose, onSaved }: {
               </p>
             </div>
           </div>
-          <button onClick={onClose} title="Fermer"
+          <button onClick={onClose} title="Fermer" className="modal-close-btn"
             style={{ width: 32, height: 32, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <X size={15} style={{ color: '#64748b' }} />
           </button>
@@ -3782,7 +3763,7 @@ function ModalDeleteSeller({ seller, onClose, onConfirm }: {
         style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 420, boxShadow: '0 30px 80px rgba(15,45,61,0.35)', overflow: 'hidden' }}>
 
         <div style={{ padding: '22px 24px 18px', textAlign: 'center', background: 'linear-gradient(135deg, #fef2f2, #fee2e2)', position: 'relative' as const }}>
-          <button onClick={onClose} title="Fermer"
+          <button onClick={onClose} title="Fermer" className="modal-close-btn"
             style={{ position: 'absolute', top: 12, right: 12, width: 28, height: 28, borderRadius: 7, background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(220,38,38,0.18)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <X size={13} style={{ color: '#7f1d1d' }} />
           </button>
@@ -4007,7 +3988,7 @@ function ModalBuyer({ folderId, buyer, onClose, onSaved }: {
               </p>
             </div>
           </div>
-          <button onClick={onClose} title="Fermer"
+          <button onClick={onClose} title="Fermer" className="modal-close-btn"
             style={{ width: 32, height: 32, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <X size={15} style={{ color: '#64748b' }} />
           </button>
@@ -4133,7 +4114,7 @@ function ModalDeleteBuyer({ buyer, onClose, onConfirm }: {
         style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 420, boxShadow: '0 30px 80px rgba(15,45,61,0.35)', overflow: 'hidden' }}>
 
         <div style={{ padding: '22px 24px 18px', textAlign: 'center', background: 'linear-gradient(135deg, #fef2f2, #fee2e2)', position: 'relative' as const }}>
-          <button onClick={onClose} title="Fermer"
+          <button onClick={onClose} title="Fermer" className="modal-close-btn"
             style={{ position: 'absolute', top: 12, right: 12, width: 28, height: 28, borderRadius: 7, background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(220,38,38,0.18)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <X size={13} style={{ color: '#7f1d1d' }} />
           </button>
@@ -4437,6 +4418,8 @@ export default function DashboardProPage() {
           }
           .compte-grid { grid-template-columns: 1fr !important; }
           .plans-grid { grid-template-columns: 1fr !important; }
+          .type-grid { grid-template-columns: 1fr !important; }
+          .modal-close-btn { width: 36px !important; height: 36px !important; background: #edf2f7 !important; border-color: #cbd5e1 !important; }
           .pro-stats-grid { grid-template-columns: 1fr 1fr !important; }
           .rapport-envoi-items { margin-left: 0 !important; }
           .rapport-envoi-item { flex-wrap: wrap !important; }
