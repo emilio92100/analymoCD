@@ -2642,13 +2642,16 @@ function SendReportFromDossier({ analyses, buyers, proProfile, onClose, onSent }
   const generateMessage = useCallback(() => {
     const selectedList = analyses.filter(a => selectedAnalysisIds.has(a.id));
     const hasComplete = selectedList.some(a => a.type === 'complete');
-    const hasSimple = selectedList.some(a => a.type !== 'complete');
-    const address = selectedList[0]?.address || selectedList[0]?.title || 'le bien concerné';
+    // Use the address part only (after the dash), fallback to first analysis address
+    const firstAnalysis = selectedList[0];
+    const rawAddress = firstAnalysis?.address || firstAnalysis?.title || 'le bien concerné';
+    // Extract just the address portion (after " — " if present)
+    const address = rawAddress.includes(' — ') ? rawAddress.split(' — ').slice(1).join(' — ') : rawAddress;
 
     if (selectedList.length === 1) {
-      return `Bonjour,\n\nDans le cadre de votre projet immobilier, je vous transmets ${hasComplete ? 'le rapport d\'analyse complète' : 'le rapport d\'analyse'} du bien situé ${address}.\n\nCe rapport vous permettra d'avoir une vision claire des points importants du dossier.\n\nN'hésitez pas à me contacter pour en discuter ensemble.\n\nCordialement,\n${senderName}${senderCompany ? '\n' + senderCompany : ''}`;
+      return `Bonjour,\n\nDans le cadre de votre projet immobilier, je vous transmets ${hasComplete ? 'le rapport d\'analyse complète' : 'le rapport d\'analyse'} concernant le bien situé ${address}.\n\nCe rapport vous permettra d'avoir une vision claire des points importants du dossier.\n\nN'hésitez pas à me contacter pour en discuter ensemble.\n\nCordialement,\n${senderName}${senderCompany ? '\n' + senderCompany : ''}`;
     } else {
-      return `Bonjour,\n\nDans le cadre de votre projet immobilier, je vous transmets ${selectedList.length} rapports d'analyse concernant le bien situé ${address}.\n\n${hasComplete && hasSimple ? 'Ces rapports incluent une analyse complète et des analyses documentaires qui' : hasComplete ? 'Ces rapports d\'analyse complète' : 'Ces rapports d\'analyse'} vous permettront d'avoir une vision claire des points importants du dossier.\n\nN'hésitez pas à me contacter pour en discuter ensemble.\n\nCordialement,\n${senderName}${senderCompany ? '\n' + senderCompany : ''}`;
+      return `Bonjour,\n\nDans le cadre de votre projet immobilier, je vous transmets ${selectedList.length} rapports d'analyse concernant le bien situé ${address}.\n\nCes documents vous permettront d'avoir une vision complète des points importants du dossier.\n\nN'hésitez pas à me contacter pour en discuter ensemble.\n\nCordialement,\n${senderName}${senderCompany ? '\n' + senderCompany : ''}`;
     }
   }, [analyses, selectedAnalysisIds, senderName, senderCompany]);
 
@@ -2673,32 +2676,31 @@ function SendReportFromDossier({ analyses, buyers, proProfile, onClose, onSent }
       const { data: { session } } = await supabase.auth.getSession();
       const selectedBuyers = buyers.filter(b => selectedBuyerIds.has(b.id));
       const selectedAnalysesList = analyses.filter(a => selectedAnalysisIds.has(a.id));
-      const totalSends = selectedBuyers.length * selectedAnalysesList.length;
+      const totalSends = selectedBuyers.length;
       let sent = 0;
 
       for (const buyer of selectedBuyers) {
-        for (const analysis of selectedAnalysesList) {
-          const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session?.access_token}`,
-              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-            },
-            body: JSON.stringify({
-              action: 'send_report',
-              analysis_id: analysis.id,
-              recipient_name: `${buyer.first_name || ''} ${buyer.last_name}`.trim(),
-              recipient_firstname: buyer.first_name || buyer.last_name,
-              recipient_email: buyer.email,
-              message: message.replace(/^Bonjour,/, `Bonjour ${buyer.first_name || buyer.last_name},`),
-            }),
-          });
-          const data = await res.json();
-          if (data.error) throw new Error(data.error);
-          sent++;
-          setSendProgress(Math.round((sent / totalSends) * 100));
-        }
+        // Envoyer un mail groupé avec toutes les analyses sélectionnées
+        const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            action: 'send_report_batch',
+            analysis_ids: selectedAnalysesList.map(a => a.id),
+            recipient_name: `${buyer.first_name || ''} ${buyer.last_name}`.trim(),
+            recipient_firstname: buyer.first_name || buyer.last_name,
+            recipient_email: buyer.email,
+            message: message.replace(/^Bonjour,/, `Bonjour ${buyer.first_name || buyer.last_name},`),
+          }),
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        sent++;
+        setSendProgress(Math.round((sent / totalSends) * 100));
       }
 
       setSendDone(true);
@@ -2712,10 +2714,8 @@ function SendReportFromDossier({ analyses, buyers, proProfile, onClose, onSent }
   const stepTitles = ['Destinataires', 'Analyses', 'Message & envoi'];
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(3px)' }}
-      onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(3px)' }}>
       <motion.div initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }}
-        onClick={e => e.stopPropagation()}
         style={{ background: '#fff', borderRadius: 24, width: '100%', maxWidth: 580, boxShadow: '0 32px 80px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto', overflow: 'hidden' }}>
 
         {/* Header */}
@@ -3245,7 +3245,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
         )}
       </div>
 
-      {/* Historique des envois */}
+      {/* Historique des envois — regroupé par acheteur */}
       {sendHistory.length > 0 && (
         <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 22px', marginBottom: 12 }}>
           <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a', margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -3253,23 +3253,58 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
             Rapports envoyés
             <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: 100 }}>{sendHistory.length}</span>
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {sendHistory.map(sh => (
-              <div key={sh.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: sh.opened_at ? '#f0fdf4' : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Mail size={14} style={{ color: sh.opened_at ? '#16a34a' : '#94a3b8' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {(() => {
+              // Group by recipient email
+              const grouped = new Map<string, typeof sendHistory>();
+              sendHistory.forEach(sh => {
+                const key = sh.recipient_email;
+                if (!grouped.has(key)) grouped.set(key, []);
+                grouped.get(key)!.push(sh);
+              });
+              return Array.from(grouped.entries()).map(([email, items]) => (
+                <div key={email} style={{ padding: '12px 14px', borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: items.length > 1 ? 8 : 0 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: items.some(i => i.opened_at) ? '#f0fdf4' : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Mail size={14} style={{ color: items.some(i => i.opened_at) ? '#16a34a' : '#94a3b8' }} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{items[0].recipient_name}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8' }}>{email} · {fmtDate(items[0].sent_at)}</div>
+                    </div>
+                    {items.every(i => i.opened_at) ? (
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 10px', borderRadius: 100, border: '1px solid #bbf7d0' }}>✓ Ouvert</span>
+                    ) : (
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', background: '#f8fafc', padding: '3px 10px', borderRadius: 100, border: '1px solid #e2e8f0' }}>En attente</span>
+                    )}
+                  </div>
+                  {items.length > 1 && (
+                    <div style={{ marginLeft: 42, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {items.map(item => {
+                        const analysis = folderAnalyses.find(a => a.id === item.analysis_id);
+                        return (
+                          <div key={item.id} style={{ fontSize: 11, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <FileText size={10} style={{ color: '#94a3b8' }} />
+                            <span>{analysis?.address || analysis?.title || 'Analyse'}</span>
+                            <span style={{ fontSize: 9, color: '#94a3b8' }}>· {analysis?.type === 'complete' ? 'Complète' : 'Simple'}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {items.length === 1 && (() => {
+                    const analysis = folderAnalyses.find(a => a.id === items[0].analysis_id);
+                    return analysis ? (
+                      <div style={{ marginLeft: 42, fontSize: 11, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                        <FileText size={10} style={{ color: '#94a3b8' }} />
+                        <span>{analysis.address || analysis.title}</span>
+                        <span style={{ fontSize: 9, color: '#94a3b8' }}>· {analysis.type === 'complete' ? 'Complète' : 'Simple'}</span>
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{sh.recipient_name}</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8' }}>{sh.recipient_email} · {fmtDate(sh.sent_at)}</div>
-                </div>
-                {sh.opened_at ? (
-                  <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 10px', borderRadius: 100, border: '1px solid #bbf7d0' }}>✓ Ouvert</span>
-                ) : (
-                  <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', background: '#f8fafc', padding: '3px 10px', borderRadius: 100, border: '1px solid #e2e8f0' }}>En attente</span>
-                )}
-              </div>
-            ))}
+              ));
+            })()}
           </div>
         </div>
       )}
