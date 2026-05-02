@@ -2623,8 +2623,8 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
    DOSSIER DETAIL — Vue détaillée d'un dossier
 ══════════════════════════════════════════ */
 /* ── Envoi rapport depuis un dossier ─────────────────── */
-function SendReportFromDossier({ analyses, buyers, proProfile, folderId, onClose, onSent }: {
-  analyses: ProAnalysis[]; buyers: ProFolderBuyer[]; proProfile: ProProfile; folderId: string; onClose: () => void; onSent: () => void;
+function SendReportFromDossier({ analyses, buyers, proProfile, onClose, onSent }: {
+  analyses: ProAnalysis[]; buyers: ProFolderBuyer[]; proProfile: ProProfile; onClose: () => void; onSent: () => void;
 }) {
   const [selectedBuyerIds, setSelectedBuyerIds] = useState<Set<string>>(new Set());
   const [selectedAnalysisId, setSelectedAnalysisId] = useState(analyses.length === 1 ? analyses[0].id : '');
@@ -3183,7 +3183,6 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
               analyses={completedAnalyses}
               buyers={buyersWithEmail}
               proProfile={proProfile}
-              folderId={folderId}
               onClose={() => setShowSendReport(false)}
               onSent={() => { loadSendHistory(); setToast({ message: 'Rapport envoyé avec succès !', type: 'success' }); }}
             />
