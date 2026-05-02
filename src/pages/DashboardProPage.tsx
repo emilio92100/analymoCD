@@ -2390,7 +2390,7 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
     }
 
     setSaving(true);
-    let logoUrl = proProfile.pro_logo_url;
+    let logoUrl: string | null = proProfile.pro_logo_url || null;
 
     if (logoFile) {
       const ext = logoFile.name.split('.').pop();
@@ -2400,6 +2400,9 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
         const { data: urlData } = supabase.storage.from('pro-logos').getPublicUrl(path);
         logoUrl = urlData.publicUrl;
       }
+    } else if (!logoPreview) {
+      // Logo supprimé
+      logoUrl = null;
     }
 
     const updateData: Record<string, unknown> = {
@@ -2488,10 +2491,18 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
               </div>
             )}
             <div>
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#374151' }}>
-                <Upload size={13} /> Choisir un fichier
-                <input type="file" accept="image/*" onChange={handleLogoChange} style={{ display: 'none' }} />
-              </label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#374151' }}>
+                  <Upload size={13} /> Choisir un fichier
+                  <input type="file" accept="image/*" onChange={handleLogoChange} style={{ display: 'none' }} />
+                </label>
+                {logoPreview && (
+                  <button onClick={() => { setLogoFile(null); setLogoPreview(null); }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#dc2626' }}>
+                    ✕ Supprimer
+                  </button>
+                )}
+              </div>
               <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>PNG ou JPG, max 2 Mo. Affiché sur les rapports envoyés.</p>
             </div>
           </div>
