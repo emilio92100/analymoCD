@@ -483,18 +483,23 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares }:
           <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 16 }}>Derniers envois</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {lastShares.map(s => (
-              <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: '#f8fafc' }}>
-                <Send size={14} style={{ color: '#2a7d9c', flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{s.recipient_firstname} {s.recipient_name}</span>
-                  <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 8 }}>{s.recipient_email}</span>
+              <div key={s.id} style={{ padding: '12px 14px', borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                  <Send size={14} style={{ color: '#2a7d9c', flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{s.recipient_firstname} {s.recipient_name}</div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.recipient_email}</div>
+                  </div>
                 </div>
-                <span style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDate(s.sent_at)}</span>
-                {s.opened_at ? (
-                  <span style={{ fontSize: 10, fontWeight: 600, color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: 100 }}>Ouvert</span>
-                ) : (
-                  <span style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', background: '#f8fafc', padding: '2px 8px', borderRadius: 100, border: '1px solid #e2e8f0' }}>En attente</span>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 24 }}>
+                  <span style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDate(s.sent_at)}</span>
+                  <span style={{ fontSize: 11, color: '#94a3b8' }}>·</span>
+                  {s.opened_at ? (
+                    <span style={{ fontSize: 10, fontWeight: 600, color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: 100 }}>Ouvert</span>
+                  ) : (
+                    <span style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', background: '#f8fafc', padding: '2px 8px', borderRadius: 100, border: '1px solid #e2e8f0' }}>En attente</span>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -1486,11 +1491,27 @@ function Field({ label, required, optional, hint, tooltip, icon: Icon, children 
 ══════════════════════════════════════════ */
 function InfoTooltip({ text }: { text: string }) {
   const [show, setShow] = useState(false);
+  const ref = React.useRef<HTMLSpanElement>(null);
+  const [pos, setPos] = useState<'above'|'below'>('above');
+  const [alignRight, setAlignRight] = useState(false);
+
+  const handleToggle = () => {
+    if (!show && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      // Si pas assez de place en haut, ouvrir en dessous
+      setPos(rect.top < 120 ? 'below' : 'above');
+      // Si trop à droite, aligner à droite du tooltip
+      setAlignRight(rect.left > window.innerWidth - 200);
+    }
+    setShow(s => !s);
+  };
+
   return (
     <span
-      onMouseEnter={() => setShow(true)}
-      onMouseLeave={() => setShow(false)}
-      onClick={() => setShow(s => !s)}
+      ref={ref}
+      onMouseEnter={() => { if (window.innerWidth > 768) { handleToggle(); } }}
+      onMouseLeave={() => { if (window.innerWidth > 768) setShow(false); }}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleToggle(); }}
       style={{
         position: 'relative' as const,
         display: 'inline-flex',
@@ -1512,46 +1533,46 @@ function InfoTooltip({ text }: { text: string }) {
       i
       <AnimatePresence>
         {show && (
-          <motion.span
-            initial={{ opacity: 0, y: 6, scale: 0.92 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 4, scale: 0.96 }}
-            transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-            style={{
-              position: 'absolute',
-              bottom: 'calc(100% + 8px)',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              background: 'linear-gradient(135deg, #1e3a4d, #0f2d3d)',
-              color: '#fff',
-              padding: '9px 12px',
-              borderRadius: 8,
-              fontSize: 11.5,
-              fontWeight: 500,
-              lineHeight: 1.5,
-              letterSpacing: 0,
-              textTransform: 'none' as const,
-              width: 240,
-              boxShadow: '0 8px 24px rgba(15,45,61,0.28)',
-              zIndex: 1500,
-              pointerEvents: 'none' as const,
-              fontFamily: 'inherit',
-              textAlign: 'left' as const,
-            }}>
-            {text}
-            {/* Petite flèche pointant vers le bas */}
-            <span style={{
-              position: 'absolute',
-              top: '100%',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: 0,
-              height: 0,
-              borderLeft: '5px solid transparent',
-              borderRight: '5px solid transparent',
-              borderTop: '5px solid #0f2d3d',
-            }} />
-          </motion.span>
+          <>
+            {/* Overlay pour fermer au clic extérieur sur mobile */}
+            <div onClick={(e) => { e.stopPropagation(); setShow(false); }} style={{ position: 'fixed', inset: 0, zIndex: 1499 }} />
+            <motion.span
+              initial={{ opacity: 0, y: pos === 'above' ? 6 : -6, scale: 0.92 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: pos === 'above' ? 4 : -4, scale: 0.96 }}
+              transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+              style={{
+                position: 'absolute',
+                ...(pos === 'above' ? { bottom: 'calc(100% + 8px)' } : { top: 'calc(100% + 8px)' }),
+                ...(alignRight ? { right: 0 } : { left: '50%', transform: 'translateX(-50%)' }),
+                background: 'linear-gradient(135deg, #1e3a4d, #0f2d3d)',
+                color: '#fff',
+                padding: '9px 12px',
+                borderRadius: 8,
+                fontSize: 11.5,
+                fontWeight: 500,
+                lineHeight: 1.5,
+                letterSpacing: 0,
+                textTransform: 'none' as const,
+                width: Math.min(240, typeof window !== 'undefined' ? window.innerWidth - 60 : 240),
+                boxShadow: '0 8px 24px rgba(15,45,61,0.28)',
+                zIndex: 1500,
+                fontFamily: 'inherit',
+                textAlign: 'left' as const,
+              }}>
+              {text}
+              <span style={{
+                position: 'absolute',
+                ...(pos === 'above' ? { top: '100%' } : { bottom: '100%' }),
+                ...(alignRight ? { right: 4 } : { left: '50%', transform: 'translateX(-50%)' }),
+                width: 0,
+                height: 0,
+                borderLeft: '5px solid transparent',
+                borderRight: '5px solid transparent',
+                ...(pos === 'above' ? { borderTop: '5px solid #0f2d3d' } : { borderBottom: '5px solid #1e3a4d' }),
+              }} />
+            </motion.span>
+          </>
         )}
       </AnimatePresence>
     </span>
@@ -2953,6 +2974,17 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
   const [sendHistory, setSendHistory] = useState<{ id: string; recipient_name: string; recipient_email: string; sent_at: string; opened_at?: string; analysis_id: string }[]>([]);
   const navigate = useNavigate();
 
+  // Body scroll lock quand une modale est ouverte
+  const anyModalOpen = showSellerModal || showBuyerModal || showEditFolderModal || showSendReport || !!sellerToDelete || !!buyerToDelete;
+  useEffect(() => {
+    if (anyModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [anyModalOpen]);
+
   // Charge complet (au mount) : dossier + stats + vendeurs + acheteurs
   const loadFolder = useCallback(async () => {
     setLoading(true);
@@ -3329,15 +3361,18 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
                       const analysis = folderAnalyses.find(a => a.id === item.analysis_id);
                       const docName = analysis ? (analysis.address || analysis.title || 'Analyse').split(' — ')[0] : 'Analyse';
                       return (
-                        <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10, background: '#fff', border: '1px solid #edf2f7' }}>
+                        <div key={item.id} className="rapport-envoi-item" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10, background: '#fff', border: '1px solid #edf2f7', flexWrap: 'wrap' }}>
                           <FileText size={14} style={{ color: '#94a3b8', flexShrink: 0 }} />
-                          <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{docName}</span>
-                          <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{analysis?.type === 'complete' ? 'Complète' : 'Simple'}</span>
-                          {item.opened_at ? (
-                            <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 10px', borderRadius: 100, border: '1px solid #bbf7d0', flexShrink: 0 }}>✓ Ouvert le {fmtDate(item.opened_at!)}</span>
-                          ) : (
-                            <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f8fafc', padding: '3px 10px', borderRadius: 100, border: '1px solid #e2e8f0', flexShrink: 0 }}>En attente</span>
-                          )}
+                          <span className="rapport-envoi-name" style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, minWidth: 0 }}>{docName}</span>
+                          <div className="rapport-envoi-meta" style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                            <span style={{ fontSize: 11, color: '#94a3b8' }}>{analysis?.type === 'complete' ? 'Complète' : 'Simple'}</span>
+                            {item.opened_at ? (
+                              <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 10px', borderRadius: 100, border: '1px solid #bbf7d0' }}>✓ Ouvert le {fmtDate(item.opened_at!)}</span>
+                            ) : (
+                              <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f8fafc', padding: '3px 10px', borderRadius: 100, border: '1px solid #e2e8f0' }}>En attente</span>
+                            )}
+                          </div>
+                        </div>
                         </div>
                       );
                     })}
@@ -4405,6 +4440,9 @@ export default function DashboardProPage() {
           .plans-grid { grid-template-columns: 1fr !important; }
           .pro-stats-grid { grid-template-columns: 1fr 1fr !important; }
           .rapport-envoi-items { margin-left: 0 !important; }
+          .rapport-envoi-item { flex-wrap: wrap !important; }
+          .rapport-envoi-name { flex-basis: calc(100% - 30px) !important; white-space: normal !important; }
+          .rapport-envoi-meta { width: 100% !important; padding-left: 24px !important; }
           .plan-card { padding: 16px !important; }
           .plan-card h3 { font-size: 16px !important; }
           .plan-card span[style*="font-size: 30"] { font-size: 24px !important; }
