@@ -526,7 +526,7 @@ export default function NouvelleAnalyse() {
 
     return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <Link to="/dashboard" style={{ fontSize: 13, color: '#94a3b8', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</Link>
+      <Link to="/dashboard" style={{ fontSize: 14, color: '#2a7d9c', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 24, fontWeight: 700, padding: '8px 16px', borderRadius: 10, background: '#f0f7fb', border: '1px solid #d0e8f0', transition: 'all 0.15s' }}><ChevronLeft size={15} /> Retour</Link>
       <h1 style={{ fontSize: 'clamp(22px,3vw,28px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 6 }}>Que souhaitez-vous analyser ?</h1>
       <p style={{ fontSize: 14, color: '#64748b', marginBottom: showFreeBanner ? 16 : 32 }}>Choisissez le mode d'analyse adapté à votre besoin.</p>
       {showFreeBanner && (
