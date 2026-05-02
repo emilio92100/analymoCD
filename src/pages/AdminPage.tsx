@@ -3155,6 +3155,7 @@ function DemandesProTab({ onConfirm, showToast, onReadChange, onCreatePro }: { o
 type ProClient = {
   id: string; full_name?: string; email?: string; telephone?: string; role: string;
   pro_profile_type?: string; pro_company_name?: string; pro_ville?: string; pro_network?: string;
+  pro_siret?: string; pro_company_address?: string;
   pro_notes_admin?: string; pro_created_at?: string; pro_recommended_plan?: string;
   pro_onboarding_done?: boolean; credits_document?: number; credits_complete?: number;
   suspended?: boolean; created_at: string;
@@ -3177,6 +3178,12 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [proClientCredits, setProClientCredits] = useState<{ total_complete: number; total_document: number } | null>(null);
   const [clientInvoices, setClientInvoices] = useState<{ id: string; date: string; description: string; amount: string; pdf_url: string | null; type: string }[]>([]);
   const [clientInvoicesLoading, setClientInvoicesLoading] = useState(false);
+  const [editingIdentity, setEditingIdentity] = useState(false);
+  const [editCompanyName, setEditCompanyName] = useState('');
+  const [editNetwork, setEditNetwork] = useState('');
+  const [editSiret, setEditSiret] = useState('');
+  const [editVille, setEditVille] = useState('');
+  const [editCompanyAddress, setEditCompanyAddress] = useState('');
   const [sendingInvite, setSendingInvite] = useState(false);
 
   // Form state
@@ -3228,6 +3235,12 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
 
   const loadClientDetail = async (client: ProClient) => {
     setSelected(client);
+    setEditingIdentity(false);
+    setEditCompanyName(client.pro_company_name || '');
+    setEditNetwork(client.pro_network || '');
+    setEditSiret(client.pro_siret || '');
+    setEditVille(client.pro_ville || '');
+    setEditCompanyAddress(client.pro_company_address || '');
     // Invitations
     const { data: inv } = await supabase.from('pro_invitations').select('*').eq('profile_id', client.id).order('created_at', { ascending: false });
     setInvitations((inv || []) as ProInvitation[]);
@@ -3448,6 +3461,97 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                       ? `📧 Mail envoyé le ${fmtDateTime(invitations[0].sent_at)} — en attente d'activation`
                       : '⏳ Invitation créée, mail non encore envoyé'}
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Identité professionnelle */}
+          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: 20, marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Building2 size={15} style={{ color: '#2a7d9c' }} /> Identité professionnelle
+              </h3>
+              {!editingIdentity ? (
+                <button onClick={() => setEditingIdentity(true)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 8, background: '#f0f7fb', border: '1px solid #c7dde8', color: '#2a7d9c', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+                  ✏️ Modifier
+                </button>
+              ) : (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button onClick={() => setEditingIdentity(false)}
+                    style={{ padding: '6px 14px', borderRadius: 8, background: '#fff', border: '1px solid #edf2f7', color: '#64748b', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+                    Annuler
+                  </button>
+                  <button onClick={async () => {
+                    const updates: Record<string, string | null> = {
+                      pro_company_name: editCompanyName.trim() || null,
+                      pro_network: editNetwork.trim() || null,
+                      pro_siret: editSiret.trim() || null,
+                      pro_ville: editVille.trim() || null,
+                      pro_company_address: editCompanyAddress.trim() || null,
+                    };
+                    const { error } = await supabase.from('profiles').update(updates).eq('id', selected.id);
+                    if (error) { showToast('Erreur: ' + error.message, 'error'); return; }
+                    // Log changes
+                    const changes: string[] = [];
+                    if (editCompanyName !== (selected.pro_company_name || '')) changes.push(`Nom commercial: "${selected.pro_company_name || '—'}" → "${editCompanyName || '—'}"`);
+                    if (editNetwork !== (selected.pro_network || '')) changes.push(`Réseau: "${selected.pro_network || '—'}" → "${editNetwork || '—'}"`);
+                    if (editSiret !== (selected.pro_siret || '')) changes.push(`SIRET: "${selected.pro_siret || '—'}" → "${editSiret || '—'}"`);
+                    if (editVille !== (selected.pro_ville || '')) changes.push(`Ville: "${selected.pro_ville || '—'}" → "${editVille || '—'}"`);
+                    if (editCompanyAddress !== (selected.pro_company_address || '')) changes.push(`Adresse: "${selected.pro_company_address || '—'}" → "${editCompanyAddress || '—'}"`);
+                    if (changes.length > 0) logAction(`Identité pro modifiée pour ${selected.full_name}: ${changes.join(', ')}`);
+                    setSelected({ ...selected, ...updates });
+                    setEditingIdentity(false);
+                    showToast('Identité mise à jour', 'success');
+                  }}
+                    style={{ padding: '6px 14px', borderRadius: 8, background: '#2a7d9c', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+                    ✅ Enregistrer
+                  </button>
+                </div>
+              )}
+            </div>
+            {editingIdentity ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 4, display: 'block' }}>Nom commercial</label>
+                  <input value={editCompanyName} onChange={e => setEditCompanyName(e.target.value)} placeholder="Dupont Immobilier"
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 4, display: 'block' }}>Réseau</label>
+                  <input value={editNetwork} onChange={e => setEditNetwork(e.target.value)} placeholder="IAD, Safti, Indépendant..."
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 4, display: 'block' }}>SIRET</label>
+                  <input value={editSiret} onChange={e => setEditSiret(e.target.value)} placeholder="123 456 789 00012"
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 4, display: 'block' }}>Ville / Zone d'activité</label>
+                  <input value={editVille} onChange={e => setEditVille(e.target.value)} placeholder="Paris, Île-de-France"
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                </div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 4, display: 'block' }}>Adresse professionnelle</label>
+                  <input value={editCompanyAddress} onChange={e => setEditCompanyAddress(e.target.value)} placeholder="12 rue de Rivoli, 75001 Paris"
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {[
+                  { label: 'Nom commercial', value: selected.pro_company_name },
+                  { label: 'Réseau', value: selected.pro_network },
+                  { label: 'SIRET', value: selected.pro_siret },
+                  { label: 'Ville', value: selected.pro_ville },
+                  { label: 'Adresse', value: selected.pro_company_address, span: true },
+                ].map((f, i) => (
+                  <div key={i} style={{ padding: '10px 12px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7', ...(f.span ? { gridColumn: 'span 2' } : {}) }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 3 }}>{f.label}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: f.value ? '#0f172a' : '#cbd5e1' }}>{f.value || '—'}</div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
