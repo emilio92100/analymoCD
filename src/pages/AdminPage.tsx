@@ -3404,7 +3404,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
                   <Trash2 size={12} /> Supprimer
                 </button>
-                <button onClick={() => { setNewPassword(''); setShowResetPwd(true); }}
+                <button onClick={() => { setShowResetPwd(true); }}
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
                   🔑 Reset MDP
                 </button>
