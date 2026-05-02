@@ -2622,162 +2622,263 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
 /* ══════════════════════════════════════════
    DOSSIER DETAIL — Vue détaillée d'un dossier
 ══════════════════════════════════════════ */
-/* ── Envoi rapport depuis un dossier ─────────────────── */
+/* ── Envoi rapport depuis un dossier — Wizard 3 étapes ── */
 function SendReportFromDossier({ analyses, buyers, proProfile, onClose, onSent }: {
   analyses: ProAnalysis[]; buyers: ProFolderBuyer[]; proProfile: ProProfile; onClose: () => void; onSent: () => void;
 }) {
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedBuyerIds, setSelectedBuyerIds] = useState<Set<string>>(new Set());
-  const [selectedAnalysisId, setSelectedAnalysisId] = useState(analyses.length === 1 ? analyses[0].id : '');
+  const [selectedAnalysisIds, setSelectedAnalysisIds] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [sendProgress, setSendProgress] = useState(0);
+  const [sendDone, setSendDone] = useState(false);
   const [error, setError] = useState('');
 
-  const selectedAnalysis = analyses.find(a => a.id === selectedAnalysisId);
-  const address = selectedAnalysis?.address || selectedAnalysis?.title || 'Bien immobilier';
   const senderName = proProfile.full_name || '';
   const senderCompany = proProfile.pro_company_name || '';
 
+  // Génère le message adapté selon les analyses sélectionnées
+  const generateMessage = useCallback(() => {
+    const selectedList = analyses.filter(a => selectedAnalysisIds.has(a.id));
+    const hasComplete = selectedList.some(a => a.type === 'complete');
+    const hasSimple = selectedList.some(a => a.type !== 'complete');
+    const address = selectedList[0]?.address || selectedList[0]?.title || 'le bien concerné';
+
+    if (selectedList.length === 1) {
+      return `Bonjour,\n\nDans le cadre de votre projet immobilier, je vous transmets ${hasComplete ? 'le rapport d\'analyse complète' : 'le rapport d\'analyse'} du bien situé ${address}.\n\nCe rapport vous permettra d'avoir une vision claire des points importants du dossier.\n\nN'hésitez pas à me contacter pour en discuter ensemble.\n\nCordialement,\n${senderName}${senderCompany ? '\n' + senderCompany : ''}`;
+    } else {
+      return `Bonjour,\n\nDans le cadre de votre projet immobilier, je vous transmets ${selectedList.length} rapports d'analyse concernant le bien situé ${address}.\n\n${hasComplete && hasSimple ? 'Ces rapports incluent une analyse complète et des analyses documentaires qui' : hasComplete ? 'Ces rapports d\'analyse complète' : 'Ces rapports d\'analyse'} vous permettront d'avoir une vision claire des points importants du dossier.\n\nN'hésitez pas à me contacter pour en discuter ensemble.\n\nCordialement,\n${senderName}${senderCompany ? '\n' + senderCompany : ''}`;
+    }
+  }, [analyses, selectedAnalysisIds, senderName, senderCompany]);
+
+  // Met à jour le message quand les analyses changent
   useEffect(() => {
-    setMessage(`Bonjour,\n\nDans le cadre de votre projet immobilier, je vous transmets le rapport d'analyse du bien situé ${address}.\n\nCe rapport vous permettra d'avoir une vision claire des points importants du dossier.\n\nN'hésitez pas à me contacter pour en discuter ensemble.\n\nCordialement,\n${senderName}${senderCompany ? '\n' + senderCompany : ''}`);
-  }, [address, senderName, senderCompany]);
+    if (selectedAnalysisIds.size > 0) setMessage(generateMessage());
+  }, [selectedAnalysisIds, generateMessage]);
 
   const toggleBuyer = (id: string) => {
-    setSelectedBuyerIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
+    setSelectedBuyerIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  };
+  const toggleAnalysis = (id: string) => {
+    setSelectedAnalysisIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   };
 
   const handleSend = async () => {
-    if (selectedBuyerIds.size === 0) { setError('Sélectionnez au moins un acheteur.'); return; }
-    if (!selectedAnalysisId) { setError('Sélectionnez une analyse à envoyer.'); return; }
     setError('');
     setSending(true);
+    setSendProgress(0);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const selectedBuyers = buyers.filter(b => selectedBuyerIds.has(b.id));
+      const selectedAnalysesList = analyses.filter(a => selectedAnalysisIds.has(a.id));
+      const totalSends = selectedBuyers.length * selectedAnalysesList.length;
+      let sent = 0;
 
       for (const buyer of selectedBuyers) {
-        const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session?.access_token}`,
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          },
-          body: JSON.stringify({
-            action: 'send_report',
-            analysis_id: selectedAnalysisId,
-            recipient_name: `${buyer.first_name || ''} ${buyer.last_name}`.trim(),
-            recipient_firstname: buyer.first_name || buyer.last_name,
-            recipient_email: buyer.email,
-            message: message.replace(/Bonjour/, `Bonjour ${buyer.first_name || buyer.last_name}`),
-          }),
-        });
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
+        for (const analysis of selectedAnalysesList) {
+          const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.access_token}`,
+              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({
+              action: 'send_report',
+              analysis_id: analysis.id,
+              recipient_name: `${buyer.first_name || ''} ${buyer.last_name}`.trim(),
+              recipient_firstname: buyer.first_name || buyer.last_name,
+              recipient_email: buyer.email,
+              message: message.replace(/^Bonjour,/, `Bonjour ${buyer.first_name || buyer.last_name},`),
+            }),
+          });
+          const data = await res.json();
+          if (data.error) throw new Error(data.error);
+          sent++;
+          setSendProgress(Math.round((sent / totalSends) * 100));
+        }
       }
 
-      onSent();
-      onClose();
+      setSendDone(true);
+      setTimeout(() => { onSent(); onClose(); }, 2500);
     } catch (e: any) {
       setError(e.message || 'Erreur lors de l\'envoi.');
+      setSending(false);
     }
-    setSending(false);
   };
 
+  const stepTitles = ['Destinataires', 'Analyses', 'Message & envoi'];
+
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(2px)' }}
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(3px)' }}
       onClick={onClose}>
-      <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+      <motion.div initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }}
         onClick={e => e.stopPropagation()}
-        style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 540, boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: '90vh', overflowY: 'auto' }}>
+        style={{ background: '#fff', borderRadius: 24, width: '100%', maxWidth: 580, boxShadow: '0 32px 80px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto', overflow: 'hidden' }}>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+        {/* Header */}
+        <div style={{ padding: '24px 28px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0 }}>📧 Envoyer une analyse</h3>
-            <p style={{ fontSize: 13, color: '#94a3b8', margin: '4px 0 0' }}>Sélectionnez les acheteurs et l'analyse à partager</p>
-          </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-            <X size={20} style={{ color: '#94a3b8' }} />
-          </button>
-        </div>
-
-        {/* Étape 1 : Sélection acheteurs */}
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8, textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>
-            👥 Acheteurs destinataires
-          </label>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {buyers.map(b => {
-              const isSelected = selectedBuyerIds.has(b.id);
-              return (
-                <button key={b.id} onClick={() => toggleBuyer(b.id)} type="button"
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10,
-                    background: isSelected ? '#f0fdf4' : '#fff',
-                    border: isSelected ? '2px solid #16a34a' : '1.5px solid #edf2f7',
-                    cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}>
-                  <div style={{ width: 20, height: 20, borderRadius: '50%', border: isSelected ? '6px solid #16a34a' : '2px solid #cbd5e1', background: '#fff', flexShrink: 0 }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{b.first_name} {b.last_name}</div>
-                    <div style={{ fontSize: 11, color: '#94a3b8' }}>{b.email}</div>
+            <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', margin: 0 }}>📧 Envoyer une analyse</h3>
+            <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+              {[1, 2, 3].map(s => (
+                <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800,
+                    background: step === s ? '#2a7d9c' : step > s ? '#16a34a' : '#f1f5f9',
+                    color: step >= s ? '#fff' : '#94a3b8' }}>
+                    {step > s ? '✓' : s}
                   </div>
-                </button>
-              );
-            })}
+                  <span style={{ fontSize: 11, fontWeight: step === s ? 700 : 500, color: step === s ? '#0f172a' : '#94a3b8' }}>{stepTitles[s - 1]}</span>
+                  {s < 3 && <div style={{ width: 20, height: 1.5, background: step > s ? '#16a34a' : '#e2e8f0', marginLeft: 2 }} />}
+                </div>
+              ))}
+            </div>
           </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}><X size={20} style={{ color: '#94a3b8' }} /></button>
         </div>
 
-        {/* Étape 2 : Sélection analyse */}
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8, textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>
-            📋 Analyse à envoyer
-          </label>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {analyses.map(a => {
-              const isSelected = selectedAnalysisId === a.id;
-              return (
-                <button key={a.id} onClick={() => setSelectedAnalysisId(a.id)} type="button"
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10,
-                    background: isSelected ? '#f0f7fb' : '#fff',
-                    border: isSelected ? '2px solid #2a7d9c' : '1.5px solid #edf2f7',
-                    cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}>
-                  <div style={{ width: 20, height: 20, borderRadius: '50%', border: isSelected ? '6px solid #2a7d9c' : '2px solid #cbd5e1', background: '#fff', flexShrink: 0 }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.address || a.title}</div>
-                    <div style={{ fontSize: 11, color: '#94a3b8' }}>{a.type === 'complete' ? 'Complète' : 'Simple'} · {fmtDate(a.created_at)}</div>
+        <div style={{ padding: '24px 28px 28px' }}>
+          <AnimatePresence mode="wait">
+            {/* ÉTAPE 1 : Sélection acheteurs */}
+            {step === 1 && (
+              <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
+                <p style={{ fontSize: 14, color: '#64748b', margin: '0 0 16px' }}>👥 Sélectionnez les acheteurs qui recevront le rapport :</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {buyers.map(b => {
+                    const sel = selectedBuyerIds.has(b.id);
+                    return (
+                      <button key={b.id} onClick={() => toggleBuyer(b.id)} type="button"
+                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14,
+                          background: sel ? '#f0fdf4' : '#fff', border: sel ? '2px solid #16a34a' : '1.5px solid #edf2f7',
+                          cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}>
+                        <div style={{ width: 22, height: 22, borderRadius: 6, border: sel ? 'none' : '2px solid #cbd5e1', background: sel ? '#16a34a' : '#fff',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
+                          {sel && <span style={{ color: '#fff', fontSize: 12, fontWeight: 900 }}>✓</span>}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>{b.first_name} {b.last_name}</div>
+                          <div style={{ fontSize: 12, color: '#94a3b8' }}>{b.email}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+                  <button onClick={() => { if (selectedBuyerIds.size > 0) setStep(2); }}
+                    disabled={selectedBuyerIds.size === 0}
+                    style={{ padding: '12px 28px', borderRadius: 12, border: 'none',
+                      background: selectedBuyerIds.size > 0 ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#e5e7eb',
+                      color: '#fff', fontSize: 14, fontWeight: 700, cursor: selectedBuyerIds.size > 0 ? 'pointer' : 'default' }}>
+                    Suivant →
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* ÉTAPE 2 : Sélection analyses */}
+            {step === 2 && (
+              <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
+                <p style={{ fontSize: 14, color: '#64748b', margin: '0 0 16px' }}>📋 Sélectionnez les analyses à envoyer :</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {analyses.map(a => {
+                    const sel = selectedAnalysisIds.has(a.id);
+                    const score = a.result && typeof a.result === 'object' && 'score' in (a.result as Record<string, unknown>) ? (a.result as Record<string, number>).score : null;
+                    return (
+                      <button key={a.id} onClick={() => toggleAnalysis(a.id)} type="button"
+                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14,
+                          background: sel ? '#f0f7fb' : '#fff', border: sel ? '2px solid #2a7d9c' : '1.5px solid #edf2f7',
+                          cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}>
+                        <div style={{ width: 22, height: 22, borderRadius: 6, border: sel ? 'none' : '2px solid #cbd5e1', background: sel ? '#2a7d9c' : '#fff',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
+                          {sel && <span style={{ color: '#fff', fontSize: 12, fontWeight: 900 }}>✓</span>}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.address || a.title}</div>
+                          <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                            <span style={{ fontWeight: 700, color: a.type === 'complete' ? '#2a7d9c' : '#64748b' }}>{a.type === 'complete' ? 'Complète' : 'Simple'}</span> · {fmtDate(a.created_at)}
+                          </div>
+                        </div>
+                        {score !== null && <span style={{ fontSize: 12, fontWeight: 900, color: score >= 14 ? '#16a34a' : score >= 10 ? '#d97706' : '#dc2626' }}>{score}/20</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20 }}>
+                  <button onClick={() => setStep(1)}
+                    style={{ padding: '12px 20px', borderRadius: 12, border: '1.5px solid #edf2f7', background: '#fff', color: '#64748b', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                    ← Retour
+                  </button>
+                  <button onClick={() => { if (selectedAnalysisIds.size > 0) setStep(3); }}
+                    disabled={selectedAnalysisIds.size === 0}
+                    style={{ padding: '12px 28px', borderRadius: 12, border: 'none',
+                      background: selectedAnalysisIds.size > 0 ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#e5e7eb',
+                      color: '#fff', fontSize: 14, fontWeight: 700, cursor: selectedAnalysisIds.size > 0 ? 'pointer' : 'default' }}>
+                    Suivant →
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* ÉTAPE 3 : Message + envoi */}
+            {step === 3 && !sending && !sendDone && (
+              <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
+                <p style={{ fontSize: 14, color: '#64748b', margin: '0 0 4px' }}>✉️ Prévisualisez et personnalisez votre message :</p>
+                <p style={{ fontSize: 11, color: '#94a3b8', margin: '0 0 16px' }}>
+                  → {selectedBuyerIds.size} destinataire{selectedBuyerIds.size > 1 ? 's' : ''} · {selectedAnalysisIds.size} analyse{selectedAnalysisIds.size > 1 ? 's' : ''}
+                </p>
+                <textarea value={message} onChange={e => setMessage(e.target.value)} rows={10}
+                  style={{ width: '100%', padding: '14px 16px', borderRadius: 14, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.7, background: '#f8fafc' }} />
+
+                {!proProfile.pro_logo_url && (
+                  <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fef3c7', fontSize: 12, color: '#78350f' }}>
+                    💡 Pour afficher votre logo dans les rapports envoyés, ajoutez-le dans <strong>Mon compte</strong>.
                   </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+                )}
 
-        {/* Étape 3 : Message personnalisé */}
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8, textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>
-            ✉️ Message personnalisé
-          </label>
-          <textarea value={message} onChange={e => setMessage(e.target.value)} rows={8}
-            style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.6, background: '#f8fafc' }} />
-        </div>
+                {error && <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 13, color: '#dc2626' }}>{error}</div>}
 
-        {error && <div style={{ padding: '10px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 13, color: '#dc2626', marginBottom: 16 }}>{error}</div>}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20 }}>
+                  <button onClick={() => setStep(2)}
+                    style={{ padding: '12px 20px', borderRadius: 12, border: '1.5px solid #edf2f7', background: '#fff', color: '#64748b', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                    ← Retour
+                  </button>
+                  <button onClick={handleSend}
+                    style={{ padding: '13px 32px', borderRadius: 14, border: 'none',
+                      background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                      color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer', boxShadow: '0 8px 24px rgba(22,163,74,0.25)' }}>
+                    📧 Envoyer
+                  </button>
+                </div>
+              </motion.div>
+            )}
 
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onClose}
-            style={{ flex: 1, padding: '13px', borderRadius: 12, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 14, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>
-            Annuler
-          </button>
-          <button onClick={handleSend} disabled={sending || selectedBuyerIds.size === 0 || !selectedAnalysisId}
-            style={{ flex: 1, padding: '13px', borderRadius: 12, border: 'none',
-              background: (selectedBuyerIds.size > 0 && selectedAnalysisId) ? 'linear-gradient(135deg, #16a34a, #15803d)' : '#e5e7eb',
-              fontSize: 14, fontWeight: 700, color: '#fff', cursor: sending ? 'wait' : 'pointer', opacity: sending ? 0.6 : 1,
-              boxShadow: (selectedBuyerIds.size > 0 && selectedAnalysisId) ? '0 8px 24px rgba(22,163,74,0.2)' : 'none' }}>
-            {sending ? 'Envoi en cours…' : `📧 Envoyer${selectedBuyerIds.size > 1 ? ` à ${selectedBuyerIds.size} acheteurs` : ''}`}
-          </button>
+            {/* ENVOI EN COURS */}
+            {sending && !sendDone && (
+              <motion.div key="sending" initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ textAlign: 'center', padding: '40px 20px' }}>
+                <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+                  style={{ width: 48, height: 48, borderRadius: '50%', border: '4px solid #e2e8f0', borderTopColor: '#2a7d9c', margin: '0 auto 20px' }} />
+                <p style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: '0 0 8px' }}>Envoi en cours…</p>
+                <div style={{ width: '100%', height: 6, borderRadius: 100, background: '#f1f5f9', overflow: 'hidden', marginBottom: 8 }}>
+                  <motion.div animate={{ width: `${sendProgress}%` }} transition={{ duration: 0.3 }}
+                    style={{ height: '100%', borderRadius: 100, background: 'linear-gradient(90deg, #2a7d9c, #16a34a)' }} />
+                </div>
+                <p style={{ fontSize: 13, color: '#94a3b8', margin: 0 }}>{sendProgress}%</p>
+              </motion.div>
+            )}
+
+            {/* ENVOI TERMINÉ */}
+            {sendDone && (
+              <motion.div key="done" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} style={{ textAlign: 'center', padding: '40px 20px' }}>
+                <div style={{ fontSize: 56, marginBottom: 16 }}>✅</div>
+                <p style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', margin: '0 0 8px' }}>Rapport{selectedAnalysisIds.size > 1 ? 's' : ''} envoyé{selectedAnalysisIds.size > 1 ? 's' : ''} !</p>
+                <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
+                  {selectedBuyerIds.size} destinataire{selectedBuyerIds.size > 1 ? 's' : ''} · {selectedAnalysisIds.size} analyse{selectedAnalysisIds.size > 1 ? 's' : ''}
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </motion.div>
     </div>
