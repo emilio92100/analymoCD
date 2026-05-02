@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, User, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, User, AlertCircle, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function SignupPage() {
@@ -48,6 +48,9 @@ const { data, error } = await supabase.auth.signUp({ email, password, options: {
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
         <div style={{ width: '100%', maxWidth: 420 }}>
           <div className="auth-mobile-logo" style={{ display: 'none', marginBottom: 32, textAlign: 'center' }}><Link to="/"><img src="/logo.png" alt="Verimo" style={{ height: 100, objectFit: 'contain', display: 'inline-block' }} /></Link></div>
+          <Link to="/connexion" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--text-muted)', textDecoration: 'none', marginBottom: 24 }}>
+            <ArrowLeft size={14} /> Retour à la connexion
+          </Link>
           <h1 style={{ fontSize: 28, fontWeight: 800, color: 'var(--brand-navy)', marginBottom: 8 }}>Créer un compte</h1>
           <p style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 32 }}>Déjà un compte ? <Link to="/connexion" style={{ color: 'var(--brand-teal)', fontWeight: 600, textDecoration: 'none' }}>Se connecter</Link></p>
           <button onClick={handleGoogle} style={{ width: '100%', padding: '13px 20px', borderRadius: 12, border: '1.5px solid rgba(42,125,156,0.2)', background: '#fff', fontSize: 15, fontWeight: 600, color: 'var(--brand-navy)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
