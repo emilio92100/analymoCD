@@ -746,6 +746,7 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
     caProMonthPrev: 0,
     newClientsMonth: 0,
     newProMonth: 0,
+    activeProCount: 0,
     analysesThisMonth: 0,
     analysesByType: { document: 0, complete: 0, pack2: 0, pack3: 0 },
     caByCategory: { document: { count: 0, total: 0 }, complete: { count: 0, total: 0 }, pack2: { count: 0, total: 0 }, pack3: { count: 0, total: 0 } },
@@ -776,6 +777,7 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         { data: proUnitsMonth },
         { data: proUnitsPrevMonth },
         { count: newProMonth },
+        { count: activeProCount },
       ] = await Promise.all([
         supabase.from('payments').select('amount,description').eq('status', 'completed').gt('amount', 0).gte('created_at', startOfMonth),
         supabase.from('payments').select('amount').eq('status', 'completed').gt('amount', 0).gte('created_at', startOfPrevMonth).lte('created_at', endOfPrevMonth),
@@ -788,6 +790,7 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         supabase.from('pro_unit_purchases').select('type,quantity,amount').gt('amount', 0).gte('purchased_at', startOfMonth),
         supabase.from('pro_unit_purchases').select('type,quantity,amount').gt('amount', 0).gte('purchased_at', startOfPrevMonth).lte('purchased_at', endOfPrevMonth),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'pro').gte('created_at', startOfMonth),
+        supabase.from('pro_subscriptions').select('*', { count: 'exact', head: true }).eq('status', 'active'),
       ]);
 
       const monthPayments = paymentsMonth || [];
@@ -842,6 +845,7 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         caProMonthPrev,
         newClientsMonth: newClients || 0,
         newProMonth: newProMonth || 0,
+        activeProCount: activeProCount || 0,
         analysesThisMonth: (analysesMonth || []).length,
         analysesByType,
         caByCategory,
@@ -911,6 +915,16 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
           </div>
           <div style={{ fontSize: 32, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{data.newClientsMonth}</div>
           <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Inscrits vérifiés ce mois{data.newProMonth > 0 ? ` · dont ${data.newProMonth} pro` : ''}</div>
+        </div>
+
+        {/* Pro actifs */}
+        <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', padding: '20px 22px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>Pro actifs</div>
+            <Building2 size={16} style={{ color: '#0f2d3d' }} />
+          </div>
+          <div style={{ fontSize: 32, fontWeight: 900, color: '#0f2d3d', lineHeight: 1 }}>{data.activeProCount}</div>
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Abonnements en cours</div>
         </div>
 
         {/* Analyses avec détail par type */}
@@ -1079,6 +1093,7 @@ function StatsTab() {
     creditsOffered: { document: 0, complete: 0 },
     caPartCateg: { document: { count: 0, total: 0 }, complete: { count: 0, total: 0 }, pack2: { count: 0, total: 0 }, pack3: { count: 0, total: 0 } },
     caProCateg: { abo_decouverte: { count: 0, total: 0 }, abo_starter: { count: 0, total: 0 }, abo_power: { count: 0, total: 0 }, unit_complete: { count: 0, total: 0 }, unit_simple: { count: 0, total: 0 } },
+    activeProCount: 0,
   });
   const [weeklyData, setWeeklyData] = useState<{ week: string; caPart: number; caPro: number; users: number }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1110,6 +1125,7 @@ function StatsTab() {
         { data: freePaymentsData },
         { data: proSubsData },
         { data: proUnitsData },
+        { count: activeProCount },
       ] = await Promise.all([
         supabase.from('payments').select('amount,description').eq('status', 'completed').gt('amount', 0).gte('created_at', start).lte('created_at', end),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('email_verified', true).gte('created_at', start).lte('created_at', end),
@@ -1118,6 +1134,7 @@ function StatsTab() {
         supabase.from('payments').select('credits_added,credit_type').eq('status', 'completed').eq('amount', 0).gte('created_at', start).lte('created_at', end),
         supabase.from('pro_subscriptions').select('plan,current_period_start').gte('current_period_start', start).lte('current_period_start', end),
         supabase.from('pro_unit_purchases').select('type,quantity,amount').gt('amount', 0).gte('purchased_at', start).lte('purchased_at', end),
+        supabase.from('pro_subscriptions').select('*', { count: 'exact', head: true }).eq('status', 'active'),
       ]);
 
       const payments = paymentsData || [];
@@ -1169,7 +1186,7 @@ function StatsTab() {
         caProCateg[key].total += (u.amount || 0) / 100;
       });
 
-      setStats({ caParticulier, caPro, caProSubs, caProUnits, paymentsCountPart, paymentsCountPro, newUsersVerified: newUsersVerified || 0, newProUsers: newProUsers || 0, analysesTotal: (analyses || []).length, analysesByType, freeAnalysesByType, creditsOffered, caPartCateg, caProCateg });
+      setStats({ caParticulier, caPro, caProSubs, caProUnits, paymentsCountPart, paymentsCountPro, newUsersVerified: newUsersVerified || 0, newProUsers: newProUsers || 0, analysesTotal: (analyses || []).length, analysesByType, freeAnalysesByType, creditsOffered, caPartCateg, caProCateg, activeProCount: activeProCount || 0 });
 
       // Graphiques 8 dernières semaines — avec split pro/part
       const weeks: { week: string; caPart: number; caPro: number; users: number }[] = [];
@@ -1279,6 +1296,11 @@ function StatsTab() {
             <div style={{ fontSize: 10, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.1em', marginBottom: 4 }}>NOUVEAUX CLIENTS VÉRIFIÉS</div>
             <div style={{ fontSize: 26, fontWeight: 900, color: '#0f2d3d' }}>{stats.newUsersVerified}</div>
             <div style={{ fontSize: 11, color: '#2a7d9c', marginTop: 4 }}>dont {stats.newProUsers} pro</div>
+          </div>
+          <div style={{ padding: '16px', borderRadius: 12, background: '#0f2d3d' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.1em', marginBottom: 4 }}>PRO ACTIFS</div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: '#fff' }}>{stats.activeProCount}</div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>Abonnements en cours</div>
           </div>
           <div style={{ padding: '16px', borderRadius: 12, background: '#f5f3ff', border: '1px solid #ddd6fe', gridColumn: 'span 2' }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', letterSpacing: '0.1em', marginBottom: 4 }}>ANALYSES LANCÉES</div>
