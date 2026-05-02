@@ -6,11 +6,13 @@ import { supabase } from '../lib/supabase';
 export default function SignupPage() {
   
   const [step, setStep] = useState<'form'|'verify'>('form');
-  const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
-  const [showPass, setShowPass] = useState(false); const [loading, setLoading] = useState(false); const [error, setError] = useState('');
+  const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPass, setShowPass] = useState(false); const [showConfirm, setShowConfirm] = useState(false); const [loading, setLoading] = useState(false); const [error, setError] = useState('');
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true); setError('');
+    if (password !== confirmPassword) { setError('Les mots de passe ne correspondent pas.'); setLoading(false); return; }
+    if (password.length < 8) { setError('Le mot de passe doit contenir au moins 8 caractères.'); setLoading(false); return; }
 const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name }, emailRedirectTo: `${window.location.origin}/auth/callback` } });
     if (error) { setError('Une erreur est survenue. Réessayez.'); setLoading(false); return; }
     if (data?.user?.identities?.length === 0) { setError('Un compte existe déjà avec cet email. Connectez-vous ou réinitialisez votre mot de passe.'); setLoading(false); return; }
@@ -75,6 +77,17 @@ const { data, error } = await supabase.auth.signUp({ email, password, options: {
                 <input type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="Minimum 8 caractères" required minLength={8} style={{ width: '100%', padding: '13px 42px', borderRadius: 10, border: '1.5px solid rgba(42,125,156,0.2)', fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
                 <button type="button" onClick={() => setShowPass(!showPass)} style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>{showPass ? <EyeOff size={16} /> : <Eye size={16} />}</button>
               </div>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--brand-navy)', marginBottom: 8 }}>Confirmer le mot de passe</label>
+              <div style={{ position: 'relative' }}>
+                <Lock size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input type={showConfirm ? 'text' : 'password'} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Répétez votre mot de passe" required minLength={8} style={{ width: '100%', padding: '13px 42px', borderRadius: 10, border: `1.5px solid ${confirmPassword && confirmPassword !== password ? 'rgba(220,38,38,0.4)' : 'rgba(42,125,156,0.2)'}`, fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
+                <button type="button" onClick={() => setShowConfirm(!showConfirm)} style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>{showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}</button>
+              </div>
+              {confirmPassword && confirmPassword !== password && (
+                <p style={{ fontSize: 12, color: '#dc2626', marginTop: 6, fontWeight: 500 }}>Les mots de passe ne correspondent pas.</p>
+              )}
             </div>
             <button type="submit" disabled={loading} style={{ padding: '14px', borderRadius: 12, fontSize: 16, fontWeight: 700, color: '#fff', background: loading ? 'rgba(42,125,156,0.5)' : 'linear-gradient(135deg, var(--brand-teal) 0%, var(--brand-navy) 100%)', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', boxShadow: '0 6px 24px rgba(42,125,156,0.3)' }}>
               {loading ? 'Création...' : 'Créer mon compte'}
