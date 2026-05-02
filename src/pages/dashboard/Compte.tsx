@@ -4,6 +4,26 @@ import { supabase } from '../../lib/supabase';
 import { useCredits } from '../../hooks/useCredits';
 import DashboardLoader from '../../components/DashboardLoader';
 
+function TooltipInfoParticulier({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex' }}>
+      <span
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(!open); }}
+        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: '#f0f7fb', border: '1px solid #d0e8f0', color: '#2a7d9c', fontSize: 10, fontWeight: 800, cursor: 'pointer', flexShrink: 0, userSelect: 'none' }}>?</span>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 998 }} />
+          <div style={{ position: 'absolute', top: 22, left: '50%', transform: 'translateX(-50%)', zIndex: 999, background: '#0f2d3d', color: '#fff', fontSize: 12, lineHeight: 1.5, padding: '10px 14px', borderRadius: 10, width: 240, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
+            {text}
+            <div style={{ position: 'absolute', top: -5, left: '50%', transform: 'translateX(-50%) rotate(45deg)', width: 10, height: 10, background: '#0f2d3d' }} />
+          </div>
+        </>
+      )}
+    </span>
+  );
+}
+
 export default function Compte() {
   const [user, setUser] = useState({ name: '', email: '' });
   const [saved, setSaved] = useState(false);
@@ -150,7 +170,7 @@ export default function Compte() {
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 7 }}>
                 {f.l}
                 {f.tooltip && (
-                  <span title={f.tooltip} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: '#f0f7fb', border: '1px solid #d0e8f0', color: '#2a7d9c', fontSize: 10, fontWeight: 800, cursor: 'help', flexShrink: 0 }}>?</span>
+                  <TooltipInfoParticulier text={f.tooltip} />
                 )}
               </label>
               <input value={f.v} onChange={e => f.set(e.target.value)} placeholder={f.ph} disabled={f.disabled}
