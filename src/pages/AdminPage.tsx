@@ -3622,16 +3622,11 @@ function PaymentsTab({ onOpenUser, showToast }: { onOpenUser: (userId: string) =
       status: 'completed',
       description: `Abo Pro ${PLAN_NAMES[s.plan] || s.plan} — ${(PLAN_PRICES[s.plan] || 0).toFixed(2).replace('.', ',')}€ HT/mois`,
       stripe_session_id: s.stripe_subscription_id,
-      stripe_payment_id: null,
-      promo_code: null,
-      credits_added: null,
-      credit_type: null,
-      retractation_waiver_at: null,
       created_at: s.current_period_start || s.created_at,
       userEmail: profileMap.get(s.user_id)?.email,
       userName: profileMap.get(s.user_id)?.full_name,
       _source: 'pro',
-    }));
+    } as PaymentWithUser));
 
     // Convert pro units to PaymentWithUser format
     const proUnitPayments: PaymentWithUser[] = (proUnits || []).map((u: any) => ({
@@ -3641,16 +3636,13 @@ function PaymentsTab({ onOpenUser, showToast }: { onOpenUser: (userId: string) =
       status: 'completed',
       description: `Achat unitaire Pro — ${u.quantity}x ${u.type === 'complete' ? 'Complète' : 'Simple'}`,
       stripe_session_id: u.stripe_session_id,
-      stripe_payment_id: null,
-      promo_code: null,
       credits_added: u.quantity,
       credit_type: u.type,
-      retractation_waiver_at: null,
       created_at: u.purchased_at,
       userEmail: profileMap.get(u.user_id)?.email,
       userName: profileMap.get(u.user_id)?.full_name,
       _source: 'pro',
-    }));
+    } as PaymentWithUser));
 
     // Merge and sort by date desc
     const all = [...partPayments, ...proSubPayments, ...proUnitPayments].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
