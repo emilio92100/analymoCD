@@ -2659,7 +2659,11 @@ function SendReportFromDossier({ analyses, buyers, proProfile, folderAddress, on
   const [error, setError] = useState('');
 
   const senderName = proProfile.full_name || '';
-  const senderCompany = proProfile.pro_company_name || proProfile.pro_network || '';
+  const senderNetwork = proProfile.pro_network || '';
+  const senderCompanyName = proProfile.pro_company_name || '';
+  const senderSignature = senderNetwork && senderCompanyName 
+    ? `${senderNetwork} (${senderCompanyName})` 
+    : senderNetwork || senderCompanyName;
 
   // Extract clean doc name (first part before " — ")
   const getDocName = (a: ProAnalysis) => {
@@ -2678,11 +2682,11 @@ function SendReportFromDossier({ analyses, buyers, proProfile, folderAddress, on
       : `du ${docNames.slice(0, -1).map(d => d.toLowerCase()).join(', du ')} et du ${docNames[docNames.length - 1].toLowerCase()}`;
 
     if (selectedList.length === 1) {
-      return `Bonjour,\n\nDans le cadre de votre projet immobilier, je vous transmets le rapport d'analyse concernant le bien situé ${address}.\n\nCe rapport vous permettra d'avoir une vision claire ${docPhrase}.\n\nN'hésitez pas à me contacter pour en discuter ensemble.\n\nCordialement,\n${senderName}${senderCompany ? '\n' + senderCompany : ''}`;
+      return `Bonjour,\n\nDans le cadre de votre projet immobilier, je vous transmets le rapport d'analyse concernant le bien situé ${address}.\n\nCe rapport vous permettra d'avoir une vision claire ${docPhrase}.\n\nN'hésitez pas à me contacter pour en discuter ensemble.\n\nCordialement,\n${senderName}${senderSignature ? '\n' + senderSignature : ''}`;
     } else {
-      return `Bonjour,\n\nDans le cadre de votre projet immobilier, je vous transmets ${selectedList.length} rapports d'analyse concernant le bien situé ${address}.\n\nCes rapports vous permettront d'avoir une vision claire ${docPhrase}.\n\nN'hésitez pas à me contacter pour en discuter ensemble.\n\nCordialement,\n${senderName}${senderCompany ? '\n' + senderCompany : ''}`;
+      return `Bonjour,\n\nDans le cadre de votre projet immobilier, je vous transmets ${selectedList.length} rapports d'analyse concernant le bien situé ${address}.\n\nCes rapports vous permettront d'avoir une vision claire ${docPhrase}.\n\nN'hésitez pas à me contacter pour en discuter ensemble.\n\nCordialement,\n${senderName}${senderSignature ? '\n' + senderSignature : ''}`;
     }
-  }, [analyses, selectedAnalysisIds, folderAddress, senderName, senderCompany]);
+  }, [analyses, selectedAnalysisIds, folderAddress, senderName, senderSignature]);
 
   // Met à jour le message quand les analyses changent
   useEffect(() => {
