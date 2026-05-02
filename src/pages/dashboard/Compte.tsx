@@ -143,11 +143,16 @@ export default function Compte() {
         <h2 style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 18, paddingBottom: 13, borderBottom: '1px solid #f0f5f9' }}>Informations personnelles</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
           {[
-            { l: 'Nom complet', v: user.name, set: (v: string) => setUser({ ...user, name: v }), ph: 'Jean Dupont', disabled: false },
-            { l: 'Email', v: user.email, set: (_: string) => { }, ph: '', disabled: true },
+            { l: 'Nom complet', v: user.name, set: (v: string) => setUser({ ...user, name: v }), ph: 'Jean Dupont', disabled: false, tooltip: 'Ce prénom / nom sera affiché comme expéditeur lors de l\'envoi de rapports par email.' },
+            { l: 'Email', v: user.email, set: (_: string) => { }, ph: '', disabled: true, tooltip: '' },
           ].map(f => (
             <div key={f.l}>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 7 }}>{f.l}</label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 7 }}>
+                {f.l}
+                {f.tooltip && (
+                  <span title={f.tooltip} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: '#f0f7fb', border: '1px solid #d0e8f0', color: '#2a7d9c', fontSize: 10, fontWeight: 800, cursor: 'help', flexShrink: 0 }}>?</span>
+                )}
+              </label>
               <input value={f.v} onChange={e => f.set(e.target.value)} placeholder={f.ph} disabled={f.disabled}
                 style={{ width: '100%', padding: '11px 13px', borderRadius: 9, border: '1.5px solid #edf2f7', fontSize: 14, background: f.disabled ? '#f8fafc' : '#fff', color: f.disabled ? '#94a3b8' : '#0f172a', outline: 'none', boxSizing: 'border-box' as const }} />
               {f.disabled && <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 5 }}>L'adresse email ne peut pas être modifiée.</p>}
