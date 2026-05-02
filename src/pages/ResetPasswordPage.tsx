@@ -12,25 +12,22 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [ready, setReady] = useState(false);
+  const [expired, setExpired] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Vérifier les paramètres dans l'URL
     const hash = window.location.hash;
     const params = new URLSearchParams(hash.replace('#', '?'));
     const errorCode = params.get('error_code');
     const type = params.get('type');
     const accessToken = params.get('access_token');
 
-    // Si erreur dans l'URL → lien expiré
     if (errorCode) {
-      setReady(false);
+      setExpired(true);
       return;
     }
 
-    // Si type=recovery dans l'URL → c'est un reset password
     if (type === 'recovery' && accessToken) {
-      // Définir la session avec le token de recovery
       supabase.auth.setSession({
         access_token: accessToken,
         refresh_token: params.get('refresh_token') || '',
@@ -40,21 +37,21 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    // Écouter l'événement PASSWORD_RECOVERY (fallback)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
         setReady(true);
       }
     });
 
-    // Vérifier si on est déjà sur la bonne page avec une session
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session && window.location.pathname.includes('reset-password')) {
         setReady(true);
+      } else {
+        setExpired(true);
       }
     };
-    const timeout = setTimeout(checkSession, 1500);
+    const timeout = setTimeout(checkSession, 2500);
 
     return () => {
       subscription.unsubscribe();
@@ -89,7 +86,18 @@ export default function ResetPasswordPage() {
     </div>
   );
 
-  if (!ready) return (
+  if (!ready && !expired) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(160deg, #f5f9fb 0%, #eaf4f8 100%)', padding: 24 }}>
+      <div style={{ maxWidth: 480, width: '100%', textAlign: 'center' }}>
+        <img src="/logo.png" alt="Verimo" style={{ height: 56, display: 'block', margin: '0 auto 40px' }} />
+        <div style={{ width: 48, height: 48, borderRadius: '50%', border: '4px solid #e2e8f0', borderTopColor: '#2a7d9c', animation: 'spin 0.8s linear infinite', margin: '0 auto 24px' }} />
+        <p style={{ fontSize: 16, color: '#94a3b8' }}>Vérification en cours…</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    </div>
+  );
+
+  if (expired) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(160deg, #f5f9fb 0%, #eaf4f8 100%)', padding: 24 }}>
       <div style={{ maxWidth: 480, width: '100%', textAlign: 'center' }}>
         <img src="/logo.png" alt="Verimo" style={{ height: 56, display: 'block', margin: '0 auto 40px' }} />
