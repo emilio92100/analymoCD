@@ -1379,18 +1379,31 @@ function RendererCarnetEntretien({ r }: { r: any }) {
       {r.contrats?.length > 0 && (
         <Card>
           <CardHeader label="CONTRATS DE MAINTENANCE EN COURS" color="#16a34a" />
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><TableHeader cols={[{ label: 'Équipement' }, { label: 'Prestataire' }, { label: 'Référence' }]} /></thead>
-            <tbody>
-              {r.contrats.map((c: any, i: number) => (
-                <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}` }}>
-                  <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{c.equipement}</td>
-                  <td style={{ padding: '11px 20px', fontSize: 14, color: C.textSec }}>{c.prestataire || '—'}</td>
-                  <td style={{ padding: '11px 20px', fontSize: 15, color: C.textSec }}>{c.reference || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {/* Desktop: table */}
+          <div className="dr-contrats-desktop">
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead><TableHeader cols={[{ label: 'Équipement' }, { label: 'Prestataire' }, { label: 'Référence' }]} /></thead>
+              <tbody>
+                {r.contrats.map((c: any, i: number) => (
+                  <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}` }}>
+                    <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{c.equipement}</td>
+                    <td style={{ padding: '11px 20px', fontSize: 14, color: C.textSec }}>{c.prestataire || '—'}</td>
+                    <td style={{ padding: '11px 20px', fontSize: 15, color: C.textSec }}>{c.reference || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Mobile: stacked cards */}
+          <div className="dr-contrats-mobile" style={{ display: 'none', flexDirection: 'column', gap: 0 }}>
+            {r.contrats.map((c: any, i: number) => (
+              <div key={i} style={{ padding: '12px 16px', borderBottom: i < r.contrats.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>{c.equipement}</div>
+                {c.prestataire && <div style={{ fontSize: 12, color: C.textSec, marginBottom: 2 }}>🏢 {c.prestataire}</div>}
+                {c.reference && <div style={{ fontSize: 12, color: C.textSec }}>Réf : {c.reference}</div>}
+              </div>
+            ))}
+          </div>
         </Card>
       )}
 
@@ -1425,22 +1438,39 @@ function RendererCarnetEntretien({ r }: { r: any }) {
       {r.travaux_realises?.length > 0 && (
         <Card>
           <CardHeader label="HISTORIQUE DES TRAVAUX RÉALISÉS" color="#2a7d9c" />
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><TableHeader cols={[{ label: 'Année', align: 'left' }, { label: 'Travaux' }, { label: 'Montant', align: 'right' }]} /></thead>
-            <tbody>
-              {r.travaux_realises.map((t: any, i: number) => (
-                <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}` }}>
-                  <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 600, color: C.text, whiteSpace: 'nowrap' as const }}>{t.annee}</td>
-                  <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>
-                    <div>{t.label}</div>
-                    {t.entreprise && <div style={{ fontSize: 14, color: C.textSec, marginTop: 2 }}>{t.entreprise}{t.assurance_do ? ` · DO : ${t.assurance_do}` : ''}</div>}
-                    {t.financement === 'en_cours' && <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, padding: '2px 8px', borderRadius: 100, display: 'inline-block', background: C.orange.bg, color: C.orange.text, border: `0.5px solid ${C.orange.border}` }}>⏳ Financement en cours</div>}
-                  </td>
-                  <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: C.text, textAlign: 'right' as const, whiteSpace: 'nowrap' as const }}>{t.montant ? `${Number(t.montant).toLocaleString('fr-FR')} €` : '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {/* Desktop: table */}
+          <div className="dr-travaux-desktop">
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead><TableHeader cols={[{ label: 'Année', align: 'left' }, { label: 'Travaux' }, { label: 'Montant', align: 'right' }]} /></thead>
+              <tbody>
+                {r.travaux_realises.map((t: any, i: number) => (
+                  <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}` }}>
+                    <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 600, color: C.text, whiteSpace: 'nowrap' as const }}>{t.annee}</td>
+                    <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>
+                      <div>{t.label}</div>
+                      {t.entreprise && <div style={{ fontSize: 14, color: C.textSec, marginTop: 2 }}>{t.entreprise}{t.assurance_do ? ` · DO : ${t.assurance_do}` : ''}</div>}
+                      {t.financement === 'en_cours' && <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, padding: '2px 8px', borderRadius: 100, display: 'inline-block', background: C.orange.bg, color: C.orange.text, border: `0.5px solid ${C.orange.border}` }}>⏳ Financement en cours</div>}
+                    </td>
+                    <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: C.text, textAlign: 'right' as const, whiteSpace: 'nowrap' as const }}>{t.montant ? `${Number(t.montant).toLocaleString('fr-FR')} €` : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Mobile: stacked cards */}
+          <div className="dr-travaux-mobile" style={{ display: 'none', flexDirection: 'column', gap: 0 }}>
+            {r.travaux_realises.map((t: any, i: number) => (
+              <div key={i} style={{ padding: '12px 16px', borderBottom: i < r.travaux_realises.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  {t.annee && <span style={{ fontSize: 12, fontWeight: 700, color: C.textSec, background: C.bgSecondary, padding: '2px 8px', borderRadius: 6, border: `0.5px solid ${C.border}` }}>{t.annee}</span>}
+                  {t.montant && <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{Number(t.montant).toLocaleString('fr-FR')} €</span>}
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 500, color: C.text, marginBottom: 2 }}>{t.label}</div>
+                {t.entreprise && <div style={{ fontSize: 12, color: C.textSec }}>{t.entreprise}{t.assurance_do ? ` · DO : ${t.assurance_do}` : ''}</div>}
+                {t.financement === 'en_cours' && <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, padding: '2px 8px', borderRadius: 100, display: 'inline-block', background: C.orange.bg, color: C.orange.text, border: `0.5px solid ${C.orange.border}` }}>⏳ Financement en cours</div>}
+              </div>
+            ))}
+          </div>
         </Card>
       )}
 
@@ -2674,6 +2704,14 @@ export default function DocumentRenderer({ result }: { result: any }) {
           /* ── DDT — grille desktop masquée, blocs mobile affichés ── */
           .dr-ddt-desktop { display: none !important; }
           .dr-ddt-mobile { display: flex !important; }
+
+          /* ── Contrats maintenance — table masquée, cards affichées ── */
+          .dr-contrats-desktop { display: none !important; }
+          .dr-contrats-mobile { display: flex !important; }
+
+          /* ── Travaux réalisés — table masquée, cards affichées ── */
+          .dr-travaux-desktop { display: none !important; }
+          .dr-travaux-mobile { display: flex !important; }
         }
 
         @media (max-width: 390px) {
