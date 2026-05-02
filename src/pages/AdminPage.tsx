@@ -256,18 +256,18 @@ export default function AdminPage() {
   if (!isAdmin) return null;
 
   const tabs: { id: TabId; label: string; icon: React.ElementType; badge?: number }[] = [
-    { id: 'dashboard', label: "Vue d'ensemble", icon: LayoutDashboard },
-    { id: 'stats', label: 'Statistiques', icon: BarChart2 },
+    { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
+    { id: 'stats', label: 'Analyse / CA', icon: BarChart2 },
     { id: 'users', label: 'Utilisateurs', icon: Users },
     { id: 'analyses', label: 'Analyses', icon: FileText },
-    { id: 'payments', label: 'Paiements', icon: Euro },
+    { id: 'payments', label: 'Relevé des transactions', icon: Euro },
     { id: 'messages', label: 'Messages', icon: Mail, badge: unreadCount },
     { id: 'demandes_pro', label: 'Demandes Pro', icon: Briefcase, badge: proUnreadCount },
     { id: 'clients', label: 'Clients Pro', icon: Building2 },
     { id: 'promos', label: 'Codes promo', icon: Tag },
     { id: 'alerts', label: 'Alertes système', icon: AlertTriangle },
     { id: 'banner', label: 'Bannière', icon: Bell },
-    { id: 'logs', label: 'Historique', icon: Bell },
+    { id: 'logs', label: 'Historique', icon: Clock },
   ];
 
   return (
@@ -446,7 +446,7 @@ export default function AdminPage() {
             <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
               {activeTab === 'dashboard' && <DashboardTab onNavigate={setActiveTab} />}
               {activeTab === 'stats' && <StatsTab />}
-              {activeTab === 'users' && <UsersTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} focusUserId={focusUserId} onFocusUserHandled={() => setFocusUserId(null)} />}
+              {activeTab === 'users' && <UsersTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} focusUserId={focusUserId} onFocusUserHandled={() => setFocusUserId(null)} onOpenAnalysis={(id) => { setFocusAnalysisId(id); setActiveTab('analyses'); }} onOpenProClient={(userId) => { setActiveTab('clients'); /* ClientsProTab will need to focus */ }} />}
               {activeTab === 'analyses' && <AnalysesTab onOpenUser={(id) => { setFocusUserId(id); setActiveTab('users'); }} focusAnalysisId={focusAnalysisId} onFocusAnalysisHandled={() => setFocusAnalysisId(null)} />}
               {activeTab === 'payments' && <PaymentsTab onOpenUser={(id) => { setFocusUserId(id); setActiveTab('users'); }} showToast={showToast} />}
               {activeTab === 'messages' && <MessagesTab onConfirm={setConfirm} showToast={showToast} onReadChange={setUnreadCount} />}
@@ -741,10 +741,14 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
   const [data, setData] = useState({
     caMonth: 0,
     caMonthPrev: 0,
+    caProMonth: 0,
+    caProMonthPrev: 0,
     newClientsMonth: 0,
+    newProMonth: 0,
     analysesThisMonth: 0,
     analysesByType: { document: 0, complete: 0, pack2: 0, pack3: 0 },
     caByCategory: { document: { count: 0, total: 0 }, complete: { count: 0, total: 0 }, pack2: { count: 0, total: 0 }, pack3: { count: 0, total: 0 } },
+    caProByCategory: { abo_decouverte: { count: 0, total: 0 }, abo_starter: { count: 0, total: 0 }, abo_power: { count: 0, total: 0 }, unit_complete: { count: 0, total: 0 }, unit_simple: { count: 0, total: 0 } },
     ticketMoyen: 0,
     messagesUnread: 0,
     proUnread: 0,
@@ -766,19 +770,53 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         { data: analysesMonth },
         { count: msgUnread },
         { count: proUnreadCount },
+        { data: proSubsMonth },
+        { data: proSubsPrevMonth },
+        { data: proUnitsMonth },
+        { data: proUnitsPrevMonth },
+        { count: newProMonth },
       ] = await Promise.all([
         supabase.from('payments').select('amount,description').eq('status', 'completed').gt('amount', 0).gte('created_at', startOfMonth),
         supabase.from('payments').select('amount').eq('status', 'completed').gt('amount', 0).gte('created_at', startOfPrevMonth).lte('created_at', endOfPrevMonth),
-        supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', startOfMonth),
+        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('email_verified', true).gte('created_at', startOfMonth),
         supabase.from('analyses').select('type').gte('created_at', startOfMonth),
         supabase.from('contact_messages').select('*', { count: 'exact', head: true }).eq('read', false),
         supabase.from('contact_pro').select('*', { count: 'exact', head: true }).eq('read', false),
+        supabase.from('pro_subscriptions').select('plan,current_period_start').gte('current_period_start', startOfMonth),
+        supabase.from('pro_subscriptions').select('plan,current_period_start').gte('current_period_start', startOfPrevMonth).lte('current_period_start', endOfPrevMonth),
+        supabase.from('pro_unit_purchases').select('type,quantity,amount').gte('purchased_at', startOfMonth),
+        supabase.from('pro_unit_purchases').select('type,quantity,amount').gte('purchased_at', startOfPrevMonth).lte('purchased_at', endOfPrevMonth),
+        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'pro').gte('created_at', startOfMonth),
       ]);
 
       const monthPayments = paymentsMonth || [];
       const caMonth = monthPayments.reduce((s, p) => s + (p.amount || 0), 0);
       const caMonthPrev = (paymentsPrevMonth || []).reduce((s, p) => s + (p.amount || 0), 0);
       const ticketMoyen = monthPayments.length > 0 ? caMonth / monthPayments.length : 0;
+
+      // CA Pro : abonnements
+      const PLAN_PRICES: Record<string, number> = { decouverte: 19.90, starter: 49.90, power: 89.90 };
+      const caProSubs = (proSubsMonth || []).reduce((s, sub) => s + (PLAN_PRICES[(sub as any).plan] || 0), 0);
+      const caProSubsPrev = (proSubsPrevMonth || []).reduce((s, sub) => s + (PLAN_PRICES[(sub as any).plan] || 0), 0);
+
+      // CA Pro : unitaires
+      const caProUnits = (proUnitsMonth || []).reduce((s, u) => s + ((u as any).amount || 0) / 100, 0);
+      const caProUnitsPrev = (proUnitsPrevMonth || []).reduce((s, u) => s + ((u as any).amount || 0) / 100, 0);
+
+      const caProMonth = caProSubs + caProUnits;
+      const caProMonthPrev = caProSubsPrev + caProUnitsPrev;
+
+      // CA Pro par catégorie
+      const caProByCategory = { abo_decouverte: { count: 0, total: 0 }, abo_starter: { count: 0, total: 0 }, abo_power: { count: 0, total: 0 }, unit_complete: { count: 0, total: 0 }, unit_simple: { count: 0, total: 0 } };
+      (proSubsMonth || []).forEach((sub: any) => {
+        const key = `abo_${sub.plan}` as keyof typeof caProByCategory;
+        if (caProByCategory[key]) { caProByCategory[key].count++; caProByCategory[key].total += PLAN_PRICES[sub.plan] || 0; }
+      });
+      (proUnitsMonth || []).forEach((u: any) => {
+        const key = u.type === 'complete' ? 'unit_complete' : 'unit_simple';
+        caProByCategory[key].count += u.quantity || 1;
+        caProByCategory[key].total += (u.amount || 0) / 100;
+      });
 
       // CA par catégorie basé sur la description des paiements
       const caByCategory = { document: { count: 0, total: 0 }, complete: { count: 0, total: 0 }, pack2: { count: 0, total: 0 }, pack3: { count: 0, total: 0 } };
@@ -799,10 +837,14 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
       setData({
         caMonth,
         caMonthPrev,
+        caProMonth,
+        caProMonthPrev,
         newClientsMonth: newClients || 0,
+        newProMonth: newProMonth || 0,
         analysesThisMonth: (analysesMonth || []).length,
         analysesByType,
         caByCategory,
+        caProByCategory,
         ticketMoyen,
         messagesUnread: msgUnread || 0,
         proUnread: proUnreadCount || 0,
@@ -812,14 +854,16 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
     load();
   }, []);
 
-  const diff = data.caMonth - data.caMonthPrev;
-  const diffLabel = data.caMonthPrev === 0 && data.caMonth > 0
-    ? `Premier mois de CA · +${data.caMonth.toFixed(2).replace('.', ',')}€ vs mois dernier (0€)`
-    : data.caMonthPrev === 0
+  const totalCaMonth = data.caMonth + data.caProMonth;
+  const totalCaPrev = data.caMonthPrev + data.caProMonthPrev;
+  const diff = totalCaMonth - totalCaPrev;
+  const diffLabel = totalCaPrev === 0 && totalCaMonth > 0
+    ? `Premier mois de CA · +${totalCaMonth.toFixed(2).replace('.', ',')}€ vs mois dernier (0€)`
+    : totalCaPrev === 0
       ? 'Pas de CA ce mois ni le mois dernier'
       : diff >= 0
-        ? `↑ +${diff.toFixed(2).replace('.', ',')}€ vs mois dernier (${data.caMonthPrev.toFixed(2).replace('.', ',')}€)`
-        : `↓ ${diff.toFixed(2).replace('.', ',')}€ vs mois dernier (${data.caMonthPrev.toFixed(2).replace('.', ',')}€)`;
+        ? `↑ +${diff.toFixed(2).replace('.', ',')}€ vs mois dernier (${totalCaPrev.toFixed(2).replace('.', ',')}€)`
+        : `↓ ${diff.toFixed(2).replace('.', ',')}€ vs mois dernier (${totalCaPrev.toFixed(2).replace('.', ',')}€)`;
 
   const currentMonthLabel = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
   const toTraiter = data.messagesUnread + data.proUnread;
@@ -827,7 +871,7 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Vue d'ensemble</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Tableau de bord</h1>
         <p style={{ fontSize: 13, color: '#94a3b8' }}>Activité de ce mois-ci ({currentMonthLabel})</p>
       </div>
 
@@ -838,10 +882,16 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
             <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em', textTransform: 'uppercase' as const, marginBottom: 6 }}>
               CA de {currentMonthLabel}
             </div>
-            <div style={{ fontSize: 48, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em', lineHeight: 1 }}>{data.caMonth.toFixed(2).replace('.', ',')}€</div>
+            <div style={{ fontSize: 48, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em', lineHeight: 1 }}>{totalCaMonth.toFixed(2).replace('.', ',')}€</div>
             <div style={{ fontSize: 13, color: diff >= 0 ? '#7dd3f0' : '#fca5a5', marginTop: 10, fontWeight: 600 }}>
               {diffLabel}
             </div>
+            {(data.caMonth > 0 || data.caProMonth > 0) && (
+              <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>Particuliers : <span style={{ fontWeight: 800, color: 'rgba(255,255,255,0.85)' }}>{data.caMonth.toFixed(2).replace('.', ',')}€</span></div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>Pro : <span style={{ fontWeight: 800, color: 'rgba(255,255,255,0.85)' }}>{data.caProMonth.toFixed(2).replace('.', ',')}€</span></div>
+              </div>
+            )}
           </div>
           <button onClick={() => onNavigate('stats')}
             style={{ padding: '10px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -859,7 +909,7 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
             <UserPlus size={16} style={{ color: '#2a7d9c' }} />
           </div>
           <div style={{ fontSize: 32, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{data.newClientsMonth}</div>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Inscrits ce mois</div>
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Inscrits vérifiés ce mois{data.newProMonth > 0 ? ` · dont ${data.newProMonth} pro` : ''}</div>
         </div>
 
         {/* Analyses avec détail par type */}
@@ -898,13 +948,11 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
 
       {/* BLOC CA PAR CATÉGORIE */}
       <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', padding: '20px 22px', marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>💰 CA par catégorie ce mois</div>
-            <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>Détail des ventes Stripe par produit</div>
-          </div>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginTop: 14 }}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>💰 CA par catégorie ce mois</div>
+        <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2, marginBottom: 14 }}>Détail des ventes par produit</div>
+
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8 }}>Particuliers</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 16 }}>
           {[
             { key: 'document' as const, label: 'Analyse Simple', color: '#64748b', bg: '#f8fafc' },
             { key: 'complete' as const, label: 'Analyse Complète', color: '#2a7d9c', bg: '#f0f7fb' },
@@ -913,9 +961,29 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
           ].map(t => {
             const d = data.caByCategory[t.key];
             return (
-              <div key={t.key} style={{ padding: '14px 16px', borderRadius: 10, background: d.count > 0 ? t.bg : '#fafbfc', border: `1px solid ${d.count > 0 ? t.color + '30' : '#edf2f7'}` }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 4 }}>{t.label}</div>
-                <div style={{ fontSize: 20, fontWeight: 900, color: d.count > 0 ? t.color : '#cbd5e1', lineHeight: 1 }}>{d.total.toFixed(2).replace('.', ',')}€</div>
+              <div key={t.key} style={{ padding: '12px 14px', borderRadius: 10, background: d.count > 0 ? t.bg : '#fafbfc', border: `1px solid ${d.count > 0 ? t.color + '30' : '#edf2f7'}` }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 4 }}>{t.label}</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: d.count > 0 ? t.color : '#cbd5e1', lineHeight: 1 }}>{d.total.toFixed(2).replace('.', ',')}€</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{d.count} vente{d.count > 1 ? 's' : ''}</div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8 }}>Pro</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+          {[
+            { key: 'abo_decouverte' as const, label: 'Abo Découverte', color: '#0f2d3d', bg: '#f0f7fb' },
+            { key: 'abo_starter' as const, label: 'Abo Starter', color: '#2a7d9c', bg: '#f0f7fb' },
+            { key: 'abo_power' as const, label: 'Abo Power', color: '#16a34a', bg: '#f0fdf4' },
+            { key: 'unit_complete' as const, label: 'Unitaire Complète', color: '#7c3aed', bg: '#f5f3ff' },
+            { key: 'unit_simple' as const, label: 'Unitaire Simple', color: '#64748b', bg: '#f8fafc' },
+          ].map(t => {
+            const d = data.caProByCategory[t.key];
+            return (
+              <div key={t.key} style={{ padding: '12px 14px', borderRadius: 10, background: d.count > 0 ? t.bg : '#fafbfc', border: `1px solid ${d.count > 0 ? t.color + '30' : '#edf2f7'}` }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 4 }}>{t.label}</div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: d.count > 0 ? t.color : '#cbd5e1', lineHeight: 1 }}>{d.total.toFixed(2).replace('.', ',')}€</div>
                 <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{d.count} vente{d.count > 1 ? 's' : ''}</div>
               </div>
             );
@@ -1321,12 +1389,14 @@ function StatsTab() {
 /* ══════════════════════════════════════════
    USERS TAB
 ══════════════════════════════════════════ */
-function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHandled }: {
+function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHandled, onOpenAnalysis, onOpenProClient }: {
   onConfirm: (a: ConfirmAction) => void;
   showToast: (m: string) => void;
   logAction: (a: string, t?: string) => Promise<void>;
   focusUserId?: string | null;
   onFocusUserHandled?: () => void;
+  onOpenAnalysis?: (analysisId: string) => void;
+  onOpenProClient?: (userId: string) => void;
 }) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [search, setSearch] = useState('');
@@ -1341,7 +1411,7 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
   const [feedback, setFeedback] = useState('');
   const [sending, setSending] = useState(false);
 
-  const [filterTab, setFilterTab] = useState<'all' | 'verified' | 'unverified'>('all');
+  const [filterTab, setFilterTab] = useState<'all' | 'verified' | 'unverified' | 'pro'>('all');
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -1356,6 +1426,11 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
   useEffect(() => { loadUsers(); }, [loadUsers]);
 
   const openDetail = useCallback(async (user: AdminUser) => {
+    // Si user pro, rediriger vers l'onglet Clients Pro
+    if (user.role === 'pro' && onOpenProClient) {
+      onOpenProClient(user.id);
+      return;
+    }
     setDetailUser(user);
     setProCreditsBalance(null);
     const [{ data: analyses }, { data: payments }, { data: grants }] = await Promise.all([
@@ -1404,7 +1479,7 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
   const filtered = users
     .filter(u => {
       const matchSearch = u.email?.toLowerCase().includes(search.toLowerCase()) || u.full_name?.toLowerCase().includes(search.toLowerCase());
-      const matchTab = filterTab === 'all' ? true : filterTab === 'verified' ? u.email_verified === true : u.email_verified === false;
+      const matchTab = filterTab === 'all' ? true : filterTab === 'verified' ? u.email_verified === true : filterTab === 'unverified' ? u.email_verified === false : filterTab === 'pro' ? u.role === 'pro' : true;
       return matchSearch && matchTab;
     })
     .sort((a, b) => {
@@ -1679,7 +1754,10 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
               {userAnalyses.length === 0 ? (
                 <div style={{ padding: '32px', textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Aucune analyse</div>
               ) : userAnalyses.map((a, i) => (
-                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 22px', borderBottom: i < userAnalyses.length - 1 ? '1px solid #f8fafc' : 'none' }}>
+                <div key={a.id} onClick={() => onOpenAnalysis?.(a.id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 22px', borderBottom: i < userAnalyses.length - 1 ? '1px solid #f8fafc' : 'none', cursor: 'pointer', transition: 'background 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.address || a.adresse_bien || a.title || 'Sans titre'}</div>
                     <div style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDateTime(a.created_at)} · {PLAN_LABELS[a.type] || a.type}</div>
@@ -1821,6 +1899,7 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
           { id: 'all', label: `Tous (${users.length})` },
           { id: 'verified', label: `✓ Vérifiés (${users.filter(u => u.email_verified === true).length})` },
           { id: 'unverified', label: `⚠ Non vérifiés (${users.filter(u => u.email_verified === false).length})` },
+          { id: 'pro', label: `🏢 Pro (${users.filter(u => u.role === 'pro').length})` },
         ] as const).map(t => (
           <button key={t.id} onClick={() => setFilterTab(t.id)}
             style={{ padding: '7px 14px', borderRadius: 10, border: `1.5px solid ${filterTab === t.id ? '#2a7d9c' : '#edf2f7'}`, background: filterTab === t.id ? '#f0f7fb' : '#fff', color: filterTab === t.id ? '#2a7d9c' : '#64748b', fontSize: 12, fontWeight: filterTab === t.id ? 700 : 500, cursor: 'pointer' }}>
@@ -2007,7 +2086,7 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
 /* ══════════════════════════════════════════
    ANALYSES TAB
 ══════════════════════════════════════════ */
-type AnalysisWithUser = AdminAnalyse & { userEmail?: string; userName?: string };
+type AnalysisWithUser = AdminAnalyse & { userEmail?: string; userName?: string; userRole?: string };
 
 function AnalysesTab({ onOpenUser, focusAnalysisId, onFocusAnalysisHandled }: {
   onOpenUser: (userId: string) => void;
@@ -2038,7 +2117,7 @@ function AnalysesTab({ onOpenUser, focusAnalysisId, onFocusAnalysisHandled }: {
     const userIds = [...new Set(rawAnalyses.map(a => a.user_id).filter(Boolean))];
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, email, full_name')
+      .select('id, email, full_name, role')
       .in('id', userIds);
 
     const profileMap = new Map((profiles || []).map(p => [p.id, p]));
@@ -2046,6 +2125,7 @@ function AnalysesTab({ onOpenUser, focusAnalysisId, onFocusAnalysisHandled }: {
       ...a,
       userEmail: profileMap.get(a.user_id)?.email,
       userName: profileMap.get(a.user_id)?.full_name,
+      userRole: profileMap.get(a.user_id)?.role,
     }));
 
     setAnalyses(enriched);
@@ -2226,6 +2306,10 @@ function AnalysisDetailView({ analysis, onBack, onOpenUser, onReload }: {
     origineLabel = '✨ Aperçu gratuit / Analyse offerte';
     origineColor = '#f0a500';
     origineBg = '#fffbeb';
+  } else if (analysis.userRole === 'pro' || (!analysis.stripe_payment_id && !analysis.paid)) {
+    origineLabel = '📊 Crédit abonnement Pro';
+    origineColor = '#0f2d3d';
+    origineBg = '#f0f7fb';
   } else {
     origineLabel = '❓ Origine non identifiée';
   }
