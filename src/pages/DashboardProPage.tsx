@@ -2446,10 +2446,10 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
         <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Informations personnelles</h3>
         <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>Vos informations de contact visibles par vos clients dans les rapports envoyés.</p>
         <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-          <div>
+          <div style={{ position: 'relative' }}>
             <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
               Nom complet
-              <span title="Ce prénom / nom sera affiché comme expéditeur lors de l'envoi de rapports par email à vos clients." style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: '#f0f7fb', border: '1px solid #d0e8f0', color: '#2a7d9c', fontSize: 10, fontWeight: 800, cursor: 'help', flexShrink: 0 }}>?</span>
+              <TooltipInfo text="Ce prénom / nom sera affiché comme expéditeur lors de l'envoi de rapports par email à vos clients." />
             </label>
             <input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} style={inputStyle} />
           </div>
@@ -3132,14 +3132,14 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: 13, fontWeight: 600, marginBottom: 16, padding: 0 }}>
+      <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f0f7fb', border: '1px solid #d0e8f0', borderRadius: 10, cursor: 'pointer', color: '#2a7d9c', fontSize: 14, fontWeight: 700, marginBottom: 16, padding: '8px 16px' }}>
         ← Retour aux dossiers
       </button>
 
       {/* Header dossier */}
       <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '22px 24px', marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-          <div style={{ width: 52, height: 52, borderRadius: 12, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div className="dossier-header" style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+          <div className="dossier-icon-desktop" style={{ width: 52, height: 52, borderRadius: 12, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Folder size={24} style={{ color: '#2a7d9c' }} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -3152,6 +3152,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
             )}
           </div>
           <button onClick={() => setShowEditFolderModal(true)} title="Modifier les infos du dossier"
+            className="dossier-edit-btn"
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, background: '#fff', border: '1.5px solid #edf2f7', color: '#475569', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, flexShrink: 0, transition: 'all 0.15s' }}
             onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.color = '#2a7d9c'; }}
             onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.color = '#475569'; }}>
@@ -3167,7 +3168,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
       </div>
 
       {/* Actions principales — 4 boutons */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
+      <div className="dossier-actions-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
         <ActionButton icon={UserCheck} label="Ajouter un vendeur" onClick={() => { setEditingSeller(null); setShowSellerModal(true); }} />
         <ActionButton icon={UserPlus} label="Ajouter un acheteur potentiel" onClick={() => { setEditingBuyer(null); setShowBuyerModal(true); }} />
         <button
@@ -4132,6 +4133,29 @@ function ModalDeleteBuyer({ buyer, onClose, onConfirm }: {
   );
 }
 
+/* ══════════════════════════════════════════
+   TOOLTIP INFO — Cliquable sur mobile
+══════════════════════════════════════════ */
+function TooltipInfo({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex' }}>
+      <span
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(!open); }}
+        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: '#f0f7fb', border: '1px solid #d0e8f0', color: '#2a7d9c', fontSize: 10, fontWeight: 800, cursor: 'pointer', flexShrink: 0, userSelect: 'none' }}>?</span>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 998 }} />
+          <div style={{ position: 'absolute', top: 22, left: '50%', transform: 'translateX(-50%)', zIndex: 999, background: '#0f2d3d', color: '#fff', fontSize: 12, lineHeight: 1.5, padding: '10px 14px', borderRadius: 10, width: 240, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
+            {text}
+            <div style={{ position: 'absolute', top: -5, left: '50%', transform: 'translateX(-50%) rotate(45deg)', width: 10, height: 10, background: '#0f2d3d' }} />
+          </div>
+        </>
+      )}
+    </span>
+  );
+}
+
 function ActionButton({ icon: Icon, label, onClick, comingSoon }: { icon: React.ElementType; label: string; onClick?: () => void; comingSoon?: boolean }) {
   return (
     <button
@@ -4370,7 +4394,7 @@ export default function DashboardProPage() {
           .topbar-cta { display: none !important; }
           header { padding: 0 14px !important; height: 62px !important; gap: 10px !important; }
           .mobile-menu-btn svg { width: 24px !important; height: 24px !important; }
-          .topbar-title { font-size: 15px !important; font-weight: 800 !important; }
+          .topbar-title { font-size: 15px !important; font-weight: 800 !important; white-space: normal !important; overflow: visible !important; }
           .dashboard-main { padding: 16px 12px !important; }
           .dashboard-main > div,
           .dashboard-main > section {
@@ -4384,6 +4408,10 @@ export default function DashboardProPage() {
           .plan-card { padding: 16px !important; }
           .plan-card h3 { font-size: 16px !important; }
           .plan-card span[style*="font-size: 30"] { font-size: 24px !important; }
+          .dossier-actions-grid { grid-template-columns: 1fr 1fr !important; }
+          .dossier-icon-desktop { width: 40px !important; height: 40px !important; }
+          .dossier-header { flex-wrap: wrap !important; }
+          .dossier-edit-btn { width: 100% !important; justify-content: center !important; margin-top: 8px !important; }
         }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
