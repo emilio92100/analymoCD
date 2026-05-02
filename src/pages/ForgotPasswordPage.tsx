@@ -14,7 +14,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     setError('');
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
+      redirectTo: 'https://verimo.fr/auth/reset-password',
     });
     if (error) { setError('Une erreur est survenue. Vérifiez votre email.'); setLoading(false); return; }
     setSent(true);
