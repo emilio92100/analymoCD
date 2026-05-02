@@ -3189,6 +3189,10 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [sendingInvite, setSendingInvite] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showResetPwd, setShowResetPwd] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [showUpdateEmail, setShowUpdateEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
 
   // Form state
   const [form, setForm] = useState({
@@ -3400,6 +3404,14 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 <button onClick={() => setShowDeleteConfirm(true)}
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
                   <Trash2 size={12} /> Supprimer
+                </button>
+                <button onClick={() => { setNewPassword(''); setShowResetPwd(true); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                  🔑 Reset MDP
+                </button>
+                <button onClick={() => { setNewEmail(selected.email || ''); setShowUpdateEmail(true); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: '#f0f7fb', border: '1px solid #c7dde8', color: '#2a7d9c', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                  ✉️ Modifier email
                 </button>
               </div>
             </div>
@@ -3700,6 +3712,67 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                     style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: '#dc2626', fontSize: 14, fontWeight: 700, color: '#fff', cursor: deleting ? 'wait' : 'pointer', opacity: deleting ? 0.6 : 1 }}>
                     {deleting ? 'Suppression...' : '🗑️ Supprimer définitivement'}
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal reset mot de passe */}
+          {showResetPwd && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+              <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 400, boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>🔑 Réinitialiser le mot de passe</h3>
+                <p style={{ fontSize: 13, color: '#94a3b8', margin: '0 0 16px' }}>{selected.full_name} — {selected.email}</p>
+                <input type="text" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Nouveau mot de passe (min 6 caractères)"
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 16, fontFamily: 'inherit' }} />
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => setShowResetPwd(false)}
+                    style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 13, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Annuler</button>
+                  <button onClick={async () => {
+                    if (newPassword.length < 6) { showToast('6 caractères minimum'); return; }
+                    const { data: { session } } = await supabase.auth.getSession();
+                    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://veszrayromldfgetqaxb.supabase.co'}/functions/v1/admin-user-management`, {
+                      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+                      body: JSON.stringify({ action: 'reset_password', user_id: selected.id, new_password: newPassword }),
+                    });
+                    const data = await res.json();
+                    if (data.error) { showToast('Erreur: ' + data.error); return; }
+                    await logAction(`Mot de passe réinitialisé pour ${selected.full_name}`);
+                    showToast('Mot de passe réinitialisé');
+                    setShowResetPwd(false);
+                  }}
+                    style={{ flex: 1, padding: '11px', borderRadius: 10, border: 'none', background: '#2a7d9c', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer' }}>Réinitialiser</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal modifier email */}
+          {showUpdateEmail && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+              <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 400, boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>✉️ Modifier l'email</h3>
+                <p style={{ fontSize: 13, color: '#94a3b8', margin: '0 0 16px' }}>{selected.full_name} — email actuel : {selected.email}</p>
+                <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="Nouvel email"
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 16, fontFamily: 'inherit' }} />
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => setShowUpdateEmail(false)}
+                    style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 13, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Annuler</button>
+                  <button onClick={async () => {
+                    if (!newEmail.includes('@')) { showToast('Email invalide'); return; }
+                    const { data: { session } } = await supabase.auth.getSession();
+                    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://veszrayromldfgetqaxb.supabase.co'}/functions/v1/admin-user-management`, {
+                      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+                      body: JSON.stringify({ action: 'update_email', user_id: selected.id, new_email: newEmail }),
+                    });
+                    const data = await res.json();
+                    if (data.error) { showToast('Erreur: ' + data.error); return; }
+                    await logAction(`Email modifié pour ${selected.full_name}: ${selected.email} → ${newEmail}`);
+                    setSelected({ ...selected, email: newEmail });
+                    showToast('Email modifié');
+                    setShowUpdateEmail(false);
+                  }}
+                    style={{ flex: 1, padding: '11px', borderRadius: 10, border: 'none', background: '#2a7d9c', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer' }}>Modifier</button>
                 </div>
               </div>
             </div>
