@@ -178,7 +178,7 @@ function SidebarPro({ subscription, proCredits, onClose }: { subscription: ProSu
       {/* Logo + PRO badge */}
       <div style={{ height: 68, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
         <Link to="/" onClick={onClose} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <img src="/logo-blanc.png" alt="Verimo" style={{ height: 28, width: 'auto', display: 'block' }} />
+          <span style={{ fontSize: 20, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>verimo</span>
           <span style={{ background: `linear-gradient(135deg, ${ACCENT}, #38bdf8)`, color: '#0a1f2d', fontSize: 9, fontWeight: 800, padding: '2px 8px', borderRadius: 100, letterSpacing: '0.08em' }}>ACCÈS PRO</span>
         </Link>
         {onClose && <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: 4 }}><X size={18} /></button>}
@@ -2622,7 +2622,169 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
 /* ══════════════════════════════════════════
    DOSSIER DETAIL — Vue détaillée d'un dossier
 ══════════════════════════════════════════ */
-function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => void }) {
+/* ── Envoi rapport depuis un dossier ─────────────────── */
+function SendReportFromDossier({ analyses, buyers, proProfile, folderId, onClose, onSent }: {
+  analyses: ProAnalysis[]; buyers: ProFolderBuyer[]; proProfile: ProProfile; folderId: string; onClose: () => void; onSent: () => void;
+}) {
+  const [selectedBuyerIds, setSelectedBuyerIds] = useState<Set<string>>(new Set());
+  const [selectedAnalysisId, setSelectedAnalysisId] = useState(analyses.length === 1 ? analyses[0].id : '');
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+
+  const selectedAnalysis = analyses.find(a => a.id === selectedAnalysisId);
+  const address = selectedAnalysis?.address || selectedAnalysis?.title || 'Bien immobilier';
+  const senderName = proProfile.full_name || '';
+  const senderCompany = proProfile.pro_company_name || '';
+
+  useEffect(() => {
+    setMessage(`Bonjour,\n\nDans le cadre de votre projet immobilier, je vous transmets le rapport d'analyse du bien situé ${address}.\n\nCe rapport vous permettra d'avoir une vision claire des points importants du dossier.\n\nN'hésitez pas à me contacter pour en discuter ensemble.\n\nCordialement,\n${senderName}${senderCompany ? '\n' + senderCompany : ''}`);
+  }, [address, senderName, senderCompany]);
+
+  const toggleBuyer = (id: string) => {
+    setSelectedBuyerIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSend = async () => {
+    if (selectedBuyerIds.size === 0) { setError('Sélectionnez au moins un acheteur.'); return; }
+    if (!selectedAnalysisId) { setError('Sélectionnez une analyse à envoyer.'); return; }
+    setError('');
+    setSending(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const selectedBuyers = buyers.filter(b => selectedBuyerIds.has(b.id));
+
+      for (const buyer of selectedBuyers) {
+        const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            action: 'send_report',
+            analysis_id: selectedAnalysisId,
+            recipient_name: `${buyer.first_name || ''} ${buyer.last_name}`.trim(),
+            recipient_firstname: buyer.first_name || buyer.last_name,
+            recipient_email: buyer.email,
+            message: message.replace(/Bonjour/, `Bonjour ${buyer.first_name || buyer.last_name}`),
+          }),
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+      }
+
+      onSent();
+      onClose();
+    } catch (e: any) {
+      setError(e.message || 'Erreur lors de l\'envoi.');
+    }
+    setSending(false);
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(2px)' }}
+      onClick={onClose}>
+      <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+        onClick={e => e.stopPropagation()}
+        style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 540, boxShadow: '0 24px 64px rgba(0,0,0,0.18)', maxHeight: '90vh', overflowY: 'auto' }}>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+          <div>
+            <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0 }}>📧 Envoyer une analyse</h3>
+            <p style={{ fontSize: 13, color: '#94a3b8', margin: '4px 0 0' }}>Sélectionnez les acheteurs et l'analyse à partager</p>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+            <X size={20} style={{ color: '#94a3b8' }} />
+          </button>
+        </div>
+
+        {/* Étape 1 : Sélection acheteurs */}
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8, textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>
+            👥 Acheteurs destinataires
+          </label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {buyers.map(b => {
+              const isSelected = selectedBuyerIds.has(b.id);
+              return (
+                <button key={b.id} onClick={() => toggleBuyer(b.id)} type="button"
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10,
+                    background: isSelected ? '#f0fdf4' : '#fff',
+                    border: isSelected ? '2px solid #16a34a' : '1.5px solid #edf2f7',
+                    cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}>
+                  <div style={{ width: 20, height: 20, borderRadius: '50%', border: isSelected ? '6px solid #16a34a' : '2px solid #cbd5e1', background: '#fff', flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{b.first_name} {b.last_name}</div>
+                    <div style={{ fontSize: 11, color: '#94a3b8' }}>{b.email}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Étape 2 : Sélection analyse */}
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8, textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>
+            📋 Analyse à envoyer
+          </label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {analyses.map(a => {
+              const isSelected = selectedAnalysisId === a.id;
+              return (
+                <button key={a.id} onClick={() => setSelectedAnalysisId(a.id)} type="button"
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10,
+                    background: isSelected ? '#f0f7fb' : '#fff',
+                    border: isSelected ? '2px solid #2a7d9c' : '1.5px solid #edf2f7',
+                    cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}>
+                  <div style={{ width: 20, height: 20, borderRadius: '50%', border: isSelected ? '6px solid #2a7d9c' : '2px solid #cbd5e1', background: '#fff', flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.address || a.title}</div>
+                    <div style={{ fontSize: 11, color: '#94a3b8' }}>{a.type === 'complete' ? 'Complète' : 'Simple'} · {fmtDate(a.created_at)}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Étape 3 : Message personnalisé */}
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8, textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>
+            ✉️ Message personnalisé
+          </label>
+          <textarea value={message} onChange={e => setMessage(e.target.value)} rows={8}
+            style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.6, background: '#f8fafc' }} />
+        </div>
+
+        {error && <div style={{ padding: '10px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 13, color: '#dc2626', marginBottom: 16 }}>{error}</div>}
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onClose}
+            style={{ flex: 1, padding: '13px', borderRadius: 12, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 14, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>
+            Annuler
+          </button>
+          <button onClick={handleSend} disabled={sending || selectedBuyerIds.size === 0 || !selectedAnalysisId}
+            style={{ flex: 1, padding: '13px', borderRadius: 12, border: 'none',
+              background: (selectedBuyerIds.size > 0 && selectedAnalysisId) ? 'linear-gradient(135deg, #16a34a, #15803d)' : '#e5e7eb',
+              fontSize: 14, fontWeight: 700, color: '#fff', cursor: sending ? 'wait' : 'pointer', opacity: sending ? 0.6 : 1,
+              boxShadow: (selectedBuyerIds.size > 0 && selectedAnalysisId) ? '0 8px 24px rgba(22,163,74,0.2)' : 'none' }}>
+            {sending ? 'Envoi en cours…' : `📧 Envoyer${selectedBuyerIds.size > 1 ? ` à ${selectedBuyerIds.size} acheteurs` : ''}`}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onBack: () => void; proProfile: ProProfile }) {
   const [folder, setFolder] = useState<ProFolder | null>(null);
   const [sellers, setSellers] = useState<ProFolderSeller[]>([]);
   const [buyers, setBuyers] = useState<ProFolderBuyer[]>([]);
@@ -2637,6 +2799,8 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
   const [buyerToDelete, setBuyerToDelete] = useState<ProFolderBuyer | null>(null);
   const [showEditFolderModal, setShowEditFolderModal] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [showSendReport, setShowSendReport] = useState(false);
+  const [sendHistory, setSendHistory] = useState<{ id: string; recipient_name: string; recipient_email: string; sent_at: string; opened_at?: string; analysis_id: string }[]>([]);
   const navigate = useNavigate();
 
   // Charge complet (au mount) : dossier + stats + vendeurs + acheteurs
@@ -2699,6 +2863,20 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
   }, [folderId]);
 
   useEffect(() => { loadFolder(); }, [loadFolder]);
+
+  // Charger l'historique des envois de ce dossier
+  const loadSendHistory = useCallback(async () => {
+    const analysisIds = folderAnalyses.map(a => a.id);
+    if (analysisIds.length === 0) { setSendHistory([]); return; }
+    const { data } = await supabase
+      .from('report_shares')
+      .select('id, recipient_name, recipient_email, sent_at, opened_at, analysis_id')
+      .in('analysis_id', analysisIds)
+      .order('sent_at', { ascending: false });
+    setSendHistory(data || []);
+  }, [folderAnalyses]);
+
+  useEffect(() => { loadSendHistory(); }, [loadSendHistory]);
 
   // Recharge silencieuse des vendeurs (sans loader full-page)
   const reloadSellers = useCallback(async () => {
@@ -2838,12 +3016,42 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
         )}
       </div>
 
-      {/* Actions principales */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 16 }}>
+      {/* Actions principales — 4 boutons */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
         <ActionButton icon={UserCheck} label="Ajouter un vendeur" onClick={() => { setEditingSeller(null); setShowSellerModal(true); }} />
         <ActionButton icon={UserPlus} label="Ajouter un acheteur" onClick={() => { setEditingBuyer(null); setShowBuyerModal(true); }} />
-        <ActionButton icon={Plus} label="Lancer une analyse"
-          onClick={() => navigate(`/dashboard/nouvelle-analyse?folder=${folder.id}`)} />
+        <button
+          onClick={() => navigate(`/dashboard/nouvelle-analyse?folder=${folder.id}`)}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderRadius: 12, background: '#f0f7fb', border: '1.5px solid #bae3f5', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}
+          onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#e0f0f8'; }}
+          onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = '#f0f7fb'; }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(42,125,156,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Plus size={15} style={{ color: '#2a7d9c' }} />
+          </div>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#2a7d9c' }}>Lancer une analyse</span>
+        </button>
+        <button
+          onClick={() => {
+            const completedAnalyses = folderAnalyses.filter(a => a.status === 'completed');
+            if (completedAnalyses.length === 0) {
+              setToast({ message: 'Aucune analyse terminée à envoyer. Lancez d\'abord une analyse.', type: 'error' });
+              return;
+            }
+            const buyersWithEmail = buyers.filter(b => b.email);
+            if (buyersWithEmail.length === 0) {
+              setToast({ message: 'Veuillez d\'abord créer un acheteur avec une adresse email pour ce dossier.', type: 'error' });
+              return;
+            }
+            setShowSendReport(true);
+          }}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderRadius: 12, background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', border: '1.5px solid #86efac', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}
+          onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #dcfce7, #bbf7d0)'; }}
+          onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #f0fdf4, #dcfce7)'; }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(22,163,74,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Send size={15} style={{ color: '#16a34a' }} />
+          </div>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#16a34a' }}>Envoyer une analyse</span>
+        </button>
       </div>
 
       {/* Sections Vendeurs + Acheteurs en 2 colonnes */}
@@ -2935,6 +3143,53 @@ function DossierDetail({ folderId, onBack }: { folderId: string; onBack: () => v
           </div>
         )}
       </div>
+
+      {/* Historique des envois */}
+      {sendHistory.length > 0 && (
+        <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 22px', marginBottom: 12 }}>
+          <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a', margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Send size={15} style={{ color: '#16a34a' }} />
+            Rapports envoyés
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: 100 }}>{sendHistory.length}</span>
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {sendHistory.map(sh => (
+              <div key={sh.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: sh.opened_at ? '#f0fdf4' : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Mail size={14} style={{ color: sh.opened_at ? '#16a34a' : '#94a3b8' }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{sh.recipient_name}</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8' }}>{sh.recipient_email} · {fmtDate(sh.sent_at)}</div>
+                </div>
+                {sh.opened_at ? (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 10px', borderRadius: 100, border: '1px solid #bbf7d0' }}>✓ Ouvert</span>
+                ) : (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', background: '#f8fafc', padding: '3px 10px', borderRadius: 100, border: '1px solid #e2e8f0' }}>En attente</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Modale envoi rapport */}
+      <AnimatePresence>
+        {showSendReport && (() => {
+          const completedAnalyses = folderAnalyses.filter(a => a.status === 'completed');
+          const buyersWithEmail = buyers.filter(b => b.email);
+          return (
+            <SendReportFromDossier
+              analyses={completedAnalyses}
+              buyers={buyersWithEmail}
+              proProfile={proProfile}
+              folderId={folderId}
+              onClose={() => setShowSendReport(false)}
+              onSent={() => { loadSendHistory(); setToast({ message: 'Rapport envoyé avec succès !', type: 'success' }); }}
+            />
+          );
+        })()}
+      </AnimatePresence>
 
       {/* Modale ajout/édition vendeur */}
       <AnimatePresence>
@@ -3853,7 +4108,7 @@ export default function DashboardProPage() {
 
   const renderContent = () => {
     if (dossierMatch) {
-      return <DossierDetail folderId={dossierMatch[1]} onBack={() => navigate('/dashboard/dossiers')} />;
+      return <DossierDetail folderId={dossierMatch[1]} onBack={() => navigate('/dashboard/dossiers')} proProfile={proProfile} />;
     }
     if (path === '/dashboard/dossiers') return <MesDossiersPro />;
     if (path === '/dashboard/nouvelle-analyse') return <NouvelleAnalyse />;
