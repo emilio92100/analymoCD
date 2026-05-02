@@ -15,32 +15,46 @@ export default function ResetPasswordPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Méthode 1 : écouter l'événement PASSWORD_RECOVERY
+    // Vérifier les paramètres dans l'URL
+    const hash = window.location.hash;
+    const params = new URLSearchParams(hash.replace('#', '?'));
+    const errorCode = params.get('error_code');
+    const type = params.get('type');
+    const accessToken = params.get('access_token');
+
+    // Si erreur dans l'URL → lien expiré
+    if (errorCode) {
+      setReady(false);
+      return;
+    }
+
+    // Si type=recovery dans l'URL → c'est un reset password
+    if (type === 'recovery' && accessToken) {
+      // Définir la session avec le token de recovery
+      supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: params.get('refresh_token') || '',
+      }).then(() => {
+        setReady(true);
+      });
+      return;
+    }
+
+    // Écouter l'événement PASSWORD_RECOVERY (fallback)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
         setReady(true);
       }
     });
 
-    // Méthode 2 : vérifier les paramètres d'erreur dans l'URL (lien expiré)
-    const hash = window.location.hash;
-    const params = new URLSearchParams(hash.replace('#', '?'));
-    const errorCode = params.get('error_code');
-    if (errorCode) {
-      setReady(false);
-      return;
-    }
-
-    // Méthode 3 : vérifier si une session existe déjà (token déjà échangé)
+    // Vérifier si on est déjà sur la bonne page avec une session
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
+      if (session && window.location.pathname.includes('reset-password')) {
         setReady(true);
       }
     };
-    
-    // Attendre un peu que Supabase traite le token dans l'URL
-    const timeout = setTimeout(checkSession, 1000);
+    const timeout = setTimeout(checkSession, 1500);
 
     return () => {
       subscription.unsubscribe();
