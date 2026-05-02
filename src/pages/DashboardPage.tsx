@@ -560,13 +560,14 @@ export default function DashboardPage() {
           .topbar-cta { display: none !important; }
           header { padding: 0 14px !important; height: 62px !important; gap: 10px !important; }
           .mobile-menu-btn svg { width: 24px !important; height: 24px !important; }
-          .topbar-title { font-size: 15px !important; font-weight: 800 !important; }
           .dashboard-main { padding: 16px 12px !important; }
           .stats-grid { grid-template-columns: 1fr 1fr !important; }
           .action-grid { grid-template-columns: 1fr !important; }
           .compare-grid { grid-template-columns: 1fr !important; }
           .result-grid { grid-template-columns: 1fr !important; }
           .type-grid { grid-template-columns: 1fr !important; }
+          .compare-addr { white-space: normal !important; }
+          .topbar-title { font-size: 15px !important; font-weight: 800 !important; white-space: normal !important; overflow: visible !important; }
           .dashboard-main > div,
           .dashboard-main > section {
             max-width: 100% !important;
