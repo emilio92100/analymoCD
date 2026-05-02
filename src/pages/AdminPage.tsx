@@ -1201,7 +1201,6 @@ function StatsTab() {
   ];
   const periodLabel = period === 'all' ? 'depuis le début' : period === '7j' ? 'sur les 7 derniers jours' : period === '30j' ? 'sur les 30 derniers jours' : period === '3m' ? 'sur les 3 derniers mois' : period === '12m' ? 'sur les 12 derniers mois' : 'sur la période personnalisée';
 
-  const typesMeta = [{ key: 'document' as const, label: 'Simple', color: '#64748b' }, { key: 'complete' as const, label: 'Complète', color: '#2a7d9c' }];
 
   return (
     <div>
