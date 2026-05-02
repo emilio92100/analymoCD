@@ -2646,11 +2646,11 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
    DOSSIER DETAIL — Vue détaillée d'un dossier
 ══════════════════════════════════════════ */
 /* ── Envoi rapport depuis un dossier — Wizard 3 étapes ── */
-function SendReportFromDossier({ analyses, buyers, proProfile, folderAddress, onClose, onSent }: {
-  analyses: ProAnalysis[]; buyers: ProFolderBuyer[]; proProfile: ProProfile; folderAddress: string; onClose: () => void; onSent: () => void;
+function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAddress, onClose, onSent }: {
+  analyses: ProAnalysis[]; buyers: ProFolderBuyer[]; sellers: ProFolderSeller[]; proProfile: ProProfile; folderAddress: string; onClose: () => void; onSent: () => void;
 }) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [selectedBuyerIds, setSelectedBuyerIds] = useState<Set<string>>(new Set());
+  const [selectedRecipientIds, setSelectedRecipientIds] = useState<Set<string>>(new Set());
   const [selectedAnalysisIds, setSelectedAnalysisIds] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -2664,6 +2664,13 @@ function SendReportFromDossier({ analyses, buyers, proProfile, folderAddress, on
   const senderSignature = senderNetwork && senderCompanyName 
     ? `${senderNetwork} (${senderCompanyName})` 
     : senderNetwork || senderCompanyName;
+
+  // Build unified recipients list (buyers + sellers with email)
+  type Recipient = { id: string; first_name?: string | null; last_name: string; email: string; role: 'acheteur' | 'vendeur' };
+  const allRecipients: Recipient[] = [
+    ...sellers.filter(s => s.email).map(s => ({ id: `s-${s.id}`, first_name: s.first_name, last_name: s.last_name, email: s.email!, role: 'vendeur' as const })),
+    ...buyers.filter(b => b.email).map(b => ({ id: `b-${b.id}`, first_name: b.first_name, last_name: b.last_name, email: b.email!, role: 'acheteur' as const })),
+  ];
 
   // Extract clean doc name (first part before " — ")
   const getDocName = (a: ProAnalysis) => {
@@ -2693,7 +2700,7 @@ function SendReportFromDossier({ analyses, buyers, proProfile, folderAddress, on
     if (selectedAnalysisIds.size > 0) setMessage(generateMessage());
   }, [selectedAnalysisIds, generateMessage]);
 
-  const toggleBuyer = (id: string) => {
+  const toggleRecipient = (id: string) => {
     setSelectedBuyerIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   };
   const toggleAnalysis = (id: string) => {
@@ -2707,12 +2714,12 @@ function SendReportFromDossier({ analyses, buyers, proProfile, folderAddress, on
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const selectedBuyers = buyers.filter(b => selectedBuyerIds.has(b.id));
+      const selectedRecipients = allRecipients.filter(r => selectedRecipientIds.has(r.id));
       const selectedAnalysesList = analyses.filter(a => selectedAnalysisIds.has(a.id));
-      const totalSends = selectedBuyers.length;
+      const totalSends = selectedRecipients.length;
       let sent = 0;
 
-      for (const buyer of selectedBuyers) {
+      for (const recipient of selectedRecipients) {
         // Envoyer un mail groupé avec toutes les analyses sélectionnées
         const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
           method: 'POST',
@@ -2724,10 +2731,10 @@ function SendReportFromDossier({ analyses, buyers, proProfile, folderAddress, on
           body: JSON.stringify({
             action: 'send_report_batch',
             analysis_ids: selectedAnalysesList.map(a => a.id),
-            recipient_name: `${buyer.first_name || ''} ${buyer.last_name}`.trim(),
-            recipient_firstname: buyer.first_name || buyer.last_name,
-            recipient_email: buyer.email,
-            message: message.replace(/^Bonjour,/, `Bonjour ${buyer.first_name || buyer.last_name},`),
+            recipient_name: `${recipient.first_name || ''} ${recipient.last_name}`.trim(),
+            recipient_firstname: recipient.first_name || recipient.last_name,
+            recipient_email: recipient.email,
+            message: message.replace(/^Bonjour,/, `Bonjour ${recipient.first_name || recipient.last_name},`),
           }),
         });
         const data = await res.json();
@@ -2777,33 +2784,43 @@ function SendReportFromDossier({ analyses, buyers, proProfile, folderAddress, on
             {/* ÉTAPE 1 : Sélection acheteurs */}
             {step === 1 && (
               <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
-                <p style={{ fontSize: 14, color: '#64748b', margin: '0 0 16px' }}>👥 Sélectionnez les acheteurs qui recevront le rapport :</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {buyers.map(b => {
-                    const sel = selectedBuyerIds.has(b.id);
-                    return (
-                      <button key={b.id} onClick={() => toggleBuyer(b.id)} type="button"
-                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14,
-                          background: sel ? '#f0fdf4' : '#fff', border: sel ? '2px solid #16a34a' : '1.5px solid #edf2f7',
-                          cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}>
-                        <div style={{ width: 22, height: 22, borderRadius: 6, border: sel ? 'none' : '2px solid #cbd5e1', background: sel ? '#16a34a' : '#fff',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
-                          {sel && <span style={{ color: '#fff', fontSize: 12, fontWeight: 900 }}>✓</span>}
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>{b.first_name} {b.last_name}</div>
-                          <div style={{ fontSize: 12, color: '#94a3b8' }}>{b.email}</div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                <p style={{ fontSize: 14, color: '#64748b', margin: '0 0 16px' }}>👥 À qui souhaitez-vous envoyer le rapport ?</p>
+                {allRecipients.length === 0 ? (
+                  <div style={{ padding: '24px 16px', textAlign: 'center' as const, background: '#fffbeb', borderRadius: 12, border: '1px solid #fde68a' }}>
+                    <p style={{ fontSize: 13, color: '#78350f', margin: 0 }}>Aucun contact avec adresse email. Ajoutez un vendeur ou un acheteur potentiel avec un email pour pouvoir envoyer des rapports.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {allRecipients.map(r => {
+                      const sel = selectedRecipientIds.has(r.id);
+                      const roleStyle = r.role === 'vendeur'
+                        ? { bg: '#fef3c7', color: '#92400e', label: 'Vendeur' }
+                        : { bg: '#dbeafe', color: '#1e40af', label: 'Acheteur' };
+                      return (
+                        <button key={r.id} onClick={() => toggleRecipient(r.id)} type="button"
+                          style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14,
+                            background: sel ? '#f0fdf4' : '#fff', border: sel ? '2px solid #16a34a' : '1.5px solid #edf2f7',
+                            cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}>
+                          <div style={{ width: 22, height: 22, borderRadius: 6, border: sel ? 'none' : '2px solid #cbd5e1', background: sel ? '#16a34a' : '#fff',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
+                            {sel && <span style={{ color: '#fff', fontSize: 12, fontWeight: 900 }}>✓</span>}
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>{r.first_name} {r.last_name}</div>
+                            <div style={{ fontSize: 12, color: '#94a3b8' }}>{r.email}</div>
+                          </div>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: roleStyle.color, background: roleStyle.bg, padding: '3px 10px', borderRadius: 100 }}>{roleStyle.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
-                  <button onClick={() => { if (selectedBuyerIds.size > 0) setStep(2); }}
-                    disabled={selectedBuyerIds.size === 0}
+                  <button onClick={() => { if (selectedRecipientIds.size > 0) setStep(2); }}
+                    disabled={selectedRecipientIds.size === 0}
                     style={{ padding: '12px 28px', borderRadius: 12, border: 'none',
-                      background: selectedBuyerIds.size > 0 ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#e5e7eb',
-                      color: '#fff', fontSize: 14, fontWeight: 700, cursor: selectedBuyerIds.size > 0 ? 'pointer' : 'default' }}>
+                      background: selectedRecipientIds.size > 0 ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#e5e7eb',
+                      color: '#fff', fontSize: 14, fontWeight: 700, cursor: selectedRecipientIds.size > 0 ? 'pointer' : 'default' }}>
                     Suivant →
                   </button>
                 </div>
@@ -2859,7 +2876,7 @@ function SendReportFromDossier({ analyses, buyers, proProfile, folderAddress, on
               <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
                 <p style={{ fontSize: 14, color: '#64748b', margin: '0 0 4px' }}>✉️ Prévisualisez et personnalisez votre message :</p>
                 <p style={{ fontSize: 11, color: '#94a3b8', margin: '0 0 16px' }}>
-                  → {selectedBuyerIds.size} destinataire{selectedBuyerIds.size > 1 ? 's' : ''} · {selectedAnalysisIds.size} analyse{selectedAnalysisIds.size > 1 ? 's' : ''}
+                  → {selectedRecipientIds.size} destinataire{selectedRecipientIds.size > 1 ? 's' : ''} · {selectedAnalysisIds.size} analyse{selectedAnalysisIds.size > 1 ? 's' : ''}
                 </p>
                 <textarea value={message} onChange={e => setMessage(e.target.value)} rows={10}
                   style={{ width: '100%', padding: '14px 16px', borderRadius: 14, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.7, background: '#f8fafc' }} />
@@ -2907,7 +2924,7 @@ function SendReportFromDossier({ analyses, buyers, proProfile, folderAddress, on
                 <div style={{ fontSize: 56, marginBottom: 16 }}>✅</div>
                 <p style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', margin: '0 0 8px' }}>Rapport{selectedAnalysisIds.size > 1 ? 's' : ''} envoyé{selectedAnalysisIds.size > 1 ? 's' : ''} !</p>
                 <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
-                  {selectedBuyerIds.size} destinataire{selectedBuyerIds.size > 1 ? 's' : ''} · {selectedAnalysisIds.size} analyse{selectedAnalysisIds.size > 1 ? 's' : ''}
+                  {selectedRecipientIds.size} destinataire{selectedRecipientIds.size > 1 ? 's' : ''} · {selectedAnalysisIds.size} analyse{selectedAnalysisIds.size > 1 ? 's' : ''}
                 </p>
               </motion.div>
             )}
@@ -3153,7 +3170,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
       {/* Actions principales — 4 boutons */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
         <ActionButton icon={UserCheck} label="Ajouter un vendeur" onClick={() => { setEditingSeller(null); setShowSellerModal(true); }} />
-        <ActionButton icon={UserPlus} label="Ajouter un acheteur" onClick={() => { setEditingBuyer(null); setShowBuyerModal(true); }} />
+        <ActionButton icon={UserPlus} label="Ajouter un acheteur potentiel" onClick={() => { setEditingBuyer(null); setShowBuyerModal(true); }} />
         <button
           onClick={() => navigate(`/dashboard/nouvelle-analyse?folder=${folder.id}`)}
           style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderRadius: 12, background: '#f0f7fb', border: '1.5px solid #bae3f5', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}
@@ -3172,8 +3189,9 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
               return;
             }
             const buyersWithEmail = buyers.filter(b => b.email);
-            if (buyersWithEmail.length === 0) {
-              setToast({ message: 'Veuillez d\'abord créer un acheteur avec une adresse email pour ce dossier.', type: 'error' });
+            const sellersWithEmail = sellers.filter(s => s.email);
+            if (buyersWithEmail.length === 0 && sellersWithEmail.length === 0) {
+              setToast({ message: 'Aucun contact avec adresse email. Ajoutez un vendeur ou un acheteur potentiel avec un email.', type: 'error' });
               return;
             }
             setShowSendReport(true);
@@ -3336,10 +3354,12 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
         {showSendReport && (() => {
           const completedAnalyses = folderAnalyses.filter(a => a.status === 'completed');
           const buyersWithEmail = buyers.filter(b => b.email);
+          const sellersWithEmail = sellers.filter(s => s.email);
           return (
             <SendReportFromDossier
               analyses={completedAnalyses}
               buyers={buyersWithEmail}
+              sellers={sellersWithEmail}
               proProfile={proProfile}
               folderAddress={folder.property_address ? `${folder.property_address}${folder.property_postal_code ? ', ' + folder.property_postal_code : ''}${folder.property_city ? ' ' + folder.property_city : ''}` : ''}
               onClose={() => setShowSendReport(false)}
@@ -3776,7 +3796,7 @@ function SectionAcheteurs({ buyers, onAdd, onEdit, onDelete }: {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: buyers.length > 0 ? 14 : 6 }}>
         <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
           <UserPlus size={15} style={{ color: '#94a3b8' }} />
-          Acheteur{buyers.length > 1 ? 's' : ''}
+          Acheteur{buyers.length > 1 ? 's' : ''} potentiel{buyers.length > 1 ? 's' : ''}
           {buyers.length > 0 && (
             <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: 100 }}>{buyers.length}</span>
           )}
@@ -3796,7 +3816,7 @@ function SectionAcheteurs({ buyers, onAdd, onEdit, onDelete }: {
           </p>
           <button onClick={onAdd}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, background: '#f0fdf4', border: '1px dashed #86efac', color: '#16a34a', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
-            <Plus size={12} /> Ajouter un acheteur
+            <Plus size={12} /> Ajouter
           </button>
         </div>
       ) : (
