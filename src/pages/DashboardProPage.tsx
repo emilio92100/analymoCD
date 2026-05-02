@@ -178,7 +178,7 @@ function SidebarPro({ subscription, proCredits, onClose }: { subscription: ProSu
       {/* Logo + PRO badge */}
       <div style={{ height: 68, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
         <Link to="/" onClick={onClose} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <img src="/logo-blanc.png" alt="Verimo" style={{ height: 36, width: 'auto', display: 'block' }} />
+          <img src="/logo-blanc.png" alt="Verimo" style={{ height: 50, width: 'auto', display: 'block' }} />
           <span style={{ background: `linear-gradient(135deg, ${ACCENT}, #38bdf8)`, color: '#0a1f2d', fontSize: 9, fontWeight: 800, padding: '2px 8px', borderRadius: 100, letterSpacing: '0.08em' }}>ACCÈS PRO</span>
         </Link>
         {onClose && <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: 4 }}><X size={18} /></button>}
@@ -434,7 +434,7 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares }:
       )}
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 32 }}>
+      <div className="pro-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 32 }}>
         {stats.map((s, i) => (
           <div key={i} style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', border: '1px solid #edf2f7' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
@@ -2119,7 +2119,7 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
             const isActive = subscription?.plan === plan.id && subscription?.status === 'active';
             const btnLoading = loading === `subscribe:${plan.id}`;
             return (
-              <div key={plan.id} style={{
+              <div key={plan.id} className="plan-card" style={{
                 borderRadius: 18, padding: 22, position: 'relative',
                 background: '#fff', border: isActive ? '2px solid #2a7d9c' : plan.popular ? '2px solid #7dd3fc' : '1.5px solid #edf2f7',
                 boxShadow: plan.popular ? '0 8px 32px rgba(42,125,156,0.1)' : 'none',
@@ -2441,17 +2441,32 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
 
-      {/* Informations personnelles (toujours modifiable) */}
+      {/* Informations personnelles + coordonnées visibles */}
       <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '22px 24px', marginBottom: 20 }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 16 }}>Informations personnelles</h3>
-        <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Informations personnelles</h3>
+        <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>Vos informations de contact visibles par vos clients dans les rapports envoyés.</p>
+        <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
           <div>
-            <label style={labelStyle}>Nom complet</label>
+            <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
+              Nom complet
+              <span title="Ce prénom / nom sera affiché comme expéditeur lors de l'envoi de rapports par email à vos clients." style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: '#f0f7fb', border: '1px solid #d0e8f0', color: '#2a7d9c', fontSize: 10, fontWeight: 800, cursor: 'help', flexShrink: 0 }}>?</span>
+            </label>
             <input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} style={inputStyle} />
           </div>
           <div>
             <label style={labelStyle}>Téléphone</label>
             <input value={form.telephone} onChange={e => setForm(f => ({ ...f, telephone: e.target.value }))} style={inputStyle} />
+          </div>
+        </div>
+        <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div>
+            <label style={labelStyle}>Email de contact</label>
+            <input value={form.pro_contact_email} onChange={e => setForm(f => ({ ...f, pro_contact_email: e.target.value }))} placeholder={proProfile.email || ''} style={inputStyle} />
+            <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Si le client répond au mail, sa réponse arrivera sur cet email.</p>
+          </div>
+          <div>
+            <label style={labelStyle}>Téléphone de contact</label>
+            <input value={form.pro_contact_phone} onChange={e => setForm(f => ({ ...f, pro_contact_phone: e.target.value }))} style={inputStyle} />
           </div>
         </div>
       </div>
@@ -2531,22 +2546,6 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
         <div>
           <label style={labelStyle}>Adresse professionnelle</label>
           <input value={form.pro_company_address} onChange={e => !isLocked && setForm(f => ({ ...f, pro_company_address: e.target.value }))} style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
-        </div>
-      </div>
-
-      {/* Coordonnées client (toujours modifiable) */}
-      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '22px 24px', marginBottom: 20 }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Coordonnées visibles par vos clients</h3>
-        <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>Ces informations apparaissent sur les rapports envoyés. Si le client répond au mail, sa réponse arrivera sur l'email de contact ci-dessous.</p>
-        <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          <div>
-            <label style={labelStyle}>Email de contact</label>
-            <input value={form.pro_contact_email} onChange={e => setForm(f => ({ ...f, pro_contact_email: e.target.value }))} placeholder={proProfile.email || ''} style={inputStyle} />
-          </div>
-          <div>
-            <label style={labelStyle}>Téléphone de contact</label>
-            <input value={form.pro_contact_phone} onChange={e => setForm(f => ({ ...f, pro_contact_phone: e.target.value }))} style={inputStyle} />
-          </div>
         </div>
       </div>
 
@@ -3324,7 +3323,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
                       <div style={{ fontSize: 12, color: '#94a3b8' }}>{email} · {fmtDate(items[0].sent_at)}</div>
                     </div>
                   </div>
-                  <div style={{ marginLeft: 48, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div className="rapport-envoi-items" style={{ marginLeft: 48, display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {items.map(item => {
                       const analysis = folderAnalyses.find(a => a.id === item.analysis_id);
                       const docName = analysis ? (analysis.address || analysis.title || 'Analyse').split(' — ')[0] : 'Analyse';
@@ -4380,6 +4379,11 @@ export default function DashboardProPage() {
           }
           .compte-grid { grid-template-columns: 1fr !important; }
           .plans-grid { grid-template-columns: 1fr !important; }
+          .pro-stats-grid { grid-template-columns: 1fr 1fr !important; }
+          .rapport-envoi-items { margin-left: 0 !important; }
+          .plan-card { padding: 16px !important; }
+          .plan-card h3 { font-size: 16px !important; }
+          .plan-card span[style*="font-size: 30"] { font-size: 24px !important; }
         }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
