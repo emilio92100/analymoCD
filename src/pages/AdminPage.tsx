@@ -3190,7 +3190,6 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showResetPwd, setShowResetPwd] = useState(false);
-  const [newPassword, setNewPassword] = useState('');
   const [showUpdateEmail, setShowUpdateEmail] = useState(false);
   const [newEmail, setNewEmail] = useState('');
 
