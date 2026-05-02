@@ -3314,7 +3314,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
               analyses={completedAnalyses}
               buyers={buyersWithEmail}
               proProfile={proProfile}
-              folderAddress={folder.address || ''}
+              folderAddress={folder.property_address ? `${folder.property_address}${folder.property_postal_code ? ', ' + folder.property_postal_code : ''}${folder.property_city ? ' ' + folder.property_city : ''}` : ''}
               onClose={() => setShowSendReport(false)}
               onSent={() => { loadSendHistory(); setToast({ message: 'Rapport envoyé avec succès !', type: 'success' }); }}
             />
