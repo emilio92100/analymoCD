@@ -3491,7 +3491,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                       pro_company_address: editCompanyAddress.trim() || null,
                     };
                     const { error } = await supabase.from('profiles').update(updates).eq('id', selected.id);
-                    if (error) { showToast('Erreur: ' + error.message, 'error'); return; }
+                    if (error) { showToast('Erreur: ' + error.message); return; }
                     // Log changes
                     const changes: string[] = [];
                     if (editCompanyName !== (selected.pro_company_name || '')) changes.push(`Nom commercial: "${selected.pro_company_name || '—'}" → "${editCompanyName || '—'}"`);
@@ -3502,7 +3502,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                     if (changes.length > 0) logAction(`Identité pro modifiée pour ${selected.full_name}: ${changes.join(', ')}`);
                     setSelected({ ...selected, ...updates });
                     setEditingIdentity(false);
-                    showToast('Identité mise à jour', 'success');
+                    showToast('Identité mise à jour');
                   }}
                     style={{ padding: '6px 14px', borderRadius: 8, background: '#2a7d9c', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
                     ✅ Enregistrer
