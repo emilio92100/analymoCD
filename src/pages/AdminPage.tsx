@@ -1065,6 +1065,8 @@ function StatsTab() {
     caPartCateg: { document: { count: 0, total: 0 }, complete: { count: 0, total: 0 }, pack2: { count: 0, total: 0 }, pack3: { count: 0, total: 0 } },
     caProCateg: { abo_decouverte: { count: 0, total: 0 }, abo_starter: { count: 0, total: 0 }, abo_power: { count: 0, total: 0 }, unit_complete: { count: 0, total: 0 }, unit_simple: { count: 0, total: 0 } },
     activeProCount: 0,
+    // Prev period for comparisons
+    prevCaPart: 0, prevCaPro: 0, prevNewUsers: 0, prevNewPro: 0, prevAnalyses: 0, prevActiveProCount: 0,
   });
   const [weeklyData, setWeeklyData] = useState<{ week: string; caPart: number; caPro: number; users: number }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1072,20 +1074,28 @@ function StatsTab() {
   const getRange = useCallback(() => {
     const now = new Date();
     const end = now.toISOString();
-    if (period === 'all') return { start: '2020-01-01T00:00:00Z', end };
+    if (period === 'all') return { start: '2020-01-01T00:00:00Z', end, prevStart: '', prevEnd: '' };
     const start = new Date(now);
     if (period === '7j') start.setDate(now.getDate() - 7);
     else if (period === '30j') start.setDate(now.getDate() - 30);
     else if (period === '3m') start.setMonth(now.getMonth() - 3);
     else if (period === '12m') start.setFullYear(now.getFullYear() - 1);
-    else return { start: customStart, end: customEnd + 'T23:59:59' };
-    return { start: start.toISOString(), end };
+    else {
+      const cs = new Date(customStart);
+      const ce = new Date(customEnd + 'T23:59:59');
+      const dur = ce.getTime() - cs.getTime();
+      const ps = new Date(cs.getTime() - dur);
+      return { start: customStart, end: customEnd + 'T23:59:59', prevStart: ps.toISOString(), prevEnd: cs.toISOString() };
+    }
+    const dur = new Date(end).getTime() - start.getTime();
+    const prevStart = new Date(start.getTime() - dur);
+    return { start: start.toISOString(), end, prevStart: prevStart.toISOString(), prevEnd: start.toISOString() };
   }, [period, customStart, customEnd]);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const { start, end } = getRange();
+      const { start, end, prevStart, prevEnd } = getRange();
       if (!start || !end) { setLoading(false); return; }
 
       const [
@@ -1107,6 +1117,25 @@ function StatsTab() {
         supabase.from('pro_unit_purchases').select('type,quantity,amount').gt('amount', 0).gte('purchased_at', start).lte('purchased_at', end),
         supabase.from('pro_subscriptions').select('*', { count: 'exact', head: true }).eq('status', 'active'),
       ]);
+
+      // Prev period (if not "all")
+      let prevCaPart = 0, prevCaPro = 0, prevNewUsers = 0, prevNewPro = 0, prevAnalyses = 0;
+      if (prevStart && prevEnd && period !== 'all') {
+        const [{ data: pp }, { count: pu }, { count: ppr }, { count: pa }, { data: pps }, { data: ppu }] = await Promise.all([
+          supabase.from('payments').select('amount').eq('status', 'completed').gt('amount', 0).gte('created_at', prevStart).lte('created_at', prevEnd),
+          supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('email_verified', true).gte('created_at', prevStart).lte('created_at', prevEnd),
+          supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'pro').gte('created_at', prevStart).lte('created_at', prevEnd),
+          supabase.from('analyses').select('*', { count: 'exact', head: true }).gte('created_at', prevStart).lte('created_at', prevEnd),
+          supabase.from('pro_subscriptions').select('plan').gte('current_period_start', prevStart).lte('current_period_start', prevEnd),
+          supabase.from('pro_unit_purchases').select('amount').gt('amount', 0).gte('purchased_at', prevStart).lte('purchased_at', prevEnd),
+        ]);
+        prevCaPart = (pp || []).reduce((s, p) => s + (p.amount || 0), 0);
+        const PLAN_PRICES_P: Record<string, number> = { decouverte: 19.90, starter: 49.90, power: 89.90 };
+        prevCaPro = (pps || []).reduce((s, sub: any) => s + (PLAN_PRICES_P[sub.plan] || 0), 0) + (ppu || []).reduce((s, u: any) => s + ((u.amount || 0) / 100), 0);
+        prevNewUsers = pu || 0;
+        prevNewPro = ppr || 0;
+        prevAnalyses = pa || 0;
+      }
 
       const payments = paymentsData || [];
       const caParticulier = payments.reduce((s, p) => s + (p.amount || 0), 0);
@@ -1157,7 +1186,7 @@ function StatsTab() {
         caProCateg[key].total += (u.amount || 0) / 100;
       });
 
-      setStats({ caParticulier, caPro, caProSubs, caProUnits, paymentsCountPart, paymentsCountPro, newUsersVerified: newUsersVerified || 0, newProUsers: newProUsers || 0, analysesTotal: (analyses || []).length, analysesByType, freeAnalysesByType, creditsOffered, caPartCateg, caProCateg, activeProCount: activeProCount || 0 });
+      setStats({ caParticulier, caPro, caProSubs, caProUnits, paymentsCountPart, paymentsCountPro, newUsersVerified: newUsersVerified || 0, newProUsers: newProUsers || 0, analysesTotal: (analyses || []).length, analysesByType, freeAnalysesByType, creditsOffered, caPartCateg, caProCateg, activeProCount: activeProCount || 0, prevCaPart, prevCaPro, prevNewUsers, prevNewPro, prevAnalyses, prevActiveProCount: 0 });
 
       // Graphiques 8 dernières semaines — avec split pro/part
       const weeks: { week: string; caPart: number; caPro: number; users: number }[] = [];
@@ -1202,6 +1231,18 @@ function StatsTab() {
   const periodLabel = period === 'all' ? 'depuis le début' : period === '7j' ? 'sur les 7 derniers jours' : period === '30j' ? 'sur les 30 derniers jours' : period === '3m' ? 'sur les 3 derniers mois' : period === '12m' ? 'sur les 12 derniers mois' : 'sur la période personnalisée';
 
 
+  // Evolution helper
+  const evo = (curr: number, prev: number) => {
+    if (period === 'all' || prev === 0) return null;
+    const diff = curr - prev;
+    const pct = prev > 0 ? Math.round((diff / prev) * 100) : 0;
+    return { diff, pct, up: diff >= 0 };
+  };
+
+  const caEvo = evo(totalCa, source === 'particulier' ? stats.prevCaPart : source === 'pro' ? stats.prevCaPro : stats.prevCaPart + stats.prevCaPro);
+  const usersEvo = evo(stats.newUsersVerified, stats.prevNewUsers);
+  const analysesEvo = evo(stats.analysesTotal, stats.prevAnalyses);
+
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
@@ -1234,12 +1275,12 @@ function StatsTab() {
         ))}
       </div>
 
-      {/* BLOC 1 — CA compact */}
+      {/* BLOC 1 — CA + KPIs compacts */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div style={{ padding: '18px 20px', borderRadius: 14, background: 'linear-gradient(135deg,#16a34a,#14532d)', color: '#fff' }}>
           <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.7, letterSpacing: '0.1em', marginBottom: 6 }}>CA {source === 'all' ? 'TOTAL' : source === 'pro' ? 'PRO' : 'PARTICULIERS'}</div>
           <div style={{ fontSize: 28, fontWeight: 900 }}>{totalCa.toFixed(2).replace('.', ',')}€</div>
-          <div style={{ fontSize: 11, opacity: 0.6, marginTop: 4 }}>{totalPayments} transaction{totalPayments > 1 ? 's' : ''}</div>
+          {caEvo && <div style={{ fontSize: 11, marginTop: 4, color: caEvo.up ? '#bbf7d0' : '#fca5a5' }}>{caEvo.up ? '↑' : '↓'} {caEvo.pct > 0 ? '+' : ''}{caEvo.pct}% vs période préc.</div>}
           {source === 'all' && (
             <div style={{ display: 'flex', gap: 14, marginTop: 8, fontSize: 11 }}>
               <span style={{ opacity: 0.6 }}>Part. : <strong style={{ opacity: 1 }}>{stats.caParticulier.toFixed(2).replace('.', ',')}€</strong></span>
@@ -1248,38 +1289,52 @@ function StatsTab() {
           )}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div style={{ padding: '16px', borderRadius: 12, background: '#fff', border: '1.5px solid #edf2f7' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 6 }}>TICKET MOYEN</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>{ticketMoyen.toFixed(2).replace('.', ',')}€</div>
+          <div style={{ padding: '14px', borderRadius: 12, background: '#fff', border: '1.5px solid #edf2f7' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 4 }}>TICKET MOYEN</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: '#0f172a' }}>{ticketMoyen.toFixed(2).replace('.', ',')}€</div>
           </div>
-          <div style={{ padding: '16px', borderRadius: 12, background: '#0f2d3d' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', marginBottom: 6 }}>NB DE PRO ABONNÉS</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: '#fff' }}>{stats.activeProCount}</div>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>En cours</div>
+          <div style={{ padding: '14px', borderRadius: 12, background: '#0f2d3d' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', marginBottom: 4 }}>NB PRO ABONNÉS</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: '#fff' }}>{stats.activeProCount}</div>
+          </div>
+          <div style={{ padding: '14px', borderRadius: 12, background: '#fff', border: '1.5px solid #edf2f7' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 4 }}>{totalPayments} TRANSACTION{totalPayments > 1 ? 'S' : ''}</div>
+            <div style={{ fontSize: 11, color: '#64748b' }}>sur la période</div>
+          </div>
+          <div style={{ padding: '14px', borderRadius: 12, background: '#fff', border: '1.5px solid #edf2f7' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', letterSpacing: '0.08em', marginBottom: 4 }}>🎁 OFFERTS</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <span style={{ fontSize: 14, fontWeight: 900, color: '#64748b' }}>{stats.creditsOffered.document}S</span>
+              <span style={{ fontSize: 14, fontWeight: 900, color: '#2a7d9c' }}>{stats.creditsOffered.complete}C</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* BLOC 2 — Clients et analyses compact */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
-        <div style={{ padding: '16px', borderRadius: 12, background: '#fff', border: '1.5px solid #edf2f7' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.08em', marginBottom: 6 }}>NOUVEAUX CLIENTS</div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d' }}>{stats.newUsersVerified}</div>
-          <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Vérifiés · {stats.newProUsers} pro</div>
-        </div>
+      {/* BLOC 2 — KPIs contextuels selon filtre */}
+      <div style={{ display: 'grid', gridTemplateColumns: source === 'all' ? '1fr 1fr 1fr' : '1fr 1fr', gap: 12, marginBottom: 14 }}>
+        {(source === 'all' || source === 'particulier') && (
+          <div style={{ padding: '16px', borderRadius: 12, background: '#fff', border: '1.5px solid #edf2f7' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.08em', marginBottom: 6 }}>NOUVEAUX INSCRITS</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d' }}>{stats.newUsersVerified}</div>
+            {usersEvo && <div style={{ fontSize: 10, color: usersEvo.up ? '#16a34a' : '#dc2626', marginTop: 2, fontWeight: 600 }}>{usersEvo.up ? '↑' : '↓'} {usersEvo.diff > 0 ? '+' : ''}{usersEvo.diff} vs préc.</div>}
+            {source === 'all' && <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>dont {stats.newProUsers} pro</div>}
+          </div>
+        )}
+        {(source === 'all' || source === 'pro') && (
+          <div style={{ padding: '16px', borderRadius: 12, background: '#fff', border: '1.5px solid #edf2f7' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#0f2d3d', letterSpacing: '0.08em', marginBottom: 6 }}>NOUVEAUX ABONNÉS PRO</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d' }}>{stats.newProUsers}</div>
+            {evo(stats.newProUsers, stats.prevNewPro) && <div style={{ fontSize: 10, color: evo(stats.newProUsers, stats.prevNewPro)!.up ? '#16a34a' : '#dc2626', marginTop: 2, fontWeight: 600 }}>{evo(stats.newProUsers, stats.prevNewPro)!.up ? '↑' : '↓'} {evo(stats.newProUsers, stats.prevNewPro)!.diff > 0 ? '+' : ''}{evo(stats.newProUsers, stats.prevNewPro)!.diff} vs préc.</div>}
+          </div>
+        )}
         <div style={{ padding: '16px', borderRadius: 12, background: '#fff', border: '1.5px solid #edf2f7' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', letterSpacing: '0.08em', marginBottom: 6 }}>ANALYSES LANCÉES</div>
           <div style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d' }}>{stats.analysesTotal}</div>
+          {analysesEvo && <div style={{ fontSize: 10, color: analysesEvo.up ? '#16a34a' : '#dc2626', marginTop: 2, fontWeight: 600 }}>{analysesEvo.up ? '↑' : '↓'} {analysesEvo.diff > 0 ? '+' : ''}{analysesEvo.diff} vs préc.</div>}
           <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
             <span style={{ fontSize: 10, color: '#64748b' }}>Simple: {stats.analysesByType.document}</span>
             <span style={{ fontSize: 10, color: '#2a7d9c' }}>Complète: {stats.analysesByType.complete}</span>
-          </div>
-        </div>
-        <div style={{ padding: '16px', borderRadius: 12, background: '#fff', border: '1.5px solid #edf2f7' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', letterSpacing: '0.08em', marginBottom: 6 }}>🎁 CRÉDITS OFFERTS</div>
-          <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
-            <div><div style={{ fontSize: 18, fontWeight: 900, color: '#64748b' }}>{stats.creditsOffered.document}</div><div style={{ fontSize: 9, color: '#94a3b8' }}>Simple</div></div>
-            <div><div style={{ fontSize: 18, fontWeight: 900, color: '#2a7d9c' }}>{stats.creditsOffered.complete}</div><div style={{ fontSize: 9, color: '#94a3b8' }}>Complète</div></div>
           </div>
         </div>
       </div>
@@ -1353,7 +1408,7 @@ function StatsTab() {
             const proH = source !== 'particulier' ? Math.max((w.caPro / maxCa) * 100, w.caPro > 0 ? 4 : 0) : 0;
             return (
               <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 4 }}>
-                <div style={{ fontSize: 9, fontWeight: 700, color: '#0f172a' }}>{wTotal > 0 ? `${wTotal.toFixed(0)}€` : ''}</div>
+                <div style={{ fontSize: 9, fontWeight: 700, color: '#0f172a' }}>{wTotal > 0 ? `${wTotal.toFixed(2).replace('.', ',')}€` : ''}</div>
                 <div style={{ width: '100%', display: 'flex', flexDirection: 'column' as const, alignItems: 'stretch' }}>
                   {source !== 'pro' && (
                     <motion.div initial={{ height: 0 }} animate={{ height: `${partH}px` }}
@@ -1373,7 +1428,8 @@ function StatsTab() {
         </div>
       </div>
 
-      {/* Graphique inscriptions */}
+      {/* Graphique inscriptions — masqué si filtre Pro */}
+      {source !== 'pro' && (
       <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '24px', marginBottom: 14 }}>
         <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>👤 Inscriptions vérifiées par semaine</div>
         <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 20 }}>8 dernières semaines (comptes vérifiés uniquement)</div>
@@ -1389,6 +1445,7 @@ function StatsTab() {
           ))}
         </div>
       </div>
+      )}
 
       {loading && <div style={{ textAlign: 'center' as const, color: '#94a3b8', fontSize: 12, marginTop: 16 }}>Chargement...</div>}
     </div>
