@@ -3373,7 +3373,6 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
                             )}
                           </div>
                         </div>
-                        </div>
                       );
                     })}
                   </div>
