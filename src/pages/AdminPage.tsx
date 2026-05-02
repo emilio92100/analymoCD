@@ -3187,6 +3187,8 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [editVille, setEditVille] = useState('');
   const [editCompanyAddress, setEditCompanyAddress] = useState('');
   const [sendingInvite, setSendingInvite] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Form state
   const [form, setForm] = useState({
@@ -3395,6 +3397,10 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                     <Send size={12} /> {sendingInvite ? 'Envoi...' : invitations.some(inv => inv.sent_at) ? 'Renvoyer le mail' : 'Envoyer mail de connexion'}
                   </button>
                 )}
+                <button onClick={() => setShowDeleteConfirm(true)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                  <Trash2 size={12} /> Supprimer
+                </button>
               </div>
             </div>
 
@@ -3646,6 +3652,58 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
             }} rows={4} placeholder="Notes internes sur ce client..."
               style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', background: '#f8fafc', fontFamily: 'inherit', resize: 'vertical' }} />
           </div>
+
+          {/* Modal de confirmation suppression */}
+          {showDeleteConfirm && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+              <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 440, boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}>
+                <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                  <div style={{ width: 48, height: 48, borderRadius: '50%', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                    <AlertTriangle size={24} style={{ color: '#dc2626' }} />
+                  </div>
+                  <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: '0 0 8px' }}>Supprimer ce compte pro ?</h3>
+                  <p style={{ fontSize: 13, color: '#64748b', margin: 0, lineHeight: 1.6 }}>
+                    Cette action est <strong style={{ color: '#dc2626' }}>irréversible</strong>. Toutes les données seront supprimées :
+                    analyses, dossiers, rapports envoyés, abonnement, factures, invitations.
+                  </p>
+                  <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{selected.full_name}</div>
+                    <div style={{ fontSize: 12, color: '#94a3b8' }}>{selected.email}</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => setShowDeleteConfirm(false)}
+                    style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 14, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>
+                    Annuler
+                  </button>
+                  <button onClick={async () => {
+                    setDeleting(true);
+                    try {
+                      const { data: { session } } = await supabase.auth.getSession();
+                      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://veszrayromldfgetqaxb.supabase.co'}/functions/v1/admin-user-management`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+                        body: JSON.stringify({ action: 'delete', user_id: selected.id }),
+                      });
+                      const data = await res.json();
+                      if (data.error) { showToast('Erreur: ' + data.error); setDeleting(false); return; }
+                      await logAction(`Compte pro supprimé : ${selected.full_name} (${selected.email})`);
+                      showToast('Compte supprimé');
+                      setShowDeleteConfirm(false);
+                      setSelected(null);
+                      loadClients();
+                    } catch (e: any) {
+                      showToast('Erreur: ' + e.message);
+                    }
+                    setDeleting(false);
+                  }} disabled={deleting}
+                    style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: '#dc2626', fontSize: 14, fontWeight: 700, color: '#fff', cursor: deleting ? 'wait' : 'pointer', opacity: deleting ? 0.6 : 1 }}>
+                    {deleting ? 'Suppression...' : '🗑️ Supprimer définitivement'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         /* ── Liste ── */
