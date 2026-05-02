@@ -474,7 +474,7 @@ export default function Compare() {
               </div>
               {/* Contenu */}
               <div style={{ flex: 1, padding: '14px 16px', background: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', lineHeight: 1.3, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.adresse_bien || 'Adresse en cours…'}</div>
+                <div className="compare-addr" style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', lineHeight: 1.3, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.adresse_bien || 'Adresse en cours…'}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: a.folder_id ? 4 : 0 }}>
                   <span style={{ fontSize: 11, color: '#94a3b8' }}>{a.date}</span>
                   {reco && <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 5, background: reco === 'Acheter' ? '#f0fdf4' : reco === 'Négocier' ? '#fffbeb' : '#fef2f2', color: reco === 'Acheter' ? '#166534' : reco === 'Négocier' ? '#92400e' : '#991b1b', fontWeight: 700 }}>{reco}</span>}
