@@ -2623,8 +2623,8 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
    DOSSIER DETAIL — Vue détaillée d'un dossier
 ══════════════════════════════════════════ */
 /* ── Envoi rapport depuis un dossier — Wizard 3 étapes ── */
-function SendReportFromDossier({ analyses, buyers, proProfile, onClose, onSent }: {
-  analyses: ProAnalysis[]; buyers: ProFolderBuyer[]; proProfile: ProProfile; onClose: () => void; onSent: () => void;
+function SendReportFromDossier({ analyses, buyers, proProfile, folderAddress, onClose, onSent }: {
+  analyses: ProAnalysis[]; buyers: ProFolderBuyer[]; proProfile: ProProfile; folderAddress: string; onClose: () => void; onSent: () => void;
 }) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedBuyerIds, setSelectedBuyerIds] = useState<Set<string>>(new Set());
@@ -2636,24 +2636,30 @@ function SendReportFromDossier({ analyses, buyers, proProfile, onClose, onSent }
   const [error, setError] = useState('');
 
   const senderName = proProfile.full_name || '';
-  const senderCompany = proProfile.pro_company_name || '';
+  const senderCompany = proProfile.pro_company_name || proProfile.pro_network || '';
 
-  // Génère le message adapté selon les analyses sélectionnées
+  // Extract clean doc name (first part before " — ")
+  const getDocName = (a: ProAnalysis) => {
+    const raw = a.address || a.title || 'Analyse';
+    return raw.includes(' — ') ? raw.split(' — ')[0] : raw;
+  };
+
+  // Génère le message adapté
   const generateMessage = useCallback(() => {
     const selectedList = analyses.filter(a => selectedAnalysisIds.has(a.id));
-    const hasComplete = selectedList.some(a => a.type === 'complete');
-    // Use the address part only (after the dash), fallback to first analysis address
-    const firstAnalysis = selectedList[0];
-    const rawAddress = firstAnalysis?.address || firstAnalysis?.title || 'le bien concerné';
-    // Extract just the address portion (after " — " if present)
-    const address = rawAddress.includes(' — ') ? rawAddress.split(' — ').slice(1).join(' — ') : rawAddress;
+    const address = folderAddress || 'le bien concerné';
+    const docNames = selectedList.map(a => getDocName(a));
+
+    const docPhrase = docNames.length === 1
+      ? `du ${docNames[0].toLowerCase()}`
+      : `du ${docNames.slice(0, -1).map(d => d.toLowerCase()).join(', du ')} et du ${docNames[docNames.length - 1].toLowerCase()}`;
 
     if (selectedList.length === 1) {
-      return `Bonjour,\n\nDans le cadre de votre projet immobilier, je vous transmets ${hasComplete ? 'le rapport d\'analyse complète' : 'le rapport d\'analyse'} concernant le bien situé ${address}.\n\nCe rapport vous permettra d'avoir une vision claire des points importants du dossier.\n\nN'hésitez pas à me contacter pour en discuter ensemble.\n\nCordialement,\n${senderName}${senderCompany ? '\n' + senderCompany : ''}`;
+      return `Bonjour,\n\nDans le cadre de votre projet immobilier, je vous transmets le rapport d'analyse concernant le bien situé ${address}.\n\nCe rapport vous permettra d'avoir une vision claire ${docPhrase}.\n\nN'hésitez pas à me contacter pour en discuter ensemble.\n\nCordialement,\n${senderName}${senderCompany ? '\n' + senderCompany : ''}`;
     } else {
-      return `Bonjour,\n\nDans le cadre de votre projet immobilier, je vous transmets ${selectedList.length} rapports d'analyse concernant le bien situé ${address}.\n\nCes documents vous permettront d'avoir une vision complète des points importants du dossier.\n\nN'hésitez pas à me contacter pour en discuter ensemble.\n\nCordialement,\n${senderName}${senderCompany ? '\n' + senderCompany : ''}`;
+      return `Bonjour,\n\nDans le cadre de votre projet immobilier, je vous transmets ${selectedList.length} rapports d'analyse concernant le bien situé ${address}.\n\nCes rapports vous permettront d'avoir une vision claire ${docPhrase}.\n\nN'hésitez pas à me contacter pour en discuter ensemble.\n\nCordialement,\n${senderName}${senderCompany ? '\n' + senderCompany : ''}`;
     }
-  }, [analyses, selectedAnalysisIds, senderName, senderCompany]);
+  }, [analyses, selectedAnalysisIds, folderAddress, senderName, senderCompany]);
 
   // Met à jour le message quand les analyses changent
   useEffect(() => {
@@ -3263,45 +3269,34 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
                 grouped.get(key)!.push(sh);
               });
               return Array.from(grouped.entries()).map(([email, items]) => (
-                <div key={email} style={{ padding: '12px 14px', borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: items.length > 1 ? 8 : 0 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: items.some(i => i.opened_at) ? '#f0fdf4' : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Mail size={14} style={{ color: items.some(i => i.opened_at) ? '#16a34a' : '#94a3b8' }} />
+                <div key={email} style={{ padding: '14px 16px', borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Mail size={14} style={{ color: '#2a7d9c' }} />
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{items[0].recipient_name}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>✉️ {items[0].recipient_name}</div>
                       <div style={{ fontSize: 11, color: '#94a3b8' }}>{email} · {fmtDate(items[0].sent_at)}</div>
                     </div>
-                    {items.every(i => i.opened_at) ? (
-                      <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 10px', borderRadius: 100, border: '1px solid #bbf7d0' }}>✓ Ouvert</span>
-                    ) : (
-                      <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', background: '#f8fafc', padding: '3px 10px', borderRadius: 100, border: '1px solid #e2e8f0' }}>En attente</span>
-                    )}
                   </div>
-                  {items.length > 1 && (
-                    <div style={{ marginLeft: 42, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      {items.map(item => {
-                        const analysis = folderAnalyses.find(a => a.id === item.analysis_id);
-                        return (
-                          <div key={item.id} style={{ fontSize: 11, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <FileText size={10} style={{ color: '#94a3b8' }} />
-                            <span>{analysis?.address || analysis?.title || 'Analyse'}</span>
-                            <span style={{ fontSize: 9, color: '#94a3b8' }}>· {analysis?.type === 'complete' ? 'Complète' : 'Simple'}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {items.length === 1 && (() => {
-                    const analysis = folderAnalyses.find(a => a.id === items[0].analysis_id);
-                    return analysis ? (
-                      <div style={{ marginLeft: 42, fontSize: 11, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                        <FileText size={10} style={{ color: '#94a3b8' }} />
-                        <span>{analysis.address || analysis.title}</span>
-                        <span style={{ fontSize: 9, color: '#94a3b8' }}>· {analysis.type === 'complete' ? 'Complète' : 'Simple'}</span>
-                      </div>
-                    ) : null;
-                  })()}
+                  <div style={{ marginLeft: 42, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {items.map(item => {
+                      const analysis = folderAnalyses.find(a => a.id === item.analysis_id);
+                      const docName = analysis ? (analysis.address || analysis.title || 'Analyse').split(' — ')[0] : 'Analyse';
+                      return (
+                        <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 8, background: '#fff', border: '1px solid #edf2f7' }}>
+                          <FileText size={12} style={{ color: '#94a3b8', flexShrink: 0 }} />
+                          <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{docName}</span>
+                          <span style={{ fontSize: 9, color: '#94a3b8', flexShrink: 0 }}>{analysis?.type === 'complete' ? 'Complète' : 'Simple'}</span>
+                          {item.opened_at ? (
+                            <span style={{ fontSize: 9, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: 100, border: '1px solid #bbf7d0', flexShrink: 0 }}>✓ Ouvert</span>
+                          ) : (
+                            <span style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8', background: '#f8fafc', padding: '2px 8px', borderRadius: 100, border: '1px solid #e2e8f0', flexShrink: 0 }}>En attente</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               ));
             })()}
@@ -3319,6 +3314,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
               analyses={completedAnalyses}
               buyers={buyersWithEmail}
               proProfile={proProfile}
+              folderAddress={folder.address || ''}
               onClose={() => setShowSendReport(false)}
               onSent={() => { loadSendHistory(); setToast({ message: 'Rapport envoyé avec succès !', type: 'success' }); }}
             />
