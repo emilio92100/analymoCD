@@ -905,59 +905,30 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         </div>
       </div>
 
-      {/* BLOC "CE MOIS-CI" — 3 cartes */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14, marginBottom: 16 }}>
-        {/* Nouveaux clients */}
-        <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', padding: '20px 22px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>Nouveaux clients</div>
-            <UserPlus size={16} style={{ color: '#2a7d9c' }} />
-          </div>
-          <div style={{ fontSize: 32, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{data.newClientsMonth}</div>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Inscrits vérifiés ce mois{data.newProMonth > 0 ? ` · dont ${data.newProMonth} pro` : ''}</div>
+      {/* BLOC "CE MOIS-CI" — KPIs compacts */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+        <div style={{ background: '#fff', borderRadius: 12, border: '1.5px solid #edf2f7', padding: '16px 18px' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8 }}>Nouveaux clients</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{data.newClientsMonth}</div>
+          <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4 }}>Vérifiés{data.newProMonth > 0 ? ` · ${data.newProMonth} pro` : ''}</div>
         </div>
-
-        {/* Pro actifs */}
-        <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', padding: '20px 22px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>Pro actifs</div>
-            <Building2 size={16} style={{ color: '#0f2d3d' }} />
-          </div>
-          <div style={{ fontSize: 32, fontWeight: 900, color: '#0f2d3d', lineHeight: 1 }}>{data.activeProCount}</div>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Abonnements en cours</div>
+        <div style={{ background: '#0f2d3d', borderRadius: 12, padding: '16px 18px' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8 }}>Nb de pro abonnés</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: '#fff', lineHeight: 1 }}>{data.activeProCount}</div>
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', marginTop: 4 }}>Abonnements en cours</div>
         </div>
-
-        {/* Analyses avec détail par type */}
-        <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', padding: '20px 22px', gridColumn: 'span 2' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>Analyses lancées par les utilisateurs</div>
-            <FileText size={16} style={{ color: '#7c3aed' }} />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 12 }}>
-            <div style={{ fontSize: 32, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{data.analysesThisMonth}</div>
-            <div style={{ fontSize: 11, color: '#94a3b8' }}>ce mois (payantes + gratuites)</div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
-            {[
-              { label: 'Simple', value: data.analysesByType.document, color: '#64748b' },
-              { label: 'Complète', value: data.analysesByType.complete, color: '#2a7d9c' },
-            ].map((t, i) => (
-              <div key={i} style={{ padding: '10px 14px', borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8' }}>{t.label}</div>
-                <div style={{ fontSize: 18, fontWeight: 900, color: t.value > 0 ? t.color : '#cbd5e1' }}>{t.value}</div>
-              </div>
-            ))}
+        <div style={{ background: '#fff', borderRadius: 12, border: '1.5px solid #edf2f7', padding: '16px 18px' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8 }}>Analyses lancées</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{data.analysesThisMonth}</div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+            <span style={{ fontSize: 10, color: '#64748b' }}>Simple: {data.analysesByType.document}</span>
+            <span style={{ fontSize: 10, color: '#2a7d9c' }}>Complète: {data.analysesByType.complete}</span>
           </div>
         </div>
-
-        {/* Ticket moyen */}
-        <div style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #edf2f7', padding: '20px 22px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>Ticket moyen</div>
-            <CreditCard size={16} style={{ color: '#f0a500' }} />
-          </div>
-          <div style={{ fontSize: 32, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{data.ticketMoyen.toFixed(2).replace('.', ',')}€</div>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Par paiement ce mois</div>
+        <div style={{ background: '#fff', borderRadius: 12, border: '1.5px solid #edf2f7', padding: '16px 18px' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8 }}>Ticket moyen</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{data.ticketMoyen.toFixed(2).replace('.', ',')}€</div>
+          <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4 }}>Par paiement ce mois</div>
         </div>
       </div>
 
@@ -1264,63 +1235,52 @@ function StatsTab() {
         ))}
       </div>
 
-      {/* BLOC 1 — CA */}
-      <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px', marginBottom: 14 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 16 }}>💰 Chiffre d'affaires {periodLabel}</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
-          <div style={{ padding: '16px', borderRadius: 12, background: 'linear-gradient(135deg,#16a34a,#14532d)', color: '#fff' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.7, letterSpacing: '0.1em', marginBottom: 4 }}>CA {source === 'all' ? 'TOTAL' : source === 'pro' ? 'PRO' : 'PARTICULIERS'}</div>
-            <div style={{ fontSize: 26, fontWeight: 900 }}>{totalCa.toFixed(2).replace('.', ',')}€</div>
-            <div style={{ fontSize: 11, opacity: 0.65, marginTop: 4 }}>{totalPayments} transaction{totalPayments > 1 ? 's' : ''}</div>
-          </div>
-          <div style={{ padding: '16px', borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 4 }}>TICKET MOYEN</div>
-            <div style={{ fontSize: 26, fontWeight: 900, color: '#0f172a' }}>{ticketMoyen.toFixed(2).replace('.', ',')}€</div>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Par transaction</div>
-          </div>
+      {/* BLOC 1 — CA compact */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+        <div style={{ padding: '18px 20px', borderRadius: 14, background: 'linear-gradient(135deg,#16a34a,#14532d)', color: '#fff' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.7, letterSpacing: '0.1em', marginBottom: 6 }}>CA {source === 'all' ? 'TOTAL' : source === 'pro' ? 'PRO' : 'PARTICULIERS'}</div>
+          <div style={{ fontSize: 28, fontWeight: 900 }}>{totalCa.toFixed(2).replace('.', ',')}€</div>
+          <div style={{ fontSize: 11, opacity: 0.6, marginTop: 4 }}>{totalPayments} transaction{totalPayments > 1 ? 's' : ''}</div>
           {source === 'all' && (
-            <div style={{ padding: '16px', borderRadius: 12, background: '#f0f7fb', border: '1px solid #bae3f5' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.1em', marginBottom: 4 }}>RÉPARTITION</div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: '#0f2d3d', marginTop: 4 }}>Particuliers : {stats.caParticulier.toFixed(2).replace('.', ',')}€</div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: '#0f2d3d', marginTop: 2 }}>Pro : {stats.caPro.toFixed(2).replace('.', ',')}€</div>
+            <div style={{ display: 'flex', gap: 14, marginTop: 8, fontSize: 11 }}>
+              <span style={{ opacity: 0.6 }}>Part. : <strong style={{ opacity: 1 }}>{stats.caParticulier.toFixed(2).replace('.', ',')}€</strong></span>
+              <span style={{ opacity: 0.6 }}>Pro : <strong style={{ opacity: 1 }}>{stats.caPro.toFixed(2).replace('.', ',')}€</strong></span>
             </div>
           )}
         </div>
-      </div>
-
-      {/* BLOC 2 — Clients et analyses */}
-      <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px', marginBottom: 14 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 16 }}>👥 Clients et analyses {periodLabel}</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
-          <div style={{ padding: '16px', borderRadius: 12, background: '#f0f7fb', border: '1px solid #bae3f5' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.1em', marginBottom: 4 }}>NOUVEAUX CLIENTS VÉRIFIÉS</div>
-            <div style={{ fontSize: 26, fontWeight: 900, color: '#0f2d3d' }}>{stats.newUsersVerified}</div>
-            <div style={{ fontSize: 11, color: '#2a7d9c', marginTop: 4 }}>dont {stats.newProUsers} pro</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ padding: '16px', borderRadius: 12, background: '#fff', border: '1.5px solid #edf2f7' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 6 }}>TICKET MOYEN</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>{ticketMoyen.toFixed(2).replace('.', ',')}€</div>
           </div>
           <div style={{ padding: '16px', borderRadius: 12, background: '#0f2d3d' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.1em', marginBottom: 4 }}>PRO ACTIFS</div>
-            <div style={{ fontSize: 26, fontWeight: 900, color: '#fff' }}>{stats.activeProCount}</div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>Abonnements en cours</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', marginBottom: 6 }}>NB DE PRO ABONNÉS</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: '#fff' }}>{stats.activeProCount}</div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>En cours</div>
           </div>
-          <div style={{ padding: '16px', borderRadius: 12, background: '#f5f3ff', border: '1px solid #ddd6fe', gridColumn: 'span 2' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', letterSpacing: '0.1em', marginBottom: 4 }}>ANALYSES LANCÉES</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
-              <div style={{ fontSize: 26, fontWeight: 900, color: '#0f2d3d' }}>{stats.analysesTotal}</div>
-              <div style={{ fontSize: 11, color: '#7c3aed' }}>Payantes et gratuites</div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
-              {typesMeta.map(t => {
-                const total = stats.analysesByType[t.key];
-                const free = stats.freeAnalysesByType[t.key];
-                return (
-                  <div key={t.key} style={{ padding: '10px 14px', borderRadius: 8, background: '#fff' }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8' }}>{t.label}</div>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: total > 0 ? t.color : '#cbd5e1' }}>{total}</div>
-                    {free > 0 && <div style={{ fontSize: 10, color: '#7c3aed', marginTop: 2 }}>dont {free} gratuit{free > 1 ? 's' : ''}</div>}
-                  </div>
-                );
-              })}
-            </div>
+        </div>
+      </div>
+
+      {/* BLOC 2 — Clients et analyses compact */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
+        <div style={{ padding: '16px', borderRadius: 12, background: '#fff', border: '1.5px solid #edf2f7' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.08em', marginBottom: 6 }}>NOUVEAUX CLIENTS</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d' }}>{stats.newUsersVerified}</div>
+          <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Vérifiés · {stats.newProUsers} pro</div>
+        </div>
+        <div style={{ padding: '16px', borderRadius: 12, background: '#fff', border: '1.5px solid #edf2f7' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', letterSpacing: '0.08em', marginBottom: 6 }}>ANALYSES LANCÉES</div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d' }}>{stats.analysesTotal}</div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+            <span style={{ fontSize: 10, color: '#64748b' }}>Simple: {stats.analysesByType.document}</span>
+            <span style={{ fontSize: 10, color: '#2a7d9c' }}>Complète: {stats.analysesByType.complete}</span>
+          </div>
+        </div>
+        <div style={{ padding: '16px', borderRadius: 12, background: '#fff', border: '1.5px solid #edf2f7' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', letterSpacing: '0.08em', marginBottom: 6 }}>🎁 CRÉDITS OFFERTS</div>
+          <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+            <div><div style={{ fontSize: 18, fontWeight: 900, color: '#64748b' }}>{stats.creditsOffered.document}</div><div style={{ fontSize: 9, color: '#94a3b8' }}>Simple</div></div>
+            <div><div style={{ fontSize: 18, fontWeight: 900, color: '#2a7d9c' }}>{stats.creditsOffered.complete}</div><div style={{ fontSize: 9, color: '#94a3b8' }}>Complète</div></div>
           </div>
         </div>
       </div>
@@ -1372,23 +1332,6 @@ function StatsTab() {
           </div>
         </>)}
       </div>
-
-      {/* Crédits offerts */}
-      {(stats.creditsOffered.document > 0 || stats.creditsOffered.complete > 0) && (
-        <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px', marginBottom: 14 }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 16 }}>🎁 Crédits offerts {periodLabel}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
-            <div style={{ padding: '14px 16px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em' }}>SIMPLE</div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: '#64748b', marginTop: 4 }}>{stats.creditsOffered.document}</div>
-            </div>
-            <div style={{ padding: '14px 16px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em' }}>COMPLÈTE</div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: '#2a7d9c', marginTop: 4 }}>{stats.creditsOffered.complete}</div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Graphique CA par semaine — barres empilées */}
       <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '24px', marginBottom: 14 }}>
