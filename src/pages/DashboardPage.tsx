@@ -199,10 +199,10 @@ function Topbar({ onMenuClick, title, unreadCount, notifications, onMarkAllRead,
                       {isAnalysis ? <CheckCircle size={15} style={{ color: '#16a34a' }} /> : <Bell size={15} style={{ color: '#d97706' }} />}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12.5, fontWeight: n.read ? 500 : 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                      <div style={{ fontSize: 12.5, fontWeight: n.read ? 500 : 700, color: '#0f172a' }}>
                         {isAnalysis ? 'Rapport prêt' : n.title}
                       </div>
-                      <div style={{ fontSize: 11, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{isAnalysis ? n.title : (n as unknown as Record<string, string>).message || ''}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>{isAnalysis ? n.title : (n as unknown as Record<string, string>).message || ''}</div>
                     </div>
                     <span style={{ fontSize: 10, color: '#94a3b8', flexShrink: 0 }}>{fmtDate(n.createdAt)}</span>
                   </button>
