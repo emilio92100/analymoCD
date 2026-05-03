@@ -8,7 +8,7 @@ import {
   Trash2, RefreshCw, Eye, EyeOff, ArrowRight,
   LogOut, Send, UserPlus, CheckCircle, Download, Tag,
   Bell, ChevronLeft, ChevronRight, Plus, Copy, Briefcase, Euro, ExternalLink,
-  Clock, User, Building2,
+  Clock, User, Building2, LifeBuoy, Lightbulb, MessageSquare,
 } from 'lucide-react';
 
 
@@ -176,7 +176,7 @@ function ActionBtn({ icon, label, color = '#64748b', bg = '#f8fafc', border = '#
 /* ══════════════════════════════════════════
    ADMIN PAGE ROOT
 ══════════════════════════════════════════ */
-type TabId = 'dashboard' | 'users' | 'analyses' | 'payments' | 'messages' | 'demandes_pro' | 'stats' | 'promos' | 'logs' | 'banner' | 'alerts' | 'clients';
+type TabId = 'dashboard' | 'users' | 'analyses' | 'payments' | 'messages' | 'demandes_pro' | 'stats' | 'promos' | 'logs' | 'banner' | 'alerts' | 'clients' | 'support' | 'suggestions';
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -188,6 +188,7 @@ export default function AdminPage() {
   const [toast, setToast] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
   const [proUnreadCount, setProUnreadCount] = useState(0);
+  const [supportUnreadCount, setSupportUnreadCount] = useState(0);
   // Routing inter-onglets : permet d'ouvrir la fiche d'un user depuis une analyse, etc.
   const [focusUserId, setFocusUserId] = useState<string | null>(null);
   const [focusProClientId, setFocusProClientId] = useState<string | null>(null);
@@ -220,6 +221,9 @@ export default function AdminPage() {
       // Unread pro demands count
       const { count: proCount } = await supabase.from('contact_pro').select('*', { count: 'exact', head: true }).eq('read', false);
       setProUnreadCount(proCount || 0);
+      // Unread support tickets
+      const { count: supportCount } = await supabase.from('support_tickets').select('*', { count: 'exact', head: true }).eq('unread_by_admin', true);
+      setSupportUnreadCount(supportCount || 0);
     };
     check();
   }, [navigate]);
@@ -267,6 +271,8 @@ export default function AdminPage() {
     { id: 'clients', label: 'Clients Pro', icon: Building2 },
     { id: 'promos', label: 'Codes promo', icon: Tag },
     { id: 'alerts', label: 'Alertes système', icon: AlertTriangle },
+    { id: 'support', label: 'Besoin d\'aide', icon: LifeBuoy, badge: supportUnreadCount },
+    { id: 'suggestions', label: 'Suggestions', icon: Lightbulb },
     { id: 'banner', label: 'Bannière', icon: Bell },
     { id: 'logs', label: 'Historique', icon: Clock },
   ];
@@ -455,6 +461,8 @@ export default function AdminPage() {
               {activeTab === 'clients' && <ClientsProTab showToast={showToast} logAction={logAction} prefillDemande={createProFromDemande} onPrefillHandled={() => setCreateProFromDemande(null)} focusClientId={focusProClientId} onFocusClientHandled={() => setFocusProClientId(null)} />}
               {activeTab === 'promos' && <PromosTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} />}
               {activeTab === 'alerts' && <SystemAlertsTab showToast={showToast} />}
+              {activeTab === 'support' && <AdminSupportTab showToast={showToast} onUnreadChange={setSupportUnreadCount} />}
+              {activeTab === 'suggestions' && <AdminSuggestionsTab />}
               {activeTab === 'banner' && <BannerTab showToast={showToast} logAction={logAction} />}
               {activeTab === 'logs' && <LogsTab />}
             </motion.div>
@@ -613,6 +621,246 @@ function SystemAlertsTab({ showToast }: { showToast: (msg: string) => void }) {
   );
 }
 
+
+/* ══════════════════════════════════════════
+   ADMIN — SUPPORT TICKETS
+══════════════════════════════════════════ */
+function AdminSupportTab({ showToast, onUnreadChange }: { showToast: (m: string) => void; onUnreadChange: (n: number) => void }) {
+  type AdminTicket = { id: string; user_id: string; subject: string; status: 'open' | 'resolved'; created_at: string; updated_at: string; resolved_at: string | null; unread_by_admin: boolean; user_email?: string; user_name?: string; user_role?: string };
+  type AdminMessage = { id: string; ticket_id: string; sender_type: 'user' | 'admin'; message: string; created_at: string };
+
+  const [tickets, setTickets] = useState<AdminTicket[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTicket, setSelectedTicket] = useState<AdminTicket | null>(null);
+  const [messages, setMessages] = useState<AdminMessage[]>([]);
+  const [reply, setReply] = useState('');
+  const [sending, setSending] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'open' | 'resolved'>('all');
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const loadTickets = useCallback(async () => {
+    const { data } = await supabase.from('support_tickets').select('*').order('updated_at', { ascending: false });
+    if (!data) { setLoading(false); return; }
+
+    // Charger les infos utilisateur pour chaque ticket
+    const userIds = [...new Set(data.map(t => t.user_id))];
+    const { data: profiles } = await supabase.from('profiles').select('id, full_name, role').in('id', userIds);
+    const { data: { users } } = await supabase.auth.admin.listUsers();
+
+    const enriched = data.map(t => {
+      const profile = profiles?.find(p => p.id === t.user_id);
+      const authUser = (users as Array<{ id: string; email?: string }>)?.find(u => u.id === t.user_id);
+      return { ...t, user_email: authUser?.email || '?', user_name: profile?.full_name || '?', user_role: profile?.role || 'particulier' };
+    });
+
+    setTickets(enriched);
+    onUnreadChange(enriched.filter(t => t.unread_by_admin).length);
+    setLoading(false);
+  }, [onUnreadChange]);
+
+  useEffect(() => { loadTickets(); }, [loadTickets]);
+
+  const loadMessages = useCallback(async (ticketId: string) => {
+    const { data } = await supabase.from('support_messages').select('*').eq('ticket_id', ticketId).order('created_at', { ascending: true });
+    setMessages(data || []);
+    // Marquer lu par admin
+    await supabase.from('support_tickets').update({ unread_by_admin: false }).eq('id', ticketId);
+    loadTickets();
+  }, [loadTickets]);
+
+  useEffect(() => { if (selectedTicket) loadMessages(selectedTicket.id); }, [selectedTicket, loadMessages]);
+  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages]);
+
+  const handleReply = async () => {
+    if (!reply.trim() || !selectedTicket) return;
+    setSending(true);
+    await supabase.from('support_messages').insert({ ticket_id: selectedTicket.id, sender_type: 'admin', message: reply.trim() });
+    await supabase.from('support_tickets').update({ unread_by_user: true, unread_by_admin: false }).eq('id', selectedTicket.id);
+    setReply('');
+    await loadMessages(selectedTicket.id);
+    setSending(false);
+    showToast('Réponse envoyée');
+  };
+
+  const handleResolve = async () => {
+    if (!selectedTicket) return;
+    await supabase.from('support_tickets').update({ status: 'resolved', resolved_at: new Date().toISOString(), unread_by_user: true }).eq('id', selectedTicket.id);
+    await supabase.from('support_messages').insert({ ticket_id: selectedTicket.id, sender_type: 'admin', message: '✅ Ce ticket a été marqué comme résolu. Si vous avez d\'autres questions, n\'hésitez pas à ouvrir un nouveau ticket.' });
+    setSelectedTicket(null);
+    await loadTickets();
+    showToast('Ticket clôturé');
+  };
+
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const filtered = filter === 'all' ? tickets : tickets.filter(t => t.status === filter);
+
+  if (selectedTicket) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 200px)' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexShrink: 0, flexWrap: 'wrap' }}>
+          <button onClick={() => setSelectedTicket(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 10, cursor: 'pointer', color: '#64748b', fontSize: 13, fontWeight: 700, padding: '8px 14px' }}>
+            <ChevronLeft size={14} /> Retour
+          </button>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>{selectedTicket.subject}</h3>
+            <div style={{ fontSize: 12, color: '#94a3b8' }}>
+              {selectedTicket.user_name} · {selectedTicket.user_email} ·
+              <span style={{ fontWeight: 600, color: selectedTicket.user_role === 'pro' ? '#2a7d9c' : '#7c3aed', marginLeft: 4 }}>{selectedTicket.user_role === 'pro' ? 'PRO' : 'PART.'}</span>
+            </div>
+          </div>
+          {selectedTicket.status === 'open' && (
+            <button onClick={handleResolve}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 10, background: '#16a34a', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+              <CheckCircle size={13} /> Clôturer
+            </button>
+          )}
+        </div>
+
+        {/* Messages */}
+        <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, padding: '8px 0', minHeight: 0, background: '#f8fafc', borderRadius: 14, border: '1px solid #edf2f7', padding: '16px' }}>
+          {messages.map(m => {
+            const isAdmin = m.sender_type === 'admin';
+            return (
+              <div key={m.id} style={{ display: 'flex', justifyContent: isAdmin ? 'flex-end' : 'flex-start' }}>
+                <div style={{
+                  maxWidth: '75%', padding: '12px 16px',
+                  borderRadius: isAdmin ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                  background: isAdmin ? 'linear-gradient(135deg, #0f2d3d, #1a4a60)' : '#fff',
+                  color: isAdmin ? '#fff' : '#0f172a',
+                  border: isAdmin ? 'none' : '1px solid #edf2f7',
+                  fontSize: 14, lineHeight: 1.6,
+                }}>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{m.message}</div>
+                  <div style={{ fontSize: 11, marginTop: 6, opacity: 0.6, textAlign: 'right' }}>
+                    {isAdmin ? 'Verimo (Admin)' : selectedTicket.user_name} · {fmtDate(m.created_at)}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Input réponse */}
+        {selectedTicket.status === 'open' && (
+          <div style={{ display: 'flex', gap: 10, padding: '16px 0', flexShrink: 0 }}>
+            <textarea value={reply} onChange={e => setReply(e.target.value)} placeholder="Votre réponse..."
+              rows={2} style={{ flex: 1, padding: '12px 16px', borderRadius: 12, border: '1.5px solid #edf2f7', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'none' }} />
+            <button onClick={handleReply} disabled={sending || !reply.trim()}
+              style={{ padding: '12px 18px', borderRadius: 12, background: !reply.trim() ? '#e2e8f0' : '#0f2d3d', color: '#fff', border: 'none', cursor: !reply.trim() ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, flexShrink: 0, alignSelf: 'flex-end' }}>
+              <Send size={14} /> Répondre
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Filtres */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        {[
+          { id: 'all' as const, label: 'Tous', count: tickets.length },
+          { id: 'open' as const, label: 'En cours', count: tickets.filter(t => t.status === 'open').length },
+          { id: 'resolved' as const, label: 'Résolus', count: tickets.filter(t => t.status === 'resolved').length },
+        ].map(f => (
+          <button key={f.id} onClick={() => setFilter(f.id)}
+            style={{ padding: '7px 14px', borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: filter === f.id ? '1.5px solid #2a7d9c' : '1px solid #edf2f7', background: filter === f.id ? '#f0f7fb' : '#fff', color: filter === f.id ? '#2a7d9c' : '#64748b' }}>
+            {f.label} ({f.count})
+          </button>
+        ))}
+      </div>
+
+      {/* Liste */}
+      {loading ? (
+        <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Chargement…</div>
+      ) : filtered.length === 0 ? (
+        <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Aucun ticket.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {filtered.map(t => (
+            <button key={t.id} onClick={() => setSelectedTicket(t)}
+              style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderRadius: 14, background: '#fff', border: t.unread_by_admin ? '1.5px solid #dc2626' : '1px solid #edf2f7', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: t.status === 'open' ? '#fef2f2' : '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {t.status === 'open' ? <MessageSquare size={16} style={{ color: '#dc2626' }} /> : <CheckCircle size={16} style={{ color: '#16a34a' }} />}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{t.subject}</span>
+                  {t.unread_by_admin && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#dc2626', flexShrink: 0 }} />}
+                </div>
+                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2, display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <span>{t.user_name}</span> · <span>{t.user_email}</span> ·
+                  <span style={{ fontWeight: 700, fontSize: 10, padding: '1px 6px', borderRadius: 4, background: t.user_role === 'pro' ? '#f0f7fb' : '#f5f3ff', color: t.user_role === 'pro' ? '#2a7d9c' : '#7c3aed' }}>{t.user_role === 'pro' ? 'PRO' : 'PART.'}</span>
+                  · <span>{fmtDate(t.updated_at)}</span>
+                </div>
+              </div>
+              <ChevronRight size={14} style={{ color: '#94a3b8', flexShrink: 0 }} />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   ADMIN — SUGGESTIONS
+══════════════════════════════════════════ */
+function AdminSuggestionsTab() {
+  type Suggestion = { id: string; user_id: string; message: string; created_at: string; user_email?: string; user_name?: string };
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from('pro_suggestions').select('*').order('created_at', { ascending: false });
+      if (!data) { setLoading(false); return; }
+      const userIds = [...new Set(data.map(s => s.user_id))];
+      const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', userIds);
+      const { data: { users } } = await supabase.auth.admin.listUsers();
+      const enriched = data.map(s => {
+        const profile = profiles?.find(p => p.id === s.user_id);
+        const authUser = (users as Array<{ id: string; email?: string }>)?.find(u => u.id === s.user_id);
+        return { ...s, user_email: authUser?.email || '?', user_name: profile?.full_name || '?' };
+      });
+      setSuggestions(enriched);
+      setLoading(false);
+    })();
+  }, []);
+
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Chargement…</div>;
+
+  return (
+    <div>
+      <p style={{ fontSize: 14, color: '#64748b', marginBottom: 16 }}>{suggestions.length} suggestion{suggestions.length > 1 ? 's' : ''} reçue{suggestions.length > 1 ? 's' : ''}</p>
+      {suggestions.length === 0 ? (
+        <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Aucune suggestion pour le moment.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {suggestions.map(s => (
+            <div key={s.id} style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '18px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Lightbulb size={15} style={{ color: '#d97706' }} />
+                </div>
+                <div>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{s.user_name}</span>
+                  <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 8 }}>{s.user_email}</span>
+                </div>
+                <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>{fmtDate(s.created_at)}</span>
+              </div>
+              <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>{s.message}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function BannerTab({ showToast, logAction }: { showToast: (m: string) => void; logAction: (a: string, t?: string) => Promise<void> }) {
   const [banner, setBanner] = useState<{ id: string; message: string; type: string; active: boolean } | null>(null);
