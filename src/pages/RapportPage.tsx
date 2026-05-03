@@ -4358,7 +4358,7 @@ export default function RapportPage() {
                   Re-uploader mes documents →
                 </Link>
                 <button onClick={() => setShowReupload(false)} style={{ padding: '12px 18px', borderRadius: 12, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                  Voir l'aperçu
+                  Voir le rapport
                 </button>
               </div>
             </div>
