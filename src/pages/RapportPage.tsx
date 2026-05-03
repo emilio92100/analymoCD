@@ -9,7 +9,7 @@ import DocumentRenderer from './dashboard/DocumentRenderer';
 import {
   ChevronLeft, Download, Building2, AlertTriangle, CheckCircle,
   Shield, FileText, Gavel, Info, Star, Paperclip,
-  RefreshCw, Lock, ChevronDown, Copy, Check,
+  RefreshCw, ChevronDown, Copy, Check,
   Home, TrendingDown, Upload, X, Clock,
 } from 'lucide-react';
 
