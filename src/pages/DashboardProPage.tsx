@@ -315,7 +315,7 @@ function TopbarPro({ onMenuClick, title, proProfile, unreadCount, notifications,
         <AnimatePresence>
         {bellOpen && (
           <motion.div initial={{ opacity: 0, y: -8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.97 }} transition={{ duration: 0.18, ease: 'easeOut' }}
-            style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: 320, background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', boxShadow: '0 16px 48px rgba(0,0,0,0.12)', zIndex: 9999, overflow: 'hidden' }}>
+            style={{ position: 'absolute', right: -60, top: 'calc(100% + 8px)', width: 320, maxWidth: 'calc(100vw - 24px)', background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', boxShadow: '0 16px 48px rgba(0,0,0,0.12)', zIndex: 9999, overflow: 'hidden' }}>
             <div style={{ padding: '14px 16px', borderBottom: '1px solid #f0f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Notifications</span>
             </div>
@@ -435,18 +435,16 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares }:
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <div style={{ marginBottom: 28, background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div style={{ marginBottom: 28, background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' as const }}>
         <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
           {(prenom.charAt(0) || 'P').toUpperCase()}
         </div>
-        <div style={{ flex: 1 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', margin: 0 }}>Bonjour {prenom} 👋</h1>
-          <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>
+        <div style={{ flex: 1, minWidth: 180 }}>
+          <h1 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', margin: 0, whiteSpace: 'nowrap' as const }}>Bonjour {prenom} 👋</h1>
+          <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0' }}>
             {[proProfile.pro_company_name, proProfile.pro_network, proProfile.pro_ville].filter(Boolean).join(' · ')}
           </p>
-        </div>
-        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-          <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>{new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>{new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
         </div>
       </div>
 
