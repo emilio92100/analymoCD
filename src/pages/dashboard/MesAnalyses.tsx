@@ -346,13 +346,23 @@ export default function MesAnalyses() {
       `}</style>
 
       {/* HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-        <p style={{ fontSize: 13, color: '#94a3b8' }}>{analyses.length} analyse{analyses.length > 1 ? 's' : ''}</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 22px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 42, height: 42, borderRadius: 11, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <FileText size={20} style={{ color: '#2a7d9c' }} />
+          </div>
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0 }}>Mes analyses</h2>
+            <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>
+              {analyses.length === 0 ? 'Lancez votre première analyse' : `${analyses.length} analyse${analyses.length > 1 ? 's' : ''} · ${completes.length} complète${completes.length > 1 ? 's' : ''} · ${simples.length} simple${simples.length > 1 ? 's' : ''}`}
+            </p>
+          </div>
+        </div>
         <div style={{ display: 'flex', gap: 8 }}>
           {!selectionMode ? (
             <>
               {all.length > 1 && <button onClick={() => setSelectionMode(true)} style={{ padding: '9px 16px', borderRadius: 10, border: '1.5px solid #edf2f7', background: '#f8fafc', color: '#64748b', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}><CheckSquare size={14} /> Sélectionner</button>}
-              <Link to="/dashboard/nouvelle-analyse" style={{ padding: '10px 20px', borderRadius: 10, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}><Plus size={14} /> Nouvelle</Link>
+              <Link to="/dashboard/nouvelle-analyse" style={{ padding: '10px 20px', borderRadius: 10, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 4px 12px rgba(15,45,61,0.15)' }}><Plus size={14} /> Nouvelle</Link>
             </>
           ) : (
             <>
