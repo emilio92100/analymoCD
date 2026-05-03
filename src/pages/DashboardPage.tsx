@@ -81,7 +81,7 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
       </div>
 
       {/* Navigation */}
-      <nav style={{ flex:1, padding:'4px 10px', display:'flex', flexDirection:'column', gap:1, overflowY:'auto' }}>
+      <nav style={{ flex:1, padding:'4px 10px', display:'flex', flexDirection:'column', gap:2, overflowY:'auto' }}>
         <p style={{ fontSize:10, fontWeight:700, color:SB_MUTED, letterSpacing:'0.12em', padding:'10px 10px 5px', textTransform:'uppercase' }}>Menu</p>
         {navItems.map(item => {
           const Icon = item.icon;
@@ -89,15 +89,15 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
           return (
             <Link key={item.to} to={item.to} onClick={onClose}
               style={{
-                display:'flex', alignItems:'center', gap:10, padding:'9px 12px', textDecoration:'none',
-                fontSize:13, fontWeight:active?700:500, color:active?SB_TEXT_ACTIVE:SB_TEXT,
+                display:'flex', alignItems:'center', gap:12, padding:'10px 12px', textDecoration:'none',
+                fontSize:14, fontWeight:active?700:500, color:active?SB_TEXT_ACTIVE:SB_TEXT,
                 background:active?SB_ACTIVE_BG:'transparent', transition:'all 0.15s',
                 borderLeft:active?`3px solid ${SB_ACCENT}`:'3px solid transparent',
                 borderRadius:0,
               }}
               onMouseOver={e=>{ if(!active)(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.05)'; }}
               onMouseOut={e=>{ if(!active)(e.currentTarget as HTMLElement).style.background='transparent'; }}>
-              <Icon size={16} style={{ color:active?SB_ACCENT:SB_TEXT, flexShrink:0 }}/>
+              <Icon size={18} style={{ color:active?SB_ACCENT:SB_TEXT, flexShrink:0 }}/>
               {item.label}
               {item.to === '/dashboard/support' && (unreadTickets || 0) > 0 && (
                 <span style={{ minWidth: 18, height: 18, borderRadius: 100, background: '#f59e0b', color: '#fff', fontSize: 10, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', flexShrink: 0, marginLeft: 4 }}>{unreadTickets}</span>
