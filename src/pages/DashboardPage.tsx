@@ -36,6 +36,15 @@ const navItems = [
 function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTickets?: number }) {
   const location = useLocation();
   const { credits } = useCredits();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+      if (data?.role === 'admin') setIsAdmin(true);
+    });
+  }, []);
 
   const SB_BG = '#0e3a4a';
   const SB_ACTIVE_BG = 'rgba(255,255,255,0.1)';
@@ -106,6 +115,14 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
           );
         })}
       </nav>
+      {isAdmin && (
+        <div style={{ padding: '10px 14px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <Link to="/admin" onClick={onClose}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: 'linear-gradient(135deg, #0f2d3d, #1a4a60)', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 700, justifyContent: 'center' }}>
+            <Shield size={15} /> Espace Admin
+          </Link>
+        </div>
+      )}
     </aside>
   );
 }
@@ -222,7 +239,7 @@ function Topbar({ onMenuClick, title, unreadCount, notifications, onMarkAllRead,
       </div>
 
       {isAdmin && (
-        <button onClick={()=>navigate('/admin')} style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:9, background:'linear-gradient(135deg,#0f2d3d,#1a4a60)', border:'none', cursor:'pointer', color:'#fff', fontSize:12, fontWeight:700, whiteSpace:'nowrap' }}>
+        <button onClick={()=>navigate('/admin')} className="topbar-cta" style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:9, background:'linear-gradient(135deg,#0f2d3d,#1a4a60)', border:'none', cursor:'pointer', color:'#fff', fontSize:12, fontWeight:700, whiteSpace:'nowrap' }}>
           <Shield size={13}/> Espace Admin
         </button>
       )}
