@@ -124,14 +124,12 @@ export default function SetupAccountPage() {
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-            <span style={{ fontSize: 24, fontWeight: 800, color: '#0f2d3d' }}>verimo</span>
-            <span style={{ background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 10px', borderRadius: 100, letterSpacing: '0.05em' }}>PRO</span>
-          </div>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>
-            {prenom ? `Bienvenue ${prenom} !` : 'Bienvenue !'}
+          <img src="/logo.png" alt="Verimo" style={{ height: 56, width: 'auto', display: 'block', margin: '0 auto 16px' }} />
+          <div style={{ display: 'inline-block', background: 'linear-gradient(135deg, #7dd3fc, #38bdf8)', color: '#0a1f2d', fontSize: 13, fontWeight: 800, padding: '6px 24px', borderRadius: 100, letterSpacing: '0.1em', marginBottom: 20 }}>ESPACE PRO</div>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>
+            {prenom ? `Bienvenue ${prenom} 👋` : 'Bienvenue !'}
           </h1>
-          <p style={{ fontSize: 14, color: '#64748b' }}>Définissez votre mot de passe pour accéder à votre espace.</p>
+          <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6 }}>Définissez votre mot de passe pour accéder à votre espace professionnel.</p>
         </div>
 
         {/* Card */}
