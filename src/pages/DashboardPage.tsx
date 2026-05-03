@@ -42,7 +42,7 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
   const SB_ACCENT = '#5dbfe0';
   const SB_TEXT = 'rgba(255,255,255,0.75)';
   const SB_TEXT_ACTIVE = '#ffffff';
-  const SB_MUTED = 'rgba(255,255,255,0.25)';
+  const SB_MUTED = 'rgba(255,255,255,0.45)';
 
   return (
     <aside style={{ width:260, minHeight:'100vh', height:'100%', background:SB_BG, display:'flex', flexDirection:'column' }}>
@@ -171,8 +171,10 @@ function Topbar({ onMenuClick, title, unreadCount, notifications, onMarkAllRead,
             }}>{unreadCount}</span>
           )}
         </button>
+        <AnimatePresence>
         {bellOpen && (
-          <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: 320, background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', boxShadow: '0 16px 48px rgba(0,0,0,0.12)', zIndex: 9999, overflow: 'hidden' }}>
+          <motion.div initial={{ opacity: 0, y: -8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.97 }} transition={{ duration: 0.18, ease: 'easeOut' }}
+            style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: 320, background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', boxShadow: '0 16px 48px rgba(0,0,0,0.12)', zIndex: 9999, overflow: 'hidden' }}>
             <div style={{ padding: '14px 16px', borderBottom: '1px solid #f0f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Notifications</span>
             </div>
@@ -210,8 +212,9 @@ function Topbar({ onMenuClick, title, unreadCount, notifications, onMarkAllRead,
                 })
               )}
             </div>
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
       </div>
 
       {isAdmin && (
@@ -228,8 +231,10 @@ function Topbar({ onMenuClick, title, unreadCount, notifications, onMarkAllRead,
           <span style={{ fontSize:13, fontWeight:700, color:'#0f172a', whiteSpace:'nowrap' }} className="topbar-cta">{name||'Mon compte'}</span>
           <ChevronDown size={13} style={{ color:'#94a3b8', transition:'transform 0.2s', transform:dropdownOpen?'rotate(180deg)':'rotate(0deg)' }}/>
         </button>
+        <AnimatePresence>
         {dropdownOpen && (
-          <div style={{ position:'absolute', right:0, top:'calc(100% + 8px)', width:220, background:'#fff', borderRadius:14, border:'1px solid #edf2f7', boxShadow:'0 16px 48px rgba(0,0,0,0.12)', zIndex:9999, overflow:'hidden' }}>
+          <motion.div initial={{ opacity: 0, y: -8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.97 }} transition={{ duration: 0.18, ease: 'easeOut' }}
+            style={{ position:'absolute', right:0, top:'calc(100% + 8px)', width:220, background:'#fff', borderRadius:14, border:'1px solid #edf2f7', boxShadow:'0 16px 48px rgba(0,0,0,0.12)', zIndex:9999, overflow:'hidden' }}>
             <div style={{ padding:'14px 16px', borderBottom:'1px solid #f0f5f9' }}>
               <div style={{ fontSize:13, fontWeight:700, color:'#0f172a' }}>{name}</div>
               <div style={{ fontSize:11, color:'#94a3b8', marginTop:2 }}>{email}</div>
@@ -246,8 +251,9 @@ function Topbar({ onMenuClick, title, unreadCount, notifications, onMarkAllRead,
               onMouseOut={e=>(e.currentTarget as HTMLElement).style.background='none'}>
               <LogOut size={15}/> Se déconnecter
             </button>
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
       </div>
     </header>
   );
@@ -462,7 +468,9 @@ export default function DashboardPage() {
           onClickNotification={(id) => { window.location.href = `/rapport?id=${id}`; }} />
         <DashboardBanner/>
         <main className="dashboard-main" style={{ flex:1, padding:'28px 24px', overflowX:'hidden' }}>
-          <DashboardContent path={location.pathname}/>
+          <motion.div key={location.pathname} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
+            <DashboardContent path={location.pathname}/>
+          </motion.div>
         </main>
       </div>
 
