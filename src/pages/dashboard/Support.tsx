@@ -64,7 +64,7 @@ export default function Support() {
   const openTickets = tickets.filter(t => t.status === 'open');
   const resolvedTickets = tickets.filter(t => t.status === 'resolved');
 
-  if (view === 'new') return <NewTicketView onBack={() => setView('list')} onCreated={(id) => { loadTickets(); setSelectedTicketId(id); setView('chat'); }} />;
+  if (view === 'new') return <NewTicketView onBack={() => { loadTickets(); setView('list'); }} onCreated={(id) => { loadTickets(); setSelectedTicketId(id); setView('chat'); }} />;
   if (view === 'chat' && selectedTicketId) return <ChatView ticketId={selectedTicketId} onBack={() => { setView('list'); loadTickets(); }} />;
 
   return (
