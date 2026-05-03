@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet complet — 3 mai 2026 (après sessions 1 à 22)
+# VERIMO — Contexte projet complet — 3 mai 2026 (après sessions 1 à 23)
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -74,7 +74,8 @@ UNIT_SIMPLE 2,90€   → price_1TRKRmBO4ekMbwz0ynLNDwn4
 - **Email** : Mailjet (SMTP Supabase + API directe via edge functions)
   - `notification@verimo.fr` → mails transactionnels particuliers (Supabase Auth)
   - `pro@verimo.fr` → mails pro (invitations, rapports partagés via edge function)
-  - Nom expéditeur rapports : "[Prénom] vous a partagé un rapport"
+  - Nom expéditeur rapports : "[Prénom] vous a partagé un rapport" (1) / "[Prénom] vous a partagé X rapports" (multi)
+  - Sujet rapport : `🔍 Votre analyse immobilière est prête` (1) / `🔍 Vos X analyses immobilières sont prêtes` (multi)
 - **Déploiement** : Vercel (frontend auto depuis GitHub) + Supabase (edge functions manuelles)
 - **Repo** : `github.com/emilio92100/analymoCD`
 - **URL Supabase** : `veszrayromldfgetqaxb.supabase.co`
@@ -117,6 +118,103 @@ UNIT_SIMPLE 2,90€   → price_1TRKRmBO4ekMbwz0ynLNDwn4
 /rapport?id=XXX               → RapportPage
 /rapport-partage?token=XXX    → RapportPartagePage
 /rapport-comparaison?ids=X,Y  → RapportComparaisonPage
+```
+
+---
+
+## ✅ Session 23 — 3 mai 2026 — UI/UX overhaul, admin catégorisé, transitions, emails
+
+### Résumé
+Session dense de redesign UI/UX : sidebar admin catégorisée, dashboards pro/particulier harmonisés, transitions fluides partout, support amélioré (badge, refresh, clôture), page Mon compte nettoyée, emails rapport redesignés, template inscription corrigé.
+
+### A. Admin — Sidebar catégorisée (Option B)
+
+Sidebar admin restructurée en 6 catégories avec barres latérales colorées et headers icône + label :
+- **ACTIVITÉ** (teal `#2a7d9c`) : Tableau de bord, Analyse/CA, Transactions
+- **UTILISATEURS** (violet `#7c3aed`) : Particuliers, Clients Pro, Demandes Pro
+- **CONTENU** (vert `#16a34a`) : Analyses, Messages
+- **OUTILS** (orange `#d97706`) : Codes promo, Bannière
+- **SUPPORT** (ambre `#f59e0b`) : Besoin d'aide, Suggestions
+- **SYSTÈME** (gris `#94a3b8`) : Alertes système, Historique
+
+Fonds actifs foncés par catégorie : `#d0e8f0`, `#ddd6fe`, `#bbf7d0`, `#fde68a`, `#fcd34d`, `#cbd5e1`.
+Sidebar passée de 220px à 240px. Navigation mobile pills inchangée.
+
+### B. Admin — Transitions fluides
+
+- Fiche utilisateur particulier → `motion.div` fade-in + slide up (0.22s)
+- Fiche ticket support → `motion.div` fade-in + slide up (0.22s)
+- Fiche client pro → `motion.div` fade-in + slide up (0.22s)
+- Boutons filtres → `transition: 'all 0.2s'` sur tous les filtres admin
+- Liste tickets → animation CSS `admin-fade-in` + hover bordure teal
+- `@keyframes adminFadeIn` ajouté globalement
+
+### C. Dashboard Pro — Harmonisation
+
+- **Sidebar** : couleur harmonisée `#0e3a4a` (même que particulier, au lieu de `#0a1f2d`), MUTED 0.45 (texte "CRÉDITS RESTANTS" visible), plan abonnement redesigné avec fond subtil
+- **Header Bonjour** : card blanche avec avatar initiale + "Bonjour Nathan 👋" + société·réseau·ville + date du jour
+- **MesDossiersPro redesign complet** : banner header (icône FolderOpen + compteur + bouton Créer), filtres pills (Tous/Ce mois/Avec analyses/Sans analyse avec compteurs), tri (Plus récent/Plus ancien/Nom A→Z/Plus d'analyses), toggle grille/liste (LayoutGrid/LayoutList), vue liste tableau compact avec hover
+- Imports ajoutés : `LayoutGrid, LayoutList, ArrowUpDown`
+
+### D. Dashboard Particulier — Améliorations
+
+- **Sidebar** : MUTED 0.45 (harmonisé), label "Support / Aide" → "Support"
+- **Bouton "Besoin d'aide"** : passé en orange gradient `#f59e0b` → `#d97706` (comme le pro)
+- **Badge notification support** : ajouté (n'existait pas) — polling 30s sur `support_tickets.unread_by_user`, prop `unreadTickets` passée au Sidebar
+- **Couleur badge** : orange `#f59e0b` (au lieu de rouge `#dc2626`) sur les DEUX dashboards
+- **Badge position** : collé au texte (supprimé `flex: 1` sur le label, `marginLeft: 4`)
+
+### E. Transitions fluides (pro + particulier)
+
+- Cloche notifications → `motion.div` opacity+y+scale (0.18s ease) + `AnimatePresence`
+- Menu compte dropdown → même animation
+- Navigation onglets → `motion.div key={path}` fade + slide up (0.2s)
+
+### F. Support — Améliorations
+
+- **Fix refresh** : `onBack` appelle `loadTickets()` avant `setView('list')` → ticket fraîchement créé visible immédiatement
+- **Popup "Autre"** : label bold "Précisez le sujet de votre message" au-dessus de l'input (les deux dashboards), placeholder explicite, bouton "Envoyer" gris tant que `customSubject` vide (condition corrigée dans background du bouton)
+
+### G. Page Mon Compte particulier — Redesign
+
+- **Supprimé** : bloc crédits redondant (71/86/3) + bloc connexion/membre/recharger (info déjà dans sidebar)
+- **Ajouté** : en-tête card (avatar initiale + nom + email + "Membre depuis" + "X analyses réalisées")
+- **Supprimé** : imports `Link`, `useCredits`, state `provider` (unused)
+- Le reste inchangé : infos personnelles, mot de passe, historique achats, zone danger
+
+### H. MesAnalyses + Compare — Headers redesignés
+
+- **MesAnalyses** : banner card (icône FileText + "Mes analyses" + compteur "9 analyses · 2 complètes · 7 simples") avec boutons Sélectionner/Nouvelle intégrés
+- **Compare** : banner card (icône GitCompare + "Comparer mes biens" + sous-titre descriptif + stepper dots dans pill avec fond)
+
+### I. Edge function — Emails rapport redesignés
+
+- **Sujet** : `🔍 Votre analyse immobilière est prête` (1 rapport) / `🔍 Vos X analyses immobilières sont prêtes` (multi)
+- **Nom expéditeur dynamique** : `Nathan vous a partagé un rapport` (1) / `Nathan vous a partagé 3 rapports` (multi)
+- **Bloc rapport redesigné (Option B)** : layout vertical mobile-friendly — icône 🔍 + titre du document (bold), adresse en gris en dessous, bouton "Consulter →" teal en dessous
+- **Header mail adapté** : "Analyse immobilière" vs "3 analyses immobilières"
+
+### J. Template inscription Supabase
+
+- ~~"1 analyse offerte dès votre inscription"~~ → `📊 Score /20, risques et recommandations`
+- ~~"Résultats en moins de 2 minutes"~~ → `⚡ Votre rapport complet en quelques minutes`
+- Ajout accroche italique : *"Vous êtes à un clic de transformer 200 pages de documents en un rapport clair."*
+
+### Fichiers modifiés session 23
+```
+src/pages/AdminPage.tsx              → sidebar catégorisée Option B, transitions fluides fiches
+src/pages/DashboardProPage.tsx       → sidebar harmonisée, header Bonjour, MesDossiersPro complet, transitions
+src/pages/DashboardPage.tsx          → transitions, badge support, bouton aide orange, label "Support"
+src/pages/dashboard/Support.tsx      → fix refresh onBack
+src/pages/dashboard/Compte.tsx       → suppression bloc crédits, header propre
+src/pages/dashboard/MesAnalyses.tsx  → header banner redesigné
+src/pages/dashboard/Compare.tsx      → header banner redesigné
+
+Edge function :
+- admin-user-management/index.ts     → emoji sujet, nom expéditeur dynamique, bloc rapport Option B vertical
+
+Template Supabase :
+- template-inscription-supabase.html → suppression offre gratuite, nouvelle accroche
 ```
 
 ---
@@ -417,11 +515,13 @@ Lues par sidebar et NouvelleAnalyse via `get_pro_credits_balance(p_user_id)` qui
 
 ## Palette couleurs
 - **Bleu Verimo** : `#2a7d9c`
-- **Teal sidebar particulier** : `#0e3a4a`
-- **Sidebar pro** : `#0a1f2d`
+- **Sidebar pro + particulier** : `#0e3a4a` (harmonisé)
 - **Accent pro** : `#7dd3fc`
+- **Accent particulier** : `#5dbfe0`
 - **Header dark** : `#0f2d3d`
 - **Header email** : `#1a3a4a` → `#2a5a6e` (plus clair)
+- **Bouton aide / badge support** : `#f59e0b` (orange)
+- **Admin sidebar catégories** : Activité `#2a7d9c`, Utilisateurs `#7c3aed`, Contenu `#16a34a`, Outils `#d97706`, Support `#f59e0b`, Système `#94a3b8`
 
 ---
 
@@ -437,7 +537,10 @@ Lues par sidebar et NouvelleAnalyse via `get_pro_credits_balance(p_user_id)` qui
 ### 🟡 Priorité normale
 
 - [ ] **Template email prospection** : 3 versions prêtes (V1 court, V2 visuel, V3 relance). Configurer dans Mailjet avec sous-domaine `outreach.verimo.fr`.
-- [ ] **Vérifier templates emails Supabase Auth** (inscription) — si mention "essai gratuit" restante, modifier dans dashboard Supabase
+- [ ] **Email notification quand admin répond à un ticket support** — edge function à créer
+- [ ] **Email confirmation après changement MDP** (nice-to-have)
+- [ ] **Compare : redesign verdict** — split synthèse par bien, layout two-column forces/issues, tags "Bien 1"/"Bien 2"
+- [ ] **Compare : remplacer edge function debug `comparer`** par version propre en production
 
 ### ✅ Résolu session 22
 
