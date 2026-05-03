@@ -237,7 +237,7 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets }: { subs
               <Icon size={16} style={{ color: active ? ACCENT : TEXT, flexShrink: 0 }} />
               <span style={{ flex: 1 }}>{item.label}</span>
               {item.to === '/dashboard/support' && (unreadTickets || 0) > 0 && (
-                <span style={{ minWidth: 18, height: 18, borderRadius: 100, background: '#dc2626', color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', flexShrink: 0 }}>{unreadTickets}</span>
+                <span style={{ minWidth: 18, height: 18, borderRadius: 100, background: '#f59e0b', color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', flexShrink: 0 }}>{unreadTickets}</span>
               )}
             </Link>
           );
