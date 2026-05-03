@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, Trash2, Copy, Check, Mail, Share2, CheckSquare, Square, X, ExternalLink, FileText, ChevronDown } from 'lucide-react';
+import { Plus, Search, Trash2, Copy, Mail, Share2, CheckSquare, Square, X, ExternalLink, FileText, ChevronDown } from 'lucide-react';
 import { getOrCreateShareToken } from '../../lib/analyses';
 import { supabase } from '../../lib/supabase';
 import { useAnalyses, type Analyse } from '../../hooks/useAnalyses';
