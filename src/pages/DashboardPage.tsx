@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Plus, FileText, GitCompare, User, LifeBuoy,
   LogOut, Menu, X, ChevronDown, Bell, Shield, CreditCard,
-  CheckCircle, BookOpen,
+  CheckCircle, BookOpen, Send,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useCredits } from '../hooks/useCredits';
@@ -407,7 +407,7 @@ export default function DashboardPage() {
   const [helpMessage, setHelpMessage] = useState('');
   const [helpSending, setHelpSending] = useState(false);
   const [helpSent, setHelpSent] = useState(false);
-  const [helpCreatedId, setHelpCreatedId] = useState<string | null>(null);
+  const [, setHelpCreatedId] = useState<string | null>(null);
 
   useEffect(() => {
     (window as unknown as Record<string, unknown>).__openHelp = () => setShowHelpPopup(true);
