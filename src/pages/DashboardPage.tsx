@@ -46,12 +46,12 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
 
   return (
     <aside style={{ width:260, minHeight:'100vh', height:'100%', background:SB_BG, display:'flex', flexDirection:'column' }}>
-      {/* Logo */}
-      <div style={{ height:78, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 18px', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
+      {/* Logo — centré et plus gros */}
+      <div style={{ height:85, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 18px', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0, position:'relative' }}>
         <Link to="/" onClick={onClose} style={{ textDecoration:'none' }}>
-          <img src="/logo-blanc.png" alt="Verimo" style={{ height: 60, width: 'auto', display: 'block' }} />
+          <img src="/logo-blanc.png" alt="Verimo" style={{ height: 70, width: 'auto', display: 'block' }} />
         </Link>
-        {onClose && <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.4)', padding:4 }}><X size={18}/></button>}
+        {onClose && <button onClick={onClose} style={{ position:'absolute', right:14, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.4)', padding:4 }}><X size={18}/></button>}
       </div>
 
       {/* CTA Nouvelle analyse */}
@@ -64,19 +64,19 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
         </Link>
       </div>
 
-      {/* Crédits — juste sous le CTA comme l'actuel */}
-      <div style={{ margin:'0 14px 6px', padding:'10px 12px', borderRadius:9, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)' }}>
-        <div style={{ fontSize:10, fontWeight:700, color:SB_MUTED, letterSpacing:'0.1em', marginBottom:7 }}>CRÉDITS RESTANTS</div>
-        <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-          {[{ label:'Analyse simple', value:credits.document }, { label:'Analyse complète', value:credits.complete }].map(c=>(
-            <div key={c.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'5px 8px', borderRadius:7, background:'rgba(255,255,255,0.04)' }}>
-              <span style={{ fontSize:11, color:'rgba(255,255,255,0.7)', fontWeight:500 }}>{c.label}</span>
-              <span style={{ fontSize:12, fontWeight:800, color:c.value>0?SB_ACCENT:'rgba(255,255,255,0.2)' }}>{c.value}</span>
+      {/* Crédits — Option B : bordure teal, textes bien visibles */}
+      <div style={{ margin:'0 14px 6px', padding:'12px', borderRadius:10, background:'rgba(93,191,224,0.08)', border:'1.5px solid rgba(93,191,224,0.2)' }}>
+        <div style={{ fontSize:11, fontWeight:700, color:'#5dbfe0', letterSpacing:'0.08em', marginBottom:8 }}>CRÉDITS RESTANTS</div>
+        <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
+          {[{ label:'Analyse simple', value:credits.document, color:SB_ACCENT }, { label:'Analyse complète', value:credits.complete, color:'#7dd3fc' }].map(c=>(
+            <div key={c.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', borderRadius:8, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.06)' }}>
+              <span style={{ fontSize:12, color:'#fff', fontWeight:600 }}>{c.label}</span>
+              <span style={{ fontSize:15, fontWeight:800, color:c.value>0?c.color:'rgba(255,255,255,0.2)' }}>{c.value}</span>
             </div>
           ))}
         </div>
-        <Link to="/dashboard/tarifs" onClick={onClose} style={{ display:'block', marginTop:7, fontSize:11, fontWeight:700, color:SB_ACCENT, textDecoration:'none', textAlign:'center' }}>
-          {credits.document===0&&credits.complete===0?'+ Acheter une analyse':'+ Recharger'}
+        <Link to="/dashboard/tarifs" onClick={onClose} style={{ display:'block', marginTop:8, padding:'6px', borderRadius:7, background:'rgba(93,191,224,0.1)', textAlign:'center', textDecoration:'none' }}>
+          <span style={{ fontSize:11, fontWeight:700, color:'#5dbfe0' }}>{credits.document===0&&credits.complete===0?'+ Acheter une analyse':'+ Recharger'}</span>
         </Link>
       </div>
 
