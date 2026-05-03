@@ -239,18 +239,18 @@ function CompleteRow({ a, onDelete, isLast, selectionMode, selected, onToggleSel
 }
 
 /* ═══════════════════════════════════════════
-   LIGNE SIMPLE / APERÇU
+   LIGNE SIMPLE
 ═══════════════════════════════════════════ */
-function SimpleRow({ a, onDelete, isPreview, isLast, selectionMode, selected, onToggleSelect }: {
-  a: Analyse; onDelete: (id: string) => void; isPreview?: boolean; isLast: boolean;
+function SimpleRow({ a, onDelete, isLast, selectionMode, selected, onToggleSelect }: {
+  a: Analyse; onDelete: (id: string) => void; isLast: boolean;
   selectionMode: boolean; selected: boolean; onToggleSelect: (id: string) => void;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const title = a.type === 'complete' ? (a.adresse_bien || 'Adresse…') : (a.nom_document || 'Document sans nom');
-  const iconBg = isPreview ? C.amberBg : '#e1f5ee';
-  const iconColor = isPreview ? '#854F0B' : '#0F6E56';
-  const btnBg = isPreview ? C.purpleBg : '#e1f5ee';
-  const btnColor = isPreview ? '#6d28d9' : '#085041';
+  const iconBg = '#e1f5ee';
+  const iconColor = '#0F6E56';
+  const btnBg = '#e1f5ee';
+  const btnColor = '#085041';
 
   return (
     <div
@@ -258,7 +258,6 @@ function SimpleRow({ a, onDelete, isPreview, isLast, selectionMode, selected, on
         display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px',
         borderBottom: isLast ? 'none' : '0.5px solid #f0f4f7',
         background: selected ? '#f0f7fb' : 'transparent',
-        opacity: isPreview ? 0.6 : 1,
         cursor: selectionMode ? 'pointer' : 'default', transition: 'background 0.15s',
       }}
       onClick={() => { if (selectionMode) onToggleSelect(a.id); }}
@@ -268,11 +267,11 @@ function SimpleRow({ a, onDelete, isPreview, isLast, selectionMode, selected, on
       {selectionMode && <div onClick={e => { e.stopPropagation(); onToggleSelect(a.id); }} style={{ cursor: 'pointer' }}>{selected ? <CheckSquare size={17} color={C.teal} /> : <Square size={17} color="#cbd5e1" />}</div>}
 
       <div style={{ width: 30, height: 30, borderRadius: 7, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        {isPreview ? <Eye size={13} style={{ color: iconColor }} /> : <FileText size={13} style={{ color: iconColor }} />}
+        <FileText size={13} style={{ color: iconColor }} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0f2d3d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
-        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>{isPreview ? 'Aperçu' : '1 document'} · {a.date}</div>
+        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>1 document · {a.date}</div>
       </div>
       {a.status === 'processing' ? (
         <span style={{ fontSize: 11, fontWeight: 700, color: C.teal, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -280,9 +279,9 @@ function SimpleRow({ a, onDelete, isPreview, isLast, selectionMode, selected, on
         </span>
       ) : (
         <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
-          {isPreview && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6, background: C.amberBg, color: '#92400e', border: `1px solid ${C.amberBorder}` }}>Aperçu</span>}
-          <Link to={`/dashboard/rapport?id=${a.id}`} style={{ padding: '5px 11px', borderRadius: 7, background: btnBg, color: btnColor, fontSize: 11, fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}>
-            {isPreview ? <><Eye size={10} /> Débloquer</> : <><ExternalLink size={10} /> Rapport</>}
+          {!a.is_preview && a.status === 'completed' && <ShareBadge analyseId={a.id} titre={title} />}
+          <Link to={`/rapport?id=${a.id}`} style={{ padding: '5px 11px', borderRadius: 7, background: btnBg, color: btnColor, fontSize: 11, fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}>
+            <ExternalLink size={10} /> Rapport
           </Link>
           {!selectionMode && !confirmDelete && (
             <button onClick={() => setConfirmDelete(true)} style={{ width: 26, height: 26, borderRadius: 6, background: C.redBg, border: `1px solid ${C.redBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><Trash2 size={10} color={C.red} /></button>
