@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Plus, FileText, GitCompare, User, LifeBuoy,
   LogOut, Menu, X, ChevronDown, Bell, Shield, CreditCard,
-  CheckCircle, BookOpen, Send, MessageSquare, Search,
+  CheckCircle, BookOpen, Send, MessageSquare,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useCredits } from '../hooks/useCredits';
@@ -64,28 +64,18 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
         </Link>
       </div>
 
-      {/* Crédits — Option F : fond blanc, icônes, gros chiffres */}
-      <div style={{ margin:'0 14px 6px', padding:'14px', borderRadius:10, background:'#fff' }}>
-        <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.08em', marginBottom:10 }}>CRÉDITS RESTANTS</div>
-        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px', borderRadius:8, background:'#f8fafc', marginBottom:6 }}>
-          <div style={{ width:30, height:30, borderRadius:8, background:'#f0f7fb', border:'1px solid #d0e8f0', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-            <FileText size={13} style={{ color:'#2a7d9c' }} />
-          </div>
-          <div style={{ flex:1 }}>
-            <div style={{ fontSize:10, color:'#94a3b8' }}>Analyse simple</div>
-          </div>
-          <div style={{ fontSize:18, fontWeight:800, color:'#2a7d9c' }}>{credits.document}</div>
+      {/* Crédits — juste sous le CTA comme l'actuel */}
+      <div style={{ margin:'0 14px 6px', padding:'10px 12px', borderRadius:9, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ fontSize:10, fontWeight:700, color:SB_MUTED, letterSpacing:'0.1em', marginBottom:7 }}>CRÉDITS RESTANTS</div>
+        <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+          {[{ label:'Analyse simple', value:credits.document }, { label:'Analyse complète', value:credits.complete }].map(c=>(
+            <div key={c.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'5px 8px', borderRadius:7, background:'rgba(255,255,255,0.04)' }}>
+              <span style={{ fontSize:11, color:'rgba(255,255,255,0.7)', fontWeight:500 }}>{c.label}</span>
+              <span style={{ fontSize:12, fontWeight:800, color:c.value>0?SB_ACCENT:'rgba(255,255,255,0.2)' }}>{c.value}</span>
+            </div>
+          ))}
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px', borderRadius:8, background:'#f8fafc', marginBottom:10 }}>
-          <div style={{ width:30, height:30, borderRadius:8, background:'#e8f4f8', border:'1px solid #bae3f5', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-            <Search size={13} style={{ color:'#0f2d3d' }} />
-          </div>
-          <div style={{ flex:1 }}>
-            <div style={{ fontSize:10, color:'#94a3b8' }}>Analyse complète</div>
-          </div>
-          <div style={{ fontSize:18, fontWeight:800, color:'#0f2d3d' }}>{credits.complete}</div>
-        </div>
-        <Link to="/dashboard/tarifs" onClick={onClose} style={{ display:'block', padding:'8px', borderRadius:8, background:'#2a7d9c', color:'#fff', fontSize:11, fontWeight:700, textDecoration:'none', textAlign:'center' }}>
+        <Link to="/dashboard/tarifs" onClick={onClose} style={{ display:'block', marginTop:7, fontSize:11, fontWeight:700, color:SB_ACCENT, textDecoration:'none', textAlign:'center' }}>
           {credits.document===0&&credits.complete===0?'+ Acheter une analyse':'+ Recharger'}
         </Link>
       </div>
