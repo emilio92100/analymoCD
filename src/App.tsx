@@ -216,7 +216,6 @@ function SessionManager() {
         localStorage.removeItem('verimo_login_time');
         localStorage.removeItem('verimo_user_name');
         localStorage.removeItem('verimo_user_email');
-        localStorage.removeItem('verimo_free_preview_used');
       }
     });
 
