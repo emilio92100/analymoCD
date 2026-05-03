@@ -32,7 +32,6 @@ export default function Compte() {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [payments, setPayments] = useState<{ id: string; description: string; amount: number; source: string; created_at: string }[]>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(true);
-  const [provider, setProvider] = useState('');
   const [createdAt, setCreatedAt] = useState('');
   const [analysesCount, setAnalysesCount] = useState(0);
 
@@ -40,8 +39,6 @@ export default function Compte() {
     supabase.auth.getUser().then(({ data: { user: u } }) => {
       if (u) {
         setUser({ name: u.user_metadata?.full_name || '', email: u.email || '' });
-        const prov = u.app_metadata?.provider || '';
-        setProvider(prov === 'google' ? 'Google' : 'Email / Mot de passe');
         if (u.created_at) setCreatedAt(new Date(u.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }));
       }
     });
