@@ -92,15 +92,6 @@ export default function HomeView() {
             <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>{totalAnalyses > 1 ? 'analyses réalisées' : 'analyse réalisée'}</div>
           </div>
           <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '18px' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 8 }}>DERNIÈRE ANALYSE</div>
-            {lastAnalyse ? (
-              <>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>{lastAnalyse.date}</div>
-                <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.4, wordBreak: 'break-word' as const }}>{lastAnalyse.type === 'complete' ? lastAnalyse.adresse_bien : lastAnalyse.nom_document}</div>
-              </>
-            ) : <div style={{ fontSize: 14, color: '#94a3b8' }}>Aucune encore</div>}
-          </div>
-          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '18px' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 8 }}>CRÉDITS</div>
             <div style={{ display: 'flex', gap: 8 }}>
               <div style={{ flex: 1, textAlign: 'center', padding: '8px', borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7' }}>
@@ -113,6 +104,15 @@ export default function HomeView() {
               </div>
             </div>
             <Link to="/dashboard/tarifs" style={{ fontSize: 12, fontWeight: 700, color: '#2a7d9c', textDecoration: 'none', display: 'block', marginTop: 8 }}>+ Acheter des crédits</Link>
+          </div>
+          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '18px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 8 }}>DERNIÈRE ANALYSE</div>
+            {lastAnalyse ? (
+              <>
+                <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>{lastAnalyse.date}</div>
+                <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.4, wordBreak: 'break-word' as const }}>{lastAnalyse.type === 'complete' ? lastAnalyse.adresse_bien : lastAnalyse.nom_document}</div>
+              </>
+            ) : <div style={{ fontSize: 14, color: '#94a3b8' }}>Aucune encore</div>}
           </div>
         </div>
 
