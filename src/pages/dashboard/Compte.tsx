@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { useCredits } from '../../hooks/useCredits';
 import DashboardLoader from '../../components/DashboardLoader';
 
 function TooltipInfoParticulier({ text }: { text: string }) {
@@ -37,7 +35,6 @@ export default function Compte() {
   const [provider, setProvider] = useState('');
   const [createdAt, setCreatedAt] = useState('');
   const [analysesCount, setAnalysesCount] = useState(0);
-  const { credits, loadingCredits } = useCredits();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user: u } }) => {
@@ -115,47 +112,32 @@ export default function Compte() {
     else { setPwdMsg('Mot de passe modifié avec succès !'); setPwd({ current: '', next: '', confirm: '' }); setTimeout(() => { setPwdMsg(''); setPwdSection(false); }, 3000); }
   };
 
-  if (loadingCredits || paymentsLoading) return <DashboardLoader message="Chargement de votre compte…" />;
+  if (paymentsLoading) return <DashboardLoader message="Chargement de votre compte…" />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      
 
-      {/* Résumé rapide — 2 colonnes sur mobile, 3 sur desktop */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '16px', textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
-          <div style={{ fontSize: 28, fontWeight: 900, color: '#2a7d9c', letterSpacing: '-0.02em' }}>{credits.complete}</div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginTop: 4 }}>Crédits complets</div>
+      {/* En-tête Mon compte */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' as const }}>
+        <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+          {(user.name.charAt(0) || 'U').toUpperCase()}
         </div>
-        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '16px', textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
-          <div style={{ fontSize: 28, fontWeight: 900, color: '#7c3aed', letterSpacing: '-0.02em' }}>{credits.document}</div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginTop: 4 }}>Crédits simples</div>
+        <div style={{ flex: 1 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0 }}>{user.name || 'Mon compte'}</h2>
+          <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>{user.email}</p>
         </div>
-        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '16px', textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.03)', gridColumn: 'span 2' }}>
-          <div style={{ fontSize: 28, fontWeight: 900, color: '#16a34a', letterSpacing: '-0.02em' }}>{analysesCount}</div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginTop: 4 }}>Analyses réalisées</div>
-        </div>
-      </div>
-
-      {/* Infos compte */}
-      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 24px', boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
-        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' as const, marginBottom: 16 }}>
-          {provider && (
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 3 }}>Connexion</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>{provider}</div>
-            </div>
-          )}
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexShrink: 0 }}>
           {createdAt && (
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 3 }}>Membre depuis</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>{createdAt}</div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>Membre depuis</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{createdAt}</div>
             </div>
           )}
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>Analyses</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#16a34a' }}>{analysesCount} réalisée{analysesCount > 1 ? 's' : ''}</div>
+          </div>
         </div>
-        <Link to="/dashboard/tarifs" style={{ display: 'block', width: '100%', padding: '12px', borderRadius: 10, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none', textAlign: 'center' as const, boxSizing: 'border-box' as const }}>
-          + Recharger des crédits
-        </Link>
       </div>
 
       {/* Informations personnelles */}
