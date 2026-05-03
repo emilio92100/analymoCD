@@ -8,7 +8,7 @@ import {
   Trash2, RefreshCw, Eye, EyeOff, ArrowRight,
   LogOut, Send, UserPlus, CheckCircle, Download, Tag,
   Bell, ChevronLeft, ChevronRight, Plus, Copy, Briefcase, Euro, ExternalLink,
-  Clock, User, Building2, LifeBuoy, Lightbulb, MessageSquare,
+  Clock, User, Building2, LifeBuoy, Lightbulb, MessageSquare, ChevronDown,
 } from 'lucide-react';
 
 
@@ -3530,6 +3530,8 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [editCompanyAddress, setEditCompanyAddress] = useState('');
   const [sendingInvite, setSendingInvite] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [analysesExpanded, setAnalysesExpanded] = useState(false);
+  const [envoisExpanded, setEnvoisExpanded] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showResetPwd, setShowResetPwd] = useState(false);
   const [showUpdateEmail, setShowUpdateEmail] = useState(false);
@@ -3793,7 +3795,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                     )}
                   </div>
                   {clientSubscription.status !== 'canceled' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, flexWrap: 'wrap' }}>
                       <div style={{ color: '#64748b' }}>Complètes : <strong style={{ color: '#0f172a' }}>{clientSubscription.credits_complete_used}/{clientSubscription.credits_complete_total}</strong> utilisées</div>
                       <div style={{ color: '#64748b' }}>Simples : <strong style={{ color: '#0f172a' }}>{clientSubscription.credits_simple_used}/{clientSubscription.credits_simple_total}</strong> utilisées</div>
                     </div>
@@ -3804,18 +3806,29 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                   {clientSubscription.status === 'canceled' && clientSubscription.canceled_at && (
                     <div style={{ fontSize: 11, color: '#dc2626', marginTop: 6, fontWeight: 600 }}>Résilié le {fmtDate(clientSubscription.canceled_at)}</div>
                   )}
+                  {!clientSubscription.cancel_at_period_end && clientSubscription.status !== 'canceled' && clientSubscription.current_period_end && (
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Renouvellement le {fmtDate(clientSubscription.current_period_end)}</div>
+                  )}
                   {clientSubscription.cancellation_reason && (
                     <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 12, color: '#991b1b' }}>
                       <span style={{ fontWeight: 700 }}>Raison :</span> {clientSubscription.cancellation_reason}
                     </div>
                   )}
-                  {!clientSubscription.cancel_at_period_end && clientSubscription.status !== 'canceled' && clientSubscription.current_period_end && (
-                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Renouvellement le {fmtDate(clientSubscription.current_period_end)}</div>
-                  )}
                 </div>
               ) : (
                 <div style={{ fontSize: 13, color: '#94a3b8' }}>Aucun abonnement actif</div>
               )}
+
+              {/* Notes admin — intégrées au bloc abonnement */}
+              <div style={{ marginTop: 10, borderTop: `1px solid ${clientSubscription ? '#d0e8f0' : '#edf2f7'}`, paddingTop: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 6 }}>Note interne</div>
+                <textarea value={selected.pro_notes_admin || ''} onChange={async (e) => {
+                  const val = e.target.value;
+                  setSelected(prev => prev ? { ...prev, pro_notes_admin: val } : null);
+                  await supabase.from('profiles').update({ pro_notes_admin: val }).eq('id', selected.id);
+                }} rows={2} placeholder="Notes internes sur ce client..."
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #d0e8f0', fontSize: 12, outline: 'none', boxSizing: 'border-box', background: '#fff', fontFamily: 'inherit', resize: 'vertical' }} />
+              </div>
             </div>
 
             {/* Invitations */}
@@ -3924,41 +3937,59 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
           </div>
 
           {/* Analyses du client */}
-          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: 20, marginBottom: 16 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 12 }}>Historique des analyses</h3>
-            {clientAnalyses.length === 0 ? <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center' as const, padding: 16 }}>Aucune analyse.</p> : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {clientAnalyses.map(a => (
-                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: '#f8fafc' }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{a.address || a.title}</div>
-                      <div style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDate(a.created_at)} · {a.status}</div>
-                    </div>
-                    {a.score != null && <span style={{ fontSize: 14, fontWeight: 800, color: a.score >= 14 ? '#16a34a' : a.score >= 10 ? '#d97706' : '#dc2626' }}>{a.score}/20</span>}
+          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', marginBottom: 16 }}>
+            <button onClick={() => setAnalysesExpanded(!analysesExpanded)}
+              style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '16px 20px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', gap: 8 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0, flex: 1 }}>Historique des analyses</h3>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f1f5f9', padding: '2px 8px', borderRadius: 100 }}>{clientAnalyses.length}</span>
+              <ChevronDown size={14} style={{ color: '#94a3b8', transform: analysesExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+            </button>
+            {analysesExpanded && (
+              <div style={{ padding: '0 20px 20px' }}>
+                {clientAnalyses.length === 0 ? <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center' as const, padding: 16 }}>Aucune analyse.</p> : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {clientAnalyses.map(a => (
+                      <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: '#f8fafc' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{a.address || a.title}</div>
+                          <div style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDate(a.created_at)} · {a.status}</div>
+                        </div>
+                        {a.score != null && <span style={{ fontSize: 14, fontWeight: 800, color: a.score >= 14 ? '#16a34a' : a.score >= 10 ? '#d97706' : '#dc2626' }}>{a.score}/20</span>}
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
             )}
           </div>
 
           {/* Envois clients */}
-          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: 20, marginBottom: 16 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 12 }}>Envois aux clients</h3>
-            {clientShares.length === 0 ? <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center' as const, padding: 16 }}>Aucun envoi.</p> : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {clientShares.map(s => (
-                  <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: '#f8fafc' }}>
-                    <Send size={13} style={{ color: '#2a7d9c', flexShrink: 0 }} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{s.recipient_name}</div>
-                      <div style={{ fontSize: 11, color: '#94a3b8' }}>{s.recipient_email}</div>
-                    </div>
-                    <div style={{ textAlign: 'right' as const }}>
-                      <div style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDate(s.sent_at)}</div>
-                      {s.opened_at ? <span style={{ fontSize: 10, color: '#16a34a', fontWeight: 600 }}>Ouvert</span> : <span style={{ fontSize: 10, color: '#94a3b8' }}>En attente</span>}
-                    </div>
+          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', marginBottom: 16 }}>
+            <button onClick={() => setEnvoisExpanded(!envoisExpanded)}
+              style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '16px 20px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', gap: 8 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0, flex: 1 }}>Envois aux clients</h3>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f1f5f9', padding: '2px 8px', borderRadius: 100 }}>{clientShares.length}</span>
+              <ChevronDown size={14} style={{ color: '#94a3b8', transform: envoisExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+            </button>
+            {envoisExpanded && (
+              <div style={{ padding: '0 20px 20px' }}>
+                {clientShares.length === 0 ? <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center' as const, padding: 16 }}>Aucun envoi.</p> : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {clientShares.map(s => (
+                      <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: '#f8fafc' }}>
+                        <Send size={13} style={{ color: '#2a7d9c', flexShrink: 0 }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{s.recipient_name}</div>
+                          <div style={{ fontSize: 11, color: '#94a3b8' }}>{s.recipient_email}</div>
+                        </div>
+                        <div style={{ textAlign: 'right' as const }}>
+                          <div style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDate(s.sent_at)}</div>
+                          {s.opened_at ? <span style={{ fontSize: 10, color: '#16a34a', fontWeight: 600 }}>Ouvert</span> : <span style={{ fontSize: 10, color: '#94a3b8' }}>En attente</span>}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
             )}
           </div>
@@ -3995,16 +4026,6 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
             )}
           </div>
 
-          {/* Notes admin */}
-          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: 20 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 12 }}>Notes admin</h3>
-            <textarea value={selected.pro_notes_admin || ''} onChange={async (e) => {
-              const val = e.target.value;
-              setSelected(prev => prev ? { ...prev, pro_notes_admin: val } : null);
-              await supabase.from('profiles').update({ pro_notes_admin: val }).eq('id', selected.id);
-            }} rows={4} placeholder="Notes internes sur ce client..."
-              style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', background: '#f8fafc', fontFamily: 'inherit', resize: 'vertical' }} />
-          </div>
 
           {/* Modal de confirmation suppression */}
           {showDeleteConfirm && (
