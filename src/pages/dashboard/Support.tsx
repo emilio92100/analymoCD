@@ -3,72 +3,46 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Send, LifeBuoy, FileText, CreditCard,
   ChevronDown, Clock, Lock, Key,
-  Sparkles, Plus, ChevronLeft, CheckCircle, MessageSquare,
+  Sparkles, Plus, ChevronLeft, CheckCircle, MessageSquare, HelpCircle,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
-type Ticket = {
-  id: string;
-  subject: string;
-  status: 'open' | 'resolved';
-  created_at: string;
-  updated_at: string;
-  resolved_at: string | null;
-  unread_by_user: boolean;
-};
+type Ticket = { id: string; subject: string; status: 'open' | 'resolved'; created_at: string; updated_at: string; resolved_at: string | null; unread_by_user: boolean };
+type Message = { id: string; ticket_id: string; sender_type: 'user' | 'admin'; sender_name?: string | null; message: string; created_at: string };
 
-type Message = {
-  id: string;
-  ticket_id: string;
-  sender_type: 'user' | 'admin';
-  message: string;
-  created_at: string;
-};
-
-type FaqItem = { q: string; a: string; icon: typeof FileText; iconColor: string; iconBg: string };
+type FaqItem = { q: string; a: string };
 type FaqCategory = { id: string; label: string; icon: typeof FileText; color: string; bg: string; questions: FaqItem[] };
 
 const faqCategories: FaqCategory[] = [
-  {
-    id: 'analyses', label: 'Analyses & documents', icon: FileText, color: '#2a7d9c', bg: '#f0f7fb',
-    questions: [
-      { q: "Quels documents puis-je analyser ?", a: "Vous pouvez analyser tous les documents liés à un bien immobilier : PV d'assemblée générale, règlement de copropriété, appel de charges, DPE, diagnostics techniques, état daté, compromis, et bien d'autres. Seuls les fichiers PDF sont acceptés.", icon: FileText, iconColor: '#2a7d9c', iconBg: '#f0f7fb' },
-      { q: "Quelle est la différence entre l'analyse simple et l'analyse complète ?", a: "L'analyse simple (4,90€) porte sur un seul document PDF. L'analyse complète (19,90€) accepte jusqu'à 15 documents d'un même bien et génère un rapport détaillé avec un score /20, une recommandation Verimo, les travaux à prévoir et un avis personnalisé.", icon: Sparkles, iconColor: '#7c3aed', iconBg: '#f5f3ff' },
-      { q: "Combien de temps prend une analyse ?", a: "Moins de 2 minutes en général. Pour une analyse complète avec plusieurs documents, comptez 1 à 5 minutes. Vous pouvez quitter la page — l'analyse continue en arrière-plan.", icon: Clock, iconColor: '#d97706', iconBg: '#fffbeb' },
-    ],
-  },
-  {
-    id: 'compte', label: 'Compte & crédits', icon: CreditCard, color: '#16a34a', bg: '#f0fdf4',
-    questions: [
-      { q: "Comment fonctionnent les crédits ?", a: "Vous achetez des crédits d'analyse (simple ou complète). Chaque analyse consomme 1 crédit du type correspondant. Les crédits n'expirent jamais.", icon: CreditCard, iconColor: '#16a34a', iconBg: '#f0fdf4' },
-    ],
-  },
-  {
-    id: 'securite', label: 'Sécurité & données', icon: Lock, color: '#7c3aed', bg: '#f5f3ff',
-    questions: [
-      { q: "Mes documents sont-ils en sécurité ?", a: "Oui. Vos documents sont chiffrés et supprimés immédiatement après l'analyse (conformément au RGPD). Seul le rapport d'analyse est conservé dans votre espace.", icon: Lock, iconColor: '#7c3aed', iconBg: '#f5f3ff' },
-      { q: "Qui a accès à mes données ?", a: "Personne. Vos analyses et rapports sont strictement privés. L'équipe Verimo ne consulte vos données qu'en cas de demande de support explicite de votre part.", icon: Key, iconColor: '#0f2d3d', iconBg: '#f0f7fb' },
-    ],
-  },
+  { id: 'analyses', label: 'Analyses & documents', icon: FileText, color: '#2a7d9c', bg: '#f0f7fb', questions: [
+    { q: "Quels documents puis-je analyser ?", a: "Vous pouvez analyser tous les documents liés à un bien immobilier : PV d'assemblée générale, règlement de copropriété, appel de charges, DPE, diagnostics techniques, état daté, compromis, et bien d'autres. Seuls les fichiers PDF sont acceptés." },
+    { q: "Quelle est la différence entre l'analyse simple et l'analyse complète ?", a: "L'analyse simple (4,90€) porte sur un seul document PDF. L'analyse complète (19,90€) accepte jusqu'à 15 documents d'un même bien et génère un rapport détaillé avec un score /20, une recommandation Verimo, les travaux à prévoir et un avis personnalisé." },
+    { q: "Combien de temps prend une analyse ?", a: "Moins de 2 minutes en général. Pour une analyse complète avec plusieurs documents, comptez 1 à 5 minutes. Vous pouvez quitter la page — l'analyse continue en arrière-plan." },
+  ]},
+  { id: 'compte', label: 'Compte & crédits', icon: CreditCard, color: '#16a34a', bg: '#f0fdf4', questions: [
+    { q: "Comment fonctionnent les crédits ?", a: "Vous achetez des crédits d'analyse (simple ou complète). Chaque analyse consomme 1 crédit du type correspondant. Les crédits n'expirent jamais." },
+  ]},
+  { id: 'securite', label: 'Sécurité & données', icon: Lock, color: '#7c3aed', bg: '#f5f3ff', questions: [
+    { q: "Mes documents sont-ils en sécurité ?", a: "Oui. Vos documents sont chiffrés et supprimés immédiatement après l'analyse (conformément au RGPD). Seul le rapport d'analyse est conservé dans votre espace." },
+    { q: "Qui a accès à mes données ?", a: "Personne. Vos analyses et rapports sont strictement privés. L'équipe Verimo ne consulte vos données qu'en cas de demande de support explicite de votre part." },
+  ]},
 ];
 
-// ═══════════════════════════════════════════
-// EXPORT — Nombre de tickets non lus (pour badge sidebar)
-// ═══════════════════════════════════════════
+const SUBJECT_OPTIONS = [
+  "Problème avec mon analyse",
+  "Question sur mon abonnement",
+  "Bug technique",
+  "Question sur les crédits",
+  "Autre",
+];
+
 export async function getUnreadTicketCount(): Promise<number> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return 0;
-  const { count } = await supabase
-    .from('support_tickets')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .eq('unread_by_user', true);
+  const { count } = await supabase.from('support_tickets').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('unread_by_user', true);
   return count || 0;
 }
 
-// ═══════════════════════════════════════════
-// COMPOSANT PRINCIPAL
-// ═══════════════════════════════════════════
 export default function Support() {
   const [view, setView] = useState<'list' | 'chat' | 'new'>('list');
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -80,11 +54,7 @@ export default function Support() {
   const loadTickets = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data } = await supabase
-      .from('support_tickets')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('updated_at', { ascending: false });
+    const { data } = await supabase.from('support_tickets').select('*').eq('user_id', user.id).order('updated_at', { ascending: false });
     setTickets(data || []);
     setLoading(false);
   }, []);
@@ -94,87 +64,96 @@ export default function Support() {
   const openTickets = tickets.filter(t => t.status === 'open');
   const resolvedTickets = tickets.filter(t => t.status === 'resolved');
 
-  if (view === 'new') return (
-    <NewTicketView onBack={() => setView('list')} onCreated={(ticketId) => { loadTickets(); setSelectedTicketId(ticketId); setView('chat'); }} />
-  );
-
-  if (view === 'chat' && selectedTicketId) return (
-    <ChatView ticketId={selectedTicketId} onBack={() => { setView('list'); loadTickets(); }} />
-  );
+  if (view === 'new') return <NewTicketView onBack={() => setView('list')} onCreated={(id) => { loadTickets(); setSelectedTicketId(id); setView('chat'); }} />;
+  if (view === 'chat' && selectedTicketId) return <ChatView ticketId={selectedTicketId} onBack={() => { setView('list'); loadTickets(); }} />;
 
   return (
-    <div style={{ maxWidth: 800, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
           {tickets.length === 0 ? "Besoin d'aide ? Ouvrez un ticket et nous vous répondrons rapidement." : `${openTickets.length} ticket${openTickets.length > 1 ? 's' : ''} en cours`}
         </p>
         <button onClick={() => setView('new')}
-          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, background: '#dc2626', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, boxShadow: '0 4px 12px rgba(220,38,38,0.2)' }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, boxShadow: '0 4px 12px rgba(15,45,61,0.2)' }}>
           <Plus size={14} /> Nouveau ticket
         </button>
       </div>
 
+      {/* Tickets ouverts */}
       {openTickets.length > 0 && (
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 10 }}>TICKETS EN COURS</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {openTickets.map(t => <TicketRow key={t.id} ticket={t} onClick={() => { setSelectedTicketId(t.id); setView('chat'); }} />)}
+        <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+          <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #edf2f7' }}>
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <MessageSquare size={14} style={{ color: '#2a7d9c' }} /> Tickets en cours
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '2px 8px', borderRadius: 100 }}>{openTickets.length}</span>
+            </h3>
           </div>
+          {openTickets.map((t, i) => <TicketRow key={t.id} ticket={t} isLast={i === openTickets.length - 1} onClick={() => { setSelectedTicketId(t.id); setView('chat'); }} />)}
         </div>
       )}
 
+      {/* Tickets résolus */}
       {resolvedTickets.length > 0 && (
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 10 }}>RÉSOLUS</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {resolvedTickets.map(t => <TicketRow key={t.id} ticket={t} onClick={() => { setSelectedTicketId(t.id); setView('chat'); }} />)}
+        <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+          <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #edf2f7' }}>
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CheckCircle size={14} style={{ color: '#16a34a' }} /> Résolus
+            </h3>
           </div>
+          {resolvedTickets.map((t, i) => <TicketRow key={t.id} ticket={t} isLast={i === resolvedTickets.length - 1} onClick={() => { setSelectedTicketId(t.id); setView('chat'); }} />)}
         </div>
       )}
 
+      {/* Empty state */}
       {!loading && tickets.length === 0 && (
         <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '48px 32px', textAlign: 'center' }}>
-          <div style={{ width: 56, height: 56, borderRadius: 14, background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-            <LifeBuoy size={28} style={{ color: '#dc2626' }} />
+          <div style={{ width: 56, height: 56, borderRadius: 14, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <LifeBuoy size={28} style={{ color: '#2a7d9c' }} />
           </div>
           <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>Aucun ticket pour le moment</h3>
           <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 20 }}>Si vous avez une question ou un problème, ouvrez un ticket et notre équipe vous répondra rapidement.</p>
           <button onClick={() => setView('new')}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '11px 22px', borderRadius: 11, background: '#dc2626', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '11px 22px', borderRadius: 11, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
             <Plus size={14} /> Ouvrir un ticket
           </button>
         </div>
       )}
 
-      {/* FAQ */}
-      <div style={{ marginTop: 12 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 10 }}>QUESTIONS FRÉQUENTES</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* ═══ QUESTIONS FRÉQUENTES ═══ */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <HelpCircle size={16} style={{ color: '#2a7d9c' }} />
+          </div>
+          <h2 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>Questions fréquentes</h2>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {faqCategories.map(cat => (
             <div key={cat.id} style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
               <button onClick={() => setOpenCat(openCat === cat.id ? null : cat.id)}
-                style={{ width: '100%', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <cat.icon size={15} style={{ color: cat.color }} />
+                style={{ width: '100%', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <cat.icon size={16} style={{ color: cat.color }} />
                 </div>
-                <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{cat.label}</span>
-                <ChevronDown size={14} style={{ color: '#94a3b8', transition: 'transform 0.2s', transform: openCat === cat.id ? 'rotate(180deg)' : 'rotate(0)' }} />
+                <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>{cat.label}</span>
+                <ChevronDown size={15} style={{ color: '#94a3b8', transition: 'transform 0.2s', transform: openCat === cat.id ? 'rotate(180deg)' : 'rotate(0)' }} />
               </button>
               <AnimatePresence>
                 {openCat === cat.id && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}>
-                    <div style={{ borderTop: '1px solid #f1f5f9', padding: '8px 0' }}>
+                    <div style={{ borderTop: '1px solid #f1f5f9' }}>
                       {cat.questions.map((q, qi) => (
-                        <div key={qi}>
+                        <div key={qi} style={{ borderBottom: qi < cat.questions.length - 1 ? '1px solid #f8fafc' : 'none' }}>
                           <button onClick={() => setOpenQ(openQ === `${cat.id}-${qi}` ? null : `${cat.id}-${qi}`)}
-                            style={{ width: '100%', padding: '12px 18px 12px 62px', display: 'flex', alignItems: 'center', gap: 8, background: openQ === `${cat.id}-${qi}` ? '#f8fafc' : 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
-                            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#374151' }}>{q.q}</span>
-                            <ChevronDown size={12} style={{ color: '#cbd5e1', transition: 'transform 0.2s', transform: openQ === `${cat.id}-${qi}` ? 'rotate(180deg)' : 'rotate(0)', flexShrink: 0 }} />
+                            style={{ width: '100%', padding: '14px 20px 14px 68px', display: 'flex', alignItems: 'center', gap: 8, background: openQ === `${cat.id}-${qi}` ? '#f8fafc' : 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                            <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: '#374151' }}>{q.q}</span>
+                            <ChevronDown size={13} style={{ color: '#cbd5e1', transition: 'transform 0.2s', transform: openQ === `${cat.id}-${qi}` ? 'rotate(180deg)' : 'rotate(0)', flexShrink: 0 }} />
                           </button>
                           <AnimatePresence>
                             {openQ === `${cat.id}-${qi}` && (
                               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.15 }}>
-                                <div style={{ padding: '4px 18px 14px 62px', fontSize: 13, color: '#64748b', lineHeight: 1.7 }}>{q.a}</div>
+                                <div style={{ padding: '4px 20px 16px 68px', fontSize: 13, color: '#64748b', lineHeight: 1.7 }}>{q.a}</div>
                               </motion.div>
                             )}
                           </AnimatePresence>
@@ -192,46 +171,48 @@ export default function Support() {
   );
 }
 
-function TicketRow({ ticket, onClick }: { ticket: Ticket; onClick: () => void }) {
+function TicketRow({ ticket, isLast, onClick }: { ticket: Ticket; isLast: boolean; onClick: () => void }) {
   const isOpen = ticket.status === 'open';
   const fmtDate = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
   return (
     <button onClick={onClick}
-      style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderRadius: 14, background: '#fff', border: ticket.unread_by_user ? '1.5px solid #dc2626' : '1px solid #edf2f7', cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'all 0.15s' }}
-      onMouseOver={e => { (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 16px rgba(42,125,156,0.08)'; }}
-      onMouseOut={e => { (e.currentTarget as HTMLElement).style.boxShadow = 'none'; }}>
-      <div style={{ width: 36, height: 36, borderRadius: 10, background: isOpen ? '#fef2f2' : '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        {isOpen ? <MessageSquare size={16} style={{ color: '#dc2626' }} /> : <CheckCircle size={16} style={{ color: '#16a34a' }} />}
+      style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px', background: 'none', border: 'none', borderBottom: isLast ? 'none' : '1px solid #f1f5f9', cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'background 0.15s' }}
+      onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#fafcfd'; }}
+      onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
+      <div style={{ width: 32, height: 32, borderRadius: 8, background: isOpen ? '#f0f7fb' : '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        {isOpen ? <MessageSquare size={14} style={{ color: '#2a7d9c' }} /> : <CheckCircle size={14} style={{ color: '#16a34a' }} />}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.subject}</span>
-          {ticket.unread_by_user && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#dc2626', flexShrink: 0 }} />}
+          <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{ticket.subject}</span>
+          {ticket.unread_by_user && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#2a7d9c', flexShrink: 0 }} />}
         </div>
         <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
           {fmtDate(ticket.created_at)} · {isOpen ? 'En cours' : `Résolu le ${fmtDate(ticket.resolved_at!)}`}
         </div>
       </div>
-      <ChevronDown size={14} style={{ color: '#94a3b8', transform: 'rotate(-90deg)', flexShrink: 0 }} />
+      <ChevronDown size={14} style={{ color: '#cbd5e1', transform: 'rotate(-90deg)', flexShrink: 0 }} />
     </button>
   );
 }
 
-function NewTicketView({ onBack, onCreated }: { onBack: () => void; onCreated: (ticketId: string) => void }) {
+function NewTicketView({ onBack, onCreated }: { onBack: () => void; onCreated: (id: string) => void }) {
   const [subject, setSubject] = useState('');
+  const [customSubject, setCustomSubject] = useState('');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
 
+  const finalSubject = subject === 'Autre' ? customSubject.trim() : subject;
+
   const handleSubmit = async () => {
-    if (!subject.trim() || !message.trim()) { setError('Veuillez remplir tous les champs.'); return; }
+    if (!finalSubject || !message.trim()) { setError('Veuillez remplir tous les champs.'); return; }
     setSending(true); setError('');
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setError('Vous devez être connecté.'); setSending(false); return; }
-    const { data: ticket, error: ticketErr } = await supabase.from('support_tickets').insert({ user_id: user.id, subject: subject.trim() }).select().single();
-    if (ticketErr || !ticket) { setError('Erreur lors de la création du ticket.'); setSending(false); return; }
-    const { error: msgErr } = await supabase.from('support_messages').insert({ ticket_id: ticket.id, sender_type: 'user', message: message.trim() });
-    if (msgErr) { setError("Erreur lors de l'envoi du message."); setSending(false); return; }
+    const { data: ticket, error: err } = await supabase.from('support_tickets').insert({ user_id: user.id, subject: finalSubject }).select().single();
+    if (err || !ticket) { setError('Erreur lors de la création.'); setSending(false); return; }
+    await supabase.from('support_messages').insert({ ticket_id: ticket.id, sender_type: 'user', message: message.trim() });
     onCreated(ticket.id);
   };
 
@@ -242,8 +223,8 @@ function NewTicketView({ onBack, onCreated }: { onBack: () => void; onCreated: (
       </button>
       <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '28px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-          <div style={{ width: 42, height: 42, borderRadius: 12, background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <LifeBuoy size={22} style={{ color: '#dc2626' }} />
+          <div style={{ width: 42, height: 42, borderRadius: 12, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <LifeBuoy size={22} style={{ color: '#2a7d9c' }} />
           </div>
           <div>
             <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0 }}>Besoin d&apos;aide ?</h2>
@@ -253,8 +234,18 @@ function NewTicketView({ onBack, onCreated }: { onBack: () => void; onCreated: (
         {error && <div style={{ padding: '10px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 13, color: '#dc2626', fontWeight: 600, marginBottom: 16 }}>{error}</div>}
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>Objet</label>
-          <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Ex : Problème avec mon analyse, Question sur mon abonnement..."
-            style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: subject === 'Autre' ? 10 : 0 }}>
+            {SUBJECT_OPTIONS.map(opt => (
+              <button key={opt} onClick={() => setSubject(opt)}
+                style={{ padding: '8px 14px', borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: subject === opt ? '1.5px solid #2a7d9c' : '1px solid #edf2f7', background: subject === opt ? '#f0f7fb' : '#fff', color: subject === opt ? '#2a7d9c' : '#64748b', transition: 'all 0.15s' }}>
+                {opt}
+              </button>
+            ))}
+          </div>
+          {subject === 'Autre' && (
+            <input value={customSubject} onChange={e => setCustomSubject(e.target.value)} placeholder="Précisez votre sujet..."
+              style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+          )}
         </div>
         <div style={{ marginBottom: 20 }}>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>Votre message</label>
@@ -262,7 +253,7 @@ function NewTicketView({ onBack, onCreated }: { onBack: () => void; onCreated: (
             rows={5} style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical' }} />
         </div>
         <button onClick={handleSubmit} disabled={sending}
-          style={{ width: '100%', padding: '14px', borderRadius: 12, background: sending ? '#94a3b8' : '#dc2626', color: '#fff', fontSize: 15, fontWeight: 700, border: 'none', cursor: sending ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 14px rgba(220,38,38,0.2)' }}>
+          style={{ width: '100%', padding: '14px', borderRadius: 12, background: sending ? '#94a3b8' : 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 700, border: 'none', cursor: sending ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 14px rgba(15,45,61,0.2)' }}>
           <Send size={15} /> {sending ? 'Envoi en cours...' : 'Envoyer mon message'}
         </button>
       </div>
@@ -286,9 +277,7 @@ function ChatView({ ticketId, onBack }: { ticketId: string; onBack: () => void }
     if (t) setTicket(t);
     setMessages(msgs || []);
     setLoading(false);
-    if (t?.unread_by_user) {
-      await supabase.from('support_tickets').update({ unread_by_user: false }).eq('id', ticketId);
-    }
+    if (t?.unread_by_user) await supabase.from('support_tickets').update({ unread_by_user: false }).eq('id', ticketId);
   }, [ticketId]);
 
   useEffect(() => { loadChat(); }, [loadChat]);
@@ -315,22 +304,22 @@ function ChatView({ ticketId, onBack }: { ticketId: string; onBack: () => void }
   );
 
   return (
-    <div style={{ maxWidth: 700, margin: '0 auto', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 140px)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 140px)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexShrink: 0 }}>
         <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f0f7fb', border: '1px solid #d0e8f0', borderRadius: 10, cursor: 'pointer', color: '#2a7d9c', fontSize: 13, fontWeight: 700, padding: '8px 14px' }}>
           <ChevronLeft size={14} /> Retour
         </button>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket?.subject}</h2>
+        <div style={{ flex: 1 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>{ticket?.subject}</h2>
           <div style={{ fontSize: 12, color: '#94a3b8' }}>
             {ticket?.status === 'resolved' ? <span style={{ color: '#16a34a', fontWeight: 600 }}>✓ Résolu</span> : <span style={{ color: '#d97706', fontWeight: 600 }}>En cours</span>}
           </div>
         </div>
       </div>
-
-      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, padding: '16px 0', minHeight: 0 }}>
+      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, padding: '16px', minHeight: 0, background: '#f8fafc', borderRadius: 14, border: '1px solid #edf2f7' }}>
         {messages.map(m => {
           const isUser = m.sender_type === 'user';
+          const senderLabel = isUser ? 'Vous' : (m.sender_name || 'Verimo');
           return (
             <div key={m.id} style={{ display: 'flex', justifyContent: isUser ? 'flex-end' : 'flex-start' }}>
               <div style={{
@@ -342,9 +331,7 @@ function ChatView({ ticketId, onBack }: { ticketId: string; onBack: () => void }
                 fontSize: 14, lineHeight: 1.6,
               }}>
                 <div style={{ whiteSpace: 'pre-wrap' }}>{m.message}</div>
-                <div style={{ fontSize: 11, marginTop: 6, opacity: 0.6, textAlign: 'right' }}>
-                  {isUser ? 'Vous' : 'Verimo'} · {fmtTime(m.created_at)}
-                </div>
+                <div style={{ fontSize: 11, marginTop: 6, opacity: 0.6, textAlign: 'right' }}>{senderLabel} · {fmtTime(m.created_at)}</div>
               </div>
             </div>
           );
@@ -358,7 +345,6 @@ function ChatView({ ticketId, onBack }: { ticketId: string; onBack: () => void }
           </div>
         )}
       </div>
-
       {ticket?.status === 'open' && (
         <div style={{ display: 'flex', gap: 10, padding: '16px 0', borderTop: '1px solid #edf2f7', flexShrink: 0 }}>
           <input value={newMsg} onChange={e => setNewMsg(e.target.value)} placeholder="Votre réponse..."
