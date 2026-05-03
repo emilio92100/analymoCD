@@ -316,6 +316,8 @@ export default function NouvelleAnalyse() {
   };
 
   // ─── Animation barre de progression ─────────────────────
+  // Courbe logarithmique basée sur le temps écoulé et le nombre de docs.
+  // Monte lentement et régulièrement, plafonne à 88% tant que le serveur n'a pas répondu.
 
   useEffect(() => {
     if (step !== 'analyse') {
@@ -328,25 +330,38 @@ export default function NouvelleAnalyse() {
     if (!analyseStartTime) setAnalyseStartTime(Date.now());
 
     const docsTotal = files.length;
-    // Facteur de ralentissement : plus de docs = animation plus lente
-    // 1 doc = 1x, 3 docs = 1.2x, 8 docs = 2x, 13 docs = 3x, 15 docs = 3.5x
-    const slowFactor = Math.max(1, 1 + (docsTotal - 1) * 0.18);
+    // Durée estimée en secondes selon le nombre de docs
+    // 1 doc = ~90s, 3 docs = ~150s, 8 docs = ~300s, 15 docs = ~600s
+    const estimatedDuration = docsTotal <= 1 ? 90
+      : docsTotal <= 3 ? 150
+      : docsTotal <= 5 ? 210
+      : docsTotal <= 8 ? 300
+      : docsTotal <= 12 ? 450
+      : 600;
 
     if (animRef.current) clearInterval(animRef.current);
     animRef.current = setInterval(() => {
       setAnimatedProgress(prev => {
         const target = progress;
-        // Rattraper le vrai progress rapidement
-        if (prev < target - 1) return Math.min(prev + 1, target);
-        if (prev < target) return target;
-        // Progression simulée, adaptée au nombre de documents
-        if (prev < 44)  return prev + (0.3 / slowFactor);    // Phase upload
-        if (prev < 84)  return prev + (0.02 / slowFactor);   // Phase analyse Claude
-        if (prev < 93)  return prev + (0.008 / slowFactor);  // Phase synthèse
-        if (prev < 97)  return prev + (0.003 / slowFactor);  // Phase rapport
-        return 97; // Jamais 100% avant confirmation serveur
+        // Si le serveur envoie un vrai progress (ex: 100%), rattraper rapidement
+        if (target >= 99) return Math.min(prev + 2, 100);
+        if (prev < target - 1) return Math.min(prev + 0.5, target);
+
+        // Progression simulée basée sur le temps écoulé
+        const elapsed = analyseStartTime ? (Date.now() - analyseStartTime) / 1000 : 0;
+        // Courbe logarithmique : monte vite au début puis ralentit naturellement
+        // log(1 + elapsed/factor) normalisé pour atteindre ~88% à estimatedDuration
+        const factor = estimatedDuration / 4;
+        const logProgress = Math.log(1 + elapsed / factor) / Math.log(1 + estimatedDuration / factor) * 88;
+        const targetSimulated = Math.min(logProgress, 88);
+
+        // Ne jamais reculer, avancer doucement vers la cible simulée
+        if (targetSimulated > prev) {
+          return prev + Math.min(0.3, (targetSimulated - prev) * 0.05);
+        }
+        return prev;
       });
-    }, 150);
+    }, 200);
     return () => { if (animRef.current) clearInterval(animRef.current); };
   }, [step, progress, files.length, analyseStartTime]);
 
