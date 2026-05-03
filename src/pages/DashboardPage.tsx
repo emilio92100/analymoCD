@@ -98,9 +98,9 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
               onMouseOver={e=>{ if(!active)(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.05)'; }}
               onMouseOut={e=>{ if(!active)(e.currentTarget as HTMLElement).style.background='transparent'; }}>
               <Icon size={16} style={{ color:active?SB_ACCENT:SB_TEXT, flexShrink:0 }}/>
-              <span style={{ flex: 1 }}>{item.label}</span>
+              {item.label}
               {item.to === '/dashboard/support' && (unreadTickets || 0) > 0 && (
-                <span style={{ minWidth: 18, height: 18, borderRadius: 100, background: '#f59e0b', color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', flexShrink: 0 }}>{unreadTickets}</span>
+                <span style={{ minWidth: 18, height: 18, borderRadius: 100, background: '#f59e0b', color: '#fff', fontSize: 10, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', flexShrink: 0, marginLeft: 4 }}>{unreadTickets}</span>
               )}
             </Link>
           );
@@ -594,8 +594,11 @@ export default function DashboardPage() {
                         ))}
                       </div>
                       {helpSubject === 'Autre' && (
-                        <input value={helpCustomSubject} onChange={e => setHelpCustomSubject(e.target.value)} placeholder="Précisez votre sujet..."
-                          style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', marginTop: 10 }} />
+                        <div style={{ marginTop: 12 }}>
+                          <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>Précisez le sujet de votre message</label>
+                          <input value={helpCustomSubject} onChange={e => setHelpCustomSubject(e.target.value)} placeholder="Ex : question sur le rapport, problème de connexion…"
+                            style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                        </div>
                       )}
                     </div>
                   </div>
@@ -618,7 +621,7 @@ export default function DashboardPage() {
                       setHelpSending(false);
                       setHelpSent(true);
                     }} disabled={helpSending || !helpSubject || (helpSubject === 'Autre' && !helpCustomSubject.trim()) || !helpMessage.trim()}
-                      style={{ width: '100%', padding: '14px', borderRadius: 12, background: (!helpSubject || !helpMessage.trim()) ? '#e2e8f0' : 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 700, border: 'none', cursor: (!helpSubject || !helpMessage.trim()) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                      style={{ width: '100%', padding: '14px', borderRadius: 12, background: (helpSending || !helpSubject || (helpSubject === 'Autre' && !helpCustomSubject.trim()) || !helpMessage.trim()) ? '#e2e8f0' : 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 700, border: 'none', cursor: (helpSending || !helpSubject || (helpSubject === 'Autre' && !helpCustomSubject.trim()) || !helpMessage.trim()) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                       <Send size={15} /> {helpSending ? 'Envoi en cours...' : 'Envoyer mon message'}
                     </button>
                   </div>
