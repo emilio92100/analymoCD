@@ -123,54 +123,64 @@ export default function Support() {
           <div style={{ width: 32, height: 32, borderRadius: 8, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <HelpCircle size={16} style={{ color: '#2a7d9c' }} />
           </div>
-          <h2 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>Questions fréquentes</h2>
+          <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>Questions fréquentes</h3>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {faqCategories.map(cat => (
-            <div key={cat.id} style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
-              <button onClick={() => setOpenCat(openCat === cat.id ? null : cat.id)}
-                style={{ width: '100%', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <cat.icon size={16} style={{ color: cat.color }} />
-                </div>
-                <span style={{ flex: 1, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>{cat.label}</span>
-                <ChevronDown size={15} style={{ color: '#94a3b8', transition: 'transform 0.2s', transform: openCat === cat.id ? 'rotate(180deg)' : 'rotate(0)' }} />
-              </button>
-              <AnimatePresence>
-                {openCat === cat.id && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}>
-                    <div style={{ borderTop: '1px solid #f1f5f9' }}>
-                      {cat.questions.map((q, qi) => (
-                        <div key={qi} style={{ borderBottom: qi < cat.questions.length - 1 ? '1px solid #f8fafc' : 'none' }}>
-                          <button onClick={() => setOpenQ(openQ === `${cat.id}-${qi}` ? null : `${cat.id}-${qi}`)}
-                            style={{ width: '100%', padding: '14px 20px 14px 68px', display: 'flex', alignItems: 'center', gap: 8, background: openQ === `${cat.id}-${qi}` ? '#f8fafc' : 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
-                            <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: '#374151' }}>{q.q}</span>
-                            <ChevronDown size={13} style={{ color: '#cbd5e1', transition: 'transform 0.2s', transform: openQ === `${cat.id}-${qi}` ? 'rotate(180deg)' : 'rotate(0)', flexShrink: 0 }} />
-                          </button>
-                          <AnimatePresence>
-                            {openQ === `${cat.id}-${qi}` && (
-                              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.15 }}>
-                                <div style={{ padding: '4px 20px 16px 68px', fontSize: 13, color: '#64748b', lineHeight: 1.7 }}>{q.a}</div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ))}
+          {faqCategories.map(cat => {
+            const isOpen = openCat === cat.id;
+            const Icon = cat.icon;
+            return (
+              <div key={cat.id} style={{ borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden', background: '#fff' }}>
+                <button onClick={() => setOpenCat(isOpen ? null : cat.id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon size={15} style={{ color: cat.color }} />
+                  </div>
+                  <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{cat.label}</span>
+                  <ChevronDown size={14} style={{ color: '#94a3b8', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                </button>
+                <AnimatePresence>
+                  {isOpen && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}
+                      style={{ overflow: 'hidden' }}>
+                      <div style={{ padding: '0 18px 14px' }}>
+                        {cat.questions.map((q, qi) => {
+                          const qOpen = openQ === `${cat.id}-${qi}`;
+                          return (
+                            <div key={qi} style={{ borderTop: '1px solid #f1f5f9' }}>
+                              <button onClick={() => setOpenQ(qOpen ? null : `${cat.id}-${qi}`)}
+                                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 0', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                                <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#334155' }}>{q.q}</span>
+                                <ChevronDown size={12} style={{ color: '#cbd5e1', transform: qOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
+                              </button>
+                              <AnimatePresence>
+                                {qOpen && (
+                                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.15 }}
+                                    style={{ overflow: 'hidden' }}>
+                                    <p style={{ fontSize: 13, color: '#64748b', lineHeight: 1.7, margin: '0 0 12px', paddingLeft: 0 }}>{q.a}</p>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
   );
 }
 
+const fmtDate = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+
 function TicketRow({ ticket, isLast, onClick }: { ticket: Ticket; isLast: boolean; onClick: () => void }) {
   const isOpen = ticket.status === 'open';
-  const fmtDate = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
   return (
     <button onClick={onClick}
       style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px', background: 'none', border: 'none', borderBottom: isLast ? 'none' : '1px solid #f1f5f9', cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'background 0.15s' }}
@@ -294,6 +304,8 @@ function ChatView({ ticketId, onBack }: { ticketId: string; onBack: () => void }
   const [newMsg, setNewMsg] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const [closing, setClosing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const loadChat = useCallback(async () => {
@@ -321,6 +333,16 @@ function ChatView({ ticketId, onBack }: { ticketId: string; onBack: () => void }
     setSending(false);
   };
 
+  const handleCloseTicket = async () => {
+    setClosing(true);
+    // Insérer un message système visible par l'admin et le client
+    await supabase.from('support_messages').insert({ ticket_id: ticketId, sender_type: 'user', message: '✅ J\'ai clôturé ce ticket — mon problème est résolu. Merci !' });
+    await supabase.from('support_tickets').update({ status: 'resolved', resolved_at: new Date().toISOString(), unread_by_admin: true }).eq('id', ticketId);
+    await loadChat();
+    setClosing(false);
+    setShowCloseConfirm(false);
+  };
+
   const fmtTime = (d: string) => new Date(d).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
   if (loading) return (
@@ -342,6 +364,15 @@ function ChatView({ ticketId, onBack }: { ticketId: string; onBack: () => void }
             {ticket?.status === 'resolved' ? <span style={{ color: '#16a34a', fontWeight: 600 }}>✓ Résolu</span> : <span style={{ color: '#d97706', fontWeight: 600 }}>En cours</span>}
           </div>
         </div>
+        {/* Bouton clôturer ticket */}
+        {ticket?.status === 'open' && (
+          <button onClick={() => setShowCloseConfirm(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, background: '#fff', border: '1.5px solid #edf2f7', cursor: 'pointer', color: '#64748b', fontSize: 12, fontWeight: 700, transition: 'all 0.15s' }}
+            onMouseOver={e => { const el = e.currentTarget; el.style.borderColor = '#16a34a'; el.style.color = '#16a34a'; el.style.background = '#f0fdf4'; }}
+            onMouseOut={e => { const el = e.currentTarget; el.style.borderColor = '#edf2f7'; el.style.color = '#64748b'; el.style.background = '#fff'; }}>
+            <CheckCircle size={13} /> Clôturer
+          </button>
+        )}
       </div>
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, padding: '16px', minHeight: 0, background: '#f8fafc', borderRadius: 14, border: '1px solid #edf2f7' }}>
         {messages.map(m => {
@@ -383,6 +414,37 @@ function ChatView({ ticketId, onBack }: { ticketId: string; onBack: () => void }
           </button>
         </div>
       )}
+
+      {/* Modal confirmation clôture */}
+      <AnimatePresence>
+        {showCloseConfirm && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,45,61,0.5)', padding: 20, backdropFilter: 'blur(3px)' }}
+            onClick={() => { if (!closing) setShowCloseConfirm(false); }}>
+            <motion.div initial={{ scale: 0.95, opacity: 0, y: 12 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 8 }}
+              onClick={e => e.stopPropagation()}
+              style={{ background: '#fff', borderRadius: 22, width: '100%', maxWidth: 420, boxShadow: '0 32px 80px rgba(0,0,0,0.2)', padding: '36px 32px', textAlign: 'center' }}>
+              <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: '2px solid #bbf7d0' }}>
+                <CheckCircle size={28} style={{ color: '#16a34a' }} />
+              </div>
+              <h3 style={{ fontSize: 18, fontWeight: 900, color: '#0f172a', marginBottom: 8 }}>Clôturer ce ticket ?</h3>
+              <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, maxWidth: 340, margin: '0 auto 24px' }}>
+                Si votre problème est résolu, vous pouvez clôturer ce ticket. Vous pourrez toujours en ouvrir un nouveau si besoin.
+              </p>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                <button onClick={() => setShowCloseConfirm(false)} disabled={closing}
+                  style={{ padding: '12px 24px', borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7', color: '#64748b', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
+                  Annuler
+                </button>
+                <button onClick={handleCloseTicket} disabled={closing}
+                  style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '12px 24px', borderRadius: 12, background: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff', border: 'none', cursor: closing ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700, opacity: closing ? 0.7 : 1 }}>
+                  <CheckCircle size={15} /> {closing ? 'Clôture...' : 'Oui, clôturer'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
