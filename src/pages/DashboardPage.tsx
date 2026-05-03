@@ -27,7 +27,7 @@ const navItems = [
   { to: '/dashboard/tarifs',        icon: CreditCard,      label: 'Tarifs' },
   { to: '/dashboard/compte',        icon: User,            label: 'Mon compte' },
   { to: '/dashboard/aide',          icon: BookOpen,        label: 'Aide & Méthode' },
-  { to: '/dashboard/support',       icon: LifeBuoy,        label: 'Support / Aide' },
+  { to: '/dashboard/support',       icon: LifeBuoy,        label: 'Support' },
 ];
 
 /* ═══════════════════════════════════════════
