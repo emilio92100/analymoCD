@@ -70,10 +70,7 @@ export default function Support() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-        <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
-          {tickets.length === 0 ? "Besoin d'aide ? Ouvrez un ticket et nous vous répondrons rapidement." : `${openTickets.length} ticket${openTickets.length > 1 ? 's' : ''} en cours`}
-        </p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
         <button onClick={() => setView('new')}
           style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, boxShadow: '0 4px 12px rgba(15,45,61,0.2)' }}>
           <Plus size={14} /> Nouveau ticket
