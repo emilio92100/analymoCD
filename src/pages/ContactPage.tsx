@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Clock, MapPin, Send, CheckCircle, Crown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useSEO } from '../hooks/useSEO';
@@ -17,16 +17,18 @@ export default function ContactPage() {
 
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
+  const [form, setForm] = useState({ lastname: '', firstname: '', email: '', phone: '', subject: '', message: '' });
+
+  const canSubmit = form.lastname.trim() && form.firstname.trim() && form.email.trim() && form.message.trim();
 
   const handleSubmit = async () => {
-    if (!form.name || !form.email || !form.message) return;
+    if (!canSubmit) return;
     setSending(true);
     await supabase.from('contact_messages').insert({
-      name: form.name,
-      email: form.email,
+      name: `${form.firstname.trim()} ${form.lastname.trim()}`,
+      email: form.email.trim(),
       subject: form.subject || null,
-      message: form.message,
+      message: `${form.message.trim()}${form.phone.trim() ? `\n\n📞 Téléphone : ${form.phone.trim()}` : ''}`,
     });
     setSending(false);
     setSent(true);
@@ -90,24 +92,27 @@ export default function ContactPage() {
           <motion.div initial={{ opacity: 0, y: isLowPerf() ? 8 : 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
             transition={{ duration: isLowPerf() ? 0.2 : 0.4 }}
             style={{ padding: '36px', borderRadius: 22, background: '#fff', border: '1px solid #edf2f4', boxShadow: '0 4px 24px rgba(15,45,61,0.06)' }}>
-            {sent ? (
-              <div style={{ textAlign: 'center', padding: '44px 0' }}>
-                <CheckCircle size={52} style={{ color: '#22c55e', margin: '0 auto 18px' }} />
-                <h3 style={{ fontSize: 22, fontWeight: 800, color: '#0f2d3d', marginBottom: 8 }}>Message envoyé !</h3>
-                <p style={{ fontSize: 15, color: '#7a9aaa' }}>Nous vous répondrons sous 24h ouvrées.</p>
-              </div>
-            ) : (
               <>
                 <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f2d3d', marginBottom: 26 }}>Envoyez-nous un message</h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#0f2d3d', marginBottom: 7 }}>Nom</label>
-                      <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Jean Dupont" style={{ width: '100%', padding: '12px 14px', borderRadius: 11, border: '1.5px solid #edf2f4', fontSize: 14, outline: 'none', boxSizing: 'border-box', color: '#0f2d3d', background: '#f8fafc' }} onFocus={e => (e.target as HTMLElement).style.borderColor = '#2a7d9c'} onBlur={e => (e.target as HTMLElement).style.borderColor = '#edf2f4'} />
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#0f2d3d', marginBottom: 7 }}>Nom <span style={{ color: '#dc2626' }}>*</span></label>
+                      <input value={form.lastname} onChange={e => setForm({ ...form, lastname: e.target.value })} placeholder="Dupont" style={{ width: '100%', padding: '12px 14px', borderRadius: 11, border: '1.5px solid #edf2f4', fontSize: 14, outline: 'none', boxSizing: 'border-box', color: '#0f2d3d', background: '#f8fafc' }} onFocus={e => (e.target as HTMLElement).style.borderColor = '#2a7d9c'} onBlur={e => (e.target as HTMLElement).style.borderColor = '#edf2f4'} />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#0f2d3d', marginBottom: 7 }}>Email</label>
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#0f2d3d', marginBottom: 7 }}>Prénom <span style={{ color: '#dc2626' }}>*</span></label>
+                      <input value={form.firstname} onChange={e => setForm({ ...form, firstname: e.target.value })} placeholder="Jean" style={{ width: '100%', padding: '12px 14px', borderRadius: 11, border: '1.5px solid #edf2f4', fontSize: 14, outline: 'none', boxSizing: 'border-box', color: '#0f2d3d', background: '#f8fafc' }} onFocus={e => (e.target as HTMLElement).style.borderColor = '#2a7d9c'} onBlur={e => (e.target as HTMLElement).style.borderColor = '#edf2f4'} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#0f2d3d', marginBottom: 7 }}>Email <span style={{ color: '#dc2626' }}>*</span></label>
                       <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="vous@exemple.com" style={{ width: '100%', padding: '12px 14px', borderRadius: 11, border: '1.5px solid #edf2f4', fontSize: 14, outline: 'none', boxSizing: 'border-box', color: '#0f2d3d', background: '#f8fafc' }} onFocus={e => (e.target as HTMLElement).style.borderColor = '#2a7d9c'} onBlur={e => (e.target as HTMLElement).style.borderColor = '#edf2f4'} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#0f2d3d', marginBottom: 7 }}>Téléphone <span style={{ color: '#94a3b8', fontWeight: 400, fontSize: 11 }}>(optionnel)</span></label>
+                      <input type="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="06 12 34 56 78" style={{ width: '100%', padding: '12px 14px', borderRadius: 11, border: '1.5px solid #edf2f4', fontSize: 14, outline: 'none', boxSizing: 'border-box', color: '#0f2d3d', background: '#f8fafc' }} onFocus={e => (e.target as HTMLElement).style.borderColor = '#2a7d9c'} onBlur={e => (e.target as HTMLElement).style.borderColor = '#edf2f4'} />
                     </div>
                   </div>
                   <div>
@@ -122,17 +127,43 @@ export default function ContactPage() {
                     </select>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#0f2d3d', marginBottom: 7 }}>Message</label>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#0f2d3d', marginBottom: 7 }}>Message <span style={{ color: '#dc2626' }}>*</span></label>
                     <textarea value={form.message} onChange={e => setForm({ ...form, message: e.target.value })} rows={5} placeholder="Décrivez votre demande..." style={{ width: '100%', padding: '12px 14px', borderRadius: 11, border: '1.5px solid #edf2f4', fontSize: 14, outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', color: '#0f2d3d', background: '#f8fafc' }} onFocus={e => (e.target as HTMLElement).style.borderColor = '#2a7d9c'} onBlur={e => (e.target as HTMLElement).style.borderColor = '#edf2f4'} />
                   </div>
-                  <button onClick={handleSubmit} disabled={!form.name || !form.email || !form.message || sending}
-                    style={{ padding: '14px 28px', borderRadius: 13, background: !form.name || !form.email || !form.message ? 'rgba(42,125,156,0.3)' : 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 15, fontWeight: 700, cursor: !form.name || !form.email || !form.message ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <button onClick={handleSubmit} disabled={!canSubmit || sending}
+                    style={{ padding: '14px 28px', borderRadius: 13, background: !canSubmit ? 'rgba(42,125,156,0.3)' : 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 15, fontWeight: 700, cursor: !canSubmit ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.2s' }}>
                     <Send size={16} /> {sending ? 'Envoi...' : 'Envoyer le message'}
                   </button>
                 </div>
               </>
-            )}
           </motion.div>
+
+          {/* Popup confirmation */}
+          <AnimatePresence>
+            {sent && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,45,61,0.5)', padding: 20, backdropFilter: 'blur(3px)' }}>
+                <motion.div initial={{ scale: 0.9, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                  style={{ background: '#fff', borderRadius: 20, padding: '40px 36px', width: '100%', maxWidth: 420, textAlign: 'center', boxShadow: '0 24px 64px rgba(0,0,0,0.15)' }}>
+                  <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                    <CheckCircle size={32} style={{ color: '#16a34a' }} />
+                  </div>
+                  <h3 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Message envoyé !</h3>
+                  <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, marginBottom: 8 }}>
+                    Merci {form.firstname} ! Votre message a bien été transmis à notre équipe.
+                  </p>
+                  <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.6, marginBottom: 24 }}>
+                    Nous reviendrons vers vous dans les plus brefs délais.
+                  </p>
+                  <button onClick={() => { setSent(false); setForm({ lastname: '', firstname: '', email: '', phone: '', subject: '', message: '' }); }}
+                    style={{ padding: '12px 28px', borderRadius: 12, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>
+                    Fermer
+                  </button>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </section>
       <style>{`@media(max-width:767px){.contact-g{grid-template-columns:1fr!important}}`}</style>
