@@ -461,8 +461,8 @@ export default function AdminPage() {
               {activeTab === 'clients' && <ClientsProTab showToast={showToast} logAction={logAction} prefillDemande={createProFromDemande} onPrefillHandled={() => setCreateProFromDemande(null)} focusClientId={focusProClientId} onFocusClientHandled={() => setFocusProClientId(null)} />}
               {activeTab === 'promos' && <PromosTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} />}
               {activeTab === 'alerts' && <SystemAlertsTab showToast={showToast} />}
-              {activeTab === 'support' && <AdminSupportTab showToast={showToast} onUnreadChange={setSupportUnreadCount} onGoToUser={(userId) => { setActiveTab('users'); setTimeout(() => { const ev = new CustomEvent('admin-go-to-user', { detail: userId }); window.dispatchEvent(ev); }, 100); }} />}
-              {activeTab === 'suggestions' && <AdminSuggestionsTab onGoToUser={(userId) => { setActiveTab('users'); setTimeout(() => { const ev = new CustomEvent('admin-go-to-user', { detail: userId }); window.dispatchEvent(ev); }, 100); }} />}
+              {activeTab === 'support' && <AdminSupportTab showToast={showToast} onUnreadChange={setSupportUnreadCount} onGoToUser={(userId) => { setFocusUserId(userId); setActiveTab('users'); }} />}
+              {activeTab === 'suggestions' && <AdminSuggestionsTab onGoToUser={(userId) => { setFocusUserId(userId); setActiveTab('users'); }} />}
               {activeTab === 'banner' && <BannerTab showToast={showToast} logAction={logAction} />}
               {activeTab === 'logs' && <LogsTab />}
             </motion.div>
@@ -1719,6 +1719,7 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [userAnalyses, setUserAnalyses] = useState<AdminAnalyse[]>([]);
   const [userPayments, setUserPayments] = useState<AdminPayment[]>([]);
+  const [userTickets, setUserTickets] = useState<Array<{ id: string; subject: string; status: string; created_at: string; updated_at: string }>>([]);
   const [form, setForm] = useState({ email: '', password: '', name: '', credits_doc: 0, credits_complete: 0, credit_type: 'complete' as 'complete' | 'simple', credit_quantity: 1, credit_reason: '' });
   const [feedback, setFeedback] = useState('');
   const [sending, setSending] = useState(false);
@@ -1745,12 +1746,15 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
     }
     setDetailUser(user);
     setProCreditsBalance(null);
-    const [{ data: analyses }, { data: payments }, { data: grants }] = await Promise.all([
+    setUserTickets([]);
+    const [{ data: analyses }, { data: payments }, { data: grants }, { data: tickets }] = await Promise.all([
       supabase.from('analyses').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('payments').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('credit_grants').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+      supabase.from('support_tickets').select('id, subject, status, created_at, updated_at').eq('user_id', user.id).order('created_at', { ascending: false }),
     ]);
     setUserAnalyses(analyses || []);
+    setUserTickets(tickets || []);
 
     // Fusionner payments + credit_grants dans un seul historique
     const grantPayments = (grants || []).map((g: Record<string, unknown>) => ({
@@ -2076,6 +2080,32 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
                   </div>
                   {a.score != null && <span style={{ fontSize: 13, fontWeight: 900, color: getScoreColor(a.score), background: getScoreBg(a.score), padding: '3px 9px', borderRadius: 8 }}>{a.score}/20</span>}
                   {a.status === 'completed' ? <Badge color="#16a34a" bg="#f0fdf4">✓</Badge> : (a.status === 'processing' || a.status === 'pending') ? <Badge color="#2a7d9c" bg="#f0f7fb">⟳</Badge> : <Badge color="#dc2626" bg="#fef2f2">✗</Badge>}
+                </div>
+              ))}
+            </div>
+
+            {/* Historique des tickets support */}
+            <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
+              <div style={{ padding: '18px 22px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <LifeBuoy size={16} style={{ color: '#d97706' }} />
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Tickets support</div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f1f5f9', padding: '2px 8px', borderRadius: 6 }}>{userTickets.length}</span>
+              </div>
+              {userTickets.length === 0 ? (
+                <div style={{ padding: '32px', textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Aucun ticket</div>
+              ) : userTickets.map((t, i) => (
+                <div key={t.id}
+                  style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 22px', borderBottom: i < userTickets.length - 1 ? '1px solid #f8fafc' : 'none' }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 7, background: t.status === 'open' ? '#f0f7fb' : '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {t.status === 'open' ? <MessageSquare size={12} style={{ color: '#2a7d9c' }} /> : <CheckCircle size={12} style={{ color: '#16a34a' }} />}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{t.subject}</div>
+                    <div style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDateTime(t.created_at)}</div>
+                  </div>
+                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: t.status === 'open' ? '#f0f7fb' : '#f0fdf4', color: t.status === 'open' ? '#2a7d9c' : '#16a34a' }}>
+                    {t.status === 'open' ? 'En cours' : 'Résolu'}
+                  </span>
                 </div>
               ))}
             </div>
