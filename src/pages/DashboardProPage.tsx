@@ -281,18 +281,18 @@ function TopbarPro({ onMenuClick, title, proProfile, unreadCount, notifications,
       {/* Bouton Besoin d'aide */}
       <button onClick={() => navigate('/dashboard/support')}
         className="topbar-help-btn"
-        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, background: '#fff', border: '1.5px solid #edf2f7', cursor: 'pointer', color: '#64748b', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', transition: 'all 0.15s' }}
-        onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.color = '#2a7d9c'; el.style.background = '#f0f7fb'; }}
-        onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.color = '#64748b'; el.style.background = '#fff'; }}>
+        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none', cursor: 'pointer', color: '#fff', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(217,119,6,0.2)', transition: 'all 0.15s' }}
+        onMouseOver={e => { (e.currentTarget as HTMLElement).style.opacity = '0.9'; }}
+        onMouseOut={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}>
         <LifeBuoy size={13} /> Besoin d&apos;aide
       </button>
 
       {/* Bouton Suggestion */}
       <button onClick={() => { if ((window as unknown as Record<string, unknown>).__openSuggestion) ((window as unknown as Record<string, () => void>).__openSuggestion)(); }}
         className="topbar-suggest-btn"
-        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none', cursor: 'pointer', color: '#fff', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(217,119,6,0.2)', transition: 'all 0.15s' }}
-        onMouseOver={e => { (e.currentTarget as HTMLElement).style.opacity = '0.9'; }}
-        onMouseOut={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}>
+        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, background: '#fff', border: '1.5px solid #edf2f7', cursor: 'pointer', color: '#64748b', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', transition: 'all 0.15s' }}
+        onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#d97706'; el.style.color = '#d97706'; el.style.background = '#fffbeb'; }}
+        onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.color = '#64748b'; el.style.background = '#fff'; }}>
         <Lightbulb size={13} /> Suggestion
       </button>
 
