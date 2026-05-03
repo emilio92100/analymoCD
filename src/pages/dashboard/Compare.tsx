@@ -428,18 +428,26 @@ export default function Compare() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Header compact */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-        <p style={{ fontSize: 13, color: '#94a3b8', margin: 0 }}>Cliquez sur vos biens pour lancer une comparaison</p>
+      {/* Header banner */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 42, height: 42, borderRadius: 11, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <GitCompare size={20} style={{ color: '#2a7d9c' }} />
+          </div>
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0 }}>Comparer mes biens</h2>
+            <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>Sélectionnez 2 ou 3 biens pour lancer une comparaison détaillée</p>
+          </div>
+        </div>
         {/* Stepper dots */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 12, color: '#94a3b8' }}>Sélection :</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+          <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>Sélection</span>
           <div style={{ display: 'flex', gap: 5 }}>
             {Array.from({ length: maxSelect }).map((_, i) => (
               <div key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: i < selected.length ? '#2a7d9c' : 'transparent', border: i < selected.length ? '2px solid #2a7d9c' : '2px solid #cbd5e1', transition: 'all 0.2s' }} />
             ))}
           </div>
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#2a7d9c' }}>{selected.length}/{maxSelect}</span>
+          <span style={{ fontSize: 13, fontWeight: 800, color: '#2a7d9c' }}>{selected.length}/{maxSelect}</span>
         </div>
       </div>
 
