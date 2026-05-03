@@ -433,7 +433,7 @@ export default function AdminPage() {
                 const Icon = tab.icon; const active = activeTab === tab.id;
                 return (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, border: 'none', background: active ? '#f0f7fb' : 'transparent', color: active ? '#0c447c' : '#334155', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s', position: 'relative' as const, width: '100%' }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, border: 'none', background: active ? '#d0e8f0' : 'transparent', color: active ? '#0c447c' : '#334155', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s', position: 'relative' as const, width: '100%' }}>
                     <Icon size={14} style={{ flexShrink: 0, color: active ? '#2a7d9c' : '#94a3b8' }} />
                     <span style={{ flex: 1 }}>{tab.label}</span>
                     {tab.badge ? <span style={{ background: '#f0a500', color: '#fff', borderRadius: 100, fontSize: 10, fontWeight: 800, padding: '1px 6px', minWidth: 18, textAlign: 'center' as const }}>{tab.badge}</span> : null}
@@ -455,7 +455,7 @@ export default function AdminPage() {
                 const Icon = tab.icon; const active = activeTab === tab.id;
                 return (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, border: 'none', background: active ? '#f5f3ff' : 'transparent', color: active ? '#3C3489' : '#334155', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s', position: 'relative' as const, width: '100%' }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, border: 'none', background: active ? '#ddd6fe' : 'transparent', color: active ? '#3C3489' : '#334155', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s', position: 'relative' as const, width: '100%' }}>
                     <Icon size={14} style={{ flexShrink: 0, color: active ? '#7c3aed' : '#94a3b8' }} />
                     <span style={{ flex: 1 }}>{tab.label}</span>
                     {tab.badge ? <span style={{ background: '#f0a500', color: '#fff', borderRadius: 100, fontSize: 10, fontWeight: 800, padding: '1px 6px', minWidth: 18, textAlign: 'center' as const }}>{tab.badge}</span> : null}
@@ -477,7 +477,7 @@ export default function AdminPage() {
                 const Icon = tab.icon; const active = activeTab === tab.id;
                 return (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, border: 'none', background: active ? '#f0fdf4' : 'transparent', color: active ? '#166534' : '#334155', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s', position: 'relative' as const, width: '100%' }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, border: 'none', background: active ? '#bbf7d0' : 'transparent', color: active ? '#166534' : '#334155', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s', position: 'relative' as const, width: '100%' }}>
                     <Icon size={14} style={{ flexShrink: 0, color: active ? '#16a34a' : '#94a3b8' }} />
                     <span style={{ flex: 1 }}>{tab.label}</span>
                     {tab.badge ? <span style={{ background: '#f0a500', color: '#fff', borderRadius: 100, fontSize: 10, fontWeight: 800, padding: '1px 6px', minWidth: 18, textAlign: 'center' as const }}>{tab.badge}</span> : null}
@@ -499,7 +499,7 @@ export default function AdminPage() {
                 const Icon = tab.icon; const active = activeTab === tab.id;
                 return (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, border: 'none', background: active ? '#fffbeb' : 'transparent', color: active ? '#92400e' : '#334155', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s', position: 'relative' as const, width: '100%' }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, border: 'none', background: active ? '#fde68a' : 'transparent', color: active ? '#92400e' : '#334155', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s', position: 'relative' as const, width: '100%' }}>
                     <Icon size={14} style={{ flexShrink: 0, color: active ? '#d97706' : '#94a3b8' }} />
                     <span style={{ flex: 1 }}>{tab.label}</span>
                     {tab.badge ? <span style={{ background: '#f0a500', color: '#fff', borderRadius: 100, fontSize: 10, fontWeight: 800, padding: '1px 6px', minWidth: 18, textAlign: 'center' as const }}>{tab.badge}</span> : null}
@@ -521,7 +521,7 @@ export default function AdminPage() {
                 const Icon = tab.icon; const active = activeTab === tab.id;
                 return (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, border: 'none', background: active ? '#fef3c7' : 'transparent', color: active ? '#854F0B' : '#334155', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s', position: 'relative' as const, width: '100%' }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, border: 'none', background: active ? '#fcd34d' : 'transparent', color: active ? '#854F0B' : '#334155', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s', position: 'relative' as const, width: '100%' }}>
                     <Icon size={14} style={{ flexShrink: 0, color: active ? '#f59e0b' : '#94a3b8' }} />
                     <span style={{ flex: 1 }}>{tab.label}</span>
                     {tab.badge ? <span style={{ background: '#f0a500', color: '#fff', borderRadius: 100, fontSize: 10, fontWeight: 800, padding: '1px 6px', minWidth: 18, textAlign: 'center' as const }}>{tab.badge}</span> : null}
@@ -543,7 +543,7 @@ export default function AdminPage() {
                 const Icon = tab.icon; const active = activeTab === tab.id;
                 return (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, border: 'none', background: active ? '#f1f5f9' : 'transparent', color: active ? '#334155' : '#334155', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s', position: 'relative' as const, width: '100%' }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, border: 'none', background: active ? '#cbd5e1' : 'transparent', color: active ? '#334155' : '#334155', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s', position: 'relative' as const, width: '100%' }}>
                     <Icon size={14} style={{ flexShrink: 0, color: active ? '#64748b' : '#94a3b8' }} />
                     <span style={{ flex: 1 }}>{tab.label}</span>
                     {tab.badge ? <span style={{ background: '#f0a500', color: '#fff', borderRadius: 100, fontSize: 10, fontWeight: 800, padding: '1px 6px', minWidth: 18, textAlign: 'center' as const }}>{tab.badge}</span> : null}
