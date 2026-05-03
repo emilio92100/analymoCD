@@ -156,30 +156,6 @@ export async function createAnalyse(
   return data;
 }
 
-/* ─── Sauvegarder le résultat de l'aperçu ──────── */
-export async function updateApercuResult(
-  id: string,
-  apercu: Record<string, unknown>,
-  title: string,
-  address: string | null
-): Promise<boolean> {
-  const { error } = await supabase
-    .from('analyses')
-    .update({
-      status: 'completed',
-      apercu,
-      title,
-      address,
-    })
-    .eq('id', id);
-
-  if (error) {
-    console.error('Erreur updateApercuResult:', error.message);
-    return false;
-  }
-  return true;
-}
-
 /* ─── Mettre à jour une analyse avec le résultat complet ── */
 export async function updateAnalyseResult(
   id: string,
@@ -218,20 +194,6 @@ export async function updateAnalyseResult(
 
   if (error) {
     console.error('Erreur updateAnalyseResult:', error.message);
-    return false;
-  }
-  return true;
-}
-
-/* ─── Débloquer un aperçu après paiement ─────── */
-export async function debloquerApercu(id: string): Promise<boolean> {
-  const { error } = await supabase
-    .from('analyses')
-    .update({ paid: true })
-    .eq('id', id);
-
-  if (error) {
-    console.error('Erreur debloquerApercu:', error.message);
     return false;
   }
   return true;
