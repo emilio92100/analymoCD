@@ -322,28 +322,31 @@ function TopbarPro({ onMenuClick, title, proProfile, unreadCount, notifications,
                   <p style={{ fontSize: 12.5, color: '#94a3b8', margin: 0 }}>Aucune notification</p>
                 </div>
               ) : (
-                notifications.slice(0, 10).map(n => (
+                notifications.slice(0, 10).map(n => {
+                  const isAnalysis = !!n.analysisId;
+                  return (
                   <button key={n.id}
-                    onClick={() => { setBellOpen(false); if (onClickNotification) onClickNotification(n.analysisId); }}
+                    onClick={() => { setBellOpen(false); if (isAnalysis && onClickNotification) onClickNotification(n.analysisId); }}
                     style={{
                       width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
                       background: n.read ? '#fff' : '#f0f7fb', border: 'none', borderBottom: '1px solid #f0f5f9',
-                      cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.1s',
+                      cursor: isAnalysis ? 'pointer' : 'default', textAlign: 'left' as const, transition: 'all 0.1s',
                     }}
                     onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#f8fafc'; }}
                     onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = n.read ? '#fff' : '#f0f7fb'; }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <CheckCircle size={15} style={{ color: '#16a34a' }} />
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: isAnalysis ? 'rgba(42,125,156,0.08)' : '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {isAnalysis ? <CheckCircle size={15} style={{ color: '#16a34a' }} /> : <Bell size={15} style={{ color: '#d97706' }} />}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12.5, fontWeight: n.read ? 500 : 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
-                        Rapport prêt
+                        {isAnalysis ? 'Rapport prêt' : n.title}
                       </div>
-                      <div style={{ fontSize: 11, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{n.title}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{isAnalysis ? n.title : (n as unknown as Record<string, string>).message || ''}</div>
                     </div>
                     <span style={{ fontSize: 10, color: '#94a3b8', flexShrink: 0 }}>{fmtDate(n.createdAt)}</span>
                   </button>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
@@ -4415,7 +4418,7 @@ export default function DashboardProPage() {
         <TopbarPro onMenuClick={() => setMobileOpen(true)} title={title} proProfile={proProfile}
           unreadCount={unreadNotifCount} notifications={[
             ...notifications,
-            ...dbNotifications.map(n => ({ id: n.id, analysisId: '', title: n.title, createdAt: n.created_at, read: n.read })),
+            ...dbNotifications.map(n => ({ id: n.id, analysisId: '', title: n.title, message: n.message, createdAt: n.created_at, read: n.read })),
           ]} onMarkAllRead={markAllRead}
           onClickNotification={(id) => { window.location.href = `/rapport?id=${id}`; }} />
         <main className="dashboard-main" style={{ flex: 1, padding: '28px 24px', overflowX: 'hidden' }}>
