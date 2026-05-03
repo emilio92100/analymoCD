@@ -133,7 +133,7 @@ function ConfirmModal({ action, onClose }: { action: ConfirmAction; onClose: () 
         <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.65, margin: 0 }}>{action.message}</p>
       </div>
       <div style={{ display: 'flex', gap: 10 }}>
-        <button onClick={onClose} style={{ flex: 1, padding: '10px', borderRadius: 10, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#64748b', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Annuler</button>
+        <button onClick={onClose} style={{ flex: 1, padding: '10px', borderRadius: 10, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#64748b', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>Annuler</button>
         <button onClick={async () => { setLoading(true); await action.onConfirm(); setLoading(false); onClose(); }} disabled={loading}
           style={{ flex: 1, padding: '10px', borderRadius: 10, background: c.bg, border: `1.5px solid ${c.border}`, color: c.icon, fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: loading ? 0.7 : 1 }}>
           {loading ? 'En cours...' : action.confirmLabel}
@@ -366,6 +366,12 @@ export default function AdminPage() {
           color: #fff;
           border-color: transparent;
         }
+
+        @keyframes adminFadeIn {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .admin-fade-in { animation: adminFadeIn 0.2s ease-out; }
       `}</style>
 
       {/* Toast */}
@@ -406,11 +412,11 @@ export default function AdminPage() {
 
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
           <button onClick={() => navigate('/dashboard')}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 9, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 9, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
             ←<span className="admin-topbar-title" style={{ display: 'inline' }}> Dashboard</span>
           </button>
           <button onClick={() => { supabase.auth.signOut(); navigate('/'); }}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 9, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 9, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>
             <LogOut size={13} /><span className="admin-topbar-title" style={{ display: 'inline' }}> Déco</span>
           </button>
         </div>
@@ -683,7 +689,7 @@ function SystemAlertsTab({ showToast }: { showToast: (msg: string) => void }) {
         <div style={{ display: 'flex', gap: 8 }}>
           {(['unresolved', 'critical', 'all'] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)}
-              style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: filter === f ? '1.5px solid #2a7d9c' : '1px solid #e2e8f0', background: filter === f ? '#f0f7fb' : '#fff', color: filter === f ? '#2a7d9c' : '#64748b' }}>
+              style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', border: filter === f ? '1.5px solid #2a7d9c' : '1px solid #e2e8f0', background: filter === f ? '#f0f7fb' : '#fff', color: filter === f ? '#2a7d9c' : '#64748b' }}>
               {f === 'unresolved' ? 'Non résolues' : f === 'critical' ? '🔴 Critiques' : 'Toutes'}
             </button>
           ))}
@@ -816,7 +822,8 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser }: { showToast:
 
   if (selectedTicket) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 200px)' }}>
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: 'easeOut' }}
+        style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 200px)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexShrink: 0, flexWrap: 'wrap' }}>
           <button onClick={() => setSelectedTicket(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 10, cursor: 'pointer', color: '#64748b', fontSize: 13, fontWeight: 700, padding: '8px 14px' }}>
             <ChevronLeft size={14} /> Retour
@@ -873,7 +880,7 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser }: { showToast:
             </button>
           </div>
         )}
-      </div>
+      </motion.div>
     );
   }
 
@@ -886,7 +893,7 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser }: { showToast:
           { id: 'resolved' as const, label: 'Résolus', count: tickets.filter((t: AdminTicket) => t.status === 'resolved').length },
         ].map(f => (
           <button key={f.id} onClick={() => setFilter(f.id)}
-            style={{ padding: '7px 14px', borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: filter === f.id ? '1.5px solid #2a7d9c' : '1px solid #edf2f7', background: filter === f.id ? '#f0f7fb' : '#fff', color: filter === f.id ? '#2a7d9c' : '#64748b' }}>
+            style={{ padding: '7px 14px', borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', border: filter === f.id ? '1.5px solid #2a7d9c' : '1px solid #edf2f7', background: filter === f.id ? '#f0f7fb' : '#fff', color: filter === f.id ? '#2a7d9c' : '#64748b' }}>
             {f.label} ({f.count})
           </button>
         ))}
@@ -896,10 +903,12 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser }: { showToast:
       ) : filtered.length === 0 ? (
         <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Aucun ticket.</div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="admin-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {filtered.map((t: AdminTicket) => (
             <button key={t.id} onClick={() => setSelectedTicket(t)}
-              style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderRadius: 14, background: '#fff', border: t.unread_by_admin ? '1.5px solid #2a7d9c' : '1px solid #edf2f7', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderRadius: 14, background: '#fff', border: t.unread_by_admin ? '1.5px solid #2a7d9c' : '1px solid #edf2f7', cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'all 0.15s' }}
+              onMouseOver={e => { (e.currentTarget as HTMLElement).style.borderColor = '#2a7d9c'; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 12px rgba(42,125,156,0.08)'; }}
+              onMouseOut={e => { (e.currentTarget as HTMLElement).style.borderColor = t.unread_by_admin ? '#2a7d9c' : '#edf2f7'; (e.currentTarget as HTMLElement).style.boxShadow = 'none'; }}>
               <div style={{ width: 36, height: 36, borderRadius: 10, background: t.status === 'open' ? '#f0f7fb' : '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 {t.status === 'open' ? <MessageSquare size={16} style={{ color: '#2a7d9c' }} /> : <CheckCircle size={16} style={{ color: '#16a34a' }} />}
               </div>
@@ -985,7 +994,7 @@ function AdminSuggestionsTab({ onGoToUser, showToast, onUnreadChange }: { onGoTo
           { id: 'archived' as const, label: 'Archivées', count: suggestions.filter(s => s.archived).length },
         ].map(f => (
           <button key={f.id} onClick={() => setFilter(f.id)}
-            style={{ padding: '7px 14px', borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: filter === f.id ? '1.5px solid #d97706' : '1px solid #edf2f7', background: filter === f.id ? '#fffbeb' : '#fff', color: filter === f.id ? '#92400e' : '#64748b' }}>
+            style={{ padding: '7px 14px', borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', border: filter === f.id ? '1.5px solid #d97706' : '1px solid #edf2f7', background: filter === f.id ? '#fffbeb' : '#fff', color: filter === f.id ? '#92400e' : '#64748b' }}>
             {f.label} ({f.count})
           </button>
         ))}
@@ -1154,7 +1163,7 @@ function BannerTab({ showToast, logAction }: { showToast: (m: string) => void; l
           </button>
           {banner && (
             <button onClick={handleDelete}
-              style={{ padding: '12px 18px', borderRadius: 11, background: '#fef2f2', border: '1.5px solid #fecaca', color: '#dc2626', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+              style={{ padding: '12px 18px', borderRadius: 11, background: '#fef2f2', border: '1.5px solid #fecaca', color: '#dc2626', fontSize: 14, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
               🗑️ Supprimer
             </button>
           )}
@@ -1685,7 +1694,7 @@ function StatsTab() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' as const, alignItems: 'center' }}>
         {periods.map(p => (
           <button key={p.id} onClick={() => setPeriod(p.id)}
-            style={{ padding: '8px 16px', borderRadius: 10, border: `1.5px solid ${period === p.id ? '#2a7d9c' : '#edf2f7'}`, background: period === p.id ? '#f0f7fb' : '#fff', color: period === p.id ? '#2a7d9c' : '#64748b', fontSize: 13, fontWeight: period === p.id ? 700 : 500, cursor: 'pointer' }}>
+            style={{ padding: '8px 16px', borderRadius: 10, border: `1.5px solid ${period === p.id ? '#2a7d9c' : '#edf2f7'}`, background: period === p.id ? '#f0f7fb' : '#fff', color: period === p.id ? '#2a7d9c' : '#64748b', fontSize: 13, fontWeight: period === p.id ? 700 : 500, cursor: 'pointer', transition: 'all 0.2s' }}>
             {p.label}
           </button>
         ))}
@@ -1700,7 +1709,7 @@ function StatsTab() {
       <div style={{ display: 'flex', gap: 6, marginBottom: 24 }}>
         {([{ id: 'all', label: 'Tout' }, { id: 'particulier', label: 'Particuliers' }, { id: 'pro', label: 'Pro' }] as const).map(s => (
           <button key={s.id} onClick={() => setSource(s.id)}
-            style={{ padding: '7px 14px', borderRadius: 10, border: `1.5px solid ${source === s.id ? '#0f2d3d' : '#edf2f7'}`, background: source === s.id ? '#0f2d3d' : '#fff', color: source === s.id ? '#fff' : '#64748b', fontSize: 12, fontWeight: source === s.id ? 700 : 500, cursor: 'pointer' }}>
+            style={{ padding: '7px 14px', borderRadius: 10, border: `1.5px solid ${source === s.id ? '#0f2d3d' : '#edf2f7'}`, background: source === s.id ? '#0f2d3d' : '#fff', color: source === s.id ? '#fff' : '#64748b', fontSize: 12, fontWeight: source === s.id ? 700 : 500, cursor: 'pointer', transition: 'all 0.2s' }}>
             {s.label}
           </button>
         ))}
@@ -2111,7 +2120,7 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
     const totalPaidPayments = userPayments.filter(p => p.status === 'completed' && p.amount > 0).length;
 
     return (
-      <div>
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: 'easeOut' }}>
         <button onClick={() => { setDetailUser(null); setUserPayments([]); setUserAnalyses([]); }} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#2a7d9c' }}>
           <ChevronLeft size={16} /> Retour à la liste
         </button>
@@ -2345,12 +2354,12 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
                   </label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <button type="button" onClick={() => setForm(f => ({ ...f, credit_quantity: Math.max(1, f.credit_quantity - 1) }))}
-                      style={{ width: 36, height: 36, borderRadius: 9, background: '#fff', border: '1.5px solid #edf2f7', color: '#475569', fontSize: 18, fontWeight: 700, cursor: 'pointer' }}>−</button>
+                      style={{ width: 36, height: 36, borderRadius: 9, background: '#fff', border: '1.5px solid #edf2f7', color: '#475569', fontSize: 18, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>−</button>
                     <input type="number" min={1} max={100} value={form.credit_quantity}
                       onChange={e => setForm(f => ({ ...f, credit_quantity: Math.max(1, Math.min(100, parseInt(e.target.value) || 1)) }))}
                       style={{ flex: 1, padding: '10px 14px', borderRadius: 9, border: '1.5px solid #edf2f7', fontSize: 14, fontWeight: 700, color: '#0f172a', outline: 'none', textAlign: 'center' as const, background: '#fff' }} />
                     <button type="button" onClick={() => setForm(f => ({ ...f, credit_quantity: Math.min(100, f.credit_quantity + 1) }))}
-                      style={{ width: 36, height: 36, borderRadius: 9, background: '#fff', border: '1.5px solid #edf2f7', color: '#475569', fontSize: 18, fontWeight: 700, cursor: 'pointer' }}>+</button>
+                      style={{ width: 36, height: 36, borderRadius: 9, background: '#fff', border: '1.5px solid #edf2f7', color: '#475569', fontSize: 18, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>+</button>
                   </div>
                   <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, fontStyle: 'italic' as const }}>
                     Max 100 crédits par ajout
@@ -2393,7 +2402,7 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
             </Modal>
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
     );
   }
 
@@ -2405,15 +2414,15 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
           <p style={{ fontSize: 13, color: '#94a3b8' }}>{users.length} comptes</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={doExport} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#374151', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          <button onClick={doExport} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#374151', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
             <Download size={14} /> CSV
           </button>
           <button onClick={() => { setForm(f => ({ ...f, email: '', name: '' })); setFeedback(''); setModal('invite'); }}
-            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#374151', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#374151', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
             <Send size={14} /> Inviter
           </button>
           <button onClick={() => { setForm(f => ({ ...f, email: '', password: '', name: '' })); setFeedback(''); setModal('create'); }}
-            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
             <UserPlus size={14} /> Créer
           </button>
         </div>
@@ -2428,7 +2437,7 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
           { id: 'pro', label: `🏢 Pro (${users.filter(u => u.role === 'pro').length})` },
         ] as const).map(t => (
           <button key={t.id} onClick={() => setFilterTab(t.id)}
-            style={{ padding: '7px 14px', borderRadius: 10, border: `1.5px solid ${filterTab === t.id ? '#2a7d9c' : '#edf2f7'}`, background: filterTab === t.id ? '#f0f7fb' : '#fff', color: filterTab === t.id ? '#2a7d9c' : '#64748b', fontSize: 12, fontWeight: filterTab === t.id ? 700 : 500, cursor: 'pointer' }}>
+            style={{ padding: '7px 14px', borderRadius: 10, border: `1.5px solid ${filterTab === t.id ? '#2a7d9c' : '#edf2f7'}`, background: filterTab === t.id ? '#f0f7fb' : '#fff', color: filterTab === t.id ? '#2a7d9c' : '#64748b', fontSize: 12, fontWeight: filterTab === t.id ? 700 : 500, cursor: 'pointer', transition: 'all 0.2s' }}>
             {t.label}
           </button>
         ))}
@@ -2557,12 +2566,12 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
                 </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <button type="button" onClick={() => setForm(f => ({ ...f, credit_quantity: Math.max(1, f.credit_quantity - 1) }))}
-                    style={{ width: 36, height: 36, borderRadius: 9, background: '#fff', border: '1.5px solid #edf2f7', color: '#475569', fontSize: 18, fontWeight: 700, cursor: 'pointer' }}>−</button>
+                    style={{ width: 36, height: 36, borderRadius: 9, background: '#fff', border: '1.5px solid #edf2f7', color: '#475569', fontSize: 18, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>−</button>
                   <input type="number" min={1} max={100} value={form.credit_quantity}
                     onChange={e => setForm(f => ({ ...f, credit_quantity: Math.max(1, Math.min(100, parseInt(e.target.value) || 1)) }))}
                     style={{ flex: 1, padding: '10px 14px', borderRadius: 9, border: '1.5px solid #edf2f7', fontSize: 14, fontWeight: 700, color: '#0f172a', outline: 'none', textAlign: 'center' as const, background: '#fff' }} />
                   <button type="button" onClick={() => setForm(f => ({ ...f, credit_quantity: Math.min(100, f.credit_quantity + 1) }))}
-                    style={{ width: 36, height: 36, borderRadius: 9, background: '#fff', border: '1.5px solid #edf2f7', color: '#475569', fontSize: 18, fontWeight: 700, cursor: 'pointer' }}>+</button>
+                    style={{ width: 36, height: 36, borderRadius: 9, background: '#fff', border: '1.5px solid #edf2f7', color: '#475569', fontSize: 18, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>+</button>
                 </div>
                 <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, fontStyle: 'italic' as const }}>
                   Max 100 crédits par ajout
@@ -2713,7 +2722,7 @@ function AnalysesTab({ onOpenUser, focusAnalysisId, onFocusAnalysisHandled }: {
           <p style={{ fontSize: 13, color: '#94a3b8' }}>{analyses.length} analyses · cliquez une ligne pour voir le détail</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={doExport} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#374151', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          <button onClick={doExport} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#374151', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
             <Download size={14} /> CSV
           </button>
         </div>
@@ -3048,13 +3057,13 @@ function MessagesTab({ onConfirm, showToast, onReadChange }: { onConfirm: (a: Co
         <div style={{ display: 'flex', gap: 8 }}>
           {unreadCount > 0 && (
             <button onClick={markAllRead}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, background: '#f0fdf4', border: '1.5px solid #d1fae5', color: '#16a34a', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, background: '#f0fdf4', border: '1.5px solid #d1fae5', color: '#16a34a', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
               <CheckCircle size={13} /> Tout marquer lu
             </button>
           )}
           {(['unread', 'all'] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)}
-              style={{ padding: '8px 14px', borderRadius: 10, border: `1.5px solid ${filter === f ? '#2a7d9c' : '#edf2f7'}`, background: filter === f ? '#f0f7fb' : '#fff', color: filter === f ? '#2a7d9c' : '#64748b', fontSize: 12, fontWeight: filter === f ? 700 : 500, cursor: 'pointer' }}>
+              style={{ padding: '8px 14px', borderRadius: 10, border: `1.5px solid ${filter === f ? '#2a7d9c' : '#edf2f7'}`, background: filter === f ? '#f0f7fb' : '#fff', color: filter === f ? '#2a7d9c' : '#64748b', fontSize: 12, fontWeight: filter === f ? 700 : 500, cursor: 'pointer', transition: 'all 0.2s' }}>
               {f === 'unread' ? `Non lus (${unreadCount})` : 'Tous'}
             </button>
           ))}
@@ -3105,7 +3114,7 @@ function MessagesTab({ onConfirm, showToast, onReadChange }: { onConfirm: (a: Co
                 <Send size={13} /> Répondre
               </a>
               <button onClick={() => onConfirm({ title: 'Supprimer le message', message: `Supprimer le message de ${selected.name} ?`, confirmLabel: 'Supprimer', variant: 'danger', onConfirm: async () => { await supabase.from('contact_messages').delete().eq('id', selected.id); setSelected(null); loadMessages(); showToast('Message supprimé'); } })}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
                 <Trash2 size={13} /> Supprimer
               </button>
             </div>
@@ -3185,7 +3194,7 @@ function PromosTab({ onConfirm, showToast, logAction }: { onConfirm: (a: Confirm
           <p style={{ fontSize: 13, color: '#94a3b8' }}>{promos.length} code{promos.length > 1 ? 's' : ''} créé{promos.length > 1 ? 's' : ''}</p>
         </div>
         <button onClick={() => { setForm(f => ({ ...f, code: generateCode() })); setModal(true); }}
-          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '11px 18px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '11px 18px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
           <Plus size={15} /> Créer un code
         </button>
       </div>
@@ -3223,11 +3232,11 @@ function PromosTab({ onConfirm, showToast, logAction }: { onConfirm: (a: Confirm
                 <div>{promo.active ? <Badge color="#16a34a" bg="#f0fdf4">Actif</Badge> : <Badge color="#94a3b8" bg="#f8fafc">Inactif</Badge>}</div>
                 <div style={{ display: 'flex', gap: 5 }}>
                   <button onClick={() => toggleActive(promo)} title={promo.active ? 'Désactiver' : 'Activer'}
-                    style={{ padding: '5px 8px', borderRadius: 7, background: promo.active ? '#fffbeb' : '#f0fdf4', border: `1px solid ${promo.active ? '#fde68a' : '#d1fae5'}`, cursor: 'pointer' }}>
+                    style={{ padding: '5px 8px', borderRadius: 7, background: promo.active ? '#fffbeb' : '#f0fdf4', border: `1px solid ${promo.active ? '#fde68a' : '#d1fae5'}`, cursor: 'pointer', transition: 'all 0.2s' }}>
                     {promo.active ? <EyeOff size={12} color="#f0a500" /> : <Eye size={12} color="#16a34a" />}
                   </button>
                   <button onClick={() => onConfirm({ title: 'Supprimer le code', message: `Supprimer le code ${promo.code} définitivement ?`, confirmLabel: 'Supprimer', variant: 'danger', onConfirm: async () => { await supabase.from('promo_codes').delete().eq('id', promo.id); await logAction('Code supprimé', promo.code); loadPromos(); showToast('Code supprimé'); } })}
-                    style={{ padding: '5px 8px', borderRadius: 7, background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer' }}>
+                    style={{ padding: '5px 8px', borderRadius: 7, background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer', transition: 'all 0.2s' }}>
                     <Trash2 size={12} color="#dc2626" />
                   </button>
                 </div>
@@ -3245,11 +3254,11 @@ function PromosTab({ onConfirm, showToast, logAction }: { onConfirm: (a: Confirm
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => toggleActive(promo)}
-                      style={{ padding: '8px 12px', borderRadius: 8, background: promo.active ? '#fffbeb' : '#f0fdf4', border: `1px solid ${promo.active ? '#fde68a' : '#d1fae5'}`, cursor: 'pointer' }}>
+                      style={{ padding: '8px 12px', borderRadius: 8, background: promo.active ? '#fffbeb' : '#f0fdf4', border: `1px solid ${promo.active ? '#fde68a' : '#d1fae5'}`, cursor: 'pointer', transition: 'all 0.2s' }}>
                       {promo.active ? <EyeOff size={14} color="#f0a500" /> : <Eye size={14} color="#16a34a" />}
                     </button>
                     <button onClick={() => onConfirm({ title: 'Supprimer le code', message: `Supprimer le code ${promo.code} définitivement ?`, confirmLabel: 'Supprimer', variant: 'danger', onConfirm: async () => { await supabase.from('promo_codes').delete().eq('id', promo.id); await logAction('Code supprimé', promo.code); loadPromos(); showToast('Code supprimé'); } })}
-                      style={{ padding: '8px 12px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer' }}>
+                      style={{ padding: '8px 12px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer', transition: 'all 0.2s' }}>
                       <Trash2 size={14} color="#dc2626" />
                     </button>
                   </div>
@@ -3332,7 +3341,7 @@ function PromosTab({ onConfirm, showToast, logAction }: { onConfirm: (a: Confirm
               </div>
 
               <button onClick={handleCreate}
-                style={{ padding: '13px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                style={{ padding: '13px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
                 Créer le code promo
               </button>
             </div>
@@ -3511,7 +3520,7 @@ function DemandesProTab({ onConfirm, showToast, onReadChange, onCreatePro }: { o
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
           {[{ id: 'all', label: 'Tous' }, { id: 'agent', label: '🏢 Agents' }, { id: 'investisseur', label: '📈 Invest.' }, { id: 'notaire', label: '⚖️ Notaires' }, { id: 'autre', label: '💼 Autres' }].map(f => (
             <button key={f.id} onClick={() => setFilterType(f.id)}
-              style={{ padding: '7px 12px', borderRadius: 10, border: `1.5px solid ${filterType === f.id ? '#2a7d9c' : '#edf2f7'}`, background: filterType === f.id ? '#f0f7fb' : '#fff', color: filterType === f.id ? '#2a7d9c' : '#64748b', fontSize: 12, fontWeight: filterType === f.id ? 700 : 500, cursor: 'pointer' }}>
+              style={{ padding: '7px 12px', borderRadius: 10, border: `1.5px solid ${filterType === f.id ? '#2a7d9c' : '#edf2f7'}`, background: filterType === f.id ? '#f0f7fb' : '#fff', color: filterType === f.id ? '#2a7d9c' : '#64748b', fontSize: 12, fontWeight: filterType === f.id ? 700 : 500, cursor: 'pointer', transition: 'all 0.2s' }}>
               {f.label}
             </button>
           ))}
@@ -3588,12 +3597,12 @@ function DemandesProTab({ onConfirm, showToast, onReadChange, onCreatePro }: { o
                 </a>
               )}
               <button onClick={() => deleteDemande(selected)}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
                 <Trash2 size={13} /> Supprimer
               </button>
               {onCreatePro && !selected.converted_profile_id && (
                 <button onClick={() => onCreatePro({ ...selected, contact_pro_id: selected.id })}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, background: '#0f2d3d', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, background: '#0f2d3d', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
                   <UserPlus size={13} /> Créer compte pro
                 </button>
               )}
@@ -3825,7 +3834,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
           <p style={{ fontSize: 13, color: '#94a3b8' }}>{clients.length} client{clients.length > 1 ? 's' : ''} pro</p>
         </div>
         <button onClick={() => { setForm({ full_name: '', email: '', telephone: '', pro_profile_type: 'agent', pro_company_name: '', pro_company_address: '', pro_siret: '', pro_ville: '', pro_network: '', pro_notes_admin: '', pro_recommended_plan: '', credits_document: '0', credits_complete: '0', contact_pro_id: '' }); setCreateError(''); setShowCreate(true); }}
-          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
           <UserPlus size={14} /> Créer un client pro
         </button>
       </div>
@@ -3833,7 +3842,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       {/* Liste des clients */}
       {selected ? (
         /* ── Fiche client détaillée ── */
-        <div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: 'easeOut' }}>
           <button onClick={() => setSelected(null)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: 13, fontWeight: 600, marginBottom: 16, padding: 0 }}>
             <ChevronLeft size={14} /> Retour à la liste
           </button>
@@ -3864,15 +3873,15 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                   </button>
                 )}
                 <button onClick={() => setShowDeleteConfirm(true)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
                   <Trash2 size={12} /> Supprimer
                 </button>
                 <button onClick={() => { setShowResetPwd(true); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
                   🔑 Reset MDP
                 </button>
                 <button onClick={() => { setNewEmail(selected.email || ''); setShowUpdateEmail(true); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: '#f0f7fb', border: '1px solid #c7dde8', color: '#2a7d9c', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: '#f0f7fb', border: '1px solid #c7dde8', color: '#2a7d9c', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
                   ✉️ Modifier email
                 </button>
               </div>
@@ -4166,7 +4175,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button onClick={() => setShowDeleteConfirm(false)}
-                    style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 14, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>
+                    style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 14, fontWeight: 700, color: '#64748b', cursor: 'pointer', transition: 'all 0.2s' }}>
                     Annuler
                   </button>
                   <button onClick={async () => {
@@ -4206,7 +4215,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 <p style={{ fontSize: 13, color: '#94a3b8', margin: '0 0 16px' }}>Un email de réinitialisation sera envoyé à <strong>{selected.email}</strong>. Le client pourra choisir son nouveau mot de passe.</p>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button onClick={() => setShowResetPwd(false)}
-                    style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 13, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Annuler</button>
+                    style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 13, fontWeight: 700, color: '#64748b', cursor: 'pointer', transition: 'all 0.2s' }}>Annuler</button>
                   <button onClick={async () => {
                     const { error } = await supabase.auth.resetPasswordForEmail(selected.email!, { redirectTo: 'https://verimo.fr/auth/reset-password' });
                     if (error) { showToast('Erreur: ' + error.message); return; }
@@ -4214,7 +4223,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                     showToast('Email de réinitialisation envoyé');
                     setShowResetPwd(false);
                   }}
-                    style={{ flex: 1, padding: '11px', borderRadius: 10, border: 'none', background: '#2a7d9c', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer' }}>📧 Envoyer l'email</button>
+                    style={{ flex: 1, padding: '11px', borderRadius: 10, border: 'none', background: '#2a7d9c', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer', transition: 'all 0.2s' }}>📧 Envoyer l'email</button>
                 </div>
               </div>
             </div>
@@ -4231,7 +4240,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 <p style={{ fontSize: 11, color: '#d97706', margin: '0 0 16px' }}>⚠️ L'email sera modifié immédiatement dans le système. Le client devra utiliser ce nouvel email pour se connecter.</p>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button onClick={() => setShowUpdateEmail(false)}
-                    style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 13, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>Annuler</button>
+                    style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 13, fontWeight: 700, color: '#64748b', cursor: 'pointer', transition: 'all 0.2s' }}>Annuler</button>
                   <button onClick={async () => {
                     if (!newEmail.includes('@')) { showToast('Email invalide'); return; }
                     const { data: { session } } = await supabase.auth.getSession();
@@ -4246,12 +4255,12 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                     showToast('Email modifié');
                     setShowUpdateEmail(false);
                   }}
-                    style={{ flex: 1, padding: '11px', borderRadius: 10, border: 'none', background: '#2a7d9c', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer' }}>Modifier</button>
+                    style={{ flex: 1, padding: '11px', borderRadius: 10, border: 'none', background: '#2a7d9c', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer', transition: 'all 0.2s' }}>Modifier</button>
                 </div>
               </div>
             </div>
           )}
-        </div>
+        </motion.div>
       ) : (
         /* ── Liste ── */
         <div>
@@ -4259,7 +4268,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
           <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
             {([{ id: 'all', label: 'Tous' }, { id: 'active', label: '🟢 Actifs' }, { id: 'inactive', label: 'Inscrits' }] as const).map(f => (
               <button key={f.id} onClick={() => setProFilter(f.id)}
-                style={{ padding: '7px 14px', borderRadius: 10, border: `1.5px solid ${proFilter === f.id ? '#0f2d3d' : '#edf2f7'}`, background: proFilter === f.id ? '#0f2d3d' : '#fff', color: proFilter === f.id ? '#fff' : '#64748b', fontSize: 12, fontWeight: proFilter === f.id ? 700 : 500, cursor: 'pointer' }}>
+                style={{ padding: '7px 14px', borderRadius: 10, border: `1.5px solid ${proFilter === f.id ? '#0f2d3d' : '#edf2f7'}`, background: proFilter === f.id ? '#0f2d3d' : '#fff', color: proFilter === f.id ? '#fff' : '#64748b', fontSize: 12, fontWeight: proFilter === f.id ? 700 : 500, cursor: 'pointer', transition: 'all 0.2s' }}>
                 {f.label} {f.id === 'active' ? `(${clients.filter(c => proSubscriptions.has(c.id)).length})` : f.id === 'inactive' ? `(${clients.filter(c => !proSubscriptions.has(c.id)).length})` : `(${clients.length})`}
               </button>
             ))}
@@ -4519,7 +4528,7 @@ function PaymentsTab({ onOpenUser, showToast }: { onOpenUser: (userId: string) =
           <p style={{ fontSize: 13, color: '#94a3b8' }}>Historique détaillé — Particuliers et Pro</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={doExport} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#374151', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          <button onClick={doExport} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#374151', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
             <Download size={14} /> CSV
           </button>
         </div>
@@ -4534,7 +4543,7 @@ function PaymentsTab({ onOpenUser, showToast }: { onOpenUser: (userId: string) =
           { id: '90j', label: '90 jours' },
         ] as const).map(p => (
           <button key={p.id} onClick={() => setPeriod(p.id)}
-            style={{ padding: '7px 14px', borderRadius: 10, border: `1.5px solid ${period === p.id ? '#2a7d9c' : '#edf2f7'}`, background: period === p.id ? '#f0f7fb' : '#fff', color: period === p.id ? '#2a7d9c' : '#64748b', fontSize: 12, fontWeight: period === p.id ? 700 : 500, cursor: 'pointer' }}>
+            style={{ padding: '7px 14px', borderRadius: 10, border: `1.5px solid ${period === p.id ? '#2a7d9c' : '#edf2f7'}`, background: period === p.id ? '#f0f7fb' : '#fff', color: period === p.id ? '#2a7d9c' : '#64748b', fontSize: 12, fontWeight: period === p.id ? 700 : 500, cursor: 'pointer', transition: 'all 0.2s' }}>
             {p.label}
           </button>
         ))}
@@ -4548,7 +4557,7 @@ function PaymentsTab({ onOpenUser, showToast }: { onOpenUser: (userId: string) =
           { id: 'pro', label: 'Pro' },
         ] as const).map(s => (
           <button key={s.id} onClick={() => setSourceFilter(s.id)}
-            style={{ padding: '7px 14px', borderRadius: 10, border: `1.5px solid ${sourceFilter === s.id ? '#0f2d3d' : '#edf2f7'}`, background: sourceFilter === s.id ? '#0f2d3d' : '#fff', color: sourceFilter === s.id ? '#fff' : '#64748b', fontSize: 12, fontWeight: sourceFilter === s.id ? 700 : 500, cursor: 'pointer' }}>
+            style={{ padding: '7px 14px', borderRadius: 10, border: `1.5px solid ${sourceFilter === s.id ? '#0f2d3d' : '#edf2f7'}`, background: sourceFilter === s.id ? '#0f2d3d' : '#fff', color: sourceFilter === s.id ? '#fff' : '#64748b', fontSize: 12, fontWeight: sourceFilter === s.id ? 700 : 500, cursor: 'pointer', transition: 'all 0.2s' }}>
             {s.label}
           </button>
         ))}
@@ -4563,7 +4572,7 @@ function PaymentsTab({ onOpenUser, showToast }: { onOpenUser: (userId: string) =
           { id: 'refundable', label: '⏱ Remboursables (< 14j)', color: '#d97706' },
         ] as const).map(f => (
           <button key={f.id} onClick={() => setFilter(f.id)}
-            style={{ padding: '8px 14px', borderRadius: 10, border: `1.5px solid ${filter === f.id ? f.color : '#edf2f7'}`, background: filter === f.id ? `${f.color}12` : '#fff', color: filter === f.id ? f.color : '#64748b', fontSize: 12, fontWeight: filter === f.id ? 700 : 500, cursor: 'pointer' }}>
+            style={{ padding: '8px 14px', borderRadius: 10, border: `1.5px solid ${filter === f.id ? f.color : '#edf2f7'}`, background: filter === f.id ? `${f.color}12` : '#fff', color: filter === f.id ? f.color : '#64748b', fontSize: 12, fontWeight: filter === f.id ? 700 : 500, cursor: 'pointer', transition: 'all 0.2s' }}>
             {f.label}
           </button>
         ))}
@@ -4785,7 +4794,7 @@ function GlobalSearchModal({ query, setQuery, onClose, onNavigate }: {
             style={{ flex: 1, border: 'none', outline: 'none', fontSize: 16, fontFamily: 'inherit', color: '#0f172a', background: 'transparent' }}
           />
           {searching && <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid #e2e8f0', borderTopColor: '#2a7d9c', animation: 'spin 0.8s linear infinite' }} />}
-          <button onClick={onClose} style={{ background: '#f1f5f9', border: 'none', padding: '4px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>ESC</button>
+          <button onClick={onClose} style={{ background: '#f1f5f9', border: 'none', padding: '4px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, color: '#64748b', cursor: 'pointer', transition: 'all 0.2s' }}>ESC</button>
         </div>
 
         {/* Results */}
