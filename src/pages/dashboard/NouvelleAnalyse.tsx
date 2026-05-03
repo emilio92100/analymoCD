@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, ShieldCheck, Upload, CheckCircle, AlertTriangle, ChevronLeft, Sparkles, ArrowRight, Lock, Download, Home, Building2, HelpCircle } from 'lucide-react';
 import { lancerAnalyseEdge, type AnalyseProgress } from '../../lib/analyse-client';
 import DocumentRenderer from './DocumentRenderer';
-import { createAnalyse, createApercu, markAnalyseFailed, markFreePreviewUsed, unmarkFreePreviewUsed, checkFreePreviewUsedSync, type TypeBien } from '../../lib/analyses';
+import { createAnalyse, markAnalyseFailed, type TypeBien } from '../../lib/analyses';
 import { supabase } from '../../lib/supabase';
 import { useCredits, type Credits } from '../../hooks/useCredits';
 
@@ -14,12 +14,6 @@ const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 const ACCEPTED_TYPE = 'application/pdf';
 
 type FileError = { name: string; reason: string };
-
-type ApercuResult = {
-  titre: string;
-  recommandation_courte: string;
-  points_vigilance: string[];
-};
 
 type AnalyseResult = {
   titre: string;
@@ -97,7 +91,7 @@ function PdfButtonInline() {
 export default function NouvelleAnalyse() {
   const { credits, deductCredit } = useCredits();
   const [searchParams] = useSearchParams();
-  const [step, setStep] = useState<'choice' | 'folder_select' | 'type_bien' | 'profil' | 'upload' | 'analyse' | 'apercu' | 'result'>('choice');
+  const [step, setStep] = useState<'choice' | 'folder_select' | 'type_bien' | 'profil' | 'upload' | 'analyse' | 'result'>('choice');
   const [type, setType] = useState<'document' | 'complete' | null>(null);
   const [typeBienDeclare, setTypeBienDeclare] = useState<TypeBien | null>(null);
   const [files, setFiles] = useState<File[]>([]);
@@ -108,14 +102,6 @@ export default function NouvelleAnalyse() {
   const [_progressMsg, setProgressMsg] = useState('');
   const [_progressDoc, setProgressDoc] = useState({ current: 0, total: 0 });
   const [result, setResult] = useState<AnalyseResult | null>(null);
-  const [apercu, setApercu] = useState<ApercuResult | null>(null);
-  const [apercuId, setApercuId] = useState<string | null>(null);
-  const [freePreviewUsed, setFreePreviewUsed] = useState<boolean>(() => {
-    // Initialement on suppose "true" (pas de bandeau) pour éviter le flash chez les pros.
-    // Le useEffect ci-dessous remet à false si l'utilisateur est un particulier
-    // qui n'a pas encore utilisé son aperçu gratuit.
-    return checkFreePreviewUsedSync() || true; // toujours true au mount
-  });
   const [error, setError] = useState('');
   const [analyseError, setAnalyseError] = useState<{ message: string; creditType?: string } | null>(null);
   const [isAnalysing, setIsAnalysing] = useState(false);
@@ -148,8 +134,6 @@ export default function NouvelleAnalyse() {
       if (!user) {
         if (!cancelled) {
           setUserRole('particulier');
-          // Pour un user non connecté ou particulier, on revient sur la valeur localStorage
-          setFreePreviewUsed(checkFreePreviewUsedSync());
         }
         return;
       }
@@ -161,8 +145,6 @@ export default function NouvelleAnalyse() {
       setUserRole(role);
 
       if (role === 'pro') {
-        // Pour un pro, pas de bandeau d'analyse offerte (logique particulier)
-        setFreePreviewUsed(true);
         // Charger les crédits pro (abo + unitaires) via la fonction PG
         try {
           const { data: balance } = await supabase.rpc('get_pro_credits_balance', { p_user_id: user.id });
@@ -180,9 +162,6 @@ export default function NouvelleAnalyse() {
           console.error('Erreur chargement crédits pro:', e);
           setProCredits({ complete: 0, document: 0 });
         }
-      } else {
-        // Particulier : on lit la vraie valeur depuis le localStorage
-        setFreePreviewUsed(checkFreePreviewUsedSync());
       }
     })();
     return () => { cancelled = true; };
@@ -337,21 +316,6 @@ export default function NouvelleAnalyse() {
   };
 
   // ─── Animation barre de progression ─────────────────────
-  // ─── Charger aperçu depuis URL (depuis Mes analyses) ──────
-  useEffect(() => {
-    const apercuIdParam = searchParams.get('apercu_id');
-    if (!apercuIdParam) return;
-    const chargerApercu = async () => {
-      const { data } = await supabase.from('analyses').select('apercu, type, title').eq('id', apercuIdParam).single();
-      if (data?.apercu) {
-        setApercu(data.apercu as ApercuResult);
-        setApercuId(apercuIdParam);
-        setType(data.type as 'document' | 'complete');
-        setStep('apercu');
-      }
-    };
-    chargerApercu();
-  }, []);
 
   useEffect(() => {
     if (step !== 'analyse') {
@@ -400,68 +364,6 @@ export default function NouvelleAnalyse() {
     setProgress(p.percent);
     setProgressMsg(p.message);
     if (p.total > 1) setProgressDoc({ current: p.current, total: p.total });
-  };
-
-  // ─── Paiement depuis l'aperçu gratuit ─────────────────────
-  const lancerPaiementApercu = async (isComplete: boolean, apercuId: string | null) => {
-    const PRICE_IDS: Record<string, string> = {
-      document: 'price_1TIb1LBO4ekMbwz0020eqcR0',
-      complete: 'price_1TIb3XBO4ekMbwz0a7m7E7gD',
-    };
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { window.location.href = '/connexion'; return; }
-      const priceId = isComplete ? PRICE_IDS.complete : PRICE_IDS.document;
-      const successUrl = apercuId
-        ? `https://verimo.fr/dashboard/rapport?id=${apercuId}&action=reupload`
-        : `https://verimo.fr/dashboard/tarifs?success=true`;
-      const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlc3pyYXlyb21sZGZnZXRxYXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MzI5NTUsImV4cCI6MjA2MTAwODk1NX0.XsqzBPDMfHRFKgMhJxoLhgVWZMdV5YnFKM3VCBe9hOk' },
-        body: JSON.stringify({ priceId, userId: session.user.id, successUrl, retractationWaiverAt: new Date().toISOString() }),
-      });
-      const data = await res.json();
-      if (data.url) window.location.href = data.url;
-    } catch (e) { console.error(e); }
-  };
-
-  // ─── Lancer aperçu gratuit ────────────────────────────────
-  const lancerApercu = async () => {
-    if (isAnalysing) return;
-    setIsAnalysing(true);
-    if (!files.length || !type) return;
-    setStep('analyse'); setError(''); setFileWarnings([]); setProgress(5);
-    setProgressMsg('Préparation des documents…'); setProgressDoc({ current: 0, total: files.length });
-    const docNames = files.map(f => f.name);
-    const analyseDB = await createApercu(type, files[0].name, profil || 'rp', docNames, typeBienDeclare);
-    const analyseId = analyseDB?.id || null;
-    if (!analyseId) {
-      setError("Impossible de créer l'analyse. Veuillez réessayer.");
-      setStep('upload'); resetUpload(); setIsAnalysing(false); return;
-    }
-    // Marquer l'offre gratuite utilisée dès le lancement (pas après) pour que le badge disparaisse immédiatement
-    await markFreePreviewUsed();
-    setFreePreviewUsed(true);
-    const mode = type === 'complete' ? 'apercu_complete' : 'apercu_document';
-    const result = await lancerAnalyseEdge({ files, mode, analyseId, profil: profil || 'rp', typeBienDeclare, onProgress: handleProgress });
-    if (!result.success) {
-      await markAnalyseFailed(analyseId);
-      await unmarkFreePreviewUsed(); // Rendre l'offre gratuite si l'analyse échoue
-      setFreePreviewUsed(false);
-      setError(result.errorMessage || "Une erreur est survenue. Veuillez réessayer.");
-      setStep('upload'); resetUpload(); setIsAnalysing(false); return;
-    }
-    // Lire le résultat depuis Supabase
-    const { data: analyseData } = await supabase.from('analyses').select('apercu, title').eq('id', analyseId).single();
-    if (analyseData?.apercu) {
-      setApercu(analyseData.apercu as ApercuResult);
-      setApercuId(analyseId);
-      setStep('apercu');
-    } else {
-      setError("Rapport non disponible. Veuillez réessayer.");
-      setStep('upload'); resetUpload();
-    }
-    setIsAnalysing(false);
   };
 
   // ─── Lancer analyse payante ───────────────────────────────
@@ -519,26 +421,13 @@ export default function NouvelleAnalyse() {
     const isLoadingRole = userRole === null; // tant qu'on ne sait pas, on affiche un état neutre
     const proHasCompleteCredits = isPro && (proCredits?.complete || 0) > 0;
     const proHasDocumentCredits = isPro && (proCredits?.document || 0) > 0;
-    // Bandeau "analyse offerte" : seulement pour les particuliers qui n'ont pas encore utilisé leur aperçu
-    const showFreeBanner = isParticulier && !freePreviewUsed;
-    // Affichage des prix particulier : uniquement quand on a confirmé que c'est un particulier qui a déjà utilisé son aperçu
-    const showParticulierPrices = isParticulier && freePreviewUsed;
+    const showParticulierPrices = isParticulier;
 
     return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       <Link to="/dashboard" style={{ fontSize: 14, color: '#2a7d9c', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 24, fontWeight: 700, padding: '8px 16px', borderRadius: 10, background: '#f0f7fb', border: '1px solid #d0e8f0', transition: 'all 0.15s' }}><ChevronLeft size={15} /> Retour</Link>
       <h1 style={{ fontSize: 'clamp(22px,3vw,28px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 6 }}>Que souhaitez-vous analyser ?</h1>
-      <p style={{ fontSize: 14, color: '#64748b', marginBottom: showFreeBanner ? 16 : 32 }}>Choisissez le mode d'analyse adapté à votre besoin.</p>
-      {showFreeBanner && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderRadius: 14, background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', marginBottom: 28, boxShadow: '0 4px 16px rgba(15,45,61,0.18)' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Sparkles size={16} style={{ color: '#fff' }} /></div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 16, fontWeight: 900, color: '#fff', marginBottom: 4 }}>1 analyse offerte 🎁</div>
-            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', lineHeight: 1.5 }}>Profitez d'une analyse gratuite pour visualiser un aperçu du rapport et découvrir notre outil.</div>
-          </div>
-          <span style={{ fontSize: 10, fontWeight: 800, color: '#0f2d3d', background: '#fff', padding: '4px 12px', borderRadius: 100, whiteSpace: 'nowrap', flexShrink: 0 }}>OFFERT</span>
-        </div>
-      )}
+      <p style={{ fontSize: 14, color: '#64748b', marginBottom: 32 }}>Choisissez le mode d'analyse adapté à votre besoin.</p>
       {isPro && proCredits && (proCredits.complete === 0 && proCredits.document === 0) && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderRadius: 14, background: 'linear-gradient(135deg, #fef3c7, #fde68a)', marginBottom: 28, border: '1px solid #fcd34d' }}>
           <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(146,64,14,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><AlertTriangle size={16} style={{ color: '#92400e' }} /></div>
@@ -559,7 +448,7 @@ export default function NouvelleAnalyse() {
               setStep(selectedFolder ? 'type_bien' : 'folder_select');
               return;
             }
-            if (freePreviewUsed && credits.document === 0) { window.location.href = '/dashboard/tarifs'; return; }
+            if (credits.document === 0) { window.location.href = '/dashboard/tarifs'; return; }
             setType('document'); setStep('type_bien');
           }}
           style={{ padding: '28px 24px', borderRadius: 20, border: '1.5px solid #edf2f7', background: '#fff', cursor: isLoadingRole ? 'wait' : 'pointer', textAlign: 'left', transition: 'all 0.18s', position: 'relative', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', opacity: isLoadingRole ? 0.6 : 1 }}
@@ -582,7 +471,7 @@ export default function NouvelleAnalyse() {
               {isLoadingRole ? null
                 : isPro
                 ? (proHasDocumentCredits ? <><ArrowRight size={14} /> Lancer l&apos;analyse</> : <><Lock size={13} /> Souscrire un abonnement</>)
-                : (freePreviewUsed && credits.document === 0 ? <><Lock size={13} /> Acheter un crédit</> : <><ArrowRight size={14} /> Commencer</>)
+                : (credits.document === 0 ? <><Lock size={13} /> Acheter un crédit</> : <><ArrowRight size={14} /> Commencer</>)
               }
             </span>
             {showParticulierPrices && <span style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>4,90€</span>}
@@ -596,7 +485,7 @@ export default function NouvelleAnalyse() {
               setStep(selectedFolder ? 'type_bien' : 'folder_select');
               return;
             }
-            if (freePreviewUsed && credits.complete === 0) { window.location.href = '/dashboard/tarifs'; return; }
+            if (credits.complete === 0) { window.location.href = '/dashboard/tarifs'; return; }
             setType('complete'); setStep('type_bien');
           }}
           style={{ padding: '28px 24px', borderRadius: 20, border: '1.5px solid transparent', background: 'linear-gradient(145deg, #0f2d3d, #1a5068)', cursor: isLoadingRole ? 'wait' : 'pointer', textAlign: 'left', transition: 'all 0.18s', position: 'relative', overflow: 'hidden', boxShadow: '0 4px 20px rgba(15,45,61,0.15)', opacity: isLoadingRole ? 0.6 : 1 }}
@@ -621,7 +510,7 @@ export default function NouvelleAnalyse() {
               {isLoadingRole ? null
                 : isPro
                 ? (proHasCompleteCredits ? <>Lancer l&apos;analyse <ArrowRight size={14} /></> : <>Souscrire un abonnement <ArrowRight size={14} /></>)
-                : (freePreviewUsed && credits.complete === 0 ? <>Acheter un crédit <ArrowRight size={14} /></> : <>Commencer l&apos;audit <ArrowRight size={14} /></>)
+                : (credits.complete === 0 ? <>Acheter un crédit <ArrowRight size={14} /></> : <>Commencer l&apos;audit <ArrowRight size={14} /></>)
               }
             </span>
             {showParticulierPrices && <span style={{ fontSize: 22, fontWeight: 900, color: '#fff' }}>19,90€</span>}
@@ -836,26 +725,10 @@ export default function NouvelleAnalyse() {
         </div>
       </label>
 
-      {/* Bandeau offre gratuite (juste avant le CTA, pour maximiser la visibilité) */}
-      {!freePreviewUsed && (
-        <div style={{ padding: '12px 16px', borderRadius: 12, background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-          <Sparkles size={13} style={{ color: '#fff', flexShrink: 0 }} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.9)' }}>Votre analyse offerte — aperçu du rapport généré gratuitement.</span>
-        </div>
-      )}
-
-      {/* ⭐ BOUTON PRINCIPAL — Lancer l'analyse (session 4 : remonté juste sous la zone d'upload) */}
-      <button onClick={() => {
-        // Aperçu gratuit seulement si offre dispo ET 0 crédit du bon type
-        const creditType = type === 'document' ? credits.document : credits.complete;
-        if (!freePreviewUsed && creditType === 0) {
-          lancerApercu();
-        } else {
-          lancer();
-        }
-      }} disabled={files.length === 0 || isAnalysing}
+      {/* ⭐ BOUTON PRINCIPAL — Lancer l'analyse */}
+      <button onClick={() => { lancer(); }} disabled={files.length === 0 || isAnalysing}
         style={{ width: '100%', padding: '16px', borderRadius: 12, border: 'none', background: files.length > 0 ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#e2e8f0', color: files.length > 0 ? '#fff' : '#94a3b8', fontSize: 15, fontWeight: 800, cursor: files.length > 0 ? 'pointer' : 'default', boxShadow: files.length > 0 ? '0 4px 18px rgba(15,45,61,0.2)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.15s', marginBottom: 20 }}>
-        <Sparkles size={16} /> {!freePreviewUsed ? 'Générer mon aperçu gratuit' : "Lancer l'analyse"} {files.length > 0 ? `(${files.length} fichier${files.length > 1 ? 's' : ''})` : ''}
+        <Sparkles size={16} /> Lancer l&apos;analyse {files.length > 0 ? `(${files.length} fichier${files.length > 1 ? 's' : ''})` : ''}
       </button>
 
       {/* Formats acceptés — déplacé après le bouton pour ne pas encombrer */}
@@ -1201,102 +1074,6 @@ export default function NouvelleAnalyse() {
           <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', lineHeight: 1.75, fontWeight: 500 }}>{result.conclusion}</p>
         </div>
       </div>
-    );
-  }
-
-  /* ── APERÇU GRATUIT */
-  if (step === 'apercu' && apercu) {
-    const isComplete = type === 'complete';
-    return (
-      <>
-      <style>{`.apercu-grid { display: flex; flex-direction: column; gap: 20px; } @media (min-width: 900px) { .apercu-grid { display: grid; grid-template-columns: 1fr 340px; gap: 28px; align-items: start; } }`}</style>
-      <div style={{ animation: 'fadeUp 0.35s ease both' }}>
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <span style={{ fontSize: 10, fontWeight: 800, color: '#16a34a', letterSpacing: '0.14em', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '3px 10px', borderRadius: 100 }}>APERÇU GRATUIT</span>
-          </div>
-          <h1 style={{ fontSize: 'clamp(18px,2.5vw,24px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em', marginBottom: 4 }}>{apercu.titre}</h1>
-          <p style={{ fontSize: 13, color: '#94a3b8' }}>Voici un aperçu de votre analyse. Débloquez le rapport complet pour accéder à tous les détails.</p>
-        </div>
-        <div className="apercu-grid">
-        <div>
-        <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 22px', marginBottom: 14 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 8 }}>RÉSUMÉ</div>
-          <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.75 }}>{apercu.recommandation_courte}</p>
-        </div>
-        <div style={{ background: '#fffbeb', borderRadius: 16, border: '1px solid #fde68a', padding: '20px 22px', marginBottom: 14 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#d97706', letterSpacing: '0.1em', marginBottom: 12 }}>⚠ POINTS DE VIGILANCE</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {apercu.points_vigilance.map((p, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                <AlertTriangle size={13} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
-                <span style={{ fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>{p}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        {isComplete && (
-          <div style={{ background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0', padding: '20px 22px', marginBottom: 14, position: 'relative', overflow: 'hidden' }}>
-            <div style={{ filter: 'blur(6px)', pointerEvents: 'none', userSelect: 'none' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 8 }}>SCORE GLOBAL</div>
-              <div style={{ fontSize: 52, fontWeight: 900, color: '#94a3b8' }}>?.?</div>
-              <div style={{ fontSize: 14, color: '#94a3b8' }}>/20</div>
-            </div>
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8 }}>
-              <Lock size={22} style={{ color: '#64748b' }} /><span style={{ fontSize: 13, fontWeight: 700, color: '#64748b' }}>Score disponible après paiement</span>
-            </div>
-          </div>
-        )}
-        <div style={{ background: '#f8fafc', borderRadius: 16, border: '1px solid #e2e8f0', padding: '20px 22px', marginBottom: 24, position: 'relative', overflow: 'hidden' }}>
-          <div style={{ filter: 'blur(4px)', pointerEvents: 'none', userSelect: 'none' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 12 }}>ANALYSE COMPLÈTE</div>
-            {['Rapport financier détaillé', 'Liste des travaux votés et à prévoir', 'Analyse des charges et fonds travaux', 'Procédures en cours', 'Avis Verimo personnalisé'].map((item, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#cbd5e1', flexShrink: 0 }} />
-                <span style={{ fontSize: 13, color: '#cbd5e1' }}>{item}</span>
-              </div>
-            ))}
-          </div>
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 6 }}>
-            <Lock size={20} style={{ color: '#64748b' }} /><span style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>Contenu réservé aux analyses payantes</span>
-          </div>
-        </div>
-        </div>
-
-          {/* Colonne droite — CTA sticky */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', borderRadius: 18, padding: '24px 26px', overflow: 'hidden', position: 'sticky' as const, top: 80 }}>
-              <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(42,125,156,0.2)', pointerEvents: 'none' }} />
-              <div style={{ position: 'relative' }}>
-                <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em', marginBottom: 8 }}>DÉBLOQUER LE RAPPORT COMPLET</div>
-                <h2 style={{ fontSize: 18, fontWeight: 900, color: '#fff', marginBottom: 8 }}>{isComplete ? 'Accédez au rapport complet' : "Accédez à l'analyse complète du document"}</h2>
-                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 1.6, marginBottom: 20 }}>Score {isComplete ? '/20, travaux, charges, procédures et avis Verimo' : 'et analyse approfondie'}. Rapport PDF téléchargeable inclus.</p>
-                <button onClick={() => lancerPaiementApercu(isComplete, apercuId)}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px', borderRadius: 12, background: '#fff', color: '#0f2d3d', fontSize: 14, fontWeight: 800, border: 'none', cursor: 'pointer', boxShadow: '0 4px 16px rgba(0,0,0,0.15)', width: '100%', marginBottom: 10 }}>
-                  <Sparkles size={15} /> Débloquer — {isComplete ? '19,90€' : '4,90€'}
-                </button>
-                <button onClick={() => { setStep('choice'); setType(null); setTypeBienDeclare(null); setFiles([]); setApercu(null); }}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '11px', borderRadius: 12, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 600, cursor: 'pointer', width: '100%' }}>
-                  Nouvelle analyse
-                </button>
-                {apercuId && <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 12, textAlign: 'center' }}>Aperçu sauvegardé dans "Mes analyses"</p>}
-              </div>
-            </div>
-            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '16px 18px' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 10 }}>CE QUI VOUS ATTEND</div>
-              {(isComplete ? ['Score global /20', 'Analyse travaux détaillée', 'Finances copropriété', 'Procédures juridiques', 'Onglet Copropriété complet', 'Avis Verimo personnalisé', 'Rapport PDF téléchargeable'] : ['Analyse approfondie du document', 'Points clés détaillés', 'Recommandations personnalisées', 'Rapport PDF téléchargeable']).map((item, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
-                  <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#f0fdf4', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <CheckCircle size={10} color="#16a34a" />
-                  </div>
-                  <span style={{ fontSize: 12, color: '#374151' }}>{item}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-      </>
     );
   }
 
