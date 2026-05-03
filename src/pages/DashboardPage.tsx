@@ -49,7 +49,7 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
       {/* Logo — centré et plus gros */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'12px 18px 6px', flexShrink:0, position:'relative' }}>
         <Link to="/" onClick={onClose} style={{ textDecoration:'none' }}>
-          <img src="/logo-blanc.png" alt="Verimo" style={{ height: 100, width: 'auto', display: 'block' }} />
+          <img src="/logo-blanc.png" alt="Verimo" style={{ height: 100, width: 'auto', display: 'block', marginBottom: -20 }} />
         </Link>
         {onClose && <button onClick={onClose} style={{ position:'absolute', right:14, top:14, background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.4)', padding:4 }}><X size={18}/></button>}
       </div>
