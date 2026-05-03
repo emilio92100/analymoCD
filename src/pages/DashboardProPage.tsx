@@ -1550,7 +1550,7 @@ function InfoTooltip({ text }: { text: string }) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
             onClick={(e) => { e.stopPropagation(); setShow(false); }}
-            style={{ position: 'fixed', inset: 0, zIndex: 9998, background: 'rgba(15,45,61,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+            style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(15,45,61,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, pointerEvents: 'auto' }}>
             <motion.div
               initial={{ opacity: 0, scale: 0.92, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
