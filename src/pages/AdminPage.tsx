@@ -418,20 +418,139 @@ export default function AdminPage() {
 
       <div style={{ display: 'flex', minHeight: 'calc(100vh - 60px)' }}>
         {/* Sidebar — cachée sur mobile */}
-        <aside className="admin-sidebar" style={{ width: 220, background: '#fff', borderRight: '1px solid #edf2f7', padding: '20px 12px', flexShrink: 0, position: 'sticky', top: 60, height: 'calc(100vh - 60px)', overflowY: 'auto' }}>
-          <nav style={{ display: 'flex', flexDirection: 'column' as const, gap: 3 }}>
-            {tabs.map(tab => {
-              const Icon = tab.icon;
-              const active = activeTab === tab.id;
-              return (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderRadius: 11, border: 'none', background: active ? 'linear-gradient(135deg,#2a7d9c,#0f2d3d)' : 'transparent', color: active ? '#fff' : '#64748b', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s', position: 'relative' as const }}>
-                  <Icon size={16} style={{ flexShrink: 0 }} />
-                  <span style={{ flex: 1 }}>{tab.label}</span>
-                  {tab.badge ? <span style={{ background: '#f0a500', color: '#fff', borderRadius: 100, fontSize: 10, fontWeight: 800, padding: '1px 6px', minWidth: 18, textAlign: 'center' as const }}>{tab.badge}</span> : null}
-                </button>
-              );
-            })}
+        <aside className="admin-sidebar" style={{ width: 240, background: '#fff', borderRight: '1px solid #edf2f7', padding: '16px 12px', flexShrink: 0, position: 'sticky', top: 60, height: 'calc(100vh - 60px)', overflowY: 'auto' }}>
+          <nav style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
+            {/* ─── ACTIVITÉ ─── */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px 4px' }}>
+              <div style={{ width: 18, height: 18, borderRadius: 5, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <BarChart2 size={10} style={{ color: '#2a7d9c' }} />
+              </div>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.08em' }}>ACTIVITÉ</span>
+              <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+            </div>
+            <div style={{ borderLeft: '2px solid #2a7d9c', marginLeft: 8, paddingLeft: 12, marginBottom: 10, display: 'flex', flexDirection: 'column' as const, gap: 1 }}>
+              {tabs.filter(t => ['dashboard', 'stats', 'payments'].includes(t.id)).map(tab => {
+                const Icon = tab.icon; const active = activeTab === tab.id;
+                return (
+                  <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, border: 'none', background: active ? '#f0f7fb' : 'transparent', color: active ? '#0c447c' : '#334155', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s', position: 'relative' as const, width: '100%' }}>
+                    <Icon size={14} style={{ flexShrink: 0, color: active ? '#2a7d9c' : '#94a3b8' }} />
+                    <span style={{ flex: 1 }}>{tab.label}</span>
+                    {tab.badge ? <span style={{ background: '#f0a500', color: '#fff', borderRadius: 100, fontSize: 10, fontWeight: 800, padding: '1px 6px', minWidth: 18, textAlign: 'center' as const }}>{tab.badge}</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* ─── UTILISATEURS ─── */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px 4px' }}>
+              <div style={{ width: 18, height: 18, borderRadius: 5, background: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Users size={10} style={{ color: '#7c3aed' }} />
+              </div>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', letterSpacing: '0.08em' }}>UTILISATEURS</span>
+              <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+            </div>
+            <div style={{ borderLeft: '2px solid #7c3aed', marginLeft: 8, paddingLeft: 12, marginBottom: 10, display: 'flex', flexDirection: 'column' as const, gap: 1 }}>
+              {tabs.filter(t => ['users', 'clients', 'demandes_pro'].includes(t.id)).map(tab => {
+                const Icon = tab.icon; const active = activeTab === tab.id;
+                return (
+                  <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, border: 'none', background: active ? '#f5f3ff' : 'transparent', color: active ? '#3C3489' : '#334155', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s', position: 'relative' as const, width: '100%' }}>
+                    <Icon size={14} style={{ flexShrink: 0, color: active ? '#7c3aed' : '#94a3b8' }} />
+                    <span style={{ flex: 1 }}>{tab.label}</span>
+                    {tab.badge ? <span style={{ background: '#f0a500', color: '#fff', borderRadius: 100, fontSize: 10, fontWeight: 800, padding: '1px 6px', minWidth: 18, textAlign: 'center' as const }}>{tab.badge}</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* ─── CONTENU ─── */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px 4px' }}>
+              <div style={{ width: 18, height: 18, borderRadius: 5, background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FileText size={10} style={{ color: '#16a34a' }} />
+              </div>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', letterSpacing: '0.08em' }}>CONTENU</span>
+              <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+            </div>
+            <div style={{ borderLeft: '2px solid #16a34a', marginLeft: 8, paddingLeft: 12, marginBottom: 10, display: 'flex', flexDirection: 'column' as const, gap: 1 }}>
+              {tabs.filter(t => ['analyses', 'messages'].includes(t.id)).map(tab => {
+                const Icon = tab.icon; const active = activeTab === tab.id;
+                return (
+                  <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, border: 'none', background: active ? '#f0fdf4' : 'transparent', color: active ? '#166534' : '#334155', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s', position: 'relative' as const, width: '100%' }}>
+                    <Icon size={14} style={{ flexShrink: 0, color: active ? '#16a34a' : '#94a3b8' }} />
+                    <span style={{ flex: 1 }}>{tab.label}</span>
+                    {tab.badge ? <span style={{ background: '#f0a500', color: '#fff', borderRadius: 100, fontSize: 10, fontWeight: 800, padding: '1px 6px', minWidth: 18, textAlign: 'center' as const }}>{tab.badge}</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* ─── OUTILS ─── */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px 4px' }}>
+              <div style={{ width: 18, height: 18, borderRadius: 5, background: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Tag size={10} style={{ color: '#d97706' }} />
+              </div>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', letterSpacing: '0.08em' }}>OUTILS</span>
+              <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+            </div>
+            <div style={{ borderLeft: '2px solid #d97706', marginLeft: 8, paddingLeft: 12, marginBottom: 10, display: 'flex', flexDirection: 'column' as const, gap: 1 }}>
+              {tabs.filter(t => ['promos', 'banner'].includes(t.id)).map(tab => {
+                const Icon = tab.icon; const active = activeTab === tab.id;
+                return (
+                  <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, border: 'none', background: active ? '#fffbeb' : 'transparent', color: active ? '#92400e' : '#334155', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s', position: 'relative' as const, width: '100%' }}>
+                    <Icon size={14} style={{ flexShrink: 0, color: active ? '#d97706' : '#94a3b8' }} />
+                    <span style={{ flex: 1 }}>{tab.label}</span>
+                    {tab.badge ? <span style={{ background: '#f0a500', color: '#fff', borderRadius: 100, fontSize: 10, fontWeight: 800, padding: '1px 6px', minWidth: 18, textAlign: 'center' as const }}>{tab.badge}</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* ─── SUPPORT ─── */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px 4px' }}>
+              <div style={{ width: 18, height: 18, borderRadius: 5, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <MessageSquare size={10} style={{ color: '#f59e0b' }} />
+              </div>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b', letterSpacing: '0.08em' }}>SUPPORT</span>
+              <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+            </div>
+            <div style={{ borderLeft: '2px solid #f59e0b', marginLeft: 8, paddingLeft: 12, marginBottom: 10, display: 'flex', flexDirection: 'column' as const, gap: 1 }}>
+              {tabs.filter(t => ['support', 'suggestions'].includes(t.id)).map(tab => {
+                const Icon = tab.icon; const active = activeTab === tab.id;
+                return (
+                  <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, border: 'none', background: active ? '#fef3c7' : 'transparent', color: active ? '#854F0B' : '#334155', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s', position: 'relative' as const, width: '100%' }}>
+                    <Icon size={14} style={{ flexShrink: 0, color: active ? '#f59e0b' : '#94a3b8' }} />
+                    <span style={{ flex: 1 }}>{tab.label}</span>
+                    {tab.badge ? <span style={{ background: '#f0a500', color: '#fff', borderRadius: 100, fontSize: 10, fontWeight: 800, padding: '1px 6px', minWidth: 18, textAlign: 'center' as const }}>{tab.badge}</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* ─── SYSTÈME ─── */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px 4px' }}>
+              <div style={{ width: 18, height: 18, borderRadius: 5, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <AlertTriangle size={10} style={{ color: '#64748b' }} />
+              </div>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', letterSpacing: '0.08em' }}>SYSTÈME</span>
+              <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+            </div>
+            <div style={{ borderLeft: '2px solid #94a3b8', marginLeft: 8, paddingLeft: 12, display: 'flex', flexDirection: 'column' as const, gap: 1 }}>
+              {tabs.filter(t => ['alerts', 'logs'].includes(t.id)).map(tab => {
+                const Icon = tab.icon; const active = activeTab === tab.id;
+                return (
+                  <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 8, border: 'none', background: active ? '#f1f5f9' : 'transparent', color: active ? '#334155' : '#334155', fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s', position: 'relative' as const, width: '100%' }}>
+                    <Icon size={14} style={{ flexShrink: 0, color: active ? '#64748b' : '#94a3b8' }} />
+                    <span style={{ flex: 1 }}>{tab.label}</span>
+                    {tab.badge ? <span style={{ background: '#f0a500', color: '#fff', borderRadius: 100, fontSize: 10, fontWeight: 800, padding: '1px 6px', minWidth: 18, textAlign: 'center' as const }}>{tab.badge}</span> : null}
+                  </button>
+                );
+              })}
+            </div>
           </nav>
         </aside>
 
