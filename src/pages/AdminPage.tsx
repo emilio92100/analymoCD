@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -718,7 +718,7 @@ function AdminSupportTab({ showToast, onUnreadChange }: { showToast: (m: string)
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, padding: '8px 0', minHeight: 0, background: '#f8fafc', borderRadius: 14, border: '1px solid #edf2f7', padding: '16px' }}>
+        <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0, background: '#f8fafc', borderRadius: 14, border: '1px solid #edf2f7', padding: '16px' }}>
           {messages.map(m => {
             const isAdmin = m.sender_type === 'admin';
             return (
