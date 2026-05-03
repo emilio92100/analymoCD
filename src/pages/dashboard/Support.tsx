@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Send, LifeBuoy, FileText, CreditCard,
-  ChevronDown, Lock,
+  ChevronDown, Lock, Lightbulb,
   Plus, ChevronLeft, CheckCircle, MessageSquare, HelpCircle,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -44,18 +44,22 @@ export async function getUnreadTicketCount(): Promise<number> {
 }
 
 export default function Support() {
-  const [view, setView] = useState<'list' | 'chat' | 'new'>('list');
+  const [view, setView] = useState<'list' | 'chat' | 'new' | 'suggestion'>('list');
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [openCat, setOpenCat] = useState<string | null>(null);
   const [openQ, setOpenQ] = useState<string | null>(null);
+  const [isPro, setIsPro] = useState(false);
 
   const loadTickets = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const { data } = await supabase.from('support_tickets').select('*').eq('user_id', user.id).order('updated_at', { ascending: false });
     setTickets(data || []);
+    // Check if pro
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+    if (profile?.role === 'pro') setIsPro(true);
     setLoading(false);
   }, []);
 
@@ -66,11 +70,18 @@ export default function Support() {
 
   if (view === 'new') return <NewTicketView onBack={() => { loadTickets(); setView('list'); }} onCreated={(id) => { loadTickets(); setSelectedTicketId(id); setView('chat'); }} />;
   if (view === 'chat' && selectedTicketId) return <ChatView ticketId={selectedTicketId} onBack={() => { setView('list'); loadTickets(); }} />;
+  if (view === 'suggestion') return <SuggestionView onBack={() => setView('list')} />;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+        {isPro && (
+          <button onClick={() => setView('suggestion')}
+            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, background: '#fffbeb', color: '#92400e', border: '1.5px solid #fde68a', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
+            <Lightbulb size={14} /> J&apos;ai une idée
+          </button>
+        )}
         <button onClick={() => setView('new')}
           style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, boxShadow: '0 4px 12px rgba(15,45,61,0.2)' }}>
           <Plus size={14} /> Nouveau ticket
@@ -445,6 +456,95 @@ function ChatView({ ticketId, onBack }: { ticketId: string; onBack: () => void }
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   VUE SUGGESTION (pro uniquement)
+═══════════════════════════════════════════ */
+function SuggestionView({ onBack }: { onBack: () => void }) {
+  const [category, setCategory] = useState('');
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const categories = [
+    { id: 'feature', label: '🔧 Fonctionnalité manquante', placeholder: 'Décrivez la fonctionnalité que vous aimeriez voir...' },
+    { id: 'improvement', label: '✨ Amélioration existante', placeholder: 'Quelle fonctionnalité pourrait être améliorée ?' },
+    { id: 'report', label: '📊 Nouveau type de rapport', placeholder: 'Quel type de document ou rapport aimeriez-vous ?' },
+    { id: 'other', label: '💡 Autre idée', placeholder: 'Partagez votre idée...' },
+  ];
+
+  const selectedCat = categories.find(c => c.id === category);
+
+  const handleSend = async () => {
+    if (!message.trim() || !category) return;
+    setSending(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setSending(false); return; }
+    await supabase.from('pro_suggestions').insert({ user_id: user.id, message: message.trim(), category });
+    setSending(false);
+    setSent(true);
+  };
+
+  if (sent) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ maxWidth: 520, margin: '0 auto', textAlign: 'center', padding: '48px 24px' }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>💡</div>
+        <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Merci pour votre suggestion !</h2>
+        <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, marginBottom: 24 }}>
+          Votre idée a bien été transmise à notre équipe. Nous la prendrons en compte pour améliorer Verimo.
+        </p>
+        <button onClick={onBack}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '12px 24px', borderRadius: 12, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>
+          Retour au support
+        </button>
+      </motion.div>
+    );
+  }
+
+  return (
+    <div style={{ maxWidth: 520, margin: '0 auto' }}>
+      <button onClick={onBack}
+        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: 13, fontWeight: 600, marginBottom: 20, padding: 0 }}>
+        <ChevronLeft size={16} /> Retour au support
+      </button>
+
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Lightbulb size={18} style={{ color: '#d97706' }} />
+          </div>
+          <div>
+            <h2 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>Proposer une idée</h2>
+            <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>Aidez-nous à améliorer Verimo</p>
+          </div>
+        </div>
+
+        <div style={{ padding: '20px 24px' }}>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>Type de suggestion</label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8, marginBottom: 20 }}>
+            {categories.map(c => (
+              <button key={c.id} onClick={() => setCategory(c.id)}
+                style={{ padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: category === c.id ? '2px solid #d97706' : '1.5px solid #edf2f7', background: category === c.id ? '#fffbeb' : '#fff', color: category === c.id ? '#92400e' : '#64748b', transition: 'all 0.15s', textAlign: 'left' as const }}>
+                {c.label}
+              </button>
+            ))}
+          </div>
+
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>Votre idée</label>
+          <textarea value={message} onChange={e => setMessage(e.target.value)}
+            placeholder={selectedCat?.placeholder || 'Décrivez votre suggestion...'}
+            rows={5} style={{ width: '100%', padding: '14px 16px', borderRadius: 12, border: '1.5px solid #edf2f7', fontSize: 14, outline: 'none', boxSizing: 'border-box' as const, fontFamily: 'inherit', resize: 'vertical', marginBottom: 16 }} />
+
+          <button onClick={handleSend}
+            disabled={sending || !category || !message.trim()}
+            style={{ width: '100%', padding: '14px', borderRadius: 12, background: (!category || !message.trim()) ? '#e2e8f0' : 'linear-gradient(135deg, #d97706, #b45309)', color: '#fff', fontSize: 15, fontWeight: 700, border: 'none', cursor: (!category || !message.trim()) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <Lightbulb size={15} /> {sending ? 'Envoi en cours...' : 'Envoyer ma suggestion'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
