@@ -71,8 +71,8 @@ export default function HomeView() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, animation: 'fadeUp 0.35s ease both' }}>
       <style>{`
         @media (max-width: 640px) {
-          .stats-grid { grid-template-columns: 1fr !important; }
-          .stats-grid > div:last-child { grid-column: auto !important; }
+          .stats-grid { grid-template-columns: 1fr 1fr !important; }
+          .stats-grid > div:last-child { grid-column: 1 / -1 !important; }
           .aide-banner { flex-direction: column !important; align-items: flex-start !important; gap: 14px !important; }
           .aide-banner-cta { width: 100% !important; justify-content: center !important; }
         }
