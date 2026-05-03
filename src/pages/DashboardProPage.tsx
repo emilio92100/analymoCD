@@ -205,11 +205,11 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets }: { subs
           ))}
         </div>
         {subscription ? (
-          <div style={{ marginTop: 8, padding: '6px 10px', borderRadius: 7, background: 'rgba(255,255,255,0.06)', textAlign: 'center', lineHeight: 1.5 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>
+          <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 7, background: 'rgba(255,255,255,0.06)', textAlign: 'center', lineHeight: 1.5 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>
               Abonnement : {subscription.plan === 'decouverte' ? 'Découverte' : subscription.plan === 'starter' ? 'Starter' : subscription.plan === 'power' ? 'Power' : subscription.plan}
             </div>
-            <div style={{ fontSize: 10, fontWeight: 500, color: subscription.cancel_at_period_end ? '#fbbf24' : 'rgba(255,255,255,0.55)' }}>
+            <div style={{ fontSize: 12, fontWeight: 500, color: subscription.cancel_at_period_end ? '#fbbf24' : 'rgba(255,255,255,0.65)' }}>
               {subscription.cancel_at_period_end ? 'Fin d\'abonnement' : 'Renouvellement'} {subscription.current_period_end ? fmtDate(subscription.current_period_end) : '—'}
             </div>
           </div>
