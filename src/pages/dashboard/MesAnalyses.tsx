@@ -331,10 +331,9 @@ export default function MesAnalyses() {
   }, [analyses, refetch]);
 
   const filtered = analyses.filter(a => (a.adresse_bien || a.nom_document || '').toLowerCase().includes(search.toLowerCase()));
-  const completes = filtered.filter(a => a.type === 'complete' && !a.is_preview);
-  const simples = filtered.filter(a => a.type === 'document' && !a.is_preview);
-  const apercus = filtered.filter(a => a.is_preview === true);
-  const all = [...completes, ...simples, ...apercus];
+  const completes = filtered.filter(a => a.type === 'complete');
+  const simples = filtered.filter(a => a.type === 'document');
+  const all = [...completes, ...simples];
   const allSelected = all.length > 0 && selectedIds.size === all.length;
   const toggleAll = () => { if (allSelected) setSelectedIds(new Set()); else setSelectedIds(new Set(all.map(a => a.id))); };
 
@@ -401,18 +400,6 @@ export default function MesAnalyses() {
           <div style={{ background: '#fff', border: '1px solid #e8eff4', borderRadius: 12, overflow: 'hidden' }}>
             {simples.map((a, i) => (
               <SimpleRow key={a.id} a={a} onDelete={deleteAnalyse} isLast={i === simples.length - 1} selectionMode={selectionMode} selected={selectedIds.has(a.id)} onToggleSelect={toggleSelect} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ═══ APERÇUS ═══ */}
-      {apercus.length > 0 && (
-        <div>
-          <SectionHeader label="Aperçus" count={apercus.length} color="#d97706" />
-          <div style={{ background: '#fff', border: '1px solid #e8eff4', borderRadius: 12, overflow: 'hidden' }}>
-            {apercus.map((a, i) => (
-              <SimpleRow key={a.id} a={a} onDelete={deleteAnalyse} isPreview isLast={i === apercus.length - 1} selectionMode={selectionMode} selected={selectedIds.has(a.id)} onToggleSelect={toggleSelect} />
             ))}
           </div>
         </div>
