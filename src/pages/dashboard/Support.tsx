@@ -217,7 +217,7 @@ function NewTicketView({ onBack, onCreated }: { onBack: () => void; onCreated: (
   };
 
   return (
-    <div style={{ maxWidth: 600, margin: '0 auto' }}>
+    <div style={{ maxWidth: 700 }}>
       <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f0f7fb', border: '1px solid #d0e8f0', borderRadius: 10, cursor: 'pointer', color: '#2a7d9c', fontSize: 14, fontWeight: 700, marginBottom: 20, padding: '8px 16px' }}>
         <ChevronLeft size={15} /> Retour
       </button>
