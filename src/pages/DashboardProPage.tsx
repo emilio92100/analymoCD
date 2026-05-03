@@ -176,17 +176,17 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets }: { subs
 
   return (
     <aside style={{ width: 260, minHeight: '100vh', height: '100%', background: BG, display: 'flex', flexDirection: 'column' }}>
-      {/* Logo + PRO badge */}
-      <div style={{ height: 78, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
-        <Link to="/" onClick={onClose} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <img src="/logo-blanc.png" alt="Verimo" style={{ height: 60, width: 'auto', display: 'block' }} />
-          <span style={{ background: `linear-gradient(135deg, ${ACCENT}, #38bdf8)`, color: '#0a1f2d', fontSize: 9, fontWeight: 800, padding: '2px 8px', borderRadius: 100, letterSpacing: '0.08em' }}>ACCÈS PRO</span>
+      {/* Logo + PRO badge — centré et gros */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 18px 0', flexShrink: 0, position: 'relative' }}>
+        <Link to="/" onClick={onClose} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <img src="/logo-blanc.png" alt="Verimo" style={{ height: 100, width: 'auto', display: 'block', marginBottom: -20 }} />
+          <span style={{ background: `linear-gradient(135deg, ${ACCENT}, #38bdf8)`, color: '#0a1f2d', fontSize: 10, fontWeight: 800, padding: '3px 14px', borderRadius: 100, letterSpacing: '0.08em' }}>ACCÈS PRO</span>
         </Link>
-        {onClose && <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: 4 }}><X size={18} /></button>}
+        {onClose && <button onClick={onClose} style={{ position: 'absolute', right: 14, top: 14, background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: 4 }}><X size={18} /></button>}
       </div>
 
       {/* CTA Nouvelle analyse */}
-      <div style={{ padding: '14px 14px 8px' }}>
+      <div style={{ padding: '10px 14px 8px' }}>
         <Link to="/dashboard/nouvelle-analyse" onClick={onClose}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px', borderRadius: 10, background: '#2a7d9c', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 700, transition: 'all 0.2s' }}>
           <Plus size={15} strokeWidth={2.5} /> Nouvelle analyse
