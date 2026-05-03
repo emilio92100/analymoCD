@@ -4255,12 +4255,23 @@ export default function DashboardProPage() {
   const [helpSending, setHelpSending] = useState(false);
   const [helpSent, setHelpSent] = useState(false);
   const [helpCreatedId, setHelpCreatedId] = useState<string | null>(null);
+  const [helpHasOpenTicket, setHelpHasOpenTicket] = useState(false);
+  const [helpCheckingTicket, setHelpCheckingTicket] = useState(false);
   const [unreadTickets, setUnreadTickets] = useState(0);
 
   // Expose popup openers for topbar buttons
   useEffect(() => {
     (window as unknown as Record<string, unknown>).__openSuggestion = () => setShowSuggestionPopup(true);
-    (window as unknown as Record<string, unknown>).__openHelp = () => setShowHelpPopup(true);
+    (window as unknown as Record<string, unknown>).__openHelp = async () => {
+      setHelpCheckingTicket(true);
+      setShowHelpPopup(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { count } = await supabase.from('support_tickets').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('status', 'open');
+        setHelpHasOpenTicket((count || 0) > 0);
+      }
+      setHelpCheckingTicket(false);
+    };
     return () => {
       delete (window as unknown as Record<string, unknown>).__openSuggestion;
       delete (window as unknown as Record<string, unknown>).__openHelp;
@@ -4479,12 +4490,39 @@ export default function DashboardProPage() {
         {showHelpPopup && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,45,61,0.5)', padding: 20, backdropFilter: 'blur(3px)' }}
-            onClick={() => { if (!helpSending) { setShowHelpPopup(false); setHelpSent(false); setHelpSubject(''); setHelpCustomSubject(''); setHelpMessage(''); setHelpCreatedId(null); } }}>
+            onClick={() => { if (!helpSending) { setShowHelpPopup(false); setHelpSent(false); setHelpSubject(''); setHelpCustomSubject(''); setHelpMessage(''); setHelpCreatedId(null); setHelpHasOpenTicket(false); } }}>
             <motion.div initial={{ scale: 0.95, opacity: 0, y: 12 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 8 }}
               onClick={e => e.stopPropagation()}
               style={{ background: '#fff', borderRadius: 22, width: '100%', maxWidth: 520, boxShadow: '0 32px 80px rgba(0,0,0,0.2)', overflow: 'hidden', maxHeight: '90vh', overflowY: 'auto' }}>
 
-              {helpSent ? (
+              {helpCheckingTicket ? (
+                <div style={{ padding: '48px 32px', textAlign: 'center' }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid #edf2f7', borderTopColor: '#2a7d9c', animation: 'spin 0.9s linear infinite', margin: '0 auto' }} />
+                </div>
+              ) : helpHasOpenTicket ? (
+                <div style={{ padding: '48px 32px', textAlign: 'center' }}>
+                  <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: '2px solid #fde68a' }}>
+                    <MessageSquare size={28} style={{ color: '#d97706' }} />
+                  </div>
+                  <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', marginBottom: 8 }}>Vous avez déjà un ticket en cours</h3>
+                  <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, maxWidth: 380, margin: '0 auto 8px' }}>
+                    Un ticket de support est actuellement ouvert. Vous pouvez y répondre ou le clôturer avant d&apos;en créer un nouveau.
+                  </p>
+                  <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 28 }}>
+                    Cela nous permet de mieux suivre vos demandes.
+                  </p>
+                  <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <button onClick={() => { setShowHelpPopup(false); setHelpHasOpenTicket(false); window.location.href = '/dashboard/support'; }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '12px 24px', borderRadius: 12, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>
+                      <MessageSquare size={15} /> Voir mon ticket
+                    </button>
+                    <button onClick={() => { setShowHelpPopup(false); setHelpHasOpenTicket(false); }}
+                      style={{ padding: '12px 24px', borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7', color: '#64748b', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
+                      Fermer
+                    </button>
+                  </div>
+                </div>
+              ) : helpSent ? (
                 <div style={{ padding: '48px 32px', textAlign: 'center' }}>
                   <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: '2px solid #bbf7d0' }}>
                     <CheckCircle size={32} style={{ color: '#16a34a' }} />
@@ -4528,7 +4566,7 @@ export default function DashboardProPage() {
 
                     <div style={{ marginBottom: 16 }}>
                       <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>Quelle est la raison de votre demande ?</label>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8 }}>
                         {[
                           'Problème avec mon analyse',
                           'Question sur mon abonnement',
@@ -4537,7 +4575,7 @@ export default function DashboardProPage() {
                           'Autre',
                         ].map(opt => (
                           <button key={opt} onClick={() => setHelpSubject(opt)}
-                            style={{ padding: '8px 14px', borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: helpSubject === opt ? '1.5px solid #2a7d9c' : '1px solid #edf2f7', background: helpSubject === opt ? '#f0f7fb' : '#fff', color: helpSubject === opt ? '#2a7d9c' : '#64748b', transition: 'all 0.15s' }}>
+                            style={{ padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: helpSubject === opt ? '2px solid #2a7d9c' : '1.5px solid #edf2f7', background: helpSubject === opt ? '#f0f7fb' : '#fff', color: helpSubject === opt ? '#2a7d9c' : '#64748b', transition: 'all 0.15s', textAlign: 'left' }}>
                             {opt}
                           </button>
                         ))}
