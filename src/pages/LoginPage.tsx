@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { syncFreePreviewUsed } from '../lib/analyses';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -46,7 +45,6 @@ export default function LoginPage() {
       localStorage.setItem('verimo_user_email', user.email || '');
     }
 
-    await syncFreePreviewUsed();
     navigate('/dashboard');
   };
 
