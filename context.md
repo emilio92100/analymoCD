@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet complet — 2 mai 2026 (après sessions 1 à 21)
+# VERIMO — Contexte projet complet — 3 mai 2026 (après sessions 1 à 22)
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -120,6 +120,101 @@ UNIT_SIMPLE 2,90€   → price_1TRKRmBO4ekMbwz0ynLNDwn4
 ```
 
 ---
+
+## ✅ Session 22 — 3 mai 2026 — Support/tickets, suppression aperçu gratuit, UI fixes
+
+### Résumé
+Session majeure : suppression complète du système d'aperçu gratuit (frontend + edge function), mise en place d'un système de support/tickets avec chat admin, popup suggestions pro avec catégories, notifications persistantes en BDD, nombreux fixes UI mobile et desktop.
+
+### A. Suppression complète aperçu gratuit
+
+**11 fichiers frontend nettoyés :**
+- `analyses.ts` — Supprimé : createApercu, updateApercuResult, debloquerApercu, markFreePreviewUsed, unmarkFreePreviewUsed, checkFreePreviewUsed, syncFreePreviewUsed
+- `analyse-client.ts` — AnalyseMode : retiré apercu_complete/apercu_document
+- `App.tsx`, `LoginPage.tsx`, `AuthCallbackPage.tsx` — Supprimé localStorage + sync free preview
+- `AdminPage.tsx` — "Aperçu gratuit" → "Analyse non payée"
+- `DashboardPage.tsx` — RapportDashboard remplacé par redirection simple
+- `RapportPage.tsx` — Supprimé détection/rendu aperçu
+- `HomeView.tsx`, `NouvelleAnalyse.tsx`, `MesAnalyses.tsx` — Supprimé tout le flow aperçu
+
+**Edge function `analyser-run` nettoyée :**
+- Supprimé bloc `if (mode === 'apercu_complete' || 'apercu_document')` dans buildSystemPrompt
+- Supprimé `isApercu` dans runAnalyseWithData et runAnalyse — result+paid=true directement
+- Commentaire "aperçus (gratuits)" → "types inconnus"
+
+**Note :** champs `is_preview`/`apercu` restent dans types TS (colonnes BDD existantes, toujours false)
+
+### B. Système de support/tickets
+
+**Tables SQL créées :**
+- `support_tickets` (id, user_id, subject, status open/resolved, created_at, updated_at, resolved_at, unread_by_user, unread_by_admin)
+- `support_messages` (id, ticket_id, sender_type user/admin, sender_name, message, created_at)
+- `pro_suggestions` (id, user_id, message, category, acknowledged, archived, created_at)
+- `user_notifications` (id, user_id, title, message, read, created_at)
+- RLS policies, index, trigger update_ticket_timestamp
+
+**Côté client (pro + particulier) :**
+- Bouton "Besoin d'aide" topbar → popup création ticket (objets prédéfinis : Problème analyse, Question abonnement, Bug technique, Question crédits, Autre)
+- Confirmation après envoi → "Voir la discussion" redirige vers Support
+- Page Support : liste tickets ouverts/résolus dans cards, fil de chat (bulles user/admin), polling 10s, badge unread sidebar
+- FAQ en rubriques avec icône "Questions fréquentes"
+
+**Bouton "Suggestion" (pro uniquement) :**
+- Popup avec catégories (🔧 Fonctionnalité manquante, ✨ Amélioration existante, 📊 Nouveau type de rapport, 💡 Autre idée)
+- Placeholder adaptatif selon catégorie
+- Historique "Mes suggestions précédentes" avec statut (En attente / Prise en compte)
+
+**Côté admin :**
+- Onglet "Besoin d'aide" : liste tickets, filtres (Tous/En cours/Résolus), chat admin, champ "Répondre en tant que" (prénom), bouton "Voir la fiche client", bouton "Clôturer"
+- Onglet "Suggestions" : filtres (En attente/Prises en compte/Archivées), bouton "Pris en compte" → notification cloche client, bouton "Archiver", bouton "Supprimer", bouton "Fiche client", badge catégorie
+- Historique tickets dans fiche utilisateur admin
+
+### C. Notifications persistantes (table user_notifications)
+
+- Cloche pro + particulier : charge les notifications BDD en plus des analyses terminées (mémoire)
+- Notifications analyse : "Rapport prêt" + titre, icône check verte, cliquable → rapport
+- Notifications BDD : titre + message complet affiché, icône cloche orange, non cliquable
+- "Tout marquer lu" met à jour la BDD
+- Admin "Pris en compte" sur suggestion → insère notification BDD → visible dans cloche client
+
+### D. Autres modifications
+
+- Confirmation mot de passe inscription (SignupPage)
+- "Verdict d'achat" → "Recommandation Verimo" (TarifsPage + Tarifs dashboard)
+- Barre de progression NouvelleAnalyse : courbe logarithmique basée sur temps réel
+- InfoTooltip fix : séparation hover PC / clic mobile, z-index 99999
+- Logo sidebar 60px + container 78px
+- Fixes mobile : tables en cards, tooltips, grilles 2x2, body scroll lock modales
+
+### Fichiers modifiés session 22
+```
+src/pages/DashboardProPage.tsx     → popup aide + suggestion + notifications BDD + InfoTooltip fix + logo
+src/pages/DashboardPage.tsx        → popup aide + notifications BDD + logo
+src/pages/AdminPage.tsx            → onglets support + suggestions + historique tickets fiche user
+src/pages/dashboard/Support.tsx    → refait entièrement (tickets + chat + FAQ)
+src/pages/dashboard/NouvelleAnalyse.tsx → barre progression recalibrée
+src/pages/SignupPage.tsx           → confirmation mot de passe
+src/pages/TarifsPage.tsx           → verdict → recommandation
+src/pages/dashboard/Tarifs.tsx     → verdict → recommandation
+src/pages/dashboard/MesAnalyses.tsx → supprimé aperçu
+src/pages/dashboard/HomeView.tsx   → supprimé aperçu
+src/pages/RapportPage.tsx          → supprimé aperçu
+src/lib/analyses.ts                → supprimé fonctions aperçu
+src/lib/analyse-client.ts          → supprimé modes aperçu
+
+Edge function :
+- analyser-run/index.ts            → supprimé code aperçu
+
+SQL exécutés :
+- CREATE TABLE support_tickets (+ RLS + index)
+- CREATE TABLE support_messages (+ RLS + trigger)
+- CREATE TABLE pro_suggestions (+ RLS)
+- CREATE TABLE user_notifications (+ RLS + index)
+- ALTER TABLE support_messages ADD COLUMN sender_name text
+- ALTER TABLE pro_suggestions ADD COLUMN acknowledged boolean DEFAULT false
+- ALTER TABLE pro_suggestions ADD COLUMN archived boolean DEFAULT false
+- ALTER TABLE pro_suggestions ADD COLUMN category text
+```
 
 ## ✅ Session 21 — 2 mai 2026 — Admin refonte, emails pro, envoi rapports, abonnements
 
@@ -337,18 +432,32 @@ Lues par sidebar et NouvelleAnalyse via `get_pro_credits_balance(p_user_id)` qui
 - [ ] **Veille réglementaire — prompt analyser-run** — DPE collectif copros <50 lots (jan 2026), PPT obligatoire (jan 2026)
 - [ ] **Prompt caching API Anthropic** — ~90% d'économie possible
 - [ ] **Stripe TEST → production** — Passer les Price IDs en mode live
+- [ ] **Email notification quand admin répond à un ticket support** — edge function à créer
 
 ### 🟡 Priorité normale
 
-- [ ] **Page connexion** : agrandir logo mobile, bouton retour vers site
-- [ ] **Page inscription** : ajouter champ "Répéter votre mot de passe"
-- [ ] **Page mdp oublié** : agrandir logo mobile, bouton retour
-- [ ] **Refonte page Mon Compte Pro** : fusionner sections identité perso + identité pro + coordonnées visibles. Email de contact = email de connexion (bloquer). Tooltips sur champs visibles dans les mails.
 - [ ] **Template email prospection** : 3 versions prêtes (V1 court, V2 visuel, V3 relance). Configurer dans Mailjet avec sous-domaine `outreach.verimo.fr`.
-- [ ] **Supprimer le flow aperçu gratuit**
-- [ ] **Barre de progression NouvelleAnalyse** — Monte trop vite puis stagne
-- [ ] **Refonte verdict comparaison**
-- [ ] **ExemplePage — mock maison**
+- [ ] **Vérifier templates emails Supabase Auth** (inscription) — si mention "essai gratuit" restante, modifier dans dashboard Supabase
+
+### ✅ Résolu session 22
+
+- [x] Suppression complète aperçu gratuit / analyse offerte — 11 fichiers frontend + edge function analyser-run nettoyés
+- [x] Confirmation mot de passe à l'inscription (SignupPage)
+- [x] "Verdict d'achat" → "Recommandation Verimo" (TarifsPage + dashboard/Tarifs)
+- [x] Barre de progression NouvelleAnalyse recalibrée — courbe logarithmique basée sur temps réel + nombre de docs
+- [x] Système de support/tickets complet (pro + particulier) :
+  - Tables BDD : support_tickets, support_messages, pro_suggestions, user_notifications
+  - Bouton "Besoin d'aide" dans topbar → popup création ticket avec objets prédéfinis
+  - Page Support : liste tickets ouverts/résolus, fil de chat, polling 10s, badge unread sidebar
+  - Confirmation après envoi : "Message envoyé ! Notre équipe vous répondra rapidement"
+  - Bouton "Suggestion" (pro uniquement) → popup avec catégories (Fonctionnalité manquante, Amélioration, Nouveau rapport, Autre idée) + historique des suggestions
+- [x] Admin onglet "Besoin d'aide" : liste tickets (pro + particulier), fil de conversation, champ "Répondre en tant que" (prénom), bouton "Clôturer", bouton "Voir la fiche client" → ouvre directement la fiche
+- [x] Admin onglet "Suggestions" : filtres (En attente / Prises en compte / Archivées), bouton "Pris en compte" → envoie notification cloche au client, bouton "Archiver", bouton "Supprimer"
+- [x] Notifications persistantes en BDD (table user_notifications) — cloche pro + particulier charge les notifications BDD + mémoire
+- [x] Historique tickets support dans fiche utilisateur admin
+- [x] InfoTooltip (i) fix : séparation hover (PC) / clic (mobile), z-index 99999
+- [x] Logo sidebar 60px + container 78px (pro + particulier)
+- [x] Nombreux fixes mobile : tables en cards, tooltips, popups, layouts, boutons retour, grilles 2x2, body scroll lock modales
 
 ### ✅ Résolu session 21
 
