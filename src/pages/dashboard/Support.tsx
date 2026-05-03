@@ -202,6 +202,7 @@ function NewTicketView({ onBack, onCreated }: { onBack: () => void; onCreated: (
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
+  const [sentTicketId, setSentTicketId] = useState<string | null>(null);
 
   const finalSubject = subject === 'Autre' ? customSubject.trim() : subject;
 
@@ -213,8 +214,37 @@ function NewTicketView({ onBack, onCreated }: { onBack: () => void; onCreated: (
     const { data: ticket, error: err } = await supabase.from('support_tickets').insert({ user_id: user.id, subject: finalSubject }).select().single();
     if (err || !ticket) { setError('Erreur lors de la création.'); setSending(false); return; }
     await supabase.from('support_messages').insert({ ticket_id: ticket.id, sender_type: 'user', message: message.trim() });
-    onCreated(ticket.id);
+    setSentTicketId(ticket.id);
   };
+
+  if (sentTicketId) {
+    return (
+      <div style={{ maxWidth: 700 }}>
+        <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '48px 32px', textAlign: 'center' }}>
+          <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', border: '2px solid #bbf7d0' }}>
+            <CheckCircle size={32} style={{ color: '#16a34a' }} />
+          </div>
+          <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', marginBottom: 8 }}>Message envoyé !</h3>
+          <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, marginBottom: 8, maxWidth: 400, margin: '0 auto 24px' }}>
+            Votre demande a bien été enregistrée. Notre équipe vous répondra dès que possible directement dans cette discussion.
+          </p>
+          <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 28 }}>
+            Vous recevrez une notification dès qu'une réponse sera disponible.
+          </p>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button onClick={() => onCreated(sentTicketId)}
+              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '12px 24px', borderRadius: 12, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>
+              <MessageSquare size={15} /> Voir la discussion
+            </button>
+            <button onClick={onBack}
+              style={{ padding: '12px 24px', borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7', color: '#64748b', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
+              Retour au support
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: 700 }}>
