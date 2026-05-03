@@ -2368,7 +2368,7 @@ function AnalysisDetailView({ analysis, onBack, onOpenUser, onReload }: {
       origineBg = '#f0fdf4';
     }
   } else if (analysis.paid === false || (!analysis.stripe_payment_id && analysis.type !== 'document')) {
-    origineLabel = '✨ Aperçu gratuit / Analyse offerte';
+    origineLabel = '✨ Analyse non payée';
     origineColor = '#f0a500';
     origineBg = '#fffbeb';
   } else if (analysis.userRole === 'pro' || (!analysis.stripe_payment_id && !analysis.paid)) {
