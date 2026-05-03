@@ -4216,7 +4216,6 @@ export default function RapportPage() {
   const [activeTab, setActiveTab] = useState<TabId>('synthese');
   const [loading, setLoading] = useState(true);
   const [rapport, setRapport] = useState<RapportData | null>(null);
-  const [apercuData, setApercuData] = useState<{ apercu: Record<string, unknown>; type: string; id: string } | null>(null);
   const [documentResult, setDocumentResult] = useState<Record<string, unknown> | null>(null);
   const [backUrl, setBackUrl] = useState('/dashboard/analyses');
 
@@ -4257,10 +4256,6 @@ export default function RapportPage() {
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       const data = await fetchAnalyseById(id);
       if (data?.status === 'failed') { setLoading(false); return; }
-      if (data?.is_preview && data?.apercu && !data?.result) {
-        setApercuData({ apercu: data.apercu as Record<string, unknown>, type: data.type, id: data.id });
-        setLoading(false); return;
-      }
       if (data?.result) {
         const result = data.result as Record<string, unknown>;
         // Analyse simple document → DocumentRenderer
@@ -4292,79 +4287,6 @@ export default function RapportPage() {
       <style>{'@keyframes spin { to { transform: rotate(360deg); } }'}</style>
     </div>
   );
-
-  // Aperçu gratuit
-  if (apercuData) {
-    const ap = apercuData.apercu;
-    const isComplete = apercuData.type === 'complete' || apercuData.type === 'apercu_complete';
-    const lancerPaiement = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { window.location.href = '/connexion'; return; }
-      const priceId = isComplete ? 'price_1TIb3XBO4ekMbwz0a7m7E7gD' : 'price_1TIb1LBO4ekMbwz0020eqcR0';
-      const successUrl = `https://verimo.fr/dashboard/rapport?id=${apercuData.id}&action=reupload`;
-      const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlc3pyYXlyb21sZGZnZXRxYXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MzI5NTUsImV4cCI6MjA2MTAwODk1NX0.XsqzBPDMfHRFKgMhJxoLhgVWZMdV5YnFKM3VCBe9hOk' },
-        body: JSON.stringify({ priceId, userId: session.user.id, successUrl, retractationWaiverAt: new Date().toISOString() }),
-      });
-      const data = await res.json();
-      if (data.url) window.location.href = data.url;
-    };
-    return (
-      <div style={{ minHeight: '100vh', background: '#f5f9fb', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-        <header style={{ background: '#fff', borderBottom: '1px solid #edf2f7', position: 'sticky', top: 0, zIndex: 40, padding: '0 24px', height: 60, display: 'flex', alignItems: 'center', gap: 14 }}>
-          <Link to={backUrl} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 600, color: '#64748b', textDecoration: 'none' }}><ChevronLeft size={15} /> Mes analyses</Link>
-          <div style={{ width: 1, height: 18, background: '#edf2f7' }} />
-          <span style={{ fontSize: 10, fontWeight: 800, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '3px 10px', borderRadius: 100 }}>APERÇU GRATUIT</span>
-        </header>
-        <div style={{ maxWidth: 1000, margin: '0 auto', padding: '28px 20px', display: 'grid', gridTemplateColumns: '1fr 300px', gap: 24, alignItems: 'start' }} className="apercu-grid">
-          <style>{`@media (max-width: 760px) { .apercu-grid { grid-template-columns: 1fr !important; } }`}</style>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <h1 style={{ fontSize: 'clamp(17px,2.5vw,24px)', fontWeight: 800, color: '#0f172a' }}>{ap.titre as string}</h1>
-            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '18px 20px' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.1em', marginBottom: 8 }}>RÉSUMÉ</div>
-              <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.75 }}>{ap.recommandation_courte as string}</p>
-            </div>
-            {(ap.points_vigilance as string[])?.length > 0 && (
-              <div style={{ background: '#fffbeb', borderRadius: 14, border: '1px solid #fde68a', padding: '18px 20px' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#d97706', letterSpacing: '0.1em', marginBottom: 10 }}>⚠ POINTS DE VIGILANCE</div>
-                {(ap.points_vigilance as string[]).map((p, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 8 }}>
-                    <AlertTriangle size={13} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
-                    <span style={{ fontSize: 14, color: '#92400e', lineHeight: 1.5 }}>{p}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div style={{ background: '#f8fafc', borderRadius: 14, border: '1px solid #e2e8f0', padding: '20px', position: 'relative', overflow: 'hidden', minHeight: 120 }}>
-              <div style={{ filter: 'blur(5px)', pointerEvents: 'none', userSelect: 'none' }}>
-                {['Score /20 global', 'Analyse travaux détaillée', 'Finances copropriété', 'Diagnostics complets', 'Avis Verimo'].map((item, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#cbd5e1', flexShrink: 0, marginTop: 4 }} />
-                    <span style={{ fontSize: 13, color: '#cbd5e1' }}>{item}</span>
-                  </div>
-                ))}
-              </div>
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 6 }}>
-                <Lock size={20} style={{ color: '#64748b' }} /><span style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>Contenu réservé après paiement</span>
-              </div>
-            </div>
-          </div>
-          <div style={{ position: 'sticky', top: 76 }}>
-            <div style={{ background: '#0f2d3d', borderRadius: 16, padding: '22px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em' }}>DÉBLOQUER</div>
-              <h2 style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>{isComplete ? 'Rapport complet' : 'Analyse du document'}</h2>
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6 }}>{isComplete ? 'Score /20, travaux, copropriété, diagnostics, avis Verimo.' : 'Analyse approfondie et recommandations.'} PDF inclus.</p>
-              <button onClick={lancerPaiement} style={{ padding: '13px', borderRadius: 12, background: '#fff', color: '#0f2d3d', fontSize: 14, fontWeight: 800, border: 'none', cursor: 'pointer' }}>
-                Débloquer — {isComplete ? '19,90€' : '4,90€'}
-              </button>
-              <Link to={backUrl} style={{ display: 'block', textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.4)', textDecoration: 'none' }}>← Mes analyses</Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // ── ANALYSE SIMPLE DOCUMENT ──
   if (documentResult) {
