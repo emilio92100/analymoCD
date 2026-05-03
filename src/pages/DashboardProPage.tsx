@@ -1516,22 +1516,23 @@ function Field({ label, required, optional, hint, tooltip, icon: Icon, children 
 ══════════════════════════════════════════ */
 function InfoTooltip({ text }: { text: string }) {
   const [show, setShow] = useState(false);
+  const [clicked, setClicked] = useState(false);
 
   return (
     <>
       <span
-        onMouseEnter={() => { if (window.innerWidth > 768) setShow(true); }}
-        onMouseLeave={() => { if (window.innerWidth > 768) setShow(false); }}
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShow(s => !s); }}
+        onMouseEnter={() => { if (window.innerWidth > 768 && !clicked) setShow(true); }}
+        onMouseLeave={() => { if (window.innerWidth > 768 && !clicked) setShow(false); }}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setClicked(true); setShow(true); }}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
-          width: 16,
-          height: 16,
+          width: 18,
+          height: 18,
           borderRadius: '50%',
-          background: show ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#e2e8f0',
-          color: show ? '#fff' : '#64748b',
+          background: show ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#cbd5e1',
+          color: show ? '#fff' : '#475569',
           fontSize: 10,
           fontWeight: 800,
           cursor: 'help',
@@ -1539,6 +1540,7 @@ function InfoTooltip({ text }: { text: string }) {
           letterSpacing: 0,
           transition: 'all 0.15s',
           flexShrink: 0,
+          userSelect: 'none' as const,
         }}>
         i
       </span>
@@ -1549,8 +1551,8 @@ function InfoTooltip({ text }: { text: string }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            onClick={(e) => { e.stopPropagation(); setShow(false); }}
-            style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(15,45,61,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, pointerEvents: 'auto' }}>
+            onClick={(e) => { e.stopPropagation(); setShow(false); setClicked(false); }}
+            style={{ position: 'fixed', inset: 0, zIndex: 99999, background: clicked ? 'rgba(15,45,61,0.35)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, pointerEvents: clicked ? 'auto' : 'none' }}>
             <motion.div
               initial={{ opacity: 0, scale: 0.92, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1570,10 +1572,11 @@ function InfoTooltip({ text }: { text: string }) {
                 boxShadow: '0 20px 60px rgba(15,45,61,0.4)',
                 textAlign: 'left' as const,
                 position: 'relative' as const,
+                pointerEvents: 'auto' as const,
               }}>
               {text}
               <button
-                onClick={() => setShow(false)}
+                onClick={() => { setShow(false); setClicked(false); }}
                 style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 6, width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', fontSize: 14, fontWeight: 700 }}>
                 ×
               </button>
