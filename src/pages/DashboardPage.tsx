@@ -33,7 +33,7 @@ const navItems = [
 /* ═══════════════════════════════════════════
    SIDEBAR TEAL VERIMO
 ═══════════════════════════════════════════ */
-function Sidebar({ onClose }: { onClose?: () => void }) {
+function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTickets?: number }) {
   const location = useLocation();
   const { credits } = useCredits();
 
@@ -69,8 +69,8 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
         <div style={{ fontSize:10, fontWeight:700, color:SB_MUTED, letterSpacing:'0.1em', marginBottom:7 }}>CRÉDITS RESTANTS</div>
         <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
           {[{ label:'Document', value:credits.document }, { label:'Complète', value:credits.complete }].map(c=>(
-            <div key={c.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'5px 8px', borderRadius:7, background:'rgba(255,255,255,0.03)' }}>
-              <span style={{ fontSize:11, color:'rgba(255,255,255,0.65)', fontWeight:500 }}>{c.label}</span>
+            <div key={c.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'5px 8px', borderRadius:7, background:'rgba(255,255,255,0.04)' }}>
+              <span style={{ fontSize:11, color:'rgba(255,255,255,0.7)', fontWeight:500 }}>{c.label}</span>
               <span style={{ fontSize:12, fontWeight:800, color:c.value>0?SB_ACCENT:'rgba(255,255,255,0.2)' }}>{c.value} crédit{c.value>1?'s':''}</span>
             </div>
           ))}
@@ -97,7 +97,11 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
               }}
               onMouseOver={e=>{ if(!active)(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.05)'; }}
               onMouseOut={e=>{ if(!active)(e.currentTarget as HTMLElement).style.background='transparent'; }}>
-              <Icon size={16} style={{ color:active?SB_ACCENT:SB_TEXT, flexShrink:0 }}/>{item.label}
+              <Icon size={16} style={{ color:active?SB_ACCENT:SB_TEXT, flexShrink:0 }}/>
+              <span style={{ flex: 1 }}>{item.label}</span>
+              {item.to === '/dashboard/support' && (unreadTickets || 0) > 0 && (
+                <span style={{ minWidth: 18, height: 18, borderRadius: 100, background: '#f59e0b', color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', flexShrink: 0 }}>{unreadTickets}</span>
+              )}
             </Link>
           );
         })}
@@ -407,6 +411,21 @@ export default function DashboardPage() {
   }, []);
 
   const unreadCount = notifications.filter(n => !n.read).length + dbNotifications.filter(n => !n.read).length;
+  const [unreadTickets, setUnreadTickets] = useState(0);
+
+  // Load unread tickets count
+  useEffect(() => {
+    const loadUnread = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { count } = await supabase.from('support_tickets').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('unread_by_user', true);
+      setUnreadTickets(count || 0);
+    };
+    loadUnread();
+    const interval = setInterval(loadUnread, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const [showHelpPopup, setShowHelpPopup] = useState(false);
   const [helpSubject, setHelpSubject] = useState('');
   const [helpCustomSubject, setHelpCustomSubject] = useState('');
@@ -445,7 +464,7 @@ export default function DashboardPage() {
     <div style={{ display:'flex', minHeight:'100vh', background:'#f5f9fb', fontFamily:"'DM Sans', system-ui, sans-serif" }}>
       <div className="desktop-sidebar" style={{ width:260, flexShrink:0 }}>
         <div style={{ position:'fixed', top:0, left:0, width:260, height:'100vh', zIndex:50, overflowY:'auto' }}>
-          <Sidebar/>
+          <Sidebar unreadTickets={unreadTickets}/>
         </div>
       </div>
       <AnimatePresence>
@@ -454,7 +473,7 @@ export default function DashboardPage() {
             <div onClick={()=>setMobileOpen(false)} style={{ position:'absolute', inset:0, background:'rgba(15,45,61,0.45)' }}/>
             <motion.div initial={{ x:-260 }} animate={{ x:0 }} exit={{ x:-260 }} transition={{ type:'spring', stiffness:320, damping:32 }}
               style={{ position:'absolute', left:0, top:0, bottom:0, width:260 }}>
-              <Sidebar onClose={()=>setMobileOpen(false)}/>
+              <Sidebar onClose={()=>setMobileOpen(false)} unreadTickets={unreadTickets}/>
             </motion.div>
           </motion.div>
         )}
