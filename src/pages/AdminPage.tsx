@@ -811,6 +811,7 @@ function AdminSuggestionsTab({ onGoToUser, showToast, onUnreadChange }: { onGoTo
   type Suggestion = { id: string; user_id: string; message: string; category: string | null; created_at: string; acknowledged: boolean; user_email?: string; user_name?: string };
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'pending' | 'acknowledged'>('all');
 
   const loadSuggestions = useCallback(async () => {
     const { data } = await supabase.from('pro_suggestions').select('*').order('created_at', { ascending: false });
@@ -835,41 +836,63 @@ function AdminSuggestionsTab({ onGoToUser, showToast, onUnreadChange }: { onGoTo
       title: 'Suggestion prise en compte',
       message: 'Votre suggestion a bien \u00e9t\u00e9 lue et prise en compte par notre \u00e9quipe. Merci pour votre retour, il nous aide \u00e0 am\u00e9liorer Verimo !',
     });
-    showToast('Suggestion prise en compte — notification envoy\u00e9e');
+    showToast('Pris en compte \u2014 notification envoy\u00e9e');
+    loadSuggestions();
+  };
+
+  const handleDelete = async (s: Suggestion) => {
+    await supabase.from('pro_suggestions').delete().eq('id', s.id);
+    showToast('Suggestion supprim\u00e9e');
     loadSuggestions();
   };
 
   const fmtDate = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const filtered = filter === 'all' ? suggestions : filter === 'pending' ? suggestions.filter(s => !s.acknowledged) : suggestions.filter(s => s.acknowledged);
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Chargement\u2026</div>;
 
   return (
     <div>
-      <p style={{ fontSize: 14, color: '#64748b', marginBottom: 16 }}>{suggestions.length} suggestion{suggestions.length > 1 ? 's' : ''} re\u00e7ue{suggestions.length > 1 ? 's' : ''}</p>
-      {suggestions.length === 0 ? (
-        <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Aucune suggestion pour le moment.</div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        {[
+          { id: 'all' as const, label: 'Toutes', count: suggestions.length },
+          { id: 'pending' as const, label: 'En attente', count: suggestions.filter(s => !s.acknowledged).length },
+          { id: 'acknowledged' as const, label: 'Prises en compte', count: suggestions.filter(s => s.acknowledged).length },
+        ].map(f => (
+          <button key={f.id} onClick={() => setFilter(f.id)}
+            style={{ padding: '7px 14px', borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: filter === f.id ? '1.5px solid #d97706' : '1px solid #edf2f7', background: filter === f.id ? '#fffbeb' : '#fff', color: filter === f.id ? '#92400e' : '#64748b' }}>
+            {f.label} ({f.count})
+          </button>
+        ))}
+      </div>
+      {filtered.length === 0 ? (
+        <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Aucune suggestion.</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {suggestions.map((s: Suggestion) => (
+          {filtered.map((s: Suggestion) => (
             <div key={s.id} style={{ background: '#fff', borderRadius: 14, border: s.acknowledged ? '1px solid #edf2f7' : '1.5px solid #f59e0b', padding: '18px 20px', opacity: s.acknowledged ? 0.7 : 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
                 <div style={{ width: 32, height: 32, borderRadius: 8, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <Lightbulb size={15} style={{ color: '#d97706' }} />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{s.user_name}</span>
                   <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 8 }}>{s.user_email}</span>
                 </div>
                 {s.category && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: '#fef3c7', color: '#92400e' }}>{s.category}</span>}
+                <span style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDate(s.created_at)}</span>
+              </div>
+              <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.7, margin: '0 0 12px', whiteSpace: 'pre-wrap' }}>{s.message}</p>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 {onGoToUser && (
                   <button onClick={() => onGoToUser(s.user_id)}
                     style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, background: '#f0f7fb', border: '1px solid #d0e8f0', color: '#2a7d9c', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>
-                    <User size={11} /> Fiche
+                    <User size={11} /> Fiche client
                   </button>
                 )}
                 {!s.acknowledged ? (
                   <button onClick={() => handleAcknowledge(s)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, background: '#16a34a', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 7, background: '#16a34a', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
                     <CheckCircle size={12} /> Pris en compte
                   </button>
                 ) : (
@@ -877,9 +900,11 @@ function AdminSuggestionsTab({ onGoToUser, showToast, onUnreadChange }: { onGoTo
                     <CheckCircle size={12} /> Pris en compte
                   </span>
                 )}
-                <span style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDate(s.created_at)}</span>
+                <button onClick={() => handleDelete(s)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', cursor: 'pointer', fontSize: 11, fontWeight: 600, marginLeft: 'auto' }}>
+                  <Trash2 size={11} /> Supprimer
+                </button>
               </div>
-              <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>{s.message}</p>
             </div>
           ))}
         </div>
