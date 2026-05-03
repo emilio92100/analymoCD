@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Plus, FileText, GitCompare, User, LifeBuoy,
   LogOut, Menu, X, ChevronDown, Bell, Shield, CreditCard,
-  CheckCircle, BookOpen, Send, MessageSquare,
+  CheckCircle, BookOpen, Send, MessageSquare, Search,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useCredits } from '../hooks/useCredits';
@@ -64,18 +64,28 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
         </Link>
       </div>
 
-      {/* Crédits — juste sous le CTA comme l'actuel */}
-      <div style={{ margin:'0 14px 6px', padding:'10px 12px', borderRadius:9, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)' }}>
-        <div style={{ fontSize:10, fontWeight:700, color:SB_MUTED, letterSpacing:'0.1em', marginBottom:7 }}>CRÉDITS RESTANTS</div>
-        <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-          {[{ label:'Document', value:credits.document }, { label:'Complète', value:credits.complete }].map(c=>(
-            <div key={c.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'5px 8px', borderRadius:7, background:'rgba(255,255,255,0.04)' }}>
-              <span style={{ fontSize:11, color:'rgba(255,255,255,0.7)', fontWeight:500 }}>{c.label}</span>
-              <span style={{ fontSize:12, fontWeight:800, color:c.value>0?SB_ACCENT:'rgba(255,255,255,0.2)' }}>{c.value} crédit{c.value>1?'s':''}</span>
-            </div>
-          ))}
+      {/* Crédits — Option F : fond blanc, icônes, gros chiffres */}
+      <div style={{ margin:'0 14px 6px', padding:'14px', borderRadius:10, background:'#fff' }}>
+        <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', letterSpacing:'0.08em', marginBottom:10 }}>CRÉDITS RESTANTS</div>
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px', borderRadius:8, background:'#f8fafc', marginBottom:6 }}>
+          <div style={{ width:30, height:30, borderRadius:8, background:'#f0f7fb', border:'1px solid #d0e8f0', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <FileText size={13} style={{ color:'#2a7d9c' }} />
+          </div>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:10, color:'#94a3b8' }}>Analyse simple</div>
+          </div>
+          <div style={{ fontSize:18, fontWeight:800, color:'#2a7d9c' }}>{credits.document}</div>
         </div>
-        <Link to="/dashboard/tarifs" onClick={onClose} style={{ display:'block', marginTop:7, fontSize:11, fontWeight:700, color:SB_ACCENT, textDecoration:'none', textAlign:'center' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px', borderRadius:8, background:'#f8fafc', marginBottom:10 }}>
+          <div style={{ width:30, height:30, borderRadius:8, background:'#e8f4f8', border:'1px solid #bae3f5', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <Search size={13} style={{ color:'#0f2d3d' }} />
+          </div>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:10, color:'#94a3b8' }}>Analyse complète</div>
+          </div>
+          <div style={{ fontSize:18, fontWeight:800, color:'#0f2d3d' }}>{credits.complete}</div>
+        </div>
+        <Link to="/dashboard/tarifs" onClick={onClose} style={{ display:'block', padding:'8px', borderRadius:8, background:'#2a7d9c', color:'#fff', fontSize:11, fontWeight:700, textDecoration:'none', textAlign:'center' }}>
           {credits.document===0&&credits.complete===0?'+ Acheter une analyse':'+ Recharger'}
         </Link>
       </div>
@@ -427,6 +437,23 @@ export default function DashboardPage() {
   }, []);
 
   const [showHelpPopup, setShowHelpPopup] = useState(false);
+
+  // Welcome popup — première connexion
+  const [showWelcome, setShowWelcome] = useState(false);
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from('profiles').select('welcome_shown').eq('id', user.id).single();
+      if (data && !data.welcome_shown) setShowWelcome(true);
+    })();
+  }, []);
+  const dismissWelcome = async (goToAide?: boolean) => {
+    setShowWelcome(false);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) await supabase.from('profiles').update({ welcome_shown: true }).eq('id', user.id);
+    if (goToAide) navigate('/dashboard/aide');
+  };
   const [helpSubject, setHelpSubject] = useState('');
   const [helpCustomSubject, setHelpCustomSubject] = useState('');
   const [helpMessage, setHelpMessage] = useState('');
@@ -500,6 +527,36 @@ export default function DashboardPage() {
             style={{ position: 'fixed', top: 80, right: 24, background: '#fff', color: '#0f172a', padding: '14px 20px', borderRadius: 14, fontSize: 13, fontWeight: 700, zIndex: 9999, boxShadow: '0 12px 40px rgba(0,0,0,0.15)', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: 10 }}>
             <CheckCircle size={18} style={{ color: '#16a34a', flexShrink: 0 }} />
             {notifToast}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Popup Bienvenue — première connexion */}
+      <AnimatePresence>
+        {showWelcome && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,45,61,0.5)', padding: 20, backdropFilter: 'blur(3px)' }}>
+            <motion.div initial={{ scale: 0.92, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+              style={{ background: '#fff', borderRadius: 20, padding: '36px 32px', width: '100%', maxWidth: 420, textAlign: 'center', boxShadow: '0 24px 64px rgba(0,0,0,0.15)' }}
+              onClick={e => e.stopPropagation()}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>🎉</div>
+              <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Bienvenue sur Verimo !</h2>
+              <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, marginBottom: 24 }}>
+                Vous êtes prêt à analyser vos premiers documents immobiliers.<br />
+                Découvrez comment fonctionne Verimo en 2 minutes.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <button onClick={() => dismissWelcome(true)}
+                  style={{ width: '100%', padding: '14px', borderRadius: 12, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <BookOpen size={16} /> Découvrir le guide Aide & Méthode
+                </button>
+                <button onClick={() => dismissWelcome(false)}
+                  style={{ width: '100%', padding: '14px', borderRadius: 12, background: '#f8fafc', border: '1px solid #e2e8f0', color: '#64748b', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                  C&apos;est parti, je commence !
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
