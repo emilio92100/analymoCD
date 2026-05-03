@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { syncFreePreviewUsed } from '../lib/analyses';
+
 
 async function cacheUserInfo(): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -101,7 +101,6 @@ export default function AuthCallbackPage() {
       setProgress(100);
 
       if (sessionOk) {
-        await syncFreePreviewUsed();
         await cacheUserInfo();
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
