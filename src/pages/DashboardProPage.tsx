@@ -9,6 +9,7 @@ import {
   ChevronRight, ArrowRight,
   MapPin, Trash2, AlertTriangle, FileText, Pencil,
   UserPlus, UserCheck, Folder, Lightbulb, MessageSquare,
+  LayoutGrid, LayoutList, ArrowUpDown,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -164,11 +165,11 @@ const proNavItems = [
 function SidebarPro({ subscription, proCredits, onClose, unreadTickets }: { subscription: ProSubscription | null; proCredits: ProCredits | null; onClose?: () => void; unreadTickets?: number }) {
   const location = useLocation();
 
-  const BG = '#0a1f2d';
+  const BG = '#0e3a4a';
   const ACCENT = '#7dd3fc';
   const TEXT = 'rgba(255,255,255,0.75)';
   const TEXT_ACTIVE = '#ffffff';
-  const MUTED = 'rgba(255,255,255,0.25)';
+  const MUTED = 'rgba(255,255,255,0.45)';
 
   const creditsComplete = proCredits?.total_complete ?? 0;
   const creditsSimple = proCredits?.total_document ?? 0;
@@ -193,23 +194,24 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets }: { subs
       </div>
 
       {/* Crédits restants */}
-      <div style={{ margin: '0 14px 6px', padding: '10px 12px', borderRadius: 9, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ margin: '0 14px 6px', padding: '10px 12px', borderRadius: 9, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
         <div style={{ fontSize: 10, fontWeight: 700, color: MUTED, letterSpacing: '0.1em', marginBottom: 7 }}>CRÉDITS RESTANTS</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {[{ label: 'Complète', value: creditsComplete }, { label: 'Simple', value: creditsSimple }].map(c => (
-            <div key={c.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 8px', borderRadius: 7, background: 'rgba(255,255,255,0.03)' }}>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', fontWeight: 500 }}>{c.label}</span>
+            <div key={c.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 8px', borderRadius: 7, background: 'rgba(255,255,255,0.04)' }}>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>{c.label}</span>
               <span style={{ fontSize: 12, fontWeight: 800, color: c.value > 0 ? ACCENT : 'rgba(255,255,255,0.2)' }}>{c.value}</span>
             </div>
           ))}
         </div>
         {subscription ? (
-          <div style={{ marginTop: 8, fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.85)', textAlign: 'center', lineHeight: 1.4 }}>
-            Plan {subscription.plan === 'decouverte' ? 'Découverte' : subscription.plan === 'starter' ? 'Starter' : subscription.plan === 'power' ? 'Power' : subscription.plan}
-            <br />
-            <span style={{ fontSize: 10, fontWeight: 500, color: subscription.cancel_at_period_end ? '#fbbf24' : 'rgba(255,255,255,0.65)' }}>
+          <div style={{ marginTop: 8, padding: '6px 10px', borderRadius: 7, background: 'rgba(255,255,255,0.06)', textAlign: 'center', lineHeight: 1.5 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>
+              Abonnement : {subscription.plan === 'decouverte' ? 'Découverte' : subscription.plan === 'starter' ? 'Starter' : subscription.plan === 'power' ? 'Power' : subscription.plan}
+            </div>
+            <div style={{ fontSize: 10, fontWeight: 500, color: subscription.cancel_at_period_end ? '#fbbf24' : 'rgba(255,255,255,0.55)' }}>
               {subscription.cancel_at_period_end ? 'Fin d\'abonnement' : 'Renouvellement'} {subscription.current_period_end ? fmtDate(subscription.current_period_end) : '—'}
-            </span>
+            </div>
           </div>
         ) : (
           <Link to="/dashboard/abonnement" onClick={onClose} style={{ display: 'block', marginTop: 7, fontSize: 11, fontWeight: 700, color: ACCENT, textDecoration: 'none', textAlign: 'center' }}>
@@ -310,8 +312,10 @@ function TopbarPro({ onMenuClick, title, proProfile, unreadCount, notifications,
             }}>{unreadCount}</span>
           )}
         </button>
+        <AnimatePresence>
         {bellOpen && (
-          <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: 320, background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', boxShadow: '0 16px 48px rgba(0,0,0,0.12)', zIndex: 9999, overflow: 'hidden' }}>
+          <motion.div initial={{ opacity: 0, y: -8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.97 }} transition={{ duration: 0.18, ease: 'easeOut' }}
+            style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: 320, background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', boxShadow: '0 16px 48px rgba(0,0,0,0.12)', zIndex: 9999, overflow: 'hidden' }}>
             <div style={{ padding: '14px 16px', borderBottom: '1px solid #f0f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Notifications</span>
             </div>
@@ -349,8 +353,9 @@ function TopbarPro({ onMenuClick, title, proProfile, unreadCount, notifications,
                 })
               )}
             </div>
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
       </div>
 
       <div ref={dropdownRef} style={{ position: 'relative' }}>
@@ -365,8 +370,10 @@ function TopbarPro({ onMenuClick, title, proProfile, unreadCount, notifications,
           </div>
           <ChevronDown size={13} style={{ color: '#94a3b8' }} />
         </button>
+        <AnimatePresence>
         {dropdownOpen && (
-          <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: 220, background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', boxShadow: '0 16px 48px rgba(0,0,0,0.12)', zIndex: 9999, overflow: 'hidden' }}>
+          <motion.div initial={{ opacity: 0, y: -8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.97 }} transition={{ duration: 0.18, ease: 'easeOut' }}
+            style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', width: 220, background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', boxShadow: '0 16px 48px rgba(0,0,0,0.12)', zIndex: 9999, overflow: 'hidden' }}>
             <div style={{ padding: '14px 16px', borderBottom: '1px solid #f0f5f9' }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{proProfile?.full_name}</div>
               <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{email}</div>
@@ -380,8 +387,9 @@ function TopbarPro({ onMenuClick, title, proProfile, unreadCount, notifications,
               style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'none', border: 'none', borderTop: '1px solid #f0f5f9', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#ef4444', textAlign: 'left' as const }}>
               <LogOut size={15} /> Se déconnecter
             </button>
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
       </div>
     </header>
   );
@@ -427,9 +435,19 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares }:
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Bonjour {prenom}</h1>
-        {proProfile.pro_company_name && <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>{proProfile.pro_company_name}</p>}
+      <div style={{ marginBottom: 28, background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+          {(prenom.charAt(0) || 'P').toUpperCase()}
+        </div>
+        <div style={{ flex: 1 }}>
+          <h1 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', margin: 0 }}>Bonjour {prenom} 👋</h1>
+          <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>
+            {[proProfile.pro_company_name, proProfile.pro_network, proProfile.pro_ville].filter(Boolean).join(' · ')}
+          </p>
+        </div>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>{new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+        </div>
       </div>
 
       {/* Pas d'abonnement ? Bandeau remonté en haut */}
@@ -543,6 +561,9 @@ function MesDossiersPro() {
   const [search, setSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [folderToDelete, setFolderToDelete] = useState<ProFolder | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [sortBy, setSortBy] = useState<'recent' | 'oldest' | 'name' | 'analyses'>('recent');
+  const [filter, setFilter] = useState<'all' | 'thisMonth' | 'withShares' | 'noAnalyses'>('all');
   const navigate = useNavigate();
 
   const loadFolders = useCallback(async () => {
@@ -551,7 +572,6 @@ function MesDossiersPro() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
 
-      // Charge les dossiers
       const { data: foldersData, error } = await supabase
         .from('pro_folders')
         .select('*')
@@ -564,8 +584,6 @@ function MesDossiersPro() {
         return;
       }
 
-      // Charge les stats pour chaque dossier (analyses, vendeurs, acheteurs)
-      // On fait 3 count en parallèle par dossier (RLS s'applique côté user, donc pas de souci de droits)
       const foldersWithStats = await Promise.all((foldersData || []).map(async (f) => {
         try {
           const [analysesRes, sellersRes, buyersRes] = await Promise.all([
@@ -593,15 +611,30 @@ function MesDossiersPro() {
 
   useEffect(() => { loadFolders(); }, [loadFolders]);
 
-  const filtered = folders.filter(f => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (
-      f.name.toLowerCase().includes(q) ||
-      (f.property_address || '').toLowerCase().includes(q) ||
-      (f.property_city || '').toLowerCase().includes(q)
-    );
+  // Filtrage
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  let filtered = folders.filter(f => {
+    if (search) {
+      const q = search.toLowerCase();
+      if (!(f.name.toLowerCase().includes(q) || (f.property_address || '').toLowerCase().includes(q) || (f.property_city || '').toLowerCase().includes(q))) return false;
+    }
+    if (filter === 'thisMonth') return f.created_at >= startOfMonth;
+    if (filter === 'noAnalyses') return (f.analyses_count || 0) === 0;
+    // withShares would need share data — for now, show folders with analyses > 0 as proxy
+    if (filter === 'withShares') return (f.analyses_count || 0) > 0;
+    return true;
   });
+
+  // Tri
+  filtered = [...filtered].sort((a, b) => {
+    if (sortBy === 'oldest') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    if (sortBy === 'name') return a.name.localeCompare(b.name);
+    if (sortBy === 'analyses') return (b.analyses_count || 0) - (a.analyses_count || 0);
+    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(); // recent
+  });
+
+  const totalAnalyses = folders.reduce((sum, f) => sum + (f.analyses_count || 0), 0);
 
   async function handleDelete(folder: ProFolder) {
     try {
@@ -614,32 +647,90 @@ function MesDossiersPro() {
     }
   }
 
+  const filterOptions = [
+    { key: 'all' as const, label: 'Tous' },
+    { key: 'thisMonth' as const, label: 'Ce mois' },
+    { key: 'withShares' as const, label: 'Avec analyses' },
+    { key: 'noAnalyses' as const, label: 'Sans analyse' },
+  ];
+
+  const sortOptions = [
+    { value: 'recent' as const, label: 'Plus récent' },
+    { value: 'oldest' as const, label: 'Plus ancien' },
+    { value: 'name' as const, label: 'Nom A→Z' },
+    { value: 'analyses' as const, label: 'Plus d\'analyses' },
+  ];
+
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      {/* Header avec bouton Créer */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap' as const, gap: 12 }}>
-        <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
-          {folders.length === 0 ? 'Organisez vos analyses par dossier (un dossier = un bien).' : `${folders.length} dossier${folders.length > 1 ? 's' : ''}`}
-        </p>
+      {/* Banner header */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 22px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' as const }}>
+        <div style={{ width: 42, height: 42, borderRadius: 11, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <FolderOpen size={20} style={{ color: '#2a7d9c' }} />
+        </div>
+        <div style={{ flex: 1, minWidth: 150 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0 }}>Mes dossiers</h2>
+          <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>
+            {folders.length === 0 ? 'Organisez vos analyses par bien' : `${folders.length} dossier${folders.length > 1 ? 's' : ''} · ${totalAnalyses} analyse${totalAnalyses > 1 ? 's' : ''} au total`}
+          </p>
+        </div>
         <button onClick={() => setShowCreateModal(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, boxShadow: '0 4px 12px rgba(15,45,61,0.15)', whiteSpace: 'nowrap' as const }}>
           <Plus size={14} /> Créer un dossier
         </button>
       </div>
 
-      {/* Search */}
+      {/* Toolbar : filters + search + sort + view toggle */}
       {folders.length > 0 && (
-        <div style={{ position: 'relative', marginBottom: 16 }}>
-          <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher un dossier..."
-            style={{ width: '100%', padding: '9px 12px 9px 34px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', background: '#fff', fontFamily: 'inherit' }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 18 }}>
+          {/* Row 1 : filters pills */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
+            {filterOptions.map(f => {
+              const active = filter === f.key;
+              const count = f.key === 'all' ? folders.length : f.key === 'thisMonth' ? folders.filter(fo => fo.created_at >= startOfMonth).length : f.key === 'withShares' ? folders.filter(fo => (fo.analyses_count || 0) > 0).length : folders.filter(fo => (fo.analyses_count || 0) === 0).length;
+              return (
+                <button key={f.key} onClick={() => setFilter(f.key)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: active ? '1.5px solid #2a7d9c' : '1px solid #edf2f7', background: active ? '#f0f7fb' : '#fff', color: active ? '#2a7d9c' : '#64748b', transition: 'all 0.15s' }}>
+                  {f.label}
+                  <span style={{ fontSize: 11, fontWeight: 700, color: active ? '#2a7d9c' : '#94a3b8', background: active ? '#dbeef5' : '#f1f5f9', padding: '1px 7px', borderRadius: 100, marginLeft: 2 }}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Row 2 : search + sort + view toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher un dossier..."
+                style={{ width: '100%', padding: '9px 12px 9px 34px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', background: '#fff', fontFamily: 'inherit' }} />
+            </div>
+            <div style={{ position: 'relative' }}>
+              <ArrowUpDown size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+              <select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}
+                style={{ padding: '9px 12px 9px 30px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 12, fontWeight: 600, color: '#64748b', background: '#fff', cursor: 'pointer', outline: 'none', fontFamily: 'inherit', appearance: 'none', paddingRight: 28, WebkitAppearance: 'none' }}>
+                {sortOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              <ChevronDown size={12} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+            </div>
+            <div style={{ display: 'flex', borderRadius: 9, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
+              <button onClick={() => setViewMode('grid')} title="Vue grille"
+                style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', background: viewMode === 'grid' ? '#f0f7fb' : '#fff', border: 'none', cursor: 'pointer', color: viewMode === 'grid' ? '#2a7d9c' : '#94a3b8', borderRight: '1px solid #edf2f7' }}>
+                <LayoutGrid size={15} />
+              </button>
+              <button onClick={() => setViewMode('list')} title="Vue liste"
+                style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', background: viewMode === 'list' ? '#f0f7fb' : '#fff', border: 'none', cursor: 'pointer', color: viewMode === 'list' ? '#2a7d9c' : '#94a3b8' }}>
+                <LayoutList size={15} />
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Liste */}
+      {/* Liste / Grille */}
       {loading ? (
         <div style={{ padding: 60, textAlign: 'center', background: '#fff', borderRadius: 16, border: '1px solid #edf2f7' }}>
-          <div style={{ fontSize: 13, color: '#94a3b8' }}>Chargement…</div>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid #edf2f7', borderTopColor: '#2a7d9c', animation: 'spin 0.9s linear infinite', margin: '0 auto' }} />
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ padding: 60, textAlign: 'center', background: '#fff', borderRadius: 16, border: '1px solid #edf2f7' }}>
@@ -647,24 +738,53 @@ function MesDossiersPro() {
             <Folder size={28} style={{ color: '#2a7d9c' }} />
           </div>
           <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>
-            {search ? 'Aucun dossier trouvé' : 'Aucun dossier pour le moment'}
+            {search || filter !== 'all' ? 'Aucun dossier trouvé' : 'Aucun dossier pour le moment'}
           </h3>
           <p style={{ fontSize: 13, color: '#94a3b8', margin: '0 0 20px 0', maxWidth: 380, marginLeft: 'auto', marginRight: 'auto' }}>
-            {search ? "Essayez avec d'autres mots-clés." : "Créez votre premier dossier pour organiser vos analyses par bien."}
+            {search || filter !== 'all' ? "Essayez avec d'autres critères." : "Créez votre premier dossier pour organiser vos analyses par bien."}
           </p>
-          {!search && (
+          {!search && filter === 'all' && (
             <button onClick={() => setShowCreateModal(true)}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '11px 22px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
               <Plus size={14} /> Créer mon premier dossier
             </button>
           )}
         </div>
-      ) : (
+      ) : viewMode === 'grid' ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 14 }}>
           {filtered.map((f) => (
             <FolderCard key={f.id} folder={f}
               onClick={() => navigate(`/dashboard/dossier/${f.id}`)}
               onDelete={() => setFolderToDelete(f)} />
+          ))}
+        </div>
+      ) : (
+        /* Vue liste — tableau compact */
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+          {filtered.map((f, i) => (
+            <div key={f.id} onClick={() => navigate(`/dashboard/dossier/${f.id}`)}
+              style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px', cursor: 'pointer', borderBottom: i < filtered.length - 1 ? '1px solid #f1f5f9' : 'none', transition: 'background 0.15s' }}
+              onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#fafcfd'; }}
+              onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
+              <div style={{ width: 36, height: 36, borderRadius: 9, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Folder size={16} style={{ color: '#2a7d9c' }} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{f.name}</div>
+                {(f.property_address || f.property_city) && (
+                  <div style={{ fontSize: 11.5, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
+                    <MapPin size={10} style={{ color: '#94a3b8', flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{[f.property_address, f.property_city].filter(Boolean).join(', ')}</span>
+                  </div>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexShrink: 0 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: (f.analyses_count || 0) > 0 ? '#2a7d9c' : '#94a3b8' }}>{f.analyses_count || 0} analyse{(f.analyses_count || 0) > 1 ? 's' : ''}</span>
+                <span style={{ fontSize: 12, color: '#94a3b8' }}>{f.sellers_count || 0} vendeur{(f.sellers_count || 0) > 1 ? 's' : ''}</span>
+                <span style={{ fontSize: 11, color: '#cbd5e1' }}>{fmtDate(f.updated_at)}</span>
+              </div>
+              <ChevronRight size={14} style={{ color: '#cbd5e1', flexShrink: 0 }} />
+            </div>
           ))}
         </div>
       )}
@@ -4447,7 +4567,9 @@ export default function DashboardProPage() {
           ]} onMarkAllRead={markAllRead}
           onClickNotification={(id) => { window.location.href = `/rapport?id=${id}`; }} />
         <main className="dashboard-main" style={{ flex: 1, padding: '28px 24px', overflowX: 'hidden' }}>
-          {renderContent()}
+          <motion.div key={path} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
+            {renderContent()}
+          </motion.div>
         </main>
       </div>
 
