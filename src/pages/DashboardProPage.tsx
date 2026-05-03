@@ -178,7 +178,7 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets }: { subs
       {/* Logo + PRO badge */}
       <div style={{ height: 68, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
         <Link to="/" onClick={onClose} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <img src="/logo-blanc.png" alt="Verimo" style={{ height: 50, width: 'auto', display: 'block' }} />
+          <img src="/logo-blanc.png" alt="Verimo" style={{ height: 70, width: 'auto', display: 'block' }} />
           <span style={{ background: `linear-gradient(135deg, ${ACCENT}, #38bdf8)`, color: '#0a1f2d', fontSize: 9, fontWeight: 800, padding: '2px 8px', borderRadius: 100, letterSpacing: '0.08em' }}>ACCÈS PRO</span>
         </Link>
         {onClose && <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: 4 }}><X size={18} /></button>}
@@ -4253,6 +4253,7 @@ export default function DashboardProPage() {
   // ─── Notifications : rapports terminés ────────────────────
   type ProNotification = { id: string; analysisId: string; title: string; createdAt: string; read: boolean };
   const [notifications, setNotifications] = useState<ProNotification[]>([]);
+  const [dbNotifications, setDbNotifications] = useState<Array<{ id: string; title: string; message: string | null; read: boolean; created_at: string }>>([]);
   const [notifToast, setNotifToast] = useState<string | null>(null);
   const prevAnalysesRef = useRef<ProAnalysis[]>([]);
 
@@ -4284,6 +4285,10 @@ export default function DashboardProPage() {
     // Unread support tickets
     const { count: unreadCount } = await supabase.from('support_tickets').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('unread_by_user', true);
     setUnreadTickets(unreadCount || 0);
+
+    // DB notifications (cloche)
+    const { data: dbNotifs } = await supabase.from('user_notifications').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20);
+    setDbNotifications(dbNotifs || []);
     setShares((sh || []) as ReportShare[]);
 
     setLoading(false);
@@ -4339,8 +4344,15 @@ export default function DashboardProPage() {
     }
   }, [analyses]);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-  const markAllRead = () => setNotifications(n => n.map(x => ({ ...x, read: true })));
+  const unreadNotifCount = notifications.filter(n => !n.read).length + dbNotifications.filter(n => !n.read).length;
+  const markAllRead = async () => {
+    setNotifications(n => n.map(x => ({ ...x, read: true })));
+    if (dbNotifications.some(n => !n.read)) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) await supabase.from('user_notifications').update({ read: true }).eq('user_id', user.id).eq('read', false);
+      setDbNotifications(n => n.map(x => ({ ...x, read: true })));
+    }
+  };
 
   if (loading) {
     return (
@@ -4401,7 +4413,10 @@ export default function DashboardProPage() {
       {/* Main */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <TopbarPro onMenuClick={() => setMobileOpen(true)} title={title} proProfile={proProfile}
-          unreadCount={unreadCount} notifications={notifications} onMarkAllRead={markAllRead}
+          unreadCount={unreadNotifCount} notifications={[
+            ...notifications,
+            ...dbNotifications.map(n => ({ id: n.id, analysisId: '', title: n.title, createdAt: n.created_at, read: n.read })),
+          ]} onMarkAllRead={markAllRead}
           onClickNotification={(id) => { window.location.href = `/rapport?id=${id}`; }} />
         <main className="dashboard-main" style={{ flex: 1, padding: '28px 24px', overflowX: 'hidden' }}>
           {renderContent()}
