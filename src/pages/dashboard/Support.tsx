@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Send, LifeBuoy, FileText, CreditCard,
-  ChevronDown, Clock, Lock, Key,
-  Sparkles, Plus, ChevronLeft, CheckCircle, MessageSquare, HelpCircle,
+  ChevronDown, Lock,
+  Plus, ChevronLeft, CheckCircle, MessageSquare, HelpCircle,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
