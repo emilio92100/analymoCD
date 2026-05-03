@@ -4237,8 +4237,11 @@ export default function DashboardProPage() {
   const [toast, setToast] = useState('');
   const [showSuggestionPopup, setShowSuggestionPopup] = useState(false);
   const [suggestionText, setSuggestionText] = useState('');
+  const [suggestionCategory, setSuggestionCategory] = useState('');
   const [suggestionSending, setSuggestionSending] = useState(false);
   const [suggestionSent, setSuggestionSent] = useState(false);
+  const [suggestionView, setSuggestionView] = useState<'form' | 'history'>('form');
+  const [suggestionHistory, setSuggestionHistory] = useState<Array<{ id: string; category: string | null; message: string; created_at: string; acknowledged: boolean }>>([]);
   const [unreadTickets, setUnreadTickets] = useState(0);
 
   // Expose suggestion popup opener for topbar button
@@ -4444,10 +4447,10 @@ export default function DashboardProPage() {
         {showSuggestionPopup && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,45,61,0.5)', padding: 20, backdropFilter: 'blur(3px)' }}
-            onClick={() => { if (!suggestionSending) { setShowSuggestionPopup(false); setSuggestionSent(false); setSuggestionText(''); } }}>
+            onClick={() => { if (!suggestionSending) { setShowSuggestionPopup(false); setSuggestionSent(false); setSuggestionText(''); setSuggestionCategory(''); setSuggestionView('form'); } }}>
             <motion.div initial={{ scale: 0.95, opacity: 0, y: 12 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 8 }}
               onClick={e => e.stopPropagation()}
-              style={{ background: '#fff', borderRadius: 22, width: '100%', maxWidth: 480, boxShadow: '0 32px 80px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
+              style={{ background: '#fff', borderRadius: 22, width: '100%', maxWidth: 520, boxShadow: '0 32px 80px rgba(0,0,0,0.2)', overflow: 'hidden', maxHeight: '90vh', overflowY: 'auto' }}>
 
               {suggestionSent ? (
                 <div style={{ padding: '48px 32px', textAlign: 'center' }}>
@@ -4455,14 +4458,52 @@ export default function DashboardProPage() {
                     <CheckCircle size={32} style={{ color: '#16a34a' }} />
                   </div>
                   <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', marginBottom: 8 }}>Merci pour votre suggestion !</h3>
-                  <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, marginBottom: 24 }}>
-                    Votre retour a bien été enregistré. Nous prenons en compte chaque suggestion pour améliorer Verimo Pro.
+                  <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, maxWidth: 380, margin: '0 auto 24px' }}>
+                    Votre retour a bien été enregistré. Nous prenons en compte chaque suggestion pour améliorer Verimo Pro. Vous recevrez une notification quand elle sera traitée.
                   </p>
-                  <button onClick={() => { setShowSuggestionPopup(false); setSuggestionSent(false); setSuggestionText(''); }}
+                  <button onClick={() => { setShowSuggestionPopup(false); setSuggestionSent(false); setSuggestionText(''); setSuggestionCategory(''); setSuggestionView('form'); }}
                     style={{ padding: '12px 28px', borderRadius: 12, background: '#0f172a', color: '#fff', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer' }}>
                     Fermer
                   </button>
                 </div>
+              ) : suggestionView === 'history' ? (
+                <>
+                  <div style={{ padding: '24px 28px 0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <button onClick={() => setSuggestionView('form')}
+                          style={{ background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 8, cursor: 'pointer', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: '#64748b' }}>
+                          <ChevronRight size={12} style={{ transform: 'rotate(180deg)' }} /> Retour
+                        </button>
+                        <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>Mes suggestions</h3>
+                      </div>
+                      <button onClick={() => { setShowSuggestionPopup(false); setSuggestionView('form'); }} className="modal-close-btn"
+                        style={{ width: 32, height: 32, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <X size={15} style={{ color: '#64748b' }} />
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ padding: '0 28px 28px' }}>
+                    {suggestionHistory.length === 0 ? (
+                      <div style={{ padding: '32px', textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Aucune suggestion envoyée pour le moment.</div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {suggestionHistory.map(s => (
+                          <div key={s.id} style={{ background: '#f8fafc', borderRadius: 12, border: '1px solid #edf2f7', padding: '14px 16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                              {s.category && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: '#fef3c7', color: '#92400e' }}>{s.category}</span>}
+                              <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>{new Date(s.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            </div>
+                            <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, margin: '0 0 6px', whiteSpace: 'pre-wrap' }}>{s.message}</p>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: s.acknowledged ? '#16a34a' : '#d97706', display: 'flex', alignItems: 'center', gap: 4 }}>
+                              {s.acknowledged ? <><CheckCircle size={11} /> Prise en compte</> : <><Clock size={11} /> En attente de lecture</>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
               ) : (
                 <>
                   <div style={{ padding: '28px 28px 0' }}>
@@ -4473,35 +4514,72 @@ export default function DashboardProPage() {
                         </div>
                         <h3 style={{ fontSize: 18, fontWeight: 900, color: '#0f172a', margin: 0 }}>Une suggestion ?</h3>
                       </div>
-                      <button onClick={() => { setShowSuggestionPopup(false); setSuggestionText(''); }} className="modal-close-btn"
+                      <button onClick={() => { setShowSuggestionPopup(false); setSuggestionText(''); setSuggestionCategory(''); }} className="modal-close-btn"
                         style={{ width: 32, height: 32, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <X size={15} style={{ color: '#64748b' }} />
                       </button>
                     </div>
                     <div style={{ padding: '14px 16px', borderRadius: 12, background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', border: '1px solid #fde68a', marginBottom: 20 }}>
                       <p style={{ fontSize: 13, color: '#92400e', lineHeight: 1.7, margin: 0 }}>
-                        🌟 <strong>Aidez-nous à améliorer Verimo Pro !</strong><br />
-                        Chaque suggestion est précieuse pour nous. Dites-nous ce que vous aimeriez voir, ce qui vous manque, ou ce qu'on pourrait améliorer. Chaque demande sera prise en compte en fonction de son importance pour offrir la meilleure expérience possible.
+                        Aidez-nous à améliorer Verimo Pro ! Chaque suggestion est précieuse. Chaque demande sera prise en compte en fonction de son importance pour offrir la meilleure expérience possible.
                       </p>
+                    </div>
+
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>Quel type de suggestion ?</label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {[
+                          { id: 'Fonctionnalité manquante', emoji: '🔧' },
+                          { id: 'Amélioration existante', emoji: '✨' },
+                          { id: 'Nouveau type de rapport', emoji: '📊' },
+                          { id: 'Autre idée', emoji: '💡' },
+                        ].map(cat => (
+                          <button key={cat.id} onClick={() => setSuggestionCategory(cat.id)}
+                            style={{ padding: '8px 14px', borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: suggestionCategory === cat.id ? '1.5px solid #d97706' : '1px solid #edf2f7', background: suggestionCategory === cat.id ? '#fffbeb' : '#fff', color: suggestionCategory === cat.id ? '#92400e' : '#64748b', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span>{cat.emoji}</span> {cat.id}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                   <div style={{ padding: '0 28px 28px' }}>
                     <textarea value={suggestionText} onChange={e => setSuggestionText(e.target.value)}
-                      placeholder="Décrivez votre suggestion, une fonctionnalité que vous aimeriez, ou un point à améliorer..."
-                      rows={5} style={{ width: '100%', padding: '14px 16px', borderRadius: 12, border: '1.5px solid #edf2f7', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical', marginBottom: 16 }} />
+                      placeholder={
+                        suggestionCategory === 'Fonctionnalité manquante' ? "Décrivez la fonctionnalité que vous aimeriez voir sur Verimo Pro..." :
+                        suggestionCategory === 'Amélioration existante' ? "Quelle fonctionnalité existante pourrait être améliorée et comment ?" :
+                        suggestionCategory === 'Nouveau type de rapport' ? "Quel type de rapport ou d'analyse vous serait utile ?" :
+                        "Décrivez votre idée ou suggestion..."
+                      }
+                      rows={5} style={{ width: '100%', padding: '14px 16px', borderRadius: 12, border: '1.5px solid #edf2f7', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical', marginBottom: 12 }} />
+
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                      <button onClick={async () => {
+                        if (!suggestionText.trim()) return;
+                        setSuggestionSending(true);
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (user) {
+                          await supabase.from('pro_suggestions').insert({ user_id: user.id, message: suggestionText.trim(), category: suggestionCategory || null });
+                        }
+                        setSuggestionSending(false);
+                        setSuggestionSent(true);
+                        setSuggestionText('');
+                        setSuggestionCategory('');
+                      }} disabled={suggestionSending || !suggestionText.trim()}
+                        style={{ flex: 1, padding: '14px', borderRadius: 12, background: !suggestionText.trim() ? '#e2e8f0' : 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff', fontSize: 15, fontWeight: 700, border: 'none', cursor: !suggestionText.trim() ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: suggestionText.trim() ? '0 4px 14px rgba(217,119,6,0.25)' : 'none' }}>
+                        <Send size={15} /> {suggestionSending ? 'Envoi...' : 'Envoyer ma suggestion'}
+                      </button>
+                    </div>
+
                     <button onClick={async () => {
-                      if (!suggestionText.trim()) return;
-                      setSuggestionSending(true);
                       const { data: { user } } = await supabase.auth.getUser();
                       if (user) {
-                        await supabase.from('pro_suggestions').insert({ user_id: user.id, message: suggestionText.trim() });
+                        const { data } = await supabase.from('pro_suggestions').select('id, category, message, created_at, acknowledged').eq('user_id', user.id).order('created_at', { ascending: false });
+                        setSuggestionHistory(data || []);
                       }
-                      setSuggestionSending(false);
-                      setSuggestionSent(true);
-                      setSuggestionText('');
-                    }} disabled={suggestionSending || !suggestionText.trim()}
-                      style={{ width: '100%', padding: '14px', borderRadius: 12, background: !suggestionText.trim() ? '#e2e8f0' : 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff', fontSize: 15, fontWeight: 700, border: 'none', cursor: !suggestionText.trim() ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: suggestionText.trim() ? '0 4px 14px rgba(217,119,6,0.25)' : 'none' }}>
-                      <Send size={15} /> {suggestionSending ? 'Envoi...' : 'Envoyer ma suggestion'}
+                      setSuggestionView('history');
+                    }}
+                      style={{ width: '100%', marginTop: 12, padding: '10px', borderRadius: 10, background: 'none', border: '1px solid #edf2f7', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                      <Clock size={13} /> Voir mes suggestions précédentes
                     </button>
                   </div>
                 </>
@@ -4510,6 +4588,7 @@ export default function DashboardProPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
 
       <style>{`
         @media (max-width: 767px) {
