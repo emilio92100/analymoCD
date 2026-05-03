@@ -148,6 +148,13 @@ function Topbar({ onMenuClick, title, unreadCount, notifications, onMarkAllRead,
       <button className="mobile-menu-btn" onClick={onMenuClick} style={{ background:'none', border:'none', cursor:'pointer', color:'#0f2d3d', padding:4, display:'none' }}><Menu size={20}/></button>
       <p className="topbar-title" style={{ flex:1, fontSize:17, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em', margin:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{title}</p>
 
+      {/* Bouton Besoin d'aide */}
+      <button onClick={() => navigate('/dashboard/support')}
+        className="topbar-help-btn"
+        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, background: '#dc2626', border: 'none', cursor: 'pointer', color: '#fff', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(220,38,38,0.2)' }}>
+        <LifeBuoy size={13}/> Besoin d&apos;aide
+      </button>
+
       {/* Cloche notifications */}
       <div ref={bellRef} style={{ position: 'relative' }}>
         <button onClick={() => { setBellOpen(!bellOpen); if (!bellOpen && onMarkAllRead) onMarkAllRead(); }}
@@ -426,6 +433,7 @@ export default function DashboardPage() {
           .desktop-sidebar { display: none !important; }
           .mobile-menu-btn { display: flex !important; }
           .topbar-cta { display: none !important; }
+          .topbar-help-btn { padding: 6px 10px !important; font-size: 11px !important; }
           header { padding: 0 14px !important; height: 62px !important; gap: 10px !important; }
           .mobile-menu-btn svg { width: 24px !important; height: 24px !important; }
           .dashboard-main { padding: 16px 12px !important; }
