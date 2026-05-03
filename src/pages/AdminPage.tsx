@@ -808,10 +808,10 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser }: { showToast:
    ADMIN — SUGGESTIONS
 ══════════════════════════════════════════ */
 function AdminSuggestionsTab({ onGoToUser, showToast, onUnreadChange }: { onGoToUser?: (userId: string) => void; showToast: (m: string) => void; onUnreadChange?: (n: number) => void }) {
-  type Suggestion = { id: string; user_id: string; message: string; category: string | null; created_at: string; acknowledged: boolean; user_email?: string; user_name?: string };
+  type Suggestion = { id: string; user_id: string; message: string; category: string | null; created_at: string; acknowledged: boolean; archived: boolean; user_email?: string; user_name?: string };
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'acknowledged'>('all');
+  const [filter, setFilter] = useState<'pending' | 'acknowledged' | 'archived'>('pending');
 
   const loadSuggestions = useCallback(async () => {
     const { data } = await supabase.from('pro_suggestions').select('*').order('created_at', { ascending: false });
@@ -820,10 +820,10 @@ function AdminSuggestionsTab({ onGoToUser, showToast, onUnreadChange }: { onGoTo
     const { data: profiles } = await supabase.from('profiles').select('id, full_name, email').in('id', userIds);
     const enriched = data.map((s: Record<string, unknown>) => {
       const profile = profiles?.find((p: Record<string, unknown>) => p.id === s.user_id);
-      return { ...s, user_email: (profile as Record<string, unknown>)?.email || '?', user_name: (profile as Record<string, unknown>)?.full_name || '?' } as Suggestion;
+      return { ...s, user_email: (profile as Record<string, unknown>)?.email || '?', user_name: (profile as Record<string, unknown>)?.full_name || '?', archived: !!(s as Record<string, unknown>).archived } as Suggestion;
     });
     setSuggestions(enriched);
-    if (onUnreadChange) onUnreadChange(enriched.filter((s: Suggestion) => !s.acknowledged).length);
+    if (onUnreadChange) onUnreadChange(enriched.filter((s: Suggestion) => !s.acknowledged && !s.archived).length);
     setLoading(false);
   }, [onUnreadChange]);
 
@@ -834,30 +834,36 @@ function AdminSuggestionsTab({ onGoToUser, showToast, onUnreadChange }: { onGoTo
     await supabase.from('user_notifications').insert({
       user_id: s.user_id,
       title: 'Suggestion prise en compte',
-      message: 'Votre suggestion a bien \u00e9t\u00e9 lue et prise en compte par notre \u00e9quipe. Merci pour votre retour, il nous aide \u00e0 am\u00e9liorer Verimo !',
+      message: 'Votre suggestion a bien été lue et prise en compte par notre équipe. Merci pour votre retour, il nous aide à améliorer Verimo !',
     });
-    showToast('Pris en compte \u2014 notification envoy\u00e9e');
+    showToast('Pris en compte — notification envoyée');
+    loadSuggestions();
+  };
+
+  const handleArchive = async (s: Suggestion) => {
+    await supabase.from('pro_suggestions').update({ archived: true }).eq('id', s.id);
+    showToast('Suggestion archivée');
     loadSuggestions();
   };
 
   const handleDelete = async (s: Suggestion) => {
     await supabase.from('pro_suggestions').delete().eq('id', s.id);
-    showToast('Suggestion supprim\u00e9e');
+    showToast('Suggestion supprimée');
     loadSuggestions();
   };
 
   const fmtDate = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-  const filtered = filter === 'all' ? suggestions : filter === 'pending' ? suggestions.filter(s => !s.acknowledged) : suggestions.filter(s => s.acknowledged);
+  const filtered = filter === 'pending' ? suggestions.filter(s => !s.acknowledged && !s.archived) : filter === 'acknowledged' ? suggestions.filter(s => s.acknowledged && !s.archived) : suggestions.filter(s => s.archived);
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Chargement\u2026</div>;
+  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Chargement…</div>;
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         {[
-          { id: 'all' as const, label: 'Toutes', count: suggestions.length },
-          { id: 'pending' as const, label: 'En attente', count: suggestions.filter(s => !s.acknowledged).length },
-          { id: 'acknowledged' as const, label: 'Prises en compte', count: suggestions.filter(s => s.acknowledged).length },
+          { id: 'pending' as const, label: 'En attente', count: suggestions.filter(s => !s.acknowledged && !s.archived).length },
+          { id: 'acknowledged' as const, label: 'Prises en compte', count: suggestions.filter(s => s.acknowledged && !s.archived).length },
+          { id: 'archived' as const, label: 'Archivées', count: suggestions.filter(s => s.archived).length },
         ].map(f => (
           <button key={f.id} onClick={() => setFilter(f.id)}
             style={{ padding: '7px 14px', borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: filter === f.id ? '1.5px solid #d97706' : '1px solid #edf2f7', background: filter === f.id ? '#fffbeb' : '#fff', color: filter === f.id ? '#92400e' : '#64748b' }}>
@@ -870,7 +876,7 @@ function AdminSuggestionsTab({ onGoToUser, showToast, onUnreadChange }: { onGoTo
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {filtered.map((s: Suggestion) => (
-            <div key={s.id} style={{ background: '#fff', borderRadius: 14, border: s.acknowledged ? '1px solid #edf2f7' : '1.5px solid #f59e0b', padding: '18px 20px', opacity: s.acknowledged ? 0.7 : 1 }}>
+            <div key={s.id} style={{ background: '#fff', borderRadius: 14, border: (s.acknowledged || s.archived) ? '1px solid #edf2f7' : '1.5px solid #f59e0b', padding: '18px 20px', opacity: s.archived ? 0.5 : s.acknowledged ? 0.7 : 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
                 <div style={{ width: 32, height: 32, borderRadius: 8, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <Lightbulb size={15} style={{ color: '#d97706' }} />
@@ -890,15 +896,22 @@ function AdminSuggestionsTab({ onGoToUser, showToast, onUnreadChange }: { onGoTo
                     <User size={11} /> Fiche client
                   </button>
                 )}
-                {!s.acknowledged ? (
+                {!s.acknowledged && !s.archived && (
                   <button onClick={() => handleAcknowledge(s)}
                     style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 7, background: '#16a34a', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
                     <CheckCircle size={12} /> Pris en compte
                   </button>
-                ) : (
+                )}
+                {s.acknowledged && !s.archived && (
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 4 }}>
                     <CheckCircle size={12} /> Pris en compte
                   </span>
+                )}
+                {!s.archived && (
+                  <button onClick={() => handleArchive(s)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, background: '#f8fafc', border: '1px solid #edf2f7', color: '#64748b', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>
+                    <ArrowRight size={11} /> Archiver
+                  </button>
                 )}
                 <button onClick={() => handleDelete(s)}
                   style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', cursor: 'pointer', fontSize: 11, fontWeight: 600, marginLeft: 'auto' }}>
