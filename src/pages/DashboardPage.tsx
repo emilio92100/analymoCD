@@ -149,7 +149,7 @@ function Topbar({ onMenuClick, title, unreadCount, notifications, onMarkAllRead,
       <p className="topbar-title" style={{ flex:1, fontSize:17, fontWeight:800, color:'#0f172a', letterSpacing:'-0.01em', margin:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{title}</p>
 
       {/* Bouton Besoin d'aide */}
-      <button onClick={() => navigate('/dashboard/support')}
+      <button onClick={() => { if ((window as unknown as Record<string, unknown>).__openHelp) ((window as unknown as Record<string, () => void>).__openHelp)(); }}
         className="topbar-help-btn"
         style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, background: '#fff', border: '1.5px solid #edf2f7', cursor: 'pointer', color: '#64748b', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}
         onMouseOver={(e: React.MouseEvent<HTMLButtonElement>) => { const el = e.currentTarget; el.style.borderColor = '#2a7d9c'; el.style.color = '#2a7d9c'; el.style.background = '#f0f7fb'; }}
@@ -401,6 +401,18 @@ export default function DashboardPage() {
   }, []);
 
   const unreadCount = notifications.filter(n => !n.read).length + dbNotifications.filter(n => !n.read).length;
+  const [showHelpPopup, setShowHelpPopup] = useState(false);
+  const [helpSubject, setHelpSubject] = useState('');
+  const [helpCustomSubject, setHelpCustomSubject] = useState('');
+  const [helpMessage, setHelpMessage] = useState('');
+  const [helpSending, setHelpSending] = useState(false);
+  const [helpSent, setHelpSent] = useState(false);
+  const [helpCreatedId, setHelpCreatedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    (window as unknown as Record<string, unknown>).__openHelp = () => setShowHelpPopup(true);
+    return () => { delete (window as unknown as Record<string, unknown>).__openHelp; };
+  }, []);
   const markAllRead = async () => {
     setNotifications(n => n.map(x => ({ ...x, read: true })));
     if (dbNotifications.some(n => !n.read)) {
@@ -453,6 +465,104 @@ export default function DashboardPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Popup Besoin d'aide */}
+      <AnimatePresence>
+        {showHelpPopup && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,45,61,0.5)', padding: 20, backdropFilter: 'blur(3px)' }}
+            onClick={() => { if (!helpSending) { setShowHelpPopup(false); setHelpSent(false); setHelpSubject(''); setHelpCustomSubject(''); setHelpMessage(''); setHelpCreatedId(null); } }}>
+            <motion.div initial={{ scale: 0.95, opacity: 0, y: 12 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 8 }}
+              onClick={e => e.stopPropagation()}
+              style={{ background: '#fff', borderRadius: 22, width: '100%', maxWidth: 520, boxShadow: '0 32px 80px rgba(0,0,0,0.2)', overflow: 'hidden', maxHeight: '90vh', overflowY: 'auto' }}>
+
+              {helpSent ? (
+                <div style={{ padding: '48px 32px', textAlign: 'center' }}>
+                  <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: '2px solid #bbf7d0' }}>
+                    <CheckCircle size={32} style={{ color: '#16a34a' }} />
+                  </div>
+                  <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', marginBottom: 8 }}>Message envoyé !</h3>
+                  <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, maxWidth: 380, margin: '0 auto 8px' }}>
+                    Votre demande a bien été enregistrée. Notre équipe vous répondra dès que possible directement dans votre espace support.
+                  </p>
+                  <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 28 }}>
+                    Vous recevrez une notification dès qu&apos;une réponse sera disponible.
+                  </p>
+                  <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <button onClick={() => { setShowHelpPopup(false); setHelpSent(false); window.location.href = '/dashboard/support'; }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '12px 24px', borderRadius: 12, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>
+                      Voir la discussion
+                    </button>
+                    <button onClick={() => { setShowHelpPopup(false); setHelpSent(false); setHelpSubject(''); setHelpCustomSubject(''); setHelpMessage(''); setHelpCreatedId(null); }}
+                      style={{ padding: '12px 24px', borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7', color: '#64748b', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
+                      Fermer
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ padding: '28px 28px 0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ width: 42, height: 42, borderRadius: 12, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <LifeBuoy size={22} style={{ color: '#2a7d9c' }} />
+                        </div>
+                        <div>
+                          <h3 style={{ fontSize: 18, fontWeight: 900, color: '#0f172a', margin: 0 }}>Besoin d&apos;aide ?</h3>
+                          <p style={{ fontSize: 13, color: '#94a3b8', margin: 0 }}>Notre équipe vous répond rapidement.</p>
+                        </div>
+                      </div>
+                      <button onClick={() => { setShowHelpPopup(false); setHelpSubject(''); setHelpCustomSubject(''); setHelpMessage(''); }}
+                        style={{ width: 32, height: 32, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <X size={15} style={{ color: '#64748b' }} />
+                      </button>
+                    </div>
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>Quelle est la raison de votre demande ?</label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {['Problème avec mon analyse', 'Question sur mon abonnement', 'Bug technique', 'Question sur les crédits', 'Autre'].map(opt => (
+                          <button key={opt} onClick={() => setHelpSubject(opt)}
+                            style={{ padding: '8px 14px', borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: helpSubject === opt ? '1.5px solid #2a7d9c' : '1px solid #edf2f7', background: helpSubject === opt ? '#f0f7fb' : '#fff', color: helpSubject === opt ? '#2a7d9c' : '#64748b' }}>
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                      {helpSubject === 'Autre' && (
+                        <input value={helpCustomSubject} onChange={e => setHelpCustomSubject(e.target.value)} placeholder="Précisez votre sujet..."
+                          style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', marginTop: 10 }} />
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ padding: '0 28px 28px' }}>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>Décrivez votre problème</label>
+                    <textarea value={helpMessage} onChange={e => setHelpMessage(e.target.value)}
+                      placeholder="Expliquez-nous votre situation en détail..."
+                      rows={5} style={{ width: '100%', padding: '14px 16px', borderRadius: 12, border: '1.5px solid #edf2f7', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical', marginBottom: 16 }} />
+                    <button onClick={async () => {
+                      const finalSubject = helpSubject === 'Autre' ? helpCustomSubject.trim() : helpSubject;
+                      if (!finalSubject || !helpMessage.trim()) return;
+                      setHelpSending(true);
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (!user) { setHelpSending(false); return; }
+                      const { data: ticket } = await supabase.from('support_tickets').insert({ user_id: user.id, subject: finalSubject }).select().single();
+                      if (ticket) {
+                        await supabase.from('support_messages').insert({ ticket_id: ticket.id, sender_type: 'user', message: helpMessage.trim() });
+                        setHelpCreatedId(ticket.id);
+                      }
+                      setHelpSending(false);
+                      setHelpSent(true);
+                    }} disabled={helpSending || !helpSubject || (helpSubject === 'Autre' && !helpCustomSubject.trim()) || !helpMessage.trim()}
+                      style={{ width: '100%', padding: '14px', borderRadius: 12, background: (!helpSubject || !helpMessage.trim()) ? '#e2e8f0' : 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 700, border: 'none', cursor: (!helpSubject || !helpMessage.trim()) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                      <Send size={15} /> {helpSending ? 'Envoi en cours...' : 'Envoyer mon message'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <style>{`
         @media (max-width: 767px) {
           .desktop-sidebar { display: none !important; }
