@@ -281,9 +281,9 @@ function TopbarPro({ onMenuClick, title, proProfile, unreadCount, notifications,
       {/* Bouton Besoin d'aide */}
       <button onClick={() => navigate('/dashboard/support')}
         className="topbar-help-btn"
-        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, background: '#dc2626', border: 'none', cursor: 'pointer', color: '#fff', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(220,38,38,0.2)', transition: 'all 0.15s' }}
-        onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#b91c1c'; }}
-        onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = '#dc2626'; }}>
+        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, background: '#fff', border: '1.5px solid #edf2f7', cursor: 'pointer', color: '#64748b', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', transition: 'all 0.15s' }}
+        onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.color = '#2a7d9c'; el.style.background = '#f0f7fb'; }}
+        onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.color = '#64748b'; el.style.background = '#fff'; }}>
         <LifeBuoy size={13} /> Besoin d&apos;aide
       </button>
 
