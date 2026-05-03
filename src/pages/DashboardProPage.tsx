@@ -176,9 +176,9 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets }: { subs
   return (
     <aside style={{ width: 260, minHeight: '100vh', height: '100%', background: BG, display: 'flex', flexDirection: 'column' }}>
       {/* Logo + PRO badge */}
-      <div style={{ height: 68, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
+      <div style={{ height: 68, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 18px 0', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
         <Link to="/" onClick={onClose} style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <img src="/logo-blanc.png" alt="Verimo" style={{ height: 70, width: 'auto', display: 'block' }} />
+          <img src="/logo-blanc.png" alt="Verimo" style={{ height: 36, width: 'auto', display: 'block' }} />
           <span style={{ background: `linear-gradient(135deg, ${ACCENT}, #38bdf8)`, color: '#0a1f2d', fontSize: 9, fontWeight: 800, padding: '2px 8px', borderRadius: 100, letterSpacing: '0.08em' }}>ACCÈS PRO</span>
         </Link>
         {onClose && <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: 4 }}><X size={18} /></button>}
