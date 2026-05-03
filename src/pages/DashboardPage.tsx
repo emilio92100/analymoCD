@@ -47,9 +47,9 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
   return (
     <aside style={{ width:260, minHeight:'100vh', height:'100%', background:SB_BG, display:'flex', flexDirection:'column' }}>
       {/* Logo */}
-      <div style={{ height:68, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 18px', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
+      <div style={{ height:68, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 18px 0', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
         <Link to="/" onClick={onClose} style={{ textDecoration:'none' }}>
-          <img src="/logo-blanc.png" alt="Verimo" style={{ height: 70, width: 'auto', display: 'block' }} />
+          <img src="/logo-blanc.png" alt="Verimo" style={{ height: 36, width: 'auto', display: 'block' }} />
         </Link>
         {onClose && <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.4)', padding:4 }}><X size={18}/></button>}
       </div>
