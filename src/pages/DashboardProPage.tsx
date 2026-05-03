@@ -8,7 +8,7 @@ import {
   CheckCircle, Upload, Mail, Download, XCircle,
   ChevronRight, ArrowRight,
   MapPin, Trash2, AlertTriangle, FileText, Pencil,
-  UserPlus, UserCheck, Folder,
+  UserPlus, UserCheck, Folder, Lightbulb,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -161,7 +161,7 @@ const proNavItems = [
 /* ══════════════════════════════════════════
    SIDEBAR PRO
 ══════════════════════════════════════════ */
-function SidebarPro({ subscription, proCredits, onClose }: { subscription: ProSubscription | null; proCredits: ProCredits | null; onClose?: () => void }) {
+function SidebarPro({ subscription, proCredits, onClose, unreadTickets }: { subscription: ProSubscription | null; proCredits: ProCredits | null; onClose?: () => void; unreadTickets?: number }) {
   const location = useLocation();
 
   const BG = '#0a1f2d';
@@ -232,7 +232,11 @@ function SidebarPro({ subscription, proCredits, onClose }: { subscription: ProSu
                 background: active ? 'rgba(255,255,255,0.1)' : 'transparent', transition: 'all 0.15s',
                 borderLeft: active ? `3px solid ${ACCENT}` : '3px solid transparent', borderRadius: 0,
               }}>
-              <Icon size={16} style={{ color: active ? ACCENT : TEXT, flexShrink: 0 }} />{item.label}
+              <Icon size={16} style={{ color: active ? ACCENT : TEXT, flexShrink: 0 }} />
+              <span style={{ flex: 1 }}>{item.label}</span>
+              {item.to === '/dashboard/support' && (unreadTickets || 0) > 0 && (
+                <span style={{ minWidth: 18, height: 18, borderRadius: 100, background: '#dc2626', color: '#fff', fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', flexShrink: 0 }}>{unreadTickets}</span>
+              )}
             </Link>
           );
         })}
@@ -273,6 +277,24 @@ function TopbarPro({ onMenuClick, title, proProfile, unreadCount, notifications,
     <header style={{ height: 68, background: '#fff', borderBottom: '1px solid #edf2f7', display: 'flex', alignItems: 'center', padding: '0 24px', gap: 12, position: 'sticky', top: 0, zIndex: 40, flexShrink: 0 }}>
       <button className="mobile-menu-btn" onClick={onMenuClick} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0f2d3d', padding: 4, display: 'none' }}><Menu size={20} /></button>
       <p className="topbar-title" style={{ flex: 1, fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>{title}</p>
+
+      {/* Bouton Besoin d'aide */}
+      <button onClick={() => navigate('/dashboard/support')}
+        className="topbar-help-btn"
+        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, background: '#dc2626', border: 'none', cursor: 'pointer', color: '#fff', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(220,38,38,0.2)', transition: 'all 0.15s' }}
+        onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#b91c1c'; }}
+        onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = '#dc2626'; }}>
+        <LifeBuoy size={13} /> Besoin d&apos;aide
+      </button>
+
+      {/* Bouton Suggestion */}
+      <button onClick={() => { if ((window as unknown as Record<string, unknown>).__openSuggestion) ((window as unknown as Record<string, () => void>).__openSuggestion)(); }}
+        className="topbar-suggest-btn"
+        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none', cursor: 'pointer', color: '#fff', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(217,119,6,0.2)', transition: 'all 0.15s' }}
+        onMouseOver={e => { (e.currentTarget as HTMLElement).style.opacity = '0.9'; }}
+        onMouseOut={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}>
+        <Lightbulb size={13} /> Suggestion
+      </button>
 
       {/* Cloche notifications */}
       <div ref={bellRef} style={{ position: 'relative' }}>
@@ -4213,6 +4235,17 @@ export default function DashboardProPage() {
   const [loading, setLoading] = useState(true);
   const [sendReportId, setSendReportId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
+  const [showSuggestionPopup, setShowSuggestionPopup] = useState(false);
+  const [suggestionText, setSuggestionText] = useState('');
+  const [suggestionSending, setSuggestionSending] = useState(false);
+  const [suggestionSent, setSuggestionSent] = useState(false);
+  const [unreadTickets, setUnreadTickets] = useState(0);
+
+  // Expose suggestion popup opener for topbar button
+  useEffect(() => {
+    (window as unknown as Record<string, unknown>).__openSuggestion = () => setShowSuggestionPopup(true);
+    return () => { delete (window as unknown as Record<string, unknown>).__openSuggestion; };
+  }, []);
 
   // ─── Notifications : rapports terminés ────────────────────
   type ProNotification = { id: string; analysisId: string; title: string; createdAt: string; read: boolean };
@@ -4244,6 +4277,10 @@ export default function DashboardProPage() {
 
     // Shares
     const { data: sh } = await supabase.from('report_shares').select('*').eq('sender_id', user.id).order('sent_at', { ascending: false });
+
+    // Unread support tickets
+    const { count: unreadCount } = await supabase.from('support_tickets').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('unread_by_user', true);
+    setUnreadTickets(unreadCount || 0);
     setShares((sh || []) as ReportShare[]);
 
     setLoading(false);
@@ -4341,7 +4378,7 @@ export default function DashboardProPage() {
       {/* Sidebar desktop */}
       <div className="desktop-sidebar" style={{ width: 260, flexShrink: 0 }}>
         <div style={{ position: 'fixed', top: 0, left: 0, width: 260, height: '100vh', zIndex: 50, overflowY: 'auto' }}>
-          <SidebarPro subscription={subscription} proCredits={proCredits} />
+          <SidebarPro subscription={subscription} proCredits={proCredits} unreadTickets={unreadTickets} />
         </div>
       </div>
 
@@ -4352,7 +4389,7 @@ export default function DashboardProPage() {
             <div onClick={() => setMobileOpen(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(15,45,61,0.45)' }} />
             <motion.div initial={{ x: -260 }} animate={{ x: 0 }} exit={{ x: -260 }} transition={{ type: 'spring', stiffness: 320, damping: 32 }}
               style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 260 }}>
-              <SidebarPro subscription={subscription} proCredits={proCredits} onClose={() => setMobileOpen(false)} />
+              <SidebarPro subscription={subscription} proCredits={proCredits} unreadTickets={unreadTickets} onClose={() => setMobileOpen(false)} />
             </motion.div>
           </motion.div>
         )}
@@ -4402,11 +4439,86 @@ export default function DashboardProPage() {
         )}
       </AnimatePresence>
 
+      {/* Popup Suggestion */}
+      <AnimatePresence>
+        {showSuggestionPopup && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,45,61,0.5)', padding: 20, backdropFilter: 'blur(3px)' }}
+            onClick={() => { if (!suggestionSending) { setShowSuggestionPopup(false); setSuggestionSent(false); setSuggestionText(''); } }}>
+            <motion.div initial={{ scale: 0.95, opacity: 0, y: 12 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 8 }}
+              onClick={e => e.stopPropagation()}
+              style={{ background: '#fff', borderRadius: 22, width: '100%', maxWidth: 480, boxShadow: '0 32px 80px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
+
+              {suggestionSent ? (
+                <div style={{ padding: '48px 32px', textAlign: 'center' }}>
+                  <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: '2px solid #bbf7d0' }}>
+                    <CheckCircle size={32} style={{ color: '#16a34a' }} />
+                  </div>
+                  <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', marginBottom: 8 }}>Merci pour votre suggestion !</h3>
+                  <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, marginBottom: 24 }}>
+                    Votre retour a bien été enregistré. Nous prenons en compte chaque suggestion pour améliorer Verimo Pro.
+                  </p>
+                  <button onClick={() => { setShowSuggestionPopup(false); setSuggestionSent(false); setSuggestionText(''); }}
+                    style={{ padding: '12px 28px', borderRadius: 12, background: '#0f172a', color: '#fff', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer' }}>
+                    Fermer
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div style={{ padding: '28px 28px 0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ width: 42, height: 42, borderRadius: 12, background: 'linear-gradient(135deg, #fef3c7, #fde68a)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Lightbulb size={22} style={{ color: '#d97706' }} />
+                        </div>
+                        <h3 style={{ fontSize: 18, fontWeight: 900, color: '#0f172a', margin: 0 }}>Une suggestion ?</h3>
+                      </div>
+                      <button onClick={() => { setShowSuggestionPopup(false); setSuggestionText(''); }} className="modal-close-btn"
+                        style={{ width: 32, height: 32, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <X size={15} style={{ color: '#64748b' }} />
+                      </button>
+                    </div>
+                    <div style={{ padding: '14px 16px', borderRadius: 12, background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', border: '1px solid #fde68a', marginBottom: 20 }}>
+                      <p style={{ fontSize: 13, color: '#92400e', lineHeight: 1.7, margin: 0 }}>
+                        🌟 <strong>Aidez-nous à améliorer Verimo Pro !</strong><br />
+                        Chaque suggestion est précieuse pour nous. Dites-nous ce que vous aimeriez voir, ce qui vous manque, ou ce qu'on pourrait améliorer. Chaque demande sera prise en compte en fonction de son importance pour offrir la meilleure expérience possible.
+                      </p>
+                    </div>
+                  </div>
+                  <div style={{ padding: '0 28px 28px' }}>
+                    <textarea value={suggestionText} onChange={e => setSuggestionText(e.target.value)}
+                      placeholder="Décrivez votre suggestion, une fonctionnalité que vous aimeriez, ou un point à améliorer..."
+                      rows={5} style={{ width: '100%', padding: '14px 16px', borderRadius: 12, border: '1.5px solid #edf2f7', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical', marginBottom: 16 }} />
+                    <button onClick={async () => {
+                      if (!suggestionText.trim()) return;
+                      setSuggestionSending(true);
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (user) {
+                        await supabase.from('pro_suggestions').insert({ user_id: user.id, message: suggestionText.trim() });
+                      }
+                      setSuggestionSending(false);
+                      setSuggestionSent(true);
+                      setSuggestionText('');
+                    }} disabled={suggestionSending || !suggestionText.trim()}
+                      style={{ width: '100%', padding: '14px', borderRadius: 12, background: !suggestionText.trim() ? '#e2e8f0' : 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff', fontSize: 15, fontWeight: 700, border: 'none', cursor: !suggestionText.trim() ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: suggestionText.trim() ? '0 4px 14px rgba(217,119,6,0.25)' : 'none' }}>
+                      <Send size={15} /> {suggestionSending ? 'Envoi...' : 'Envoyer ma suggestion'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <style>{`
         @media (max-width: 767px) {
           .desktop-sidebar { display: none !important; }
           .mobile-menu-btn { display: flex !important; }
           .topbar-cta { display: none !important; }
+          .topbar-help-btn { padding: 6px 10px !important; font-size: 11px !important; }
+          .topbar-help-btn span { display: none !important; }
+          .topbar-suggest-btn { display: none !important; }
           header { padding: 0 14px !important; height: 62px !important; gap: 10px !important; }
           .mobile-menu-btn svg { width: 24px !important; height: 24px !important; }
           .topbar-title { font-size: 15px !important; font-weight: 800 !important; white-space: normal !important; overflow: visible !important; }
