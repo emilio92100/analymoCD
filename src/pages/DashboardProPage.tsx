@@ -221,7 +221,7 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets }: { subs
       </div>
 
       {/* Navigation */}
-      <nav style={{ flex: 1, padding: '4px 10px', display: 'flex', flexDirection: 'column', gap: 1, overflowY: 'auto' }}>
+      <nav style={{ flex: 1, padding: '4px 10px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
         <p style={{ fontSize: 10, fontWeight: 700, color: MUTED, letterSpacing: '0.12em', padding: '10px 10px 5px', textTransform: 'uppercase' }}>Menu</p>
         {proNavItems.map(item => {
           const Icon = item.icon;
@@ -229,12 +229,12 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets }: { subs
           return (
             <Link key={item.to} to={item.to} onClick={onClose}
               style={{
-                display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', textDecoration: 'none',
-                fontSize: 13, fontWeight: active ? 700 : 500, color: active ? TEXT_ACTIVE : TEXT,
+                display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', textDecoration: 'none',
+                fontSize: 14, fontWeight: active ? 700 : 500, color: active ? TEXT_ACTIVE : TEXT,
                 background: active ? 'rgba(255,255,255,0.1)' : 'transparent', transition: 'all 0.15s',
                 borderLeft: active ? `3px solid ${ACCENT}` : '3px solid transparent', borderRadius: 0,
               }}>
-              <Icon size={16} style={{ color: active ? ACCENT : TEXT, flexShrink: 0 }} />
+              <Icon size={18} style={{ color: active ? ACCENT : TEXT, flexShrink: 0 }} />
               {item.label}
               {item.to === '/dashboard/support' && (unreadTickets || 0) > 0 && (
                 <span style={{ minWidth: 18, height: 18, borderRadius: 100, background: '#f59e0b', color: '#fff', fontSize: 10, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', flexShrink: 0, marginLeft: 4 }}>{unreadTickets}</span>
