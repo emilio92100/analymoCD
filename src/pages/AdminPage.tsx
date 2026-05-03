@@ -189,6 +189,7 @@ export default function AdminPage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [proUnreadCount, setProUnreadCount] = useState(0);
   const [supportUnreadCount, setSupportUnreadCount] = useState(0);
+  const [suggestionsUnreadCount, setSuggestionsUnreadCount] = useState(0);
   // Routing inter-onglets : permet d'ouvrir la fiche d'un user depuis une analyse, etc.
   const [focusUserId, setFocusUserId] = useState<string | null>(null);
   const [focusProClientId, setFocusProClientId] = useState<string | null>(null);
@@ -224,6 +225,9 @@ export default function AdminPage() {
       // Unread support tickets
       const { count: supportCount } = await supabase.from('support_tickets').select('*', { count: 'exact', head: true }).eq('unread_by_admin', true);
       setSupportUnreadCount(supportCount || 0);
+      // Unread suggestions
+      const { count: suggestCount } = await supabase.from('pro_suggestions').select('*', { count: 'exact', head: true }).eq('acknowledged', false);
+      setSuggestionsUnreadCount(suggestCount || 0);
     };
     check();
   }, [navigate]);
@@ -272,7 +276,7 @@ export default function AdminPage() {
     { id: 'promos', label: 'Codes promo', icon: Tag },
     { id: 'alerts', label: 'Alertes système', icon: AlertTriangle },
     { id: 'support', label: 'Besoin d\'aide', icon: LifeBuoy, badge: supportUnreadCount },
-    { id: 'suggestions', label: 'Suggestions', icon: Lightbulb },
+    { id: 'suggestions', label: 'Suggestions', icon: Lightbulb, badge: suggestionsUnreadCount },
     { id: 'banner', label: 'Bannière', icon: Bell },
     { id: 'logs', label: 'Historique', icon: Clock },
   ];
@@ -462,7 +466,7 @@ export default function AdminPage() {
               {activeTab === 'promos' && <PromosTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} />}
               {activeTab === 'alerts' && <SystemAlertsTab showToast={showToast} />}
               {activeTab === 'support' && <AdminSupportTab showToast={showToast} onUnreadChange={setSupportUnreadCount} onGoToUser={(userId) => { setFocusUserId(userId); setActiveTab('users'); }} />}
-              {activeTab === 'suggestions' && <AdminSuggestionsTab onGoToUser={(userId) => { setFocusUserId(userId); setActiveTab('users'); }} />}
+              {activeTab === 'suggestions' && <AdminSuggestionsTab onGoToUser={(userId) => { setFocusUserId(userId); setActiveTab('users'); }} showToast={showToast} onUnreadChange={setSuggestionsUnreadCount} />}
               {activeTab === 'banner' && <BannerTab showToast={showToast} logAction={logAction} />}
               {activeTab === 'logs' && <LogsTab />}
             </motion.div>
@@ -803,40 +807,52 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser }: { showToast:
 /* ══════════════════════════════════════════
    ADMIN — SUGGESTIONS
 ══════════════════════════════════════════ */
-function AdminSuggestionsTab({ onGoToUser }: { onGoToUser?: (userId: string) => void }) {
-  type Suggestion = { id: string; user_id: string; message: string; created_at: string; user_email?: string; user_name?: string };
+function AdminSuggestionsTab({ onGoToUser, showToast, onUnreadChange }: { onGoToUser?: (userId: string) => void; showToast: (m: string) => void; onUnreadChange?: (n: number) => void }) {
+  type Suggestion = { id: string; user_id: string; message: string; category: string | null; created_at: string; acknowledged: boolean; user_email?: string; user_name?: string };
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.from('pro_suggestions').select('*').order('created_at', { ascending: false });
-      if (!data) { setLoading(false); return; }
-      const userIds = [...new Set(data.map((s: Record<string, unknown>) => s.user_id as string))];
-      const { data: profiles } = await supabase.from('profiles').select('id, full_name, email').in('id', userIds);
-      const enriched = data.map((s: Record<string, unknown>) => {
-        const profile = profiles?.find((p: Record<string, unknown>) => p.id === s.user_id);
-        return { ...s, user_email: (profile as Record<string, unknown>)?.email || '?', user_name: (profile as Record<string, unknown>)?.full_name || '?' } as Suggestion;
-      });
-      setSuggestions(enriched);
-      setLoading(false);
-    })();
-  }, []);
+  const loadSuggestions = useCallback(async () => {
+    const { data } = await supabase.from('pro_suggestions').select('*').order('created_at', { ascending: false });
+    if (!data) { setLoading(false); return; }
+    const userIds = [...new Set(data.map((s: Record<string, unknown>) => s.user_id as string))];
+    const { data: profiles } = await supabase.from('profiles').select('id, full_name, email').in('id', userIds);
+    const enriched = data.map((s: Record<string, unknown>) => {
+      const profile = profiles?.find((p: Record<string, unknown>) => p.id === s.user_id);
+      return { ...s, user_email: (profile as Record<string, unknown>)?.email || '?', user_name: (profile as Record<string, unknown>)?.full_name || '?' } as Suggestion;
+    });
+    setSuggestions(enriched);
+    if (onUnreadChange) onUnreadChange(enriched.filter((s: Suggestion) => !s.acknowledged).length);
+    setLoading(false);
+  }, [onUnreadChange]);
+
+  useEffect(() => { loadSuggestions(); }, [loadSuggestions]);
+
+  const handleAcknowledge = async (s: Suggestion) => {
+    await supabase.from('pro_suggestions').update({ acknowledged: true }).eq('id', s.id);
+    await supabase.from('user_notifications').insert({
+      user_id: s.user_id,
+      title: 'Suggestion prise en compte',
+      message: 'Votre suggestion a bien \u00e9t\u00e9 lue et prise en compte par notre \u00e9quipe. Merci pour votre retour, il nous aide \u00e0 am\u00e9liorer Verimo !',
+    });
+    showToast('Suggestion prise en compte — notification envoy\u00e9e');
+    loadSuggestions();
+  };
 
   const fmtDate = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Chargement…</div>;
+  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Chargement\u2026</div>;
 
   return (
     <div>
-      <p style={{ fontSize: 14, color: '#64748b', marginBottom: 16 }}>{suggestions.length} suggestion{suggestions.length > 1 ? 's' : ''} reçue{suggestions.length > 1 ? 's' : ''}</p>
+      <p style={{ fontSize: 14, color: '#64748b', marginBottom: 16 }}>{suggestions.length} suggestion{suggestions.length > 1 ? 's' : ''} re\u00e7ue{suggestions.length > 1 ? 's' : ''}</p>
       {suggestions.length === 0 ? (
         <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Aucune suggestion pour le moment.</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {suggestions.map((s: Suggestion) => (
-            <div key={s.id} style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '18px 20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <div key={s.id} style={{ background: '#fff', borderRadius: 14, border: s.acknowledged ? '1px solid #edf2f7' : '1.5px solid #f59e0b', padding: '18px 20px', opacity: s.acknowledged ? 0.7 : 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
                 <div style={{ width: 32, height: 32, borderRadius: 8, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <Lightbulb size={15} style={{ color: '#d97706' }} />
                 </div>
@@ -844,11 +860,22 @@ function AdminSuggestionsTab({ onGoToUser }: { onGoToUser?: (userId: string) => 
                   <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{s.user_name}</span>
                   <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 8 }}>{s.user_email}</span>
                 </div>
+                {s.category && <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: '#fef3c7', color: '#92400e' }}>{s.category}</span>}
                 {onGoToUser && (
                   <button onClick={() => onGoToUser(s.user_id)}
                     style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, background: '#f0f7fb', border: '1px solid #d0e8f0', color: '#2a7d9c', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>
                     <User size={11} /> Fiche
                   </button>
+                )}
+                {!s.acknowledged ? (
+                  <button onClick={() => handleAcknowledge(s)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, background: '#16a34a', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}>
+                    <CheckCircle size={12} /> Pris en compte
+                  </button>
+                ) : (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <CheckCircle size={12} /> Pris en compte
+                  </span>
                 )}
                 <span style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDate(s.created_at)}</span>
               </div>
