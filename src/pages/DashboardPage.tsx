@@ -47,15 +47,15 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
   return (
     <aside style={{ width:260, minHeight:'100vh', height:'100%', background:SB_BG, display:'flex', flexDirection:'column' }}>
       {/* Logo — centré et plus gros */}
-      <div style={{ height:75, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 18px', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0, position:'relative' }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'12px 18px 6px', flexShrink:0, position:'relative' }}>
         <Link to="/" onClick={onClose} style={{ textDecoration:'none' }}>
-          <img src="/logo-blanc.png" alt="Verimo" style={{ height: 80, width: 'auto', display: 'block' }} />
+          <img src="/logo-blanc.png" alt="Verimo" style={{ height: 100, width: 'auto', display: 'block' }} />
         </Link>
-        {onClose && <button onClick={onClose} style={{ position:'absolute', right:14, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.4)', padding:4 }}><X size={18}/></button>}
+        {onClose && <button onClick={onClose} style={{ position:'absolute', right:14, top:14, background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.4)', padding:4 }}><X size={18}/></button>}
       </div>
 
       {/* CTA Nouvelle analyse */}
-      <div style={{ padding:'10px 14px 8px' }}>
+      <div style={{ padding:'6px 14px 8px' }}>
         <Link to="/dashboard/nouvelle-analyse" onClick={onClose}
           style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, padding:'11px', borderRadius:10, background:'#2a7d9c', color:'#fff', textDecoration:'none', fontSize:13, fontWeight:700, transition:'all 0.2s' }}
           onMouseOver={e=>{ const el=e.currentTarget as HTMLElement; el.style.background='#358da8'; }}
