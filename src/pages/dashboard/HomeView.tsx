@@ -1,7 +1,5 @@
-import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, ChevronRight, Plus, Sparkles, ExternalLink, Building2, BookOpen, ArrowRight } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
 import { useUser } from '../../hooks/useUser';
 import { useAnalyses, type Analyse } from '../../hooks/useAnalyses';
 import { useCredits } from '../../hooks/useCredits';
@@ -23,10 +21,9 @@ function ScoreBadge({ score, size = 'sm' }: { score: number; size?: 'sm' | 'md' 
 function AnalyseRow({ a }: { a: Analyse }) {
   const isComplete = a.type === 'complete';
   const displayTitle = isComplete ? (a.adresse_bien || 'Adresse en cours de détection…') : (a.nom_document || 'Document sans nom');
-  const isPreview = a.is_preview ?? false;
-  const typeLabel = isPreview ? 'Aperçu gratuit' : isComplete ? 'Analyse Complète' : 'Analyse Document';
-  const typeBg = isPreview ? 'rgba(22,163,74,0.07)' : isComplete ? 'rgba(15,45,61,0.07)' : 'rgba(42,125,156,0.07)';
-  const typeColor = isPreview ? '#16a34a' : isComplete ? '#0f2d3d' : '#2a7d9c';
+  const typeLabel = isComplete ? 'Analyse Complète' : 'Analyse Document';
+  const typeBg = isComplete ? 'rgba(15,45,61,0.07)' : 'rgba(42,125,156,0.07)';
+  const typeColor = isComplete ? '#0f2d3d' : '#2a7d9c';
   return (
     <div style={{ background: '#fff', borderRadius: 13, border: '1px solid #edf2f7', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', boxShadow: '0 1px 3px rgba(0,0,0,0.03)', transition: 'all 0.18s' }}
       onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.boxShadow = '0 4px 18px rgba(42,125,156,0.08)'; el.style.transform = 'translateY(-1px)'; el.style.borderColor = '#dbeafe'; }}
@@ -64,20 +61,6 @@ export default function HomeView() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
   const hasAnalyses = analyses.length > 0;
-  const [freePreviewUsedHome, setFreePreviewUsedHome] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    const sync = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setFreePreviewUsedHome(true); return; }
-      const { data } = await supabase.from('profiles').select('free_preview_used').eq('id', user.id).single();
-      const used = data?.free_preview_used === true;
-      if (used) localStorage.setItem('verimo_free_preview_used', 'true');
-      else localStorage.removeItem('verimo_free_preview_used');
-      setFreePreviewUsedHome(used);
-    };
-    sync();
-  }, []);
 
   const totalAnalyses = analyses.length;
   const lastAnalyse = [...analyses].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
@@ -102,7 +85,6 @@ export default function HomeView() {
       </div>
 
       {/* STATS */}
-      {freePreviewUsedHome !== null && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }} className="stats-grid">
           <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '18px' }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 8 }}>TOTAL ANALYSES</div>
@@ -133,7 +115,6 @@ export default function HomeView() {
             <Link to="/dashboard/tarifs" style={{ fontSize: 12, fontWeight: 700, color: '#2a7d9c', textDecoration: 'none', display: 'block', marginTop: 8 }}>+ Acheter des crédits</Link>
           </div>
         </div>
-      )}
 
       {/* ANALYSES RÉCENTES */}
       <div>
