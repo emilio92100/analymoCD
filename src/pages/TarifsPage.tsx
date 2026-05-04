@@ -181,8 +181,8 @@ function TableCell({ val, isHighlight }: { val: boolean | string; isHighlight: b
 ══════════════════════════════════════════ */
 export default function TarifsPage() {
   useSEO({
-    title: 'Tarifs Verimo — Analyse immobilière dès 4,90€',
-    description: "Découvrez nos tarifs Verimo : analyse simple, complète ou pack pour comparer plusieurs biens. Score /20, travaux, santé financière. Sans abonnement.",
+    title: 'Tarifs Verimo — Analyse de documents immobiliers dès 4,90€',
+    description: "Faites analyser vos PV d'AG, DPE, diagnostics, règlement de copropriété, compromis, etc. dès 4,90€. Score /20, risques, santé financière. Sans abonnement.",
     canonical: '/tarifs',
   });
 
