@@ -408,7 +408,7 @@ export default function MethodePage() {
       </section>
 
       {/* Transition fluide hero → contenu */}
-      <div style={{ height: 60, background: 'linear-gradient(180deg, #e6f3f7 0%, #ffffff 100%)', marginTop: -1 }} />
+      <div style={{ height: 100, background: 'linear-gradient(180deg, #e6f3f7 0%, #edf2f6 30%, #f5f7f9 60%, #ffffff 100%)', marginTop: -1 }} />
 
       {/* ── LAYOUT DEUX COLONNES ──────────────────────────────── */}
       <div style={{ maxWidth: 1160, margin: '0 auto', display: 'grid', gridTemplateColumns: '200px 1fr', gap: '0 64px', padding: '0 40px', alignItems: 'start' }}>
