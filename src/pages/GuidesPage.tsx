@@ -44,7 +44,7 @@ const cats: Cat[] = [
       { title: "Diagnostic électricité et gaz : quels risques pour l'acheteur", slug: "diagnostic-electricite-gaz-risques", description: "Installations de plus de 15 ans, anomalies détectées, travaux à prévoir — comment interpréter ces diagnostics." },
     ]},
   ]},
-  { id: "acheteurs", icon: "🏠", label: "Acheteurs", color: "#059669", subs: [
+  { id: "acheteurs", icon: "🧑‍💼", label: "Acheteurs", color: "#059669", subs: [
     { title: "Avant de signer", articles: [
       { title: "Les 10 documents à exiger avant de faire une offre d'achat", slug: "10-documents-avant-offre-achat", description: "La checklist complète des pièces à demander au vendeur ou à l'agent avant de vous engager.", tag: "Essentiel" },
       { title: "Compromis de vente : les clauses à lire avant de signer", slug: "compromis-vente-clauses-lire", description: "Conditions suspensives, délai de rétractation, clauses pénales — ce que vous devez comprendre.", docInfo: { emoji: "💡", label: "Compromis de vente", definition: "Avant-contrat qui engage vendeur et acheteur. Il fixe le prix, les conditions et ouvre un délai de rétractation de 10 jours pour l'acheteur." } },
@@ -57,7 +57,7 @@ const cats: Cat[] = [
       { title: "Travaux votés en AG : un levier de négociation souvent ignoré", slug: "travaux-votes-ag-levier-negociation", description: "Si des travaux ont été votés avant la vente, l'acheteur paie les appels de fonds. Comment en tenir compte." },
     ]},
   ]},
-  { id: "vendeurs", icon: "📋", label: "Vendeurs", color: "#7c3aed", subs: [
+  { id: "vendeurs", icon: "🤝", label: "Vendeurs", color: "#7c3aed", subs: [
     { title: "Préparer sa vente", articles: [
       { title: "Liste complète des documents obligatoires pour vendre en 2026", slug: "documents-obligatoires-vendre-2026", description: "DDT, état daté, fiche synthétique, DPE — tout ce que le vendeur doit fournir et à quel moment.", tag: "Essentiel" },
       { title: "DDT : tout ce que le Dossier de Diagnostics Techniques doit contenir", slug: "ddt-dossier-diagnostics-techniques", description: "Les diagnostics obligatoires selon le type de bien, leur durée de validité et les sanctions en cas d'absence.", docInfo: { emoji: "💡", label: "DDT", definition: "Le Dossier de Diagnostics Techniques regroupe l'ensemble des diagnostics obligatoires à fournir à l'acheteur." } },
@@ -134,15 +134,17 @@ export default function GuidesPage() {
 
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: 'clamp(44px,7vw,80px) clamp(20px,4vw,48px) 42px', position: 'relative', zIndex: 1 }}>
 
+          {/* 1/ GUIDES VERIMO plus gros */}
           <motion.div
             initial={{ opacity: 0, y: _lp ? 4 : 10 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: _lp ? 0.15 : 0.4, ease: [0.22, 1, 0.36, 1] }}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}
           >
-            <span style={{ width: 22, height: 2, background: '#2a7d9c', borderRadius: 1, display: 'inline-block' }} />
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: '#2a7d9c' }}>Guides Verimo</span>
+            <span style={{ width: 28, height: 2, background: '#2a7d9c', borderRadius: 1, display: 'inline-block' }} />
+            <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase' as const, color: '#2a7d9c' }}>Guides Verimo</span>
           </motion.div>
 
+          {/* 4/ H1 SEO optimisé */}
           <motion.h1
             initial={{ opacity: 0, y: _lp ? 4 : 14 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: _lp ? 0.15 : 0.45, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
@@ -151,21 +153,22 @@ export default function GuidesPage() {
             Analysez vos documents immobiliers{' '}
             <span style={{ position: 'relative', display: 'inline-block' }}>
               <span style={{ color: '#2a7d9c' }}>avant de signer</span>
+              {/* 2/ Animation plus lente (3s au lieu de 1.2s) */}
               <motion.span
                 initial={{ scaleX: 0 }} animate={{ scaleX: 1 }}
-                transition={{ duration: 2.5, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 3, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
                 style={{ position: 'absolute', bottom: -3, left: 0, right: 0, height: 4, background: 'rgba(42,125,156,0.25)', borderRadius: 99, transformOrigin: 'left', display: 'block' }}
               />
             </span>
           </motion.h1>
 
+          {/* 3/ Sous-titre plus visible, une seule ligne, couleur plus foncée */}
           <motion.p
             initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             transition={{ delay: 0.1, duration: 0.35 }}
-            style={{ fontSize: 14, color: '#6b7a88', lineHeight: 1.65, maxWidth: 520, marginBottom: 24 }}
+            style={{ fontSize: 15, color: '#4a5568', lineHeight: 1.65, maxWidth: 620, marginBottom: 24 }}
           >
-            PV d'AG, DPE, diagnostics, règlement de copro, compromis, état daté…
-            Des guides concrets pour acheter sans mauvaise surprise.
+            PV d'AG, DPE, diagnostics, règlement de copro, compromis, état daté… Des guides concrets pour comprendre et acheter en confiance.
           </motion.p>
 
           <motion.div
@@ -289,7 +292,6 @@ export default function GuidesPage() {
 
         {filtered.map((sub, si) => (
           <div key={si} style={{ marginBottom: 28 }}>
-            {/* Titre de sous-section (visible uniquement si pas de filtre sous-cat actif) */}
             {!activeSub && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '22px 0 14px' }}>
                 <span style={{ width: 4, height: 18, borderRadius: 2, background: cat.color, display: 'inline-block' }} />
@@ -318,11 +320,17 @@ export default function GuidesPage() {
                       e.currentTarget.style.transform = 'translateY(0)';
                     }}
                   >
-                    {/* Chip document */}
-                    {a.docInfo && (
+                    {/* 7/ Badge document OU badge catégorie si pas de docInfo */}
+                    {a.docInfo ? (
                       <div style={{ marginBottom: 8 }}>
                         <span style={{ fontSize: 10, fontWeight: 600, color: '#2a7d9c', background: '#edf7fb', padding: '4px 10px', borderRadius: 5 }}>
                           {a.docInfo.emoji} {a.docInfo.label}
+                        </span>
+                      </div>
+                    ) : (
+                      <div style={{ marginBottom: 8 }}>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: cat.color, background: cat.color + '0a', padding: '4px 10px', borderRadius: 5, border: `1px solid ${cat.color}15` }}>
+                          {cat.icon} {cat.label}
                         </span>
                       </div>
                     )}
@@ -340,7 +348,7 @@ export default function GuidesPage() {
           </div>
         ))}
 
-        {/* ── CTA ── */}
+        {/* 8/ CTA redesigné */}
         {filtered.length > 0 && (
           <div style={{
             background: 'linear-gradient(135deg, #0e2a38 0%, #1a4a5e 100%)',
@@ -349,7 +357,7 @@ export default function GuidesPage() {
             gap: 20, marginTop: 20, flexWrap: 'wrap' as const,
           }}>
             <div>
-              <h2 style={{ fontSize: 'clamp(16px,2.5vw,20px)', fontWeight: 700, color: '#fff', margin: '0 0 4px' }}>Vous avez vos documents ?</h2>
+              <h2 style={{ fontSize: 'clamp(16px,2.5vw,20px)', fontWeight: 700, color: '#fff', margin: '0 0 4px' }}>Votre futur achat mérite mieux qu'une lecture en diagonale.</h2>
               <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', margin: 0 }}>Score /20, risques et pistes de négociation en quelques minutes.</p>
             </div>
             <Link to="/start" style={{
@@ -361,7 +369,7 @@ export default function GuidesPage() {
               onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'; }}
             >
-              Lancer mon analyse →
+              Analyser mon bien →
             </Link>
           </div>
         )}
