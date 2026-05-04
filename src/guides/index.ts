@@ -1,5 +1,5 @@
 /**
- * Index des articles de guides Verimo
+ * Index des articles de guides Verimo — 21 articles
  */
 
 import type { GuideArticle } from './types';
@@ -19,24 +19,18 @@ import appelsFonds from './appels-fonds-exceptionnels-documents';
 import verifier10Jours from './verifier-10-jours-retractation';
 import premierAchat from './premier-achat-pieges-documentaires';
 import auditEnergetique from './audit-energetique-difference-dpe';
+import impayesCopro from './impayes-copropriete-detecter-risque';
+import carnetEntretien from './carnet-entretien-immeuble';
+import ficheSynthetique from './fiche-synthetique-copropriete';
+import argumentsNego from './arguments-negociation-documents-copropriete';
+import dpeNegocier from './utiliser-dpe-negocier-prix';
 
 const allArticles: GuideArticle[] = [
-  analyserPvAg,
-  dpeCommentLire,
-  dixDocuments,
-  chargesCopro,
-  compromisVente,
-  reglementCopro,
-  passoireThermique,
-  etatDate,
-  preEtatDate,
-  dpeCollectif,
-  fondsTravaux,
-  lire3Pv,
-  appelsFonds,
-  verifier10Jours,
-  premierAchat,
-  auditEnergetique,
+  analyserPvAg, dpeCommentLire, dixDocuments, chargesCopro, compromisVente,
+  reglementCopro, passoireThermique, etatDate, preEtatDate, dpeCollectif,
+  fondsTravaux, lire3Pv, appelsFonds, verifier10Jours, premierAchat,
+  auditEnergetique, impayesCopro, carnetEntretien, ficheSynthetique,
+  argumentsNego, dpeNegocier,
 ];
 
 export function getArticleBySlug(slug: string): GuideArticle | undefined {
