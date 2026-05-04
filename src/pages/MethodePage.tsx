@@ -378,8 +378,14 @@ export default function MethodePage() {
     <main style={{ fontFamily: "'DM Sans', system-ui, sans-serif", background: '#fff', paddingTop: 72 }}>
 
       {/* ── HERO COMPACT ──────────────────────────────────────── */}
-      <section style={{ background: '#f8fafc', borderBottom: '1px solid #edf2f7', padding: '52px 24px 44px', textAlign: 'center' }}>
-        <div style={{ maxWidth: 760, margin: '0 auto' }}>
+      <section style={{
+        background: 'linear-gradient(165deg, #ffffff 0%, #f2f9fb 40%, #e6f3f7 100%)',
+        borderBottom: '1px solid #edf2f7', padding: '52px 24px 44px', textAlign: 'center',
+        position: 'relative', overflow: 'hidden',
+      }}>
+        <div style={{ position: 'absolute', top: -60, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.04) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -30, left: '10%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.03) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ maxWidth: 760, margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <motion.p initial={{ opacity: 0, y: isLowPerf() ? 4 : 10 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: isLowPerf() ? 0.18 : 0.4 }}
             style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.22em', textTransform: 'uppercase' as const, marginBottom: 16 }}>
