@@ -9,6 +9,11 @@ import dpeCommentLire from './dpe-comment-lire-avant-achat';
 import dixDocuments from './10-documents-avant-offre-achat';
 import chargesCopro from './charges-copropriete-trop-elevees';
 import compromisVente from './compromis-vente-clauses-lire';
+import reglementCopro from './reglement-copropriete-clauses-verifier';
+import passoireThermique from './passoire-thermique-fuir-negocier';
+import etatDate from './etat-date-document-vendeur';
+import dpeCollectif from './dpe-collectif-2026-obligations';
+import fondsTravaux from './fonds-travaux-obligatoire-2026';
 
 const allArticles: GuideArticle[] = [
   analyserPvAg,
@@ -16,6 +21,11 @@ const allArticles: GuideArticle[] = [
   dixDocuments,
   chargesCopro,
   compromisVente,
+  reglementCopro,
+  passoireThermique,
+  etatDate,
+  dpeCollectif,
+  fondsTravaux,
 ];
 
 export function getArticleBySlug(slug: string): GuideArticle | undefined {
