@@ -71,6 +71,36 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://www.verimo.fr/guides/reglement-copropriete-clauses-verifier</loc>
+    <lastmod>2026-05-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.verimo.fr/guides/passoire-thermique-fuir-negocier</loc>
+    <lastmod>2026-05-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.verimo.fr/guides/etat-date-document-vendeur</loc>
+    <lastmod>2026-05-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.verimo.fr/guides/dpe-collectif-2026-obligations</loc>
+    <lastmod>2026-05-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.verimo.fr/guides/fonds-travaux-obligatoire-2026</loc>
+    <lastmod>2026-05-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://www.verimo.fr/cgu</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
