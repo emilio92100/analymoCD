@@ -218,36 +218,52 @@ export default function GuidesPage() {
           {cats.map((c) => {
             const isActive = c.id === activeCat;
             return (
-              <button key={c.id} onClick={() => { setActiveCat(c.id); setActiveSub(null); setSearch(""); }}
+              <motion.button key={c.id}
+                onClick={() => { setActiveCat(c.id); setActiveSub(null); setSearch(""); }}
+                animate={{
+                  scale: isActive ? 1.03 : 1,
+                  borderColor: isActive ? '#2a7d9c' : '#e4eaee',
+                  background: isActive ? '#f6fbfd' : '#fff',
+                }}
+                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                whileHover={{ scale: isActive ? 1.03 : 1.02, borderColor: '#a8cdd8' }}
+                whileTap={{ scale: 0.97 }}
                 style={{
-                  flex: 1, background: isActive ? '#f6fbfd' : '#fff',
-                  borderRadius: 12, padding: '16px 10px', textAlign: 'center' as const,
-                  cursor: 'pointer', border: `1.5px solid ${isActive ? '#2a7d9c' : '#e4eaee'}`,
-                  transition: 'all 0.18s', fontFamily: 'inherit',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+                  flex: 1, borderRadius: 12, padding: '16px 10px', textAlign: 'center' as const,
+                  cursor: 'pointer', border: '1.5px solid #e4eaee',
+                  fontFamily: 'inherit',
+                  boxShadow: isActive ? '0 4px 12px rgba(42,125,156,0.08)' : '0 2px 6px rgba(0,0,0,0.03)',
                   position: 'relative' as const,
                 }}
-                onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.borderColor = '#a8cdd8'; e.currentTarget.style.transform = 'translateY(-1px)'; } }}
-                onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.borderColor = '#e4eaee'; e.currentTarget.style.transform = 'translateY(0)'; } }}
               >
                 <span style={{ fontSize: 22, display: 'block', marginBottom: 4 }}>{c.icon}</span>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#0f2d3d' }}>{c.label}</div>
                 <div style={{ fontSize: 11, color: isActive ? '#2a7d9c' : '#64748b', marginTop: 2, fontWeight: 500 }}>{c.subs.reduce((a, s) => a + s.articles.length, 0)} guides</div>
                 {isActive && (
-                  <div style={{
-                    position: 'absolute', bottom: -8, left: '50%', transform: 'translateX(-50%)',
-                    width: 0, height: 0,
-                    borderLeft: '7px solid transparent', borderRight: '7px solid transparent', borderTop: '7px solid #2a7d9c',
-                  }} />
+                  <motion.div
+                    layoutId="cat-arrow"
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    style={{
+                      position: 'absolute', bottom: -8, left: '50%', transform: 'translateX(-50%)',
+                      width: 0, height: 0,
+                      borderLeft: '7px solid transparent', borderRight: '7px solid transparent', borderTop: '7px solid #2a7d9c',
+                    }}
+                  />
                 )}
-              </button>
+              </motion.button>
             );
           })}
         </div>
       </div>
 
       {/* ── ARTICLES ── */}
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '18px clamp(20px,4vw,48px) 40px' }}>
+      <motion.div
+        key={activeCat}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+        style={{ maxWidth: 1200, margin: '0 auto', padding: '18px clamp(20px,4vw,48px) 40px' }}
+      >
 
         {filtered.length === 0 && (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
@@ -353,9 +369,7 @@ export default function GuidesPage() {
             </div>
           </div>
         )}
-      </div>
-
-      {/* ── STYLES RESPONSIVE ── */}
+      </motion.div>
       <style>{`
         @media (max-width: 768px) {
           .guides-cats {
