@@ -684,8 +684,8 @@ function DemoPopup({ onClose }: { onClose: () => void }) {
 ═══════════════════════════════════════════════════════════════ */
 export default function ExemplePage() {
   useSEO({
-    title: 'Exemple de rapport Verimo — Appartement Lyon 6e analysé',
-    description: "Découvrez un exemple concret de rapport Verimo : score /20, travaux détectés, santé financière de la copropriété et pistes de négociation sur un appartement réel.",
+    title: "Exemple d'analyse de documents immobiliers — Rapport Verimo complet",
+    description: "Consultez un exemple réel de rapport Verimo : score /20, travaux détectés, santé financière de la copropriété, charges, risques identifiés et pistes de négociation.",
     canonical: '/exemple',
   });
 
