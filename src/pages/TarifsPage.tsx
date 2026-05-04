@@ -204,6 +204,7 @@ export default function TarifsPage() {
         {/* Cercles décoratifs */}
         <div style={{ position: 'absolute', top: -60, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.04) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: -30, left: '10%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.03) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(180deg, transparent 0%, #f4f7f9 100%)', pointerEvents: 'none', zIndex: 2 }} />
 
         <div style={{ position: 'relative', zIndex: 1 }}>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
@@ -236,9 +237,6 @@ export default function TarifsPage() {
         </motion.div>
         </div>
       </section>
-
-      {/* Transition fluide hero → contenu */}
-      <div style={{ height: 100, background: 'linear-gradient(180deg, #e6f3f7 0%, #edf2f6 30%, #f0f3f6 60%, #f4f7f9 100%)', marginTop: -1 }} />
 
       {/* ── CARTES ── */}
       <section style={{ padding: 'clamp(32px,5vw,52px) 20px 0', maxWidth: 1100, margin: '0 auto' }}>
