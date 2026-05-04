@@ -43,6 +43,7 @@ const cats: Cat[] = [
       { title: "Loi Carrez : que faire si la surface ne correspond pas", slug: "loi-carrez-surface-ne-correspond-pas", description: "Tolérance de 5%, recours possibles, impact sur le prix — vos droits en cas d'écart de surface.", docInfo: { emoji: "💡", label: "Mesurage loi Carrez", definition: "Attestation obligatoire en copropriété qui certifie la superficie privative exacte du lot. Une erreur de plus de 5% ouvre droit à une réduction de prix." } },
       { title: "ERP : comment décrypter l'État des Risques et Pollutions", slug: "erp-etat-risques-pollutions", description: "Zones inondables, risques industriels, pollution des sols — ce que ce document vous apprend.", docInfo: { emoji: "💡", label: "ERP", definition: "Document obligatoire qui informe l'acheteur sur les risques naturels, miniers, technologiques, sismiques et de pollution auxquels le bien est exposé." } },
       { title: "Diagnostic électricité et gaz : quels risques pour l'acheteur", slug: "diagnostic-electricite-gaz-risques", description: "Installations de plus de 15 ans, anomalies détectées, travaux à prévoir — comment interpréter ces diagnostics." },
+      { title: "Achat maison : les diagnostics et documents spécifiques à vérifier", slug: "achat-maison-diagnostics-documents", description: "Assainissement, termites, mérule, audit énergétique — ce qui change quand on achète une maison plutôt qu'un appartement." },
     ]},
   ]},
   { id: "acheteurs", icon: "🧑‍💼", label: "Acheteurs", color: "#059669", subs: [
@@ -51,11 +52,15 @@ const cats: Cat[] = [
       { title: "Compromis de vente : les clauses à lire avant de signer", slug: "compromis-vente-clauses-lire", description: "Conditions suspensives, délai de rétractation, clauses pénales — ce que vous devez comprendre.", docInfo: { emoji: "💡", label: "Compromis de vente", definition: "Avant-contrat qui engage vendeur et acheteur. Il fixe le prix, les conditions et ouvre un délai de rétractation de 10 jours pour l'acheteur." } },
       { title: "Premier achat immobilier : les pièges documentaires à éviter", slug: "premier-achat-pieges-documentaires", description: "Guide spécial primo-accédants. Les erreurs les plus fréquentes et comment les éviter.", tag: "Primo-accédant" },
       { title: "Que vérifier dans les 10 jours de rétractation", slug: "verifier-10-jours-retractation", description: "Vous avez signé le compromis. Voici exactement quoi vérifier pendant le délai légal." },
+      { title: "Acheter sans agence : les documents à vérifier vous-même", slug: "acheter-sans-agence-documents-verifier", description: "Pas d'agent pour vous guider ? Voici les documents à exiger et les pièges à éviter quand vous achetez en direct." },
+      { title: "Vices cachés immobilier : comment se protéger avant d'acheter", slug: "vices-caches-immobilier-proteger", description: "Fissures, humidité, toiture, canalisations — comment repérer les vices cachés dans les documents et les visites." },
+      { title: "Frais de notaire : ce que vous payez vraiment et comment les calculer", slug: "frais-notaire-calcul-achat", description: "Droits de mutation, émoluments, débours — le détail de ce que contiennent les frais de notaire et comment les estimer." },
     ]},
     { title: "Négociation", articles: [
       { title: "5 arguments de négociation cachés dans les documents de copropriété", slug: "arguments-negociation-documents-copropriete", description: "Travaux votés, charges en hausse, impayés, DPE dégradé — des leviers que la plupart des acheteurs ignorent." },
       { title: "Comment utiliser le DPE pour négocier le prix d'achat", slug: "utiliser-dpe-negocier-prix", description: "Un DPE F ou G peut justifier une décote de 5 à 15%. Comment argumenter face au vendeur." },
       { title: "Travaux votés en AG : un levier de négociation souvent ignoré", slug: "travaux-votes-ag-levier-negociation", description: "Si des travaux ont été votés avant la vente, l'acheteur paie les appels de fonds. Comment en tenir compte." },
+      { title: "Taxe foncière : comment la vérifier et l'intégrer dans votre budget", slug: "taxe-fonciere-verifier-budget-achat", description: "Montant, évolution, calcul — la taxe foncière oubliée qui peut changer votre budget de 500 à 3 000 € par an." },
     ]},
   ]},
   { id: "vendeurs", icon: "🤝", label: "Vendeurs", color: "#7c3aed", subs: [
