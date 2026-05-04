@@ -46,9 +46,11 @@ Voici ce que vous devez savoir avant d'acheter en copropriété en 2026.`,
         `Depuis le 1er janvier 2025 — copropriétés de 50 à 200 lots`,
         `Depuis le 1er janvier 2026 — toutes les copropriétés, y compris celles de moins de 50 lots`,
       ],
-      content: `Sont concernés tous les immeubles d'habitation dont le permis de construire a été déposé avant le 1er janvier 2013. Les immeubles récents (après 2013) ont déjà été construits selon des normes thermiques plus exigeantes et sont donc exemptés.
-
-Le DPE collectif est valable 10 ans, sauf si des travaux modifient la performance énergétique de l'immeuble — auquel cas il faut en refaire un.`,
+      highlight: {
+        type: 'info' as const,
+        title: `Bon à savoir`,
+        content: `Sont concernés tous les immeubles d'habitation dont le permis de construire a été déposé avant le 1er janvier 2013. Les immeubles récents (après 2013) sont exemptés. Le DPE collectif est valable 10 ans, sauf si des travaux modifient la performance énergétique de l'immeuble.`,
+      },
     },
     {
       id: 'difference-individuel',
@@ -125,7 +127,11 @@ Les prix varient selon la taille de l'immeuble :`,
         `Copro moyenne (30-50 lots) — entre 2 000 et 5 000 €, soit 40 à 100 € par lot`,
         `Grande copro (100+ lots) — entre 4 000 et 10 000 €, soit 40 à 100 € par lot`,
       ],
-      content: `Ce n'est pas un montant énorme rapporté à chaque copropriétaire. Ce qui coûte cher, ce sont les travaux qui en découlent — pas le diagnostic lui-même.`,
+      highlight: {
+        type: 'tip' as const,
+        title: `À retenir`,
+        content: `Ce n'est pas un montant énorme rapporté à chaque copropriétaire. Ce qui coûte cher, ce sont les travaux qui en découlent — pas le diagnostic lui-même.`,
+      },
     },
   ],
 
