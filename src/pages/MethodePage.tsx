@@ -385,6 +385,7 @@ export default function MethodePage() {
       }}>
         <div style={{ position: 'absolute', top: -60, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.04) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: -30, left: '10%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.03) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(180deg, transparent 0%, #ffffff 100%)', pointerEvents: 'none', zIndex: 2 }} />
         <div style={{ maxWidth: 760, margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <motion.p initial={{ opacity: 0, y: isLowPerf() ? 4 : 10 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: isLowPerf() ? 0.18 : 0.4 }}
@@ -406,9 +407,6 @@ export default function MethodePage() {
           </motion.p>
         </div>
       </section>
-
-      {/* Transition fluide hero → contenu */}
-      <div style={{ height: 100, background: 'linear-gradient(180deg, #e6f3f7 0%, #edf2f6 30%, #f5f7f9 60%, #ffffff 100%)', marginTop: -1 }} />
 
       {/* ── LAYOUT DEUX COLONNES ──────────────────────────────── */}
       <div style={{ maxWidth: 1160, margin: '0 auto', display: 'grid', gridTemplateColumns: '200px 1fr', gap: '0 64px', padding: '0 40px', alignItems: 'start' }}>
