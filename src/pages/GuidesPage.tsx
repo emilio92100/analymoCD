@@ -218,56 +218,52 @@ export default function GuidesPage() {
           {cats.map((c) => {
             const isActive = c.id === activeCat;
             return (
-              <div key={c.id} style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center' }}>
-                <button onClick={() => { setActiveCat(c.id); setActiveSub(null); setSearch(""); }}
-                  style={{
-                    width: '100%', background: isActive ? '#f6fbfd' : '#fff',
-                    borderRadius: 12, padding: '16px 10px', textAlign: 'center' as const,
-                    cursor: 'pointer', border: `1.5px solid ${isActive ? '#2a7d9c' : '#e4eaee'}`,
-                    transition: 'all 0.18s', fontFamily: 'inherit',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
-                    position: 'relative' as const,
-                  }}
-                  onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.borderColor = '#a8cdd8'; e.currentTarget.style.transform = 'translateY(-1px)'; } }}
-                  onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.borderColor = '#e4eaee'; e.currentTarget.style.transform = 'translateY(0)'; } }}
-                >
-                  <span style={{ fontSize: 22, display: 'block', marginBottom: 4 }}>{c.icon}</span>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#0f2d3d' }}>{c.label}</div>
-                  <div style={{ fontSize: 11, color: isActive ? '#2a7d9c' : '#64748b', marginTop: 2, fontWeight: 500 }}>{c.subs.reduce((a, s) => a + s.articles.length, 0)} guides</div>
-                  {isActive && (
-                    <div style={{
-                      position: 'absolute', bottom: -8, left: '50%', transform: 'translateX(-50%)',
-                      width: 0, height: 0,
-                      borderLeft: '7px solid transparent', borderRight: '7px solid transparent', borderTop: '7px solid #2a7d9c',
-                    }} />
-                  )}
-                </button>
-                {/* Sous-catégories sous la card active */}
+              <button key={c.id} onClick={() => { setActiveCat(c.id); setActiveSub(null); setSearch(""); }}
+                style={{
+                  flex: 1, background: isActive ? '#f6fbfd' : '#fff',
+                  borderRadius: 12, padding: '16px 10px', textAlign: 'center' as const,
+                  cursor: 'pointer', border: `1.5px solid ${isActive ? '#2a7d9c' : '#e4eaee'}`,
+                  transition: 'all 0.18s', fontFamily: 'inherit',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+                  position: 'relative' as const,
+                }}
+                onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.borderColor = '#a8cdd8'; e.currentTarget.style.transform = 'translateY(-1px)'; } }}
+                onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.borderColor = '#e4eaee'; e.currentTarget.style.transform = 'translateY(0)'; } }}
+              >
+                <span style={{ fontSize: 22, display: 'block', marginBottom: 4 }}>{c.icon}</span>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#0f2d3d' }}>{c.label}</div>
+                <div style={{ fontSize: 11, color: isActive ? '#2a7d9c' : '#64748b', marginTop: 2, fontWeight: 500 }}>{c.subs.reduce((a, s) => a + s.articles.length, 0)} guides</div>
                 {isActive && (
-                  <div style={{ display: 'flex', gap: 6, marginTop: 14, flexWrap: 'wrap' as const, justifyContent: 'center' }}>
-                    {c.subs.map((s) => {
-                      const subActive = activeSub === s.title;
-                      return (
-                        <button key={s.title} onClick={() => setActiveSub(subActive ? null : s.title)}
-                          style={{
-                            fontSize: 12, fontWeight: 600,
-                            color: subActive ? '#fff' : '#5a6670',
-                            background: subActive ? c.color : '#fff',
-                            border: `1.5px solid ${subActive ? c.color : '#dce2e6'}`,
-                            padding: '8px 16px', borderRadius: 8,
-                            cursor: 'pointer', fontFamily: 'inherit',
-                            transition: 'all 0.15s',
-                          }}
-                          onMouseEnter={(e) => { if (!subActive) { e.currentTarget.style.borderColor = c.color; e.currentTarget.style.color = c.color; e.currentTarget.style.background = c.color + '08'; } }}
-                          onMouseLeave={(e) => { if (!subActive) { e.currentTarget.style.borderColor = '#dce2e6'; e.currentTarget.style.color = '#5a6670'; e.currentTarget.style.background = '#fff'; } }}
-                        >
-                          {s.title} <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.7 }}>{s.articles.length}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <div style={{
+                    position: 'absolute', bottom: -8, left: '50%', transform: 'translateX(-50%)',
+                    width: 0, height: 0,
+                    borderLeft: '7px solid transparent', borderRight: '7px solid transparent', borderTop: '7px solid #2a7d9c',
+                  }} />
                 )}
-              </div>
+              </button>
+            );
+          })}
+        </div>
+        {/* Sous-catégories sous la rangée */}
+        <div style={{ display: 'flex', gap: 6, marginTop: 18, flexWrap: 'wrap' as const }}>
+          {cat.subs.map((s) => {
+            const subActive = activeSub === s.title;
+            return (
+              <button key={s.title} onClick={() => setActiveSub(subActive ? null : s.title)}
+                style={{
+                  fontSize: 12, fontWeight: 600,
+                  color: subActive ? '#fff' : '#5a6670',
+                  background: subActive ? cat.color : '#fff',
+                  border: `1.5px solid ${subActive ? cat.color : '#dce2e6'}`,
+                  padding: '8px 16px', borderRadius: 8,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={(e) => { if (!subActive) { e.currentTarget.style.borderColor = cat.color; e.currentTarget.style.color = cat.color; e.currentTarget.style.background = cat.color + '08'; } }}
+                onMouseLeave={(e) => { if (!subActive) { e.currentTarget.style.borderColor = '#dce2e6'; e.currentTarget.style.color = '#5a6670'; e.currentTarget.style.background = '#fff'; } }}
+              >
+                {s.title} <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.7 }}>{s.articles.length}</span>
+              </button>
             );
           })}
         </div>
