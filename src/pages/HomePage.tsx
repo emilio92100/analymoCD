@@ -149,10 +149,10 @@ export default function HomePage() {
 /* ═══ HERO ═══════════════════════════════════════════════ */
 function HeroSection() {
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden bg-[#f4f7f9] px-5 sm:px-10 lg:px-20 pt-16 pb-12">
+    <section className="relative min-h-screen flex items-center overflow-hidden px-5 sm:px-10 lg:px-20 pt-16 pb-12" style={{ background: 'linear-gradient(165deg, #ffffff 0%, #f2f9fb 40%, #e6f3f7 100%)' }}>
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 right-0 w-[700px] h-[700px] rounded-full bg-[#2a7d9c]/7 blur-[120px]" />
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full bg-[#2a7d9c]/4 blur-[100px]" />
+        <div className="absolute" style={{ top: -60, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.04) 0%, transparent 70%)' }} />
+        <div className="absolute" style={{ bottom: -30, left: '10%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.03) 0%, transparent 70%)' }} />
       </div>
 
       <div className="relative z-10 max-w-6xl mx-auto w-full">
