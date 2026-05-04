@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Search } from "lucide-react";
+import { Search, ChevronDown } from "lucide-react";
 import { useSEO } from "../hooks/useSEO";
 
 const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
@@ -44,7 +44,7 @@ const cats: Cat[] = [
       { title: "Diagnostic électricité et gaz : quels risques pour l'acheteur", slug: "diagnostic-electricite-gaz-risques", description: "Installations de plus de 15 ans, anomalies détectées, travaux à prévoir — comment interpréter ces diagnostics." },
     ]},
   ]},
-  { id: "acheteurs", icon: "🏠", label: "Acheteurs", color: "#059669", subs: [
+  { id: "acheteurs", icon: "🧑‍💼", label: "Acheteurs", color: "#059669", subs: [
     { title: "Avant de signer", articles: [
       { title: "Les 10 documents à exiger avant de faire une offre d'achat", slug: "10-documents-avant-offre-achat", description: "La checklist complète des pièces à demander au vendeur ou à l'agent avant de vous engager.", tag: "Essentiel" },
       { title: "Compromis de vente : les clauses à lire avant de signer", slug: "compromis-vente-clauses-lire", description: "Conditions suspensives, délai de rétractation, clauses pénales — ce que vous devez comprendre.", docInfo: { emoji: "💡", label: "Compromis de vente", definition: "Avant-contrat qui engage vendeur et acheteur. Il fixe le prix, les conditions et ouvre un délai de rétractation de 10 jours pour l'acheteur." } },
@@ -57,7 +57,7 @@ const cats: Cat[] = [
       { title: "Travaux votés en AG : un levier de négociation souvent ignoré", slug: "travaux-votes-ag-levier-negociation", description: "Si des travaux ont été votés avant la vente, l'acheteur paie les appels de fonds. Comment en tenir compte." },
     ]},
   ]},
-  { id: "vendeurs", icon: "📋", label: "Vendeurs", color: "#7c3aed", subs: [
+  { id: "vendeurs", icon: "🤝", label: "Vendeurs", color: "#7c3aed", subs: [
     { title: "Préparer sa vente", articles: [
       { title: "Liste complète des documents obligatoires pour vendre en 2026", slug: "documents-obligatoires-vendre-2026", description: "DDT, état daté, fiche synthétique, DPE — tout ce que le vendeur doit fournir et à quel moment.", tag: "Essentiel" },
       { title: "DDT : tout ce que le Dossier de Diagnostics Techniques doit contenir", slug: "ddt-dossier-diagnostics-techniques", description: "Les diagnostics obligatoires selon le type de bien, leur durée de validité et les sanctions en cas d'absence.", docInfo: { emoji: "💡", label: "DDT", definition: "Le Dossier de Diagnostics Techniques regroupe l'ensemble des diagnostics obligatoires à fournir à l'acheteur." } },
@@ -87,15 +87,47 @@ const cats: Cat[] = [
   ]},
 ];
 
-/* ══════════════════════════════════════════
-   PAGE
-══════════════════════════════════════════ */
+const quickTags = ["PV d'AG", "DPE", "Charges", "Compromis"];
+
+/* ── MobileNav ── */
+function MobileNav({ active, onCat }: { active: string; onCat: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const cur = cats.find((x) => x.id === active)!;
+  return (
+    <div className="px-1 mb-2">
+      <button onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm font-semibold"
+        style={{ color: cur.color, fontFamily: "inherit", cursor: "pointer" }}>
+        <span className="flex items-center gap-2"><span className="text-lg">{cur.icon}</span>{cur.label}</span>
+        <ChevronDown size={18} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} style={{ color: "#94a3b8" }} />
+      </button>
+      {open && (
+        <div className="mt-1.5 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-lg">
+          {cats.map((cat) => (
+            <button key={cat.id} onClick={() => { onCat(cat.id); setOpen(false); }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm"
+              style={{ background: cat.id === active ? cat.color + '06' : 'transparent', color: cat.id === active ? cat.color : '#64748b', fontWeight: cat.id === active ? 700 : 500, fontFamily: "inherit", cursor: "pointer", border: "none", borderBottom: "1px solid #f1f5f9" }}>
+              <span className="text-lg">{cat.icon}</span>
+              <span className="flex-1">{cat.label}</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 text-[#94a3b8]">
+                {cat.subs.reduce((a, s) => a + s.articles.length, 0)}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════ */
 export default function GuidesPage() {
   const [activeCat, setActiveCat] = useState("copropriete");
   const [activeSub, setActiveSub] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   const cat = cats.find((c) => c.id === activeCat)!;
+  const total = cats.reduce((a, c) => a + c.subs.reduce((b, s) => b + s.articles.length, 0), 0);
 
   useSEO({
     title: "Guides immobiliers — Comprendre vos documents avant d'acheter | Verimo",
@@ -108,160 +140,95 @@ export default function GuidesPage() {
     if (activeSub) subs = subs.filter((s) => s.title === activeSub);
     if (!search) return subs;
     const q = search.toLowerCase();
-    return subs.map((s) => ({
-      ...s,
-      articles: s.articles.filter((a) =>
-        a.title.toLowerCase().includes(q) || a.description.toLowerCase().includes(q) || (a.docInfo && a.docInfo.label.toLowerCase().includes(q))
-      ),
-    })).filter((s) => s.articles.length > 0);
+    return subs.map((s) => ({ ...s, articles: s.articles.filter((a) => a.title.toLowerCase().includes(q) || a.description.toLowerCase().includes(q) || (a.docInfo && a.docInfo.label.toLowerCase().includes(q))) })).filter((s) => s.articles.length > 0);
   }, [cat, activeSub, search]);
 
-  const quickFilters = ["PV d'AG", "DPE", "Charges", "Compromis"];
-
   return (
-    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif", background: '#f7f8fa', minHeight: '100vh' }}>
+    <div className="text-[#0f172a] antialiased overflow-x-hidden min-h-screen" style={{ fontFamily: "'DM Sans', system-ui, sans-serif", background: '#f5f6f8' }}>
 
-      {/* ── HEADER ── */}
-      <section style={{
-        background: 'linear-gradient(165deg, #ffffff 0%, #f2f9fb 40%, #e6f3f7 100%)',
-        paddingTop: 72,
-        position: 'relative',
-        overflow: 'hidden',
-      }}>
-        {/* Cercles décoratifs subtils */}
-        <div style={{ position: 'absolute', top: -60, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.04) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: -30, left: '10%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.03) 0%, transparent 70%)', pointerEvents: 'none' }} />
-
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: 'clamp(44px,7vw,80px) clamp(20px,4vw,48px) 42px', position: 'relative', zIndex: 1 }}>
-
-          <motion.div
-            initial={{ opacity: 0, y: _lp ? 4 : 10 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: _lp ? 0.15 : 0.4, ease: [0.22, 1, 0.36, 1] }}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}
-          >
-            <span style={{ width: 22, height: 2, background: '#2a7d9c', borderRadius: 1, display: 'inline-block' }} />
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: '#2a7d9c' }}>Guides Verimo</span>
+      {/* ── HERO ── */}
+      <section className="relative overflow-hidden" style={{ background: 'linear-gradient(165deg, #0b2230 0%, #143a4d 50%, #1a5060 100%)', paddingTop: 'clamp(88px, 10vw, 110px)', paddingBottom: 56 }}>
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 right-0 bottom-0" style={{ width: '45%', opacity: 0.03, backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+          <div className="absolute -top-16 -right-20 w-80 h-80 rounded-full" style={{ border: '45px solid rgba(93,191,224,0.05)' }} />
+          <div className="absolute -bottom-24 -left-12 w-56 h-56 rounded-full" style={{ border: '35px solid rgba(93,191,224,0.03)' }} />
+        </div>
+        <div className="relative z-10 max-w-[860px] mx-auto px-5 sm:px-8">
+          <motion.div initial={{ opacity: 0, y: _lp ? 4 : 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: _lp ? 0.15 : 0.4 }} className="flex items-center gap-3 mb-5">
+            <div style={{ width: 28, height: 1.5, background: '#5dbfe0', borderRadius: 1 }} />
+            <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: '0.15em', textTransform: 'uppercase' as const, color: '#5dbfe0' }}>Guides Verimo</span>
           </motion.div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: _lp ? 4 : 14 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: _lp ? 0.15 : 0.45, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
-            style={{ fontSize: 'clamp(26px, 4.5vw, 36px)', fontWeight: 800, color: '#0f2d3d', lineHeight: 1.18, marginBottom: 12 }}
-          >
+          <motion.h1 initial={{ opacity: 0, y: _lp ? 6 : 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05, duration: _lp ? 0.18 : 0.45, ease: [0.22, 1, 0.36, 1] }}
+            style={{ fontSize: 'clamp(28px, 4.5vw, 40px)', fontWeight: 800, color: '#fff', lineHeight: 1.15, letterSpacing: '-0.5px', marginBottom: 14 }}>
             Analysez vos documents immobiliers{' '}
-            <span style={{ position: 'relative', display: 'inline-block' }}>
-              <span style={{ color: '#2a7d9c' }}>avant de signer</span>
-              <motion.span
-                initial={{ scaleX: 0 }} animate={{ scaleX: 1 }}
-                transition={{ duration: 2.5, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                style={{ position: 'absolute', bottom: -3, left: 0, right: 0, height: 4, background: 'rgba(42,125,156,0.25)', borderRadius: 99, transformOrigin: 'left', display: 'block' }}
-              />
+            <span className="relative inline-block">
+              <span style={{ color: '#5dbfe0' }}>avant de signer</span>
+              <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.4, duration: 3, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute -bottom-1 left-0 right-0 rounded-full block" style={{ height: 4, background: 'rgba(93,191,224,0.3)', transformOrigin: 'left' }} />
             </span>
           </motion.h1>
 
-          <motion.p
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            transition={{ delay: 0.1, duration: 0.35 }}
-            style={{ fontSize: 14, color: '#6b7a88', lineHeight: 1.65, maxWidth: 520, marginBottom: 24 }}
-          >
-            PV d'AG, DPE, diagnostics, règlement de copro, compromis, état daté…
-            Des guides concrets pour acheter sans mauvaise surprise.
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.12, duration: 0.35 }}
+            style={{ fontSize: 'clamp(14px, 1.6vw, 16px)', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, marginBottom: 28 }}>
+            PV d'AG, DPE, diagnostics, règlement de copro, compromis, état daté… Des guides concrets pour comprendre et acheter en confiance.
           </motion.p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15, duration: 0.3 }}
-            style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' as const }}
-          >
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              background: '#fff', border: '1.5px solid #d8e4ea', borderRadius: 10,
-              padding: '11px 16px', width: 380, maxWidth: '100%',
-              boxShadow: '0 2px 8px rgba(42,125,156,0.04)',
-              transition: 'border-color 0.15s',
-            }}
-              onFocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = '#2a7d9c'; (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 12px rgba(42,125,156,0.08)'; }}
-              onBlur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = '#d8e4ea'; (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(42,125,156,0.04)'; }}
-            >
-              <Search size={14} color="#a8b4be" />
-              <input
-                type="text" placeholder="Rechercher un guide…"
-                value={search} onChange={(e) => setSearch(e.target.value)}
-                style={{ border: 'none', background: 'none', fontSize: 13, color: '#0f2d3d', outline: 'none', flex: 1, fontFamily: 'inherit' }}
-              />
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18, duration: 0.3 }}
+            className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+            <div className="flex items-center gap-2.5 flex-1 w-full sm:w-auto max-w-[400px] rounded-xl px-4 py-3"
+              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.09)' }}>
+              <Search size={16} style={{ color: 'rgba(255,255,255,0.25)', flexShrink: 0 }} />
+              <input type="text" placeholder="Rechercher un guide…" value={search} onChange={(e) => setSearch(e.target.value)}
+                className="w-full outline-none" style={{ border: 'none', background: 'none', color: '#fff', fontSize: 14, fontFamily: 'inherit' }} />
             </div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
-              {quickFilters.map((f) => (
-                <button key={f} onClick={() => setSearch(f)}
-                  style={{
-                    fontSize: 11, color: '#4a7d8f', background: 'rgba(42,125,156,0.06)',
-                    border: '1px solid rgba(42,125,156,0.12)', padding: '6px 13px', borderRadius: 8,
-                    cursor: 'pointer', fontWeight: 500, fontFamily: 'inherit',
-                    transition: 'all 0.15s',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(42,125,156,0.1)'; e.currentTarget.style.borderColor = 'rgba(42,125,156,0.25)'; e.currentTarget.style.color = '#2a7d9c'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(42,125,156,0.06)'; e.currentTarget.style.borderColor = 'rgba(42,125,156,0.12)'; e.currentTarget.style.color = '#4a7d8f'; }}
-                >{f}</button>
+            <div className="flex gap-2 flex-wrap">
+              {quickTags.map((t) => (
+                <button key={t} onClick={() => setSearch(t)} className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                  style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.55)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  {t}
+                </button>
               ))}
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* ── CATÉGORIES ── */}
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 clamp(20px,4vw,48px)' }}>
-        <div className="guides-cats" style={{ display: 'flex', gap: 8, marginTop: -16, position: 'relative', zIndex: 2 }}>
+      {/* ── CATEGORY CARDS ── */}
+      <div className="max-w-[860px] mx-auto px-5 sm:px-8 -mt-7 relative z-20">
+        <div className="hidden lg:grid grid-cols-5 gap-2.5">
           {cats.map((c) => {
-            const isActive = c.id === activeCat;
+            const on = c.id === activeCat;
+            const count = c.subs.reduce((a, s) => a + s.articles.length, 0);
             return (
               <button key={c.id} onClick={() => { setActiveCat(c.id); setActiveSub(null); setSearch(""); }}
-                style={{
-                  flex: 1, background: isActive ? '#f6fbfd' : '#fff',
-                  borderRadius: 12, padding: '16px 10px', textAlign: 'center' as const,
-                  cursor: 'pointer', border: `1.5px solid ${isActive ? '#2a7d9c' : '#e4eaee'}`,
-                  transition: 'all 0.18s', fontFamily: 'inherit',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
-                  position: 'relative' as const,
-                }}
-                onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.borderColor = '#a8cdd8'; e.currentTarget.style.transform = 'translateY(-1px)'; } }}
-                onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.borderColor = '#e4eaee'; e.currentTarget.style.transform = 'translateY(0)'; } }}
-              >
-                <span style={{ fontSize: 22, display: 'block', marginBottom: 4 }}>{c.icon}</span>
-                <div style={{ fontSize: 11.5, fontWeight: 700, color: '#0f2d3d' }}>{c.label}</div>
-                <div style={{ fontSize: 9.5, color: '#94a3b8', marginTop: 2 }}>{c.subs.reduce((a, s) => a + s.articles.length, 0)} guides</div>
-                {isActive && (
-                  <div style={{
-                    position: 'absolute', bottom: -8, left: '50%', transform: 'translateX(-50%)',
-                    width: 0, height: 0,
-                    borderLeft: '7px solid transparent', borderRight: '7px solid transparent', borderTop: '7px solid #2a7d9c',
-                  }} />
-                )}
+                className="flex flex-col items-center gap-1.5 py-4 px-3 rounded-xl transition-all duration-200"
+                style={{ background: on ? '#fff' : 'rgba(255,255,255,0.85)', border: on ? '1.5px solid #2a7d9c' : '1px solid #ebeef2', cursor: 'pointer', fontFamily: 'inherit',
+                  transform: on ? 'translateY(-2px)' : 'none', boxShadow: on ? '0 6px 20px rgba(42,125,156,0.1)' : '0 2px 8px rgba(0,0,0,0.04)' }}>
+                <span style={{ fontSize: 26 }}>{c.icon}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#0f2d3d' }}>{c.label}</span>
+                <span style={{ fontSize: 10, color: on ? '#2a7d9c' : '#94a3b8' }}>{count} guides</span>
+                {on && <div style={{ width: 0, height: 0, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: '6px solid #2a7d9c', marginTop: 2 }} />}
               </button>
             );
           })}
         </div>
+        <div className="lg:hidden">
+          <MobileNav active={activeCat} onCat={(id) => { setActiveCat(id); setActiveSub(null); setSearch(""); }} />
+        </div>
       </div>
 
-      {/* ── SOUS-CATÉGORIES ── */}
-      <div style={{ maxWidth: 1200, margin: '18px auto 0', padding: '0 clamp(20px,4vw,48px)' }}>
-        <div style={{ display: 'flex', gap: 6, padding: '10px 0', flexWrap: 'wrap' as const }}>
+      {/* ── SUB-CATEGORY PILLS ── */}
+      <div className="max-w-[860px] mx-auto px-5 sm:px-8 mt-4 mb-2">
+        <div className="flex gap-2 flex-wrap">
           {cat.subs.map((s) => {
-            const isActive = activeSub === s.title;
+            const on = activeSub === s.title;
             return (
-              <button key={s.title} onClick={() => setActiveSub(isActive ? null : s.title)}
-                style={{
-                  fontSize: 12, fontWeight: 600,
-                  color: isActive ? '#fff' : '#7a8694',
-                  background: isActive ? cat.color : '#fff',
-                  border: `1.5px solid ${isActive ? cat.color : '#e0e6ea'}`,
-                  padding: '8px 18px', borderRadius: 8,
-                  cursor: 'pointer', fontFamily: 'inherit',
-                  transition: 'all 0.15s',
-                }}
-                onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.borderColor = cat.color; e.currentTarget.style.color = cat.color; e.currentTarget.style.background = cat.color + '08'; } }}
-                onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.borderColor = '#e0e6ea'; e.currentTarget.style.color = '#7a8694'; e.currentTarget.style.background = '#fff'; } }}
-              >
-                {s.title} <span style={{ fontSize: 9, marginLeft: 5, opacity: 0.6 }}>{s.articles.length}</span>
+              <button key={s.title} onClick={() => setActiveSub(on ? null : s.title)}
+                className="px-4 py-2 rounded-lg text-sm transition-all"
+                style={{ background: on ? cat.color + '0a' : '#fff', border: on ? `1.5px solid ${cat.color}30` : '1px solid #e8ecf0',
+                  color: on ? cat.color : '#64748b', fontWeight: on ? 700 : 500, cursor: 'pointer', fontFamily: 'inherit' }}>
+                {s.title} <span style={{ fontSize: 11, opacity: 0.6, marginLeft: 4 }}>{s.articles.length}</span>
               </button>
             );
           })}
@@ -269,70 +236,52 @@ export default function GuidesPage() {
       </div>
 
       {/* ── ARTICLES ── */}
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '18px clamp(20px,4vw,48px) 40px' }}>
-
+      <div className="max-w-[860px] mx-auto px-5 sm:px-8 pb-16">
         {filtered.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <p style={{ fontSize: 14, color: '#64748b', marginBottom: 12 }}>
-              Aucun guide trouvé{search ? ` pour « ${search} »` : ''}.
-            </p>
+          <div className="text-center py-20">
+            <p className="text-sm mb-3 text-[#64748b]">Aucun guide trouvé{search ? ` pour « ${search} »` : ''}.</p>
             <button onClick={() => { setSearch(""); setActiveSub(null); }}
-              style={{
-                padding: '10px 20px', borderRadius: 8, border: '1px solid #e2e8f0',
-                background: '#fff', fontSize: 13, fontWeight: 600, color: '#2a7d9c',
-                cursor: 'pointer', fontFamily: 'inherit',
-              }}>
+              className="px-4 py-2 rounded-lg border border-slate-200 bg-white text-[13px] font-semibold text-[#2a7d9c] cursor-pointer" style={{ fontFamily: "inherit" }}>
               Réinitialiser
             </button>
           </div>
         )}
 
         {filtered.map((sub, si) => (
-          <div key={si} style={{ marginBottom: 28 }}>
-            {/* Titre de sous-section (visible uniquement si pas de filtre sous-cat actif) */}
-            {!activeSub && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '22px 0 14px' }}>
-                <span style={{ width: 4, height: 18, borderRadius: 2, background: cat.color, display: 'inline-block' }} />
-                <h2 style={{ fontSize: 14, fontWeight: 700, color: '#0f2d3d', margin: 0 }}>{sub.title}</h2>
-                <span style={{ fontSize: 10, color: '#a8b4be', fontWeight: 600 }}>· {sub.articles.length} guides</span>
-              </div>
-            )}
+          <div key={si}>
+            <div className="flex items-center gap-2.5 mt-8 mb-4 pb-2" style={{ borderBottom: `2px solid ${cat.color}12` }}>
+              <div style={{ width: 4, height: 22, borderRadius: 2, background: cat.color }} />
+              <h2 className="text-base font-extrabold text-[#0f2d3d] flex-1">{sub.title}</h2>
+              <span className="text-[11px] font-semibold text-[#94a3b8]">{sub.articles.length} {sub.articles.length > 1 ? 'guides' : 'guide'}</span>
+            </div>
 
-            <div className="guides-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 10 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {sub.articles.map((a, ai) => (
-                <Link to={`/guides/${a.slug}`} key={ai} className="guide-article-card" style={{ textDecoration: 'none' }}>
-                  <div style={{
-                    background: '#fff', borderRadius: 12, padding: 20,
-                    border: '1px solid #e8ecf0', cursor: 'pointer',
-                    transition: 'all 0.18s', display: 'flex', flexDirection: 'column' as const,
-                    boxShadow: '0 1px 4px rgba(0,0,0,0.02)', height: '100%',
-                  }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = '#2a7d9c';
-                      e.currentTarget.style.boxShadow = '0 6px 20px rgba(42,125,156,0.07)';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = '#e8ecf0';
-                      e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.02)';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                    }}
-                  >
-                    {/* Chip document */}
-                    {a.docInfo && (
-                      <div style={{ marginBottom: 8 }}>
-                        <span style={{ fontSize: 10, fontWeight: 600, color: '#2a7d9c', background: '#edf7fb', padding: '4px 10px', borderRadius: 5 }}>
+                <Link key={ai} to={`/guides/${a.slug}`} className="block no-underline group">
+                  <div className="bg-white rounded-xl p-5 h-full flex flex-col transition-all duration-200 group-hover:shadow-md group-hover:border-[#2a7d9c]"
+                    style={{ border: '1px solid #ebeef2', borderTop: a.tag === 'Essentiel' ? `3px solid ${cat.color}` : '1px solid #ebeef2' }}>
+                    {a.docInfo ? (
+                      <div className="mb-3">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold"
+                          style={{ background: '#f0f8fc', color: '#2a7d9c', border: '1px solid #e0eff5' }}>
                           {a.docInfo.emoji} {a.docInfo.label}
                         </span>
                       </div>
+                    ) : (
+                      <div className="mb-3">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold"
+                          style={{ background: cat.color + '08', color: cat.color, border: `1px solid ${cat.color}15` }}>
+                          {cat.icon} {cat.label}
+                        </span>
+                      </div>
                     )}
-
-                    <h3 style={{ fontSize: 13.5, fontWeight: 700, color: '#0f2d3d', lineHeight: 1.4, marginBottom: 6, margin: 0 }}>{a.title}</h3>
-                    <p style={{ fontSize: 11.5, color: '#7d8694', lineHeight: 1.55, flex: 1, margin: 0 }}>{a.description}</p>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 10, borderTop: '1px solid #f2f4f6' }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: '#2a7d9c' }}>Lire le guide →</span>
-                    </div>
+                    {a.tag && (
+                      <span className="inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md mb-2 self-start"
+                        style={{ color: '#fff', background: cat.color }}>{a.tag}</span>
+                    )}
+                    <h3 className="text-[13.5px] font-bold leading-snug text-[#0f2d3d] group-hover:text-[#2a7d9c] transition-colors mb-2 flex-1">{a.title}</h3>
+                    <p className="text-[12px] leading-relaxed text-[#8892a0] mb-4">{a.description}</p>
+                    <span className="text-[12px] font-semibold mt-auto" style={{ color: cat.color }}>Lire le guide →</span>
                   </div>
                 </Link>
               ))}
@@ -340,58 +289,21 @@ export default function GuidesPage() {
           </div>
         ))}
 
-        {/* ── CTA ── */}
         {filtered.length > 0 && (
-          <div style={{
-            background: 'linear-gradient(135deg, #0e2a38 0%, #1a4a5e 100%)',
-            borderRadius: 14, padding: 'clamp(24px,4vw,32px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            gap: 20, marginTop: 20, flexWrap: 'wrap' as const,
-          }}>
-            <div>
-              <h2 style={{ fontSize: 'clamp(16px,2.5vw,20px)', fontWeight: 700, color: '#fff', margin: '0 0 4px' }}>Vous avez vos documents ?</h2>
-              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', margin: 0 }}>Score /20, risques et pistes de négociation en quelques minutes.</p>
+          <div className="rounded-2xl mt-10 overflow-hidden" style={{ background: 'linear-gradient(135deg, #0e2a38 0%, #1a4a5e 100%)' }}>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 p-8 sm:p-10">
+              <div>
+                <h2 className="text-lg sm:text-xl font-extrabold text-white mb-2">Votre futur achat mérite mieux qu'une lecture en diagonale.</h2>
+                <p className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>Score /20, risques et pistes de négociation en quelques minutes.</p>
+              </div>
+              <Link to="/start"
+                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-white text-[#0f2d3d] text-sm font-bold shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200 no-underline whitespace-nowrap">
+                Analyser mon bien →
+              </Link>
             </div>
-            <Link to="/start" style={{
-              background: '#fff', color: '#0f2d3d', fontSize: 13, fontWeight: 700,
-              padding: '12px 26px', borderRadius: 10, textDecoration: 'none',
-              whiteSpace: 'nowrap' as const, transition: 'all 0.15s',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            }}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'; }}
-            >
-              Lancer mon analyse →
-            </Link>
           </div>
         )}
       </div>
-
-      {/* ── STYLES RESPONSIVE ── */}
-      <style>{`
-        @media (max-width: 768px) {
-          .guides-cats {
-            display: grid !important;
-            grid-template-columns: repeat(3, 1fr) !important;
-            gap: 6px !important;
-          }
-          .guides-cats > button:nth-child(4),
-          .guides-cats > button:nth-child(5) {
-            grid-column: span 1;
-          }
-          .guides-grid {
-            grid-template-columns: 1fr !important;
-          }
-        }
-        @media (max-width: 480px) {
-          .guides-cats {
-            grid-template-columns: repeat(2, 1fr) !important;
-          }
-          .guides-cats > button:last-child {
-            grid-column: 1 / -1;
-          }
-        }
-      `}</style>
     </div>
   );
 }
