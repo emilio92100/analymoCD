@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Search, ChevronDown } from "lucide-react";
+import { Search, ChevronRight, ChevronDown, ShieldCheck } from "lucide-react";
 import { useSEO } from "../hooks/useSEO";
 
 const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
@@ -87,14 +87,113 @@ const cats: Cat[] = [
   ]},
 ];
 
-const quickTags = ["PV d'AG", "DPE", "Charges", "Compromis"];
+/* ── DocBadge ── */
+function DocBadge({ info }: { info: DocInfo }) {
+  return (
+    <div className="mt-2.5 rounded-lg text-center" style={{ background: "linear-gradient(135deg, #f0f8fc 0%, #f8fafc 100%)", border: "1px solid #e0eff5", padding: "10px 12px" }}>
+      <div className="flex items-center justify-center gap-1.5 mb-1">
+        <span className="text-sm">{info.emoji}</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#2a7d9c" }}>{info.label}</span>
+      </div>
+      <p className="text-[11px] leading-relaxed m-0" style={{ color: "#64748b" }}>{info.definition}</p>
+    </div>
+  );
+}
+
+/* ── Article row (style A2) ── */
+function ArticleRow({ a, color, isFirst, catIcon, catLabel }: { a: Article; color: string; isFirst: boolean; catIcon: string; catLabel: string }) {
+  return (
+    <Link to={`/guides/${a.slug}`} className="block no-underline group">
+      <div className="flex items-start gap-4 rounded-r-xl p-4 sm:p-5 mb-2 transition-all duration-200 group-hover:shadow-md"
+        style={{
+          borderLeft: `3px solid ${isFirst && a.tag === 'Essentiel' ? color : '#e2e8f0'}`,
+          background: isFirst && a.tag === 'Essentiel' ? '#fafbfc' : '#fff',
+          border: `0.5px solid #eaeef2`,
+          borderLeftWidth: '3px',
+          borderLeftColor: isFirst && a.tag === 'Essentiel' ? color : '#e2e8f0',
+          borderRadius: '0 12px 12px 0',
+        }}>
+        <div className="flex-1 min-w-0">
+          {a.tag && (
+            <span className="inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-1.5"
+              style={{ color: '#fff', background: color }}>{a.tag}</span>
+          )}
+          <h3 className="text-[14px] sm:text-[15px] font-bold leading-snug m-0 text-[#0f2d3d] group-hover:text-[#2a7d9c] transition-colors">{a.title}</h3>
+          <p className="text-[12px] sm:text-[13px] leading-relaxed m-0 mt-1 text-[#64748b]">{a.description}</p>
+          {a.docInfo && (
+            <div className="hidden sm:block">
+              <DocBadge info={a.docInfo} />
+            </div>
+          )}
+          {!a.docInfo && (
+            <div className="mt-2.5">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold"
+                style={{ background: color + '08', color: color, border: `1px solid ${color}15` }}>
+                {catIcon} {catLabel}
+              </span>
+            </div>
+          )}
+        </div>
+        {a.docInfo && (
+          <div className="hidden lg:flex flex-col items-center justify-center shrink-0 w-[110px] text-center p-3 rounded-lg" style={{ background: '#f0f8fc', border: '0.5px solid #e0eff5' }}>
+            <span className="text-[9px] font-bold uppercase tracking-wider mb-1" style={{ color: '#2a7d9c' }}>{a.docInfo.emoji} {a.docInfo.label}</span>
+            <p className="text-[9px] leading-snug m-0" style={{ color: '#64748b' }}>{a.docInfo.definition.slice(0, 80)}…</p>
+          </div>
+        )}
+        <div className="hidden sm:flex items-center shrink-0 text-[12px] font-semibold self-center" style={{ color }}>
+          Lire <ChevronRight size={14} />
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+/* ── Sidebar ── */
+function Sidebar({ active, activeSub, onCat, onSub }: { active: string; activeSub: string | null; onCat: (id: string) => void; onSub: (t: string | null) => void }) {
+  return (
+    <aside className="hidden lg:flex flex-col w-[210px] xl:w-[230px] shrink-0 bg-white border-r border-slate-200/80 py-5 px-3 gap-0.5 sticky top-0 self-start overflow-y-auto" style={{ maxHeight: "calc(100vh - 60px)" }}>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-[#b0b8c4] px-3 mb-2">Catégories</p>
+      {cats.map((cat) => {
+        const on = cat.id === active;
+        return (
+          <div key={cat.id}>
+            <button onClick={() => { onCat(cat.id); onSub(null); }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-left text-[13px] transition-all duration-150"
+              style={{ background: on ? '#0f2d3d' : 'transparent', color: on ? '#fff' : '#64748b', fontWeight: on ? 700 : 500, fontFamily: "inherit", cursor: "pointer", border: "none" }}>
+              <span className="text-base">{cat.icon}</span>
+              <span className="flex-1">{cat.label}</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+                style={{ background: on ? 'rgba(255,255,255,.15)' : '#f1f5f9', color: on ? 'rgba(255,255,255,.7)' : '#b0b8c4' }}>
+                {cat.subs.reduce((a, s) => a + s.articles.length, 0)}
+              </span>
+            </button>
+            {on && (
+              <div className="ml-7 flex flex-col gap-px mt-1 mb-2">
+                {cat.subs.map((s) => {
+                  const subOn = activeSub === s.title;
+                  return (
+                    <button key={s.title} onClick={() => onSub(subOn ? null : s.title)}
+                      className="text-left text-[11px] px-2.5 py-1.5 rounded-md transition-colors"
+                      style={{ color: subOn ? cat.color : '#94a3b8', fontWeight: subOn ? 600 : 400, background: subOn ? cat.color + '0a' : 'transparent', border: "none", cursor: "pointer", fontFamily: "inherit" }}>
+                      {s.title}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </aside>
+  );
+}
 
 /* ── MobileNav ── */
 function MobileNav({ active, onCat }: { active: string; onCat: (id: string) => void }) {
   const [open, setOpen] = useState(false);
   const cur = cats.find((x) => x.id === active)!;
   return (
-    <div className="px-1 mb-2">
+    <div className="lg:hidden px-4 mb-4">
       <button onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm font-semibold"
         style={{ color: cur.color, fontFamily: "inherit", cursor: "pointer" }}>
@@ -120,13 +219,17 @@ function MobileNav({ active, onCat }: { active: string; onCat: (id: string) => v
   );
 }
 
-/* ══════════════════════════════════════════ */
+/* ══════════════════════════════════════════
+   PAGE
+══════════════════════════════════════════ */
 export default function GuidesPage() {
   const [activeCat, setActiveCat] = useState("copropriete");
   const [activeSub, setActiveSub] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   const cat = cats.find((c) => c.id === activeCat)!;
+  const total = cats.reduce((a, c) => a + c.subs.reduce((b, s) => b + s.articles.length, 0), 0);
+
   useSEO({
     title: "Guides immobiliers — Comprendre vos documents avant d'acheter | Verimo",
     description: "PV d'AG, DPE, diagnostics, règlement de copropriété, compromis de vente… Nos guides pratiques vous aident à analyser chaque document immobilier avant de signer.",
@@ -138,169 +241,119 @@ export default function GuidesPage() {
     if (activeSub) subs = subs.filter((s) => s.title === activeSub);
     if (!search) return subs;
     const q = search.toLowerCase();
-    return subs.map((s) => ({ ...s, articles: s.articles.filter((a) => a.title.toLowerCase().includes(q) || a.description.toLowerCase().includes(q) || (a.docInfo && a.docInfo.label.toLowerCase().includes(q))) })).filter((s) => s.articles.length > 0);
+    return subs.map((s) => ({
+      ...s,
+      articles: s.articles.filter((a) =>
+        a.title.toLowerCase().includes(q) || a.description.toLowerCase().includes(q) || (a.docInfo && a.docInfo.label.toLowerCase().includes(q))
+      ),
+    })).filter((s) => s.articles.length > 0);
   }, [cat, activeSub, search]);
 
   return (
-    <div className="text-[#0f172a] antialiased overflow-x-hidden min-h-screen" style={{ fontFamily: "'DM Sans', system-ui, sans-serif", background: '#f5f6f8' }}>
+    <div className="bg-[#f8fafc] text-[#0f172a] antialiased overflow-x-hidden min-h-screen" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
 
-      {/* ── HERO ── */}
-      <section className="relative overflow-hidden" style={{ background: 'linear-gradient(165deg, #0b2230 0%, #143a4d 50%, #1a5060 100%)', paddingTop: 'clamp(88px, 10vw, 110px)', paddingBottom: 56 }}>
+      {/* ── HEADER CLAIR ── */}
+      <section className="relative overflow-hidden" style={{ background: "linear-gradient(180deg, #f0f8fc 0%, #ffffff 100%)" }}>
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 right-0 bottom-0" style={{ width: '45%', opacity: 0.03, backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
-          <div className="absolute -top-16 -right-20 w-80 h-80 rounded-full" style={{ border: '45px solid rgba(93,191,224,0.05)' }} />
-          <div className="absolute -bottom-24 -left-12 w-56 h-56 rounded-full" style={{ border: '35px solid rgba(93,191,224,0.03)' }} />
+          <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full" style={{ background: "rgba(42,125,156,0.06)" }} />
+          <div className="absolute -bottom-32 -left-16 w-56 h-56 rounded-full" style={{ background: "rgba(42,125,156,0.04)" }} />
         </div>
-        <div className="relative z-10 max-w-[860px] mx-auto px-5 sm:px-8">
-          <motion.div initial={{ opacity: 0, y: _lp ? 4 : 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: _lp ? 0.15 : 0.4 }} className="flex items-center gap-3 mb-5">
-            <div style={{ width: 28, height: 1.5, background: '#5dbfe0', borderRadius: 1 }} />
-            <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: '0.15em', textTransform: 'uppercase' as const, color: '#5dbfe0' }}>Guides Verimo</span>
+        <div className="relative max-w-4xl mx-auto px-5 pt-20 sm:pt-24 pb-10 sm:pb-12 text-center">
+          {/* GUIDES VERIMO label */}
+          <motion.div initial={{ opacity: 0, y: _lp ? 4 : 10 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: _lp ? 0.15 : 0.4 }}
+            className="flex items-center justify-center gap-3 mb-5">
+            <div style={{ width: 28, height: 2, background: '#2a7d9c', borderRadius: 1 }} />
+            <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: '0.15em', textTransform: 'uppercase' as const, color: '#2a7d9c' }}>Guides Verimo</span>
+            <div style={{ width: 28, height: 2, background: '#2a7d9c', borderRadius: 1 }} />
           </motion.div>
 
-          <motion.h1 initial={{ opacity: 0, y: _lp ? 6 : 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05, duration: _lp ? 0.18 : 0.45, ease: [0.22, 1, 0.36, 1] }}
-            style={{ fontSize: 'clamp(28px, 4.5vw, 40px)', fontWeight: 800, color: '#fff', lineHeight: 1.15, letterSpacing: '-0.5px', marginBottom: 14 }}>
+          <motion.h1
+            initial={{ opacity: 0, y: _lp ? 4 : 14 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: _lp ? 0.15 : 0.45, ease: [0.22, 1, 0.36, 1] }}
+            className="font-black tracking-tight leading-[1.1] mb-3"
+            style={{ fontSize: "clamp(26px, 4.5vw, 40px)", color: "#0f2d3d" }}>
             Analysez vos documents immobiliers{' '}
             <span className="relative inline-block">
-              <span style={{ color: '#5dbfe0' }}>avant de signer</span>
-              <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.4, duration: 3, ease: [0.22, 1, 0.36, 1] }}
-                className="absolute -bottom-1 left-0 right-0 rounded-full block" style={{ height: 4, background: 'rgba(93,191,224,0.3)', transformOrigin: 'left' }} />
+              <span style={{ color: "#2a7d9c" }}>avant de signer</span>
+              <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }}
+                transition={{ delay: 0.5, duration: 3, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute -bottom-1 left-0 right-0 h-[3px] sm:h-[4px] rounded-full origin-left block"
+                style={{ background: "rgba(42,125,156,0.25)" }} />
             </span>
           </motion.h1>
-
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.12, duration: 0.35 }}
-            style={{ fontSize: 'clamp(14px, 1.6vw, 16px)', color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, marginBottom: 28 }}>
+          <motion.p
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1, duration: 0.35 }}
+            className="text-base sm:text-lg max-w-2xl mx-auto mb-6 leading-relaxed" style={{ color: "#4a5568" }}>
             PV d'AG, DPE, diagnostics, règlement de copro, compromis, état daté… Des guides concrets pour comprendre et acheter en confiance.
           </motion.p>
-
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18, duration: 0.3 }}
-            className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-            <div className="flex items-center gap-2.5 flex-1 w-full sm:w-auto max-w-[400px] rounded-xl px-4 py-3"
-              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.09)' }}>
-              <Search size={16} style={{ color: 'rgba(255,255,255,0.25)', flexShrink: 0 }} />
-              <input type="text" placeholder="Rechercher un guide…" value={search} onChange={(e) => setSearch(e.target.value)}
-                className="w-full outline-none" style={{ border: 'none', background: 'none', color: '#fff', fontSize: 14, fontFamily: 'inherit' }} />
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              {quickTags.map((t) => (
-                <button key={t} onClick={() => setSearch(t)} className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                  style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.55)', cursor: 'pointer', fontFamily: 'inherit' }}>
-                  {t}
-                </button>
-              ))}
-            </div>
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.3 }}
+            className="max-w-md mx-auto relative">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#94a3b8]" />
+            <input type="text" placeholder="Rechercher un guide (DPE, charges, PV d'AG…)"
+              value={search} onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 rounded-xl text-[14px] outline-none border border-slate-200 bg-white"
+              style={{ fontFamily: "inherit", color: "#0f2d3d", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = '#2a7d9c'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(42,125,156,0.1)'; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'; }}
+            />
           </motion.div>
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25, duration: 0.3 }}
+            className="text-[12px] mt-3" style={{ color: "#b0b8c4" }}>
+            {total} guides disponibles
+          </motion.p>
         </div>
       </section>
 
-      {/* ── CATEGORY CARDS ── */}
-      <div className="max-w-[860px] mx-auto px-5 sm:px-8 -mt-7 relative z-20">
-        <div className="hidden lg:grid grid-cols-5 gap-2.5">
-          {cats.map((c) => {
-            const on = c.id === activeCat;
-            const count = c.subs.reduce((a, s) => a + s.articles.length, 0);
-            return (
-              <button key={c.id} onClick={() => { setActiveCat(c.id); setActiveSub(null); setSearch(""); }}
-                className="flex flex-col items-center gap-1.5 py-4 px-3 rounded-xl transition-all duration-200"
-                style={{ background: on ? '#fff' : 'rgba(255,255,255,0.85)', border: on ? '1.5px solid #2a7d9c' : '1px solid #ebeef2', cursor: 'pointer', fontFamily: 'inherit',
-                  transform: on ? 'translateY(-2px)' : 'none', boxShadow: on ? '0 6px 20px rgba(42,125,156,0.1)' : '0 2px 8px rgba(0,0,0,0.04)' }}>
-                <span style={{ fontSize: 26 }}>{c.icon}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#0f2d3d' }}>{c.label}</span>
-                <span style={{ fontSize: 10, color: on ? '#2a7d9c' : '#94a3b8' }}>{count} guides</span>
-                {on && <div style={{ width: 0, height: 0, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: '6px solid #2a7d9c', marginTop: 2 }} />}
-              </button>
-            );
-          })}
-        </div>
-        <div className="lg:hidden">
-          <MobileNav active={activeCat} onCat={(id) => { setActiveCat(id); setActiveSub(null); setSearch(""); }} />
-        </div>
+      {/* ── MOBILE NAV ── */}
+      <div className="pt-3">
+        <MobileNav active={activeCat} onCat={(id) => { setActiveCat(id); setActiveSub(null); setSearch(""); }} />
       </div>
 
-      {/* ── SUB-CATEGORY PILLS ── */}
-      <div className="max-w-[860px] mx-auto px-5 sm:px-8 mt-4 mb-2">
-        <div className="flex gap-2 flex-wrap">
-          {cat.subs.map((s) => {
-            const on = activeSub === s.title;
-            return (
-              <button key={s.title} onClick={() => setActiveSub(on ? null : s.title)}
-                className="px-4 py-2 rounded-lg text-sm transition-all"
-                style={{ background: on ? cat.color + '0a' : '#fff', border: on ? `1.5px solid ${cat.color}30` : '1px solid #e8ecf0',
-                  color: on ? cat.color : '#64748b', fontWeight: on ? 700 : 500, cursor: 'pointer', fontFamily: 'inherit' }}>
-                {s.title} <span style={{ fontSize: 11, opacity: 0.6, marginLeft: 4 }}>{s.articles.length}</span>
+      {/* ── BODY ── */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 flex min-h-[60vh]">
+        <Sidebar active={activeCat} activeSub={activeSub} onCat={(id) => { setActiveCat(id); setActiveSub(null); setSearch(""); }} onSub={setActiveSub} />
+
+        <main className="flex-1 lg:pl-6 xl:pl-8 pb-14 pt-2 lg:pt-4 min-w-0">
+          {filtered.length === 0 && (
+            <div className="text-center py-20">
+              <p className="text-sm mb-3 text-[#64748b]">Aucun guide trouvé{search ? ` pour « ${search} »` : ''}.</p>
+              <button onClick={() => { setSearch(""); setActiveSub(null); }}
+                className="px-4 py-2 rounded-lg border border-slate-200 bg-white text-[13px] font-semibold text-[#2a7d9c] cursor-pointer" style={{ fontFamily: "inherit" }}>
+                Réinitialiser
               </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── ARTICLES ── */}
-      <div className="max-w-[860px] mx-auto px-5 sm:px-8 pb-16">
-        {filtered.length === 0 && (
-          <div className="text-center py-20">
-            <p className="text-sm mb-3 text-[#64748b]">Aucun guide trouvé{search ? ` pour « ${search} »` : ''}.</p>
-            <button onClick={() => { setSearch(""); setActiveSub(null); }}
-              className="px-4 py-2 rounded-lg border border-slate-200 bg-white text-[13px] font-semibold text-[#2a7d9c] cursor-pointer" style={{ fontFamily: "inherit" }}>
-              Réinitialiser
-            </button>
-          </div>
-        )}
-
-        {filtered.map((sub, si) => (
-          <div key={si}>
-            <div className="flex items-center gap-2.5 mt-8 mb-4 pb-2" style={{ borderBottom: `2px solid ${cat.color}12` }}>
-              <div style={{ width: 4, height: 22, borderRadius: 2, background: cat.color }} />
-              <h2 className="text-base font-extrabold text-[#0f2d3d] flex-1">{sub.title}</h2>
-              <span className="text-[11px] font-semibold text-[#94a3b8]">{sub.articles.length} {sub.articles.length > 1 ? 'guides' : 'guide'}</span>
             </div>
+          )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {sub.articles.map((a, ai) => (
-                <Link key={ai} to={`/guides/${a.slug}`} className="block no-underline group">
-                  <div className="bg-white rounded-xl p-5 h-full flex flex-col transition-all duration-200 group-hover:shadow-md group-hover:border-[#2a7d9c]"
-                    style={{ border: '1px solid #ebeef2', borderTop: a.tag === 'Essentiel' ? `3px solid ${cat.color}` : '1px solid #ebeef2' }}>
-                    {a.docInfo ? (
-                      <div className="mb-3">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold"
-                          style={{ background: '#f0f8fc', color: '#2a7d9c', border: '1px solid #e0eff5' }}>
-                          {a.docInfo.emoji} {a.docInfo.label}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="mb-3">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold"
-                          style={{ background: cat.color + '08', color: cat.color, border: `1px solid ${cat.color}15` }}>
-                          {cat.icon} {cat.label}
-                        </span>
-                      </div>
-                    )}
-                    {a.tag && (
-                      <span className="inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md mb-2 self-start"
-                        style={{ color: '#fff', background: cat.color }}>{a.tag}</span>
-                    )}
-                    <h3 className="text-[13.5px] font-bold leading-snug text-[#0f2d3d] group-hover:text-[#2a7d9c] transition-colors mb-2 flex-1">{a.title}</h3>
-                    <p className="text-[12px] leading-relaxed text-[#8892a0] mb-4">{a.description}</p>
-                    <span className="text-[12px] font-semibold mt-auto" style={{ color: cat.color }}>Lire le guide →</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        ))}
-
-        {filtered.length > 0 && (
-          <div className="rounded-2xl mt-10 overflow-hidden" style={{ background: 'linear-gradient(135deg, #0e2a38 0%, #1a4a5e 100%)' }}>
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 p-8 sm:p-10">
-              <div>
-                <h2 className="text-lg sm:text-xl font-extrabold text-white mb-2">Votre futur achat mérite mieux qu'une lecture en diagonale.</h2>
-                <p className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>Score /20, risques et pistes de négociation en quelques minutes.</p>
+          {filtered.map((sub, si) => (
+            <div key={si} className="mb-10">
+              <div className="flex items-center gap-2.5 mb-4 pb-2.5" style={{ borderBottom: `2px solid ${cat.color}15` }}>
+                <div className="w-1 h-5 rounded-sm" style={{ background: cat.color }} />
+                <h2 className="text-sm sm:text-base font-extrabold m-0 text-[#0f2d3d]">{sub.title}</h2>
+                <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-[#94a3b8]">
+                  {sub.articles.length} {sub.articles.length > 1 ? 'guides' : 'guide'}
+                </span>
               </div>
+              <div className="flex flex-col">
+                {sub.articles.map((a, ai) => <ArticleRow key={ai} a={a} color={cat.color} isFirst={ai === 0} catIcon={cat.icon} catLabel={cat.label} />)}
+              </div>
+            </div>
+          ))}
+
+          {filtered.length > 0 && (
+            <div className="rounded-2xl text-center p-7 sm:p-10 mt-4"
+              style={{ background: "linear-gradient(135deg, #0f2d3d 0%, #1a4a5e 100%)", color: "#fff" }}>
+              <h2 className="text-lg sm:text-xl font-extrabold mb-2 tracking-tight">Votre futur achat mérite mieux qu'une lecture en diagonale.</h2>
+              <p className="text-sm mb-5 max-w-md mx-auto" style={{ opacity: 0.7 }}>
+                Score /20, risques et pistes de négociation en quelques minutes.
+              </p>
               <Link to="/start"
-                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-white text-[#0f2d3d] text-sm font-bold shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200 no-underline whitespace-nowrap">
-                Analyser mon bien →
+                className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-white text-sm font-bold shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200 no-underline text-[#0f2d3d]">
+                <ShieldCheck size={16} /> Analyser mon bien →
               </Link>
             </div>
-          </div>
-        )}
+          )}
+        </main>
       </div>
     </div>
   );
