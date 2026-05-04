@@ -10,8 +10,8 @@ const isLowPerf = () => isIOS() || (typeof window !== 'undefined' && window.inne
 
 export default function ContactPage() {
   useSEO({
-    title: 'Contact — Verimo',
-    description: "Une question sur Verimo ? Contactez notre équipe. Réponse sous 48h ouvrées pour tous vos besoins d'analyse immobilière.",
+    title: 'Contact Verimo — Analyse de documents immobiliers',
+    description: "Une question sur l'analyse de vos documents immobiliers ? Contactez Verimo. Réponse sous 48h pour tous vos besoins avant achat.",
     canonical: '/contact',
   });
 
