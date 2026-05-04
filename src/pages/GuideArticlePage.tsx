@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Clock, Calendar, ChevronRight, AlertTriangle, Lightbulb, Info, ArrowRight } from 'lucide-react';
 import { useSEO } from '../hooks/useSEO';
 import { getArticleBySlug, getRelatedArticles } from '../guides';
-import type { GuideArticle, GuideSection, GuideHighlight } from '../guides/types';
+import type { GuideHighlight, GuideSection } from '../guides/types';
 
 const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
 const isLowPerf = () => isIOS() || (typeof window !== 'undefined' && window.innerWidth <= 768);
@@ -38,7 +38,7 @@ function HighlightBox({ highlight }: { highlight: GuideHighlight }) {
 /* ══════════════════════════════════════════
    SECTION RENDERER
 ══════════════════════════════════════════ */
-function SectionRenderer({ section, index }: { section: GuideSection; index: number }) {
+function SectionRenderer({ section }: { section: GuideSection }) {
   return (
     <section id={section.id} style={{ marginBottom: 48 }}>
       <h2 style={{
@@ -155,7 +155,6 @@ function TableOfContents({ sections }: { sections: GuideSection[] }) {
 ══════════════════════════════════════════ */
 export default function GuideArticlePage() {
   const { slug } = useParams<{ slug: string }>();
-  const navigate = useNavigate();
   const article = slug ? getArticleBySlug(slug) : undefined;
 
   useEffect(() => {
