@@ -42,6 +42,7 @@ const ContactProPage = lazy(() => import('./pages/ContactProPage'));
 const DashboardProPage = lazy(() => import('./pages/DashboardProPage'));
 const SetupAccountPage = lazy(() => import('./pages/SetupAccountPage'));
 const GuidesPage = lazy(() => import('./pages/GuidesPage'));
+const GuideArticlePage = lazy(() => import('./pages/GuideArticlePage'));
 
 // ─── Écran de chargement premium ─────────────────────────────
 function LoadingScreen() {
@@ -295,7 +296,7 @@ export default function App() {
           <Route path="/pro" element={<PublicLayout><ProPage /></PublicLayout>} />
           <Route path="/contact-pro" element={<PublicLayout><ContactProPage /></PublicLayout>} />
           <Route path="/guides" element={<PublicLayout><GuidesPage /></PublicLayout>} />
-          <Route path="/guides/:slug" element={<PublicLayout><GuidesPage /></PublicLayout>} />
+          <Route path="/guides/:slug" element={<PublicLayout><GuideArticlePage /></PublicLayout>} />
           <Route path="/connexion" element={<LoginPage />} />
           <Route path="/start" element={<StartPage />} />
           <Route path="/inscription" element={<SignupPage />} />
