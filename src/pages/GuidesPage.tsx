@@ -127,8 +127,6 @@ export default function GuidesPage() {
   const [search, setSearch] = useState("");
 
   const cat = cats.find((c) => c.id === activeCat)!;
-  const total = cats.reduce((a, c) => a + c.subs.reduce((b, s) => b + s.articles.length, 0), 0);
-
   useSEO({
     title: "Guides immobiliers — Comprendre vos documents avant d'acheter | Verimo",
     description: "PV d'AG, DPE, diagnostics, règlement de copropriété, compromis de vente… Nos guides pratiques vous aident à analyser chaque document immobilier avant de signer.",
