@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Search, ChevronRight, ChevronDown, ShieldCheck } from "lucide-react";
+import { Search } from "lucide-react";
 import { useSEO } from "../hooks/useSEO";
 
 const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
@@ -87,130 +87,6 @@ const cats: Cat[] = [
   ]},
 ];
 
-/* ── DocBadge ── */
-function DocBadge({ info }: { info: DocInfo }) {
-  return (
-    <div className="mt-2.5 rounded-lg text-center" style={{ background: "linear-gradient(135deg, #f0f8fc 0%, #f8fafc 100%)", border: "1px solid #e0eff5", padding: "10px 12px" }}>
-      <div className="flex items-center justify-center gap-1.5 mb-1">
-        <span className="text-sm">{info.emoji}</span>
-        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#2a7d9c" }}>{info.label}</span>
-      </div>
-      <p className="text-[11px] leading-relaxed m-0" style={{ color: "#64748b" }}>{info.definition}</p>
-    </div>
-  );
-}
-
-/* ── Article row (style A2) ── */
-function ArticleRow({ a, color, isFirst }: { a: Article; color: string; isFirst: boolean }) {
-  return (
-    <Link to={`/guides/${a.slug}`} className="block no-underline group">
-      <div className="flex items-start gap-4 rounded-r-xl p-4 sm:p-5 mb-2 transition-all duration-200 group-hover:shadow-md"
-        style={{
-          borderLeft: `3px solid ${isFirst && a.tag === 'Essentiel' ? color : '#e2e8f0'}`,
-          background: isFirst && a.tag === 'Essentiel' ? '#fafbfc' : '#fff',
-          border: `0.5px solid #eaeef2`,
-          borderLeftWidth: '3px',
-          borderLeftColor: isFirst && a.tag === 'Essentiel' ? color : '#e2e8f0',
-          borderRadius: '0 12px 12px 0',
-        }}>
-        <div className="flex-1 min-w-0">
-          {a.tag && (
-            <span className="inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-1.5"
-              style={{ color: '#fff', background: color }}>{a.tag}</span>
-          )}
-          <h3 className="text-[14px] sm:text-[15px] font-bold leading-snug m-0 text-[#0f2d3d] group-hover:text-[#2a7d9c] transition-colors">{a.title}</h3>
-          <p className="text-[12px] sm:text-[13px] leading-relaxed m-0 mt-1 text-[#64748b]">{a.description}</p>
-          {a.docInfo && (
-            <div className="hidden sm:block">
-              <DocBadge info={a.docInfo} />
-            </div>
-          )}
-        </div>
-        {a.docInfo && (
-          <div className="hidden lg:flex flex-col items-center justify-center shrink-0 w-[110px] text-center p-3 rounded-lg" style={{ background: '#f0f8fc', border: '0.5px solid #e0eff5' }}>
-            <span className="text-[9px] font-bold uppercase tracking-wider mb-1" style={{ color: '#2a7d9c' }}>{a.docInfo.emoji} {a.docInfo.label}</span>
-            <p className="text-[9px] leading-snug m-0" style={{ color: '#64748b' }}>{a.docInfo.definition.slice(0, 80)}…</p>
-          </div>
-        )}
-        <div className="hidden sm:flex items-center shrink-0 text-[12px] font-semibold self-center" style={{ color }}>
-          Lire <ChevronRight size={14} />
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-/* ── Sidebar ── */
-function Sidebar({ active, activeSub, onCat, onSub }: { active: string; activeSub: string | null; onCat: (id: string) => void; onSub: (t: string | null) => void }) {
-  return (
-    <aside className="hidden lg:flex flex-col w-[210px] xl:w-[230px] shrink-0 bg-white border-r border-slate-200/80 py-5 px-3 gap-0.5 sticky top-0 self-start overflow-y-auto" style={{ maxHeight: "calc(100vh - 60px)" }}>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-[#b0b8c4] px-3 mb-2">Catégories</p>
-      {cats.map((cat) => {
-        const on = cat.id === active;
-        return (
-          <div key={cat.id}>
-            <button onClick={() => { onCat(cat.id); onSub(null); }}
-              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-left text-[13px] transition-all duration-150"
-              style={{ background: on ? '#0f2d3d' : 'transparent', color: on ? '#fff' : '#64748b', fontWeight: on ? 700 : 500, fontFamily: "inherit", cursor: "pointer", border: "none" }}>
-              <span className="text-base">{cat.icon}</span>
-              <span className="flex-1">{cat.label}</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
-                style={{ background: on ? 'rgba(255,255,255,.15)' : '#f1f5f9', color: on ? 'rgba(255,255,255,.7)' : '#b0b8c4' }}>
-                {cat.subs.reduce((a, s) => a + s.articles.length, 0)}
-              </span>
-            </button>
-            {on && (
-              <div className="ml-7 flex flex-col gap-px mt-1 mb-2">
-                {cat.subs.map((s) => {
-                  const subOn = activeSub === s.title;
-                  return (
-                    <button key={s.title} onClick={() => onSub(subOn ? null : s.title)}
-                      className="text-left text-[11px] px-2.5 py-1.5 rounded-md transition-colors"
-                      style={{ color: subOn ? cat.color : '#94a3b8', fontWeight: subOn ? 600 : 400, background: subOn ? cat.color + '0a' : 'transparent', border: "none", cursor: "pointer", fontFamily: "inherit" }}>
-                      {s.title}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </aside>
-  );
-}
-
-/* ── MobileNav ── */
-function MobileNav({ active, onCat }: { active: string; onCat: (id: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const cur = cats.find((x) => x.id === active)!;
-  return (
-    <div className="lg:hidden px-4 mb-4">
-      <button onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm font-semibold"
-        style={{ color: cur.color, fontFamily: "inherit", cursor: "pointer" }}>
-        <span className="flex items-center gap-2"><span className="text-lg">{cur.icon}</span>{cur.label}</span>
-        <ChevronDown size={18} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} style={{ color: "#94a3b8" }} />
-      </button>
-      {open && (
-        <div className="mt-1.5 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-lg">
-          {cats.map((cat) => (
-            <button key={cat.id} onClick={() => { onCat(cat.id); setOpen(false); }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm"
-              style={{ background: cat.id === active ? cat.color + '06' : 'transparent', color: cat.id === active ? cat.color : '#64748b', fontWeight: cat.id === active ? 700 : 500, fontFamily: "inherit", cursor: "pointer", border: "none", borderBottom: "1px solid #f1f5f9" }}>
-              <span className="text-lg">{cat.icon}</span>
-              <span className="flex-1">{cat.label}</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 text-[#94a3b8]">
-                {cat.subs.reduce((a, s) => a + s.articles.length, 0)}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 /* ══════════════════════════════════════════
    PAGE
 ══════════════════════════════════════════ */
@@ -241,103 +117,282 @@ export default function GuidesPage() {
     })).filter((s) => s.articles.length > 0);
   }, [cat, activeSub, search]);
 
-  return (
-    <div className="bg-[#f8fafc] text-[#0f172a] antialiased overflow-x-hidden min-h-screen" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+  const quickFilters = ["PV d'AG", "DPE", "Charges", "Compromis"];
 
-      {/* ── HEADER CLAIR ── */}
-      <section className="relative overflow-hidden" style={{ background: "linear-gradient(180deg, #f0f8fc 0%, #ffffff 100%)" }}>
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full" style={{ background: "rgba(42,125,156,0.06)" }} />
-          <div className="absolute -bottom-32 -left-16 w-56 h-56 rounded-full" style={{ background: "rgba(42,125,156,0.04)" }} />
-        </div>
-        <div className="relative max-w-4xl mx-auto px-5 pt-12 sm:pt-16 pb-10 sm:pb-12 text-center">
+  return (
+    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif", background: '#f7f8fa', minHeight: '100vh' }}>
+
+      {/* ── HEADER ── */}
+      <section style={{
+        background: 'linear-gradient(165deg, #ffffff 0%, #f2f9fb 40%, #e6f3f7 100%)',
+        paddingTop: 72,
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        {/* Cercles décoratifs subtils */}
+        <div style={{ position: 'absolute', top: -60, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.04) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -30, left: '10%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.03) 0%, transparent 70%)', pointerEvents: 'none' }} />
+
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: 'clamp(44px,7vw,80px) clamp(20px,4vw,48px) 42px', position: 'relative', zIndex: 1 }}>
+
+          <motion.div
+            initial={{ opacity: 0, y: _lp ? 4 : 10 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: _lp ? 0.15 : 0.4, ease: [0.22, 1, 0.36, 1] }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}
+          >
+            <span style={{ width: 22, height: 2, background: '#2a7d9c', borderRadius: 1, display: 'inline-block' }} />
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: '#2a7d9c' }}>Guides Verimo</span>
+          </motion.div>
+
           <motion.h1
             initial={{ opacity: 0, y: _lp ? 4 : 14 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: _lp ? 0.15 : 0.45, ease: [0.22, 1, 0.36, 1] }}
-            className="font-black tracking-tight leading-[1.1] mb-3"
-            style={{ fontSize: "clamp(26px, 4.5vw, 40px)", color: "#0f2d3d" }}>
-            Analyse de documents immobiliers :{' '}
-            <span className="relative inline-block">
-              <span style={{ color: "#2a7d9c" }}>guides pratiques avant achat</span>
-              <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }}
-                transition={{ delay: 0.5, duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
-                className="absolute -bottom-1 left-0 right-0 h-[3px] sm:h-[4px] rounded-full origin-left block"
-                style={{ background: "rgba(42,125,156,0.25)" }} />
+            transition={{ duration: _lp ? 0.15 : 0.45, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
+            style={{ fontSize: 'clamp(26px, 4.5vw, 36px)', fontWeight: 800, color: '#0f2d3d', lineHeight: 1.18, marginBottom: 12 }}
+          >
+            Analysez vos documents immobiliers{' '}
+            <span style={{ position: 'relative', display: 'inline-block' }}>
+              <span style={{ color: '#2a7d9c' }}>avant de signer</span>
+              <motion.span
+                initial={{ scaleX: 0 }} animate={{ scaleX: 1 }}
+                transition={{ duration: 2.5, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                style={{ position: 'absolute', bottom: -3, left: 0, right: 0, height: 4, background: 'rgba(42,125,156,0.25)', borderRadius: 99, transformOrigin: 'left', display: 'block' }}
+              />
             </span>
           </motion.h1>
+
           <motion.p
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1, duration: 0.35 }}
-            className="text-sm sm:text-base max-w-lg mx-auto mb-6 leading-relaxed" style={{ color: "#64748b" }}>
-            PV d'AG, DPE, diagnostics, règlement de copropriété, compromis de vente, état daté… Tout comprendre pour négocier et acheter en confiance.
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            transition={{ delay: 0.1, duration: 0.35 }}
+            style={{ fontSize: 14, color: '#6b7a88', lineHeight: 1.65, maxWidth: 520, marginBottom: 24 }}
+          >
+            PV d'AG, DPE, diagnostics, règlement de copro, compromis, état daté…
+            Des guides concrets pour acheter sans mauvaise surprise.
           </motion.p>
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.3 }}
-            className="max-w-md mx-auto relative">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#94a3b8]" />
-            <input type="text" placeholder="Rechercher un guide (DPE, charges, PV d'AG…)"
-              value={search} onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 rounded-xl text-[14px] outline-none border border-slate-200 bg-white"
-              style={{ fontFamily: "inherit", color: "#0f2d3d", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = '#2a7d9c'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(42,125,156,0.1)'; }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'; }}
-            />
+
+          <motion.div
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15, duration: 0.3 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' as const }}
+          >
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: '#fff', border: '1.5px solid #d8e4ea', borderRadius: 10,
+              padding: '11px 16px', width: 380, maxWidth: '100%',
+              boxShadow: '0 2px 8px rgba(42,125,156,0.04)',
+              transition: 'border-color 0.15s',
+            }}
+              onFocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = '#2a7d9c'; (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 12px rgba(42,125,156,0.08)'; }}
+              onBlur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = '#d8e4ea'; (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 8px rgba(42,125,156,0.04)'; }}
+            >
+              <Search size={14} color="#a8b4be" />
+              <input
+                type="text" placeholder="Rechercher un guide…"
+                value={search} onChange={(e) => setSearch(e.target.value)}
+                style={{ border: 'none', background: 'none', fontSize: 13, color: '#0f2d3d', outline: 'none', flex: 1, fontFamily: 'inherit' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+              {quickFilters.map((f) => (
+                <button key={f} onClick={() => setSearch(f)}
+                  style={{
+                    fontSize: 11, color: '#4a7d8f', background: 'rgba(42,125,156,0.06)',
+                    border: '1px solid rgba(42,125,156,0.12)', padding: '6px 13px', borderRadius: 8,
+                    cursor: 'pointer', fontWeight: 500, fontFamily: 'inherit',
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(42,125,156,0.1)'; e.currentTarget.style.borderColor = 'rgba(42,125,156,0.25)'; e.currentTarget.style.color = '#2a7d9c'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(42,125,156,0.06)'; e.currentTarget.style.borderColor = 'rgba(42,125,156,0.12)'; e.currentTarget.style.color = '#4a7d8f'; }}
+                >{f}</button>
+              ))}
+            </div>
           </motion.div>
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25, duration: 0.3 }}
-            className="text-[12px] mt-3" style={{ color: "#b0b8c4" }}>
-            {total} guides disponibles
-          </motion.p>
         </div>
       </section>
 
-      {/* ── MOBILE NAV ── */}
-      <div className="pt-3">
-        <MobileNav active={activeCat} onCat={(id) => { setActiveCat(id); setActiveSub(null); setSearch(""); }} />
-      </div>
-
-      {/* ── BODY ── */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 flex min-h-[60vh]">
-        <Sidebar active={activeCat} activeSub={activeSub} onCat={(id) => { setActiveCat(id); setActiveSub(null); setSearch(""); }} onSub={setActiveSub} />
-
-        <main className="flex-1 lg:pl-6 xl:pl-8 pb-14 pt-2 lg:pt-4 min-w-0">
-          {filtered.length === 0 && (
-            <div className="text-center py-20">
-              <p className="text-sm mb-3 text-[#64748b]">Aucun guide trouvé{search ? ` pour « ${search} »` : ''}.</p>
-              <button onClick={() => { setSearch(""); setActiveSub(null); }}
-                className="px-4 py-2 rounded-lg border border-slate-200 bg-white text-[13px] font-semibold text-[#2a7d9c] cursor-pointer" style={{ fontFamily: "inherit" }}>
-                Réinitialiser
+      {/* ── CATÉGORIES ── */}
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 clamp(20px,4vw,48px)' }}>
+        <div className="guides-cats" style={{ display: 'flex', gap: 8, marginTop: -16, position: 'relative', zIndex: 2 }}>
+          {cats.map((c) => {
+            const isActive = c.id === activeCat;
+            return (
+              <button key={c.id} onClick={() => { setActiveCat(c.id); setActiveSub(null); setSearch(""); }}
+                style={{
+                  flex: 1, background: isActive ? '#f6fbfd' : '#fff',
+                  borderRadius: 12, padding: '16px 10px', textAlign: 'center' as const,
+                  cursor: 'pointer', border: `1.5px solid ${isActive ? '#2a7d9c' : '#e4eaee'}`,
+                  transition: 'all 0.18s', fontFamily: 'inherit',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+                  position: 'relative' as const,
+                }}
+                onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.borderColor = '#a8cdd8'; e.currentTarget.style.transform = 'translateY(-1px)'; } }}
+                onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.borderColor = '#e4eaee'; e.currentTarget.style.transform = 'translateY(0)'; } }}
+              >
+                <span style={{ fontSize: 22, display: 'block', marginBottom: 4 }}>{c.icon}</span>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: '#0f2d3d' }}>{c.label}</div>
+                <div style={{ fontSize: 9.5, color: '#94a3b8', marginTop: 2 }}>{c.subs.reduce((a, s) => a + s.articles.length, 0)} guides</div>
+                {isActive && (
+                  <div style={{
+                    position: 'absolute', bottom: -8, left: '50%', transform: 'translateX(-50%)',
+                    width: 0, height: 0,
+                    borderLeft: '7px solid transparent', borderRight: '7px solid transparent', borderTop: '7px solid #2a7d9c',
+                  }} />
+                )}
               </button>
-            </div>
-          )}
-
-          {filtered.map((sub, si) => (
-            <div key={si} className="mb-10">
-              <div className="flex items-center gap-2.5 mb-4 pb-2.5" style={{ borderBottom: `2px solid ${cat.color}15` }}>
-                <div className="w-1 h-5 rounded-sm" style={{ background: cat.color }} />
-                <h2 className="text-sm sm:text-base font-extrabold m-0 text-[#0f2d3d]">{sub.title}</h2>
-                <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-[#94a3b8]">
-                  {sub.articles.length} {sub.articles.length > 1 ? 'guides' : 'guide'}
-                </span>
-              </div>
-              <div className="flex flex-col">
-                {sub.articles.map((a, ai) => <ArticleRow key={ai} a={a} color={cat.color} isFirst={ai === 0} />)}
-              </div>
-            </div>
-          ))}
-
-          {filtered.length > 0 && (
-            <div className="rounded-2xl text-center p-7 sm:p-10 mt-4"
-              style={{ background: "linear-gradient(135deg, #0f2d3d 0%, #1a4a5e 100%)", color: "#fff" }}>
-              <h2 className="text-lg sm:text-xl font-extrabold mb-2 tracking-tight">Vous avez vos documents ?</h2>
-              <p className="text-sm mb-5 max-w-md mx-auto" style={{ opacity: 0.7 }}>
-                Verimo analyse vos PV d'AG, diagnostics, DPE, règlement de copropriété et plus encore en quelques secondes.
-              </p>
-              <Link to="/start"
-                className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-white text-sm font-bold shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200 no-underline text-[#0f2d3d]">
-                <ShieldCheck size={16} /> Lancer mon analyse
-              </Link>
-            </div>
-          )}
-        </main>
+            );
+          })}
+        </div>
       </div>
+
+      {/* ── SOUS-CATÉGORIES ── */}
+      <div style={{ maxWidth: 1200, margin: '18px auto 0', padding: '0 clamp(20px,4vw,48px)' }}>
+        <div style={{ display: 'flex', gap: 6, padding: '10px 0', flexWrap: 'wrap' as const }}>
+          {cat.subs.map((s) => {
+            const isActive = activeSub === s.title;
+            return (
+              <button key={s.title} onClick={() => setActiveSub(isActive ? null : s.title)}
+                style={{
+                  fontSize: 12, fontWeight: 600,
+                  color: isActive ? '#fff' : '#7a8694',
+                  background: isActive ? cat.color : '#fff',
+                  border: `1.5px solid ${isActive ? cat.color : '#e0e6ea'}`,
+                  padding: '8px 18px', borderRadius: 8,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.borderColor = cat.color; e.currentTarget.style.color = cat.color; e.currentTarget.style.background = cat.color + '08'; } }}
+                onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.borderColor = '#e0e6ea'; e.currentTarget.style.color = '#7a8694'; e.currentTarget.style.background = '#fff'; } }}
+              >
+                {s.title} <span style={{ fontSize: 9, marginLeft: 5, opacity: 0.6 }}>{s.articles.length}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── ARTICLES ── */}
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '18px clamp(20px,4vw,48px) 40px' }}>
+
+        {filtered.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+            <p style={{ fontSize: 14, color: '#64748b', marginBottom: 12 }}>
+              Aucun guide trouvé{search ? ` pour « ${search} »` : ''}.
+            </p>
+            <button onClick={() => { setSearch(""); setActiveSub(null); }}
+              style={{
+                padding: '10px 20px', borderRadius: 8, border: '1px solid #e2e8f0',
+                background: '#fff', fontSize: 13, fontWeight: 600, color: '#2a7d9c',
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}>
+              Réinitialiser
+            </button>
+          </div>
+        )}
+
+        {filtered.map((sub, si) => (
+          <div key={si} style={{ marginBottom: 28 }}>
+            {/* Titre de sous-section (visible uniquement si pas de filtre sous-cat actif) */}
+            {!activeSub && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '22px 0 14px' }}>
+                <span style={{ width: 4, height: 18, borderRadius: 2, background: cat.color, display: 'inline-block' }} />
+                <h2 style={{ fontSize: 14, fontWeight: 700, color: '#0f2d3d', margin: 0 }}>{sub.title}</h2>
+                <span style={{ fontSize: 10, color: '#a8b4be', fontWeight: 600 }}>· {sub.articles.length} guides</span>
+              </div>
+            )}
+
+            <div className="guides-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 10 }}>
+              {sub.articles.map((a, ai) => (
+                <Link to={`/guides/${a.slug}`} key={ai} className="guide-article-card" style={{ textDecoration: 'none' }}>
+                  <div style={{
+                    background: '#fff', borderRadius: 12, padding: 20,
+                    border: '1px solid #e8ecf0', cursor: 'pointer',
+                    transition: 'all 0.18s', display: 'flex', flexDirection: 'column' as const,
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.02)', height: '100%',
+                  }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#2a7d9c';
+                      e.currentTarget.style.boxShadow = '0 6px 20px rgba(42,125,156,0.07)';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#e8ecf0';
+                      e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.02)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                  >
+                    {/* Chip document */}
+                    {a.docInfo && (
+                      <div style={{ marginBottom: 8 }}>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: '#2a7d9c', background: '#edf7fb', padding: '4px 10px', borderRadius: 5 }}>
+                          {a.docInfo.emoji} {a.docInfo.label}
+                        </span>
+                      </div>
+                    )}
+
+                    <h3 style={{ fontSize: 13.5, fontWeight: 700, color: '#0f2d3d', lineHeight: 1.4, marginBottom: 6, margin: 0 }}>{a.title}</h3>
+                    <p style={{ fontSize: 11.5, color: '#7d8694', lineHeight: 1.55, flex: 1, margin: 0 }}>{a.description}</p>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 10, borderTop: '1px solid #f2f4f6' }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: '#2a7d9c' }}>Lire le guide →</span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {/* ── CTA ── */}
+        {filtered.length > 0 && (
+          <div style={{
+            background: 'linear-gradient(135deg, #0e2a38 0%, #1a4a5e 100%)',
+            borderRadius: 14, padding: 'clamp(24px,4vw,32px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: 20, marginTop: 20, flexWrap: 'wrap' as const,
+          }}>
+            <div>
+              <h2 style={{ fontSize: 'clamp(16px,2.5vw,20px)', fontWeight: 700, color: '#fff', margin: '0 0 4px' }}>Vous avez vos documents ?</h2>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', margin: 0 }}>Score /20, risques et pistes de négociation en quelques minutes.</p>
+            </div>
+            <Link to="/start" style={{
+              background: '#fff', color: '#0f2d3d', fontSize: 13, fontWeight: 700,
+              padding: '12px 26px', borderRadius: 10, textDecoration: 'none',
+              whiteSpace: 'nowrap' as const, transition: 'all 0.15s',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'; }}
+            >
+              Lancer mon analyse →
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* ── STYLES RESPONSIVE ── */}
+      <style>{`
+        @media (max-width: 768px) {
+          .guides-cats {
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap: 6px !important;
+          }
+          .guides-cats > button:nth-child(4),
+          .guides-cats > button:nth-child(5) {
+            grid-column: span 1;
+          }
+          .guides-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .guides-cats {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+          .guides-cats > button:last-child {
+            grid-column: 1 / -1;
+          }
+        }
+      `}</style>
     </div>
   );
 }
