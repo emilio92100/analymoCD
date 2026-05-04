@@ -1,528 +1,211 @@
-import { useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Clock, Calendar, ChevronRight, AlertTriangle, Lightbulb, Info, ArrowRight } from 'lucide-react';
-import { useSEO } from '../hooks/useSEO';
-import { getArticleBySlug, getRelatedArticles } from '../guides';
-import type { GuideHighlight, GuideSection } from '../guides/types';
+/**
+ * Guide : Comment analyser un PV d'AG avant d'acheter un appartement
+ * Catégorie : Copropriété > Documents de copropriété
+ * Dernière mise à jour : mai 2026
+ */
 
-const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-const isLowPerf = () => isIOS() || (typeof window !== 'undefined' && window.innerWidth <= 768);
-const _lp = isLowPerf();
+import type { GuideArticle } from './types';
 
-/* ══════════════════════════════════════════
-   HIGHLIGHT BOX
-══════════════════════════════════════════ */
-function HighlightBox({ highlight }: { highlight: GuideHighlight }) {
-  const configs = {
-    warning: { bg: '#fef3c7', border: '#f59e0b', icon: <AlertTriangle size={16} color="#d97706" />, titleColor: '#92400e', textColor: '#78350f', accent: '#f59e0b' },
-    tip: { bg: '#ecfdf5', border: '#10b981', icon: <Lightbulb size={16} color="#059669" />, titleColor: '#064e3b', textColor: '#065f46', accent: '#10b981' },
-    info: { bg: '#eff6ff', border: '#3b82f6', icon: <Info size={16} color="#2563eb" />, titleColor: '#1e3a5f', textColor: '#1e40af', accent: '#3b82f6' },
-  };
-  const c = configs[highlight.type];
+const article: GuideArticle = {
+  slug: 'analyser-pv-ag-avant-achat',
+  category: 'copropriete',
+  categoryLabel: 'Copropriété',
+  categoryIcon: '🏢',
+  categoryColor: '#2a7d9c',
+  tag: 'Essentiel',
+  publishedAt: '2026-05-04',
+  updatedAt: '2026-05-04',
+  readingTime: 9,
 
-  return (
-    <div style={{
-      background: c.bg, borderLeft: `4px solid ${c.border}`, borderRadius: '0 12px 12px 0',
-      padding: 'clamp(16px,3vw,24px)', margin: '28px 0',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        {c.icon}
-        <span style={{ fontSize: 14, fontWeight: 700, color: c.titleColor }}>{highlight.title}</span>
-      </div>
-      <p style={{ fontSize: 14, lineHeight: 1.7, color: c.textColor, margin: 0 }}>{highlight.content}</p>
-    </div>
-  );
-}
+  seo: {
+    title: `Comment analyser un PV d'AG avant d'acheter — Guide Verimo`,
+    description: `Apprenez à lire un procès-verbal d'assemblée générale de copropriété. Les 5 points à vérifier absolument avant de signer un compromis. Guide pratique 2026.`,
+  },
 
-/* ══════════════════════════════════════════
-   SECTION RENDERER
-══════════════════════════════════════════ */
-function SectionRenderer({ section }: { section: GuideSection }) {
-  return (
-    <section id={section.id} style={{ marginBottom: 48 }}>
-      <h2 style={{
-        fontSize: 'clamp(20px, 3vw, 24px)', fontWeight: 800, color: '#0f2d3d',
-        lineHeight: 1.3, marginBottom: 16, paddingBottom: 12,
-        borderBottom: '2px solid #e8ecf0',
-      }}>
-        {section.title}
-      </h2>
+  title: `Comment analyser un PV d'AG avant d'acheter un appartement`,
+  subtitle: `Les 5 points clés à vérifier dans un procès-verbal d'assemblée générale pour éviter les mauvaises surprises.`,
 
-      {/* Contenu principal */}
-      {section.content.split('\n\n').map((p, i) => (
-        <p key={i} style={{ fontSize: 16, lineHeight: 1.8, color: '#334155', marginBottom: 16 }}>{p}</p>
-      ))}
+  docInfo: {
+    emoji: '💡',
+    label: `PV d'AG`,
+    definition: `Le procès-verbal d'assemblée générale est le compte-rendu officiel des décisions votées par les copropriétaires. Il est rédigé par le syndic après chaque réunion annuelle.`,
+  },
 
-      {/* Sous-sections */}
-      {section.subsections?.map((sub, i) => (
-        <div key={i} style={{ marginBottom: 20, paddingLeft: 20, borderLeft: '3px solid #e2e8f0' }}>
-          <h3 style={{ fontSize: 17, fontWeight: 700, color: '#1e293b', marginBottom: 8, lineHeight: 1.4 }}>
-            {sub.title}
-          </h3>
-          {sub.content.split('\n\n').map((p, j) => (
-            <p key={j} style={{ fontSize: 15, lineHeight: 1.8, color: '#475569', marginBottom: 12 }}>{p}</p>
-          ))}
-        </div>
-      ))}
+  intro: `Vous avez trouvé l'appartement parfait. Le prix est bon, le quartier vous plaît, les photos sont belles. Mais avant de signer quoi que ce soit, il y a un document que beaucoup d'acheteurs survolent — voire ignorent complètement — et c'est une erreur coûteuse.
 
-      {/* Bullets */}
-      {section.bullets && (
-        <ul style={{ margin: '16px 0', paddingLeft: 0, listStyle: 'none' }}>
-          {section.bullets.map((b, i) => (
-            <li key={i} style={{
-              display: 'flex', gap: 12, alignItems: 'flex-start',
-              padding: '10px 16px', marginBottom: 6,
-              background: i % 2 === 0 ? '#f8fafc' : 'transparent',
-              borderRadius: 8,
-            }}>
-              <span style={{
-                minWidth: 6, height: 6, borderRadius: '50%', background: '#2a7d9c',
-                marginTop: 9, flexShrink: 0,
-              }} />
-              <span style={{ fontSize: 15, lineHeight: 1.7, color: '#334155' }}>{b}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+Le procès-verbal d'assemblée générale (PV d'AG) est probablement le document le plus révélateur de l'état réel d'une copropriété. C'est là que se cachent les travaux à venir, les tensions entre copropriétaires, les problèmes d'argent et les décisions qui vont directement impacter votre portefeuille.
 
-      {/* Numbered list */}
-      {section.numberedList && (
-        <ol style={{ margin: '16px 0', paddingLeft: 0, listStyle: 'none', counterReset: 'guide-counter' }}>
-          {section.numberedList.map((item, i) => (
-            <li key={i} style={{
-              display: 'flex', gap: 14, alignItems: 'flex-start',
-              padding: '12px 16px', marginBottom: 4,
-              background: '#f8fafc', borderRadius: 10,
-              borderLeft: '3px solid #2a7d9c',
-            }}>
-              <span style={{
-                minWidth: 28, height: 28, borderRadius: '50%', background: '#2a7d9c',
-                color: '#fff', fontSize: 13, fontWeight: 700,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                {i + 1}
-              </span>
-              <span style={{ fontSize: 15, lineHeight: 1.7, color: '#334155', paddingTop: 3 }}>{item}</span>
-            </li>
-          ))}
-        </ol>
-      )}
+Vous avez le droit de demander les 3 derniers PV d'AG au vendeur ou à l'agent immobilier. Et vous devriez le faire systématiquement.`,
 
-      {/* Highlight */}
-      {section.highlight && <HighlightBox highlight={section.highlight} />}
-    </section>
-  );
-}
+  sections: [
+    {
+      id: 'pourquoi-lire-pv',
+      title: `Pourquoi le PV d'AG est le document n°1 à lire`,
+      content: `Le PV d'AG, c'est le journal de bord de la copropriété. Chaque année, les copropriétaires se réunissent pour voter le budget, décider des travaux, changer (ou garder) le syndic, et régler les problèmes.
 
-/* ══════════════════════════════════════════
-   TABLE OF CONTENTS
-══════════════════════════════════════════ */
-function TableOfContents({ sections }: { sections: GuideSection[] }) {
-  return (
-    <nav style={{
-      background: '#f8fafc', borderRadius: 14, padding: 'clamp(20px,3vw,28px)',
-      border: '1px solid #e8ecf0', marginBottom: 40,
-    }}>
-      <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: '#64748b', marginBottom: 14, margin: '0 0 14px' }}>
-        Dans cet article
-      </p>
-      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
-        {sections.map((s, i) => (
-          <a
-            key={s.id} href={`#${s.id}`}
-            style={{
-              fontSize: 14, color: '#334155', textDecoration: 'none',
-              padding: '8px 12px', borderRadius: 8,
-              display: 'flex', alignItems: 'center', gap: 8,
-              transition: 'all 0.15s',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = '#edf7fb'; e.currentTarget.style.color = '#2a7d9c'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#334155'; }}
-          >
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', minWidth: 20 }}>{String(i + 1).padStart(2, '0')}</span>
-            {s.title}
-          </a>
-        ))}
-      </div>
-    </nav>
-  );
-}
+Tout est consigné dans le PV : les décisions prises, les montants votés, les résolutions rejetées, et même les débats houleux. C'est une mine d'or pour un acheteur.
 
-/* ══════════════════════════════════════════
-   MAIN PAGE
-══════════════════════════════════════════ */
-export default function GuideArticlePage() {
-  const { slug } = useParams<{ slug: string }>();
-  const article = slug ? getArticleBySlug(slug) : undefined;
+Le problème, c'est que la plupart des gens ne le lisent pas — ou le lisent en diagonale. Le PV fait souvent 30 à 50 pages, c'est dense, et le vocabulaire juridique n'aide pas.
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [slug]);
+Mais si vous passez à côté, vous risquez d'acheter un appartement dans un immeuble où :`,
+      bullets: [
+        `Un ravalement de façade à 300 000 € a été voté — et votre quote-part arrive dans 6 mois`,
+        `Le syndic est en procédure judiciaire contre un copropriétaire pour impayés`,
+        `La toiture fuit depuis 2 ans et personne ne veut voter les travaux`,
+        `Le fonds de travaux est vide alors que l'immeuble a 40 ans`,
+      ],
+    },
+    {
+      id: 'travaux-votes',
+      title: `1. Les travaux votés (et ceux qui arrivent)`,
+      content: `C'est le point le plus important. Ouvrez le PV et cherchez toutes les résolutions qui mentionnent des travaux.
 
-  // Fallback SEO for 404
-  useSEO(
-    article
-      ? { title: article.seo.title, description: article.seo.description, canonical: `/guides/${article.slug}` }
-      : { title: 'Guide non trouvé — Verimo', description: '' }
-  );
+Il y a deux cas de figure :`,
+      subsections: [
+        {
+          title: `Les travaux déjà votés`,
+          content: `Si des travaux ont été votés avant la vente, les appels de fonds restants sont à la charge de l'acheteur — c'est-à-dire vous. Concrètement, si un ravalement a été voté en 2024 pour 250 000 € avec des appels de fonds étalés sur 2025-2026, vous devrez payer votre part dès la signature.
 
-  // Schema.org Article
-  useEffect(() => {
-    if (!article) return;
-    const schema = {
-      '@context': 'https://schema.org',
-      '@type': 'Article',
-      headline: article.title,
-      description: article.seo.description,
-      datePublished: article.publishedAt,
-      dateModified: article.updatedAt,
-      author: { '@type': 'Organization', name: 'Verimo', url: 'https://www.verimo.fr' },
-      publisher: { '@type': 'Organization', name: 'Verimo', url: 'https://www.verimo.fr' },
-      mainEntityOfPage: `https://www.verimo.fr/guides/${article.slug}`,
-    };
-    const script = document.createElement('script');
-    script.type = 'application/ld+json';
-    script.text = JSON.stringify(schema);
-    document.head.appendChild(script);
-    return () => { document.head.removeChild(script); };
-  }, [article]);
+Ce n'est pas une arnaque, c'est la loi. Mais si l'agent immobilier ne vous le dit pas clairement, ça peut faire très mal.`,
+        },
+        {
+          title: `Les travaux évoqués mais pas encore votés`,
+          content: `Parfois, le syndic ou un copropriétaire signale un problème (infiltration, ascenseur vieillissant, mise aux normes électrique) sans que le vote ait lieu. Le sujet est "mis à l'ordre du jour de la prochaine AG".
 
-  if (!article) {
-    return (
-      <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif", background: '#f7f8fa', minHeight: '100vh' }}>
-        <div style={{ maxWidth: 600, margin: '0 auto', padding: '120px 24px', textAlign: 'center' as const }}>
-          <p style={{ fontSize: 64, marginBottom: 16 }}>📄</p>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0f2d3d', marginBottom: 12 }}>Guide non trouvé</h1>
-          <p style={{ fontSize: 15, color: '#64748b', marginBottom: 24 }}>Cet article n'existe pas encore ou a été déplacé.</p>
-          <Link to="/guides" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            padding: '12px 24px', background: '#2a7d9c', color: '#fff',
-            borderRadius: 10, fontWeight: 600, fontSize: 14, textDecoration: 'none',
-          }}>
-            <ArrowLeft size={16} /> Retour aux guides
-          </Link>
-        </div>
-      </div>
-    );
-  }
+Traduction : les travaux arrivent, la facture aussi. Ce n'est pas encore officiel, mais c'est un signal fort.`,
+        },
+      ],
+      highlight: {
+        type: 'warning' as const,
+        title: `Point de vigilance`,
+        content: `Regardez si les mêmes travaux reviennent d'un PV à l'autre sans être votés. Ça veut dire que la copro repousse un problème — et que la facture grossit chaque année.`,
+      },
+    },
+    {
+      id: 'budget-charges',
+      title: `2. Le budget et les charges`,
+      content: `Chaque PV contient le vote du budget prévisionnel pour l'année à venir, et souvent l'approbation des comptes de l'année passée.
 
-  const related = getRelatedArticles(article.relatedSlugs);
+Ce qui doit attirer votre attention :`,
+      bullets: [
+        `L'écart entre le budget prévisionnel et les dépenses réelles — si la copro dépense systématiquement plus que prévu, les charges vont augmenter`,
+        `Le montant du fonds de travaux — depuis la loi ALUR, chaque copropriété doit cotiser au moins 2,5 % du budget prévisionnel par an dans un fonds de travaux. Si le fonds est faible alors que l'immeuble est ancien, c'est un signal d'alerte`,
+        `Les postes qui explosent — chauffage collectif, gardien, assurance, entretien courant. Comparez d'une année sur l'autre`,
+        `Les charges de votre lot spécifiquement — demandez au syndic le décompte individuel si ce n'est pas dans le PV`,
+      ],
+      highlight: {
+        type: 'tip' as const,
+        title: `Astuce`,
+        content: `Pour savoir si les charges sont normales, divisez le budget annuel par la surface totale de la copropriété. En 2026, la moyenne nationale tourne autour de 35 à 55 €/m²/an pour un immeuble avec ascenseur et gardien. Au-dessus de 60 €/m², posez des questions.`,
+      },
+    },
+    {
+      id: 'procedures-judiciaires',
+      title: `3. Les procédures judiciaires`,
+      content: `C'est le point que personne ne veut voir. Pourtant, il est systématiquement mentionné dans le PV — cherchez la résolution "Procédures en cours" ou "Actions judiciaires".
 
-  return (
-    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif", background: '#f7f8fa', minHeight: '100vh' }}>
+Une copropriété qui a des procédures en cours, ça veut dire des frais d'avocat répartis entre tous les copropriétaires. Et ces frais peuvent durer des années.
 
-      {/* ── HEADER ── */}
-      <section style={{
-        background: 'linear-gradient(165deg, #ffffff 0%, #f2f9fb 40%, #e6f3f7 100%)',
-        paddingTop: 72, position: 'relative', overflow: 'hidden',
-      }}>
-        {/* Cercles décoratifs */}
-        <div style={{ position: 'absolute', top: -60, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.04) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: -30, left: '10%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.03) 0%, transparent 70%)', pointerEvents: 'none' }} />
+Les cas les plus fréquents :`,
+      bullets: [
+        `Procédure contre un copropriétaire pour impayés de charges — le syndic engage un recouvrement judiciaire. Si les impayés sont importants, c'est la copro entière qui en souffre (le budget est déséquilibré)`,
+        `Procédure contre un prestataire ou un voisin — travaux mal réalisés, dégât des eaux non résolu, responsabilité civile`,
+        `Procédure contre le syndic lui-même — mauvaise gestion, comptes opaques, manquement au devoir de conseil`,
+      ],
+      highlight: {
+        type: 'warning' as const,
+        title: `Point de vigilance`,
+        content: `Un immeuble avec 3 ou 4 procédures en parallèle est un signal sérieux. Les provisions pour litiges viennent gonfler les charges, et l'ambiance dans la copro est rarement au beau fixe.`,
+      },
+    },
+    {
+      id: 'impayes',
+      title: `4. Les impayés de charges`,
+      content: `Le PV mentionne souvent le taux d'impayés de la copropriété — c'est-à-dire le pourcentage de charges non payées par les copropriétaires.
 
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: 'clamp(36px,6vw,64px) clamp(20px,4vw,48px) 42px', position: 'relative', zIndex: 1 }}>
+Pourquoi c'est important pour vous ? Parce que quand un copropriétaire ne paie pas, la copro doit quand même payer les prestataires (syndic, gardien, entretien, assurance). L'argent manquant est compensé soit par des appels de fonds complémentaires, soit par un report sur le budget suivant.
 
-          {/* Breadcrumb */}
-          <motion.nav
-            initial={{ opacity: 0, y: _lp ? 2 : 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: _lp ? 0.15 : 0.3 }}
-            aria-label="Fil d'Ariane"
-            style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20, flexWrap: 'wrap' as const }}
-          >
-            <Link to="/" style={{ fontSize: 13, color: '#64748b', textDecoration: 'none' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = '#2a7d9c'}
-              onMouseLeave={(e) => e.currentTarget.style.color = '#64748b'}
-            >Accueil</Link>
-            <ChevronRight size={12} color="#94a3b8" />
-            <Link to="/guides" style={{ fontSize: 13, color: '#64748b', textDecoration: 'none' }}
-              onMouseEnter={(e) => e.currentTarget.style.color = '#2a7d9c'}
-              onMouseLeave={(e) => e.currentTarget.style.color = '#64748b'}
-            >Guides</Link>
-            <ChevronRight size={12} color="#94a3b8" />
-            <span style={{ fontSize: 13, color: '#2a7d9c', fontWeight: 600 }}>{article.categoryLabel}</span>
-          </motion.nav>
+En résumé : les impayés des autres, c'est vous qui les payez indirectement.`,
+      bullets: [
+        `Moins de 10 % d'impayés : situation normale pour une grande copro`,
+        `Entre 10 % et 25 % : attention, le budget est sous tension`,
+        `Plus de 25 % : copropriété en difficulté — risque de procédure d'alerte ou de mise sous administration judiciaire`,
+      ],
+      highlight: {
+        type: 'tip' as const,
+        title: `Bon à savoir`,
+        content: `Depuis la loi ALUR, le syndic doit signaler à l'administration les copropriétés dont le taux d'impayés dépasse 25 %. Si votre copro est dans ce cas, le PV le mentionne obligatoirement.`,
+      },
+    },
+    {
+      id: 'syndic-quitus',
+      title: `5. Le syndic et le quitus`,
+      content: `Le PV contient systématiquement le vote du quitus au syndic — c'est-à-dire l'approbation de sa gestion par les copropriétaires.
 
-          {/* Badges */}
-          <motion.div
-            initial={{ opacity: 0, y: _lp ? 3 : 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: _lp ? 0.15 : 0.35, delay: 0.03 }}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' as const }}
-          >
-            <span style={{
-              fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 6,
-              background: article.categoryColor + '10', color: article.categoryColor,
-              border: `1px solid ${article.categoryColor}20`,
-            }}>
-              {article.categoryIcon} {article.categoryLabel}
-            </span>
-            {article.tag && (
-              <span style={{
-                fontSize: 10, fontWeight: 700, padding: '4px 10px', borderRadius: 5,
-                background: '#dc2626', color: '#fff', letterSpacing: 0.5,
-              }}>
-                {article.tag}
-              </span>
-            )}
-          </motion.div>
+Si le quitus est refusé, c'est un signe que les copropriétaires ne sont pas satisfaits. Et si le syndic change fréquemment (tous les 1 à 2 ans), c'est souvent synonyme de problèmes de gestion récurrents.
 
-          {/* Title */}
-          <motion.h1
-            initial={{ opacity: 0, y: _lp ? 4 : 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: _lp ? 0.15 : 0.4, delay: 0.06 }}
-            style={{
-              fontSize: 'clamp(24px, 4.5vw, 36px)', fontWeight: 800, color: '#0f2d3d',
-              lineHeight: 1.2, marginBottom: 14, maxWidth: 850,
-            }}
-          >
-            {article.title}
-          </motion.h1>
+Ce qu'il faut vérifier :`,
+      bullets: [
+        `Le quitus est-il voté à une large majorité, ou de justesse ?`,
+        `Y a-t-il un changement de syndic en cours ou récent ?`,
+        `Le syndic actuel est-il un professionnel ou un bénévole (syndic non-professionnel) ?`,
+        `Les honoraires du syndic sont-ils dans la moyenne (entre 150 et 250 €/lot/an en 2026 pour un syndic professionnel) ?`,
+      ],
+    },
+    {
+      id: 'dpe-collectif-ppt',
+      title: `Bonus 2026 : DPE collectif et plan de travaux`,
+      content: `Depuis le 1er janvier 2026, toutes les copropriétés (y compris celles de moins de 50 lots) doivent disposer d'un DPE collectif. Ce diagnostic évalue la performance énergétique de l'immeuble dans son ensemble.
 
-          {/* Subtitle */}
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.1, duration: 0.3 }}
-            style={{
-              fontSize: 16, color: '#4a5568', lineHeight: 1.6,
-              maxWidth: 750, marginBottom: 18,
-            }}
-          >
-            {article.subtitle}
-          </motion.p>
+En parallèle, le PPPT (Projet de Plan Pluriannuel de Travaux) est obligatoire depuis 2025 pour toutes les copropriétés de plus de 15 ans. Ce document planifie les travaux à réaliser sur 10 ans.
 
-          {/* Meta */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.15, duration: 0.25 }}
-            style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' as const }}
-          >
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: '#94a3b8' }}>
-              <Clock size={13} /> {article.readingTime} min de lecture
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: '#94a3b8' }}>
-              <Calendar size={13} /> Mis à jour le {new Date(article.updatedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-            </span>
-          </motion.div>
-        </div>
+Concrètement, vérifiez dans le PV :`,
+      bullets: [
+        `Le DPE collectif a-t-il été réalisé ? Si non, c'est un manquement à la réglementation`,
+        `Quelle est la classe énergétique de l'immeuble ? Un immeuble classé F ou G va nécessiter des travaux de rénovation importants`,
+        `Le PPPT a-t-il été présenté en AG ? Si oui, quels travaux sont prévus et à quel horizon ?`,
+        `Le fonds de travaux est-il suffisant pour couvrir les premières échéances du plan ?`,
+      ],
+      highlight: {
+        type: 'info' as const,
+        title: `Réglementation 2026`,
+        content: `Depuis le 1er janvier 2026, le syndic doit fournir le PPPT (ou le PPT voté) au notaire lors de toute vente. Si votre vendeur ne vous fournit pas ce document, demandez-le — c'est votre droit.`,
+      },
+    },
+    {
+      id: 'checklist',
+      title: `Votre checklist rapide`,
+      content: `Avant de faire une offre, passez chaque PV d'AG au crible de ces questions :`,
+      numberedList: [
+        `Des travaux ont-ils été votés ? Si oui, quel montant reste à appeler ?`,
+        `Des travaux sont-ils évoqués sans être votés ? Si oui, à quel horizon ?`,
+        `Le budget est-il maîtrisé ? Les dépenses réelles collent-elles au prévisionnel ?`,
+        `Y a-t-il des procédures judiciaires en cours ? Combien, et pour quel montant ?`,
+        `Quel est le taux d'impayés ? Est-il en hausse d'une année sur l'autre ?`,
+        `Le quitus au syndic a-t-il été voté facilement ?`,
+        `Le DPE collectif et le PPPT sont-ils à jour ?`,
+        `Le fonds de travaux est-il alimenté correctement (minimum 2,5 %/an) ?`,
+      ],
+    },
+  ],
 
-        {/* Fondu en bas */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(to bottom, transparent, #f7f8fa)', pointerEvents: 'none' }} />
-      </section>
+  conclusion: `Le PV d'AG n'est pas un document sexy. C'est long, c'est technique, et ça donne rarement envie de le lire un dimanche soir. Mais c'est le document qui peut vous éviter d'acheter un appartement dans un immeuble en difficulté — ou vous donner un levier de négociation solide si vous repérez des points faibles.
 
-      {/* ── BODY ── */}
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 clamp(20px,4vw,48px) 60px' }}>
-        <div style={{ display: 'flex', gap: 48, alignItems: 'flex-start' }}>
+Demandez les 3 derniers PV. Lisez-les. Et si vous n'avez pas le temps ou pas l'envie de le faire, faites-les analyser.`,
 
-          {/* ── MAIN CONTENT ── */}
-          <motion.article
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
-            style={{ flex: 1, minWidth: 0 }}
-          >
+  cta: {
+    title: `Pas envie de lire 150 pages de PV ?`,
+    description: `Verimo analyse vos documents de copropriété et vous donne un rapport clair avec score /20, risques identifiés et pistes de négociation.`,
+    buttonText: `Faire analyser mes documents`,
+    buttonLink: '/start',
+  },
 
-            {/* DocInfo encart */}
-            {article.docInfo && (
-              <div style={{
-                background: '#fff', borderRadius: 14, padding: 'clamp(20px,3vw,28px)',
-                border: '1px solid #e2e8f0', marginBottom: 32, marginTop: 32,
-                boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <span style={{ fontSize: 22 }}>{article.docInfo.emoji}</span>
-                  <span style={{ fontSize: 15, fontWeight: 700, color: '#0f2d3d' }}>{article.docInfo.label}</span>
-                  <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>— Ce document en bref</span>
-                </div>
-                <p style={{ fontSize: 14.5, lineHeight: 1.7, color: '#475569', margin: 0 }}>
-                  {article.docInfo.definition}
-                </p>
-              </div>
-            )}
+  relatedSlugs: [
+    'lire-3-derniers-pv-ag-copropriete',
+    'charges-copropriete-trop-elevees',
+    'reglement-copropriete-clauses-verifier',
+    '10-documents-avant-offre-achat',
+  ],
+};
 
-            {/* Intro */}
-            <div style={{ marginBottom: 40, marginTop: article.docInfo ? 0 : 32 }}>
-              {article.intro.split('\n\n').map((p, i) => (
-                <p key={i} style={{
-                  fontSize: 16, lineHeight: 1.85, color: '#334155', marginBottom: 16,
-                  ...(i === 0 ? { fontSize: 17, fontWeight: 500, color: '#1e293b' } : {}),
-                }}>
-                  {p}
-                </p>
-              ))}
-            </div>
-
-            {/* Table of Contents */}
-            <TableOfContents sections={article.sections} />
-
-            {/* Sections */}
-            {article.sections.map((section, i) => (
-              <SectionRenderer key={section.id} section={section} index={i} />
-            ))}
-
-            {/* Conclusion */}
-            <div style={{
-              background: '#fff', borderRadius: 14, padding: 'clamp(24px,4vw,32px)',
-              border: '1px solid #e2e8f0', marginBottom: 32, marginTop: 48,
-              boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
-            }}>
-              <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f2d3d', marginBottom: 16, lineHeight: 1.3 }}>
-                En résumé
-              </h2>
-              {article.conclusion.split('\n\n').map((p, i) => (
-                <p key={i} style={{ fontSize: 15, lineHeight: 1.8, color: '#334155', marginBottom: 12 }}>{p}</p>
-              ))}
-            </div>
-
-            {/* CTA */}
-            <div style={{
-              background: 'linear-gradient(135deg, #0e2a38 0%, #1a4a5e 100%)',
-              borderRadius: 16, padding: 'clamp(28px,5vw,40px)', position: 'relative',
-              overflow: 'hidden', marginBottom: 40,
-            }}>
-              <div style={{ position: 'absolute', top: -40, right: -40, width: 180, height: 180, borderRadius: '50%', border: '30px solid rgba(93,191,224,0.06)', pointerEvents: 'none' }} />
-              <div style={{ position: 'relative', zIndex: 1 }}>
-                <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: '#5dbfe0', marginBottom: 8, margin: '0 0 8px' }}>
-                  {article.cta.title}
-                </p>
-                <p style={{ fontSize: 'clamp(16px,2.5vw,20px)', fontWeight: 700, color: '#fff', marginBottom: 8, lineHeight: 1.4, margin: '0 0 8px' }}>
-                  {article.cta.description}
-                </p>
-                <Link to={article.cta.buttonLink} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 8,
-                  background: '#fff', color: '#0f2d3d', fontSize: 14, fontWeight: 700,
-                  padding: '14px 28px', borderRadius: 12, textDecoration: 'none',
-                  marginTop: 16, transition: 'all 0.2s',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-                }}
-                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.18)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)'; }}
-                >
-                  {article.cta.buttonText} <ArrowRight size={16} />
-                </Link>
-              </div>
-            </div>
-
-            {/* Related articles */}
-            {related.length > 0 && (
-              <div style={{ marginBottom: 40 }}>
-                <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f2d3d', marginBottom: 16 }}>
-                  À lire aussi
-                </h2>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
-                  {related.map((r) => (
-                    <Link key={r.slug} to={`/guides/${r.slug}`} style={{ textDecoration: 'none' }}>
-                      <div style={{
-                        background: '#fff', borderRadius: 12, padding: 18,
-                        border: '1px solid #e8ecf0', transition: 'all 0.18s',
-                        height: '100%', display: 'flex', flexDirection: 'column' as const,
-                      }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#2a7d9c'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(42,125,156,0.07)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e8ecf0'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(0)'; }}
-                      >
-                        <span style={{ fontSize: 10, fontWeight: 600, color: r.categoryColor, marginBottom: 8 }}>
-                          {r.categoryIcon} {r.categoryLabel}
-                        </span>
-                        <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0f2d3d', lineHeight: 1.4, marginBottom: 6, margin: 0, flex: 1 }}>{r.title}</h3>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: '#2a7d9c', marginTop: 10 }}>Lire →</span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Back link */}
-            <div style={{ textAlign: 'center' as const, paddingBottom: 20 }}>
-              <Link to="/guides" style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                fontSize: 14, fontWeight: 600, color: '#2a7d9c', textDecoration: 'none',
-                padding: '12px 24px', borderRadius: 10, border: '1px solid #d8e4ea',
-                transition: 'all 0.15s',
-              }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = '#edf7fb'; e.currentTarget.style.borderColor = '#2a7d9c'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#d8e4ea'; }}
-              >
-                <ArrowLeft size={15} /> Voir tous les guides
-              </Link>
-            </div>
-          </motion.article>
-
-          {/* ── SIDEBAR (desktop only) ── */}
-          <aside className="guide-sidebar" style={{
-            width: 300, flexShrink: 0, position: 'sticky' as const, top: 100,
-            alignSelf: 'flex-start', display: 'flex', flexDirection: 'column' as const, gap: 20,
-            paddingTop: 32,
-          }}>
-            {/* Quick CTA */}
-            <div style={{
-              background: '#fff', borderRadius: 14, padding: 24,
-              border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
-            }}>
-              <p style={{ fontSize: 14, fontWeight: 700, color: '#0f2d3d', marginBottom: 8, margin: '0 0 8px' }}>
-                Analysez vos documents
-              </p>
-              <p style={{ fontSize: 13, lineHeight: 1.6, color: '#64748b', marginBottom: 16, margin: '0 0 16px' }}>
-                Score /20, risques détectés et pistes de négociation en quelques minutes.
-              </p>
-              <Link to="/start" style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                padding: '11px 20px', background: '#2a7d9c', color: '#fff',
-                borderRadius: 10, fontSize: 13, fontWeight: 700, textDecoration: 'none',
-                transition: 'all 0.15s', width: '100%', boxSizing: 'border-box' as const,
-              }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = '#1f6a86'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = '#2a7d9c'; }}
-              >
-                Analyser mon bien <ArrowRight size={14} />
-              </Link>
-            </div>
-
-            {/* Pricing hint */}
-            <div style={{
-              background: '#f8fafc', borderRadius: 14, padding: 20,
-              border: '1px solid #e8ecf0',
-            }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: '#0f2d3d', marginBottom: 10, margin: '0 0 10px' }}>
-                💡 Comment ça marche ?
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
-                {[
-                  { step: '1', text: 'Uploadez vos documents' },
-                  { step: '2', text: 'Recevez votre rapport' },
-                  { step: '3', text: 'Score, risques et conseils' },
-                ].map((s) => (
-                  <div key={s.step} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{
-                      minWidth: 24, height: 24, borderRadius: '50%', background: '#2a7d9c',
-                      color: '#fff', fontSize: 11, fontWeight: 700,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>{s.step}</span>
-                    <span style={{ fontSize: 13, color: '#475569' }}>{s.text}</span>
-                  </div>
-                ))}
-              </div>
-              <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 12, margin: '12px 0 0' }}>
-                À partir de 4,90 € · Résultats en quelques minutes
-              </p>
-            </div>
-          </aside>
-        </div>
-      </div>
-
-      {/* ── RESPONSIVE STYLES ── */}
-      <style>{`
-        @media (max-width: 900px) {
-          .guide-sidebar {
-            display: none !important;
-          }
-        }
-      `}</style>
-    </div>
-  );
-}
+export default article;
