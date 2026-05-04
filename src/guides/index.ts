@@ -1,5 +1,5 @@
 /**
- * Index des articles de guides Verimo — 26 articles
+ * Index des articles de guides Verimo — 31 articles
  */
 
 import type { GuideArticle } from './types';
@@ -29,6 +29,11 @@ import loiCarrez from './loi-carrez-surface-ne-correspond-pas';
 import erp from './erp-etat-risques-pollutions';
 import diagElecGaz from './diagnostic-electricite-gaz-risques';
 import achatMaison from './achat-maison-diagnostics-documents';
+import travauxVotesNego from './travaux-votes-ag-levier-negociation';
+import acheterSansAgence from './acheter-sans-agence-documents-verifier';
+import vicesCaches from './vices-caches-immobilier-proteger';
+import fraisNotaire from './frais-notaire-calcul-achat';
+import taxeFonciere from './taxe-fonciere-verifier-budget-achat';
 
 const allArticles: GuideArticle[] = [
   analyserPvAg, dpeCommentLire, dixDocuments, chargesCopro, compromisVente,
@@ -36,7 +41,8 @@ const allArticles: GuideArticle[] = [
   fondsTravaux, lire3Pv, appelsFonds, verifier10Jours, premierAchat,
   auditEnergetique, impayesCopro, carnetEntretien, ficheSynthetique,
   argumentsNego, dpeNegocier, diagAmiante, loiCarrez, erp, diagElecGaz,
-  achatMaison,
+  achatMaison, travauxVotesNego, acheterSansAgence, vicesCaches,
+  fraisNotaire, taxeFonciere,
 ];
 
 export function getArticleBySlug(slug: string): GuideArticle | undefined {
