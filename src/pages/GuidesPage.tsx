@@ -134,14 +134,15 @@ export default function GuidesPage() {
 
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: 'clamp(44px,7vw,80px) clamp(20px,4vw,48px) 42px', position: 'relative', zIndex: 1 }}>
 
-          {/* 1/ GUIDES VERIMO plus gros */}
+          {/* GUIDES VERIMO - bloc visible */}
           <motion.div
             initial={{ opacity: 0, y: _lp ? 4 : 10 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: _lp ? 0.15 : 0.4, ease: [0.22, 1, 0.36, 1] }}
-            style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginBottom: 22, background: 'rgba(42,125,156,0.07)', padding: '8px 20px', borderRadius: 10, border: '1px solid rgba(42,125,156,0.12)' }}
           >
-            <span style={{ width: 28, height: 2, background: '#2a7d9c', borderRadius: 1, display: 'inline-block' }} />
-            <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase' as const, color: '#2a7d9c' }}>Guides Verimo</span>
+            <span style={{ width: 24, height: 2, background: '#2a7d9c', borderRadius: 1, display: 'inline-block' }} />
+            <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: 2.5, textTransform: 'uppercase' as const, color: '#2a7d9c' }}>Guides Verimo</span>
+            <span style={{ width: 24, height: 2, background: '#2a7d9c', borderRadius: 1, display: 'inline-block' }} />
           </motion.div>
 
           {/* 4/ H1 SEO optimisé */}
@@ -166,7 +167,7 @@ export default function GuidesPage() {
           <motion.p
             initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             transition={{ delay: 0.1, duration: 0.35 }}
-            style={{ fontSize: 15, color: '#4a5568', lineHeight: 1.65, maxWidth: 620, marginBottom: 24 }}
+            style={{ fontSize: 15, color: '#4a5568', lineHeight: 1.65, maxWidth: 900, marginBottom: 24 }}
           >
             PV d'AG, DPE, diagnostics, règlement de copro, compromis, état daté… Des guides concrets pour comprendre et acheter en confiance.
           </motion.p>
@@ -217,55 +218,56 @@ export default function GuidesPage() {
           {cats.map((c) => {
             const isActive = c.id === activeCat;
             return (
-              <button key={c.id} onClick={() => { setActiveCat(c.id); setActiveSub(null); setSearch(""); }}
-                style={{
-                  flex: 1, background: isActive ? '#f6fbfd' : '#fff',
-                  borderRadius: 12, padding: '16px 10px', textAlign: 'center' as const,
-                  cursor: 'pointer', border: `1.5px solid ${isActive ? '#2a7d9c' : '#e4eaee'}`,
-                  transition: 'all 0.18s', fontFamily: 'inherit',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
-                  position: 'relative' as const,
-                }}
-                onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.borderColor = '#a8cdd8'; e.currentTarget.style.transform = 'translateY(-1px)'; } }}
-                onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.borderColor = '#e4eaee'; e.currentTarget.style.transform = 'translateY(0)'; } }}
-              >
-                <span style={{ fontSize: 22, display: 'block', marginBottom: 4 }}>{c.icon}</span>
-                <div style={{ fontSize: 11.5, fontWeight: 700, color: '#0f2d3d' }}>{c.label}</div>
-                <div style={{ fontSize: 9.5, color: '#94a3b8', marginTop: 2 }}>{c.subs.reduce((a, s) => a + s.articles.length, 0)} guides</div>
+              <div key={c.id} style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center' }}>
+                <button onClick={() => { setActiveCat(c.id); setActiveSub(null); setSearch(""); }}
+                  style={{
+                    width: '100%', background: isActive ? '#f6fbfd' : '#fff',
+                    borderRadius: 12, padding: '16px 10px', textAlign: 'center' as const,
+                    cursor: 'pointer', border: `1.5px solid ${isActive ? '#2a7d9c' : '#e4eaee'}`,
+                    transition: 'all 0.18s', fontFamily: 'inherit',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+                    position: 'relative' as const,
+                  }}
+                  onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.borderColor = '#a8cdd8'; e.currentTarget.style.transform = 'translateY(-1px)'; } }}
+                  onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.borderColor = '#e4eaee'; e.currentTarget.style.transform = 'translateY(0)'; } }}
+                >
+                  <span style={{ fontSize: 22, display: 'block', marginBottom: 4 }}>{c.icon}</span>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#0f2d3d' }}>{c.label}</div>
+                  <div style={{ fontSize: 11, color: isActive ? '#2a7d9c' : '#64748b', marginTop: 2, fontWeight: 500 }}>{c.subs.reduce((a, s) => a + s.articles.length, 0)} guides</div>
+                  {isActive && (
+                    <div style={{
+                      position: 'absolute', bottom: -8, left: '50%', transform: 'translateX(-50%)',
+                      width: 0, height: 0,
+                      borderLeft: '7px solid transparent', borderRight: '7px solid transparent', borderTop: '7px solid #2a7d9c',
+                    }} />
+                  )}
+                </button>
+                {/* Sous-catégories sous la card active */}
                 {isActive && (
-                  <div style={{
-                    position: 'absolute', bottom: -8, left: '50%', transform: 'translateX(-50%)',
-                    width: 0, height: 0,
-                    borderLeft: '7px solid transparent', borderRight: '7px solid transparent', borderTop: '7px solid #2a7d9c',
-                  }} />
+                  <div style={{ display: 'flex', gap: 6, marginTop: 14, flexWrap: 'wrap' as const, justifyContent: 'center' }}>
+                    {c.subs.map((s) => {
+                      const subActive = activeSub === s.title;
+                      return (
+                        <button key={s.title} onClick={() => setActiveSub(subActive ? null : s.title)}
+                          style={{
+                            fontSize: 12, fontWeight: 600,
+                            color: subActive ? '#fff' : '#5a6670',
+                            background: subActive ? c.color : '#fff',
+                            border: `1.5px solid ${subActive ? c.color : '#dce2e6'}`,
+                            padding: '8px 16px', borderRadius: 8,
+                            cursor: 'pointer', fontFamily: 'inherit',
+                            transition: 'all 0.15s',
+                          }}
+                          onMouseEnter={(e) => { if (!subActive) { e.currentTarget.style.borderColor = c.color; e.currentTarget.style.color = c.color; e.currentTarget.style.background = c.color + '08'; } }}
+                          onMouseLeave={(e) => { if (!subActive) { e.currentTarget.style.borderColor = '#dce2e6'; e.currentTarget.style.color = '#5a6670'; e.currentTarget.style.background = '#fff'; } }}
+                        >
+                          {s.title} <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.7 }}>{s.articles.length}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── SOUS-CATÉGORIES ── */}
-      <div style={{ maxWidth: 1200, margin: '18px auto 0', padding: '0 clamp(20px,4vw,48px)' }}>
-        <div style={{ display: 'flex', gap: 6, padding: '10px 0', flexWrap: 'wrap' as const }}>
-          {cat.subs.map((s) => {
-            const isActive = activeSub === s.title;
-            return (
-              <button key={s.title} onClick={() => setActiveSub(isActive ? null : s.title)}
-                style={{
-                  fontSize: 12, fontWeight: 600,
-                  color: isActive ? '#fff' : '#7a8694',
-                  background: isActive ? cat.color : '#fff',
-                  border: `1.5px solid ${isActive ? cat.color : '#e0e6ea'}`,
-                  padding: '8px 18px', borderRadius: 8,
-                  cursor: 'pointer', fontFamily: 'inherit',
-                  transition: 'all 0.15s',
-                }}
-                onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.borderColor = cat.color; e.currentTarget.style.color = cat.color; e.currentTarget.style.background = cat.color + '08'; } }}
-                onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.borderColor = '#e0e6ea'; e.currentTarget.style.color = '#7a8694'; e.currentTarget.style.background = '#fff'; } }}
-              >
-                {s.title} <span style={{ fontSize: 9, marginLeft: 5, opacity: 0.6 }}>{s.articles.length}</span>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -348,29 +350,34 @@ export default function GuidesPage() {
           </div>
         ))}
 
-        {/* 8/ CTA redesigné */}
+        {/* CTA */}
         {filtered.length > 0 && (
           <div style={{
             background: 'linear-gradient(135deg, #0e2a38 0%, #1a4a5e 100%)',
-            borderRadius: 14, padding: 'clamp(24px,4vw,32px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            gap: 20, marginTop: 20, flexWrap: 'wrap' as const,
+            borderRadius: 16, padding: 'clamp(28px,5vw,40px)',
+            marginTop: 28, position: 'relative' as const, overflow: 'hidden',
           }}>
-            <div>
-              <h2 style={{ fontSize: 'clamp(16px,2.5vw,20px)', fontWeight: 700, color: '#fff', margin: '0 0 4px' }}>Votre futur achat mérite mieux qu'une lecture en diagonale.</h2>
-              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', margin: 0 }}>Score /20, risques et pistes de négociation en quelques minutes.</p>
+            {/* Cercle décoratif */}
+            <div style={{ position: 'absolute', top: -40, right: -40, width: 180, height: 180, borderRadius: '50%', border: '30px solid rgba(93,191,224,0.06)', pointerEvents: 'none' }} />
+            <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' as const }}>
+              <div style={{ flex: 1, minWidth: 280 }}>
+                <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: '#5dbfe0', marginBottom: 8, margin: '0 0 8px' }}>Prêt à passer à l'action ?</p>
+                <h2 style={{ fontSize: 'clamp(18px,2.8vw,22px)', fontWeight: 800, color: '#fff', margin: '0 0 6px', lineHeight: 1.3 }}>Votre futur achat mérite mieux qu'une lecture en diagonale.</h2>
+                <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', margin: 0, lineHeight: 1.5 }}>Score /20, risques détectés et pistes de négociation en quelques minutes.</p>
+              </div>
+              <Link to="/start" style={{
+                background: '#fff', color: '#0f2d3d', fontSize: 14, fontWeight: 700,
+                padding: '14px 32px', borderRadius: 12, textDecoration: 'none',
+                whiteSpace: 'nowrap' as const, transition: 'all 0.2s',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+              }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.18)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)'; }}
+              >
+                Analyser mon bien →
+              </Link>
             </div>
-            <Link to="/start" style={{
-              background: '#fff', color: '#0f2d3d', fontSize: 13, fontWeight: 700,
-              padding: '12px 26px', borderRadius: 10, textDecoration: 'none',
-              whiteSpace: 'nowrap' as const, transition: 'all 0.15s',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            }}
-              onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'; }}
-            >
-              Analyser mon bien →
-            </Link>
           </div>
         )}
       </div>
