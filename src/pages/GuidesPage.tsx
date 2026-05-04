@@ -44,7 +44,7 @@ const cats: Cat[] = [
       { title: "Diagnostic électricité et gaz : quels risques pour l'acheteur", slug: "diagnostic-electricite-gaz-risques", description: "Installations de plus de 15 ans, anomalies détectées, travaux à prévoir — comment interpréter ces diagnostics." },
     ]},
   ]},
-  { id: "acheteurs", icon: "🧑‍💼", label: "Acheteurs", color: "#059669", subs: [
+  { id: "acheteurs", icon: "🏠", label: "Acheteurs", color: "#059669", subs: [
     { title: "Avant de signer", articles: [
       { title: "Les 10 documents à exiger avant de faire une offre d'achat", slug: "10-documents-avant-offre-achat", description: "La checklist complète des pièces à demander au vendeur ou à l'agent avant de vous engager.", tag: "Essentiel" },
       { title: "Compromis de vente : les clauses à lire avant de signer", slug: "compromis-vente-clauses-lire", description: "Conditions suspensives, délai de rétractation, clauses pénales — ce que vous devez comprendre.", docInfo: { emoji: "💡", label: "Compromis de vente", definition: "Avant-contrat qui engage vendeur et acheteur. Il fixe le prix, les conditions et ouvre un délai de rétractation de 10 jours pour l'acheteur." } },
@@ -57,7 +57,7 @@ const cats: Cat[] = [
       { title: "Travaux votés en AG : un levier de négociation souvent ignoré", slug: "travaux-votes-ag-levier-negociation", description: "Si des travaux ont été votés avant la vente, l'acheteur paie les appels de fonds. Comment en tenir compte." },
     ]},
   ]},
-  { id: "vendeurs", icon: "🤝", label: "Vendeurs", color: "#7c3aed", subs: [
+  { id: "vendeurs", icon: "📋", label: "Vendeurs", color: "#7c3aed", subs: [
     { title: "Préparer sa vente", articles: [
       { title: "Liste complète des documents obligatoires pour vendre en 2026", slug: "documents-obligatoires-vendre-2026", description: "DDT, état daté, fiche synthétique, DPE — tout ce que le vendeur doit fournir et à quel moment.", tag: "Essentiel" },
       { title: "DDT : tout ce que le Dossier de Diagnostics Techniques doit contenir", slug: "ddt-dossier-diagnostics-techniques", description: "Les diagnostics obligatoires selon le type de bien, leur durée de validité et les sanctions en cas d'absence.", docInfo: { emoji: "💡", label: "DDT", definition: "Le Dossier de Diagnostics Techniques regroupe l'ensemble des diagnostics obligatoires à fournir à l'acheteur." } },
@@ -101,7 +101,7 @@ function DocBadge({ info }: { info: DocInfo }) {
 }
 
 /* ── Article row (style A2) ── */
-function ArticleRow({ a, color, isFirst, catIcon, catLabel }: { a: Article; color: string; isFirst: boolean; catIcon: string; catLabel: string }) {
+function ArticleRow({ a, color, isFirst }: { a: Article; color: string; isFirst: boolean }) {
   return (
     <Link to={`/guides/${a.slug}`} className="block no-underline group">
       <div className="flex items-start gap-4 rounded-r-xl p-4 sm:p-5 mb-2 transition-all duration-200 group-hover:shadow-md"
@@ -123,14 +123,6 @@ function ArticleRow({ a, color, isFirst, catIcon, catLabel }: { a: Article; colo
           {a.docInfo && (
             <div className="hidden sm:block">
               <DocBadge info={a.docInfo} />
-            </div>
-          )}
-          {!a.docInfo && (
-            <div className="mt-2.5">
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold"
-                style={{ background: color + '08', color: color, border: `1px solid ${color}15` }}>
-                {catIcon} {catLabel}
-              </span>
             </div>
           )}
         </div>
@@ -258,34 +250,25 @@ export default function GuidesPage() {
           <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full" style={{ background: "rgba(42,125,156,0.06)" }} />
           <div className="absolute -bottom-32 -left-16 w-56 h-56 rounded-full" style={{ background: "rgba(42,125,156,0.04)" }} />
         </div>
-        <div className="relative max-w-4xl mx-auto px-5 pt-20 sm:pt-24 pb-10 sm:pb-12 text-center">
-          {/* GUIDES VERIMO label */}
-          <motion.div initial={{ opacity: 0, y: _lp ? 4 : 10 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: _lp ? 0.15 : 0.4 }}
-            className="flex items-center justify-center gap-3 mb-5">
-            <div style={{ width: 28, height: 2, background: '#2a7d9c', borderRadius: 1 }} />
-            <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: '0.15em', textTransform: 'uppercase' as const, color: '#2a7d9c' }}>Guides Verimo</span>
-            <div style={{ width: 28, height: 2, background: '#2a7d9c', borderRadius: 1 }} />
-          </motion.div>
-
+        <div className="relative max-w-4xl mx-auto px-5 pt-12 sm:pt-16 pb-10 sm:pb-12 text-center">
           <motion.h1
             initial={{ opacity: 0, y: _lp ? 4 : 14 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: _lp ? 0.15 : 0.45, ease: [0.22, 1, 0.36, 1] }}
             className="font-black tracking-tight leading-[1.1] mb-3"
             style={{ fontSize: "clamp(26px, 4.5vw, 40px)", color: "#0f2d3d" }}>
-            Analysez vos documents immobiliers{' '}
+            Analyse de documents immobiliers :{' '}
             <span className="relative inline-block">
-              <span style={{ color: "#2a7d9c" }}>avant de signer</span>
+              <span style={{ color: "#2a7d9c" }}>guides pratiques avant achat</span>
               <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }}
-                transition={{ delay: 0.5, duration: 3, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ delay: 0.5, duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
                 className="absolute -bottom-1 left-0 right-0 h-[3px] sm:h-[4px] rounded-full origin-left block"
                 style={{ background: "rgba(42,125,156,0.25)" }} />
             </span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1, duration: 0.35 }}
-            className="text-base sm:text-lg max-w-2xl mx-auto mb-6 leading-relaxed" style={{ color: "#4a5568" }}>
-            PV d'AG, DPE, diagnostics, règlement de copro, compromis, état daté… Des guides concrets pour comprendre et acheter en confiance.
+            className="text-sm sm:text-base max-w-lg mx-auto mb-6 leading-relaxed" style={{ color: "#64748b" }}>
+            PV d'AG, DPE, diagnostics, règlement de copropriété, compromis de vente, état daté… Tout comprendre pour négocier et acheter en confiance.
           </motion.p>
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.3 }}
             className="max-w-md mx-auto relative">
@@ -335,7 +318,7 @@ export default function GuidesPage() {
                 </span>
               </div>
               <div className="flex flex-col">
-                {sub.articles.map((a, ai) => <ArticleRow key={ai} a={a} color={cat.color} isFirst={ai === 0} catIcon={cat.icon} catLabel={cat.label} />)}
+                {sub.articles.map((a, ai) => <ArticleRow key={ai} a={a} color={cat.color} isFirst={ai === 0} />)}
               </div>
             </div>
           ))}
@@ -343,13 +326,13 @@ export default function GuidesPage() {
           {filtered.length > 0 && (
             <div className="rounded-2xl text-center p-7 sm:p-10 mt-4"
               style={{ background: "linear-gradient(135deg, #0f2d3d 0%, #1a4a5e 100%)", color: "#fff" }}>
-              <h2 className="text-lg sm:text-xl font-extrabold mb-2 tracking-tight">Votre futur achat mérite mieux qu'une lecture en diagonale.</h2>
+              <h2 className="text-lg sm:text-xl font-extrabold mb-2 tracking-tight">Vous avez vos documents ?</h2>
               <p className="text-sm mb-5 max-w-md mx-auto" style={{ opacity: 0.7 }}>
-                Score /20, risques et pistes de négociation en quelques minutes.
+                Verimo analyse vos PV d'AG, diagnostics, DPE, règlement de copropriété et plus encore en quelques secondes.
               </p>
               <Link to="/start"
                 className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-white text-sm font-bold shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200 no-underline text-[#0f2d3d]">
-                <ShieldCheck size={16} /> Analyser mon bien →
+                <ShieldCheck size={16} /> Lancer mon analyse
               </Link>
             </div>
           )}
