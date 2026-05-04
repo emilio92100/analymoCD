@@ -1,5 +1,5 @@
 /**
- * Index des articles de guides Verimo — 21 articles
+ * Index des articles de guides Verimo — 26 articles
  */
 
 import type { GuideArticle } from './types';
@@ -24,13 +24,19 @@ import carnetEntretien from './carnet-entretien-immeuble';
 import ficheSynthetique from './fiche-synthetique-copropriete';
 import argumentsNego from './arguments-negociation-documents-copropriete';
 import dpeNegocier from './utiliser-dpe-negocier-prix';
+import diagAmiante from './diagnostic-amiante-resultat-positif';
+import loiCarrez from './loi-carrez-surface-ne-correspond-pas';
+import erp from './erp-etat-risques-pollutions';
+import diagElecGaz from './diagnostic-electricite-gaz-risques';
+import achatMaison from './achat-maison-diagnostics-documents';
 
 const allArticles: GuideArticle[] = [
   analyserPvAg, dpeCommentLire, dixDocuments, chargesCopro, compromisVente,
   reglementCopro, passoireThermique, etatDate, preEtatDate, dpeCollectif,
   fondsTravaux, lire3Pv, appelsFonds, verifier10Jours, premierAchat,
   auditEnergetique, impayesCopro, carnetEntretien, ficheSynthetique,
-  argumentsNego, dpeNegocier,
+  argumentsNego, dpeNegocier, diagAmiante, loiCarrez, erp, diagElecGaz,
+  achatMaison,
 ];
 
 export function getArticleBySlug(slug: string): GuideArticle | undefined {
