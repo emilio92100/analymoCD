@@ -362,7 +362,7 @@ export default function GuideArticlePage() {
 
             {/* Sections */}
             {article.sections.map((section, i) => (
-              <SectionRenderer key={section.id} section={section} index={i} />
+              <SectionRenderer key={section.id} section={section} />
             ))}
 
             {/* Conclusion */}
