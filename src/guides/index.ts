@@ -12,6 +12,7 @@ import compromisVente from './compromis-vente-clauses-lire';
 import reglementCopro from './reglement-copropriete-clauses-verifier';
 import passoireThermique from './passoire-thermique-fuir-negocier';
 import etatDate from './etat-date-document-vendeur';
+import preEtatDate from './pre-etat-date-avant-compromis';
 import dpeCollectif from './dpe-collectif-2026-obligations';
 import fondsTravaux from './fonds-travaux-obligatoire-2026';
 
@@ -24,6 +25,7 @@ const allArticles: GuideArticle[] = [
   reglementCopro,
   passoireThermique,
   etatDate,
+  preEtatDate,
   dpeCollectif,
   fondsTravaux,
 ];
