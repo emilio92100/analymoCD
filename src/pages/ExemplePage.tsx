@@ -733,7 +733,13 @@ export default function ExemplePage() {
   return (
     <main style={{ background: '#f4f7f9', fontFamily: "'DM Sans', system-ui, sans-serif", paddingTop: 72, minHeight: '100vh' }}>
       {/* HERO */}
-      <section style={{ background: 'linear-gradient(150deg, #eef7fb, #e4f2f8 50%, #f8fafc)', padding: '64px 24px 48px', textAlign: 'center', borderBottom: '1px solid #e2edf3' }}>
+      <section style={{
+        background: 'linear-gradient(165deg, #ffffff 0%, #f2f9fb 40%, #e6f3f7 100%)',
+        padding: '64px 24px 48px', textAlign: 'center',
+        position: 'relative', overflow: 'hidden',
+      }}>
+        <div style={{ position: 'absolute', top: -60, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.04) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -30, left: '10%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.03) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <motion.h1
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -781,6 +787,9 @@ export default function ExemplePage() {
           <span>Données anonymisées issues d'un dossier réel</span>
         </motion.div>
       </section>
+
+      {/* Transition fluide hero → contenu */}
+      <div style={{ height: 100, background: 'linear-gradient(180deg, #e6f3f7 0%, #edf2f6 30%, #f5f7f9 60%, #ffffff 100%)', marginTop: -1 }} />
 
       {/* TOGGLE */}
       <section style={{ padding: '44px 16px 32px' }}>
