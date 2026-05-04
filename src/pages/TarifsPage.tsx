@@ -194,7 +194,19 @@ export default function TarifsPage() {
     <main style={{ fontFamily: "'DM Sans', system-ui, sans-serif", background: '#f4f7f9', paddingTop: 72, minHeight: '100vh' }}>
 
       {/* ── HERO ── */}
-      <section style={{ background: '#fff', borderBottom: '1px solid #edf2f7', padding: 'clamp(44px,7vw,80px) 20px clamp(36px,5vw,56px)', textAlign: 'center' }}>
+      <section style={{
+        background: 'linear-gradient(165deg, #ffffff 0%, #f2f9fb 40%, #e6f3f7 100%)',
+        borderBottom: '1px solid #edf2f7',
+        padding: 'clamp(44px,7vw,80px) 20px clamp(36px,5vw,56px)',
+        textAlign: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        {/* Cercles décoratifs */}
+        <div style={{ position: 'absolute', top: -60, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.04) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: -30, left: '10%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.03) 0%, transparent 70%)', pointerEvents: 'none' }} />
+
+        <div style={{ position: 'relative', zIndex: 1 }}>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 16px', borderRadius: 100, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.2)', fontSize: 12, fontWeight: 700, color: '#1a5e78', marginBottom: 20, letterSpacing: '0.06em' }}>
           <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', display: 'inline-block', animation: 'pulse2 2s ease-in-out infinite' }} />
@@ -223,6 +235,7 @@ export default function TarifsPage() {
             </div>
           ))}
         </motion.div>
+        </div>
       </section>
 
       {/* ── CARTES ── */}
