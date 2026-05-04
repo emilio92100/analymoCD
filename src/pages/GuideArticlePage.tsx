@@ -122,26 +122,32 @@ function SectionRenderer({ section }: { section: GuideSection }) {
 function TableOfContents({ sections }: { sections: GuideSection[] }) {
   return (
     <nav style={{
-      background: '#f8fafc', borderRadius: 14, padding: 'clamp(20px,3vw,28px)',
+      background: '#fff', borderRadius: 14, padding: 'clamp(22px,3vw,30px)',
       border: '1px solid #e8ecf0', marginBottom: 40,
+      boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
     }}>
-      <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: '#64748b', marginBottom: 14, margin: '0 0 14px' }}>
+      <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1.5, textTransform: 'uppercase' as const, color: '#2a7d9c', marginBottom: 16, margin: '0 0 16px' }}>
         Dans cet article
       </p>
-      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
+      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
         {sections.map((s, i) => (
           <a
             key={s.id} href={`#${s.id}`}
             style={{
-              fontSize: 14, color: '#334155', textDecoration: 'none',
-              padding: '8px 12px', borderRadius: 8,
-              display: 'flex', alignItems: 'center', gap: 8,
+              fontSize: 14.5, color: '#334155', textDecoration: 'none', fontWeight: 500,
+              padding: '10px 14px', borderRadius: 10,
+              display: 'flex', alignItems: 'center', gap: 12,
               transition: 'all 0.15s',
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = '#edf7fb'; e.currentTarget.style.color = '#2a7d9c'; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#f0f9fc'; e.currentTarget.style.color = '#2a7d9c'; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#334155'; }}
           >
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', minWidth: 20 }}>{String(i + 1).padStart(2, '0')}</span>
+            <span style={{
+              minWidth: 30, height: 30, borderRadius: '50%', background: '#2a7d9c',
+              color: '#fff', fontSize: 12, fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>{i + 1}</span>
             {s.title}
           </a>
         ))}
@@ -230,43 +236,35 @@ export default function GuideArticlePage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: _lp ? 0.15 : 0.3 }}
             aria-label="Fil d'Ariane"
-            style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 20, flexWrap: 'wrap' as const }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 22, flexWrap: 'wrap' as const }}
           >
-            <Link to="/" style={{ fontSize: 13, color: '#64748b', textDecoration: 'none' }}
+            <Link to="/" style={{ fontSize: 15, fontWeight: 500, color: '#64748b', textDecoration: 'none' }}
               onMouseEnter={(e) => e.currentTarget.style.color = '#2a7d9c'}
               onMouseLeave={(e) => e.currentTarget.style.color = '#64748b'}
             >Accueil</Link>
-            <ChevronRight size={12} color="#94a3b8" />
-            <Link to="/guides" style={{ fontSize: 13, color: '#64748b', textDecoration: 'none' }}
+            <ChevronRight size={14} color="#94a3b8" />
+            <Link to="/guides" style={{ fontSize: 15, fontWeight: 500, color: '#64748b', textDecoration: 'none' }}
               onMouseEnter={(e) => e.currentTarget.style.color = '#2a7d9c'}
               onMouseLeave={(e) => e.currentTarget.style.color = '#64748b'}
             >Guides</Link>
-            <ChevronRight size={12} color="#94a3b8" />
-            <span style={{ fontSize: 13, color: '#2a7d9c', fontWeight: 600 }}>{article.categoryLabel}</span>
+            <ChevronRight size={14} color="#94a3b8" />
+            <span style={{ fontSize: 15, color: '#2a7d9c', fontWeight: 700 }}>{article.categoryLabel}</span>
           </motion.nav>
 
-          {/* Badges */}
+          {/* Badge catégorie */}
           <motion.div
             initial={{ opacity: 0, y: _lp ? 3 : 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: _lp ? 0.15 : 0.35, delay: 0.03 }}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' as const }}
+            style={{ marginBottom: 16 }}
           >
             <span style={{
-              fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 6,
-              background: article.categoryColor + '10', color: article.categoryColor,
-              border: `1px solid ${article.categoryColor}20`,
+              fontSize: 12, fontWeight: 700, padding: '6px 14px', borderRadius: 8,
+              background: article.categoryColor + '12', color: article.categoryColor,
+              border: `1px solid ${article.categoryColor}25`,
             }}>
               {article.categoryIcon} {article.categoryLabel}
             </span>
-            {article.tag && (
-              <span style={{
-                fontSize: 10, fontWeight: 700, padding: '4px 10px', borderRadius: 5,
-                background: '#dc2626', color: '#fff', letterSpacing: 0.5,
-              }}>
-                {article.tag}
-              </span>
-            )}
           </motion.div>
 
           {/* Title */}
@@ -330,16 +328,26 @@ export default function GuideArticlePage() {
             {/* DocInfo encart */}
             {article.docInfo && (
               <div style={{
-                background: '#fff', borderRadius: 14, padding: 'clamp(20px,3vw,28px)',
-                border: '1px solid #e2e8f0', marginBottom: 32, marginTop: 32,
-                boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
+                background: 'linear-gradient(135deg, #f0f9fc 0%, #e8f4f8 100%)', borderRadius: 14,
+                padding: 'clamp(22px,3vw,30px)', borderLeft: `5px solid #2a7d9c`,
+                marginBottom: 32, marginTop: 32,
+                boxShadow: '0 2px 12px rgba(42,125,156,0.06)',
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <span style={{ fontSize: 22 }}>{article.docInfo.emoji}</span>
-                  <span style={{ fontSize: 15, fontWeight: 700, color: '#0f2d3d' }}>{article.docInfo.label}</span>
-                  <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>— Ce document en bref</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                  <span style={{
+                    fontSize: 28, width: 44, height: 44, borderRadius: 10,
+                    background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 2px 8px rgba(42,125,156,0.08)',
+                  }}>{article.docInfo.emoji}</span>
+                  <div>
+                    <span style={{ fontSize: 16, fontWeight: 800, color: '#0f2d3d', display: 'block', lineHeight: 1.2 }}>{article.docInfo.label}</span>
+                    <span style={{
+                      fontSize: 11, fontWeight: 600, color: '#2a7d9c', letterSpacing: 0.5,
+                      textTransform: 'uppercase' as const,
+                    }}>Ce document en bref</span>
+                  </div>
                 </div>
-                <p style={{ fontSize: 14.5, lineHeight: 1.7, color: '#475569', margin: 0 }}>
+                <p style={{ fontSize: 15, lineHeight: 1.75, color: '#334155', margin: 0 }}>
                   {article.docInfo.definition}
                 </p>
               </div>
@@ -507,9 +515,14 @@ export default function GuideArticlePage() {
                   </div>
                 ))}
               </div>
-              <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 12, margin: '12px 0 0' }}>
-                À partir de 4,90 € · Résultats en quelques minutes
-              </p>
+              <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #e8ecf0' }}>
+                <p style={{ fontSize: 14, fontWeight: 700, color: '#0f2d3d', margin: '0 0 2px' }}>
+                  À partir de 4,90 €
+                </p>
+                <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
+                  Résultats en quelques minutes
+                </p>
+              </div>
             </div>
           </aside>
         </div>
