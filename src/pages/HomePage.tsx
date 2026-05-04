@@ -127,8 +127,8 @@ function SectionTitle({ label, title, accent, sub }: { label: string; title: str
 
 export default function HomePage() {
   useSEO({
-    title: 'Verimo — Vos documents décryptés, votre décision éclairée',
-    description: "Verimo décrypte vos documents immobiliers (PV d'AG, règlement de copropriété, diagnostics) en quelques secondes. Score /20, travaux à prévoir, pistes de négociation avant de signer.",
+    title: 'Verimo — Analyse de documents immobiliers avant achat | Risques, score et négociation',
+    description: "Analysez vos documents immobiliers avant d'acheter : PV d'AG, diagnostics, DPE, règlement de copropriété, appels de charges, etc. Score /20, risques détectés, pistes de négociation.",
     canonical: '/',
   });
 
@@ -162,7 +162,7 @@ function HeroSection() {
           <motion.h1 variants={up} initial="hidden" animate="show" custom={0.5}
             className="font-black leading-[1.08] tracking-[-0.03em] text-[#0f172a] mb-4 text-center w-full px-2"
             style={{ fontSize: "clamp(26px, 6.5vw, 34px)" }}>
-            Comprenez l'essentiel<br />de votre achat immobilier<br />
+            Analysez vos documents<br />immobiliers<br />
             <span className="relative inline-block whitespace-nowrap">
               <span className="text-[#2a7d9c]">avant de signer.</span>
               <motion.span
@@ -261,7 +261,7 @@ function HeroSection() {
 
             <motion.h1 variants={up} initial="hidden" animate="show" custom={1}
               className="text-[clamp(28px,3.2vw,44px)] font-black leading-[1.1] tracking-[-0.03em] text-[#0f172a] mb-5">
-              Comprenez l'essentiel{' '}<br />de votre achat immobilier{' '}
+              Analysez vos documents{' '}<br />immobiliers{' '}
               <span className="relative inline-block">
                 <span className="text-[#2a7d9c]">avant de signer.</span>
                 <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: 0.9, duration: 1.4 }}
