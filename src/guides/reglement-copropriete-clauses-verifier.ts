@@ -137,7 +137,11 @@ Exemples courants :`,
         `Servitude de canalisation — des tuyaux d'un autre lot passent chez vous`,
         `Droit de surélévation — la copro ou un tiers a le droit de construire au-dessus de l'immeuble`,
       ],
-      content: `Les servitudes sont souvent oubliées mais peuvent impacter votre confort ou vos projets de travaux. Un droit de surélévation, par exemple, veut dire que quelqu'un pourra construire un étage au-dessus de chez vous.`,
+      highlight: {
+        type: 'warning' as const,
+        title: `Point de vigilance`,
+        content: `Les servitudes sont souvent oubliées mais peuvent impacter votre confort ou vos projets de travaux. Un droit de surélévation, par exemple, veut dire que quelqu'un pourra construire un étage au-dessus de chez vous.`,
+      },
     },
     {
       id: 'checklist-reglement',
