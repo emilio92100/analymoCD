@@ -75,7 +75,11 @@ Prenez les estimations de consommation du DPE (en kWh/m²/an) et comparez :`,
         `Classe F — environ 330-420 kWh/m²/an. Même logement : 2 000 à 3 000 €/an`,
         `Différence — 1 000 à 1 500 €/an. Sur 10 ans, c'est 10 000 à 15 000 €`,
       ],
-      content: `Présentez ce chiffre au vendeur : "sur 10 ans, le surcoût énergétique par rapport à un bien en D représente 12 000 €. C'est un coût que l'acheteur doit intégrer."`,
+      highlight: {
+        type: 'tip' as const,
+        title: `Comment le formuler`,
+        content: `Présentez ce chiffre au vendeur : "sur 10 ans, le surcoût énergétique par rapport à un bien en D représente 12 000 €. C'est un coût que l'acheteur doit intégrer."`,
+      },
     },
     {
       id: 'argument-3',
