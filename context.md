@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet complet — 3 mai 2026 (après sessions 1 à 23)
+# VERIMO — Contexte projet complet — 4 mai 2026 (après sessions 1 à 24)
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -27,6 +27,8 @@
 **Verimo** — SaaS d'analyse de documents immobiliers (PV d'AG, règlements copro, diagnostics, appels de charges, DPE, compromis, carnet d'entretien, DTG, pré-état daté, état daté, taxe foncière, modificatifs RCP, fiche synthétique...). Rapport clair avec score /20, risques, recommandations. Fonctionne pour **appartements et maisons**.
 
 **Slogan :** *Vos documents décryptés, votre décision éclairée.*
+
+**H1 HomePage :** *Analysez vos documents immobiliers avant de signer.* (optimisé SEO — session 24)
 
 **Cible :** Acheteurs particuliers (primo-accédants et résidence principale), et professionnels (agents immobiliers, investisseurs, marchands de bien, notaires).
 
@@ -97,6 +99,8 @@ UNIT_SIMPLE 2,90€   → price_1TRKRmBO4ekMbwz0ynLNDwn4
 /confidentialite              → ConfidentialitePage
 /cgu                          → CGUPage
 /mentions-legales             → MentionsLegalesPage
+/guides                       → GuidesPage (listing catégorisé)
+/guides/:slug                 → GuidesPage (article individuel — à implémenter)
 /connexion                    → LoginPage
 /inscription                  → SignupPage
 /mot-de-passe-oublie          → ForgotPasswordPage
@@ -119,6 +123,118 @@ UNIT_SIMPLE 2,90€   → price_1TRKRmBO4ekMbwz0ynLNDwn4
 /rapport-partage?token=XXX    → RapportPartagePage
 /rapport-comparaison?ids=X,Y  → RapportComparaisonPage
 ```
+
+---
+
+## ✅ Session 24 — 4 mai 2026 — SEO complet + page Guides
+
+### Résumé
+Session référencement : diagnostic Search Console, optimisation SEO on-page (titles, descriptions, H1) sur toutes les pages publiques, analyse concurrentielle (Naveen, Prilow, Keyzia), création de la page Guides avec structure catégorisée, ajout dans le footer et le sitemap.
+
+### A. Diagnostic SEO — Search Console
+
+- **6 pages indexées** correctement (www.verimo.fr/) : /, /methode, /tarifs, /pro, /confidentialite, /mentions-legales
+- **Page /exemple** : statut "Explorée, actuellement non indexée" — demande d'indexation envoyée
+- **8 pages non indexées** : 4 erreurs de redirection (URLs sans www : verimo.fr/exemple, /methode, /pro, /tarifs) + 3 redirections normales (http→https, sans www→www) + 1 explorée non indexée
+- **Cause des erreurs** : les URLs sans `www` redirigent vers `www.verimo.fr` — fonctionnement normal, Google avait détecté un hoquet temporaire le 28/04
+- **Disclaimer obsolète** : les pages /methode et /tarifs affichaient encore "⚠️ Verimo est un outil d'aide…" dans Google (crawlées avant le retrait du footer) → re-indexation forcée
+- **Action** : demande d'indexation envoyée sur les 6 pages principales (deux fois : avant et après le push SEO)
+
+### B. Optimisation SEO on-page — Mots-clés
+
+**Analyse concurrentielle :** Naveen, Prilow et Keyzia dominent "analyse documents immobiliers" grâce à des pages riches en contenu + blogs avec articles ciblés. Verimo absent sur cette requête car le vocabulaire utilisé ("décrypter", "comprendre l'essentiel") ne correspond pas aux termes recherchés.
+
+**Mot-clé principal ciblé :** "analyse documents immobiliers" — l'expression exacte tapée par les utilisateurs.
+
+**Modifications appliquées (8 fichiers) :**
+
+| Page | Ancien title | Nouveau title |
+|------|-------------|---------------|
+| Home | Verimo — Vos documents décryptés, votre décision éclairée | Verimo — Analyse de documents immobiliers avant achat \| Risques, score et négociation |
+| Tarifs | Tarifs Verimo — Analyse immobilière dès 4,90€ | Tarifs Verimo — Analyse de documents immobiliers dès 4,90€ |
+| Méthode | Méthode Verimo — Comment nous analysons vos documents immobiliers | Comment analyser vos documents immobiliers avant un achat — Méthode Verimo |
+| Exemple | Exemple de rapport Verimo — Appartement Lyon 6e analysé | Exemple d'analyse de documents immobiliers — Rapport Verimo complet |
+| Pro | Verimo Pro — Outil d'analyse pour professionnels de l'immobilier | Analyse de documents immobiliers pour professionnels — Verimo Pro |
+| Contact | Contact — Verimo | Contact Verimo — Analyse de documents immobiliers |
+
+**H1 HomePage changé :** "Comprenez l'essentiel de votre achat immobilier avant de signer" → "Analysez vos documents immobiliers avant de signer" (mobile + desktop)
+
+**Fichiers modifiés :**
+- `index.html` — title, description, OG, Twitter, Schema.org mis à jour
+- `src/hooks/useSEO.ts` — valeurs par défaut mises à jour
+- `src/pages/HomePage.tsx` — H1 mobile + desktop + useSEO
+- `src/pages/TarifsPage.tsx` — useSEO
+- `src/pages/MethodePage.tsx` — useSEO
+- `src/pages/ExemplePage.tsx` — useSEO
+- `src/pages/ProPage.tsx` — useSEO
+- `src/pages/ContactPage.tsx` — useSEO
+
+### C. Page Guides — Structure et route
+
+**Route :** `/guides` (listing) + `/guides/:slug` (articles individuels — à implémenter)
+
+**Lien "Guides"** ajouté dans le Footer (colonne Produit), entre "Tarifs" et "Contact".
+
+**Sitemap :** `/guides` ajouté avec `changefreq: weekly` et `priority: 0.8`.
+
+**useSEO Guides :** title = "Guides immobiliers — Comprendre vos documents avant d'acheter | Verimo"
+
+**Structure des catégories (5) :**
+1. **Copropriété** (10 articles) — sous-catégories : Documents de copropriété (5) + Finances & Charges (5)
+2. **Diagnostics** (8 articles) — sous-catégories : Performance énergétique (4) + Sécurité & Conformité (4)
+3. **Acheteurs** (7 articles) — sous-catégories : Avant de signer (4) + Négociation (3)
+4. **Vendeurs** (5 articles) — sous-catégories : Préparer sa vente (3) + Valoriser son bien (2)
+5. **Professionnels** (11 articles) — sous-catégories : Agents & Mandataires (5) + Investisseurs & Marchands de biens (6)
+
+**Total : 41 articles planifiés** — chaque article a un titre SEO, un slug, une description, et optionnellement un encart 💡 "Ce document en bref" (emoji + label centré + définition).
+
+**Design en cours :** choix validé pour header H2 clair (fond blanc/gris, titre SEO, barre de recherche, compteur sous la recherche) + body style A2 (articles en lignes horizontales avec accent coloré à gauche, sidebar blanche). Design final à coder dans la prochaine session.
+
+### D. Points à noter pour les FAQ Schema
+
+- Google a restreint les FAQ rich snippets aux sites gouvernementaux et de santé (septembre 2023) → les JSON-LD FAQPage ne génèrent plus de rich snippets pour Verimo
+- Les schémas FAQ restent utiles pour aider les algorithmes à comprendre le contenu mais ne sont plus prioritaires
+
+### Fichiers modifiés session 24
+```
+index.html                          → SEO titles, descriptions, OG, Twitter, Schema.org
+src/hooks/useSEO.ts                 → valeurs par défaut SEO
+src/pages/HomePage.tsx              → H1 + useSEO
+src/pages/TarifsPage.tsx            → useSEO
+src/pages/MethodePage.tsx           → useSEO
+src/pages/ExemplePage.tsx           → useSEO
+src/pages/ProPage.tsx               → useSEO
+src/pages/ContactPage.tsx           → useSEO
+src/pages/GuidesPage.tsx            → NOUVEAU — page listing guides (design en cours)
+src/App.tsx                         → routes /guides et /guides/:slug ajoutées
+src/components/layout/Footer.tsx    → lien "Guides" ajouté
+public/sitemap.xml                  → /guides ajouté
+```
+
+---
+
+## 🗂️ Backlog
+
+### 🔴 Priorité haute
+
+- [ ] **GuidesPage — Design final** : header H2 clair + body style A2 (accent coloré gauche, sidebar blanche) — design à finaliser et coder
+- [ ] **Guides — Rédaction des premiers articles** : commencer par les 5 articles les plus stratégiques SEO (analyser PV AG, DPE, 10 documents avant offre, charges copropriété, compromis de vente). Chaque article = une page `/guides/slug` avec useSEO dédié, contenu riche, encart 💡, CTA vers `/start`
+- [ ] **Guides — Articles individuels** : créer le système de rendu d'article (route `/guides/:slug` → charge le contenu correspondant)
+- [ ] **Différence analyse simple vs complète** : mieux expliquer la distinction sur les pages Méthode et/ou Tarifs (ex: section "Pour qui ?" ou comparatif visuel clair). Les visiteurs ne comprennent pas facilement ce que chaque formule inclut
+- [ ] **Veille réglementaire — prompt analyser-run** — DPE collectif copros <50 lots (jan 2026), PPT obligatoire (jan 2026)
+- [ ] **Prompt caching API Anthropic** — ~90% d'économie possible
+- [ ] **Stripe TEST → production** — Passer les Price IDs en mode live
+- [ ] **Email notification quand admin répond à un ticket support** — edge function à créer
+
+### 🟡 Priorité normale
+
+- [ ] **SEO — Blog/contenu continu** : après les 5 premiers articles, continuer à publier 2-3 articles/semaine pour rattraper Naveen et Prilow en volume de contenu indexé
+- [ ] **SEO — Image OG** : créer une image Open Graph pour chaque page publique (améliore le partage sur LinkedIn/Twitter/Facebook)
+- [ ] **SEO — Middleware Vercel Edge** (optionnel) : injecter les meta tags côté serveur pour les crawlers sociaux qui n'exécutent pas le JS. Nice-to-have, pas bloquant pour Google
+- [ ] **Template email prospection** : 3 versions prêtes (V1 court, V2 visuel, V3 relance). Configurer dans Mailjet avec sous-domaine `outreach.verimo.fr`
+- [ ] **Email confirmation après changement MDP** (nice-to-have)
+- [ ] **Compare : redesign verdict** — split synthèse par bien, layout two-column forces/issues, tags "Bien 1"/"Bien 2"
+- [ ] **Compare : remplacer edge function debug `comparer`** par version propre en production
 
 ---
 
@@ -524,62 +640,3 @@ Lues par sidebar et NouvelleAnalyse via `get_pro_credits_balance(p_user_id)` qui
 - **Admin sidebar catégories** : Activité `#2a7d9c`, Utilisateurs `#7c3aed`, Contenu `#16a34a`, Outils `#d97706`, Support `#f59e0b`, Système `#94a3b8`
 
 ---
-
-## 🗂️ Backlog
-
-### 🔴 Priorité haute
-
-- [ ] **Veille réglementaire — prompt analyser-run** — DPE collectif copros <50 lots (jan 2026), PPT obligatoire (jan 2026)
-- [ ] **Prompt caching API Anthropic** — ~90% d'économie possible
-- [ ] **Stripe TEST → production** — Passer les Price IDs en mode live
-- [ ] **Email notification quand admin répond à un ticket support** — edge function à créer
-
-### 🟡 Priorité normale
-
-- [ ] **Template email prospection** : 3 versions prêtes (V1 court, V2 visuel, V3 relance). Configurer dans Mailjet avec sous-domaine `outreach.verimo.fr`.
-- [ ] **Email notification quand admin répond à un ticket support** — edge function à créer
-- [ ] **Email confirmation après changement MDP** (nice-to-have)
-- [ ] **Compare : redesign verdict** — split synthèse par bien, layout two-column forces/issues, tags "Bien 1"/"Bien 2"
-- [ ] **Compare : remplacer edge function debug `comparer`** par version propre en production
-
-### ✅ Résolu session 22
-
-- [x] Suppression complète aperçu gratuit / analyse offerte — 11 fichiers frontend + edge function analyser-run nettoyés
-- [x] Confirmation mot de passe à l'inscription (SignupPage)
-- [x] "Verdict d'achat" → "Recommandation Verimo" (TarifsPage + dashboard/Tarifs)
-- [x] Barre de progression NouvelleAnalyse recalibrée — courbe logarithmique basée sur temps réel + nombre de docs
-- [x] Système de support/tickets complet (pro + particulier) :
-  - Tables BDD : support_tickets, support_messages, pro_suggestions, user_notifications
-  - Bouton "Besoin d'aide" dans topbar → popup création ticket avec objets prédéfinis
-  - Page Support : liste tickets ouverts/résolus, fil de chat, polling 10s, badge unread sidebar
-  - Confirmation après envoi : "Message envoyé ! Notre équipe vous répondra rapidement"
-  - Bouton "Suggestion" (pro uniquement) → popup avec catégories (Fonctionnalité manquante, Amélioration, Nouveau rapport, Autre idée) + historique des suggestions
-- [x] Admin onglet "Besoin d'aide" : liste tickets (pro + particulier), fil de conversation, champ "Répondre en tant que" (prénom), bouton "Clôturer", bouton "Voir la fiche client" → ouvre directement la fiche
-- [x] Admin onglet "Suggestions" : filtres (En attente / Prises en compte / Archivées), bouton "Pris en compte" → envoie notification cloche au client, bouton "Archiver", bouton "Supprimer"
-- [x] Notifications persistantes en BDD (table user_notifications) — cloche pro + particulier charge les notifications BDD + mémoire
-- [x] Historique tickets support dans fiche utilisateur admin
-- [x] InfoTooltip (i) fix : séparation hover (PC) / clic (mobile), z-index 99999
-- [x] Logo sidebar 60px + container 78px (pro + particulier)
-- [x] Nombreux fixes mobile : tables en cards, tooltips, popups, layouts, boutons retour, grilles 2x2, body scroll lock modales
-
-### ✅ Résolu session 21
-
-- [x] Admin dashboard refonte complète (CA pro, stats, filtres, évolutions ↑/↓)
-- [x] Filtres Actifs/Inscrits dans Clients Pro
-- [x] Identité pro éditable depuis admin + sync dashboard client
-- [x] Suppression compte pro avec cascade
-- [x] Reset MDP via email depuis admin
-- [x] Modifier email depuis admin
-- [x] Factures Stripe dans fiche client pro
-- [x] Abonnement pro : annulation 3 étapes, réactivation, raison de départ
-- [x] Templates emails pro refaits (emojis, logo blanc, pro@verimo.fr)
-- [x] Envoi rapports depuis dossier (wizard 3 étapes, multi-analyses, vendeurs + acheteurs)
-- [x] Envoi groupé (un mail par destinataire avec tous les rapports)
-- [x] Historique envois groupé par destinataire avec statut par document
-- [x] Fix rapport partagé introuvable (report_shares + opened_at + RLS)
-- [x] Fix reset mot de passe (www → non-www perdait le token)
-- [x] Logo blanc dans sidebars (particulier + pro)
-- [x] Autocomplétion adresse dossier (ville vide corrigée)
-- [x] Tooltip note interne
-- [x] Bouton suppression logo pro
-- [x] Edge function analyser confirmée clean en production
