@@ -244,40 +244,6 @@ export default function GuidesPage() {
             );
           })}
         </div>
-        {/* Sous-catégories — positionnées selon la card active */}
-        {(() => {
-          const activeIndex = cats.findIndex((c) => c.id === activeCat);
-          const totalCats = cats.length;
-          const leftPercent = ((activeIndex + 0.5) / totalCats) * 100;
-          return (
-            <div style={{ display: 'flex', gap: 6, marginTop: 18, justifyContent: 'flex-start', position: 'relative' as const }}>
-              <div style={{ display: 'flex', gap: 6, position: 'absolute' as const, left: `${leftPercent}%`, transform: 'translateX(-50%)' }}>
-                {cat.subs.map((s) => {
-                  const subActive = activeSub === s.title;
-                  return (
-                    <button key={s.title} onClick={() => setActiveSub(subActive ? null : s.title)}
-                      style={{
-                        fontSize: 12, fontWeight: 600,
-                        color: subActive ? '#fff' : '#5a6670',
-                        background: subActive ? cat.color : '#fff',
-                        border: `1.5px solid ${subActive ? cat.color : '#dce2e6'}`,
-                        padding: '8px 16px', borderRadius: 8,
-                        cursor: 'pointer', fontFamily: 'inherit',
-                        transition: 'all 0.15s', whiteSpace: 'nowrap' as const,
-                      }}
-                      onMouseEnter={(e) => { if (!subActive) { e.currentTarget.style.borderColor = cat.color; e.currentTarget.style.color = cat.color; e.currentTarget.style.background = cat.color + '08'; } }}
-                      onMouseLeave={(e) => { if (!subActive) { e.currentTarget.style.borderColor = '#dce2e6'; e.currentTarget.style.color = '#5a6670'; e.currentTarget.style.background = '#fff'; } }}
-                    >
-                      {s.title} <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.7 }}>{s.articles.length}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              {/* Spacer pour garder la hauteur */}
-              <div style={{ height: 42 }} />
-            </div>
-          );
-        })()}
       </div>
 
       {/* ── ARTICLES ── */}
