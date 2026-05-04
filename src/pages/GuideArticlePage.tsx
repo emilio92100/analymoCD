@@ -361,7 +361,7 @@ export default function GuideArticlePage() {
             <TableOfContents sections={article.sections} />
 
             {/* Sections */}
-            {article.sections.map((section, i) => (
+            {article.sections.map((section) => (
               <SectionRenderer key={section.id} section={section} />
             ))}
 
