@@ -5,10 +5,17 @@
 
 import type { GuideArticle } from './types';
 import analyserPvAg from './analyser-pv-ag-avant-achat';
+import dpeCommentLire from './dpe-comment-lire-avant-achat';
+import dixDocuments from './10-documents-avant-offre-achat';
+import chargesCopro from './charges-copropriete-trop-elevees';
+import compromisVente from './compromis-vente-clauses-lire';
 
-// Ajouter chaque article ici au fur et à mesure
 const allArticles: GuideArticle[] = [
   analyserPvAg,
+  dpeCommentLire,
+  dixDocuments,
+  chargesCopro,
+  compromisVente,
 ];
 
 export function getArticleBySlug(slug: string): GuideArticle | undefined {
