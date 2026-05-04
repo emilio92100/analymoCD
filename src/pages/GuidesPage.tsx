@@ -169,7 +169,7 @@ export default function GuidesPage() {
             transition={{ delay: 0.1, duration: 0.35 }}
             style={{ fontSize: 15, color: '#4a5568', lineHeight: 1.65, maxWidth: 900, marginBottom: 24 }}
           >
-            PV d'AG, DPE, diagnostics, règlement de copro, compromis, état daté… Des guides concrets pour comprendre et acheter en confiance.
+            PV d'AG, DPE, diagnostics, règlement de copro, compromis, état daté… Des guides concrets pour acheter en confiance.
           </motion.p>
 
           <motion.div
@@ -215,7 +215,7 @@ export default function GuidesPage() {
       {/* ── CATÉGORIES ── */}
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 clamp(20px,4vw,48px)' }}>
         <div className="guides-cats" style={{ display: 'flex', gap: 8, marginTop: -16, position: 'relative', zIndex: 2 }}>
-          {cats.map((c) => {
+          {cats.map((c, ci) => {
             const isActive = c.id === activeCat;
             return (
               <button key={c.id} onClick={() => { setActiveCat(c.id); setActiveSub(null); setSearch(""); }}
@@ -244,29 +244,40 @@ export default function GuidesPage() {
             );
           })}
         </div>
-        {/* Sous-catégories sous la rangée */}
-        <div style={{ display: 'flex', gap: 6, marginTop: 18, flexWrap: 'wrap' as const }}>
-          {cat.subs.map((s) => {
-            const subActive = activeSub === s.title;
-            return (
-              <button key={s.title} onClick={() => setActiveSub(subActive ? null : s.title)}
-                style={{
-                  fontSize: 12, fontWeight: 600,
-                  color: subActive ? '#fff' : '#5a6670',
-                  background: subActive ? cat.color : '#fff',
-                  border: `1.5px solid ${subActive ? cat.color : '#dce2e6'}`,
-                  padding: '8px 16px', borderRadius: 8,
-                  cursor: 'pointer', fontFamily: 'inherit',
-                  transition: 'all 0.15s',
-                }}
-                onMouseEnter={(e) => { if (!subActive) { e.currentTarget.style.borderColor = cat.color; e.currentTarget.style.color = cat.color; e.currentTarget.style.background = cat.color + '08'; } }}
-                onMouseLeave={(e) => { if (!subActive) { e.currentTarget.style.borderColor = '#dce2e6'; e.currentTarget.style.color = '#5a6670'; e.currentTarget.style.background = '#fff'; } }}
-              >
-                {s.title} <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.7 }}>{s.articles.length}</span>
-              </button>
-            );
-          })}
-        </div>
+        {/* Sous-catégories — positionnées selon la card active */}
+        {(() => {
+          const activeIndex = cats.findIndex((c) => c.id === activeCat);
+          const totalCats = cats.length;
+          const leftPercent = ((activeIndex + 0.5) / totalCats) * 100;
+          return (
+            <div style={{ display: 'flex', gap: 6, marginTop: 18, justifyContent: 'flex-start', position: 'relative' as const }}>
+              <div style={{ display: 'flex', gap: 6, position: 'absolute' as const, left: `${leftPercent}%`, transform: 'translateX(-50%)' }}>
+                {cat.subs.map((s) => {
+                  const subActive = activeSub === s.title;
+                  return (
+                    <button key={s.title} onClick={() => setActiveSub(subActive ? null : s.title)}
+                      style={{
+                        fontSize: 12, fontWeight: 600,
+                        color: subActive ? '#fff' : '#5a6670',
+                        background: subActive ? cat.color : '#fff',
+                        border: `1.5px solid ${subActive ? cat.color : '#dce2e6'}`,
+                        padding: '8px 16px', borderRadius: 8,
+                        cursor: 'pointer', fontFamily: 'inherit',
+                        transition: 'all 0.15s', whiteSpace: 'nowrap' as const,
+                      }}
+                      onMouseEnter={(e) => { if (!subActive) { e.currentTarget.style.borderColor = cat.color; e.currentTarget.style.color = cat.color; e.currentTarget.style.background = cat.color + '08'; } }}
+                      onMouseLeave={(e) => { if (!subActive) { e.currentTarget.style.borderColor = '#dce2e6'; e.currentTarget.style.color = '#5a6670'; e.currentTarget.style.background = '#fff'; } }}
+                    >
+                      {s.title} <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.7 }}>{s.articles.length}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Spacer pour garder la hauteur */}
+              <div style={{ height: 42 }} />
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── ARTICLES ── */}
