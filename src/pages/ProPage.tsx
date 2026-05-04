@@ -125,10 +125,15 @@ export default function ProPage() {
   const [activeProfileIdx, setActiveProfileIdx] = useState(0);
 
   useSEO({
-    title: 'Verimo Pro — Outil d’analyse pour professionnels de l’immobilier',
-    description: "Verimo Pro pour agents, investisseurs, marchands de biens et notaires : analyse de documents en volume, tableaux de bord, gains de temps et sécurisation des dossiers.",
+    title: 'Analyse de documents immobiliers pour professionnels — Verimo Pro',
+    description: "Agents immobiliers, mandataires, investisseurs, notaires : analysez vos dossiers de copropriété en volume. PV d'AG, DPE, diagnostics, etc. Rapports scorés, gain de temps.",
     canonical: '/pro',
   });
+
+
+
+
+
 
   return (
     <div className="bg-white text-[#0f172a] antialiased overflow-x-hidden" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
