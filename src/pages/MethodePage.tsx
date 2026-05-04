@@ -345,8 +345,8 @@ function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
 ══════════════════════════════════════════ */
 export default function MethodePage() {
   useSEO({
-    title: 'Méthode Verimo — Comment nous analysons vos documents immobiliers',
-    description: "Découvrez la méthode Verimo : documents analysés, points vérifiés, calcul du score et garde-fous. Transparence totale sur notre analyse immobilière.",
+    title: 'Comment analyser vos documents immobiliers avant un achat — Méthode Verimo',
+    description: "Découvrez comment Verimo analyse vos documents d'achat immobilier : PV d'AG, DPE, diagnostics, règlement, appels de charges, compromis, etc. Score, risques et recommandations.",
     canonical: '/methode',
   });
 
