@@ -238,7 +238,7 @@ export default function TarifsPage() {
       </section>
 
       {/* Transition fluide hero → contenu */}
-      <div style={{ height: 60, background: 'linear-gradient(180deg, #e6f3f7 0%, #f4f7f9 100%)', marginTop: -1 }} />
+      <div style={{ height: 100, background: 'linear-gradient(180deg, #e6f3f7 0%, #edf2f6 30%, #f0f3f6 60%, #f4f7f9 100%)', marginTop: -1 }} />
 
       {/* ── CARTES ── */}
       <section style={{ padding: 'clamp(32px,5vw,52px) 20px 0', maxWidth: 1100, margin: '0 auto' }}>
