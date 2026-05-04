@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Search, ChevronRight, ChevronDown, ShieldCheck, BookOpen } from "lucide-react";
+import { Search, ChevronRight, ChevronDown, ShieldCheck } from "lucide-react";
 import { useSEO } from "../hooks/useSEO";
 
 const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
