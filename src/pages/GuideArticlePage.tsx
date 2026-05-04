@@ -174,25 +174,44 @@ export default function GuideArticlePage() {
       : { title: 'Guide non trouvé — Verimo', description: '' }
   );
 
-  // Schema.org Article
+  // Schema.org Article + BreadcrumbList
   useEffect(() => {
     if (!article) return;
-    const schema = {
-      '@context': 'https://schema.org',
-      '@type': 'Article',
-      headline: article.title,
-      description: article.seo.description,
-      datePublished: article.publishedAt,
-      dateModified: article.updatedAt,
-      author: { '@type': 'Organization', name: 'Verimo', url: 'https://www.verimo.fr' },
-      publisher: { '@type': 'Organization', name: 'Verimo', url: 'https://www.verimo.fr' },
-      mainEntityOfPage: `https://www.verimo.fr/guides/${article.slug}`,
-    };
-    const script = document.createElement('script');
-    script.type = 'application/ld+json';
-    script.text = JSON.stringify(schema);
-    document.head.appendChild(script);
-    return () => { document.head.removeChild(script); };
+    const schemas = [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: article.title,
+        description: article.seo.description,
+        datePublished: article.publishedAt,
+        dateModified: article.updatedAt,
+        author: { '@type': 'Organization', name: 'Verimo', url: 'https://www.verimo.fr' },
+        publisher: { '@type': 'Organization', name: 'Verimo', url: 'https://www.verimo.fr' },
+        mainEntityOfPage: `https://www.verimo.fr/guides/${article.slug}`,
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Accueil', item: 'https://www.verimo.fr/' },
+          { '@type': 'ListItem', position: 2, name: 'Guides', item: 'https://www.verimo.fr/guides' },
+          { '@type': 'ListItem', position: 3, name: article.categoryLabel, item: `https://www.verimo.fr/guides?cat=${article.category}` },
+          { '@type': 'ListItem', position: 4, name: article.title },
+        ],
+      },
+    ];
+    const scripts = schemas.map((s) => {
+      const script = document.createElement('script');
+      script.type = 'application/ld+json';
+      script.text = JSON.stringify(s);
+      document.head.appendChild(script);
+      return script;
+    });
+    // og:type article
+    let ogType = document.querySelector<HTMLMetaElement>('meta[property="og:type"]');
+    if (!ogType) { ogType = document.createElement('meta'); ogType.setAttribute('property', 'og:type'); document.head.appendChild(ogType); }
+    ogType.content = 'article';
+    return () => { scripts.forEach((s) => document.head.removeChild(s)); if (ogType) ogType.content = 'website'; };
   }, [article]);
 
   if (!article) {
