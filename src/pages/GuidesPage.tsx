@@ -215,7 +215,7 @@ export default function GuidesPage() {
       {/* ── CATÉGORIES ── */}
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 clamp(20px,4vw,48px)' }}>
         <div className="guides-cats" style={{ display: 'flex', gap: 8, marginTop: -16, position: 'relative', zIndex: 2 }}>
-          {cats.map((c, ci) => {
+          {cats.map((c) => {
             const isActive = c.id === activeCat;
             return (
               <button key={c.id} onClick={() => { setActiveCat(c.id); setActiveSub(null); setSearch(""); }}
