@@ -196,7 +196,6 @@ export default function TarifsPage() {
       {/* ── HERO ── */}
       <section style={{
         background: 'linear-gradient(165deg, #ffffff 0%, #f2f9fb 40%, #e6f3f7 100%)',
-        borderBottom: '1px solid #edf2f7',
         padding: 'clamp(44px,7vw,80px) 20px clamp(36px,5vw,56px)',
         textAlign: 'center',
         position: 'relative',
@@ -237,6 +236,9 @@ export default function TarifsPage() {
         </motion.div>
         </div>
       </section>
+
+      {/* Transition fluide hero → contenu */}
+      <div style={{ height: 60, background: 'linear-gradient(180deg, #e6f3f7 0%, #f4f7f9 100%)', marginTop: -1 }} />
 
       {/* ── CARTES ── */}
       <section style={{ padding: 'clamp(32px,5vw,52px) 20px 0', maxWidth: 1100, margin: '0 auto' }}>
