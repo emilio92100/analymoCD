@@ -6,9 +6,9 @@ interface SEOOptions {
   canonical?: string;
 }
 
-const DEFAULT_TITLE = 'Verimo — Vos documents décryptés, votre décision éclairée';
+const DEFAULT_TITLE = 'Verimo — Analyse de documents immobiliers avant achat | Risques, score et négociation';
 const DEFAULT_DESCRIPTION =
-  'Verimo décrypte vos documents immobiliers en quelques secondes. Vos documents décryptés, votre décision éclairée.';
+  "Analysez vos documents immobiliers avant d'acheter : PV d'AG, diagnostics, DPE, règlement de copropriété, appels de charges, etc. Score /20, risques détectés, pistes de négociation.";
 const BASE_URL = 'https://www.verimo.fr';
 
 /**
