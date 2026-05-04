@@ -380,7 +380,7 @@ export default function MethodePage() {
       {/* ── HERO COMPACT ──────────────────────────────────────── */}
       <section style={{
         background: 'linear-gradient(165deg, #ffffff 0%, #f2f9fb 40%, #e6f3f7 100%)',
-        borderBottom: '1px solid #edf2f7', padding: '52px 24px 44px', textAlign: 'center',
+        padding: '52px 24px 44px', textAlign: 'center',
         position: 'relative', overflow: 'hidden',
       }}>
         <div style={{ position: 'absolute', top: -60, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.04) 0%, transparent 70%)', pointerEvents: 'none' }} />
@@ -406,6 +406,9 @@ export default function MethodePage() {
           </motion.p>
         </div>
       </section>
+
+      {/* Transition fluide hero → contenu */}
+      <div style={{ height: 60, background: 'linear-gradient(180deg, #e6f3f7 0%, #ffffff 100%)', marginTop: -1 }} />
 
       {/* ── LAYOUT DEUX COLONNES ──────────────────────────────── */}
       <div style={{ maxWidth: 1160, margin: '0 auto', display: 'grid', gridTemplateColumns: '200px 1fr', gap: '0 64px', padding: '0 40px', alignItems: 'start' }}>
