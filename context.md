@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet complet — 4 mai 2026 (après sessions 1 à 24)
+# VERIMO — Contexte projet complet — 4 mai 2026 (après sessions 1 à 25)
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -126,6 +126,87 @@ UNIT_SIMPLE 2,90€   → price_1TRKRmBO4ekMbwz0ynLNDwn4
 
 ---
 
+## 🗂️ Backlog
+
+### 🔴 Priorité haute
+
+- [ ] **Guides — Rédaction des premiers articles** : commencer par les 5 articles les plus stratégiques SEO (analyser PV AG, DPE, 10 documents avant offre, charges copropriété, compromis de vente). Chaque article = une page `/guides/slug` avec useSEO dédié, contenu riche, encart 💡, CTA vers `/start`
+- [ ] **Guides — Articles individuels** : créer le système de rendu d'article (route `/guides/:slug` → charge le contenu correspondant)
+- [ ] **Différence analyse simple vs complète** : mieux expliquer la distinction sur les pages Méthode et/ou Tarifs (ex: section "Pour qui ?" ou comparatif visuel clair)
+- [ ] **Veille réglementaire — prompt analyser-run** — DPE collectif copros <50 lots (jan 2026), PPT obligatoire (jan 2026)
+- [ ] **Prompt caching API Anthropic** — ~90% d'économie possible
+- [ ] **Stripe TEST → production** — Passer les Price IDs en mode live
+- [ ] **Email notification quand admin répond à un ticket support** — edge function à créer
+
+### 🟡 Priorité normale
+
+- [ ] **SEO — Blog/contenu continu** : après les 5 premiers articles, continuer à publier 2-3 articles/semaine
+- [ ] **SEO — Image OG** : créer une image Open Graph pour chaque page publique
+- [ ] **SEO — Middleware Vercel Edge** (optionnel) : injecter les meta tags côté serveur pour les crawlers sociaux. Nice-to-have, le fix canonical dans index.html règle le principal
+- [ ] **Template email prospection** : 3 versions prêtes (V1 court, V2 visuel, V3 relance)
+- [ ] **Email confirmation après changement MDP** (nice-to-have)
+- [ ] **Compare : redesign verdict** — split synthèse par bien, layout two-column forces/issues, tags "Bien 1"/"Bien 2"
+- [ ] **Compare : remplacer edge function debug `comparer`** par version propre en production
+- [ ] **Headers dégradés sur ProPage et ContactPage** — harmoniser avec le dégradé appliqué sur les autres pages publiques
+
+---
+
+## ✅ Session 25 — 4 mai 2026 — Fix SEO canonical + GuidesPage redesign + headers dégradés
+
+### Résumé
+Session SEO et design : diagnostic Search Console des canonicals, fix du canonical statique dans index.html, redesign complet de la GuidesPage (nouveau layout cards + grille), et harmonisation des headers de toutes les pages publiques avec un dégradé subtil et des transitions fluides.
+
+### A. Fix SEO — Canonical et og:url
+
+- **Problème identifié** : `index.html` contenait `<link rel="canonical" href="https://www.verimo.fr/" />` et `<meta property="og:url" content="https://www.verimo.fr/" />` en dur → toutes les pages SPA déclaraient la homepage comme canonical
+- **Impact** : Google Search Console montrait `/methode` avec canonical = `/` au lieu de `/methode`
+- **Fix** : suppression des deux lignes statiques de `index.html` — le `useSEO` de chaque page gère déjà le canonical et og:url dynamiquement en JS
+- **Sitemap** : déjà soumis dans Search Console, demande de re-indexation envoyée sur `/methode`
+- **Middleware Edge** : déplacé en backlog nice-to-have (le fix canonical règle le problème principal)
+
+### B. GuidesPage — Redesign complet
+
+**Nouveau layout (remplacement total du fichier) :**
+- Header clair avec dégradé subtil (blanc → bleu clair) + cercles décoratifs
+- Badge **"GUIDES VERIMO"** en bloc visible (fond teinté, bordure, lignes décoratives)
+- **H1 SEO** : "Analysez vos documents immobiliers avant de signer"
+- Animation du trait sous "avant de signer" ralentie (3s au lieu de 1.2s)
+- Sous-titre plus visible (15px, couleur plus foncée, texte raccourci pour une seule ligne)
+- Barre de recherche + quick filters (PV d'AG, DPE, Charges, Compromis)
+- **Catégories en 5 cards horizontales** avec flèche sous la card active, animations Framer Motion (spring scale, layoutId sur la flèche, whileHover/whileTap)
+- **Sous-catégories supprimées** (jugées inutiles UX)
+- **Articles en grille 3 colonnes** avec cards blanches, badges doc ou badges catégorie
+- **Icônes modifiées** : Acheteurs 🧑‍💼, Vendeurs 🤝
+- **Blocs sans docInfo** : badge catégorie ajouté (icône + label de la catégorie) pour habiller tous les blocs
+- **CTA redesigné** : "Votre futur achat mérite mieux qu'une lecture en diagonale." + surtitre "Prêt à passer à l'action ?" + cercle décoratif + bouton "Analyser mon bien →"
+- **Transition entre catégories** : fade-in + slide-up sur les articles via `motion.div key={activeCat}`
+- Responsive mobile : grille 3→2→1 colonnes, catégories en grille 3→2 colonnes
+
+### C. Headers dégradés — 4 pages publiques
+
+**Dégradé appliqué** : `linear-gradient(165deg, #ffffff 0%, #f2f9fb 40%, #e6f3f7 100%)` + cercles décoratifs radial-gradient
+
+| Page | Avant | Après |
+|------|-------|-------|
+| HomePage | `bg-[#f4f7f9]` + blur circles | Dégradé + cercles + fondu bas 80px |
+| TarifsPage | `background: '#fff'` | Dégradé + cercles + fondu bas 80px |
+| MethodePage | `background: '#f8fafc'` | Dégradé + cercles + fondu bas 80px |
+| ExemplePage | `linear-gradient(150deg, #eef7fb...)` + borderBottom | Dégradé + cercles + section toggle avec fond dégradé continu |
+
+**Transitions fluides** : fondu interne en bas du hero (80px, transparent → blanc) intégré en position absolute pour éviter les traits visibles. ExemplePage : fond dégradé étendu à la section toggle pour continuité naturelle.
+
+### Fichiers modifiés session 25
+```
+index.html                          → supprimé canonical statique + og:url statique
+src/pages/GuidesPage.tsx            → redesign complet (nouveau layout, animations, CTA)
+src/pages/HomePage.tsx              → header dégradé + cercles + fondu
+src/pages/TarifsPage.tsx            → header dégradé + cercles + fondu
+src/pages/MethodePage.tsx           → header dégradé + cercles + fondu
+src/pages/ExemplePage.tsx           → header dégradé + cercles + transition toggle
+```
+
+---
+
 ## ✅ Session 24 — 4 mai 2026 — SEO complet + page Guides
 
 ### Résumé
@@ -210,31 +291,6 @@ src/App.tsx                         → routes /guides et /guides/:slug ajoutée
 src/components/layout/Footer.tsx    → lien "Guides" ajouté
 public/sitemap.xml                  → /guides ajouté
 ```
-
----
-
-## 🗂️ Backlog
-
-### 🔴 Priorité haute
-
-- [ ] **GuidesPage — Design final** : header H2 clair + body style A2 (accent coloré gauche, sidebar blanche) — design à finaliser et coder
-- [ ] **Guides — Rédaction des premiers articles** : commencer par les 5 articles les plus stratégiques SEO (analyser PV AG, DPE, 10 documents avant offre, charges copropriété, compromis de vente). Chaque article = une page `/guides/slug` avec useSEO dédié, contenu riche, encart 💡, CTA vers `/start`
-- [ ] **Guides — Articles individuels** : créer le système de rendu d'article (route `/guides/:slug` → charge le contenu correspondant)
-- [ ] **Différence analyse simple vs complète** : mieux expliquer la distinction sur les pages Méthode et/ou Tarifs (ex: section "Pour qui ?" ou comparatif visuel clair). Les visiteurs ne comprennent pas facilement ce que chaque formule inclut
-- [ ] **Veille réglementaire — prompt analyser-run** — DPE collectif copros <50 lots (jan 2026), PPT obligatoire (jan 2026)
-- [ ] **Prompt caching API Anthropic** — ~90% d'économie possible
-- [ ] **Stripe TEST → production** — Passer les Price IDs en mode live
-- [ ] **Email notification quand admin répond à un ticket support** — edge function à créer
-
-### 🟡 Priorité normale
-
-- [ ] **SEO — Blog/contenu continu** : après les 5 premiers articles, continuer à publier 2-3 articles/semaine pour rattraper Naveen et Prilow en volume de contenu indexé
-- [ ] **SEO — Image OG** : créer une image Open Graph pour chaque page publique (améliore le partage sur LinkedIn/Twitter/Facebook)
-- [ ] **SEO — Middleware Vercel Edge** (optionnel) : injecter les meta tags côté serveur pour les crawlers sociaux qui n'exécutent pas le JS. Nice-to-have, pas bloquant pour Google
-- [ ] **Template email prospection** : 3 versions prêtes (V1 court, V2 visuel, V3 relance). Configurer dans Mailjet avec sous-domaine `outreach.verimo.fr`
-- [ ] **Email confirmation après changement MDP** (nice-to-have)
-- [ ] **Compare : redesign verdict** — split synthèse par bien, layout two-column forces/issues, tags "Bien 1"/"Bien 2"
-- [ ] **Compare : remplacer edge function debug `comparer`** par version propre en production
 
 ---
 
