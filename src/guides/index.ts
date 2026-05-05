@@ -1,5 +1,5 @@
 /**
- * Index des articles de guides Verimo — 39 articles
+ * Index des articles de guides Verimo — 47 articles
  */
 
 import type { GuideArticle } from './types';
@@ -42,6 +42,14 @@ import vendrePassoire from './vendre-passoire-thermique-strategies';
 import mandataireAnalyser from './mandataire-analyser-dossier-10-minutes';
 import agentDifferencier from './agent-differencier-analyse-documentaire';
 import mandatairesReseau from './mandataires-iad-safti-capifrance-optimiser';
+import securiserTransactions from './securiser-transactions-checklist-agent';
+import fideliserClients from './fideliser-clients-rapport-analyse';
+import dueDiligence from './due-diligence-checklist-investisseur';
+import immeubleRapport from './analyser-immeuble-rapport-documents';
+import marchandBiens from './marchand-biens-bonnes-affaires-pv-ag';
+import investLocatif from './investissement-locatif-documents-rentabilite';
+import coproDifficulte from './coproprietes-difficulte-signaux-documents';
+import acheterLot from './acheter-lot-analyser-plusieurs-biens';
 
 const allArticles: GuideArticle[] = [
   analyserPvAg, dpeCommentLire, dixDocuments, chargesCopro, compromisVente,
@@ -52,6 +60,8 @@ const allArticles: GuideArticle[] = [
   achatMaison, travauxVotesNego, acheterSansAgence, vicesCaches,
   fraisNotaire, taxeFonciere, docsVendre, ddt, vendreCopro, presenterDocs,
   vendrePassoire, mandataireAnalyser, agentDifferencier, mandatairesReseau,
+  securiserTransactions, fideliserClients, dueDiligence, immeubleRapport,
+  marchandBiens, investLocatif, coproDifficulte, acheterLot,
 ];
 
 export function getArticleBySlug(slug: string): GuideArticle | undefined {
