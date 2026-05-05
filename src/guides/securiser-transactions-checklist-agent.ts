@@ -2,7 +2,7 @@
  * Guide : Sécuriser ses transactions — la checklist documentaire de l'agent
  * Catégorie : Professionnels > Agents & Mandataires
  * Dernière mise à jour : mai 2026
- */
+ */ 
 
 import type { GuideArticle } from './types';
 
