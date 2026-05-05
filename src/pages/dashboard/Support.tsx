@@ -6,6 +6,7 @@ import {
   Plus, ChevronLeft, CheckCircle, MessageSquare, HelpCircle,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import DashboardLoader from '../../components/DashboardLoader';
 
 type Ticket = { id: string; subject: string; status: 'open' | 'resolved'; created_at: string; updated_at: string; resolved_at: string | null; unread_by_user: boolean };
 type Message = { id: string; ticket_id: string; sender_type: 'user' | 'admin'; sender_name?: string | null; message: string; created_at: string };
@@ -81,9 +82,25 @@ export default function Support() {
   if (view === 'chat' && selectedTicketId) return <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: 'easeOut' }}><ChatView ticketId={selectedTicketId} onBack={() => { setView('list'); loadTickets(); }} /></motion.div>;
   if (view === 'suggestion') return <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: 'easeOut' }}><SuggestionView onBack={() => setView('list')} /></motion.div>;
 
+  if (loading) return <DashboardLoader message="Chargement du support…" />;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <style>{`@media (max-width: 640px) { .support-mobile-only { display: flex !important; } } @media (min-width: 641px) { .support-mobile-only { display: none !important; } }`}</style>
+
+      {/* Welcome banner */}
+      <div style={{ borderRadius: 16, overflow: 'hidden', border: '1px solid #d0e8f0', background: 'linear-gradient(135deg, #f0f7fb 0%, #e6f3f7 100%)' }}>
+        <div style={{ padding: '22px 24px', display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 46, height: 46, borderRadius: 12, background: '#fff', border: '1px solid #d0e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <HelpCircle size={22} style={{ color: '#2a7d9c' }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#0f2d3d', marginBottom: 4 }}>Bienvenue dans votre espace support</div>
+            <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>Consultez nos questions fréquentes ci-dessous — si vous ne trouvez pas votre réponse, ouvrez un ticket et notre équipe vous répondra rapidement.</div>
+          </div>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="support-header-btns" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 8 }}>
         <style>{`@media (max-width: 640px) { .support-header-btns { justify-content: flex-end !important; } }`}</style>
@@ -141,25 +158,31 @@ export default function Support() {
       )}
 
       {/* ═══ QUESTIONS FRÉQUENTES ═══ */}
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <HelpCircle size={16} style={{ color: '#2a7d9c' }} />
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+        <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg, #f0f7fb 0%, #e6f3f7 100%)', borderBottom: '1px solid #d0e8f0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fff', border: '1px solid #d0e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <HelpCircle size={20} style={{ color: '#2a7d9c' }} />
+            </div>
+            <div>
+              <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f2d3d', margin: 0 }}>Une question ?</h3>
+              <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>La réponse se trouve peut-être ici</p>
+            </div>
           </div>
-          <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>Questions fréquentes</h3>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           {faqCategories.map(cat => {
             const isOpen = openCat === cat.id;
             const Icon = cat.icon;
             return (
-              <div key={cat.id} style={{ borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden', background: '#fff' }}>
+              <div key={cat.id} style={{ borderRadius: 12, border: `1px solid ${isOpen ? cat.color + '30' : '#edf2f7'}`, overflow: 'hidden', background: isOpen ? cat.bg + '40' : '#fff', transition: 'all 0.2s' }}>
                 <button onClick={() => setOpenCat(isOpen ? null : cat.id)}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Icon size={15} style={{ color: cat.color }} />
+                  <div style={{ width: 34, height: 34, borderRadius: 9, background: cat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon size={16} style={{ color: cat.color }} />
                   </div>
-                  <span style={{ flex: 1, fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{cat.label}</span>
+                  <span style={{ flex: 1, fontSize: 14.5, fontWeight: 700, color: '#0f172a' }}>{cat.label}</span>
+                  <span style={{ fontSize: 11, color: '#94a3b8', marginRight: 4 }}>{cat.questions.length} question{cat.questions.length > 1 ? 's' : ''}</span>
                   <ChevronDown size={14} style={{ color: '#94a3b8', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
                 </button>
                 <AnimatePresence>
@@ -173,14 +196,14 @@ export default function Support() {
                             <div key={qi} style={{ borderTop: '1px solid #f1f5f9' }}>
                               <button onClick={() => setOpenQ(qOpen ? null : `${cat.id}-${qi}`)}
                                 style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 0', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
-                                <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#334155' }}>{q.q}</span>
+                                <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: '#334155' }}>{q.q}</span>
                                 <ChevronDown size={12} style={{ color: '#cbd5e1', transform: qOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
                               </button>
                               <AnimatePresence>
                                 {qOpen && (
                                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.15 }}
                                     style={{ overflow: 'hidden' }}>
-                                    <p style={{ fontSize: 13, color: '#64748b', lineHeight: 1.7, margin: '0 0 12px', paddingLeft: 0 }}>{q.a}</p>
+                                    <p style={{ fontSize: 13.5, color: '#64748b', lineHeight: 1.7, margin: '0 0 12px', paddingLeft: 0 }}>{q.a}</p>
                                   </motion.div>
                                 )}
                               </AnimatePresence>
@@ -194,6 +217,16 @@ export default function Support() {
               </div>
             );
           })}
+        </div>
+        {/* CTA en bas */}
+        <div style={{ padding: '18px 24px', background: '#f8fafc', borderTop: '1px solid #edf2f7', textAlign: 'center' }}>
+          <p style={{ fontSize: 13.5, color: '#64748b', margin: '0 0 12px', lineHeight: 1.6 }}>
+            Vous n&apos;avez pas trouvé votre réponse ? Notre équipe est là pour vous aider.
+          </p>
+          <button onClick={handleNewTicket}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '11px 24px', borderRadius: 11, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 700, boxShadow: '0 4px 12px rgba(15,45,61,0.15)' }}>
+            <MessageSquare size={15} /> Ouvrir un ticket
+          </button>
         </div>
       </div>
       {/* Popup ticket déjà en cours */}
