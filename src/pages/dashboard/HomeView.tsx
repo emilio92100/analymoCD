@@ -60,9 +60,10 @@ export default function HomeView() {
   const { credits } = useCredits();
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
-  const hasAnalyses = analyses.length > 0;
+  const analysesWithResult = analyses.filter(a => a.result);
+  const hasAnalyses = analysesWithResult.length > 0;
 
-  const totalAnalyses = analyses.length;
+  const totalAnalyses = analysesWithResult.length;
   const lastAnalyse = [...analyses].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
 
   if (analysesLoading) return <DashboardLoader message="Chargement de votre espace…" />;
