@@ -102,10 +102,10 @@ export default function Support() {
       {/* Tickets ouverts */}
       {openTickets.length > 0 && (
         <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', overflow: 'hidden' }}>
-          <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #edf2f7' }}>
-            <h3 style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <MessageSquare size={14} style={{ color: '#2a7d9c' }} /> Tickets en cours
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '2px 8px', borderRadius: 100 }}>{openTickets.length}</span>
+          <div style={{ padding: '16px 22px', background: '#f8fafc', borderBottom: '1px solid #edf2f7' }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
+              <MessageSquare size={16} style={{ color: '#2a7d9c' }} /> Tickets en cours
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '2px 9px', borderRadius: 100 }}>{openTickets.length}</span>
             </h3>
           </div>
           {openTickets.map((t, i) => <TicketRow key={t.id} ticket={t} isLast={i === openTickets.length - 1} onClick={() => { setSelectedTicketId(t.id); setView('chat'); }} />)}
@@ -115,9 +115,9 @@ export default function Support() {
       {/* Tickets résolus */}
       {resolvedTickets.length > 0 && (
         <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', overflow: 'hidden' }}>
-          <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #edf2f7' }}>
-            <h3 style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <CheckCircle size={14} style={{ color: '#16a34a' }} /> Résolus
+          <div style={{ padding: '16px 22px', background: '#f8fafc', borderBottom: '1px solid #edf2f7' }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
+              <CheckCircle size={16} style={{ color: '#16a34a' }} /> Résolus
             </h3>
           </div>
           {resolvedTickets.map((t, i) => <TicketRow key={t.id} ticket={t} isLast={i === resolvedTickets.length - 1} onClick={() => { setSelectedTicketId(t.id); setView('chat'); }} />)}
@@ -234,22 +234,22 @@ function TicketRow({ ticket, isLast, onClick }: { ticket: Ticket; isLast: boolea
   const isOpen = ticket.status === 'open';
   return (
     <button onClick={onClick}
-      style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px', background: 'none', border: 'none', borderBottom: isLast ? 'none' : '1px solid #f1f5f9', cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'background 0.15s' }}
+      style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 22px', background: 'none', border: 'none', borderBottom: isLast ? 'none' : '1px solid #f1f5f9', cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'background 0.15s' }}
       onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#fafcfd'; }}
       onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
-      <div style={{ width: 32, height: 32, borderRadius: 8, background: isOpen ? '#f0f7fb' : '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        {isOpen ? <MessageSquare size={14} style={{ color: '#2a7d9c' }} /> : <CheckCircle size={14} style={{ color: '#16a34a' }} />}
+      <div style={{ width: 36, height: 36, borderRadius: 9, background: isOpen ? '#f0f7fb' : '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        {isOpen ? <MessageSquare size={16} style={{ color: '#2a7d9c' }} /> : <CheckCircle size={16} style={{ color: '#16a34a' }} />}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{ticket.subject}</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>{ticket.subject}</span>
           {ticket.unread_by_user && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#2a7d9c', flexShrink: 0 }} />}
         </div>
-        <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+        <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 3 }}>
           {fmtDate(ticket.created_at)} · {isOpen ? 'En cours' : `Résolu le ${fmtDate(ticket.resolved_at!)}`}
         </div>
       </div>
-      <ChevronDown size={14} style={{ color: '#cbd5e1', transform: 'rotate(-90deg)', flexShrink: 0 }} />
+      <ChevronDown size={15} style={{ color: '#cbd5e1', transform: 'rotate(-90deg)', flexShrink: 0 }} />
     </button>
   );
 }
