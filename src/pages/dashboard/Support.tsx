@@ -168,14 +168,14 @@ export default function Support() {
 
       {/* ═══ QUESTIONS FRÉQUENTES ═══ */}
       <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', overflow: 'hidden' }}>
-        <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg, #f0f7fb 0%, #e6f3f7 100%)', borderBottom: '1px solid #d0e8f0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fff', border: '1px solid #d0e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <HelpCircle size={20} style={{ color: '#2a7d9c' }} />
+        <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg, #2a7d9c 0%, #0f2d3d 100%)', borderBottom: '1.5px solid #0f2d3d' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 0 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <HelpCircle size={20} style={{ color: '#fff' }} />
             </div>
             <div>
-              <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f2d3d', margin: 0 }}>Questions fréquentes</h3>
-              <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>Trouvez rapidement une réponse à votre question</p>
+              <h3 style={{ fontSize: 17, fontWeight: 800, color: '#fff', margin: 0 }}>Questions fréquentes</h3>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: '2px 0 0' }}>Trouvez rapidement une réponse à votre question</p>
             </div>
           </div>
         </div>
