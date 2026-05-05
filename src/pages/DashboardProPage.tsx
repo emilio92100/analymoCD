@@ -2603,18 +2603,16 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
           </div>
           <div>
             <label style={labelStyle}>Téléphone</label>
-            <input value={form.telephone} onChange={e => setForm(f => ({ ...f, telephone: e.target.value }))} style={inputStyle} />
+            <input value={form.telephone} onChange={e => setForm(f => ({ ...f, telephone: e.target.value }))} placeholder="06 12 34 56 78" style={inputStyle} />
           </div>
         </div>
         <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <div>
-            <label style={labelStyle}>Email de contact</label>
-            <input value={form.pro_contact_email} onChange={e => setForm(f => ({ ...f, pro_contact_email: e.target.value }))} placeholder={proProfile.email || ''} style={inputStyle} />
-            <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Si le client répond au mail, sa réponse arrivera sur cet email.</p>
-          </div>
-          <div>
-            <label style={labelStyle}>Téléphone de contact</label>
-            <input value={form.pro_contact_phone} onChange={e => setForm(f => ({ ...f, pro_contact_phone: e.target.value }))} style={inputStyle} />
+            <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
+              Email
+              <TooltipInfo text="Si un client répond à un rapport envoyé, sa réponse arrivera sur cet email. Si vous n'avez plus accès à cette adresse ou souhaitez la modifier, contactez le support ou faites une demande de modification dans la section Identité professionnelle." />
+            </label>
+            <input value={proProfile.email || ''} disabled style={{ ...inputStyle, background: '#f8fafc', color: '#94a3b8', cursor: 'not-allowed' }} />
           </div>
         </div>
       </div>
