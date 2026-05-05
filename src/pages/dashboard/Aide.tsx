@@ -25,17 +25,26 @@ const penalties = [
   { cat: 'Procédures', items: [
     { l: 'Procédure significative (litige bloquant, administration provisoire)', v: '-3' },
     { l: 'Procédure mineure (petit litige, mise en demeure)', v: '-1,5' },
+    { l: 'Tensions avec syndic documentées (quitus refusé + conflit)', v: '-0,5' },
   ]},
   { cat: 'Finances', items: [
     { l: 'Fonds travaux nul ou absent', v: '-1' },
+    { l: 'Fonds travaux insuffisant (< 5% du budget)', v: '-0,5' },
     { l: 'Impayés anormaux (> 15% du budget)', v: '-1' },
   ]},
   { cat: 'Diagnostics privatifs', items: [
+    { l: 'Diagnostic obligatoire manquant', v: '-0,75' },
     { l: 'DPE F (résidence principale)', v: '-2' },
     { l: 'DPE G (résidence principale)', v: '-3' },
     { l: 'DPE F (investissement)', v: '-4' },
     { l: 'DPE G (investissement)', v: '-6' },
     { l: 'Électricité : anomalies majeures', v: '-2' },
+    { l: 'Électricité : anomalies mineures', v: '-0,3' },
+    { l: 'Gaz : anomalies A1 (risque immédiat)', v: '-1' },
+    { l: 'Gaz : anomalies A2 (réparation urgente)', v: '-0,5' },
+    { l: 'Amiante privatif : matériaux dégradés', v: '-1' },
+    { l: 'Amiante privatif : matériaux suspects non prélevés', v: '-0,3' },
+    { l: 'Plomb (CREP) : revêtements dégradés', v: '-1' },
   ]},
   { cat: 'Diagnostics communs', items: [
     { l: 'Amiante parties communes dégradé', v: '-2' },
@@ -59,6 +68,8 @@ const bonuses = [
     { l: 'Fonds travaux conforme légal (5%)', v: '+0,5' },
     { l: 'Fonds travaux bien (6–9%)', v: '+1' },
     { l: 'Fonds travaux excellent (≥ 10%)', v: '+1,5' },
+    { l: 'Vendeur à jour de ses charges', v: '+0,5' },
+    { l: 'Budget stable sur plusieurs exercices', v: '+0,5' },
   ]},
   { cat: 'Diagnostics privatifs', items: [
     { l: 'DPE A, B ou C', v: '+1,5' },
@@ -67,6 +78,7 @@ const bonuses = [
   ]},
   { cat: 'Diagnostics communs', items: [
     { l: 'DTG état bon', v: '+1' },
+    { l: 'Diagnostics parties communes complets sans alerte', v: '+0,5' },
     { l: 'Entretien chaudière certifié', v: '+0,5' },
     { l: 'Immeuble bien entretenu', v: '+0,5' },
   ]},
