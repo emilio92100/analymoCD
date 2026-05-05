@@ -2610,7 +2610,7 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
           <div>
             <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
               Email
-              <TooltipInfo text="Si un client répond à un rapport envoyé, sa réponse arrivera sur cet email. Si vous n'avez plus accès à cette adresse ou souhaitez la modifier, contactez le support ou faites une demande de modification dans la section Identité professionnelle." />
+              <TooltipInfo text="Les réponses de vos clients aux rapports envoyés arrivent sur cet email. Pour le modifier, contactez le support ou demandez une modification via Identité professionnelle." />
             </label>
             <input value={proProfile.email || ''} disabled style={{ ...inputStyle, background: '#f8fafc', color: '#94a3b8', cursor: 'not-allowed' }} />
           </div>
@@ -4333,9 +4333,9 @@ function TooltipInfo({ text }: { text: string }) {
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 998 }} />
-          <div style={{ position: 'absolute', top: 22, left: '50%', transform: 'translateX(-50%)', zIndex: 999, background: '#0f2d3d', color: '#fff', fontSize: 12, lineHeight: 1.5, padding: '10px 14px', borderRadius: 10, width: 240, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
+          <div style={{ position: 'absolute', top: 22, left: 0, zIndex: 999, background: '#0f2d3d', color: '#fff', fontSize: 12, lineHeight: 1.5, padding: '10px 14px', borderRadius: 10, width: 240, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
             {text}
-            <div style={{ position: 'absolute', top: -5, left: '50%', transform: 'translateX(-50%) rotate(45deg)', width: 10, height: 10, background: '#0f2d3d' }} />
+            <div style={{ position: 'absolute', top: -5, left: 8, transform: 'rotate(45deg)', width: 10, height: 10, background: '#0f2d3d' }} />
           </div>
         </>
       )}
