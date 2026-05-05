@@ -83,11 +83,13 @@ export default function Support() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <style>{`@media (max-width: 640px) { .support-mobile-only { display: flex !important; } } @media (min-width: 641px) { .support-mobile-only { display: none !important; } }`}</style>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
         {isPro && (
           <button onClick={() => setView('suggestion')}
-            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, background: '#fffbeb', color: '#92400e', border: '1.5px solid #fde68a', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
+            className="support-mobile-only"
+            style={{ display: 'none', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, background: '#fffbeb', color: '#92400e', border: '1.5px solid #fde68a', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>
             <Lightbulb size={14} /> J&apos;ai une idée
           </button>
         )}
