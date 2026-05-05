@@ -128,11 +128,11 @@ export default function Support() {
 
       {/* Tickets ouverts */}
       {openTickets.length > 0 && (
-        <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #d0e8f0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(42,125,156,0.08)' }}>
-          <div style={{ padding: '16px 22px', background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderBottom: '1.5px solid #d0e8f0' }}>
-            <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f2d3d', margin: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
-              <MessageSquare size={17} style={{ color: '#2a7d9c' }} /> Tickets en cours
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: '#2a7d9c', padding: '2px 10px', borderRadius: 100 }}>{openTickets.length}</span>
+        <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #0f2d3d', overflow: 'hidden', boxShadow: '0 2px 12px rgba(15,45,61,0.1)' }}>
+          <div style={{ padding: '16px 22px', background: 'linear-gradient(135deg, #2a7d9c 0%, #0f2d3d 100%)' }}>
+            <h3 style={{ fontSize: 16, fontWeight: 800, color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
+              <MessageSquare size={17} style={{ color: '#fff' }} /> Tickets en cours
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#2a7d9c', background: '#fff', padding: '2px 10px', borderRadius: 100 }}>{openTickets.length}</span>
             </h3>
           </div>
           {openTickets.map((t, i) => <TicketRow key={t.id} ticket={t} isLast={i === openTickets.length - 1} onClick={() => { setSelectedTicketId(t.id); setView('chat'); }} />)}
@@ -168,14 +168,14 @@ export default function Support() {
 
       {/* ═══ QUESTIONS FRÉQUENTES ═══ */}
       <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', overflow: 'hidden' }}>
-        <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg, #2a7d9c 0%, #0f2d3d 100%)', borderBottom: '1.5px solid #0f2d3d' }}>
+        <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg, #f0f7fb 0%, #e8f4f8 100%)', borderBottom: '1.5px solid #d0e8f0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 0 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <HelpCircle size={20} style={{ color: '#fff' }} />
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fff', border: '1px solid #d0e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <HelpCircle size={20} style={{ color: '#2a7d9c' }} />
             </div>
             <div>
-              <h3 style={{ fontSize: 17, fontWeight: 800, color: '#fff', margin: 0 }}>Questions fréquentes</h3>
-              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: '2px 0 0' }}>Trouvez rapidement une réponse à votre question</p>
+              <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f2d3d', margin: 0 }}>Questions fréquentes</h3>
+              <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>Trouvez rapidement une réponse à votre question</p>
             </div>
           </div>
         </div>
