@@ -10,7 +10,7 @@ export default function ConfidentialitePage() {
 
   return (
     <main style={{ background: '#f8fafc', fontFamily: "'DM Sans', system-ui, sans-serif", paddingTop: 80 }}>
-      <section style={{ maxWidth: 760, margin: '0 auto', padding: '52px 24px 88px' }}>
+      <section style={{ maxWidth: 960, margin: '0 auto', padding: '52px 24px 88px' }}>
 
         <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#2a7d9c', textDecoration: 'none', fontWeight: 600, marginBottom: 32 }}>
           ← Retour à l'accueil
@@ -19,7 +19,7 @@ export default function ConfidentialitePage() {
         <h1 style={{ fontSize: 'clamp(28px,4vw,42px)', fontWeight: 900, color: '#0f2d3d', marginBottom: 8, letterSpacing: '-0.025em' }}>
           Politique de confidentialité
         </h1>
-        <p style={{ fontSize: 14, color: '#94a3b8', marginBottom: 48 }}>Dernière mise à jour : avril 2026</p>
+        <p style={{ fontSize: 14, color: '#94a3b8', marginBottom: 48 }}>Dernière mise à jour : mai 2026</p>
 
         {[
           {
@@ -52,9 +52,16 @@ Nous nous engageons à protéger vos données personnelles conformément au Règ
             content: `Verimo utilise une technologie d'analyse documentaire avancée pour extraire, croiser et synthétiser les informations clés de vos documents immobiliers (PV d'assemblée générale, diagnostics, règlement de copropriété, appels de charges, etc.).
 
 Fonctionnement technique :
-Vos documents PDF sont transmis de manière sécurisée au modèle d'intelligence artificielle Claude (version Sonnet 4, développé par Anthropic). Ce modèle analyse le contenu de chaque document, croise les données entre eux (charges, travaux votés, diagnostics, procédures, finances de la copropriété), et produit un rapport structuré comprenant un score sur 20, des bonus et pénalités détaillés, des risques identifiés et une recommandation.
+Vos documents PDF sont transmis de manière sécurisée au modèle d'intelligence artificielle Claude Sonnet 4 (développé par Anthropic). Ce modèle analyse le contenu de chaque document, croise les données entre eux (charges, travaux votés, diagnostics, procédures, finances de la copropriété), et produit un rapport structuré comprenant un score sur 20, des bonus et pénalités détaillés, des risques identifiés et une recommandation.
 
-Ce traitement est entièrement automatisé — aucun employé de Verimo ne consulte vos documents ni vos rapports. L'analyse est réalisée via l'API d'Anthropic, conformément à leurs conditions d'utilisation professionnelles (les données envoyées via l'API ne sont pas utilisées pour entraîner leurs modèles).
+Pourquoi Claude d'Anthropic ?
+Verimo a choisi le modèle Claude d'Anthropic pour plusieurs raisons :
+• Fiabilité et précision : Claude est reconnu comme l'un des modèles les plus performants pour l'analyse de documents longs et complexes, avec un taux d'erreur très faible sur l'extraction d'informations factuelles.
+• Sécurité des données : Anthropic garantit contractuellement que les données envoyées via son API professionnelle ne sont ni stockées durablement, ni utilisées pour entraîner ou améliorer ses modèles. Vos documents restent vos documents.
+• Transparence : Anthropic est une entreprise spécialisée dans la sécurité de l'intelligence artificielle, fondée sur des principes de responsabilité et de transparence. Elle est soumise à des audits réguliers et publie ses pratiques de confidentialité.
+• Conformité européenne : le traitement est encadré par des clauses contractuelles types (CCT) conformes aux exigences du RGPD pour les transferts de données hors Union européenne.
+
+Ce traitement est entièrement automatisé — aucun employé de Verimo ne consulte vos documents ni vos rapports.
 
 Vos documents sont automatiquement supprimés après génération du rapport. Ils ne sont ni conservés, ni revendus, ni partagés à des tiers à des fins commerciales. Seul le rapport d'analyse est conservé dans votre espace personnel.`
           },
