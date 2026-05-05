@@ -3811,6 +3811,9 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [clientInvoices, setClientInvoices] = useState<{ id: string; date: string; description: string; amount: string; pdf_url: string | null; type: string }[]>([]);
   const [clientInvoicesLoading, setClientInvoicesLoading] = useState(false);
   const [editingIdentity, setEditingIdentity] = useState(false);
+  const [editingPersonal, setEditingPersonal] = useState(false);
+  const [editFullName, setEditFullName] = useState('');
+  const [editTelephone, setEditTelephone] = useState('');
   const [editCompanyName, setEditCompanyName] = useState('');
   const [editNetwork, setEditNetwork] = useState('');
   const [editSiret, setEditSiret] = useState('');
@@ -4129,6 +4132,79 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                       ? `📧 Mail envoyé le ${fmtDateTime(invitations[0].sent_at)} — en attente d'activation`
                       : '⏳ Invitation créée, mail non encore envoyé'}
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Informations personnelles */}
+          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: 20, marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <User size={15} style={{ color: '#2a7d9c' }} /> Informations personnelles
+              </h3>
+              {!editingPersonal ? (
+                <button onClick={() => { setEditFullName(selected.full_name || ''); setEditTelephone(selected.telephone || ''); setEditingPersonal(true); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 14px', borderRadius: 8, background: '#f0f7fb', border: '1px solid #c7dde8', color: '#2a7d9c', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+                  ✏️ Modifier
+                </button>
+              ) : (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button onClick={() => setEditingPersonal(false)}
+                    style={{ padding: '6px 14px', borderRadius: 8, background: '#fff', border: '1px solid #edf2f7', color: '#64748b', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+                    Annuler
+                  </button>
+                  <button onClick={async () => {
+                    const updates: Record<string, string | null> = {
+                      full_name: editFullName.trim() || null,
+                      telephone: editTelephone.trim() || null,
+                    };
+                    const { error } = await supabase.from('profiles').update(updates).eq('id', selected.id);
+                    if (error) { showToast('Erreur: ' + error.message); return; }
+                    const changes: string[] = [];
+                    if (editFullName !== (selected.full_name || '')) changes.push(`Nom: "${selected.full_name || '—'}" → "${editFullName || '—'}"`);
+                    if (editTelephone !== (selected.telephone || '')) changes.push(`Téléphone: "${selected.telephone || '—'}" → "${editTelephone || '—'}"`);
+                    if (changes.length > 0) logAction(`Infos personnelles modifiées pour ${selected.full_name}: ${changes.join(', ')}`);
+                    setSelected({ ...selected, ...updates });
+                    setEditingPersonal(false);
+                    showToast('Informations personnelles mises à jour');
+                  }}
+                    style={{ padding: '6px 14px', borderRadius: 8, background: '#2a7d9c', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+                    ✅ Enregistrer
+                  </button>
+                </div>
+              )}
+            </div>
+            {editingPersonal ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 4, display: 'block' }}>Nom complet</label>
+                  <input value={editFullName} onChange={e => setEditFullName(e.target.value)} placeholder="Prénom Nom"
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 4, display: 'block' }}>Téléphone mobile</label>
+                  <input value={editTelephone} onChange={e => setEditTelephone(e.target.value)} placeholder="06 12 34 56 78"
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 4, display: 'block' }}>Email</label>
+                  <input value={selected.email || ''} disabled
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', background: '#f8fafc', color: '#94a3b8' }} />
+                  <span style={{ fontSize: 10, color: '#94a3b8', marginTop: 2, display: 'block' }}>Utilisez le bouton "Modifier email" pour changer l&apos;adresse</span>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {[
+                  { label: 'Nom complet', value: selected.full_name },
+                  { label: 'Téléphone mobile', value: selected.telephone },
+                  { label: 'Email', value: selected.email },
+                ].map((f, i) => (
+                  <div key={i} style={{ padding: '10px 12px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 3 }}>{f.label}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: f.value ? '#0f172a' : '#cbd5e1' }}>{f.value || '—'}</div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
