@@ -894,7 +894,7 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser }: { showToast:
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Chargement…</div>;
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 200px)', borderRadius: 16, overflow: 'hidden', border: '1px solid #edf2f7', background: '#fff' }}>
+    <div style={{ display: 'flex', height: 'calc(100vh - 140px)', borderRadius: 16, overflow: 'hidden', border: '1px solid #edf2f7', background: '#fff' }}>
       {/* ─── LEFT PANEL : Users ─── */}
       <div style={{ width: 300, borderRight: '1px solid #edf2f7', display: 'flex', flexDirection: 'column', flexShrink: 0, background: '#fff' }}>
         <div style={{ padding: '12px 14px', borderBottom: '1px solid #edf2f7', display: 'flex', alignItems: 'center', gap: 8 }}>
