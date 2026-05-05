@@ -128,11 +128,11 @@ export default function Support() {
 
       {/* Tickets ouverts */}
       {openTickets.length > 0 && (
-        <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', overflow: 'hidden' }}>
-          <div style={{ padding: '16px 22px', background: '#f8fafc', borderBottom: '1px solid #edf2f7' }}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
-              <MessageSquare size={16} style={{ color: '#2a7d9c' }} /> Tickets en cours
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '2px 9px', borderRadius: 100 }}>{openTickets.length}</span>
+        <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #d0e8f0', overflow: 'hidden', boxShadow: '0 2px 12px rgba(42,125,156,0.08)' }}>
+          <div style={{ padding: '16px 22px', background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderBottom: '1.5px solid #d0e8f0' }}>
+            <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f2d3d', margin: 0, display: 'flex', alignItems: 'center', gap: 9 }}>
+              <MessageSquare size={17} style={{ color: '#2a7d9c' }} /> Tickets en cours
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: '#2a7d9c', padding: '2px 10px', borderRadius: 100 }}>{openTickets.length}</span>
             </h3>
           </div>
           {openTickets.map((t, i) => <TicketRow key={t.id} ticket={t} isLast={i === openTickets.length - 1} onClick={() => { setSelectedTicketId(t.id); setView('chat'); }} />)}
