@@ -73,8 +73,8 @@ function LoadingScreen() {
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       {/* Logo */}
-      <div style={{ marginBottom: 32 }}>
-        <img src="/logo.png" alt="Verimo" style={{ width: 200, maxWidth: '60%', height: 'auto', objectFit: 'contain' }} />
+      <div style={{ marginBottom: 32, width: '100%', display: 'flex', justifyContent: 'center' }}>
+        <img src="/logo.png" alt="Verimo" style={{ width: 240, maxWidth: '70%', height: 'auto', objectFit: 'contain' }} />
       </div>
 
       {/* Spinner */}
