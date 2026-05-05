@@ -276,14 +276,14 @@ function TopbarPro({ onMenuClick, title, proProfile, unreadCount, notifications,
   const handleLogout = () => { localStorage.clear(); supabase.auth.signOut(); window.location.replace('/'); };
 
   return (
-    <header style={{ height: 68, background: '#fff', borderBottom: '1px solid #edf2f7', display: 'flex', alignItems: 'center', padding: '0 24px', gap: 12, position: 'sticky', top: 0, zIndex: 40, flexShrink: 0 }}>
-      <button className="mobile-menu-btn" onClick={onMenuClick} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0f2d3d', padding: 4, display: 'none' }}><Menu size={20} /></button>
-      <p className="topbar-title" style={{ flex: 1, fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>{title}</p>
+    <header style={{ height: 76, background: '#fff', borderBottom: '1px solid #edf2f7', display: 'flex', alignItems: 'center', padding: '0 28px', gap: 14, position: 'sticky', top: 0, zIndex: 40, flexShrink: 0 }}>
+      <button className="mobile-menu-btn" onClick={onMenuClick} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0f2d3d', padding: 4, display: 'none' }}><Menu size={22} /></button>
+      <p className="topbar-title" style={{ flex: 1, fontSize: 20, fontWeight: 800, color: '#0f172a', margin: 0 }}>{title}</p>
 
       {/* Bouton Besoin d'aide */}
       <button onClick={() => { if ((window as unknown as Record<string, unknown>).__openHelp) ((window as unknown as Record<string, () => void>).__openHelp)(); }}
         className="topbar-help-btn"
-        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none', cursor: 'pointer', color: '#fff', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(217,119,6,0.2)', transition: 'all 0.15s' }}
+        style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 10, background: 'linear-gradient(135deg, #f59e0b, #d97706)', border: 'none', cursor: 'pointer', color: '#fff', fontSize: 13.5, fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(217,119,6,0.2)', transition: 'all 0.15s' }}
         onMouseOver={e => { (e.currentTarget as HTMLElement).style.opacity = '0.9'; }}
         onMouseOut={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}>
         <LifeBuoy size={13} /> Besoin d&apos;aide
@@ -292,7 +292,7 @@ function TopbarPro({ onMenuClick, title, proProfile, unreadCount, notifications,
       {/* Bouton Suggestion */}
       <button onClick={() => { if ((window as unknown as Record<string, unknown>).__openSuggestion) ((window as unknown as Record<string, () => void>).__openSuggestion)(); }}
         className="topbar-suggest-btn"
-        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 9, background: '#fff', border: '1.5px solid #edf2f7', cursor: 'pointer', color: '#64748b', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', transition: 'all 0.15s' }}
+        style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 10, background: '#fff', border: '1.5px solid #edf2f7', cursor: 'pointer', color: '#64748b', fontSize: 13.5, fontWeight: 700, whiteSpace: 'nowrap', transition: 'all 0.15s' }}
         onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#d97706'; el.style.color = '#d97706'; el.style.background = '#fffbeb'; }}
         onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.color = '#64748b'; el.style.background = '#fff'; }}>
         <Lightbulb size={13} /> Suggestion
@@ -301,8 +301,8 @@ function TopbarPro({ onMenuClick, title, proProfile, unreadCount, notifications,
       {/* Cloche notifications */}
       <div ref={bellRef} style={{ position: 'relative' }}>
         <button onClick={() => { setBellOpen(!bellOpen); if (!bellOpen && onMarkAllRead) onMarkAllRead(); }}
-          style={{ width: 36, height: 36, borderRadius: 9, background: bellOpen ? '#f0f7fb' : '#f8fafc', border: `1px solid ${bellOpen ? '#c7dde8' : '#edf2f7'}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', position: 'relative', transition: 'all 0.15s' }}>
-          <Bell size={16} />
+          style={{ width: 40, height: 40, borderRadius: 10, background: bellOpen ? '#f0f7fb' : '#f8fafc', border: `1px solid ${bellOpen ? '#c7dde8' : '#edf2f7'}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', position: 'relative', transition: 'all 0.15s' }}>
+          <Bell size={18} />
           {(unreadCount || 0) > 0 && (
             <span style={{
               position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 100,
@@ -361,12 +361,12 @@ function TopbarPro({ onMenuClick, title, proProfile, unreadCount, notifications,
       <div ref={dropdownRef} style={{ position: 'relative' }}>
         <button onClick={() => setDropdownOpen(!dropdownOpen)}
           style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '6px 10px 6px 6px', borderRadius: 10, background: dropdownOpen ? '#f0f7fb' : '#f8fafc', border: `1px solid ${dropdownOpen ? '#c7dde8' : '#edf2f7'}`, cursor: 'pointer', transition: 'all 0.15s' }}>
-          <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff' }}>
+          <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff' }}>
             {(name.charAt(0) || 'P').toUpperCase()}
           </div>
           <div style={{ textAlign: 'left' }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', display: 'block', lineHeight: 1.2 }} className="topbar-cta">{name}</span>
-            {company && <span style={{ fontSize: 10, color: '#94a3b8', display: 'block' }} className="topbar-cta">{company}</span>}
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', display: 'block', lineHeight: 1.2 }} className="topbar-cta">{name}</span>
+            {company && <span style={{ fontSize: 11, color: '#94a3b8', display: 'block' }} className="topbar-cta">{company}</span>}
           </div>
           <ChevronDown size={13} style={{ color: '#94a3b8' }} />
         </button>
