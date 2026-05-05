@@ -2,7 +2,7 @@
  * Guide : Fidéliser ses clients acquéreurs avec un rapport d'analyse clair
  * Catégorie : Professionnels > Agents & Mandataires
  * Dernière mise à jour : mai 2026
- */ 
+ */
 
 import type { GuideArticle } from './types';
 
