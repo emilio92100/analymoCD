@@ -1,5 +1,5 @@
 /**
- * Index des articles de guides Verimo — 36 articles
+ * Index des articles de guides Verimo — 39 articles
  */
 
 import type { GuideArticle } from './types';
@@ -39,6 +39,9 @@ import ddt from './ddt-dossier-diagnostics-techniques';
 import vendreCopro from './vendre-copropriete-documents-specifiques';
 import presenterDocs from './presenter-documents-rassurer-acheteur';
 import vendrePassoire from './vendre-passoire-thermique-strategies';
+import mandataireAnalyser from './mandataire-analyser-dossier-10-minutes';
+import agentDifferencier from './agent-differencier-analyse-documentaire';
+import mandatairesReseau from './mandataires-iad-safti-capifrance-optimiser';
 
 const allArticles: GuideArticle[] = [
   analyserPvAg, dpeCommentLire, dixDocuments, chargesCopro, compromisVente,
@@ -48,7 +51,7 @@ const allArticles: GuideArticle[] = [
   argumentsNego, dpeNegocier, diagAmiante, loiCarrez, erp, diagElecGaz,
   achatMaison, travauxVotesNego, acheterSansAgence, vicesCaches,
   fraisNotaire, taxeFonciere, docsVendre, ddt, vendreCopro, presenterDocs,
-  vendrePassoire,
+  vendrePassoire, mandataireAnalyser, agentDifferencier, mandatairesReseau,
 ];
 
 export function getArticleBySlug(slug: string): GuideArticle | undefined {
