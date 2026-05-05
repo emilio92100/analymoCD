@@ -33,10 +33,7 @@ export default function DashboardLoader({ message }: { message?: string }) {
           }}
         />
         <div style={{ position: 'absolute', inset: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width={48} height={48} viewBox="0 0 72 72">
-            <path d="M36 10 L60 20 L60 40 Q60 58 36 66 Q12 58 12 40 L12 20 Z" fill="#2a7d9c" />
-            <path d="M22 32 L36 50 L50 32" stroke="white" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-          </svg>
+          <img src="/favicon.svg" alt="Verimo" style={{ width: 48, height: 48, objectFit: 'contain' }} />
         </div>
       </div>
       <div style={{ textAlign: 'center' }}>
