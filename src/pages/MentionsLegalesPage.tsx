@@ -10,7 +10,7 @@ export default function MentionsLegalesPage() {
 
   return (
     <main style={{ background: '#f8fafc', fontFamily: "'DM Sans', system-ui, sans-serif", paddingTop: 80 }}>
-      <section style={{ maxWidth: 760, margin: '0 auto', padding: '52px 24px 88px' }}>
+      <section style={{ maxWidth: 960, margin: '0 auto', padding: '52px 24px 88px' }}>
 
         <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#2a7d9c', textDecoration: 'none', fontWeight: 600, marginBottom: 32 }}>
           ← Retour à l'accueil
@@ -19,7 +19,7 @@ export default function MentionsLegalesPage() {
         <h1 style={{ fontSize: 'clamp(28px,4vw,42px)', fontWeight: 900, color: '#0f2d3d', marginBottom: 8, letterSpacing: '-0.025em' }}>
           Mentions légales
         </h1>
-        <p style={{ fontSize: 14, color: '#94a3b8', marginBottom: 48 }}>Dernière mise à jour : avril 2026</p>
+        <p style={{ fontSize: 14, color: '#94a3b8', marginBottom: 48 }}>Dernière mise à jour : mai 2026</p>
 
         {[
           {
