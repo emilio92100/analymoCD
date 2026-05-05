@@ -18,8 +18,8 @@ const article: GuideArticle = {
   readingTime: 9,
 
   seo: {
-    title: `Comment analyser un PV d'AG avant d'acheter — Guide Verimo`,
-    description: `Apprenez à lire un procès-verbal d'assemblée générale de copropriété. Les 5 points à vérifier absolument avant de signer un compromis. Guide pratique 2026.`,
+    title: `Lire et comprendre un PV d'AG avant d'acheter`,
+    description: `Comment lire un PV d'AG de copropriété. Les 5 points à vérifier avant de signer un compromis. Guide pratique 2026.`,
   },
 
   title: `Comment analyser un PV d'AG avant d'acheter un appartement`,
