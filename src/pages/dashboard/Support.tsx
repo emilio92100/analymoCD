@@ -284,9 +284,14 @@ function TicketRow({ ticket, isLast, onClick }: { ticket: Ticket; isLast: boolea
         {isOpen ? <MessageSquare size={16} style={{ color: '#2a7d9c' }} /> : <CheckCircle size={16} style={{ color: '#16a34a' }} />}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
+        {ticket.unread_by_user && (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 20, background: '#f0fdf4', border: '1px solid #bbf7d0', marginBottom: 5 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a', flexShrink: 0 }} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', whiteSpace: 'nowrap' }}>Nouvelle réponse du support</span>
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>{ticket.subject}</span>
-          {ticket.unread_by_user && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#2a7d9c', flexShrink: 0 }} />}
         </div>
         <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 3 }}>
           {fmtDate(ticket.created_at)} · {isOpen ? 'En cours' : `Résolu le ${fmtDate(ticket.resolved_at!)}`}
