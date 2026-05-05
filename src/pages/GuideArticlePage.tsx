@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Clock, Calendar, ChevronRight, AlertTriangle, Lightbulb, Info, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Calendar, ChevronRight, AlertTriangle, Lightbulb, Info, ArrowRight } from 'lucide-react';
 import { useSEO } from '../hooks/useSEO';
 import { getArticleBySlug, getRelatedArticles } from '../guides';
 import type { GuideHighlight, GuideSection } from '../guides/types';
@@ -319,9 +319,6 @@ export default function GuideArticlePage() {
             transition={{ delay: 0.15, duration: 0.25 }}
             style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' as const }}
           >
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: '#94a3b8' }}>
-              <Clock size={13} /> {article.readingTime} min de lecture
-            </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: '#94a3b8' }}>
               <Calendar size={13} /> Mis à jour le {new Date(article.updatedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
             </span>
