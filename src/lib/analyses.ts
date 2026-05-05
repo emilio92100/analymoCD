@@ -93,9 +93,12 @@ export async function fetchAnalyseByShareToken(token: string): Promise<AnalyseDB
 
 /* ─── Lire toutes les analyses de l'utilisateur ── */
 export async function fetchAnalyses(): Promise<AnalyseDB[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
   const { data, error } = await supabase
     .from('analyses')
     .select('*')
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
   if (error) {
