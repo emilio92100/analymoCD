@@ -13,7 +13,7 @@ import {
 const etapes = [
   { num: '1', title: 'Rassemblez vos documents', desc: "Rassemblez les documents disponibles sur votre bien : diagnostics, DPE, compromis, et selon votre cas — PV d'AG et règlement de copropriété pour un bien en copro, documents d'urbanisme et justificatifs de travaux pour une maison individuelle." },
   { num: '2', title: 'Choisissez votre analyse', desc: "Analyse Simple (4,90€) pour un seul document, ou Analyse Complète (19,90€) pour un rapport global avec note /20." },
-  { num: '3', title: 'Uploadez en quelques secondes', desc: "Glissez-déposez vos fichiers PDF, Word ou images directement dans l'espace prévu." },
+  { num: '3', title: 'Uploadez en quelques secondes', desc: "Glissez-déposez vos fichiers PDF directement dans l'espace prévu." },
   { num: '4', title: 'Rapport prêt en quelques minutes*', desc: "Note /20, risques détectés, travaux à prévoir et recommandation personnalisée. Téléchargeable en PDF à tout moment." },
 ];
 
@@ -47,19 +47,29 @@ const penalties = [
 ];
 
 const bonuses = [
-  { l: 'Travaux votés à charge du vendeur (petits/moyens)', v: '+2' },
-  { l: 'Gros travaux votés à charge du vendeur', v: '+3' },
-  { l: 'Garantie décennale récente', v: '+2' },
-  { l: 'Aucune procédure détectée', v: '+1' },
-  { l: 'Fonds travaux conforme légal (5%)', v: '+0,5' },
-  { l: 'Fonds travaux bien (6–9%)', v: '+1' },
-  { l: 'Fonds travaux excellent (≥ 10%)', v: '+1,5' },
-  { l: 'Entretien chaudière certifié', v: '+0,5' },
-  { l: 'Immeuble bien entretenu', v: '+0,5' },
-  { l: 'DTG état bon', v: '+1' },
-  { l: 'DPE A, B ou C', v: '+1,5' },
-  { l: 'DPE D', v: '+1' },
-  { l: 'Diagnostics complets sans anomalie (hors ERP) + DPE ≤ D', v: '+2' },
+  { cat: 'Travaux', items: [
+    { l: 'Travaux votés à charge du vendeur (petits/moyens)', v: '+2' },
+    { l: 'Gros travaux votés à charge du vendeur', v: '+3' },
+    { l: 'Garantie décennale récente', v: '+2' },
+  ]},
+  { cat: 'Procédures', items: [
+    { l: 'Aucune procédure détectée', v: '+1' },
+  ]},
+  { cat: 'Finances', items: [
+    { l: 'Fonds travaux conforme légal (5%)', v: '+0,5' },
+    { l: 'Fonds travaux bien (6–9%)', v: '+1' },
+    { l: 'Fonds travaux excellent (≥ 10%)', v: '+1,5' },
+  ]},
+  { cat: 'Diagnostics privatifs', items: [
+    { l: 'DPE A, B ou C', v: '+1,5' },
+    { l: 'DPE D', v: '+1' },
+    { l: 'Diagnostics complets sans anomalie (hors ERP) + DPE ≤ D', v: '+2' },
+  ]},
+  { cat: 'Diagnostics communs', items: [
+    { l: 'DTG état bon', v: '+1' },
+    { l: 'Entretien chaudière certifié', v: '+0,5' },
+    { l: 'Immeuble bien entretenu', v: '+0,5' },
+  ]},
 ];
 
 const scale = [
@@ -265,16 +275,19 @@ function NotationBlock() {
           )}
 
           {activeTab === 'bonus' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ fontSize: 12.5, color: '#64748b', marginBottom: 4 }}>Ces éléments <strong>ajoutent</strong> des points à la note finale :</div>
-              <div style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, overflow: 'hidden' }}>
-                {bonuses.map((b, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '12px 16px', borderTop: i > 0 ? '1px solid #f0f5f9' : 'none' }}>
-                    <span style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.4 }}>{b.l}</span>
-                    <span style={{ fontSize: 12.5, fontWeight: 800, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '4px 11px', borderRadius: 7, flexShrink: 0, whiteSpace: 'nowrap' }}>{b.v}</span>
-                  </div>
-                ))}
-              </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ fontSize: 12.5, color: '#64748b', marginBottom: 2 }}>Ces éléments <strong>ajoutent</strong> des points à la note finale :</div>
+              {bonuses.map((p, i) => (
+                <div key={i} style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, overflow: 'hidden' }}>
+                  <div style={{ padding: '9px 16px', background: '#f0fdf4', fontSize: 11.5, fontWeight: 800, color: '#16a34a', letterSpacing: '0.04em', borderBottom: '1px solid #bbf7d0' }}>{p.cat.toUpperCase()}</div>
+                  {p.items.map((item, j) => (
+                    <div key={j} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '11px 16px', borderTop: j > 0 ? '1px solid #f0f5f9' : 'none' }}>
+                      <span style={{ fontSize: 13.5, color: '#374151', lineHeight: 1.4 }}>{item.l}</span>
+                      <span style={{ fontSize: 12.5, fontWeight: 800, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '4px 11px', borderRadius: 7, flexShrink: 0, whiteSpace: 'nowrap' }}>{item.v}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
             </div>
           )}
 
