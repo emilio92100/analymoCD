@@ -49,7 +49,7 @@ export default function Compte() {
   const loadAnalysesCount = async () => {
     const { data: { user: u } } = await supabase.auth.getUser();
     if (!u) return;
-    const { count } = await supabase.from('analyses').select('*', { count: 'exact', head: true }).eq('user_id', u.id).eq('status', 'completed');
+    const { count } = await supabase.from('analyses').select('*', { count: 'exact', head: true }).eq('user_id', u.id).not('result', 'is', null);
     setAnalysesCount(count || 0);
   };
 
