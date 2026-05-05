@@ -448,17 +448,19 @@ function ChatView({ ticketId, onBack }: { ticketId: string; onBack: () => void }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 140px)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexShrink: 0 }}>
+      {/* Header ticket */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexShrink: 0 }}>
         <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f0f7fb', border: '1px solid #d0e8f0', borderRadius: 10, cursor: 'pointer', color: '#2a7d9c', fontSize: 13, fontWeight: 700, padding: '8px 14px' }}>
           <ChevronLeft size={14} /> Retour
         </button>
         <div style={{ flex: 1 }}>
           <h2 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>{ticket?.subject}</h2>
-          <div style={{ fontSize: 12, color: '#94a3b8' }}>
-            {ticket?.status === 'resolved' ? <span style={{ color: '#16a34a', fontWeight: 600 }}>✓ Résolu</span> : <span style={{ color: '#d97706', fontWeight: 600 }}>En cours</span>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: ticket?.status === 'resolved' ? '#16a34a' : '#d97706' }} />
+            <span style={{ fontSize: 12, color: ticket?.status === 'resolved' ? '#16a34a' : '#d97706', fontWeight: 600 }}>{ticket?.status === 'resolved' ? 'Résolu' : 'En cours'}</span>
+            <span style={{ fontSize: 11, color: '#94a3b8' }}>· ouvert le {fmtTime(ticket?.created_at || '')}</span>
           </div>
         </div>
-        {/* Bouton clôturer ticket */}
         {ticket?.status === 'open' && (
           <button onClick={() => setShowCloseConfirm(true)}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, background: '#fff', border: '1.5px solid #edf2f7', cursor: 'pointer', color: '#64748b', fontSize: 12, fontWeight: 700, transition: 'all 0.15s' }}
@@ -468,23 +470,43 @@ function ChatView({ ticketId, onBack }: { ticketId: string; onBack: () => void }
           </button>
         )}
       </div>
-      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, padding: '16px', minHeight: 0, background: '#f8fafc', borderRadius: 14, border: '1px solid #edf2f7' }}>
+
+      {/* Zone messages */}
+      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16, padding: '20px', minHeight: 0, background: '#f8fafc', borderRadius: 16, border: '1px solid #edf2f7' }}>
         {messages.map(m => {
           const isUser = m.sender_type === 'user';
           const senderLabel = isUser ? 'Vous' : (m.sender_name || 'Verimo');
+          const initials = isUser ? (ticket?.subject?.charAt(0) || 'V').toUpperCase() : '';
           return (
-            <div key={m.id} style={{ display: 'flex', justifyContent: isUser ? 'flex-end' : 'flex-start' }}>
-              <div style={{
-                maxWidth: '75%', padding: '12px 16px',
-                borderRadius: isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                background: isUser ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#fff',
-                color: isUser ? '#fff' : '#0f172a',
-                border: isUser ? 'none' : '1px solid #edf2f7',
-                fontSize: 14, lineHeight: 1.6,
-              }}>
-                <div style={{ whiteSpace: 'pre-wrap' }}>{m.message}</div>
-                <div style={{ fontSize: 11, marginTop: 6, opacity: 0.6, textAlign: 'right' }}>{senderLabel} · {fmtTime(m.created_at)}</div>
+            <div key={m.id} style={{ display: 'flex', justifyContent: isUser ? 'flex-end' : 'flex-start', gap: 8 }}>
+              {!isUser && (
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#f0f7fb', border: '1.5px solid #d0e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
+                  <LifeBuoy size={14} style={{ color: '#2a7d9c' }} />
+                </div>
+              )}
+              <div style={{ maxWidth: '75%' }}>
+                <div style={{
+                  padding: '14px 18px',
+                  borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                  background: isUser ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#fff',
+                  color: isUser ? '#fff' : '#0f172a',
+                  border: isUser ? 'none' : '1px solid #edf2f7',
+                  fontSize: 14, lineHeight: 1.6,
+                  boxShadow: isUser ? 'none' : '0 1px 3px rgba(0,0,0,0.04)',
+                }}>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{m.message}</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5, justifyContent: isUser ? 'flex-end' : 'flex-start', padding: isUser ? '0 4px 0 0' : '0 0 0 4px' }}>
+                  {!isUser && <span style={{ fontSize: 11, fontWeight: 600, color: '#2a7d9c' }}>{senderLabel}</span>}
+                  {!isUser && <span style={{ fontSize: 11, color: '#94a3b8' }}>·</span>}
+                  <span style={{ fontSize: 11, color: '#94a3b8' }}>{isUser ? 'Vous · ' : ''}{fmtTime(m.created_at)}</span>
+                </div>
               </div>
+              {isUser && (
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0, marginTop: 2 }}>
+                  {initials}
+                </div>
+              )}
             </div>
           );
         })}
@@ -497,14 +519,16 @@ function ChatView({ ticketId, onBack }: { ticketId: string; onBack: () => void }
           </div>
         )}
       </div>
+
+      {/* Barre de saisie */}
       {ticket?.status === 'open' && (
-        <div style={{ display: 'flex', gap: 10, padding: '16px 0', borderTop: '1px solid #edf2f7', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 0', flexShrink: 0 }}>
           <input value={newMsg} onChange={e => setNewMsg(e.target.value)} placeholder="Votre réponse..."
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-            style={{ flex: 1, padding: '12px 16px', borderRadius: 12, border: '1.5px solid #edf2f7', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+            style={{ flex: 1, padding: '13px 20px', borderRadius: 24, background: '#f8fafc', border: '1.5px solid #edf2f7', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
           <button onClick={handleSend} disabled={sending || !newMsg.trim()}
-            style={{ padding: '12px 18px', borderRadius: 12, background: !newMsg.trim() ? '#e2e8f0' : '#2a7d9c', color: '#fff', border: 'none', cursor: !newMsg.trim() ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
-            <Send size={14} /> {sending ? '...' : 'Envoyer'}
+            style={{ width: 44, height: 44, borderRadius: '50%', background: !newMsg.trim() ? '#e2e8f0' : 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: 'none', cursor: !newMsg.trim() ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: newMsg.trim() ? '0 2px 8px rgba(42,125,156,0.3)' : 'none', transition: 'all 0.15s' }}>
+            <Send size={16} />
           </button>
         </div>
       )}
