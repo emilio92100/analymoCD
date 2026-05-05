@@ -27,10 +27,11 @@ export default function MentionsLegalesPage() {
             content: `Le site verimo.fr est édité par :
 
 Verimo
+Fondateur et responsable éditorial : Alexandre ROGELET
 Adresse e-mail : hello@verimo.fr
 Site web : https://verimo.fr
 
-Directeur de la publication : Verimo`
+Directeur de la publication : Alexandre ROGELET`
           },
           {
             title: '2. Hébergement',
