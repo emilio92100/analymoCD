@@ -941,14 +941,17 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser }: { showToast:
       </div>
 
       {/* ─── RIGHT PANEL : Conversation ─── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#fff' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#fff', overflow: 'hidden' }}>
+        <AnimatePresence mode="wait">
         {!selectedUser ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, color: '#94a3b8' }}>
+          <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}
+            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, color: '#94a3b8' }}>
             <MessageSquare size={32} style={{ opacity: 0.3 }} />
             <span style={{ fontSize: 14 }}>Sélectionnez un client pour voir la conversation</span>
-          </div>
+          </motion.div>
         ) : (
-          <>
+          <motion.div key={selectedUserId + '-' + selectedTicketId} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.2, ease: 'easeOut' }}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             {/* Header */}
             <div style={{ padding: '10px 16px', borderBottom: '1px solid #edf2f7', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
               <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
@@ -1050,8 +1053,9 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser }: { showToast:
                 </button>
               </div>
             )}
-          </>
+          </motion.div>
         )}
+        </AnimatePresence>
       </div>
 
       {/* Delete confirmation modal */}
