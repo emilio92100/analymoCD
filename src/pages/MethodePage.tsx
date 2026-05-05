@@ -166,6 +166,7 @@ const categories = [
     bad: [
       { l: 'Procédure significative', v: '-3', tip: 'Litige bloquant, administration provisoire, détournement syndic, impayés massifs — peut impacter la vente ou générer des coûts imprévus importants.' },
       { l: 'Procédure mineure', v: '-1,5', tip: 'Petit litige isolé, mise en demeure sans suite judiciaire, un seul copropriétaire en impayé — impact limité, situation généralement en cours de résolution.' },
+      { l: 'Tensions avec syndic documentées', v: '-0,5', tip: 'Quitus refusé accompagné d\'un changement de syndic conflictuel — signe de tension dans la gouvernance de la copropriété.' },
     ],
     good: [
       { l: 'Aucune procédure détectée', v: '+1', tip: 'Aucun litige en cours dans les documents analysés — situation juridique saine.' },
@@ -177,12 +178,15 @@ const categories = [
     desc: "La santé financière conditionne vos charges futures. Un fonds de travaux insuffisant peut coûter très cher en cas de travaux imprévus.",
     bad: [
       { l: 'Fonds travaux nul ou absent', v: '-1', tip: 'Aucun fonds de travaux provisionné — en cas de travaux importants, des appels de fonds exceptionnels seront inévitables.' },
+      { l: 'Fonds travaux insuffisant (< 5%)', v: '-0,5', tip: 'Le fonds de travaux est en dessous du minimum légal de 5% imposé par la loi ALUR — la copropriété n\'anticipe pas suffisamment.' },
       { l: 'Impayés anormaux (> 15% du budget)', v: '-1', tip: 'Le niveau d\'impayés de charges dépasse 15% du budget annuel de la copropriété — signal de fragilité financière collective.' },
     ],
     good: [
       { l: 'Fonds travaux conforme au légal (5%)', v: '+0,5', tip: 'Le fonds de travaux respecte le minimum légal imposé par la loi ALUR — copropriété à jour de ses obligations.' },
       { l: 'Fonds travaux bien provisionné (6–9%)', v: '+1', tip: 'Le fonds de travaux dépasse le minimum légal — bonne anticipation des dépenses futures.' },
       { l: 'Fonds travaux excellent (≥ 10%)', v: '+1,5', tip: 'Fonds de travaux très bien provisionné — la copropriété est en excellente santé financière pour faire face aux travaux.' },
+      { l: 'Vendeur à jour de ses charges', v: '+0,5', tip: 'Le pré-état daté ou l\'état daté confirme que le vendeur n\'a aucun impayé — transaction financièrement saine.' },
+      { l: 'Budget stable sur plusieurs exercices', v: '+0,5', tip: 'Les charges restent stables ou en légère hausse sur plusieurs années — copropriété bien gérée sans dérapages budgétaires.' },
     ],
     info: [
       { l: 'Écart budget voté / charges réelles', tip: 'Affiché à titre informatif avec les deux montants si disponibles. Un écart peut être justifié par des travaux imprévus ou une dépense exceptionnelle.' },
@@ -199,6 +203,13 @@ const categories = [
       { l: 'DPE F (investissement locatif)', v: '-4', tip: 'Déjà soumis à restrictions locatives — impact direct sur la rentabilité.' },
       { l: 'DPE G (investissement locatif)', v: '-6', tip: 'Interdit à la location — investissement bloqué sans travaux lourds de rénovation énergétique.' },
       { l: 'Électricité : anomalies majeures', v: '-2', tip: 'Anomalies importantes sur l\'installation électrique nécessitant une mise en conformité — coût et délais à prévoir.' },
+      { l: 'Électricité : anomalies mineures', v: '-0,3', tip: 'Anomalies légères sur l\'installation électrique — à surveiller mais sans urgence immédiate.' },
+      { l: 'Gaz : anomalies A1 (risque immédiat)', v: '-1', tip: 'Danger immédiat sur l\'installation de gaz — intervention urgente obligatoire avant mise en service.' },
+      { l: 'Gaz : anomalies A2 (réparation urgente)', v: '-0,5', tip: 'Anomalie nécessitant une réparation dans les délais prescrits — à corriger rapidement.' },
+      { l: 'Amiante privatif : matériaux dégradés', v: '-1', tip: 'Matériaux contenant de l\'amiante en état dégradé dans les parties privatives — travaux de retrait ou confinement à prévoir.' },
+      { l: 'Amiante privatif : matériaux suspects', v: '-0,3', tip: 'Matériaux contenant de l\'amiante non prélevés nécessitant une évaluation périodique — surveillance recommandée.' },
+      { l: 'Plomb (CREP) : revêtements dégradés', v: '-1', tip: 'Présence de plomb dans des revêtements dégradés — travaux de mise en sécurité obligatoires, surtout en présence d\'enfants.' },
+      { l: 'Diagnostic obligatoire manquant', v: '-0,75', tip: 'Un diagnostic réglementairement requis pour ce bien n\'a pas été fourni — information incomplète pour évaluer le bien.' },
     ],
     good: [
       { l: 'DPE A, B ou C', v: '+1,5', tip: 'Excellente performance énergétique — charges réduites, bien attractif à la revente, aucune contrainte réglementaire.' },
@@ -219,6 +230,7 @@ const categories = [
     ],
     good: [
       { l: 'Immeuble bien entretenu', v: '+0,5', tip: 'Les documents montrent un immeuble correctement entretenu, sans signalement de dégradation notable.' },
+      { l: 'Diagnostics parties communes complets sans alerte', v: '+0,5', tip: 'Tous les diagnostics des parties communes sont réalisés et ne révèlent aucune anomalie — immeuble sain.' },
       { l: 'Entretien chaudière certifié', v: '+0,5', tip: 'Contrat d\'entretien chaudière collective en règle — équipement suivi, risques réduits.' },
       { l: 'DTG : état général bon', v: '+1', tip: 'Le Diagnostic Technique Global confirme un immeuble en bon état général — rassurance sur les dépenses futures.' },
     ],
