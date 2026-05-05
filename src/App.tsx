@@ -74,12 +74,7 @@ function LoadingScreen() {
     <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       {/* Logo */}
       <div style={{ marginBottom: 32 }}>
-        <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
-          <rect width="44" height="44" rx="12" fill="#2a7d9c"/>
-          <path d="M22 10L34 18V26L22 34L10 26V18L22 10Z" fill="white" fillOpacity="0.9"/>
-          <path d="M22 16L29 20.5V29.5L22 34L15 29.5V20.5L22 16Z" fill="#2a7d9c"/>
-          <text x="22" y="27" textAnchor="middle" fontSize="10" fontWeight="800" fill="white">V</text>
-        </svg>
+        <img src="/logo.png" alt="Verimo" style={{ width: 200, maxWidth: '60%', height: 'auto', objectFit: 'contain' }} />
       </div>
 
       {/* Spinner */}
