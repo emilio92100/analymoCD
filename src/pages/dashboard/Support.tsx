@@ -66,6 +66,15 @@ export default function Support() {
   useEffect(() => { loadTickets(); }, [loadTickets]);
 
   const openTickets = tickets.filter(t => t.status === 'open');
+  const [showOpenTicketWarning, setShowOpenTicketWarning] = useState(false);
+
+  const handleNewTicket = () => {
+    if (openTickets.length > 0) {
+      setShowOpenTicketWarning(true);
+    } else {
+      setView('new');
+    }
+  };
   const resolvedTickets = tickets.filter(t => t.status === 'resolved');
 
   if (view === 'new') return <NewTicketView onBack={() => { loadTickets(); setView('list'); }} onCreated={(id) => { loadTickets(); setSelectedTicketId(id); setView('chat'); }} />;
@@ -82,7 +91,7 @@ export default function Support() {
             <Lightbulb size={14} /> J&apos;ai une idée
           </button>
         )}
-        <button onClick={() => setView('new')}
+        <button onClick={handleNewTicket}
           style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, boxShadow: '0 4px 12px rgba(15,45,61,0.2)' }}>
           <Plus size={14} /> Nouveau ticket
         </button>
@@ -184,6 +193,35 @@ export default function Support() {
           })}
         </div>
       </div>
+      {/* Popup ticket déjà en cours */}
+      {showOpenTicketWarning && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,45,61,0.5)', padding: 20, backdropFilter: 'blur(3px)' }}
+          onClick={() => setShowOpenTicketWarning(false)}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: 22, width: '100%', maxWidth: 520, boxShadow: '0 32px 80px rgba(0,0,0,0.2)', padding: '48px 32px', textAlign: 'center' }}>
+            <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: '2px solid #fde68a' }}>
+              <MessageSquare size={28} style={{ color: '#d97706' }} />
+            </div>
+            <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', marginBottom: 8 }}>Vous avez déjà un ticket en cours</h3>
+            <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, maxWidth: 380, margin: '0 auto 8px' }}>
+              Un ticket de support est actuellement ouvert. Vous pouvez y répondre ou le clôturer avant d&apos;en créer un nouveau.
+            </p>
+            <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 28 }}>
+              Cela nous permet de mieux suivre vos demandes.
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button onClick={() => { setShowOpenTicketWarning(false); setSelectedTicketId(openTickets[0]?.id); setView('chat'); }}
+                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '12px 24px', borderRadius: 12, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>
+                <MessageSquare size={15} /> Voir mon ticket
+              </button>
+              <button onClick={() => setShowOpenTicketWarning(false)}
+                style={{ padding: '12px 24px', borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7', color: '#64748b', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
