@@ -85,7 +85,8 @@ export default function Support() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <style>{`@media (max-width: 640px) { .support-mobile-only { display: flex !important; } } @media (min-width: 641px) { .support-mobile-only { display: none !important; } }`}</style>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+      <div className="support-header-btns" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 8 }}>
+        <style>{`@media (max-width: 640px) { .support-header-btns { justify-content: flex-end !important; } }`}</style>
         {isPro && (
           <button onClick={() => setView('suggestion')}
             className="support-mobile-only"
