@@ -531,13 +531,13 @@ function ChatView({ ticketId, onBack }: { ticketId: string; onBack: () => void }
 
       {/* Barre de saisie */}
       {ticket?.status === 'open' && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 0', flexShrink: 0 }}>
-          <input value={newMsg} onChange={e => setNewMsg(e.target.value)} placeholder="Votre réponse..."
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', flexShrink: 0, background: '#fff', borderTop: '1.5px solid #edf2f7', borderRadius: '0 0 16px 16px' }}>
+          <input value={newMsg} onChange={e => setNewMsg(e.target.value)} placeholder="Écrire votre réponse…"
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-            style={{ flex: 1, padding: '13px 20px', borderRadius: 24, background: '#f8fafc', border: '1.5px solid #edf2f7', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+            style={{ flex: 1, padding: '13px 20px', borderRadius: 24, background: '#f8fafc', border: '2px solid #d0e8f0', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', color: '#0f172a' }} />
           <button onClick={handleSend} disabled={sending || !newMsg.trim()}
-            style={{ width: 44, height: 44, borderRadius: '50%', background: !newMsg.trim() ? '#e2e8f0' : 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: 'none', cursor: !newMsg.trim() ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: newMsg.trim() ? '0 2px 8px rgba(42,125,156,0.3)' : 'none', transition: 'all 0.15s' }}>
-            <Send size={16} />
+            style={{ width: 46, height: 46, borderRadius: '50%', background: !newMsg.trim() ? '#cbd5e1' : 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: 'none', cursor: !newMsg.trim() ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: newMsg.trim() ? '0 3px 12px rgba(42,125,156,0.35)' : 'none', transition: 'all 0.15s' }}>
+            <Send size={18} />
           </button>
         </div>
       )}
