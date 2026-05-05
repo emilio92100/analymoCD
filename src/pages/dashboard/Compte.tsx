@@ -49,8 +49,9 @@ export default function Compte() {
   const loadAnalysesCount = async () => {
     const { data: { user: u } } = await supabase.auth.getUser();
     if (!u) return;
-    const { count } = await supabase.from('analyses').select('*', { count: 'exact', head: true }).eq('user_id', u.id).not('result', 'is', null);
-    setAnalysesCount(count || 0);
+    const { data } = await supabase.from('analyses').select('id, result').eq('user_id', u.id);
+    const withResult = (data || []).filter((a: { result: unknown }) => !!a.result);
+    setAnalysesCount(withResult.length);
   };
 
   const loadPayments = async () => {
