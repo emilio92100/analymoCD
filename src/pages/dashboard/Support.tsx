@@ -16,16 +16,22 @@ type FaqCategory = { id: string; label: string; icon: typeof FileText; color: st
 
 const faqCategories: FaqCategory[] = [
   { id: 'analyses', label: 'Analyses & documents', icon: FileText, color: '#2a7d9c', bg: '#f0f7fb', questions: [
-    { q: "Quels documents puis-je analyser ?", a: "Vous pouvez analyser tous les documents liés à un bien immobilier : PV d'assemblée générale, règlement de copropriété, appel de charges, DPE, diagnostics techniques, état daté, compromis, et bien d'autres. Seuls les fichiers PDF sont acceptés." },
-    { q: "Quelle est la différence entre l'analyse simple et l'analyse complète ?", a: "L'analyse simple (4,90€) porte sur un seul document PDF. L'analyse complète (19,90€) accepte jusqu'à 15 documents d'un même bien et génère un rapport détaillé avec un score /20, une recommandation Verimo, les travaux à prévoir et un avis personnalisé." },
-    { q: "Combien de temps prend une analyse ?", a: "Moins de 2 minutes en général. Pour une analyse complète avec plusieurs documents, comptez 1 à 5 minutes. Vous pouvez quitter la page — l'analyse continue en arrière-plan." },
+    { q: "Quels documents puis-je analyser ?", a: "Vous pouvez analyser tous les documents liés à un bien immobilier : PV d'assemblée générale, règlement de copropriété, appel de charges, DPE, diagnostics techniques, état daté, pré-état daté, compromis, carnet d'entretien, fiche synthétique, taxe foncière et bien d'autres. Seuls les fichiers PDF sont acceptés." },
+    { q: "Quelle est la différence entre l'analyse simple et l'analyse complète ?", a: "L'analyse simple (4,90€) porte sur un seul document PDF et génère un rapport ciblé sans score /20. L'analyse complète (19,90€) accepte jusqu'à 15 documents d'un même bien et génère un rapport détaillé avec un score /20, une recommandation Verimo, les risques identifiés et un avis personnalisé." },
+    { q: "Combien de temps prend une analyse ?", a: "Moins de 2 minutes en général. Pour une analyse complète avec plusieurs documents, comptez 1 à 5 minutes. Vous pouvez quitter la page — l'analyse continue en arrière-plan et vous serez notifié quand le rapport sera prêt." },
+    { q: "Puis-je ajouter des documents après mon analyse ?", a: "Oui, vous disposez de 7 jours après votre analyse complète pour ajouter des documents complémentaires. Le rapport sera automatiquement mis à jour avec les nouvelles informations, sans frais supplémentaires." },
+    { q: "Comment est calculé le score /20 ?", a: "Le score part de 20 et évolue selon les éléments détectés dans vos documents : travaux, procédures, finances de la copropriété, diagnostics privatifs et communs. Chaque élément positif ajoute des points (bonus) et chaque risque en retire (pénalités). Le détail complet est visible dans la section Aide & Méthode." },
+    { q: "Que signifie la recommandation Verimo ?", a: "La recommandation est basée sur le score : 'Acheter' (score élevé, peu de risques), 'Négocier' (des points à surveiller qui peuvent servir de levier), ou 'Bien à éviter' (risques majeurs identifiés)." },
   ]},
   { id: 'compte', label: 'Compte & crédits', icon: CreditCard, color: '#16a34a', bg: '#f0fdf4', questions: [
     { q: "Comment fonctionnent les crédits ?", a: "Vous achetez des crédits d'analyse (simple ou complète). Chaque analyse consomme 1 crédit du type correspondant. Les crédits n'expirent jamais." },
+    { q: "Puis-je obtenir un remboursement ?", a: "Si votre analyse a échoué pour une raison technique, le crédit est automatiquement restitué. Pour toute autre demande, contactez-nous via un ticket de support." },
+    { q: "Comment comparer deux biens ?", a: "Rendez-vous dans l'onglet 'Comparer' de votre tableau de bord. Sélectionnez 2 ou 3 analyses complètes et lancez la comparaison. Un rapport détaillé mettra en évidence les forces et faiblesses de chaque bien." },
   ]},
   { id: 'securite', label: 'Sécurité & données', icon: Lock, color: '#7c3aed', bg: '#f5f3ff', questions: [
     { q: "Mes documents sont-ils en sécurité ?", a: "Oui. Vos documents sont chiffrés et supprimés immédiatement après l'analyse (conformément au RGPD). Seul le rapport d'analyse est conservé dans votre espace." },
     { q: "Qui a accès à mes données ?", a: "Personne. Vos analyses et rapports sont strictement privés. L'équipe Verimo ne consulte vos données qu'en cas de demande de support explicite de votre part." },
+    { q: "Puis-je supprimer mon compte et mes données ?", a: "Oui, vous pouvez supprimer votre compte à tout moment depuis la page Mon compte. Toutes vos données (analyses, rapports, informations personnelles) seront définitivement effacées." },
   ]},
 ];
 
@@ -89,14 +95,17 @@ export default function Support() {
       <style>{`@media (max-width: 640px) { .support-mobile-only { display: flex !important; } } @media (min-width: 641px) { .support-mobile-only { display: none !important; } }`}</style>
 
       {/* Welcome banner */}
-      <div style={{ borderRadius: 16, overflow: 'hidden', border: '1px solid #d0e8f0', background: 'linear-gradient(135deg, #f0f7fb 0%, #e6f3f7 100%)' }}>
-        <div style={{ padding: '22px 24px', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 46, height: 46, borderRadius: 12, background: '#fff', border: '1px solid #d0e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <HelpCircle size={22} style={{ color: '#2a7d9c' }} />
-          </div>
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#0f2d3d', marginBottom: 4 }}>Bienvenue dans votre espace support</div>
-            <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>Consultez nos questions fréquentes ci-dessous — si vous ne trouvez pas votre réponse, ouvrez un ticket et notre équipe vous répondra rapidement.</div>
+      <div style={{ borderRadius: 16, overflow: 'hidden', border: '1px solid #edf2f7' }}>
+        <div style={{ padding: '24px 28px', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: -30, right: -40, width: 200, height: 200, borderRadius: '50%', background: 'rgba(255,255,255,0.03)', pointerEvents: 'none' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, position: 'relative', zIndex: 1 }}>
+            <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <HelpCircle size={24} style={{ color: '#fff' }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 19, fontWeight: 800, color: '#fff', marginBottom: 4 }}>Bienvenue dans votre espace support</div>
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 1.5 }}>Consultez nos questions fréquentes ci-dessous — si vous ne trouvez pas votre réponse, ouvrez un ticket et notre équipe vous répondra rapidement.</div>
+            </div>
           </div>
         </div>
       </div>
@@ -165,8 +174,8 @@ export default function Support() {
               <HelpCircle size={20} style={{ color: '#2a7d9c' }} />
             </div>
             <div>
-              <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f2d3d', margin: 0 }}>Une question ?</h3>
-              <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>La réponse se trouve peut-être ici</p>
+              <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f2d3d', margin: 0 }}>Questions fréquentes</h3>
+              <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>Trouvez rapidement une réponse à votre question</p>
             </div>
           </div>
         </div>
