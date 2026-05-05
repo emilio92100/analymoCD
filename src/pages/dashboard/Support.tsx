@@ -77,9 +77,9 @@ export default function Support() {
   };
   const resolvedTickets = tickets.filter(t => t.status === 'resolved');
 
-  if (view === 'new') return <NewTicketView onBack={() => { loadTickets(); setView('list'); }} onCreated={(id) => { loadTickets(); setSelectedTicketId(id); setView('chat'); }} />;
-  if (view === 'chat' && selectedTicketId) return <ChatView ticketId={selectedTicketId} onBack={() => { setView('list'); loadTickets(); }} />;
-  if (view === 'suggestion') return <SuggestionView onBack={() => setView('list')} />;
+  if (view === 'new') return <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: 'easeOut' }}><NewTicketView onBack={() => { loadTickets(); setView('list'); }} onCreated={(id) => { loadTickets(); setSelectedTicketId(id); setView('chat'); }} /></motion.div>;
+  if (view === 'chat' && selectedTicketId) return <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: 'easeOut' }}><ChatView ticketId={selectedTicketId} onBack={() => { setView('list'); loadTickets(); }} /></motion.div>;
+  if (view === 'suggestion') return <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: 'easeOut' }}><SuggestionView onBack={() => setView('list')} /></motion.div>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
