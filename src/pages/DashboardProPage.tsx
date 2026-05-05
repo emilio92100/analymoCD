@@ -3399,9 +3399,10 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
         </div>
         {folderAnalyses.length === 0 ? (
           <p style={{ fontSize: 12.5, color: '#94a3b8', margin: 0, fontStyle: 'italic' as const }}>Aucune analyse pour ce dossier.</p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {folderAnalyses.map(a => {
+        ) : (() => {
+          const completes = folderAnalyses.filter(a => a.type === 'complete' || a.type === 'pack2' || a.type === 'pack3');
+          const simples = folderAnalyses.filter(a => a.type === 'document');
+          const renderRow = (a: ProAnalysis) => {
               const score = getScore(a.result as Record<string, unknown>);
               const isCompleted = a.status === 'completed';
               const isPending = a.status === 'pending' || a.status === 'processing';
@@ -3432,7 +3433,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
                     <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span>{fmtDate(a.created_at)}</span>
                       <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#cbd5e1' }} />
-                      <span>{a.type === 'complete' ? 'Complète' : 'Simple'}</span>
+                      <span>{a.type === 'complete' || a.type === 'pack2' || a.type === 'pack3' ? 'Complète' : 'Simple'}</span>
                       {score !== null && (
                         <>
                           <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#cbd5e1' }} />
@@ -3450,9 +3451,36 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
                   )}
                 </div>
               );
-            })}
-          </div>
-        )}
+          };
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {completes.length > 0 && (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <Search size={13} style={{ color: '#2a7d9c' }} />
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>Analyses complètes</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '1px 7px', borderRadius: 100 }}>{completes.length}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {completes.map(renderRow)}
+                  </div>
+                </div>
+              )}
+              {simples.length > 0 && (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <FileText size={13} style={{ color: '#94a3b8' }} />
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>Analyses simples</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', background: '#f1f5f9', padding: '1px 7px', borderRadius: 100 }}>{simples.length}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {simples.map(renderRow)}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Historique des envois — regroupé par acheteur */}
