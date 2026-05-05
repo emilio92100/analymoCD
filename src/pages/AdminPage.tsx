@@ -770,7 +770,7 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser }: { showToast:
   const [reply, setReply] = useState('');
   const [replyName, setReplyName] = useState('');
   const [sending, setSending] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'open' | 'resolved' | 'archived'>('all');
+  const [filter, setFilter] = useState<'all' | 'open' | 'resolved' | 'archived'>('open');
   const [search, setSearch] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -902,7 +902,7 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser }: { showToast:
           {unreadTotal > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: '#fef2f2', color: '#dc2626', padding: '2px 8px', borderRadius: 10 }}>{unreadTotal} non lu{unreadTotal > 1 ? 's' : ''}</span>}
         </div>
         <div style={{ display: 'flex', gap: 1, padding: '6px 8px', background: '#f8fafc', borderBottom: '1px solid #edf2f7' }}>
-          {([['all', 'Tous'], ['open', 'En cours'], ['resolved', 'Résolus']] as const).map(([id, label]) => (
+          {([['open', 'En cours'], ['resolved', 'Résolus'], ['all', 'Tous']] as const).map(([id, label]) => (
             <button key={id} onClick={() => setFilter(id)} style={{ flex: 1, textAlign: 'center', padding: '5px 0', fontSize: 11, fontWeight: 700, color: filter === id ? '#0f172a' : '#94a3b8', borderRadius: 6, cursor: 'pointer', background: filter === id ? '#fff' : 'transparent', border: filter === id ? '1px solid #edf2f7' : 'none', boxShadow: filter === id ? '0 1px 3px rgba(0,0,0,0.04)' : 'none' }}>
               {label}
             </button>
