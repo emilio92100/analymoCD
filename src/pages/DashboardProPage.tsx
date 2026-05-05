@@ -3080,6 +3080,47 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
   );
 }
 
+function BuyerGroupCollapsible({ email, items, folderAnalyses, fmtDate }: { email: string; items: { id: string; recipient_name: string; recipient_email: string; analysis_id: string; sent_at: string; opened_at: string | null }[]; folderAnalyses: { id: string; address?: string; title?: string; type?: string }[]; fmtDate: (d: string) => string }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div style={{ padding: '14px 18px', borderRadius: 14, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+      <button onClick={() => setExpanded(!expanded)} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0, fontFamily: 'inherit' }}>
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Mail size={16} style={{ color: '#2a7d9c' }} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>✉️ {items[0].recipient_name}</div>
+          <div style={{ fontSize: 12, color: '#94a3b8' }}>{email} · {fmtDate(items[0].sent_at)}</div>
+        </div>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#fff', padding: '2px 8px', borderRadius: 100, border: '1px solid #edf2f7', marginRight: 8 }}>{items.length} rapport{items.length > 1 ? 's' : ''}</span>
+        <ChevronDown size={14} style={{ color: '#94a3b8', transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
+      </button>
+      {expanded && (
+        <div className="rapport-envoi-items" style={{ marginLeft: 48, marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {items.map(item => {
+            const analysis = folderAnalyses.find(a => a.id === item.analysis_id);
+            const docName = analysis ? (analysis.address || analysis.title || 'Analyse').split(' — ')[0] : 'Analyse';
+            return (
+              <div key={item.id} className="rapport-envoi-item" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10, background: '#fff', border: '1px solid #edf2f7', flexWrap: 'wrap' }}>
+                <FileText size={14} style={{ color: '#94a3b8', flexShrink: 0 }} />
+                <span className="rapport-envoi-name" style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, minWidth: 0 }}>{docName}</span>
+                <div className="rapport-envoi-meta" style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                  <span style={{ fontSize: 11, color: '#94a3b8' }}>{analysis?.type === 'complete' ? 'Complète' : 'Simple'}</span>
+                  {item.opened_at ? (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 10px', borderRadius: 100, border: '1px solid #bbf7d0' }}>✓ Ouvert le {fmtDate(item.opened_at!)}</span>
+                  ) : (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f8fafc', padding: '3px 10px', borderRadius: 100, border: '1px solid #e2e8f0' }}>En attente</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onBack: () => void; proProfile: ProProfile }) {
   const [folder, setFolder] = useState<ProFolder | null>(null);
   const [sellers, setSellers] = useState<ProFolderSeller[]>([]);
@@ -3499,37 +3540,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
                 grouped.get(key)!.push(sh);
               });
               return Array.from(grouped.entries()).map(([email, items]) => (
-                <div key={email} style={{ padding: '16px 18px', borderRadius: 14, background: '#f8fafc', border: '1px solid #edf2f7' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Mail size={16} style={{ color: '#2a7d9c' }} />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>✉️ {items[0].recipient_name}</div>
-                      <div style={{ fontSize: 12, color: '#94a3b8' }}>{email} · {fmtDate(items[0].sent_at)}</div>
-                    </div>
-                  </div>
-                  <div className="rapport-envoi-items" style={{ marginLeft: 48, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {items.map(item => {
-                      const analysis = folderAnalyses.find(a => a.id === item.analysis_id);
-                      const docName = analysis ? (analysis.address || analysis.title || 'Analyse').split(' — ')[0] : 'Analyse';
-                      return (
-                        <div key={item.id} className="rapport-envoi-item" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10, background: '#fff', border: '1px solid #edf2f7', flexWrap: 'wrap' }}>
-                          <FileText size={14} style={{ color: '#94a3b8', flexShrink: 0 }} />
-                          <span className="rapport-envoi-name" style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, minWidth: 0 }}>{docName}</span>
-                          <div className="rapport-envoi-meta" style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                            <span style={{ fontSize: 11, color: '#94a3b8' }}>{analysis?.type === 'complete' ? 'Complète' : 'Simple'}</span>
-                            {item.opened_at ? (
-                              <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 10px', borderRadius: 100, border: '1px solid #bbf7d0' }}>✓ Ouvert le {fmtDate(item.opened_at!)}</span>
-                            ) : (
-                              <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f8fafc', padding: '3px 10px', borderRadius: 100, border: '1px solid #e2e8f0' }}>En attente</span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                <BuyerGroupCollapsible key={email} email={email} items={items} folderAnalyses={folderAnalyses} fmtDate={fmtDate} />
               ));
             })()}
           </div>
