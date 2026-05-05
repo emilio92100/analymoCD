@@ -3080,7 +3080,7 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
   );
 }
 
-function BuyerGroupCollapsible({ email, items, folderAnalyses, fmtDate }: { email: string; items: { id: string; recipient_name: string; recipient_email: string; analysis_id: string; sent_at: string; opened_at: string | null }[]; folderAnalyses: { id: string; address?: string; title?: string; type?: string }[]; fmtDate: (d: string) => string }) {
+function BuyerGroupCollapsible({ email, items, folderAnalyses, fmtDate }: { email: string; items: { id: string; recipient_name: string; recipient_email: string; analysis_id: string; sent_at: string; opened_at?: string | null }[]; folderAnalyses: { id: string; address?: string; title?: string; type?: string }[]; fmtDate: (d: string) => string }) {
   const [expanded, setExpanded] = useState(false);
   return (
     <div style={{ padding: '14px 18px', borderRadius: 14, background: '#f8fafc', border: '1px solid #edf2f7' }}>
