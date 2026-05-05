@@ -479,7 +479,7 @@ export default function AdminPage() {
               <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
             </div>
             <div style={{ borderLeft: '2px solid #16a34a', marginLeft: 8, paddingLeft: 12, marginBottom: 10, display: 'flex', flexDirection: 'column' as const, gap: 1 }}>
-              {tabs.filter(t => ['analyses', 'messages'].includes(t.id)).map(tab => {
+              {tabs.filter(t => ['analyses'].includes(t.id)).map(tab => {
                 const Icon = tab.icon; const active = activeTab === tab.id;
                 return (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id)}
@@ -523,7 +523,7 @@ export default function AdminPage() {
               <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
             </div>
             <div style={{ borderLeft: '2px solid #f59e0b', marginLeft: 8, paddingLeft: 12, marginBottom: 10, display: 'flex', flexDirection: 'column' as const, gap: 1 }}>
-              {tabs.filter(t => ['support', 'suggestions'].includes(t.id)).map(tab => {
+              {tabs.filter(t => ['support', 'messages', 'suggestions'].includes(t.id)).map(tab => {
                 const Icon = tab.icon; const active = activeTab === tab.id;
                 return (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id)}
