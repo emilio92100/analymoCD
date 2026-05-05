@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -755,21 +755,26 @@ function SystemAlertsTab({ showToast }: { showToast: (msg: string) => void }) {
    ADMIN — SUPPORT TICKETS
 ══════════════════════════════════════════ */
 /* ══════════════════════════════════════════
-   ADMIN — SUPPORT TICKETS
+   ADMIN — SUPPORT TICKETS (Inbox split by user)
 ══════════════════════════════════════════ */
 function AdminSupportTab({ showToast, onUnreadChange, onGoToUser }: { showToast: (m: string) => void; onUnreadChange: (n: number) => void; onGoToUser?: (userId: string) => void }) {
   type AdminTicket = { id: string; user_id: string; subject: string; status: 'open' | 'resolved'; created_at: string; updated_at: string; resolved_at: string | null; unread_by_admin: boolean; user_email?: string; user_name?: string; user_role?: string };
   type AdminMessage = { id: string; ticket_id: string; sender_type: 'user' | 'admin'; sender_name?: string | null; message: string; created_at: string };
+  type UserGroup = { user_id: string; user_name: string; user_email: string; user_role: string; tickets: AdminTicket[]; lastActivity: string; unreadCount: number; lastPreview: string };
 
   const [tickets, setTickets] = useState<AdminTicket[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTicket, setSelectedTicket] = useState<AdminTicket | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AdminMessage[]>([]);
   const [reply, setReply] = useState('');
   const [replyName, setReplyName] = useState('');
   const [sending, setSending] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'open' | 'resolved'>('all');
+  const [filter, setFilter] = useState<'all' | 'open' | 'resolved' | 'archived'>('all');
+  const [search, setSearch] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [lastMessages, setLastMessages] = useState<Record<string, string>>({});
 
   const loadTickets = useCallback(async () => {
     const { data } = await supabase.from('support_tickets').select('*').order('updated_at', { ascending: false });
@@ -782,10 +787,19 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser }: { showToast:
     });
     setTickets(enriched);
     onUnreadChange(enriched.filter((t: AdminTicket) => t.unread_by_admin).length);
+
+    // Load last message preview for each ticket
+    const previews: Record<string, string> = {};
+    for (const t of enriched) {
+      const { data: msgs } = await supabase.from('support_messages').select('message, sender_type').eq('ticket_id', t.id).order('created_at', { ascending: false }).limit(1);
+      if (msgs && msgs.length > 0) previews[t.id] = ((msgs[0] as Record<string, unknown>).message as string || '').slice(0, 60);
+    }
+    setLastMessages(previews);
     setLoading(false);
   }, [onUnreadChange]);
 
   useEffect(() => { loadTickets(); }, [loadTickets]);
+  useEffect(() => { const i = setInterval(loadTickets, 15000); return () => clearInterval(i); }, [loadTickets]);
 
   const loadMessages = useCallback(async (ticketId: string) => {
     const { data } = await supabase.from('support_messages').select('*').eq('ticket_id', ticketId).order('created_at', { ascending: true });
@@ -794,140 +808,282 @@ function AdminSupportTab({ showToast, onUnreadChange, onGoToUser }: { showToast:
     loadTickets();
   }, [loadTickets]);
 
-  useEffect(() => { if (selectedTicket) loadMessages(selectedTicket.id); }, [selectedTicket, loadMessages]);
+  useEffect(() => { if (selectedTicketId) loadMessages(selectedTicketId); }, [selectedTicketId, loadMessages]);
   useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages]);
 
   const handleReply = async () => {
-    if (!reply.trim() || !selectedTicket) return;
+    if (!reply.trim() || !selectedTicketId) return;
     setSending(true);
-    await supabase.from('support_messages').insert({ ticket_id: selectedTicket.id, sender_type: 'admin', message: reply.trim(), sender_name: replyName.trim() || 'Verimo' });
-    await supabase.from('support_tickets').update({ unread_by_user: true, unread_by_admin: false }).eq('id', selectedTicket.id);
+    await supabase.from('support_messages').insert({ ticket_id: selectedTicketId, sender_type: 'admin', message: reply.trim(), sender_name: replyName.trim() || 'Verimo' });
+    await supabase.from('support_tickets').update({ unread_by_user: true, unread_by_admin: false }).eq('id', selectedTicketId);
     setReply('');
-    await loadMessages(selectedTicket.id);
+    await loadMessages(selectedTicketId);
     setSending(false);
     showToast('Réponse envoyée');
   };
 
-  const handleResolve = async () => {
-    if (!selectedTicket) return;
-    await supabase.from('support_tickets').update({ status: 'resolved', resolved_at: new Date().toISOString(), unread_by_user: true }).eq('id', selectedTicket.id);
-    await supabase.from('support_messages').insert({ ticket_id: selectedTicket.id, sender_type: 'admin', message: '✅ Ce ticket a été marqué comme résolu. Si vous avez d\'autres questions, n\'hésitez pas à ouvrir un nouveau ticket.', sender_name: replyName.trim() || 'Verimo' });
-    setSelectedTicket(null);
+  const handleResolve = async (ticketId: string) => {
+    await supabase.from('support_tickets').update({ status: 'resolved', resolved_at: new Date().toISOString(), unread_by_user: true }).eq('id', ticketId);
+    await supabase.from('support_messages').insert({ ticket_id: ticketId, sender_type: 'admin', message: '✅ Ce ticket a été marqué comme résolu. Si vous avez d\'autres questions, n\'hésitez pas à ouvrir un nouveau ticket.', sender_name: replyName.trim() || 'Verimo' });
+    if (selectedTicketId === ticketId) await loadMessages(ticketId);
     await loadTickets();
-    showToast('Ticket clôturé');
+    showToast('Ticket résolu — synchronisé côté client');
   };
 
-  const fmtDate = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-  const filtered = filter === 'all' ? tickets : tickets.filter((t: AdminTicket) => t.status === filter);
+  const handleDelete = async (ticketId: string) => {
+    await supabase.from('support_messages').delete().eq('ticket_id', ticketId);
+    await supabase.from('support_tickets').delete().eq('id', ticketId);
+    if (selectedTicketId === ticketId) { setSelectedTicketId(null); setMessages([]); }
+    setShowDeleteConfirm(null);
+    await loadTickets();
+    showToast('Ticket supprimé définitivement');
+  };
 
-  if (selectedTicket) {
-    return (
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: 'easeOut' }}
-        style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 200px)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexShrink: 0, flexWrap: 'wrap' }}>
-          <button onClick={() => setSelectedTicket(null)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 10, cursor: 'pointer', color: '#64748b', fontSize: 13, fontWeight: 700, padding: '8px 14px' }}>
-            <ChevronLeft size={14} /> Retour
-          </button>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>{selectedTicket.subject}</h3>
-            <div style={{ fontSize: 12, color: '#94a3b8' }}>
-              {selectedTicket.user_name} · {selectedTicket.user_email} ·
-              <span style={{ fontWeight: 600, color: selectedTicket.user_role === 'pro' ? '#2a7d9c' : '#7c3aed', marginLeft: 4 }}>{selectedTicket.user_role === 'pro' ? 'PRO' : 'PART.'}</span>
-            </div>
-          </div>
-          {onGoToUser && (
-            <button onClick={() => onGoToUser(selectedTicket.user_id)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, background: '#f0f7fb', border: '1px solid #d0e8f0', color: '#2a7d9c', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
-              <User size={13} /> Voir la fiche client
-            </button>
-          )}
-          {selectedTicket.status === 'open' && (
-            <button onClick={handleResolve}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 10, background: '#16a34a', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
-              <CheckCircle size={13} /> Clôturer
-            </button>
-          )}
-        </div>
-        <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0, background: '#f8fafc', borderRadius: 14, border: '1px solid #edf2f7', padding: '16px' }}>
-          {messages.map((m: AdminMessage) => {
-            const isAdmin = m.sender_type === 'admin';
-            return (
-              <div key={m.id} style={{ display: 'flex', justifyContent: isAdmin ? 'flex-end' : 'flex-start' }}>
-                <div style={{ maxWidth: '75%', padding: '12px 16px', borderRadius: isAdmin ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: isAdmin ? 'linear-gradient(135deg, #0f2d3d, #1a4a60)' : '#fff', color: isAdmin ? '#fff' : '#0f172a', border: isAdmin ? 'none' : '1px solid #edf2f7', fontSize: 14, lineHeight: 1.6 }}>
-                  <div style={{ whiteSpace: 'pre-wrap' }}>{m.message}</div>
-                  <div style={{ fontSize: 11, marginTop: 6, opacity: 0.6, textAlign: 'right' }}>
-                    {isAdmin ? (m.sender_name || 'Verimo') + ' (Admin)' : selectedTicket.user_name} · {fmtDate(m.created_at)}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        {selectedTicket.status === 'open' && (
-          <div style={{ display: 'flex', gap: 10, padding: '16px 0', flexShrink: 0, alignItems: 'flex-end' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <label style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8' }}>Répondre en tant que :</label>
-                <input value={replyName} onChange={e => setReplyName(e.target.value)} placeholder="Votre prénom"
-                  style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid #edf2f7', fontSize: 12, width: 120, outline: 'none', fontFamily: 'inherit' }} />
-              </div>
-              <textarea value={reply} onChange={e => setReply(e.target.value)} placeholder="Votre réponse..."
-                rows={2} style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1.5px solid #edf2f7', fontSize: 14, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'none' }} />
-            </div>
-            <button onClick={handleReply} disabled={sending || !reply.trim()}
-              style={{ padding: '12px 18px', borderRadius: 12, background: !reply.trim() ? '#e2e8f0' : '#0f2d3d', color: '#fff', border: 'none', cursor: !reply.trim() ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
-              <Send size={14} /> Répondre
-            </button>
-          </div>
-        )}
-      </motion.div>
-    );
-  }
+  const handleArchive = async (ticketId: string) => {
+    await supabase.from('support_tickets').update({ status: 'resolved', resolved_at: new Date().toISOString() }).eq('id', ticketId);
+    if (selectedTicketId === ticketId) { setSelectedTicketId(null); setMessages([]); }
+    await loadTickets();
+    showToast('Ticket archivé');
+  };
+
+  const fmtRelative = (d: string) => {
+    const diff = Date.now() - new Date(d).getTime();
+    if (diff < 60000) return 'à l\'instant';
+    if (diff < 3600000) return `il y a ${Math.floor(diff / 60000)}min`;
+    if (diff < 86400000) return `il y a ${Math.floor(diff / 3600000)}h`;
+    return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  };
+  const fmtFull = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+  // Group tickets by user
+  const userGroups: UserGroup[] = useMemo(() => {
+    const grouped: Record<string, UserGroup> = {};
+    tickets.forEach((t: AdminTicket) => {
+      if (!grouped[t.user_id]) {
+        grouped[t.user_id] = { user_id: t.user_id, user_name: t.user_name || '?', user_email: t.user_email || '?', user_role: t.user_role || 'particulier', tickets: [], lastActivity: t.updated_at, unreadCount: 0, lastPreview: '' };
+      }
+      grouped[t.user_id].tickets.push(t);
+      if (t.unread_by_admin) grouped[t.user_id].unreadCount++;
+      if (new Date(t.updated_at) > new Date(grouped[t.user_id].lastActivity)) {
+        grouped[t.user_id].lastActivity = t.updated_at;
+      }
+    });
+    // Set last preview from the most recent ticket
+    Object.values(grouped).forEach(g => {
+      const mostRecent = g.tickets[0];
+      if (mostRecent) g.lastPreview = lastMessages[mostRecent.id] || mostRecent.subject;
+    });
+    return Object.values(grouped).sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
+  }, [tickets, lastMessages]);
+
+  // Filter
+  const filteredGroups = userGroups.filter(g => {
+    if (filter === 'open') return g.tickets.some((t: AdminTicket) => t.status === 'open');
+    if (filter === 'resolved') return g.tickets.every((t: AdminTicket) => t.status === 'resolved');
+    return true;
+  }).filter(g => {
+    if (!search) return true;
+    const s = search.toLowerCase();
+    return g.user_name.toLowerCase().includes(s) || g.user_email.toLowerCase().includes(s);
+  });
+
+  const selectedUser = userGroups.find(g => g.user_id === selectedUserId);
+  const selectedTicket = selectedUser?.tickets.find((t: AdminTicket) => t.id === selectedTicketId);
+  const unreadTotal = tickets.filter((t: AdminTicket) => t.unread_by_admin).length;
+
+  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Chargement…</div>;
 
   return (
-    <div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {[
-          { id: 'all' as const, label: 'Tous', count: tickets.length },
-          { id: 'open' as const, label: 'En cours', count: tickets.filter((t: AdminTicket) => t.status === 'open').length },
-          { id: 'resolved' as const, label: 'Résolus', count: tickets.filter((t: AdminTicket) => t.status === 'resolved').length },
-        ].map(f => (
-          <button key={f.id} onClick={() => setFilter(f.id)}
-            style={{ padding: '7px 14px', borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', border: filter === f.id ? '1.5px solid #2a7d9c' : '1px solid #edf2f7', background: filter === f.id ? '#f0f7fb' : '#fff', color: filter === f.id ? '#2a7d9c' : '#64748b' }}>
-            {f.label} ({f.count})
-          </button>
-        ))}
-      </div>
-      {loading ? (
-        <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Chargement…</div>
-      ) : filtered.length === 0 ? (
-        <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Aucun ticket.</div>
-      ) : (
-        <div className="admin-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {filtered.map((t: AdminTicket) => (
-            <button key={t.id} onClick={() => setSelectedTicket(t)}
-              style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderRadius: 14, background: '#fff', border: t.unread_by_admin ? '1.5px solid #2a7d9c' : '1px solid #edf2f7', cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'all 0.15s' }}
-              onMouseOver={e => { (e.currentTarget as HTMLElement).style.borderColor = '#2a7d9c'; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 12px rgba(42,125,156,0.08)'; }}
-              onMouseOut={e => { (e.currentTarget as HTMLElement).style.borderColor = t.unread_by_admin ? '#2a7d9c' : '#edf2f7'; (e.currentTarget as HTMLElement).style.boxShadow = 'none'; }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: t.status === 'open' ? '#f0f7fb' : '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                {t.status === 'open' ? <MessageSquare size={16} style={{ color: '#2a7d9c' }} /> : <CheckCircle size={16} style={{ color: '#16a34a' }} />}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{t.subject}</span>
-                  {t.unread_by_admin && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#2a7d9c', flexShrink: 0 }} />}
-                </div>
-                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span>{t.user_name}</span> · <span>{t.user_email}</span> ·
-                  <span style={{ fontWeight: 700, fontSize: 10, padding: '1px 6px', borderRadius: 4, background: t.user_role === 'pro' ? '#f0f7fb' : '#f5f3ff', color: t.user_role === 'pro' ? '#2a7d9c' : '#7c3aed' }}>{t.user_role === 'pro' ? 'PRO' : 'PART.'}</span>
-                  · <span>{fmtDate(t.updated_at)}</span>
-                </div>
-              </div>
-              <ChevronRight size={14} style={{ color: '#94a3b8', flexShrink: 0 }} />
+    <div style={{ display: 'flex', height: 'calc(100vh - 200px)', borderRadius: 16, overflow: 'hidden', border: '1px solid #edf2f7', background: '#fff' }}>
+      {/* ─── LEFT PANEL : Users ─── */}
+      <div style={{ width: 300, borderRight: '1px solid #edf2f7', display: 'flex', flexDirection: 'column', flexShrink: 0, background: '#fff' }}>
+        <div style={{ padding: '12px 14px', borderBottom: '1px solid #edf2f7', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', flex: 1 }}>Support</span>
+          {unreadTotal > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: '#fef2f2', color: '#dc2626', padding: '2px 8px', borderRadius: 10 }}>{unreadTotal} non lu{unreadTotal > 1 ? 's' : ''}</span>}
+        </div>
+        <div style={{ display: 'flex', gap: 1, padding: '6px 8px', background: '#f8fafc', borderBottom: '1px solid #edf2f7' }}>
+          {([['all', 'Tous'], ['open', 'En cours'], ['resolved', 'Résolus']] as const).map(([id, label]) => (
+            <button key={id} onClick={() => setFilter(id)} style={{ flex: 1, textAlign: 'center', padding: '5px 0', fontSize: 11, fontWeight: 700, color: filter === id ? '#0f172a' : '#94a3b8', borderRadius: 6, cursor: 'pointer', background: filter === id ? '#fff' : 'transparent', border: filter === id ? '1px solid #edf2f7' : 'none', boxShadow: filter === id ? '0 1px 3px rgba(0,0,0,0.04)' : 'none' }}>
+              {label}
             </button>
           ))}
         </div>
-      )}
+        <div style={{ padding: '6px 8px', borderBottom: '1px solid #edf2f7' }}>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher un client…" style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1px solid #edf2f7', fontSize: 12, background: '#f8fafc', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {filteredGroups.length === 0 && <div style={{ padding: 32, textAlign: 'center', fontSize: 12, color: '#94a3b8' }}>Aucun client.</div>}
+          {filteredGroups.map(g => {
+            const isSelected = g.user_id === selectedUserId;
+            const hasUnread = g.unreadCount > 0;
+            return (
+              <button key={g.user_id} onClick={() => { setSelectedUserId(g.user_id); const firstOpen = g.tickets.find((t: AdminTicket) => t.status === 'open') || g.tickets[0]; if (firstOpen) setSelectedTicketId(firstOpen.id); }}
+                style={{ display: 'flex', gap: 10, padding: '12px 12px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', width: '100%', textAlign: 'left', background: isSelected ? '#f0f7fb' : hasUnread ? 'rgba(42,125,156,0.03)' : '#fff', borderLeft: isSelected ? '3px solid #2a7d9c' : '3px solid transparent', border: 'none', borderBottomWidth: '1px', borderBottomStyle: 'solid', borderBottomColor: '#f1f5f9', borderLeftWidth: '3px', borderLeftStyle: 'solid', borderLeftColor: isSelected ? '#2a7d9c' : 'transparent', transition: 'background 0.15s', fontFamily: 'inherit', position: 'relative' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+                  {(g.user_name.charAt(0) || '?').toUpperCase()}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ fontSize: 13, fontWeight: hasUnread ? 800 : 600, color: '#0f172a' }}>{g.user_name}</span>
+                    <span style={{ fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 5, background: g.user_role === 'pro' ? '#f0fdf4' : '#f0f7fb', color: g.user_role === 'pro' ? '#16a34a' : '#2a7d9c' }}>{g.user_role === 'pro' ? 'PRO' : 'PART.'}</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: hasUnread ? '#0f172a' : '#94a3b8', fontWeight: hasUnread ? 600 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 1 }}>{g.lastPreview}</div>
+                  <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 1 }}>{g.tickets.length} ticket{g.tickets.length > 1 ? 's' : ''}</div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+                  <span style={{ fontSize: 10, color: '#94a3b8' }}>{fmtRelative(g.lastActivity)}</span>
+                  {hasUnread && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#2a7d9c' }} />}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ─── RIGHT PANEL : Conversation ─── */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#fff' }}>
+        {!selectedUser ? (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, color: '#94a3b8' }}>
+            <MessageSquare size={32} style={{ opacity: 0.3 }} />
+            <span style={{ fontSize: 14 }}>Sélectionnez un client pour voir la conversation</span>
+          </div>
+        ) : (
+          <>
+            {/* Header */}
+            <div style={{ padding: '10px 16px', borderBottom: '1px solid #edf2f7', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+              <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+                {(selectedUser.user_name.charAt(0) || '?').toUpperCase()}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {selectedUser.user_name}
+                  <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 5, background: selectedUser.user_role === 'pro' ? '#f0fdf4' : '#f0f7fb', color: selectedUser.user_role === 'pro' ? '#16a34a' : '#2a7d9c' }}>{selectedUser.user_role === 'pro' ? 'PRO' : 'PART.'}</span>
+                </div>
+                <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <span>{selectedUser.user_email}</span>
+                  {onGoToUser && <>
+                    <span>·</span>
+                    <button onClick={() => onGoToUser(selectedUser.user_id)} style={{ fontSize: 11, color: '#2a7d9c', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+                      → Voir la fiche client
+                    </button>
+                  </>}
+                </div>
+              </div>
+              {/* Ticket selector */}
+              {selectedUser.tickets.length > 1 && (
+                <select value={selectedTicketId || ''} onChange={e => setSelectedTicketId(e.target.value)}
+                  style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #edf2f7', fontSize: 11, fontWeight: 600, color: '#0f172a', background: '#f8fafc', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  {selectedUser.tickets.map((t: AdminTicket) => (
+                    <option key={t.id} value={t.id}>{t.subject} {t.status === 'open' ? '● ' : '✓ '}{fmtRelative(t.updated_at)}</option>
+                  ))}
+                </select>
+              )}
+              <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+                {selectedTicket?.status === 'open' && (
+                  <button onClick={() => handleResolve(selectedTicket.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, background: '#fff', border: '1px solid #bbf7d0', color: '#16a34a', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'inherit' }}>
+                    <CheckCircle size={12} /> Résoudre
+                  </button>
+                )}
+                <button onClick={() => selectedTicketId && handleArchive(selectedTicketId)}
+                  style={{ padding: '6px 10px', borderRadius: 8, background: '#fff', border: '1px solid #edf2f7', color: '#64748b', cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }} title="Archiver">
+                  📦
+                </button>
+                <button onClick={() => selectedTicketId && setShowDeleteConfirm(selectedTicketId)}
+                  style={{ padding: '6px 10px', borderRadius: 8, background: '#fff', border: '1px solid #fecaca', color: '#dc2626', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'inherit' }} title="Supprimer">
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Ticket info bar */}
+            {selectedTicket && (
+              <div style={{ padding: '6px 16px', background: '#f8fafc', borderBottom: '1px solid #edf2f7', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, flexShrink: 0 }}>
+                <span style={{ fontWeight: 700, color: '#0f172a' }}>{selectedTicket.subject}</span>
+                <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 10, background: selectedTicket.status === 'open' ? '#fffbeb' : '#f0fdf4', color: selectedTicket.status === 'open' ? '#d97706' : '#16a34a' }}>
+                  {selectedTicket.status === 'open' ? '● En cours' : '✓ Résolu'}
+                </span>
+                <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>Ouvert le {fmtFull(selectedTicket.created_at)}</span>
+              </div>
+            )}
+
+            {/* Messages */}
+            <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14, padding: 16, minHeight: 0, background: '#f8fafc' }}>
+              {messages.map((m: AdminMessage) => {
+                const isAdmin = m.sender_type === 'admin';
+                return (
+                  <div key={m.id} style={{ display: 'flex', gap: 8, maxWidth: '80%', alignSelf: isAdmin ? 'flex-end' : 'flex-start', flexDirection: isAdmin ? 'row-reverse' : 'row' }}>
+                    <div style={{ width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, flexShrink: 0, marginTop: 2, background: isAdmin ? '#0f2d3d' : 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: isAdmin ? '1.5px solid #1a4a60' : 'none' }}>
+                      {isAdmin ? (m.sender_name || 'V').charAt(0).toUpperCase() : (selectedUser.user_name.charAt(0) || '?').toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ padding: '10px 14px', borderRadius: isAdmin ? '14px 14px 4px 14px' : '14px 14px 14px 4px', background: isAdmin ? 'linear-gradient(135deg, #0f2d3d, #1a4a60)' : '#fff', color: isAdmin ? '#fff' : '#0f172a', border: isAdmin ? 'none' : '1px solid #edf2f7', fontSize: 13, lineHeight: 1.6, boxShadow: isAdmin ? 'none' : '0 1px 3px rgba(0,0,0,0.04)' }}>
+                        <div style={{ whiteSpace: 'pre-wrap' }}>{m.message}</div>
+                      </div>
+                      <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4, justifyContent: isAdmin ? 'flex-end' : 'flex-start' }}>
+                        <span style={{ fontWeight: 600 }}>{isAdmin ? (m.sender_name || 'Verimo') : selectedUser.user_name}</span>
+                        <span>·</span>
+                        <span>{fmtFull(m.created_at)}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {selectedTicket?.status === 'resolved' && (
+                <div style={{ textAlign: 'center', padding: '12px 0' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '6px 16px', borderRadius: 100 }}>✓ Ticket résolu</span>
+                </div>
+              )}
+            </div>
+
+            {/* Reply bar */}
+            {selectedTicket?.status === 'open' && (
+              <div style={{ display: 'flex', gap: 8, padding: '10px 14px', borderTop: '1px solid #edf2f7', alignItems: 'center', flexShrink: 0 }}>
+                <input value={replyName} onChange={e => setReplyName(e.target.value)} placeholder="Prénom"
+                  style={{ width: 80, padding: '9px 10px', borderRadius: 20, border: '1px solid #edf2f7', fontSize: 11, background: '#f8fafc', outline: 'none', fontFamily: 'inherit', color: '#64748b' }} />
+                <input value={reply} onChange={e => setReply(e.target.value)} placeholder="Votre réponse…"
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleReply(); } }}
+                  style={{ flex: 1, padding: '9px 16px', borderRadius: 20, border: '1px solid #edf2f7', fontSize: 13, background: '#f8fafc', outline: 'none', fontFamily: 'inherit' }} />
+                <button onClick={handleReply} disabled={sending || !reply.trim()}
+                  style={{ width: 36, height: 36, borderRadius: '50%', background: !reply.trim() ? '#e2e8f0' : 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: 'none', cursor: !reply.trim() ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 14 }}>
+                  <Send size={14} />
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Delete confirmation modal */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,45,61,0.5)', padding: 20, backdropFilter: 'blur(3px)' }}
+            onClick={() => setShowDeleteConfirm(null)}>
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 400, padding: '32px 28px', textAlign: 'center', boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
+              <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: '2px solid #fecaca' }}>
+                <Trash2 size={24} style={{ color: '#dc2626' }} />
+              </div>
+              <h3 style={{ fontSize: 18, fontWeight: 900, color: '#0f172a', marginBottom: 8 }}>Supprimer ce ticket ?</h3>
+              <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6, marginBottom: 24 }}>
+                Cette action est irréversible. Le ticket et tous ses messages seront définitivement supprimés.
+              </p>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                <button onClick={() => setShowDeleteConfirm(null)}
+                  style={{ padding: '10px 20px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7', color: '#64748b', cursor: 'pointer', fontSize: 14, fontWeight: 600, fontFamily: 'inherit' }}>
+                  Annuler
+                </button>
+                <button onClick={() => handleDelete(showDeleteConfirm)}
+                  style={{ padding: '10px 20px', borderRadius: 10, background: '#dc2626', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 700, fontFamily: 'inherit' }}>
+                  Supprimer
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
