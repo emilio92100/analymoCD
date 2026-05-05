@@ -330,7 +330,7 @@ function NewTicketView({ onBack, onCreated }: { onBack: () => void; onCreated: (
             Votre demande a bien été enregistrée. Notre équipe vous répondra dès que possible directement dans cette discussion.
           </p>
           <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 28 }}>
-            Vous recevrez une notification dès qu'une réponse sera disponible.
+            Une pastille apparaîtra sur l&apos;onglet Support dès qu&apos;une réponse sera disponible.
           </p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             <button onClick={() => onCreated(sentTicketId)}
