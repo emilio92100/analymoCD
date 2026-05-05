@@ -449,26 +449,29 @@ function ChatView({ ticketId, onBack }: { ticketId: string; onBack: () => void }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 140px)' }}>
       {/* Header ticket */}
-      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexShrink: 0 }}>
-        <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f0f7fb', border: '1px solid #d0e8f0', borderRadius: 10, cursor: 'pointer', color: '#2a7d9c', fontSize: 13, fontWeight: 700, padding: '8px 14px' }}>
-          <ChevronLeft size={14} /> Retour
-        </button>
-        <div style={{ flex: 1 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>{ticket?.subject}</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: ticket?.status === 'resolved' ? '#16a34a' : '#d97706' }} />
-            <span style={{ fontSize: 12, color: ticket?.status === 'resolved' ? '#16a34a' : '#d97706', fontWeight: 600 }}>{ticket?.status === 'resolved' ? 'Résolu' : 'En cours'}</span>
-            <span style={{ fontSize: 11, color: '#94a3b8' }}>· ouvert le {fmtTime(ticket?.created_at || '')}</span>
-          </div>
-        </div>
-        {ticket?.status === 'open' && (
-          <button onClick={() => setShowCloseConfirm(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, background: '#fff', border: '1.5px solid #edf2f7', cursor: 'pointer', color: '#64748b', fontSize: 12, fontWeight: 700, transition: 'all 0.15s' }}
-            onMouseOver={e => { const el = e.currentTarget; el.style.borderColor = '#16a34a'; el.style.color = '#16a34a'; el.style.background = '#f0fdf4'; }}
-            onMouseOut={e => { const el = e.currentTarget; el.style.borderColor = '#edf2f7'; el.style.color = '#64748b'; el.style.background = '#fff'; }}>
-            <CheckCircle size={13} /> Clôturer
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '16px 20px', marginBottom: 16, flexShrink: 0 }}>
+        <style>{`@media (max-width: 640px) { .chat-header-row { flex-wrap: wrap !important; } .chat-header-title { order: 3 !important; width: 100% !important; margin-top: 10px !important; } }`}</style>
+        <div className="chat-header-row" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f0f7fb', border: '1px solid #d0e8f0', borderRadius: 10, cursor: 'pointer', color: '#2a7d9c', fontSize: 13, fontWeight: 700, padding: '8px 14px' }}>
+            <ChevronLeft size={14} /> Retour
           </button>
-        )}
+          <div className="chat-header-title" style={{ flex: 1 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>{ticket?.subject}</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: ticket?.status === 'resolved' ? '#16a34a' : '#d97706' }} />
+              <span style={{ fontSize: 12, color: ticket?.status === 'resolved' ? '#16a34a' : '#d97706', fontWeight: 600 }}>{ticket?.status === 'resolved' ? 'Résolu' : 'En cours'}</span>
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>· ouvert le {fmtTime(ticket?.created_at || '')}</span>
+            </div>
+          </div>
+          {ticket?.status === 'open' && (
+            <button onClick={() => setShowCloseConfirm(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, background: '#fff', border: '1.5px solid #edf2f7', cursor: 'pointer', color: '#64748b', fontSize: 12, fontWeight: 700, transition: 'all 0.15s' }}
+              onMouseOver={e => { const el = e.currentTarget; el.style.borderColor = '#16a34a'; el.style.color = '#16a34a'; el.style.background = '#f0fdf4'; }}
+              onMouseOut={e => { const el = e.currentTarget; el.style.borderColor = '#edf2f7'; el.style.color = '#64748b'; el.style.background = '#fff'; }}>
+              <CheckCircle size={13} /> Clôturer
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Zone messages */}
