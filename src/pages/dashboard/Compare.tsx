@@ -428,29 +428,6 @@ export default function Compare() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Header banner */}
-      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 42, height: 42, borderRadius: 11, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <GitCompare size={20} style={{ color: '#2a7d9c' }} />
-          </div>
-          <div>
-            <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0 }}>Comparer mes biens</h2>
-            <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>Sélectionnez 2 ou 3 biens pour lancer une comparaison détaillée</p>
-          </div>
-        </div>
-        {/* Stepper dots */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
-          <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>Sélection</span>
-          <div style={{ display: 'flex', gap: 5 }}>
-            {Array.from({ length: maxSelect }).map((_, i) => (
-              <div key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: i < selected.length ? '#2a7d9c' : 'transparent', border: i < selected.length ? '2px solid #2a7d9c' : '2px solid #cbd5e1', transition: 'all 0.2s' }} />
-            ))}
-          </div>
-          <span style={{ fontSize: 13, fontWeight: 800, color: '#2a7d9c' }}>{selected.length}/{maxSelect}</span>
-        </div>
-      </div>
-
       {launchError && (
         <div style={{ padding: '12px 16px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 13, color: '#991b1b' }}>
           ⚠ {launchError}
@@ -459,11 +436,24 @@ export default function Compare() {
 
       {/* ═══ BLOC SÉLECTION ═══ */}
       <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', overflow: 'hidden' }}>
-        <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #edf2f7', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h3 style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <GitCompare size={14} style={{ color: '#2a7d9c' }} /> Sélectionnez vos biens à comparer
-          </h3>
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#2a7d9c' }}>{selected.length}/{maxSelect}</span>
+        <div style={{ padding: '18px 22px', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <GitCompare size={18} style={{ color: '#fff' }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: '#fff' }}>Sélectionnez vos biens</div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>Choisissez 2 ou 3 biens pour lancer une comparaison</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.1)' }}>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {Array.from({ length: maxSelect }).map((_, i) => (
+                <div key={i} style={{ width: 9, height: 9, borderRadius: '50%', background: i < selected.length ? '#5dbfe0' : 'transparent', border: i < selected.length ? '2px solid #5dbfe0' : '2px solid rgba(255,255,255,0.25)', transition: 'all 0.2s' }} />
+              ))}
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>{selected.length}/{maxSelect}</span>
+          </div>
         </div>
         <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {completedAnalyses.map((a, idx) => {
@@ -562,11 +552,10 @@ export default function Compare() {
       {/* ═══ HISTORIQUE — Bloc séparé ═══ */}
       {historique.length > 0 && (
         <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', overflow: 'hidden' }}>
-          <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #edf2f7' }}>
-            <h3 style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Clock size={14} style={{ color: '#2a7d9c' }} /> Comparaisons précédentes
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '2px 8px', borderRadius: 100 }}>{historique.length}</span>
-            </h3>
+          <div style={{ padding: '14px 20px', background: '#f0f7fb', borderBottom: '1px solid #d0e8f0', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Clock size={15} style={{ color: '#2a7d9c' }} />
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#0f2d3d' }}>Comparaisons précédentes</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#fff', border: '1px solid #d0e8f0', padding: '2px 10px', borderRadius: 20 }}>{historique.length}</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {historique.map((comp) => {
