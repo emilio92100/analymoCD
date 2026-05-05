@@ -24,7 +24,7 @@ export default function ConfidentialitePage() {
         {[
           {
             title: '1. Qui sommes-nous ?',
-            content: `Verimo est un service en ligne d'analyse de documents immobiliers, exploité par Verimo (hello@verimo.fr). Notre site est accessible à l'adresse https://verimo.fr.
+            content: `Verimo est un service en ligne d'analyse de documents immobiliers, fondé et exploité par Alexandre ROGELET (hello@verimo.fr). Notre site est accessible à l'adresse https://verimo.fr.
 
 Nous nous engageons à protéger vos données personnelles conformément au Règlement Général sur la Protection des Données (RGPD) et à la loi Informatique et Libertés.`
           },
@@ -49,9 +49,14 @@ Nous nous engageons à protéger vos données personnelles conformément au Règ
           },
           {
             title: '4. Traitement de vos documents',
-            content: `Les documents que vous uploadez sont transmis à notre moteur d'analyse (Claude, développé par Anthropic) pour en extraire les informations clés. Ces documents sont traités de façon automatisée — aucun humain ne consulte vos fichiers.
+            content: `Verimo utilise une technologie d'analyse documentaire avancée pour extraire, croiser et synthétiser les informations clés de vos documents immobiliers (PV d'assemblée générale, diagnostics, règlement de copropriété, appels de charges, etc.).
 
-Vos documents sont automatiquement supprimés après génération du rapport. Ils ne sont ni conservés, ni revendus, ni partagés à des tiers à des fins commerciales.`
+Fonctionnement technique :
+Vos documents PDF sont transmis de manière sécurisée au modèle d'intelligence artificielle Claude (version Sonnet 4, développé par Anthropic). Ce modèle analyse le contenu de chaque document, croise les données entre eux (charges, travaux votés, diagnostics, procédures, finances de la copropriété), et produit un rapport structuré comprenant un score sur 20, des bonus et pénalités détaillés, des risques identifiés et une recommandation.
+
+Ce traitement est entièrement automatisé — aucun employé de Verimo ne consulte vos documents ni vos rapports. L'analyse est réalisée via l'API d'Anthropic, conformément à leurs conditions d'utilisation professionnelles (les données envoyées via l'API ne sont pas utilisées pour entraîner leurs modèles).
+
+Vos documents sont automatiquement supprimés après génération du rapport. Ils ne sont ni conservés, ni revendus, ni partagés à des tiers à des fins commerciales. Seul le rapport d'analyse est conservé dans votre espace personnel.`
           },
           {
             title: '5. Hébergement et sous-traitants',
@@ -60,7 +65,7 @@ Vos documents sont automatiquement supprimés après génération du rapport. Il
 • Supabase (hébergement base de données) — serveurs localisés en France/Europe
 • Vercel (hébergement du site) — serveurs en Europe
 • Stripe (paiement) — conforme PCI-DSS
-• Anthropic (analyse IA des documents) — traitement aux États-Unis, encadré par des clauses contractuelles types
+• Anthropic (analyse documentaire via le modèle Claude Sonnet 4) — traitement aux États-Unis, encadré par des clauses contractuelles types. Les données transmises via l'API ne sont pas utilisées pour l'entraînement des modèles.
 
 Tous nos sous-traitants offrent des garanties suffisantes en matière de protection des données.`
           },
