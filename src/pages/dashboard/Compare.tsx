@@ -457,8 +457,15 @@ export default function Compare() {
         </div>
       )}
 
-      {/* ═══ CARDS BIENS ═══ */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* ═══ BLOC SÉLECTION ═══ */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+        <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #edf2f7', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h3 style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <GitCompare size={14} style={{ color: '#2a7d9c' }} /> Sélectionnez vos biens à comparer
+          </h3>
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#2a7d9c' }}>{selected.length}/{maxSelect}</span>
+        </div>
+        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {completedAnalyses.map((a, idx) => {
           const isSel = selected.includes(a.id);
           const score = a.score ?? 0;
@@ -496,61 +503,70 @@ export default function Compare() {
             </motion.div>
           );
         })}
+        </div>
+
+        {/* Info sélection */}
+        {selected.length === 1 && (
+          <div style={{ padding: '0 16px 16px' }}>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(42,125,156,0.04)', border: '1px solid rgba(42,125,156,0.12)', fontSize: 12, color: '#2a7d9c', fontWeight: 600 }}>
+              ✓ 1 bien sélectionné — cliquez sur un {maxSelect === 3 ? '2e ou 3e bien' : '2e bien'} pour continuer
+            </motion.div>
+          </div>
+        )}
+
+        {/* Comparaison existante ou bouton lancer */}
+        {canLaunch && (() => {
+          const sortedSelected = [...selected].sort().join(',');
+          const existingComp = historique.find(c => c.analyse_ids === sortedSelected);
+          if (existingComp) {
+            const dateExist = new Date(existingComp.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+            return (
+              <div style={{ padding: '0 16px 16px' }}>
+                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                  style={{ padding: '16px 18px', borderRadius: 14, background: '#f0f7fb', border: '1.5px solid #bae3f5', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 22 }}>📋</span>
+                    <div>
+                      <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0f2d3d', marginBottom: 2 }}>
+                        Comparaison déjà effectuée
+                      </div>
+                      <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
+                        Vous avez déjà comparé ces {selected.length} biens le {dateExist}.
+                      </div>
+                    </div>
+                  </div>
+                  <button onClick={() => openComparaison(selected)}
+                    style={{ width: '100%', padding: '13px', borderRadius: 11, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14.5, fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 12px rgba(15,45,61,0.15)' }}>
+                    <Eye size={17} />
+                    Voir le rapport
+                  </button>
+                </motion.div>
+              </div>
+            );
+          }
+          return (
+            <div style={{ padding: '0 16px 16px' }}>
+              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+                <button onClick={handleLaunch}
+                  style={{ width: '100%', padding: '15px', borderRadius: 13, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 800, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, boxShadow: '0 4px 16px rgba(15,45,61,0.2)' }}>
+                  <GitCompare size={18} />
+                  Lancer la comparaison — {selected.length} bien{selected.length > 1 ? 's' : ''} sélectionné{selected.length > 1 ? 's' : ''}
+                  <ArrowRight size={16} />
+                </button>
+              </motion.div>
+            </div>
+          );
+        })()}
       </div>
 
-      {/* Info sélection */}
-      {selected.length === 1 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(42,125,156,0.04)', border: '1px solid rgba(42,125,156,0.12)', fontSize: 12, color: '#2a7d9c', fontWeight: 600 }}>
-          ✓ 1 bien sélectionné — cliquez sur un {maxSelect === 3 ? '2e ou 3e bien' : '2e bien'} pour continuer
-        </motion.div>
-      )}
-
-      {/* Comparaison existante ou bouton lancer */}
-      {canLaunch && (() => {
-        const sortedSelected = [...selected].sort().join(',');
-        const existingComp = historique.find(c => c.analyse_ids === sortedSelected);
-        if (existingComp) {
-          const dateExist = new Date(existingComp.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-          return (
-            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-              style={{ padding: '16px 18px', borderRadius: 14, background: '#f0f7fb', border: '1.5px solid #bae3f5', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 22 }}>📋</span>
-                <div>
-                  <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0f2d3d', marginBottom: 2 }}>
-                    Comparaison déjà effectuée
-                  </div>
-                  <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
-                    Vous avez déjà comparé ces {selected.length} biens le {dateExist}.
-                  </div>
-                </div>
-              </div>
-              <button onClick={() => openComparaison(selected)}
-                style={{ width: '100%', padding: '13px', borderRadius: 11, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14.5, fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 4px 12px rgba(15,45,61,0.15)' }}>
-                <Eye size={17} />
-                Voir le rapport
-              </button>
-            </motion.div>
-          );
-        }
-        return (
-          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
-            <button onClick={handleLaunch}
-              style={{ width: '100%', padding: '15px', borderRadius: 13, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 800, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, boxShadow: '0 4px 16px rgba(15,45,61,0.2)' }}>
-              <GitCompare size={18} />
-              Lancer la comparaison — {selected.length} bien{selected.length > 1 ? 's' : ''} sélectionné{selected.length > 1 ? 's' : ''}
-              <ArrowRight size={16} />
-            </button>
-          </motion.div>
-        );
-      })()}
-
-      {/* ═══ HISTORIQUE ═══ */}
+      {/* ═══ HISTORIQUE — Bloc séparé ═══ */}
       {historique.length > 0 && (
-        <div style={{ marginTop: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Comparaisons précédentes</span>
-            <div style={{ flex: 1, height: 0.5, background: '#f1f5f9' }} />
+        <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+          <div style={{ padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #edf2f7' }}>
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Clock size={14} style={{ color: '#2a7d9c' }} /> Comparaisons précédentes
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '2px 8px', borderRadius: 100 }}>{historique.length}</span>
+            </h3>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {historique.map((comp) => {
