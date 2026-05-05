@@ -387,9 +387,33 @@ export default function GuideArticlePage() {
             {/* Table of Contents */}
             <TableOfContents sections={article.sections} />
 
-            {/* Sections */}
-            {article.sections.map((section) => (
-              <SectionRenderer key={section.id} section={section} />
+            {/* Sections avec CTA intermédiaire après la 3e section */}
+            {article.sections.map((section, idx) => (
+              <div key={section.id}>
+                <SectionRenderer section={section} />
+                {idx === 2 && article.sections.length > 4 && (
+                  <div style={{
+                    background: 'linear-gradient(135deg, #f0f9fc 0%, #e8f4f8 100%)',
+                    borderRadius: 14, padding: 'clamp(20px,3vw,28px)',
+                    borderLeft: '4px solid #2a7d9c', marginBottom: 48,
+                  }}>
+                    <p style={{ fontSize: 15, lineHeight: 1.7, color: '#334155', margin: '0 0 14px' }}>
+                      Vous n'avez pas le temps de tout vérifier vous-même ? Verimo analyse vos documents et vous donne un rapport avec score, risques et leviers de négociation.
+                    </p>
+                    <Link to="/start" style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 8,
+                      padding: '10px 22px', background: '#2a7d9c', color: '#fff',
+                      borderRadius: 10, fontSize: 13, fontWeight: 700, textDecoration: 'none',
+                      transition: 'all 0.15s',
+                    }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = '#1f6a86'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = '#2a7d9c'; }}
+                    >
+                      Faire analyser mes documents <ArrowRight size={14} />
+                    </Link>
+                  </div>
+                )}
+              </div>
             ))}
 
             {/* Conclusion */}
