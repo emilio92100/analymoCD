@@ -153,7 +153,7 @@ const proNavItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord' },
   { to: '/dashboard/dossiers', icon: FolderOpen, label: 'Mes dossiers' },
   { to: '/dashboard/compare', icon: GitCompare, label: 'Comparer' },
-  { to: '/dashboard/abonnement', icon: CreditCard, label: 'Mon abonnement' },
+  { to: '/dashboard/abonnement', icon: CreditCard, label: 'Abonnement' },
   { to: '/dashboard/compte', icon: User, label: 'Mon compte' },
   { to: '/dashboard/aide', icon: BookOpen, label: 'Aide & Méthode' },
   { to: '/dashboard/support', icon: LifeBuoy, label: 'Support' },
