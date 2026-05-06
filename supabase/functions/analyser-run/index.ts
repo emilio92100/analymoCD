@@ -252,7 +252,7 @@ async function refundCredit(analyseId: string, supabaseAdmin: SupabaseClient): P
       return false;
     }
 
-    // Ne pas rembourser les aperçus (gratuits)
+    // Ne pas rembourser les types inconnus
     const creditType = analyse.type;
     if (creditType !== 'document' && creditType !== 'complete') {
       console.log(`[analyser-run] Pas de remboursement pour type=${creditType}`);
@@ -599,10 +599,6 @@ Reponds UNIQUEMENT en JSON strict, sans texte avant ou apres. Le JSON doit avoir
 
 function buildSystemPrompt(mode: string, profil: string, typeBienDeclare?: string | null): string {
   const p = profil === 'invest' ? 'investissement locatif' : 'residence principale';
-  if (mode === 'apercu_complete' || mode === 'apercu_document') {
-    return `Tu es le moteur d analyse de documents immobiliers de Verimo. Profil : ${p}. Tu n utilises jamais les mots Claude, Anthropic ou IA.
-Reponds UNIQUEMENT en JSON strict : {"titre": "adresse ou Votre bien", "recommandation_courte": "2-3 phrases", "points_vigilance": ["max 3"]}`;
-  }
   if (mode === 'document') {
     return buildDocumentPrompt(p);
   }
@@ -1157,14 +1153,12 @@ async function runAnalyseWithData(
       return;
     }
 
-    const isApercu = mode.startsWith('apercu');
-
     // ══════════════════════════════════════════════════════════
     // RECALCUL DETERMINISTE DES NOTES DE CATEGORIES
     // (uniquement pour les modes complete et complement qui produisent
     //  la structure complete avec categories)
     // ══════════════════════════════════════════════════════════
-    if (!isApercu && mode !== 'document') {
+    if (mode !== 'document') {
       try {
         report = recalculerCategories(report as RapportShape, profil) as Record<string, unknown>;
       } catch (e) {
@@ -1192,12 +1186,12 @@ async function runAnalyseWithData(
       title: (report.titre as string) || 'Analyse immobili\u00e8re',
       score: (report.score as number) ?? null,
       avis_verimo: avisVerimoForDb,
+      result: report,
+      paid: true,
     };
-    if (isApercu) { updateData.apercu = report; updateData.is_preview = true; }
-    else { updateData.result = report; updateData.paid = true; }
 
     // Deadline 7 jours pour compléter le dossier (analyses complètes uniquement)
-    if (!isApercu && mode !== 'complement' && mode !== 'document') {
+    if (mode !== 'complement' && mode !== 'document') {
       const dl = new Date(); dl.setDate(dl.getDate() + 7);
       updateData.regeneration_deadline = dl.toISOString();
     }
@@ -1311,12 +1305,10 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
       return;
     }
 
-    const isApercu = mode.startsWith('apercu');
-
     // ══════════════════════════════════════════════════════════
     // RECALCUL DETERMINISTE DES NOTES DE CATEGORIES
     // ══════════════════════════════════════════════════════════
-    if (!isApercu && mode !== 'document') {
+    if (mode !== 'document') {
       try {
         report = recalculerCategories(report as RapportShape, profil) as Record<string, unknown>;
       } catch (e) {
@@ -1333,12 +1325,12 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
       title: (report.titre as string) || 'Analyse immobili\u00e8re',
       score: (report.score as number) ?? null,
       avis_verimo: (report.avis_verimo as string) || null,
+      result: report,
+      paid: true,
     };
-    if (isApercu) { updateData.apercu = report; updateData.is_preview = true; }
-    else { updateData.result = report; updateData.paid = true; }
 
     // Deadline 7 jours pour compléter le dossier
-    if (!isApercu && mode !== 'document') {
+    if (mode !== 'document') {
       const dl = new Date(); dl.setDate(dl.getDate() + 7);
       updateData.regeneration_deadline = dl.toISOString();
     }
