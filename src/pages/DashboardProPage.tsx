@@ -153,7 +153,7 @@ const proNavItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord' },
   { to: '/dashboard/dossiers', icon: FolderOpen, label: 'Mes dossiers' },
   { to: '/dashboard/compare', icon: GitCompare, label: 'Comparer' },
-  { to: '/dashboard/abonnement', icon: CreditCard, label: 'Abonnement' },
+  { to: '/dashboard/abonnement', icon: CreditCard, label: 'Mon abonnement' },
   { to: '/dashboard/compte', icon: User, label: 'Mon compte' },
   { to: '/dashboard/aide', icon: BookOpen, label: 'Aide & Méthode' },
   { to: '/dashboard/support', icon: LifeBuoy, label: 'Support' },
@@ -250,8 +250,8 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets }: { subs
 /* ══════════════════════════════════════════
    TOPBAR PRO
 ══════════════════════════════════════════ */
-function TopbarPro({ onMenuClick, title, proProfile, unreadCount, notifications, onMarkAllRead, onClickNotification }: {
-  onMenuClick: () => void; title: string; proProfile: ProProfile | null;
+function TopbarPro({ onMenuClick, title, mobileTitle, proProfile, unreadCount, notifications, onMarkAllRead, onClickNotification }: {
+  onMenuClick: () => void; title: string; mobileTitle?: string; proProfile: ProProfile | null;
   unreadCount?: number; notifications?: { id: string; analysisId: string; title: string; createdAt: string; read: boolean }[];
   onMarkAllRead?: () => void; onClickNotification?: (analysisId: string) => void;
 }) {
@@ -278,7 +278,12 @@ function TopbarPro({ onMenuClick, title, proProfile, unreadCount, notifications,
   return (
     <header style={{ height: 76, background: '#fff', borderBottom: '1px solid #edf2f7', display: 'flex', alignItems: 'center', padding: '0 28px', gap: 14, position: 'sticky', top: 0, zIndex: 40, flexShrink: 0 }}>
       <button className="mobile-menu-btn" onClick={onMenuClick} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#0f2d3d', padding: 4, display: 'none' }}><Menu size={22} /></button>
-      <p className="topbar-title" style={{ flex: 1, fontSize: 20, fontWeight: 800, color: '#0f172a', margin: 0 }}>{title}</p>
+      {mobileTitle && mobileTitle !== title ? (<>
+        <p className="topbar-title topbar-title-desktop" style={{ flex: 1, fontSize: 20, fontWeight: 800, color: '#0f172a', margin: 0 }}>{title}</p>
+        <p className="topbar-title topbar-title-mobile" style={{ flex: 1, fontSize: 20, fontWeight: 800, color: '#0f172a', margin: 0, display: 'none' }}>{mobileTitle}</p>
+      </>) : (
+        <p className="topbar-title" style={{ flex: 1, fontSize: 20, fontWeight: 800, color: '#0f172a', margin: 0 }}>{title}</p>
+      )}
 
       {/* Bouton Besoin d'aide */}
       <button onClick={() => { if ((window as unknown as Record<string, unknown>).__openHelp) ((window as unknown as Record<string, () => void>).__openHelp)(); }}
@@ -4737,6 +4742,13 @@ export default function DashboardProPage() {
   const title = dossierMatch ? 'Détail du dossier'
     : proNavItems.find(i => i.to === path)?.label || 'Mon espace pro';
 
+  // Titres raccourcis pour la topbar mobile
+  const MOBILE_TITLES: Record<string, string> = {
+    '/dashboard/abonnement': 'Mon plan',
+  };
+  const mobileTitle = dossierMatch ? 'Détail du dossier'
+    : MOBILE_TITLES[path] || title;
+
   const renderContent = () => {
     if (dossierMatch) {
       return <DossierDetail folderId={dossierMatch[1]} onBack={() => navigate('/dashboard/dossiers')} proProfile={proProfile} />;
@@ -4775,7 +4787,7 @@ export default function DashboardProPage() {
 
       {/* Main */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <TopbarPro onMenuClick={() => setMobileOpen(true)} title={title} proProfile={proProfile}
+        <TopbarPro onMenuClick={() => setMobileOpen(true)} title={title} mobileTitle={mobileTitle} proProfile={proProfile}
           unreadCount={unreadNotifCount} notifications={[
             ...notifications,
             ...dbNotifications.map(n => ({ id: n.id, analysisId: '', title: n.title, message: n.message, createdAt: n.created_at, read: n.read })),
@@ -5114,7 +5126,9 @@ export default function DashboardProPage() {
           .topbar-suggest-btn { display: none !important; }
           header { padding: 0 14px !important; height: 62px !important; gap: 10px !important; }
           .mobile-menu-btn svg { width: 24px !important; height: 24px !important; }
-          .topbar-title { font-size: 15px !important; font-weight: 800 !important; white-space: normal !important; overflow: visible !important; }
+          .topbar-title { font-size: 15px !important; font-weight: 800 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+          .topbar-title-desktop { display: none !important; }
+          .topbar-title-mobile { display: block !important; font-size: 15px !important; font-weight: 800 !important; }
           .dashboard-main { padding: 16px 12px !important; }
           .dashboard-main > div,
           .dashboard-main > section {
