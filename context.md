@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet complet — 4 mai 2026 (après sessions 1 à 25)
+# VERIMO — Contexte projet complet — 6 mai 2026 (après sessions 1 à 28)
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -52,18 +52,18 @@
 
 ### Stripe Price IDs
 ```
-# Particuliers (mode TEST)
-document : price_1TIb1LBO4ekMbwz0020eqcR0
-complete : price_1TIb3XBO4ekMbwz0a7m7E7gD
-pack2    : price_1TIb4KBO4ekMbwz0gGF2gI1S
-pack3    : price_1TIb51BO4ekMbwz0mmEez47o
+# Particuliers (PRODUCTION)
+document : price_1TTtd1BesXB76oWECAGA9ywf
+complete : price_1TTtd2BesXB76oWEsZ9LsLS9
+pack2    : price_1TTtcxBesXB76oWETkokxLgB
+pack3    : price_1TTtczBesXB76oWEloTMvEZF
 
-# Pro (mode TEST)
-DECOUVERTE 19,90€ → price_1TRKJMBO4ekMbwz0mOh2hUxI
-STARTER 49,90€    → price_1TRKOZBO4ekMbwz0cAzSz8P8
-POWER 89,90€      → price_1TRKPaBO4ekMbwz01mAualMR
-UNIT_COMPLETE 9,90€ → price_1TRKQtBO4ekMbwz0Tqi4GeKK
-UNIT_SIMPLE 2,90€   → price_1TRKRmBO4ekMbwz0ynLNDwn4
+# Pro (PRODUCTION)
+DECOUVERTE 19,90€ → price_1TTtd1BesXB76oWEZuILxjwe
+STARTER 49,90€    → price_1TTtczBesXB76oWEcKaNR2BW
+POWER 89,90€      → price_1TTtcxBesXB76oWEPyVYZjCj
+UNIT_COMPLETE 9,90€ → price_1TTtcyBesXB76oWEBF1TLHYz
+UNIT_SIMPLE 2,90€   → price_1TTtd2BesXB76oWEVM0p27GS
 ```
 
 ---
@@ -72,7 +72,7 @@ UNIT_SIMPLE 2,90€   → price_1TRKRmBO4ekMbwz0ynLNDwn4
 - **Frontend** : React + Vite + TypeScript + Tailwind
 - **Backend** : Supabase Pro (auth + DB + Edge Functions Deno + Storage)
 - **IA** : Claude Sonnet 4.6 via API Anthropic + Files API
-- **Paiement** : Stripe (mode TEST)
+- **Paiement** : Stripe (PRODUCTION — basculé le 6 mai 2026)
 - **Email** : Mailjet (SMTP Supabase + API directe via edge functions)
   - `notification@verimo.fr` → mails transactionnels particuliers (Supabase Auth)
   - `pro@verimo.fr` → mails pro (invitations, rapports partagés via edge function)
@@ -130,24 +130,169 @@ UNIT_SIMPLE 2,90€   → price_1TRKRmBO4ekMbwz0ynLNDwn4
 
 ### 🔴 Priorité haute
 
+- [ ] **Stripe TVA Pro** — Activer Stripe Tax dans le dashboard + pousser `pro-checkout-create` avec `automatic_tax: true` (fichier prêt mais non pushé, en attente config Stripe Tax)
+- [ ] **Bouton "Modifier mon moyen de paiement"** — Ajouter dans DashboardProPage (MonAbonnement) un bouton qui appelle `billing_portal` mode de `pro-checkout-create` (mode déjà codé dans l'edge function, frontend à faire)
 - [ ] **Guides — Rédaction des premiers articles** : commencer par les 5 articles les plus stratégiques SEO (analyser PV AG, DPE, 10 documents avant offre, charges copropriété, compromis de vente). Chaque article = une page `/guides/slug` avec useSEO dédié, contenu riche, encart 💡, CTA vers `/start`
 - [ ] **Guides — Articles individuels** : créer le système de rendu d'article (route `/guides/:slug` → charge le contenu correspondant)
-- [ ] **Différence analyse simple vs complète** : mieux expliquer la distinction sur les pages Méthode et/ou Tarifs (ex: section "Pour qui ?" ou comparatif visuel clair)
 - [ ] **Veille réglementaire — prompt analyser-run** — DPE collectif copros <50 lots (jan 2026), PPT obligatoire (jan 2026)
 - [ ] **Prompt caching API Anthropic** — ~90% d'économie possible
-- [ ] **Stripe TEST → production** — Passer les Price IDs en mode live
-- [ ] **Email notification quand admin répond à un ticket support** — edge function à créer
+- [ ] **SEO URLs guides** — 40 URLs restent à soumettre dans Google Search Console (quota dépassé)
 
 ### 🟡 Priorité normale
 
+- [ ] **Branding Stripe Checkout** — Logo + couleurs Verimo sur la page de paiement Stripe (dashboard Stripe → Adaptation à votre marque)
+- [ ] **Domaine custom Stripe** — `pay.verimo.fr` au lieu de `checkout.stripe.com` (config DNS)
+- [ ] **Reçus email Stripe** — Activer l'envoi automatique de reçus après paiement
+- [ ] **Remboursement depuis l'admin** — Bouton dans le relevé des transactions qui appelle l'API Stripe refund
+- [ ] **Page Pro animation hero** — Animation subtile dans le hero existant (pas encore validé)
+- [ ] **Différence analyse simple vs complète** : mieux expliquer la distinction sur les pages Méthode et/ou Tarifs
 - [ ] **SEO — Blog/contenu continu** : après les 5 premiers articles, continuer à publier 2-3 articles/semaine
 - [ ] **SEO — Image OG** : créer une image Open Graph pour chaque page publique
-- [ ] **SEO — Middleware Vercel Edge** (optionnel) : injecter les meta tags côté serveur pour les crawlers sociaux. Nice-to-have, le fix canonical dans index.html règle le principal
-- [ ] **Template email prospection** : 3 versions prêtes (V1 court, V2 visuel, V3 relance)
-- [ ] **Email confirmation après changement MDP** (nice-to-have)
 - [ ] **Compare : redesign verdict** — split synthèse par bien, layout two-column forces/issues, tags "Bien 1"/"Bien 2"
 - [ ] **Compare : remplacer edge function debug `comparer`** par version propre en production
-- [ ] **Headers dégradés sur ProPage et ContactPage** — harmoniser avec le dégradé appliqué sur les autres pages publiques
+
+---
+
+## ✅ Session 28 — 6 mai 2026 — Stripe Production, Admin Support Inbox, Pages Légales, UX
+
+### Résumé
+Session majeure : passage Stripe en production (9 produits, webhooks, Price IDs, clés), redesign admin support (inbox split par utilisateur), pages légales mises à jour (Alexandre ROGELET, Claude Sonnet 4), protection CA (FK SET NULL), nombreuses améliorations UX (support, rapports pliables, fiche client).
+
+### A. Stripe — Passage en production
+
+**Basculement complet test → production :**
+- 9 produits copiés en production (4 particuliers + 5 pro)
+- Price IDs mis à jour dans : `Tarifs.tsx`, `pro-checkout-create`, `stripe-webhook`, `stripe-webhook-pro`
+- `STRIPE_SECRET_KEY` → clé production dans Supabase Secrets
+- 2 webhooks configurés :
+  - `Verimo - Particuliers` → `stripe-webhook` (checkout.session.completed)
+  - `Verimo - Pro` → `stripe-webhook-pro` (checkout.session.completed, invoice.paid, customer.subscription.updated, customer.subscription.deleted)
+- `STRIPE_WEBHOOK_SECRET` et `STRIPE_WEBHOOK_SECRET_PRO` → mis à jour
+- Données test nettoyées (payments, pro_unit_purchases, pro_subscriptions)
+- `create-checkout-session` : aucun changement nécessaire (reçoit priceId du frontend)
+
+**Protection CA historique :**
+- FK `payments.user_id` → changée de `ON DELETE CASCADE` à `ON DELETE SET NULL`
+- FK `pro_unit_purchases.user_id` → idem `ON DELETE SET NULL`
+- Supprimer un client ne supprime plus ses paiements → CA intact
+
+**En attente (prochaine session) :**
+- `pro-checkout-create` avec `automatic_tax: { enabled: true }` → fichier prêt mais NON pushé (attendre activation Stripe Tax dans le dashboard)
+- Mode `billing_portal` ajouté dans `pro-checkout-create` → prêt, frontend à faire
+
+### B. Admin Support — Redesign Inbox Split par Utilisateur
+
+**Remplacement total de `AdminSupportTab` dans AdminPage.tsx :**
+- Vue inbox split : liste clients à gauche, conversation à droite
+- **Regroupement par utilisateur** (pas par ticket) : Nathan apparaît UNE seule fois même avec 6 tickets
+- Client qui envoie un message remonte en tête (tri `updated_at desc`)
+- Preview du dernier message + dates relatives ("il y a 2min")
+- Badge PRO/PART, point non-lu, compteur dans le header
+- Filtres : **En cours** (défaut) → Résolus → Tous + recherche par nom/email
+- Panneau droit : header avec avatar/nom/email/badge, lien "Voir la fiche client" → onglet Users
+- Sélecteur de ticket si le client a plusieurs tickets
+- Boutons : Résoudre (sync client), Archiver (📦), Supprimer (✕ rouge + modale confirmation)
+- Barre réponse pill avec champ prénom + envoi rond + Enter pour envoyer
+- Transitions fluides : `AnimatePresence mode="wait"` + `motion.div` fade-in/slide au changement de client/ticket
+- Auto-refresh toutes les 15s
+- Hauteur : `calc(100vh - 110px)` pour coller au bas de l'écran
+- `useMemo` ajouté aux imports
+- "Messages" (formulaire contact) déplacé de catégorie "Contenu" vers "Support"
+
+### C. Pages Légales — Alexandre ROGELET + largeur 960px
+
+**MentionsLegalesPage.tsx :**
+- "Alexandre ROGELET" comme fondateur et directeur de la publication
+- maxWidth 760→960px, date mai 2026
+
+**ConfidentialitePage.tsx :**
+- Section 1 : "fondé et exploité par Alexandre ROGELET"
+- Section 4 enrichie : Verimo utilise Claude Sonnet 4 d'Anthropic, explication fonctionnement (documents analysés, données croisées, rapport structuré score /20), pourquoi Claude (fiabilité, sécurité API, transparence, conformité RGPD/CCT), 100% automatisé, documents supprimés après analyse
+- Section 5 : "Claude Sonnet 4" précisé + API ne réentraîne pas
+- maxWidth 760→960px, date mai 2026
+
+**CGUPage.tsx :**
+- Section 1 : "fondé et exploité par Alexandre ROGELET"
+- maxWidth 760→960px, date mai 2026
+
+### D. LoadingScreen + DashboardLoader — Logo Verimo
+
+- `App.tsx` LoadingScreen : ancien SVG bouclier remplacé par `<img src="/logo.png">` centré (width 240, maxWidth 70%)
+- Conteneur `width: 100%` + `display: flex` + `justifyContent: center` pour centrage
+
+### E. Admin — Fiche Client Pro : section "Informations personnelles"
+
+- Nouvelle section avant "Identité professionnelle" : Nom complet, Téléphone mobile, Email (lecture seule)
+- Mode édition avec bouton "Modifier" : champs nom/téléphone éditables
+- Enregistrement dans `profiles` Supabase + log admin
+- Synchronisation immédiate côté client
+
+### F. Admin — Historique Financier Client Pro
+
+- Section "Factures" renommée "Historique financier"
+- 3 KPI en haut : CA total généré (vert), Paiements abo (teal), Paiements unitaires (gris)
+- Calcul automatique depuis les factures Stripe
+
+### G. DashboardProPage — Mon Compte simplifié
+
+- Email : lecture seule (grisé, disabled) avec tooltip "Les réponses de vos clients aux rapports envoyés arrivent sur cet email..."
+- Téléphone : un seul champ au lieu de deux (supprimé "Téléphone de contact" redondant)
+- Email de contact supprimé (confus)
+- Tooltip repositionné `left: 0` au lieu de centré (fix débordement gauche)
+
+### H. DashboardProPage — Rapports envoyés pliables/dépliables
+
+- Composant `BuyerGroupCollapsible` extrait (rules of hooks)
+- Chaque bloc acheteur fermé par défaut avec badge "X rapports"
+- Clic → déploie avec `AnimatePresence` + `motion.div` (height 0→auto + fade, 0.25s ease)
+- Repli sans saut de scroll (`scrollIntoView smooth nearest` si bloc hors viewport)
+- Feedback visuel : fond change quand ouvert + bordure teal
+- Chevron rotation fluide 0.25s
+
+### I. Support Client — Améliorations UX
+
+- Badge "Nouvelle réponse du service client" : badge vert à droite du titre du ticket quand `unread_by_user === true`
+- Barre de saisie plus visible : fond blanc, bordure teal 2px, bouton envoi 46px + contraste amélioré
+- Section "Tickets en cours" : header sombre (dégradé teal → navy), texte blanc, badge blanc — section prioritaire
+- Section "Questions fréquentes" : header clair (dégradé light teal) — secondaire
+- Texte notification corrigé : "Une pastille apparaîtra sur l'onglet Support dès qu'une réponse sera disponible."
+
+### Fichiers modifiés session 28
+```
+src/App.tsx                         → LoadingScreen avec logo.png centré
+src/pages/AdminPage.tsx             → Admin support inbox split, fiche client infos personnelles, historique financier, Messages déplacé dans Support, useMemo import
+src/pages/MentionsLegalesPage.tsx   → Alexandre ROGELET, 960px, mai 2026
+src/pages/ConfidentialitePage.tsx   → Alexandre ROGELET, Claude Sonnet 4 détaillé, 960px, mai 2026
+src/pages/CGUPage.tsx               → Alexandre ROGELET, 960px, mai 2026
+src/pages/DashboardProPage.tsx      → Compte simplifié (email readonly, 1 téléphone), rapports pliables, tooltip fix
+src/pages/dashboard/Support.tsx     → Badge nouvelle réponse, barre saisie visible, headers inversés, texte notification
+src/pages/dashboard/Tarifs.tsx      → Price IDs production
+
+Edge functions (Supabase — mises à jour directement) :
+- stripe-webhook/index.ts           → Price IDs production (4 particuliers)
+- stripe-webhook-pro/index.ts       → Price IDs production (5 pro)
+- pro-checkout-create/index.ts      → Price IDs production + mode billing_portal + automatic_tax: true (NON PUSHÉ — attendre Stripe Tax)
+
+Supabase Secrets mis à jour :
+- STRIPE_SECRET_KEY → clé production
+- STRIPE_WEBHOOK_SECRET → webhook production particuliers
+- STRIPE_WEBHOOK_SECRET_PRO → webhook production pro
+
+SQL exécutés :
+- ALTER TABLE payments → FK ON DELETE SET NULL (protection CA)
+- ALTER TABLE pro_unit_purchases → FK ON DELETE SET NULL (protection CA)
+- DELETE FROM payments (nettoyage données test)
+- DELETE FROM pro_unit_purchases (nettoyage données test)
+- DELETE FROM pro_subscriptions (nettoyage données test)
+```
+
+---
+
+## ✅ Session 27 — 5-6 mai 2026 — UI/UX Support, Admin, Legal, Loader
+
+(Voir transcript: /mnt/transcripts/2026-05-05-22-59-28-verimo-session27-ui-support-admin-legal.txt)
+
+Topbar agrandie (pro+particulier), Support redesign complet (loader, welcome banner, FAQ 12 questions, chat redesigné, badge nouvelle réponse), DashboardLoader + LoadingScreen avec logo Verimo, pages légales initiales.
 
 ---
 
