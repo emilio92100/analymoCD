@@ -55,10 +55,10 @@ function CheckoutModal({ plan, onClose }: {
   }
 
   const PRICE_IDS: Record<string, string> = {
-    'document': 'price_1TIb1LBO4ekMbwz0020eqcR0',
-    'complete': 'price_1TIb3XBO4ekMbwz0a7m7E7gD',
-    'pack2': 'price_1TIb4KBO4ekMbwz0gGF2gI1S',
-    'pack3': 'price_1TIb51BO4ekMbwz0mmEez47o',
+    'document': 'price_1TTtd1BesXB76oWECAGA9ywf',
+    'complete': 'price_1TTtd2BesXB76oWEsZ9LsLS9',
+    'pack2': 'price_1TTtcxBesXB76oWETkokxLgB',
+    'pack3': 'price_1TTtczBesXB76oWEloTMvEZF',
   };
 
   const handleApplyCredits = async () => {
