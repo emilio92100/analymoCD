@@ -54,7 +54,7 @@ const profiles = [
     id: 'agent', icon: Building2, emoji: '🏢', label: 'Agent immobilier',
     tagline: 'Différenciez-vous. Rassurez vos acquéreurs.',
     headline: 'Un service premium qui vous différencie de la concurrence.',
-    description: 'Intégrez Verimo à votre process de vente. Lorsqu\'un acquéreur est intéressé, partagez-lui un rapport complet sur le bien pour le rassurer et accélérer sa prise de décision. Résultat : moins de doutes, des signatures plus rapides, et des clients qui vous recommandent.',
+    description: 'Intégrez Verimo à votre process de vente. Lorsqu\'un acquéreur est intéressé par un logement visité, partagez-lui un rapport complet sur le bien pour le rassurer et accélérer sa prise de décision. Résultat : moins de doutes, des signatures plus rapides, et des clients qui vous recommandent.',
     benefits: [
       { icon: Handshake, title: 'Prise de mandat', text: 'Un argument différenciant face à vos concurrents lors de la prise de mandat.' },
       { icon: Zap, title: 'Signatures accélérées', text: 'Vos acquéreurs comprennent le bien dès le départ. Moins de doutes, moins de rétractations.' },
