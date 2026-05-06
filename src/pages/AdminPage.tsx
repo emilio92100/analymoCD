@@ -4358,17 +4358,44 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
             )}
           </div>
 
-          {/* Factures du client */}
+          {/* Historique financier du client */}
           <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: 20, marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
               <Euro size={15} style={{ color: '#16a34a' }} />
-              <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0 }}>Factures</h3>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0 }}>Historique financier</h3>
               {clientInvoices.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '2px 6px', borderRadius: 100 }}>{clientInvoices.length}</span>}
             </div>
+
+            {/* CA total */}
+            {!clientInvoicesLoading && clientInvoices.length > 0 && (() => {
+              const totalCA = clientInvoices.reduce((sum, inv) => {
+                const amount = parseFloat(inv.amount.replace(/[^0-9.,]/g, '').replace(',', '.'));
+                return sum + (isNaN(amount) ? 0 : amount);
+              }, 0);
+              const aboCount = clientInvoices.filter(inv => inv.type === 'subscription').length;
+              const unitCount = clientInvoices.filter(inv => inv.type === 'unit').length;
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
+                  <div style={{ padding: '12px 14px', borderRadius: 12, background: 'linear-gradient(135deg, #f0fdf4, #ecfdf5)', border: '1px solid #bbf7d0', textAlign: 'center' as const }}>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: '#16a34a' }}>{totalCA.toFixed(2).replace('.', ',')}€</div>
+                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>CA total généré</div>
+                  </div>
+                  <div style={{ padding: '12px 14px', borderRadius: 12, background: '#f0f7fb', border: '1px solid #d0e8f0', textAlign: 'center' as const }}>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: '#2a7d9c' }}>{aboCount}</div>
+                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Paiements abo</div>
+                  </div>
+                  <div style={{ padding: '12px 14px', borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7', textAlign: 'center' as const }}>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>{unitCount}</div>
+                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Paiements unitaires</div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {clientInvoicesLoading ? (
               <div style={{ textAlign: 'center' as const, padding: 20, color: '#94a3b8', fontSize: 13 }}>Chargement…</div>
             ) : clientInvoices.length === 0 ? (
-              <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center' as const, padding: 16 }}>Aucune facture.</p>
+              <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center' as const, padding: 16 }}>Aucun paiement enregistré.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {clientInvoices.map(inv => (
