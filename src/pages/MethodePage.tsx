@@ -458,8 +458,12 @@ export default function MethodePage() {
                 <div style={{ borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px 24px', background: '#fafbfc', height: '100%', boxSizing: 'border-box' as const }}>
                   <div style={{ fontSize: 28, marginBottom: 12 }}>📄</div>
                   <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Analyse simple</div>
-                  <div style={{ fontSize: 14, color: '#64748b', marginBottom: 18, lineHeight: 1.6 }}>
-                    Vous uploadez <strong style={{ color: '#0f172a' }}>un seul document</strong>. Notre outil l'identifie, en extrait les informations clés, et vous donne les points forts et les vigilances détectés.
+                  <div style={{ fontSize: 14, color: '#64748b', marginBottom: 14, lineHeight: 1.6 }}>
+                    Vous uploadez <strong style={{ color: '#0f172a' }}>un seul document</strong>. Verimo l'identifie, en extrait les informations clés, et vous donne les points forts et les vigilances détectés.
+                  </div>
+                  <div style={{ padding: '10px 14px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fde68a', marginBottom: 14 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: '#92400e', marginBottom: 3 }}>ℹ️ Idéal pour vérifier un point précis</div>
+                    <div style={{ fontSize: 12, color: '#78350f', lineHeight: 1.5 }}>PV d'AG, règlement de copropriété, DPE, diagnostic amiante, appel de charges…</div>
                   </div>
                   <div style={{ padding: '12px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca' }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: '#dc2626', marginBottom: 2 }}>⚠ Pas de note /20</div>
@@ -472,12 +476,16 @@ export default function MethodePage() {
                 <div style={{ borderRadius: 16, border: '1.5px solid #2a7d9c', padding: '22px 24px', background: '#f0f7fb', height: '100%', boxSizing: 'border-box' as const, boxShadow: '0 4px 18px rgba(42,125,156,0.1)' }}>
                   <div style={{ fontSize: 28, marginBottom: 12 }}>📊</div>
                   <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>Analyse complète</div>
-                  <div style={{ fontSize: 14, color: '#374151', marginBottom: 18, lineHeight: 1.6 }}>
-                    Vous uploadez <strong style={{ color: '#0f172a' }}>jusqu'à 15 documents</strong>. Notre outil les croise et génère un score /20 global du bien avec rapport complet.
+                  <div style={{ fontSize: 14, color: '#374151', marginBottom: 14, lineHeight: 1.6 }}>
+                    Vous uploadez <strong style={{ color: '#0f172a' }}>jusqu'à 15 documents</strong>. Verimo les croise et génère un score /20 global du bien avec un rapport complet.
+                  </div>
+                  <div style={{ padding: '10px 14px', borderRadius: 10, background: '#e8f4fa', border: '1px solid #bae3f5', marginBottom: 14 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0c447c', marginBottom: 3 }}>🏠 Envoyez tous vos documents d'un coup</div>
+                    <div style={{ fontSize: 12, color: '#0a2e4a', lineHeight: 1.5 }}>PV d'AG, DPE, charges, règlement, diagnostics, compromis… Verimo croise tout et génère votre score.</div>
                   </div>
                   <div style={{ padding: '12px 14px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #d1fae5' }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: '#16a34a', marginBottom: 2 }}>✓ Score /20 + rapport PDF</div>
-                    <div style={{ fontSize: 13, color: '#14532d' }}>Recommandation d'achat, travaux, charges, procédures — tout est inclus.</div>
+                    <div style={{ fontSize: 13, color: '#14532d' }}>Recommandation d'achat, travaux, charges, procédures, pistes de négociation — tout est inclus.</div>
                   </div>
                 </div>
               </Reveal>
