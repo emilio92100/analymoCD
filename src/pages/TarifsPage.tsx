@@ -26,31 +26,63 @@ const plans = [
     id: 'document',
     key: 'simple' as const,
     name: 'Simple',
-    sub: '1 document analysé',
+    sub: 'Analysez un document isolé',
     price: '4,90',
     perUnit: null,
-    docsLabel: '1 fichier PDF',
+    docsLabel: '1 seul fichier PDF',
     cta: 'Analyser un document',
     popular: false,
     badge: null,
     badgeColor: '',
     badgeBg: '',
     bonus: null,
+    hint: {
+      icon: 'ℹ️',
+      title: 'Idéal pour vérifier un point précis',
+      text: 'PV d\'AG, règlement de copropriété, DPE, diagnostic amiante, appel de charges…',
+      bg: '#fffbeb',
+      border: '#fde68a',
+      titleColor: '#92400e',
+      textColor: '#78350f',
+    },
+    statusBox: {
+      icon: '⚠',
+      text: 'Pas de score /20 — porte sur un document, pas sur un bien.',
+      bg: '#fef2f2',
+      border: '#fecaca',
+      color: '#991b1b',
+    },
   },
   {
     id: 'complete',
     key: 'complete' as const,
     name: 'Complète',
-    sub: 'Jusqu\'à 15 documents en une fois',
+    sub: 'Analysez un bien avant d\'acheter',
     price: '19,90',
     perUnit: null,
-    docsLabel: 'Jusqu\'à 15 fichiers simultanés',
+    docsLabel: 'Jusqu\'à 15 fichiers en une fois',
     cta: 'Analyser mon bien',
     popular: true,
     badge: 'Recommandée',
     badgeColor: '#0c447c',
     badgeBg: '#e6f1fb',
     bonus: null,
+    hint: {
+      icon: '🏠',
+      title: 'Envoyez tous vos documents d\'un coup',
+      text: 'PV d\'AG, DPE, charges, règlement, diagnostics, compromis… Verimo croise tout et génère un score /20.',
+      bg: '#f0f7fb',
+      border: '#bae3f5',
+      titleColor: '#0c447c',
+      textColor: '#0a2e4a',
+    },
+    statusBox: {
+      icon: '✓',
+      text: 'Score /20 + rapport PDF + pistes de négociation',
+      bg: '#f0fdf4',
+      border: '#d1fae5',
+      color: '#166534',
+    },
   },
   {
     id: 'pack2',
@@ -66,6 +98,8 @@ const plans = [
     badgeColor: '#92400e',
     badgeBg: '#fef3c7',
     bonus: 'Économisez 10€',
+    hint: null,
+    statusBox: null,
   },
   {
     id: 'pack3',
@@ -81,6 +115,8 @@ const plans = [
     badgeColor: '#3C3489',
     badgeBg: '#EEEDFE',
     bonus: 'Économisez 20€',
+    hint: null,
+    statusBox: null,
   },
 ];
 
@@ -297,6 +333,23 @@ export default function TarifsPage() {
                   </svg>
                   <span style={{ fontSize: 13.5, color: '#0f172a', lineHeight: 1.45, fontWeight: 600 }}>{plan.docsLabel}</span>
                 </div>
+
+                {/* Encart explicatif (Simple & Complète uniquement) */}
+                {plan.hint && (
+                  <div style={{ padding: '10px 12px', borderRadius: 10, background: plan.hint.bg, border: `1px solid ${plan.hint.border}`, marginBottom: 10 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: plan.hint.titleColor, marginBottom: 3 }}>
+                      {plan.hint.icon} {plan.hint.title}
+                    </div>
+                    <div style={{ fontSize: 12, color: plan.hint.textColor, lineHeight: 1.5 }}>
+                      {plan.hint.text}
+                    </div>
+                  </div>
+                )}
+                {plan.statusBox && (
+                  <div style={{ padding: '8px 12px', borderRadius: 10, background: plan.statusBox.bg, border: `1px solid ${plan.statusBox.border}`, marginBottom: 14, fontSize: 12, color: plan.statusBox.color, lineHeight: 1.5, fontWeight: 600 }}>
+                    {plan.statusBox.icon} {plan.statusBox.text}
+                  </div>
+                )}
 
                 {/* Features liste complète */}
                 <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 11, flex: 1, marginBottom: 22 }}>
