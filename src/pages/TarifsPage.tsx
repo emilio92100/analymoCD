@@ -26,7 +26,7 @@ const plans = [
     id: 'document',
     key: 'simple' as const,
     name: 'Simple',
-    sub: 'Analysez un document isolé',
+    sub: 'Analysez un seul document',
     price: '4,90',
     perUnit: null,
     docsLabel: '1 seul fichier PDF',
