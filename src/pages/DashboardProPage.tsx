@@ -2067,6 +2067,32 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
   const [cancelReason, setCancelReason] = useState('');
   const [cancelLoading, setCancelLoading] = useState(false);
 
+  // ── Billing portal ──
+  async function handleBillingPortal() {
+    setLoading('billing_portal');
+    setErrorMsg('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Vous devez être connecté');
+
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://veszrayromldfgetqaxb.supabase.co'}/functions/v1/pro-checkout-create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+        body: JSON.stringify({ mode: 'billing_portal' }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur');
+
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (e: any) {
+      setErrorMsg(e.message || 'Une erreur est survenue');
+    }
+    setLoading(null);
+  }
+
   const CANCEL_REASONS = [
     "Je n'utilise pas assez mes crédits chaque mois",
     "C'est trop cher pour mon usage",
@@ -2496,6 +2522,19 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
         </div>
         </div>
       </div>
+
+      {/* Bouton modifier moyen de paiement — visible uniquement si abonné */}
+      {isSubscribed && (
+        <div style={{ marginBottom: 28, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+          <button onClick={handleBillingPortal} disabled={loading === 'billing_portal'}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 12, background: '#fff', border: '1.5px solid #edf2f7', color: '#64748b', fontSize: 13, fontWeight: 600, cursor: loading === 'billing_portal' ? 'wait' : 'pointer', transition: 'all 0.15s' }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#2a7d9c'; e.currentTarget.style.color = '#2a7d9c'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#edf2f7'; e.currentTarget.style.color = '#64748b'; }}>
+            <CreditCard size={14} />
+            {loading === 'billing_portal' ? 'Redirection…' : 'Modifier mon moyen de paiement'}
+          </button>
+        </div>
+      )}
 
       {/* ═══ SECTION 2 : Achats unitaires + Code promo (une seule ligne) ═══ */}
       <div style={{ marginBottom: 28, borderRadius: 20, border: isSubscribed ? '1.5px solid #bbf7d0' : '1.5px solid #fde68a', overflow: 'hidden', background: '#fff' }}>
