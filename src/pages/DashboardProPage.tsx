@@ -1928,6 +1928,9 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
   // Détecter le retour de Stripe Checkout (?checkout=success ou ?checkout=cancel)
   const [successPopup, setSuccessPopup] = useState<'subscribe' | 'upgrade' | 'unit' | 'reactivate' | null>(null);
 
+  // Popup confirmation upgrade avec récap TVA
+  const [upgradeConfirm, setUpgradeConfirm] = useState<{ id: string; name: string; price: string; completes: number; simples: number } | null>(null);
+
   useEffect(() => {
     const url = new URL(window.location.href);
     const checkout = url.searchParams.get('checkout');
@@ -2251,6 +2254,91 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
         )}
       </AnimatePresence>
 
+      {/* ── Popup confirmation upgrade avec récap TVA ── */}
+      <AnimatePresence>
+        {upgradeConfirm && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', padding: 16 }}
+            onClick={() => !loading && setUpgradeConfirm(null)}>
+            <motion.div initial={{ scale: 0.92, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.92, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', duration: 0.45, bounce: 0.15 }}
+              onClick={e => e.stopPropagation()}
+              style={{ background: '#fff', borderRadius: 24, padding: '36px 32px', maxWidth: 460, width: '100%', boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
+
+              {/* Header */}
+              <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                <div style={{ width: 56, height: 56, borderRadius: 16, background: 'linear-gradient(135deg, #f0f7fb, #e0f0f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: '2px solid #d0e8f0' }}>
+                  <ArrowRight size={24} style={{ color: '#2a7d9c' }} />
+                </div>
+                <h2 style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', marginBottom: 6, letterSpacing: '-0.02em' }}>
+                  Changer pour {upgradeConfirm.name}
+                </h2>
+                <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
+                  Votre nouveau plan prend effet immédiatement.
+                </p>
+              </div>
+
+              {/* Récap plan */}
+              <div style={{ background: '#f8fafc', borderRadius: 16, padding: '20px', marginBottom: 20, border: '1.5px solid #edf2f7' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Plan {upgradeConfirm.name}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '3px 10px', borderRadius: 100 }}>Mensuel</span>
+                </div>
+                <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+                  <div style={{ flex: 1, background: '#fff', borderRadius: 10, padding: '10px 12px', border: '1px solid #edf2f7', textAlign: 'center' }}>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{upgradeConfirm.completes}</div>
+                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Complète{upgradeConfirm.completes > 1 ? 's' : ''}</div>
+                  </div>
+                  <div style={{ flex: 1, background: '#fff', borderRadius: 10, padding: '10px 12px', border: '1px solid #edf2f7', textAlign: 'center' }}>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{upgradeConfirm.simples}</div>
+                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Simple{upgradeConfirm.simples > 1 ? 's' : ''}</div>
+                  </div>
+                </div>
+
+                {/* Détail prix */}
+                <div style={{ borderTop: '1px solid #edf2f7', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, color: '#64748b' }}>Prix HT</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{upgradeConfirm.price}€</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, color: '#64748b' }}>TVA (20%)</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#64748b' }}>{(parseFloat(upgradeConfirm.price.replace(',', '.')) * 0.2).toFixed(2).replace('.', ',')}€</span>
+                  </div>
+                  <div style={{ borderTop: '1.5px solid #d0e8f0', paddingTop: 10, marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Total TTC / mois</span>
+                    <span style={{ fontSize: 18, fontWeight: 900, color: '#2a7d9c' }}>{(parseFloat(upgradeConfirm.price.replace(',', '.')) * 1.2).toFixed(2).replace('.', ',')}€</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Boutons */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <button
+                  disabled={loading === `subscribe:${upgradeConfirm.id}`}
+                  onClick={() => {
+                    setUpgradeConfirm(null);
+                    handleSubscribe(upgradeConfirm.id);
+                  }}
+                  style={{
+                    width: '100%', padding: '14px', borderRadius: 14, border: 'none', cursor: loading === `subscribe:${upgradeConfirm.id}` ? 'wait' : 'pointer',
+                    background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 800,
+                    opacity: loading === `subscribe:${upgradeConfirm.id}` ? 0.6 : 1,
+                    boxShadow: '0 8px 24px rgba(15,45,61,0.2)',
+                    transition: 'all 0.2s',
+                  }}>
+                  {loading === `subscribe:${upgradeConfirm.id}` ? 'Changement en cours…' : 'Confirmer le changement'}
+                </button>
+                <button onClick={() => setUpgradeConfirm(null)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#94a3b8', padding: '8px' }}>
+                  Annuler
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ═══ SECTION 1 : Choisir / Changer de plan ═══ */}
       <div style={{ marginBottom: 28, borderRadius: 20, border: '1.5px solid #d0e8f0', overflow: 'hidden', background: '#fff' }}>
         <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderBottom: '1px solid #d0e8f0' }}>
@@ -2325,7 +2413,15 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
                     </button>
                   )
                 ) : (
-                  <button disabled={btnLoading} onClick={() => handleSubscribe(plan.id)}
+                  <button disabled={btnLoading} onClick={() => {
+                      if (subscription && subscription.status === 'active') {
+                        // Upgrade : ouvrir popup de confirmation avec récap TVA
+                        setUpgradeConfirm({ id: plan.id, name: plan.name, price: plan.price, completes: plan.completes, simples: plan.simples });
+                      } else {
+                        // Nouveau abo : rediriger vers Stripe Checkout
+                        handleSubscribe(plan.id);
+                      }
+                    }}
                     style={{ width: '100%', padding: '12px', borderRadius: 11, border: 'none', cursor: btnLoading ? 'wait' : 'pointer',
                       background: plan.popular ? 'linear-gradient(135deg,#2a7d9c,#0f2d3d)' : '#0f172a', color: '#fff', fontSize: 14, fontWeight: 700, opacity: btnLoading ? 0.6 : 1 }}>
                     {btnLoading ? 'Redirection…' : (subscription ? 'Passer à ce plan' : 'Choisir ce plan')}
