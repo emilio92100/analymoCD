@@ -416,7 +416,7 @@ function ScoreRing({ score, size = 40 }: { score: number; size?: number }) {
 /* ══════════════════════════════════════════
    HOME VIEW PRO
 ══════════════════════════════════════════ */
-function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares }: { proProfile: ProProfile; subscription: ProSubscription | null; proCredits: ProCredits | null; analyses: ProAnalysis[]; shares: ReportShare[] }) {
+function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, hasEverSubscribed }: { proProfile: ProProfile; subscription: ProSubscription | null; proCredits: ProCredits | null; analyses: ProAnalysis[]; shares: ReportShare[]; hasEverSubscribed: boolean }) {
   const prenom = proProfile.full_name?.split(' ')[0] || 'Pro';
   const completedAnalyses = analyses.filter(a => a.status === 'completed');
   const thisMonth = analyses.filter(a => { const d = new Date(a.created_at); const now = new Date(); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });
@@ -433,6 +433,16 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares }:
   const lastAnalyses = completedAnalyses.slice(0, 3);
   const lastShares = shares.slice(0, 3);
 
+  // Plan recommandé par l'admin
+  const PLAN_INFO: Record<string, { name: string; price: string; completes: number; simples: number }> = {
+    decouverte: { name: 'Découverte', price: '19,90', completes: 1, simples: 3 },
+    starter: { name: 'Starter', price: '49,90', completes: 5, simples: 15 },
+    power: { name: 'Power', price: '89,90', completes: 10, simples: 30 },
+  };
+  const recommendedPlanId = proProfile.pro_recommended_plan || '';
+  const recommendedPlan = PLAN_INFO[recommendedPlanId] || null;
+  const showRecommendedBanner = !subscription && !hasEverSubscribed && recommendedPlan;
+
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ marginBottom: 28, background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' as const }}>
@@ -448,17 +458,37 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares }:
         </div>
       </div>
 
-      {/* Pas d'abonnement ? Bandeau remonté en haut */}
+      {/* Pas d'abonnement ? Bandeau personnalisé avec plan recommandé ou bandeau générique */}
       {!subscription && (
-        <div style={{ background: 'linear-gradient(135deg, #0a1f2d, #1a4a5e)', borderRadius: 16, padding: 24, marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' as const }}>
-          <div>
-            <h3 style={{ fontSize: 16, fontWeight: 800, color: '#fff', marginBottom: 4 }}>Activez votre abonnement</h3>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', margin: 0 }}>Choisissez Découverte, Starter ou Power pour commencer à analyser vos dossiers.</p>
+        showRecommendedBanner ? (
+          <div style={{ background: 'linear-gradient(135deg, #0a1f2d, #1a4a5e)', borderRadius: 16, padding: '24px 28px', marginBottom: 24, border: '1px solid rgba(125,211,252,0.15)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <span style={{ fontSize: 22 }}>🎉</span>
+              <h3 style={{ fontSize: 18, fontWeight: 900, color: '#fff', margin: 0 }}>Bienvenue sur Verimo Pro !</h3>
+            </div>
+            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', margin: '0 0 18px 0', lineHeight: 1.6 }}>
+              Nous vous avons pré-sélectionné l'offre <strong style={{ color: '#7dd3fc' }}>{recommendedPlan.name}</strong> — {recommendedPlan.completes} analyse{recommendedPlan.completes > 1 ? 's' : ''} complète{recommendedPlan.completes > 1 ? 's' : ''} + {recommendedPlan.simples} simple{recommendedPlan.simples > 1 ? 's' : ''} à {recommendedPlan.price}€ HT/mois.
+            </p>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' as const }}>
+              <Link to="/dashboard/abonnement" style={{ padding: '12px 24px', borderRadius: 12, background: '#fff', color: '#0f2d3d', textDecoration: 'none', fontSize: 14, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+                Activer cette offre <ArrowRight size={14} />
+              </Link>
+              <Link to="/dashboard/abonnement" style={{ padding: '12px 24px', borderRadius: 12, background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.8)', textDecoration: 'none', fontSize: 13, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, border: '1px solid rgba(255,255,255,0.15)' }}>
+                Voir toutes les offres
+              </Link>
+            </div>
           </div>
-          <Link to="/dashboard/abonnement" style={{ padding: '11px 24px', borderRadius: 10, background: '#fff', color: '#0f2d3d', textDecoration: 'none', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' as const }}>
-            Voir les offres <ArrowRight size={14} style={{ verticalAlign: 'middle', marginLeft: 4 }} />
-          </Link>
-        </div>
+        ) : (
+          <div style={{ background: 'linear-gradient(135deg, #0a1f2d, #1a4a5e)', borderRadius: 16, padding: 24, marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' as const }}>
+            <div>
+              <h3 style={{ fontSize: 16, fontWeight: 800, color: '#fff', marginBottom: 4 }}>Activez votre abonnement</h3>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', margin: 0 }}>Choisissez Découverte, Starter ou Power pour commencer à analyser vos dossiers.</p>
+            </div>
+            <Link to="/dashboard/abonnement" style={{ padding: '11px 24px', borderRadius: 10, background: '#fff', color: '#0f2d3d', textDecoration: 'none', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' as const }}>
+              Voir les offres <ArrowRight size={14} style={{ verticalAlign: 'middle', marginLeft: 4 }} />
+            </Link>
+          </div>
+        )
       )}
 
       {/* Abonné mais plus de crédits ? Bandeau invitation upgrade ou achat unitaire */}
@@ -1836,9 +1866,19 @@ ${senderName}${senderCompany ? '\n' + senderCompany : ''}`;
 /* ══════════════════════════════════════════
    MON ABONNEMENT
 ══════════════════════════════════════════ */
-function MonAbonnement({ subscription }: { subscription: ProSubscription | null }) {
+function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscription: ProSubscription | null; hasEverSubscribed: boolean; proProfile: ProProfile }) {
   const [loading, setLoading] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
+
+  // Plan recommandé par l'admin
+  const PLAN_INFO_MAP: Record<string, { name: string; price: string; completes: number; simples: number }> = {
+    decouverte: { name: 'Découverte', price: '19,90', completes: 1, simples: 3 },
+    starter: { name: 'Starter', price: '49,90', completes: 5, simples: 15 },
+    power: { name: 'Power', price: '89,90', completes: 10, simples: 30 },
+  };
+  const recommendedPlanId = proProfile?.pro_recommended_plan || '';
+  const recommendedPlan = PLAN_INFO_MAP[recommendedPlanId] || null;
+  const showRecommendedBanner = !subscription && !hasEverSubscribed && recommendedPlan;
 
   // Code promo
   const [promoCode, setPromoCode] = useState('');
@@ -2254,6 +2294,20 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
         )}
       </AnimatePresence>
 
+      {/* ── Bandeau plan recommandé (uniquement pour les nouveaux pros jamais abonnés) ── */}
+      {showRecommendedBanner && (
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: 'easeOut' }}
+          style={{ background: 'linear-gradient(135deg, #0a1f2d, #1a4a5e)', borderRadius: 16, padding: '22px 26px', marginBottom: 24, border: '1px solid rgba(125,211,252,0.15)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 20 }}>🎉</span>
+            <span style={{ fontSize: 15, fontWeight: 800, color: '#fff' }}>Offre recommandée pour vous</span>
+          </div>
+          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', margin: '0 0 4px 0', lineHeight: 1.5 }}>
+            L'offre <strong style={{ color: '#7dd3fc' }}>{recommendedPlan.name}</strong> a été pré-sélectionnée pour votre activité — {recommendedPlan.completes} complète{recommendedPlan.completes > 1 ? 's' : ''} + {recommendedPlan.simples} simple{recommendedPlan.simples > 1 ? 's' : ''} à <strong style={{ color: '#fff' }}>{recommendedPlan.price}€ HT/mois</strong>. Vous pouvez choisir une autre offre ci-dessous.
+          </p>
+        </motion.div>
+      )}
+
       {/* ── Popup confirmation upgrade avec récap TVA ── */}
       <AnimatePresence>
         {upgradeConfirm && (
@@ -2357,10 +2411,14 @@ function MonAbonnement({ subscription }: { subscription: ProSubscription | null 
             return (
               <div key={plan.id} className="plan-card" style={{
                 borderRadius: 18, padding: 22, position: 'relative',
-                background: '#fff', border: isActive ? '2px solid #2a7d9c' : plan.popular ? '2px solid #7dd3fc' : '1.5px solid #edf2f7',
-                boxShadow: plan.popular ? '0 8px 32px rgba(42,125,156,0.1)' : 'none',
+                background: '#fff',
+                border: isActive ? '2px solid #2a7d9c' : (showRecommendedBanner && plan.id === recommendedPlanId) ? '2px solid #16a34a' : plan.popular ? '2px solid #7dd3fc' : '1.5px solid #edf2f7',
+                boxShadow: (showRecommendedBanner && plan.id === recommendedPlanId) ? '0 8px 32px rgba(22,163,74,0.1)' : plan.popular ? '0 8px 32px rgba(42,125,156,0.1)' : 'none',
               }}>
-                {plan.popular && !isActive && (
+                {showRecommendedBanner && plan.id === recommendedPlanId && !isActive && (
+                  <span style={{ position: 'absolute', top: -10, right: 16, background: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 12px', borderRadius: 100, boxShadow: '0 2px 8px rgba(22,163,74,0.3)' }}>✨ Recommandé pour vous</span>
+                )}
+                {plan.popular && !isActive && !(showRecommendedBanner && plan.id === recommendedPlanId) && (
                   <span style={{ position: 'absolute', top: -10, right: 16, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 12px', borderRadius: 100 }}>Recommandé</span>
                 )}
                 {isActive && (
@@ -4507,6 +4565,7 @@ export default function DashboardProPage() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [proProfile, setProProfile] = useState<ProProfile | null>(null);
   const [subscription, setSubscription] = useState<ProSubscription | null>(null);
+  const [hasEverSubscribed, setHasEverSubscribed] = useState(false);
   const [proCredits, setProCredits] = useState<ProCredits | null>(null);
   const [analyses, setAnalyses] = useState<ProAnalysis[]>([]);
   const [shares, setShares] = useState<ReportShare[]>([]);
@@ -4569,6 +4628,10 @@ export default function DashboardProPage() {
     // Subscription
     const { data: sub } = await supabase.from('pro_subscriptions').select('*').eq('user_id', user.id).eq('status', 'active').maybeSingle();
     setSubscription(sub as ProSubscription | null);
+
+    // Check if user has ever had a subscription (even canceled)
+    const { count: subCount } = await supabase.from('pro_subscriptions').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
+    setHasEverSubscribed((subCount || 0) > 0);
 
     // Credits balance (agrège abo + unitaires + offerts)
     const { data: credits } = await supabase.rpc('get_pro_credits_balance', { p_user_id: user.id });
@@ -4681,11 +4744,11 @@ export default function DashboardProPage() {
     if (path === '/dashboard/dossiers') return <MesDossiersPro />;
     if (path === '/dashboard/nouvelle-analyse') return <NouvelleAnalyse />;
     if (path === '/dashboard/compare') return <Compare />;
-    if (path === '/dashboard/abonnement') return <MonAbonnement subscription={subscription} />;
+    if (path === '/dashboard/abonnement') return <MonAbonnement subscription={subscription} hasEverSubscribed={hasEverSubscribed} proProfile={proProfile} />;
     if (path === '/dashboard/compte') return <ComptePro proProfile={proProfile} onUpdate={loadData} />;
     if (path === '/dashboard/aide') return <Aide />;
     if (path === '/dashboard/support') return <Support />;
-    return <HomeViewPro proProfile={proProfile} subscription={subscription} proCredits={proCredits} analyses={analyses} shares={shares} />;
+    return <HomeViewPro proProfile={proProfile} subscription={subscription} proCredits={proCredits} analyses={analyses} shares={shares} hasEverSubscribed={hasEverSubscribed} />;
   };
 
   return (
