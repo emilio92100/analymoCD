@@ -138,6 +138,7 @@ export default function ProPage() {
   return (
     <div className="bg-white text-[#0f172a] antialiased overflow-x-hidden" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <HeroSection setActiveProfileIdx={setActiveProfileIdx} />
+      <ChatSimulationSection />
       <StatsRibbon />
       <ProfilesSection activeIdx={activeProfileIdx} setActiveIdx={setActiveProfileIdx} />
       <HowItWorksProSection />
@@ -240,6 +241,193 @@ function HeroSection({ setActiveProfileIdx }: { setActiveProfileIdx: (i: number)
           className="text-sm text-white/30 font-medium">
           Sans engagement · Réponse sous 24h
         </motion.p>
+      </div>
+    </section>
+  );
+}
+
+
+/* ═══ SIMULATION CHAT — Après la visite ═══════════════════════ */
+function ChatSimulationSection() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: '-100px' });
+  const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    if (!inView) return;
+    const timers = [
+      setTimeout(() => setStep(1), 400),   // Message client
+      setTimeout(() => setStep(2), 1800),  // Typing agent
+      setTimeout(() => setStep(3), 2800),  // Réponse barrée
+      setTimeout(() => setStep(4), 4200),  // Typing Verimo
+      setTimeout(() => setStep(5), 5200),  // Réponse Verimo
+      setTimeout(() => setStep(6), 7000),  // Réaction client
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, [inView]);
+
+  const msgAnim = {
+    initial: { opacity: 0, y: 16, scale: 0.97 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] },
+  };
+
+  return (
+    <section ref={ref} className="py-16 md:py-24 px-4 md:px-6 relative overflow-hidden" style={{ background: '#fff' }}>
+      {/* Grille de lignes Verimo en fond */}
+      <div className="absolute inset-0" style={{ opacity: 0.4, backgroundImage: 'linear-gradient(rgba(42,125,156,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(42,125,156,0.05) 1px, transparent 1px)', backgroundSize: '36px 36px' }} />
+      {/* Glow subtil */}
+      <div className="absolute top-[30%] left-[50%] w-[500px] h-[400px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(42,125,156,0.04) 0%, transparent 65%)', transform: 'translateX(-50%)' }} />
+
+      <div className="relative z-10 max-w-5xl mx-auto">
+        <Reveal className="text-center mb-12">
+          <p className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.22em] mb-4">Le moment clé</p>
+          <h2 className="text-[clamp(24px,3.8vw,44px)] font-black tracking-[-0.03em] leading-[1.1] text-[#0f172a] mb-4">
+            La visite s'est bien passée.{' '}
+            <span className="relative inline-block">
+              <span className="text-[#2a7d9c]">Et après ?</span>
+              <AccentUnderline />
+            </span>
+          </h2>
+          <p className="text-base text-slate-400 max-w-3xl mx-auto">
+            Ce moment où votre acquéreur vous demande les documents. Deux façons de répondre.
+          </p>
+        </Reveal>
+
+        {/* Chat container */}
+        <div className="max-w-lg mx-auto">
+          <div className="rounded-3xl overflow-hidden shadow-2xl border border-slate-100" style={{ background: '#fff' }}>
+            {/* Header chat */}
+            <div className="flex items-center gap-3 px-6 py-4" style={{ background: 'linear-gradient(135deg, #0f2d3d, #1a4a5e)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white text-sm font-bold border border-white/10">ML</div>
+              <div className="flex-1">
+                <p className="text-white text-sm font-bold m-0">Marie Laurent</p>
+                <p className="text-white/40 text-xs m-0">Acquéreur · En ligne</p>
+              </div>
+              <div className="flex gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-emerald-400" />
+              </div>
+            </div>
+
+            {/* Messages zone */}
+            <div className="p-5 md:p-6 flex flex-col gap-3 min-h-[380px]" style={{ background: '#f8fafb' }}>
+
+              {/* Message 1 : Client demande les docs */}
+              {step >= 1 && (
+                <motion.div {...msgAnim} className="flex gap-3 items-end">
+                  <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-500 shrink-0">ML</div>
+                  <div className="bg-white border border-slate-100 rounded-2xl rounded-bl-sm py-3 px-4 max-w-[85%] shadow-sm">
+                    <p className="text-[13px] text-slate-700 m-0 leading-relaxed">Bonjour ! La visite m'a beaucoup plu 😍 Serait-il possible de m'envoyer les PV d'AG, le DPE et les diagnostics ? Merci !</p>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Typing agent */}
+              {step === 2 && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3 items-end justify-end">
+                  <div className="bg-slate-100 rounded-2xl rounded-br-sm py-3 px-5">
+                    <div className="flex gap-1.5">
+                      <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0 }} className="w-2 h-2 rounded-full bg-slate-300" />
+                      <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.15 }} className="w-2 h-2 rounded-full bg-slate-300" />
+                      <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.3 }} className="w-2 h-2 rounded-full bg-slate-300" />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Message 2 : Réponse SANS Verimo — barrée */}
+              {step >= 3 && (
+                <motion.div {...msgAnim} className="flex gap-3 items-end justify-end">
+                  <div className="relative max-w-[85%]">
+                    <div className="bg-slate-50 border-2 border-red-200 rounded-2xl rounded-br-sm py-3 px-4 opacity-60">
+                      <p className="text-[13px] text-slate-400 m-0 leading-relaxed">Voici les documents en PJ : PV_AG_2024.pdf (42p), PV_AG_2023.pdf (38p), DDT_complet.pdf (67p), Charges_2024.pdf, Reglement_copro.pdf...</p>
+                    </div>
+                    {/* Barre rouge diagonale */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-[110%] h-[3px] bg-red-400 rounded-full" style={{ transform: 'rotate(-3deg)' }} />
+                    </div>
+                    {/* Badge "Sans Verimo" */}
+                    <div className="absolute -top-3 -right-2 bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-md">
+                      Sans Verimo ✕
+                    </div>
+                    {/* Légende en dessous */}
+                    <p className="text-[11px] text-red-400 mt-2 text-right font-semibold m-0">200+ pages que personne ne lira</p>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Typing Verimo */}
+              {step === 4 && (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3 items-end justify-end">
+                  <div className="rounded-2xl rounded-br-sm py-3 px-5" style={{ background: '#f0f7fb', border: '1.5px solid #d0e8f0' }}>
+                    <div className="flex gap-1.5">
+                      <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0 }} className="w-2 h-2 rounded-full" style={{ background: '#2a7d9c' }} />
+                      <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.15 }} className="w-2 h-2 rounded-full" style={{ background: '#2a7d9c' }} />
+                      <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.3 }} className="w-2 h-2 rounded-full" style={{ background: '#2a7d9c' }} />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Message 3 : Réponse AVEC Verimo */}
+              {step >= 5 && (
+                <motion.div {...msgAnim} className="flex gap-3 items-end justify-end">
+                  <div className="relative max-w-[88%]">
+                    {/* Badge "Avec Verimo" */}
+                    <div className="absolute -top-3 -right-2 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-md z-10" style={{ background: 'linear-gradient(135deg, #16a34a, #15803d)' }}>
+                      Avec Verimo ✓
+                    </div>
+                    <div className="rounded-2xl rounded-br-sm py-3 px-4 shadow-lg" style={{ background: 'linear-gradient(135deg, #f0f7fb, #e8f4fa)', border: '1.5px solid #bae3f5' }}>
+                      <p className="text-[13px] text-[#0f2d3d] m-0 mb-3 leading-relaxed font-semibold">Bonjour Marie ! Voici le rapport complet du bien :</p>
+                      {/* Mini rapport */}
+                      <div className="bg-white rounded-xl p-3 border border-[#d0e8f0] mb-2 shadow-sm">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-md flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' }}>
+                              <span className="text-[9px] text-white font-bold">V</span>
+                            </div>
+                            <span className="text-[12px] font-bold text-[#0f2d3d]">Rapport Verimo</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black" style={{ border: '2.5px solid #16a34a', color: '#16a34a' }}>15</div>
+                            <span className="text-[9px] text-slate-400">/20</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-1.5 flex-wrap mb-2">
+                          <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold" style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #d1fae5' }}>DPE D</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold" style={{ background: '#fffbeb', color: '#92400e', border: '1px solid #fde68a' }}>2 travaux votés</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold" style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #d1fae5' }}>0 procédure</span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 m-0 leading-relaxed">Copropriété bien gérée, budget maîtrisé. Vigilance sur ravalement prévu 2026...</p>
+                      </div>
+                      <p className="text-[12px] font-bold m-0" style={{ color: '#2a7d9c' }}>
+                        🔗 verimo.fr/rapport/a8f2k9
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Message 4 : Réaction client */}
+              {step >= 6 && (
+                <motion.div {...msgAnim} className="flex gap-3 items-end">
+                  <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-500 shrink-0">ML</div>
+                  <div className="bg-white border border-emerald-100 rounded-2xl rounded-bl-sm py-3 px-4 max-w-[85%] shadow-sm" style={{ background: '#f0fdf4' }}>
+                    <p className="text-[13px] text-emerald-800 m-0 leading-relaxed font-semibold">C'est hyper clair ! Je suis rassurée. On peut avancer, quand est-ce qu'on signe ? 🤩</p>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          </div>
+
+          {/* Tagline sous le chat */}
+          {step >= 6 && (
+            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.5 }}
+              className="text-center mt-6 text-sm font-bold tracking-[-0.01em]" style={{ color: '#2a7d9c' }}>
+              De la visite à la signature — sans friction documentaire.
+            </motion.p>
+          )}
+        </div>
       </div>
     </section>
   );
@@ -554,15 +742,11 @@ function CtaFinalSection() {
           </div>
         </Reveal>
         <Reveal delay={1}>
-          <h2 className="text-[clamp(26px,4.5vw,50px)] font-black text-white leading-[1.08] tracking-[-0.03em] mb-6">
-            Rejoignez les pros qui font confiance à{' '}
-            <span className="relative inline-block">
-              <span style={{ color: '#7dd3fc' }}>Verimo.</span>
-              <motion.span initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true }}
-                transition={{ duration: 2, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                className="absolute -bottom-1 left-0 right-0 h-[4px] rounded-full origin-left block"
-                style={{ background: 'rgba(125,211,252,0.3)' }} />
-            </span>
+          <h2 className="text-[clamp(26px,4.5vw,50px)] font-black text-white leading-[1.08] tracking-[-0.03em] mb-3">
+            Vos concurrents envoient des PDF.
+          </h2>
+          <h2 className="text-[clamp(26px,4.5vw,50px)] font-black leading-[1.08] tracking-[-0.03em] mb-6" style={{ color: '#7dd3fc' }}>
+            Vous, envoyez un rapport.
           </h2>
         </Reveal>
         <Reveal delay={2}>
