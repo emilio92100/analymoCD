@@ -268,7 +268,7 @@ function ChatSimulationSection() {
 
   const msgInitial = { opacity: 0, y: 16, scale: 0.97 };
   const msgAnimate = { opacity: 1, y: 0, scale: 1 };
-  const msgTransition = { duration: 0.4, ease: [0.22, 1, 0.36, 1] };
+  const msgTransition = { duration: 0.4, ease: [0.22, 1, 0.36, 1] as const };
 
   return (
     <section ref={ref} className="py-16 md:py-24 px-4 md:px-6 relative overflow-hidden" style={{ background: '#fff' }}>
