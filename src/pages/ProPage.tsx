@@ -266,11 +266,9 @@ function ChatSimulationSection() {
     return () => timers.forEach(clearTimeout);
   }, [inView]);
 
-  const msgAnim = {
-    initial: { opacity: 0, y: 16, scale: 0.97 },
-    animate: { opacity: 1, y: 0, scale: 1 },
-    transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] },
-  };
+  const msgInitial = { opacity: 0, y: 16, scale: 0.97 };
+  const msgAnimate = { opacity: 1, y: 0, scale: 1 };
+  const msgTransition = { duration: 0.4, ease: [0.22, 1, 0.36, 1] };
 
   return (
     <section ref={ref} className="py-16 md:py-24 px-4 md:px-6 relative overflow-hidden" style={{ background: '#fff' }}>
@@ -314,7 +312,7 @@ function ChatSimulationSection() {
 
               {/* Message 1 : Client demande les docs */}
               {step >= 1 && (
-                <motion.div {...msgAnim} className="flex gap-3 items-end">
+                <motion.div initial={msgInitial} animate={msgAnimate} transition={msgTransition} className="flex gap-3 items-end">
                   <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-500 shrink-0">ML</div>
                   <div className="bg-white border border-slate-100 rounded-2xl rounded-bl-sm py-3 px-4 max-w-[85%] shadow-sm">
                     <p className="text-[13px] text-slate-700 m-0 leading-relaxed">Bonjour ! La visite m'a beaucoup plu 😍 Serait-il possible de m'envoyer les PV d'AG, le DPE et les diagnostics ? Merci !</p>
@@ -337,7 +335,7 @@ function ChatSimulationSection() {
 
               {/* Message 2 : Réponse SANS Verimo — barrée */}
               {step >= 3 && (
-                <motion.div {...msgAnim} className="flex gap-3 items-end justify-end">
+                <motion.div initial={msgInitial} animate={msgAnimate} transition={msgTransition} className="flex gap-3 items-end justify-end">
                   <div className="relative max-w-[85%]">
                     <div className="bg-slate-50 border-2 border-red-200 rounded-2xl rounded-br-sm py-3 px-4 opacity-60">
                       <p className="text-[13px] text-slate-400 m-0 leading-relaxed">Voici les documents en PJ : PV_AG_2024.pdf (42p), PV_AG_2023.pdf (38p), DDT_complet.pdf (67p), Charges_2024.pdf, Reglement_copro.pdf...</p>
@@ -371,7 +369,7 @@ function ChatSimulationSection() {
 
               {/* Message 3 : Réponse AVEC Verimo */}
               {step >= 5 && (
-                <motion.div {...msgAnim} className="flex gap-3 items-end justify-end">
+                <motion.div initial={msgInitial} animate={msgAnimate} transition={msgTransition} className="flex gap-3 items-end justify-end">
                   <div className="relative max-w-[88%]">
                     {/* Badge "Avec Verimo" */}
                     <div className="absolute -top-3 -right-2 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-md z-10" style={{ background: 'linear-gradient(135deg, #16a34a, #15803d)' }}>
@@ -410,7 +408,7 @@ function ChatSimulationSection() {
 
               {/* Message 4 : Réaction client */}
               {step >= 6 && (
-                <motion.div {...msgAnim} className="flex gap-3 items-end">
+                <motion.div initial={msgInitial} animate={msgAnimate} transition={msgTransition} className="flex gap-3 items-end">
                   <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-500 shrink-0">ML</div>
                   <div className="bg-white border border-emerald-100 rounded-2xl rounded-bl-sm py-3 px-4 max-w-[85%] shadow-sm" style={{ background: '#f0fdf4' }}>
                     <p className="text-[13px] text-emerald-800 m-0 leading-relaxed font-semibold">C'est hyper clair ! Je suis rassurée. On peut avancer, quand est-ce qu'on signe ? 🤩</p>
