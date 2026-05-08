@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Search, Trash2, Copy, Mail, Share2, CheckSquare, Square, X, ExternalLink, FileText, ChevronDown } from 'lucide-react';
+import { Plus, Search, Trash2, Copy, Mail, Share2, CheckSquare, Square, X, ExternalLink, FileText, ChevronDown, Info } from 'lucide-react';
 import { getOrCreateShareToken } from '../../lib/analyses';
 import { supabase } from '../../lib/supabase';
 import { useAnalyses, type Analyse } from '../../hooks/useAnalyses';
@@ -21,6 +21,57 @@ function recoStyle(r?: string) {
   if (r === 'Négocier') return { bg: C.amberBg, color: '#92400e', border: C.amberBorder };
   if (r === 'Bien à éviter') return { bg: C.redBg, color: '#991b1b', border: C.redBorder };
   return { bg: '#f8fafc', color: '#64748b', border: '#e2e8f0' };
+}
+
+/* ═══ ERROR BADGE — "Non généré" + ℹ️ avec popup ═══ */
+function ErrorBadge({ message }: { message?: string }) {
+  const [open, setOpen] = useState(false);
+  const defaultMsg = "Une erreur est survenue lors de la génération. Si votre crédit n'a pas été restitué, contactez le support.";
+  const finalMsg = message || defaultMsg;
+  return (
+    <>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 7, background: C.redBg, color: C.red, border: `1px solid ${C.redBorder}`, whiteSpace: 'nowrap' }}>
+        ✕ Non généré
+        <button
+          onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+          aria-label="Voir le détail de l'erreur"
+          style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: '#fee2e2', color: C.red, border: 'none', cursor: 'pointer', padding: 0 }}>
+          <Info size={10} />
+        </button>
+      </span>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setOpen(false)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ background: '#fff', borderRadius: 18, padding: '28px 26px', maxWidth: 440, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', position: 'relative' }}>
+              <button onClick={() => setOpen(false)}
+                style={{ position: 'absolute', top: 12, right: 12, width: 30, height: 30, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                <X size={16} />
+              </button>
+              <div style={{ width: 52, height: 52, borderRadius: 14, background: C.redBg, border: `2px solid ${C.redBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                <Info size={24} color={C.red} />
+              </div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: '#0f2d3d', textAlign: 'center', marginBottom: 10 }}>
+                Analyse non générée
+              </div>
+              <div style={{ fontSize: 14, color: '#475569', lineHeight: 1.55, textAlign: 'center', marginBottom: 18 }}>
+                {finalMsg}
+              </div>
+              <button onClick={() => setOpen(false)}
+                style={{ width: '100%', padding: '11px 16px', borderRadius: 10, background: C.teal, color: '#fff', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                J'ai compris
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
 }
 
 function ScoreRing({ score, size = 44 }: { score: number; size?: number }) {
@@ -132,7 +183,7 @@ function CompleteRow({ a, onDelete, isLast, selectionMode, selected, onToggleSel
         {!selectionMode && a.status !== 'processing' && (
           <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
             {!a.is_preview && !!a.result && a.status === 'completed' && <button onClick={() => onShare(a.id, title)} style={{ padding: '6px 13px', borderRadius: 7, background: '#f8fafc', border: '1px solid #edf2f7', color: '#64748b', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}><Share2 size={11} /> Partager</button>}
-            {!!a.result ? <Link to={`/dashboard/rapport?id=${a.id}`} style={{ padding: '6px 13px', borderRadius: 7, background: '#2a7d9c', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}><ExternalLink size={11} /> Rapport</Link> : <span style={{ padding: '6px 13px', borderRadius: 7, background: '#fef3c7', color: '#92400e', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>⚠️ Rapport indisponible</span>}
+            {!!a.result ? <Link to={`/dashboard/rapport?id=${a.id}`} style={{ padding: '6px 13px', borderRadius: 7, background: '#2a7d9c', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}><ExternalLink size={11} /> Rapport</Link> : a.status === 'error' ? <ErrorBadge message={a.progress_message} /> : <span style={{ padding: '6px 13px', borderRadius: 7, background: '#fef3c7', color: '#92400e', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>⚠️ Rapport indisponible</span>}
             {!confirmDelete ? <button onClick={() => setConfirmDelete(true)} style={{ width: 28, height: 28, borderRadius: 6, background: C.redBg, border: `1px solid ${C.redBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><Trash2 size={11} color={C.red} /></button>
             : <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 8px', borderRadius: 7, background: C.redBg, border: `1px solid ${C.redBorder}` }}><span style={{ fontSize: 11, fontWeight: 700, color: C.red }}>Supprimer ?</span><button onClick={() => onDelete(a.id)} style={{ padding: '2px 8px', borderRadius: 5, background: C.red, border: 'none', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Oui</button><button onClick={() => setConfirmDelete(false)} style={{ padding: '2px 6px', borderRadius: 5, background: 'none', border: 'none', color: '#94a3b8', fontSize: 11, cursor: 'pointer' }}>Non</button></div>}
           </div>
@@ -148,7 +199,7 @@ function CompleteRow({ a, onDelete, isLast, selectionMode, selected, onToggleSel
         </div>
         {a.status !== 'processing' && <div style={{ display: 'flex', gap: 6 }}>
           {!a.is_preview && !!a.result && a.status === 'completed' && <button onClick={() => onShare(a.id, title)} style={{ padding: '7px 12px', borderRadius: 7, background: '#f8fafc', border: '1px solid #edf2f7', color: '#64748b', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}><Share2 size={11} /> Partager</button>}
-          {!!a.result ? <Link to={`/dashboard/rapport?id=${a.id}`} style={{ flex: 1, padding: '7px 0', borderRadius: 7, background: '#2a7d9c', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}><ExternalLink size={11} /> Rapport</Link> : <span style={{ flex: 1, padding: '7px 0', borderRadius: 7, background: '#fef3c7', color: '#92400e', fontSize: 12, fontWeight: 700, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>⚠️ Rapport indisponible</span>}
+          {!!a.result ? <Link to={`/dashboard/rapport?id=${a.id}`} style={{ flex: 1, padding: '7px 0', borderRadius: 7, background: '#2a7d9c', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}><ExternalLink size={11} /> Rapport</Link> : a.status === 'error' ? <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}><ErrorBadge message={a.progress_message} /></div> : <span style={{ flex: 1, padding: '7px 0', borderRadius: 7, background: '#fef3c7', color: '#92400e', fontSize: 12, fontWeight: 700, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>⚠️ Rapport indisponible</span>}
           <button onClick={() => { if (confirmDelete) onDelete(a.id); else setConfirmDelete(true); }} style={{ width: 34, height: 34, borderRadius: 7, background: confirmDelete ? C.red : C.redBg, border: `1px solid ${C.redBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><Trash2 size={12} color={confirmDelete ? '#fff' : C.red} /></button>
         </div>}
       </div>
@@ -174,7 +225,7 @@ function SimpleRow({ a, onDelete, isLast, selectionMode, selected, onToggleSelec
       {a.status === 'processing' ? <span style={{ fontSize: 11, fontWeight: 700, color: C.teal, display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 6, height: 6, borderRadius: '50%', background: C.teal, animation: 'pulse 1.5s ease-in-out infinite' }} /> En cours…</span>
       : <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
           {!a.is_preview && !!a.result && a.status === 'completed' && <button onClick={() => onShare(a.id, title)} style={{ padding: '5px 11px', borderRadius: 7, background: '#f8fafc', border: '1px solid #edf2f7', color: '#64748b', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}><Share2 size={10} /> Partager</button>}
-          {!!a.result ? <Link to={`/rapport?id=${a.id}`} style={{ padding: '5px 11px', borderRadius: 7, background: C.simple, color: '#fff', fontSize: 11, fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}><ExternalLink size={10} /> Rapport</Link> : <span style={{ padding: '5px 11px', borderRadius: 7, background: '#fef3c7', color: '#92400e', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}>⚠️ Indisponible</span>}
+          {!!a.result ? <Link to={`/rapport?id=${a.id}`} style={{ padding: '5px 11px', borderRadius: 7, background: C.simple, color: '#fff', fontSize: 11, fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}><ExternalLink size={10} /> Rapport</Link> : a.status === 'error' ? <ErrorBadge message={a.progress_message} /> : <span style={{ padding: '5px 11px', borderRadius: 7, background: '#fef3c7', color: '#92400e', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}>⚠️ Indisponible</span>}
           {!selectionMode && !confirmDelete && <button onClick={() => setConfirmDelete(true)} style={{ width: 26, height: 26, borderRadius: 6, background: C.redBg, border: `1px solid ${C.redBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><Trash2 size={10} color={C.red} /></button>}
           {!selectionMode && confirmDelete && <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 7px', borderRadius: 6, background: C.redBg, border: `1px solid ${C.redBorder}` }}><button onClick={() => onDelete(a.id)} style={{ padding: '2px 7px', borderRadius: 4, background: C.red, border: 'none', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Oui</button><button onClick={() => setConfirmDelete(false)} style={{ padding: '2px 5px', borderRadius: 4, background: 'none', border: 'none', color: '#94a3b8', fontSize: 11, cursor: 'pointer' }}>Non</button></div>}
         </div>}
