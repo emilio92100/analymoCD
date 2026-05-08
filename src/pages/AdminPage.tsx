@@ -633,6 +633,7 @@ function SystemAlertsTab({ showToast }: { showToast: (msg: string) => void }) {
     title: string; message: string; analyse_id: string | null;
     user_id: string | null; resolved: boolean; resolved_at: string | null;
     metadata: Record<string, unknown>;
+    user_email?: string | null; user_name?: string | null;
   }>>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unresolved' | 'critical'>('unresolved');
@@ -643,7 +644,27 @@ function SystemAlertsTab({ showToast }: { showToast: (msg: string) => void }) {
     if (filter === 'unresolved') query = query.eq('resolved', false);
     if (filter === 'critical') query = query.eq('severity', 'critical').eq('resolved', false);
     const { data } = await query;
-    setAlerts(data || []);
+    const alertsRaw = data || [];
+
+    // Récupérer les user_id uniques pour faire un seul fetch profiles
+    const userIds = Array.from(new Set(alertsRaw.map(a => a.user_id).filter(Boolean) as string[]));
+    let profilesMap: Record<string, { email: string | null; full_name: string | null }> = {};
+    if (userIds.length > 0) {
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, email, full_name')
+        .in('id', userIds);
+      profilesMap = (profilesData || []).reduce((acc, p: any) => {
+        acc[p.id] = { email: p.email, full_name: p.full_name };
+        return acc;
+      }, {} as Record<string, { email: string | null; full_name: string | null }>);
+    }
+
+    setAlerts(alertsRaw.map(a => ({
+      ...a,
+      user_email: a.user_id ? profilesMap[a.user_id]?.email || null : null,
+      user_name: a.user_id ? profilesMap[a.user_id]?.full_name || null : null,
+    })));
     setLoading(false);
   }, [filter]);
 
@@ -726,6 +747,12 @@ function SystemAlertsTab({ showToast }: { showToast: (msg: string) => void }) {
                       <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: '#f1f5f9', color: '#64748b' }}>{typeLabels[alert.type] || alert.type}</span>
                     </div>
                     <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.5, marginBottom: 8 }}>{alert.message}</p>
+                    {(alert.user_name || alert.user_email) && (
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: '#0f2d3d', background: '#f0f7fb', border: '1px solid #bae3f5', padding: '3px 9px', borderRadius: 6, marginBottom: 8 }}>
+                        👤 {alert.user_name || 'Sans nom'}
+                        {alert.user_email && <span style={{ color: '#64748b', fontWeight: 500 }}>· {alert.user_email}</span>}
+                      </div>
+                    )}
                     <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' as const, fontSize: 11, color: '#94a3b8' }}>
                       <span>{new Date(alert.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                       {alert.analyse_id && <span>Analyse: {alert.analyse_id.slice(0, 8)}...</span>}
