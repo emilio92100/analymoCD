@@ -20,6 +20,9 @@ export type AnalyseClientResult = {
   analyseId?: string;
   error?: 'rate_limit' | 'overload' | 'network' | 'unknown';
   errorMessage?: string;
+  // 🆕 v9 — Si l'analyse a été mise en queue suite à une surcharge
+  queued?: boolean;
+  queuedMessage?: string;
 };
 
 export async function lancerAnalyseEdge(params: {
@@ -114,6 +117,23 @@ export async function lancerAnalyseEdge(params: {
       });
       clearTimeout(timeoutId);
 
+      // 🆕 v9 — Mise en queue suite à surcharge Anthropic
+      if (res.status === 202) {
+        try {
+          const data = await res.json();
+          if (data.queued === true) {
+            return {
+              success: false,
+              queued: true,
+              queuedMessage: data.userMessage || '⏳ Votre dossier a bien été reçu. Notre service connaît un pic d\'activité — votre analyse sera prête sous quelques minutes. Vous pouvez fermer cette page en toute tranquillité, nous vous prévenons par email dès que c\'est terminé.',
+              analyseId,
+            };
+          }
+        } catch (e) {
+          console.warn('[Verimo] Erreur parsing 202:', e);
+        }
+      }
+
       // Si la fonction répond rapidement avec une erreur (ex: 400, 401, 500 immédiat)
       if (!res.ok) {
         const errText = await res.text().catch(() => '');
@@ -148,6 +168,16 @@ export async function lancerAnalyseEdge(params: {
       return { success: true, analyseId };
     }
 
+    // 🆕 v9 — Si l'analyse a été mise en queue pendant le polling
+    if (pollResult.status === 'queued') {
+      return {
+        success: false,
+        queued: true,
+        queuedMessage: pollResult.errorMessage || '⏳ Votre dossier a bien été reçu. Notre service connaît un pic d\'activité — votre analyse sera prête sous quelques minutes. Vous pouvez fermer cette page en toute tranquillité, nous vous prévenons par email dès que c\'est terminé.',
+        analyseId,
+      };
+    }
+
     if (pollResult.status === 'failed') {
       const msg = pollResult.errorMessage || 'Une erreur est survenue lors de l\'analyse. Votre crédit a été remboursé automatiquement.';
       return { success: false, error: 'unknown', errorMessage: msg };
@@ -176,7 +206,7 @@ export async function pollAnalyseStatus(params: {
   analyseId: string;
   onProgress?: (p: AnalyseProgress) => void;
   timeoutMs?: number;
-}): Promise<{ status: 'completed' | 'failed' | 'timeout'; errorMessage?: string }> {
+}): Promise<{ status: 'completed' | 'failed' | 'timeout' | 'queued'; errorMessage?: string }> {
   const { analyseId, onProgress, timeoutMs = 600_000 } = params;
   const start = Date.now();
   let lastMessage = '';
@@ -245,6 +275,10 @@ export async function pollAnalyseStatus(params: {
 
     if (data.status === 'completed') return { status: 'completed' };
     if (data.status === 'failed') return { status: 'failed', errorMessage: data.progress_message || undefined };
+    // 🆕 v9 — Si l'analyse passe en queued pendant le polling, on retourne tout de suite
+    if (data.status === 'queued') {
+      return { status: 'queued', errorMessage: data.progress_message || undefined };
+    }
   }
 
   return { status: 'timeout' };
