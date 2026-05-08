@@ -346,7 +346,7 @@ export default function NouvelleAnalyse() {
           <div style={{ background: '#f0f7fb', border: '1px solid #d0e8f0', borderRadius: 12, padding: '12px 16px', marginBottom: 18 }}>
             <div style={{ fontSize: 12.5, color: '#0f2d3d', lineHeight: 1.6 }}>
               📌 Vous pouvez consulter l'avancée à tout moment depuis votre espace
-              <strong> {userRole === 'pro' ? '"Mes dossiers"' : '"Mes analyses"'}</strong>. Une notification apparaîtra dans la cloche
+              <strong> {userRole === 'pro' ? '"Mes dossiers"' : '"Mes analyses"'}</strong>. Une notification apparaîtra dans la cloche 🔔 et un email vous sera envoyé
               dès que votre rapport sera prêt.
             </div>
           </div>
