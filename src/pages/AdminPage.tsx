@@ -2357,7 +2357,7 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
           </div>
 
           {/* Colonne droite : sections historiques */}
-          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 14, minWidth: 0 }}>
             {/* Historique des paiements */}
             <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
               <div style={{ padding: '18px 22px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
