@@ -940,6 +940,14 @@ export default function NouvelleAnalyse() {
             .na-analyse-grid { grid-template-columns: 1fr !important; }
             .upload-mobile-text { display: inline !important; }
             .upload-desktop-text { display: none !important; }
+            .na-progress-header { padding: 20px 18px !important; }
+            .na-progress-title { font-size: 16px !important; }
+            .na-progress-subtitle { font-size: 12px !important; }
+            .na-progress-pct { font-size: 36px !important; }
+            .na-progress-pct-symbol { font-size: 16px !important; }
+            .na-progress-label { font-size: 11px !important; }
+            .na-progress-row { gap: 10px !important; margin-bottom: 16px !important; }
+            .na-progress-time { padding: 4px 9px !important; font-size: 11px !important; }
           }
         `}</style>
         <div className="na-analyse-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 24, alignItems: 'start' }}>
@@ -948,18 +956,18 @@ export default function NouvelleAnalyse() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
             {/* Header avec temps estimé */}
-            <div style={{ background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', borderRadius: 20, padding: '28px 32px', color: '#fff', position: 'relative', overflow: 'hidden' }}>
+            <div className="na-progress-header" style={{ background: 'linear-gradient(135deg, #0f2d3d, #1a5068)', borderRadius: 20, padding: '28px 32px', color: '#fff', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: -30, right: -30, width: 160, height: 160, borderRadius: '50%', background: 'rgba(42,125,156,0.15)', pointerEvents: 'none' }} />
               <div style={{ position: 'relative' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
-                  <div>
+                <div className="na-progress-row" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 20 }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em', marginBottom: 6 }}>ANALYSE EN COURS</div>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: '#fff', lineHeight: 1.2 }}>{etapeActive.icon} {etapeActive.label}</div>
-                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', marginTop: 6 }}>{etapeActive.detail}</div>
+                    <div className="na-progress-title" style={{ fontSize: 20, fontWeight: 900, color: '#fff', lineHeight: 1.2 }}>{etapeActive.icon} {etapeActive.label}</div>
+                    <div className="na-progress-subtitle" style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', marginTop: 6 }}>{etapeActive.detail}</div>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: 48, fontWeight: 900, color: '#fff', letterSpacing: '-0.04em', lineHeight: 1 }}>
-                      {pct}<span style={{ fontSize: 20, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>%</span>
+                    <div className="na-progress-pct" style={{ fontSize: 48, fontWeight: 900, color: '#fff', letterSpacing: '-0.04em', lineHeight: 1 }}>
+                      {pct}<span className="na-progress-pct-symbol" style={{ fontSize: 20, color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>%</span>
                     </div>
                   </div>
                 </div>
@@ -968,11 +976,11 @@ export default function NouvelleAnalyse() {
                     <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: '60%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent)', animation: 'vr-shimmer 1.6s ease-in-out infinite' }} />
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                  <div className="na-progress-label" style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
                     {docsLabel}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 8, padding: '5px 12px' }}>
+                  <div className="na-progress-time" style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 8, padding: '5px 12px', flexShrink: 0 }}>
                     <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>⏱</span>
                     <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{tempsRestant}</span>
                   </div>
