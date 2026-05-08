@@ -104,6 +104,7 @@ export default function NouvelleAnalyse() {
   const [result, setResult] = useState<AnalyseResult | null>(null);
   const [error, setError] = useState('');
   const [analyseError, setAnalyseError] = useState<{ message: string; creditType?: string } | null>(null);
+  const [queuedDialog, setQueuedDialog] = useState<{ message: string } | null>(null); // 🆕 v9 — popup queue surcharge Anthropic
   const [isAnalysing, setIsAnalysing] = useState(false);
   const [profil, setProfil] = useState<'rp' | 'invest' | null>(null);
   const [animatedProgress, setAnimatedProgress] = useState(0);
@@ -315,6 +316,56 @@ export default function NouvelleAnalyse() {
     );
   };
 
+  // ─── 🆕 v9 — Popup file d'attente (surcharge Anthropic) ──────────
+  const QueuedDialogPopup = () => {
+    if (!queuedDialog) return null;
+    return (
+      <div
+        onClick={() => setQueuedDialog(null)}
+        style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,45,61,0.55)', padding: 20, backdropFilter: 'blur(4px)' }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{ background: '#fff', borderRadius: 20, padding: '32px 28px', maxWidth: 480, width: '100%', position: 'relative', boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}
+        >
+          <button onClick={() => setQueuedDialog(null)}
+            style={{ position: 'absolute', top: 14, right: 14, width: 32, height: 32, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 18, fontWeight: 700 }}>
+            ×
+          </button>
+
+          <div style={{ width: 64, height: 64, borderRadius: 18, background: 'linear-gradient(135deg, #fef3c7, #fde68a)', border: '2px solid #fcd34d', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '4px auto 18px', fontSize: 32 }}>⏳</div>
+
+          <h3 style={{ fontSize: 19, fontWeight: 800, color: '#0f2d3d', textAlign: 'center', marginBottom: 12 }}>
+            Analyse en cours de traitement
+          </h3>
+
+          <p style={{ fontSize: 14, color: '#475569', lineHeight: 1.65, textAlign: 'center', marginBottom: 22 }}>
+            {queuedDialog.message}
+          </p>
+
+          <div style={{ background: '#f0f7fb', border: '1px solid #d0e8f0', borderRadius: 12, padding: '12px 16px', marginBottom: 18 }}>
+            <div style={{ fontSize: 12.5, color: '#0f2d3d', lineHeight: 1.6 }}>
+              📌 Vous pouvez consulter l'avancée à tout moment depuis votre espace
+              <strong> "Mes analyses"</strong>. Une notification apparaîtra dans la cloche
+              dès que votre rapport sera prêt.
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              onClick={() => { setQueuedDialog(null); window.location.href = '/dashboard/mes-analyses'; }}
+              style={{ flex: 1, padding: '12px 18px', borderRadius: 12, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: 'none', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+            >Voir mes analyses</button>
+            <button
+              onClick={() => setQueuedDialog(null)}
+              style={{ padding: '12px 18px', borderRadius: 12, background: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+            >Fermer</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // ─── Animation barre de progression ─────────────────────
   // Courbe logarithmique basée sur le temps écoulé et le nombre de docs.
   // Monte lentement et régulièrement, plafonne à 88% tant que le serveur n'a pas répondu.
@@ -412,6 +463,16 @@ export default function NouvelleAnalyse() {
     }
     const result = await lancerAnalyseEdge({ files, mode: type, analyseId, profil: profil || 'rp', typeBienDeclare, onProgress: handleProgress });
     if (!isMountedRef.current) return; // User navigated away — don't redirect, the dashboard polling will pick it up
+
+    // 🆕 v9 — Mise en queue suite à surcharge Anthropic.
+    // PAS de remboursement, PAS de markFailed : l'analyse va être retentée
+    // automatiquement par le cron analyser-retry toutes les 5 min pendant 1h.
+    if (result.queued) {
+      setQueuedDialog({ message: result.queuedMessage || '⏳ Votre analyse est en cours de traitement.' });
+      setIsAnalysing(false);
+      return;
+    }
+
     if (!result.success) {
       await refundCredit(creditType);
       await markAnalyseFailed(analyseId);
@@ -705,6 +766,7 @@ export default function NouvelleAnalyse() {
 
       {/* Erreur bloquante */}
       <AnalyseErrorPopup />
+      <QueuedDialogPopup />
 
       {error && (
         <div style={{ padding: '14px 16px', borderRadius: 12, background: '#fef2f2', border: '1px solid #fecaca', marginBottom: 16 }}>
