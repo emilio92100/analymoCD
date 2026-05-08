@@ -2477,7 +2477,7 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
               ) : userAnalyses.map((a, i) => {
                 const isFailed = a.status === 'failed';
                 const isCompleted = a.status === 'completed';
-                const isInProgress = a.status === 'processing' || a.status === 'pending' || a.status === 'files_ready';
+                const isInProgress = a.status === 'processing' || a.status === 'pending' || a.status === 'files_ready' || a.status === 'queued';
                 return (
                   <div key={a.id} onClick={() => onOpenAnalysis?.(a.id)}
                     style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 22px', borderBottom: i < userAnalyses.length - 1 ? '1px solid #f8fafc' : 'none', cursor: 'pointer', transition: 'background 0.15s' }}
@@ -2919,8 +2919,11 @@ function AnalysesTab({ onOpenUser, focusAnalysisId, onFocusAnalysisHandled }: {
   }, [focusAnalysisId, analyses, onFocusAnalysisHandled]);
 
   const filtered = analyses.filter(a => {
-    // Filtre statut : 'error' dans l'ancien code = 'failed' en vrai
-    const matchFilter = filter === 'all' || (filter === 'failed' ? (a.status === 'failed' || a.status === 'error') : a.status === filter);
+    // Filtre statut : 'error' dans l'ancien code = 'failed' en vrai, et 'processing' inclut aussi 'queued' et 'pending'
+    const matchFilter = filter === 'all'
+      || (filter === 'failed' ? (a.status === 'failed' || a.status === 'error')
+      : filter === 'processing' ? (a.status === 'processing' || a.status === 'pending' || a.status === 'queued')
+      : a.status === filter);
     const q = search.toLowerCase().trim();
     const matchSearch = !q
       || (a.address || a.adresse_bien || '').toLowerCase().includes(q)
@@ -2944,7 +2947,7 @@ function AnalysesTab({ onOpenUser, focusAnalysisId, onFocusAnalysisHandled }: {
   const counts = {
     all: analyses.length,
     completed: analyses.filter(a => a.status === 'completed').length,
-    processing: analyses.filter(a => a.status === 'processing' || a.status === 'pending').length,
+    processing: analyses.filter(a => a.status === 'processing' || a.status === 'pending' || a.status === 'queued').length,
     failed: analyses.filter(a => a.status === 'failed' || a.status === 'error').length,
   };
 
@@ -3005,7 +3008,12 @@ function AnalysesTab({ onOpenUser, focusAnalysisId, onFocusAnalysisHandled }: {
               </div>
               <Badge color={PLAN_COLORS[a.type] || '#64748b'} bg={`${PLAN_COLORS[a.type] || '#64748b'}12`}>{PLAN_LABELS[a.type] || a.type}</Badge>
               <div>{a.score != null ? <span style={{ fontSize: 13, fontWeight: 900, color: getScoreColor(a.score), background: getScoreBg(a.score), padding: '3px 9px', borderRadius: 8 }}>{a.score}/20</span> : <span style={{ color: '#e2e8f0' }}>—</span>}</div>
-              <div>{a.status === 'completed' ? <Badge color="#16a34a" bg="#f0fdf4">✓ Complétée</Badge> : (a.status === 'processing' || a.status === 'pending') ? <Badge color="#2a7d9c" bg="#f0f7fb">⟳ En cours</Badge> : <Badge color="#dc2626" bg="#fef2f2">✗ Échouée</Badge>}</div>
+              <div>{
+                a.status === 'completed' ? <Badge color="#16a34a" bg="#f0fdf4">✓ Complétée</Badge>
+                : a.status === 'queued' ? <Badge color="#d97706" bg="#fffbeb">⏳ En queue</Badge>
+                : (a.status === 'processing' || a.status === 'pending') ? <Badge color="#2a7d9c" bg="#f0f7fb">⟳ En cours</Badge>
+                : <Badge color="#dc2626" bg="#fef2f2">✗ Échouée</Badge>
+              }</div>
               <div style={{ fontSize: 12, color: '#94a3b8' }}>{fmtDate(a.created_at)}</div>
             </button>
           ))}
@@ -3130,6 +3138,7 @@ function AnalysisDetailView({ analysis, onBack, onOpenUser, onReload }: {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
                 <span style={{ fontSize: 12, color: '#64748b' }}>État</span>
                 {analysis.status === 'completed' ? <Badge color="#16a34a" bg="#f0fdf4">✓ Complétée</Badge>
+                  : analysis.status === 'queued' ? <Badge color="#d97706" bg="#fffbeb">⏳ En queue</Badge>
                   : (analysis.status === 'processing' || analysis.status === 'pending') ? <Badge color="#2a7d9c" bg="#f0f7fb">⟳ En cours</Badge>
                   : <Badge color="#dc2626" bg="#fef2f2">✗ Échouée</Badge>}
               </div>
