@@ -27,7 +27,7 @@ type AdminAnalyse = {
   id: string; user_id: string; type: string; status: string;
   adresse_bien?: string; address?: string; title?: string; score?: number; created_at: string;
   document_urls?: string[]; paid?: boolean; stripe_payment_id?: string;
-  completed_at?: string;
+  completed_at?: string; progress_message?: string;
 };
 type AdminPayment = {
   id: string; user_id: string; amount: number; currency?: string;
@@ -2315,17 +2315,26 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
-              {[
-                { l: 'Crédits Simple', v: detailUser.role === 'pro' ? (proCreditsBalance?.total_document ?? '…') : (detailUser.credits_document || 0), c: '#2a7d9c' },
-                { l: 'Crédits Complet', v: detailUser.role === 'pro' ? (proCreditsBalance?.total_complete ?? '…') : (detailUser.credits_complete || 0), c: '#7c3aed' },
-                { l: 'Analyses', v: userAnalyses.length, c: '#16a34a' },
-                { l: 'Total dépensé', v: `${totalSpent.toFixed(2)}€`, c: '#f0a500' },
-              ].map((s, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
-                  <span style={{ fontSize: 13, color: '#64748b' }}>{s.l}</span>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: s.c }}>{s.v}</span>
-                </div>
-              ))}
+              {(() => {
+                const failedCount = userAnalyses.filter(a => a.status === 'failed').length;
+                const stats = [
+                  { l: 'Crédits simples restants', v: detailUser.role === 'pro' ? (proCreditsBalance?.total_document ?? '…') : (detailUser.credits_document || 0), c: '#2a7d9c', sub: null as string | null },
+                  { l: 'Crédits complets restants', v: detailUser.role === 'pro' ? (proCreditsBalance?.total_complete ?? '…') : (detailUser.credits_complete || 0), c: '#7c3aed', sub: null as string | null },
+                  { l: 'Analyses réalisées', v: userAnalyses.length, c: '#16a34a', sub: failedCount > 0 ? `dont ${failedCount} en erreur` : null },
+                  { l: 'Total dépensé', v: `${totalSpent.toFixed(2)}€`, c: '#f0a500', sub: null as string | null },
+                ];
+                return stats.map((s, i) => (
+                  <div key={i} style={{ display: 'flex', flexDirection: 'column' as const, padding: '10px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 13, color: '#64748b' }}>{s.l}</span>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: s.c }}>{s.v}</span>
+                    </div>
+                    {s.sub && (
+                      <div style={{ fontSize: 11, color: '#d97706', fontWeight: 600, marginTop: 4 }}>{s.sub}</div>
+                    )}
+                  </div>
+                ));
+              })()}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8, marginTop: 16 }}>
               <button onClick={() => { setSelectedUser(detailUser); setForm(f => ({ ...f, credit_type: 'complete', credit_quantity: 1, credit_reason: '' })); setModal('credits'); }}
@@ -2422,19 +2431,46 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
               </div>
               {userAnalyses.length === 0 ? (
                 <div style={{ padding: '32px', textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Aucune analyse</div>
-              ) : userAnalyses.map((a, i) => (
-                <div key={a.id} onClick={() => onOpenAnalysis?.(a.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 22px', borderBottom: i < userAnalyses.length - 1 ? '1px solid #f8fafc' : 'none', cursor: 'pointer', transition: 'background 0.15s' }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.address || a.adresse_bien || a.title || 'Sans titre'}</div>
-                    <div style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDateTime(a.created_at)} · {PLAN_LABELS[a.type] || a.type}</div>
+              ) : userAnalyses.map((a, i) => {
+                const isFailed = a.status === 'failed';
+                const isCompleted = a.status === 'completed';
+                const isInProgress = a.status === 'processing' || a.status === 'pending' || a.status === 'files_ready';
+                return (
+                  <div key={a.id} onClick={() => onOpenAnalysis?.(a.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 22px', borderBottom: i < userAnalyses.length - 1 ? '1px solid #f8fafc' : 'none', cursor: 'pointer', transition: 'background 0.15s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.address || a.adresse_bien || a.title || 'Sans titre'}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDateTime(a.created_at)} · {PLAN_LABELS[a.type] || a.type}</div>
+                    </div>
+                    {a.score != null && <span style={{ fontSize: 13, fontWeight: 900, color: getScoreColor(a.score), background: getScoreBg(a.score), padding: '3px 9px', borderRadius: 8 }}>{a.score}/20</span>}
+                    {isCompleted && (
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', whiteSpace: 'nowrap' as const }}>
+                        ✓ Généré
+                      </span>
+                    )}
+                    {isInProgress && (
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: '#f0f7fb', color: '#2a7d9c', border: '1px solid #bae3f5', whiteSpace: 'nowrap' as const }}>
+                        ⏳ En cours
+                      </span>
+                    )}
+                    {isFailed && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', whiteSpace: 'nowrap' as const }}>
+                        ✕ Non généré
+                        {a.progress_message && (
+                          <span
+                            onClick={(e) => { e.stopPropagation(); alert(a.progress_message); }}
+                            title={a.progress_message}
+                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: '#fee2e2', color: '#dc2626', fontSize: 10, fontWeight: 800, cursor: 'help', marginLeft: 2 }}>
+                            i
+                          </span>
+                        )}
+                      </span>
+                    )}
                   </div>
-                  {a.score != null && <span style={{ fontSize: 13, fontWeight: 900, color: getScoreColor(a.score), background: getScoreBg(a.score), padding: '3px 9px', borderRadius: 8 }}>{a.score}/20</span>}
-                  {a.status === 'completed' ? <Badge color="#16a34a" bg="#f0fdf4">✓</Badge> : (a.status === 'processing' || a.status === 'pending') ? <Badge color="#2a7d9c" bg="#f0f7fb">⟳</Badge> : <Badge color="#dc2626" bg="#fef2f2">✗</Badge>}
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Historique des tickets support */}
