@@ -346,16 +346,19 @@ export default function NouvelleAnalyse() {
           <div style={{ background: '#f0f7fb', border: '1px solid #d0e8f0', borderRadius: 12, padding: '12px 16px', marginBottom: 18 }}>
             <div style={{ fontSize: 12.5, color: '#0f2d3d', lineHeight: 1.6 }}>
               📌 Vous pouvez consulter l'avancée à tout moment depuis votre espace
-              <strong> "Mes analyses"</strong>. Une notification apparaîtra dans la cloche
+              <strong> {userRole === 'pro' ? '"Mes dossiers"' : '"Mes analyses"'}</strong>. Une notification apparaîtra dans la cloche
               dès que votre rapport sera prêt.
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: 10 }}>
             <button
-              onClick={() => { setQueuedDialog(null); window.location.href = '/dashboard/mes-analyses'; }}
+              onClick={() => { 
+                setQueuedDialog(null); 
+                window.location.href = userRole === 'pro' ? '/dashboard/dossiers' : '/dashboard/analyses'; 
+              }}
               style={{ flex: 1, padding: '12px 18px', borderRadius: 12, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: 'none', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
-            >Voir mes analyses</button>
+            >{userRole === 'pro' ? 'Voir mes dossiers' : 'Voir mes analyses'}</button>
             <button
               onClick={() => setQueuedDialog(null)}
               style={{ padding: '12px 18px', borderRadius: 12, background: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
