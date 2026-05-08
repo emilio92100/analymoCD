@@ -2770,9 +2770,9 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
               <div style={{ fontSize: 14.5, color: '#475569', lineHeight: 1.55, marginBottom: 22 }}>
                 {promoSuccessPopup.message}
               </div>
-              <button onClick={() => setPromoSuccessPopup(null)}
+              <button onClick={() => { setPromoSuccessPopup(null); window.location.reload(); }}
                 style={{ width: '100%', padding: '12px 16px', borderRadius: 10, background: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff', border: 'none', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                Super, merci !
+                Voir mes crédits
               </button>
             </motion.div>
           </motion.div>
