@@ -1659,7 +1659,11 @@ function StatsTab() {
     paymentsCountPart: 0, paymentsCountPro: 0,
     newUsersVerified: 0, newProUsers: 0,
     analysesTotal: 0,
+    analysesPart: 0,
+    analysesPro: 0,
     analysesByType: { document: 0, complete: 0, pack2: 0, pack3: 0 },
+    analysesByTypePart: { document: 0, complete: 0, pack2: 0, pack3: 0 },
+    analysesByTypePro: { document: 0, complete: 0, pack2: 0, pack3: 0 },
     freeAnalysesByType: { document: 0, complete: 0, pack2: 0, pack3: 0 },
     creditsOffered: { document: 0, complete: 0 },
     caPartCateg: { document: { count: 0, total: 0 }, complete: { count: 0, total: 0 }, pack2: { count: 0, total: 0 }, pack3: { count: 0, total: 0 } },
@@ -1711,7 +1715,7 @@ function StatsTab() {
         supabase.from('payments').select('amount,description').eq('status', 'completed').gt('amount', 0).gte('created_at', start).lte('created_at', end),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('email_verified', true).gte('created_at', start).lte('created_at', end),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'pro').gte('created_at', start).lte('created_at', end),
-        supabase.from('analyses').select('type,paid,stripe_payment_id,created_at').gte('created_at', start).lte('created_at', end),
+        supabase.from('analyses').select('type,paid,stripe_payment_id,created_at,user_id,profiles!inner(role)').gte('created_at', start).lte('created_at', end),
         supabase.from('payments').select('credits_added,credit_type').eq('status', 'completed').eq('amount', 0).gte('created_at', start).lte('created_at', end),
         supabase.from('pro_subscriptions').select('plan,current_period_start').gte('current_period_start', start).lte('current_period_start', end),
         supabase.from('pro_unit_purchases').select('type,quantity,amount').gt('amount', 0).gte('purchased_at', start).lte('purchased_at', end),
@@ -1747,13 +1751,25 @@ function StatsTab() {
       const caPro = caProSubs + caProUnits;
       const paymentsCountPro = (proSubsData || []).length + (proUnitsData || []).length;
 
-      // Analyses par type
+      // Analyses par type — split pro / particulier selon le rôle du user
       const analysesByType = { document: 0, complete: 0, pack2: 0, pack3: 0 };
+      const analysesByTypePart = { document: 0, complete: 0, pack2: 0, pack3: 0 };
+      const analysesByTypePro = { document: 0, complete: 0, pack2: 0, pack3: 0 };
       const freeAnalysesByType = { document: 0, complete: 0, pack2: 0, pack3: 0 };
-      (analyses || []).forEach(a => {
+      let analysesPart = 0;
+      let analysesPro = 0;
+      (analyses || []).forEach((a: any) => {
         if (a.type in analysesByType) {
           analysesByType[a.type as keyof typeof analysesByType]++;
           if (!a.stripe_payment_id) freeAnalysesByType[a.type as keyof typeof freeAnalysesByType]++;
+          const userRole = a.profiles?.role || 'user';
+          if (userRole === 'pro') {
+            analysesPro++;
+            analysesByTypePro[a.type as keyof typeof analysesByTypePro]++;
+          } else {
+            analysesPart++;
+            analysesByTypePart[a.type as keyof typeof analysesByTypePart]++;
+          }
         }
       });
 
@@ -1786,7 +1802,7 @@ function StatsTab() {
         caProCateg[key].total += (u.amount || 0) / 100;
       });
 
-      setStats({ caParticulier, caPro, caProSubs, caProUnits, paymentsCountPart, paymentsCountPro, newUsersVerified: newUsersVerified || 0, newProUsers: newProUsers || 0, analysesTotal: (analyses || []).length, analysesByType, freeAnalysesByType, creditsOffered, caPartCateg, caProCateg, activeProCount: activeProCount || 0, prevCaPart, prevCaPro, prevNewUsers, prevNewPro, prevAnalyses, prevActiveProCount: 0 });
+      setStats({ caParticulier, caPro, caProSubs, caProUnits, paymentsCountPart, paymentsCountPro, newUsersVerified: newUsersVerified || 0, newProUsers: newProUsers || 0, analysesTotal: (analyses || []).length, analysesPart, analysesPro, analysesByType, analysesByTypePart, analysesByTypePro, freeAnalysesByType, creditsOffered, caPartCateg, caProCateg, activeProCount: activeProCount || 0, prevCaPart, prevCaPro, prevNewUsers, prevNewPro, prevAnalyses, prevActiveProCount: 0 });
 
       // Graphiques 8 dernières semaines — avec split pro/part
       const weeks: { week: string; caPart: number; caPro: number; users: number }[] = [];
@@ -1930,11 +1946,11 @@ function StatsTab() {
         )}
         <div style={{ padding: '16px', borderRadius: 12, background: '#fff', border: '1.5px solid #edf2f7' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', letterSpacing: '0.08em', marginBottom: 6 }}>ANALYSES LANCÉES</div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d' }}>{stats.analysesTotal}</div>
-          {analysesEvo && <div style={{ fontSize: 10, color: analysesEvo.up ? '#16a34a' : '#dc2626', marginTop: 2, fontWeight: 600 }}>{analysesEvo.up ? '↑' : '↓'} {analysesEvo.diff > 0 ? '+' : ''}{analysesEvo.diff} vs préc.</div>}
+          <div style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d' }}>{source === 'particulier' ? stats.analysesPart : source === 'pro' ? stats.analysesPro : stats.analysesTotal}</div>
+          {analysesEvo && source === 'all' && <div style={{ fontSize: 10, color: analysesEvo.up ? '#16a34a' : '#dc2626', marginTop: 2, fontWeight: 600 }}>{analysesEvo.up ? '↑' : '↓'} {analysesEvo.diff > 0 ? '+' : ''}{analysesEvo.diff} vs préc.</div>}
           <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-            <span style={{ fontSize: 10, color: '#64748b' }}>Simple: {stats.analysesByType.document}</span>
-            <span style={{ fontSize: 10, color: '#2a7d9c' }}>Complète: {stats.analysesByType.complete}</span>
+            <span style={{ fontSize: 10, color: '#64748b' }}>Simple: {source === 'particulier' ? stats.analysesByTypePart.document : source === 'pro' ? stats.analysesByTypePro.document : stats.analysesByType.document}</span>
+            <span style={{ fontSize: 10, color: '#2a7d9c' }}>Complète: {source === 'particulier' ? stats.analysesByTypePart.complete : source === 'pro' ? stats.analysesByTypePro.complete : stats.analysesByType.complete}</span>
           </div>
         </div>
       </div>
