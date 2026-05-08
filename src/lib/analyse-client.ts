@@ -118,10 +118,13 @@ export async function lancerAnalyseEdge(params: {
       clearTimeout(timeoutId);
 
       // 🆕 v9 — Mise en queue suite à surcharge Anthropic
+      console.log('[VERIMO-DEBUG] Réponse fetch initial — status:', res.status);
       if (res.status === 202) {
         try {
           const data = await res.json();
+          console.log('[VERIMO-DEBUG] HTTP 202 reçu, body:', data);
           if (data.queued === true) {
+            console.log('[VERIMO-DEBUG] ✅ Return queued depuis fetch initial');
             return {
               success: false,
               queued: true,
@@ -170,6 +173,7 @@ export async function lancerAnalyseEdge(params: {
 
     // 🆕 v9 — Si l'analyse a été mise en queue pendant le polling
     if (pollResult.status === 'queued') {
+      console.log('[VERIMO-DEBUG] ✅ pollResult.status=queued — return queued au composant React');
       return {
         success: false,
         queued: true,
@@ -222,7 +226,12 @@ export async function pollAnalyseStatus(params: {
       .eq('id', analyseId)
       .single();
 
-    if (!data) continue;
+    if (!data) {
+      console.log('[VERIMO-DEBUG] Polling tick — data null/empty, on continue');
+      continue;
+    }
+
+    console.log('[VERIMO-DEBUG] Polling tick — status reçu:', data.status, '— message:', data.progress_message);
 
     // Détecter stagnation : même message depuis >3min = Edge Function morte
     if (data.progress_message && data.progress_message !== lastMessage) {
@@ -277,6 +286,7 @@ export async function pollAnalyseStatus(params: {
     if (data.status === 'failed') return { status: 'failed', errorMessage: data.progress_message || undefined };
     // 🆕 v9 — Si l'analyse passe en queued pendant le polling, on retourne tout de suite
     if (data.status === 'queued') {
+      console.log('[VERIMO-DEBUG] ✅ STATUS QUEUED DÉTECTÉ DANS POLLING — return queued');
       return { status: 'queued', errorMessage: data.progress_message || undefined };
     }
   }
