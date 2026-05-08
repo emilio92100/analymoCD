@@ -470,6 +470,8 @@ export default function NouvelleAnalyse() {
     if (result.queued) {
       setQueuedDialog({ message: result.queuedMessage || '⏳ Votre analyse est en cours de traitement.' });
       setIsAnalysing(false);
+      setStep('upload'); // 🔧 fix : sortir de la page de progression pour que le popup soit rendu
+      resetUpload();
       return;
     }
 
