@@ -30,6 +30,7 @@ export type AnalyseDB = {
   complement_date: string | null;
   complement_doc_names: string[] | null;
   folder_id: string | null;
+  progress_message: string | null;
   created_at: string;
 };
 
