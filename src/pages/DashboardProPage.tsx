@@ -9,7 +9,7 @@ import {
   ChevronRight, ArrowRight,
   MapPin, Trash2, AlertTriangle, FileText, Pencil,
   UserPlus, UserCheck, Folder, Lightbulb, MessageSquare,
-  LayoutGrid, LayoutList, ArrowUpDown,
+  LayoutGrid, LayoutList, ArrowUpDown, Info,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -1890,6 +1890,7 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoError, setPromoError] = useState('');
   const [promoSuccess, setPromoSuccess] = useState('');
+  const [promoSuccessPopup, setPromoSuccessPopup] = useState<{ message: string } | null>(null);
 
   const handlePromoApply = async () => {
     if (!promoCode.trim()) return;
@@ -1941,6 +1942,7 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
       });
 
       setPromoSuccess(`+${toAdd} crédit${toAdd > 1 ? 's' : ''} ${creditType === 'complete' ? 'Complète' : 'Simple'} ajouté${toAdd > 1 ? 's' : ''} !`);
+      setPromoSuccessPopup({ message: `🎉 +${toAdd} crédit${toAdd > 1 ? 's' : ''} ${creditType === 'complete' ? 'Complète' : 'Simple'} ajouté${toAdd > 1 ? 's' : ''} sur votre compte !` });
       setPromoCode('');
 
       // Rafraîchir les factures (le useEffect sur invoices se relance via setInvoicesLoading)
@@ -2690,6 +2692,38 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
       </>);
       })()}
 
+      {/* Popup succès code promo */}
+      <AnimatePresence>
+        {promoSuccessPopup && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setPromoSuccessPopup(null)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: 'spring', damping: 22, stiffness: 280 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ background: '#fff', borderRadius: 18, padding: '32px 28px', maxWidth: 420, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', position: 'relative', textAlign: 'center' as const }}>
+              <button onClick={() => setPromoSuccessPopup(null)}
+                style={{ position: 'absolute', top: 12, right: 12, width: 30, height: 30, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                <X size={16} />
+              </button>
+              <div style={{ fontSize: 56, lineHeight: 1, marginBottom: 12 }}>🎉</div>
+              <div style={{ fontSize: 19, fontWeight: 800, color: '#0f2d3d', marginBottom: 10 }}>
+                Code promo appliqué !
+              </div>
+              <div style={{ fontSize: 14.5, color: '#475569', lineHeight: 1.55, marginBottom: 22 }}>
+                {promoSuccessPopup.message}
+              </div>
+              <button onClick={() => setPromoSuccessPopup(null)}
+                style={{ width: '100%', padding: '12px 16px', borderRadius: 10, background: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff', border: 'none', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                Super, merci !
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
@@ -3357,6 +3391,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [showSendReport, setShowSendReport] = useState(false);
   const [sendHistory, setSendHistory] = useState<{ id: string; recipient_name: string; recipient_email: string; sent_at: string; opened_at?: string; analysis_id: string }[]>([]);
+  const [errorPopup, setErrorPopup] = useState<{ message: string } | null>(null);
   const navigate = useNavigate();
 
   // Body scroll lock quand une modale est ouverte
@@ -3645,7 +3680,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: folderAnalyses.length > 0 ? 14 : 6 }}>
           <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
             <FileText size={15} style={{ color: '#94a3b8' }} />
-            Analyses
+            Analyses effectuées
             {folderAnalyses.length > 0 && (
               <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '2px 8px', borderRadius: 100 }}>{folderAnalyses.length}</span>
             )}
@@ -3663,7 +3698,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
           const renderRow = (a: ProAnalysis) => {
               const score = getScore(a.result as Record<string, unknown>);
               const isCompleted = a.status === 'completed';
-              const isPending = a.status === 'pending' || a.status === 'processing';
+              const isPending = a.status === 'pending' || a.status === 'processing' || a.status === 'queued';
               const isFailed = a.status === 'failed';
               return (
                 <div key={a.id}
@@ -3700,8 +3735,27 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
                       )}
                     </div>
                   </div>
-                  {isPending && <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fffbeb', padding: '3px 10px', borderRadius: 100, border: '1px solid #fef3c7' }}>En cours</span>}
-                  {isFailed && <span style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', background: '#fef2f2', padding: '3px 10px', borderRadius: 100, border: '1px solid #fecaca' }}>Échoué</span>}
+                  {isPending && (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fffbeb', padding: '3px 10px', borderRadius: 100, border: '1px solid #fef3c7' }}>
+                      {a.status === 'queued' ? 'En cours de traitement' : 'En cours'}
+                    </span>
+                  )}
+                  {isFailed && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: '#dc2626', background: '#fef2f2', padding: '3px 8px', borderRadius: 100, border: '1px solid #fecaca' }}>
+                      Échoué
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const msg = (a as ProAnalysis & { progress_message?: string }).progress_message
+                            || "Une erreur est survenue lors de la génération. Si votre crédit n'a pas été restitué, contactez le support.";
+                          setErrorPopup({ message: msg });
+                        }}
+                        aria-label="Voir le détail de l'erreur"
+                        style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: '#fee2e2', color: '#dc2626', border: 'none', cursor: 'pointer', padding: 0 }}>
+                        <Info size={10} />
+                      </button>
+                    </span>
+                  )}
                   {isCompleted && (
                     <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 4 }}>
                       Voir le rapport <ChevronRight size={13} />
@@ -3850,6 +3904,39 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
       {/* Toast notification */}
       <AnimatePresence>
         {toast && <Toast message={toast.message} type={toast.type} />}
+      </AnimatePresence>
+
+      {/* Popup détail erreur analyse échouée */}
+      <AnimatePresence>
+        {errorPopup && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setErrorPopup(null)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ background: '#fff', borderRadius: 18, padding: '28px 26px', maxWidth: 440, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', position: 'relative' }}>
+              <button onClick={() => setErrorPopup(null)}
+                style={{ position: 'absolute', top: 12, right: 12, width: 30, height: 30, borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                <X size={16} />
+              </button>
+              <div style={{ width: 52, height: 52, borderRadius: 14, background: '#fef2f2', border: '2px solid #fecaca', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                <Info size={24} color="#dc2626" />
+              </div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: '#0f2d3d', textAlign: 'center', marginBottom: 10 }}>
+                Analyse non générée
+              </div>
+              <div style={{ fontSize: 14, color: '#475569', lineHeight: 1.55, textAlign: 'center', marginBottom: 18 }}>
+                {errorPopup.message}
+              </div>
+              <button onClick={() => setErrorPopup(null)}
+                style={{ width: '100%', padding: '11px 16px', borderRadius: 10, background: '#2a7d9c', color: '#fff', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                J'ai compris
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );
