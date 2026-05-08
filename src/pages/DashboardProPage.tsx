@@ -428,12 +428,11 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, h
   const creditsLeft = (proCredits?.total_complete ?? 0) + (proCredits?.total_document ?? 0);
   const totalShares = shares.length;
 
-  const stats = [
-    { label: 'Dossiers analysés', value: completedAnalyses.length, icon: FolderOpen, color: '#2a7d9c' },
-    { label: 'Ce mois', value: thisMonth.length, icon: Clock, color: '#7c3aed' },
-    { label: 'Crédits restants', value: creditsLeft, icon: CreditCard, color: '#16a34a' },
-    { label: 'Rapports envoyés', value: totalShares, icon: Send, color: '#d97706' },
-  ];
+  // Toggle Ce mois / Total pour la KPI analyses
+  const [analysesPeriod, setAnalysesPeriod] = useState<'month' | 'total'>('month');
+  const periodAnalyses = analysesPeriod === 'month' ? thisMonth : analyses;
+  const periodFailed = periodAnalyses.filter(a => a.status === 'failed').length;
+  const periodInProgress = periodAnalyses.filter(a => a.status === 'queued' || a.status === 'processing' || a.status === 'pending').length;
 
   const lastAnalyses = completedAnalyses.slice(0, 3);
   const lastShares = shares.slice(0, 3);
@@ -511,17 +510,73 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, h
 
       {/* Stats */}
       <div className="pro-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 32 }}>
-        {stats.map((s, i) => (
-          <div key={i} style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', border: '1px solid #edf2f7' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: `${s.color}12`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <s.icon size={16} style={{ color: s.color }} />
-              </div>
+        {/* Tile 1 — Dossiers analysés */}
+        <div style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', border: '1px solid #edf2f7' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: '#2a7d9c12', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FolderOpen size={16} style={{ color: '#2a7d9c' }} />
             </div>
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>{s.value}</div>
-            <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>{s.label}</div>
           </div>
-        ))}
+          <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>{completedAnalyses.length}</div>
+          <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>Dossiers analysés</div>
+        </div>
+
+        {/* Tile 2 — Analyses (avec toggle Ce mois / Total + sous-texte) */}
+        <div style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', border: '1px solid #edf2f7' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: '#7c3aed12', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Clock size={16} style={{ color: '#7c3aed' }} />
+            </div>
+            <div style={{ display: 'flex', background: '#f8fafc', borderRadius: 7, padding: 2, border: '1px solid #edf2f7' }}>
+              <button
+                onClick={() => setAnalysesPeriod('month')}
+                style={{ padding: '3px 8px', borderRadius: 5, background: analysesPeriod === 'month' ? '#fff' : 'transparent', border: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 700, color: analysesPeriod === 'month' ? '#7c3aed' : '#94a3b8', boxShadow: analysesPeriod === 'month' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none' }}>
+                Mois
+              </button>
+              <button
+                onClick={() => setAnalysesPeriod('total')}
+                style={{ padding: '3px 8px', borderRadius: 5, background: analysesPeriod === 'total' ? '#fff' : 'transparent', border: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 700, color: analysesPeriod === 'total' ? '#7c3aed' : '#94a3b8', boxShadow: analysesPeriod === 'total' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none' }}>
+                Total
+              </button>
+            </div>
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>{periodAnalyses.length}</div>
+          <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>
+            {analysesPeriod === 'month' ? 'Ce mois' : 'Total'}
+          </div>
+          {(periodFailed > 0 || periodInProgress > 0) && (
+            <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px dashed #edf2f7', fontSize: 10.5, color: '#64748b', fontWeight: 600, display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
+              {periodInProgress > 0 && (
+                <span style={{ color: '#d97706' }}>⏳ {periodInProgress} en cours</span>
+              )}
+              {periodFailed > 0 && (
+                <span style={{ color: '#dc2626' }}>✕ {periodFailed} échouée{periodFailed > 1 ? 's' : ''}</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Tile 3 — Crédits restants */}
+        <div style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', border: '1px solid #edf2f7' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: '#16a34a12', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CreditCard size={16} style={{ color: '#16a34a' }} />
+            </div>
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>{creditsLeft}</div>
+          <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>Crédits restants</div>
+        </div>
+
+        {/* Tile 4 — Rapports envoyés */}
+        <div style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', border: '1px solid #edf2f7' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: '#d9770612', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Send size={16} style={{ color: '#d97706' }} />
+            </div>
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>{totalShares}</div>
+          <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>Rapports envoyés</div>
+        </div>
       </div>
 
       {/* Derniers dossiers */}
