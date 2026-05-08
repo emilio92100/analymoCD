@@ -21,6 +21,7 @@ export type Analyse = {
   result?: unknown;
   folder_id?: string | null;
   folder_name?: string | null;
+  progress_message?: string;
 };
 
 export function useAnalyses() {
@@ -59,6 +60,7 @@ export function useAnalyses() {
           regeneration_deadline: a.regeneration_deadline || undefined,
           result: a.result,
           folder_id: a.folder_id || null,
+          progress_message: a.progress_message || undefined,
         };
       });
       setAnalyses(mapped);
