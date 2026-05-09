@@ -1,8 +1,13 @@
 // ══════════════════════════════════════════════════════════════════════
-// VERIMO — Edge Function : stripe-webhook-pro V3
+// VERIMO — Edge Function : stripe-webhook-pro V4
 //
 // Gère les événements Stripe pour les ABONNEMENTS PRO uniquement
 // (Découverte, Starter, Power) + les achats unitaires pro.
+//
+// V4 :
+//   - Idempotence via la table processed_stripe_events
+//     → empêche le double-traitement d'un même event Stripe (retry, doublon)
+//   - Conservation de toute la logique V3 (alertes admin, gestion erreurs)
 //
 // V3 :
 //   - Gestion d'erreur après chaque appel Supabase critique
@@ -15,7 +20,7 @@
 //
 // Events gérés :
 // - checkout.session.completed       → Activation abo OU crédit unitaire
-// - invoice.payment_succeeded        → Reset crédits au début nouveau cycle
+// - invoice.payment_succeeded        → Cumul crédits + plafond au début nouveau cycle
 // - invoice.payment_failed           → Notification paiement échoué
 // - customer.subscription.updated    → Upgrade/downgrade entre plans
 // - customer.subscription.deleted    → Désactivation propre de l'abo
@@ -105,6 +110,49 @@ async function insertSystemAlert(
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// IDEMPOTENCE — empêche le double-traitement d'un même event Stripe
+// (Stripe peut renvoyer le même webhook plusieurs fois en cas de retry)
+// ─────────────────────────────────────────────────────────────────────
+
+async function isEventAlreadyProcessed(eventId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('processed_stripe_events')
+    .select('event_id')
+    .eq('event_id', eventId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[idempotence] Erreur lecture processed_stripe_events:', error);
+    // En cas d'erreur de lecture, on traite quand même l'event
+    // (mieux vaut un doublon potentiel qu'un event ignoré)
+    return false;
+  }
+
+  return !!data;
+}
+
+async function markEventAsProcessed(
+  eventId: string,
+  eventType: string,
+  metadata?: Record<string, unknown>
+): Promise<void> {
+  const { error } = await supabase
+    .from('processed_stripe_events')
+    .insert({
+      event_id: eventId,
+      event_type: eventType,
+      webhook_source: 'stripe-webhook-pro',
+      metadata: metadata ?? null,
+    });
+
+  if (error) {
+    // Erreur 23505 = duplicate key violation = race condition (2 webhooks en parallèle)
+    // C'est le comportement attendu : on log et on continue
+    console.error('[idempotence] Erreur insertion processed_stripe_events:', error);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // HANDLER PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────
 
@@ -137,6 +185,17 @@ serve(async (req) => {
 
   console.log(`[stripe-webhook-pro] Event received: ${event.type} (id=${event.id})`);
 
+  // ─────────────────────────────────────────────────────────────────────
+  // IDEMPOTENCE : vérifier si l'event a déjà été traité
+  // ─────────────────────────────────────────────────────────────────────
+  if (await isEventAlreadyProcessed(event.id)) {
+    console.log(`[stripe-webhook-pro] Event ${event.id} déjà traité, skip (idempotence)`);
+    return new Response(JSON.stringify({ received: true, duplicate: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     switch (event.type) {
       case 'checkout.session.completed':
@@ -163,6 +222,11 @@ serve(async (req) => {
         console.log(`[stripe-webhook-pro] Event ignored: ${event.type}`);
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // Event traité avec succès → on le marque pour éviter doublons futurs
+    // ─────────────────────────────────────────────────────────────────────
+    await markEventAsProcessed(event.id, event.type);
+
     return new Response(JSON.stringify({ received: true }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -176,6 +240,8 @@ serve(async (req) => {
       message: `Une erreur inattendue est survenue dans le traitement de l'event ${event.type}.`,
       metadata: { stage: 'handler', eventType: event.type, eventId: event.id, error: (err as Error).message },
     });
+    // En cas d'erreur, on NE marque PAS l'event comme traité
+    // → Stripe va retry, et au prochain essai si ça réussit, on le marquera
     return new Response(JSON.stringify({ error: (err as Error).message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
@@ -256,6 +322,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
     return;
   }
 
+  // Cumul des crédits + plafond 2× appliqué dans la fonction SQL
   const { error: rpcErr } = await supabase.rpc('reset_pro_subscription_credits', {
     p_subscription_id: existing.id,
   });
@@ -265,8 +332,8 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
     await insertSystemAlert(supabase, {
       type: 'save_error',
       severity: 'critical',
-      title: 'Renouvellement Pro — échec reset crédits',
-      message: 'Le renouvellement Pro a été facturé mais le reset des crédits du nouveau cycle a échoué.',
+      title: 'Renouvellement Pro — échec cumul crédits',
+      message: 'Le renouvellement Pro a été facturé mais le cumul des crédits du nouveau cycle a échoué.',
       userId: existing.user_id,
       metadata: { stage: 'reset_credits', subscriptionId: subId, error: rpcErr.message },
     });
@@ -287,7 +354,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
     console.error('[invoice.paid] Update period failed:', updateError);
   }
 
-  console.log(`[invoice.paid] Credits reset for sub ${existing.id} (plan ${existing.plan})`);
+  console.log(`[invoice.paid] Crédits cumulés (plafond 2×) pour sub ${existing.id} (plan ${existing.plan})`);
 }
 
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
