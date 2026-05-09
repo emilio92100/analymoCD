@@ -2465,18 +2465,6 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
     window.location.reload();
   }
 
-  // Bloquer le scroll de la page derrière quand n'importe quel popup est ouvert
-  useEffect(() => {
-    const popupOpen = upgradeFlow !== null || cancelStep !== 0 || successPopup !== null || promoSuccessPopup !== null;
-    if (popupOpen) {
-      const originalOverflow = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      return () => {
-        document.body.style.overflow = originalOverflow;
-      };
-    }
-  }, [upgradeFlow, cancelStep, successPopup, promoSuccessPopup]);
-
   useEffect(() => {
     const url = new URL(window.location.href);
     const checkout = url.searchParams.get('checkout');
@@ -2567,6 +2555,18 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
   const [cancelStep, setCancelStep] = useState<0 | 1 | 2 | 3>(0); // 0=hidden, 1=confirm, 2=reason, 3=done
   const [cancelReason, setCancelReason] = useState('');
   const [cancelLoading, setCancelLoading] = useState(false);
+
+  // Bloquer le scroll de la page derrière quand n'importe quel popup est ouvert
+  useEffect(() => {
+    const popupOpen = upgradeFlow !== null || cancelStep !== 0 || successPopup !== null || promoSuccessPopup !== null;
+    if (popupOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [upgradeFlow, cancelStep, successPopup, promoSuccessPopup]);
 
   // ── Billing portal ──
   async function handleBillingPortal() {
