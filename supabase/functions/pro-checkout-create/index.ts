@@ -185,6 +185,7 @@ async function handleSubscribe(userId: string, body: any) {
     }
 
     return await handleUpgradeOrDowngrade(
+      userId,
       existingSub.stripe_subscription_id,
       existingSub.plan,
       plan,
@@ -193,6 +194,7 @@ async function handleSubscribe(userId: string, body: any) {
   }
 
   // Pas d'abo actif → création via Checkout
+  const customFields = await getInvoiceCustomFields(userId);
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
     customer: customerId,
@@ -209,6 +211,7 @@ async function handleSubscribe(userId: string, body: any) {
         plan,
       },
       default_tax_rates: [TVA_TAX_RATE_ID],
+      ...(customFields ? { invoice_settings: { custom_fields: customFields } } : {}),
     },
     automatic_tax: { enabled: false },
     locale: 'fr',
@@ -218,6 +221,7 @@ async function handleSubscribe(userId: string, body: any) {
 }
 
 async function handleUpgradeOrDowngrade(
+  userId: string,
   stripeSubscriptionId: string,
   currentPlan: string,
   newPlan: string,
@@ -228,19 +232,33 @@ async function handleUpgradeOrDowngrade(
                     planOrder[currentPlan as keyof typeof planOrder];
 
   if (isUpgrade) {
-    return await handleUpgrade(stripeSubscriptionId, newPriceId, newPlan);
+    return await handleUpgrade(userId, stripeSubscriptionId, newPriceId, newPlan);
   } else {
     return await handleDowngradeScheduled(stripeSubscriptionId, newPriceId, newPlan);
   }
 }
 
 async function handleUpgrade(
+  userId: string,
   stripeSubscriptionId: string,
   newPriceId: string,
   newPlan: string,
 ) {
   try {
     const sub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+
+    // Mettre à jour les invoice_settings de la subscription pour que les futures factures
+    // (incluant celle générée par cet upgrade) affichent le SIRET du pro.
+    const customFields = await getInvoiceCustomFields(userId);
+    if (customFields) {
+      try {
+        await stripe.subscriptions.update(stripeSubscriptionId, {
+          invoice_settings: { custom_fields: customFields },
+        });
+      } catch (err) {
+        console.warn('[upgrade] custom_fields update failed (non-critique):', err);
+      }
+    }
 
     const updated = await stripe.subscriptions.update(stripeSubscriptionId, {
       items: [{
@@ -487,6 +505,7 @@ async function handleBuyUnit(userId: string, body: any) {
 
   const priceId = UNIT_TO_PRICE[unit_type as keyof typeof UNIT_TO_PRICE];
   const customerId = await getOrCreateStripeCustomer(userId);
+  const customFields = await getInvoiceCustomFields(userId);
 
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
@@ -509,7 +528,9 @@ async function handleBuyUnit(userId: string, body: any) {
     },
     automatic_tax: { enabled: false },
     locale: 'fr',
-    invoice_creation: { enabled: true },
+    invoice_creation: customFields
+      ? { enabled: true, invoice_data: { custom_fields: customFields } }
+      : { enabled: true },
   });
 
   return jsonResponse({ url: session.url });
@@ -782,6 +803,24 @@ async function getGrantInvoices(userId: string) {
 // HELPERS
 // ═════════════════════════════════════════════════════════════════════
 
+// Récupère le SIRET du pro et le formate comme custom_field Stripe
+// pour qu'il apparaisse en en-tête de la facture PDF générée par Stripe.
+// Stripe ne supporte pas le SIRET comme Tax ID officiel, donc on l'affiche via custom_fields.
+async function getInvoiceCustomFields(userId: string): Promise<Array<{ name: string; value: string }> | undefined> {
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('pro_siret')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (!profile?.pro_siret) return undefined;
+
+  const cleanSiret = profile.pro_siret.replace(/\s/g, '');
+  if (!cleanSiret) return undefined;
+
+  return [{ name: 'SIRET', value: cleanSiret }];
+}
+
 // V3 : Création/MAJ du customer Stripe avec adresse + SIRET
 //      Si le customer existe déjà, on update ses infos pour que les
 //      futures factures soient à jour (utile si le pro modifie son adresse)
@@ -848,12 +887,11 @@ async function getOrCreateStripeCustomer(userId: string): Promise<string> {
         name: customerName,
         phone: profile?.telephone || undefined,
         address: customerAddress,
+        metadata: {
+          user_id: userId,
+          siret: profile?.pro_siret ? profile.pro_siret.replace(/\s/g, '') : '',
+        },
       });
-
-      // Gérer le SIRET via tax_id_data (à part)
-      if (profile?.pro_siret) {
-        await syncCustomerTaxId(customerId, profile.pro_siret);
-      }
     } catch (err) {
       console.warn('[customer] Update failed (non-critique):', err);
     }
@@ -861,6 +899,9 @@ async function getOrCreateStripeCustomer(userId: string): Promise<string> {
   }
 
   // 3b. Pas de customer → on en crée un nouveau avec toutes les infos
+  // Note : le SIRET est stocké en metadata (pas en tax_id_data, car Stripe ne supporte
+  // pas le SIRET comme type de Tax ID officiel — seulement TVA intracom, EU VAT, etc.).
+  // Le SIRET sera affiché sur la facture via custom_fields au moment du checkout.
   const customerParams: Stripe.CustomerCreateParams = {
     email: user?.email,
     name: customerName,
@@ -868,52 +909,15 @@ async function getOrCreateStripeCustomer(userId: string): Promise<string> {
     address: customerAddress,
     metadata: {
       user_id: userId,
+      siret: profile?.pro_siret ? profile.pro_siret.replace(/\s/g, '') : '',
     },
   };
-
-  // Tax ID (SIRET) — type fr_siret pour la France
-  if (profile?.pro_siret) {
-    customerParams.tax_id_data = [{
-      type: 'fr_siret' as any,
-      value: profile.pro_siret.replace(/\s/g, ''), // Retirer les espaces
-    }];
-  }
 
   const customer = await stripe.customers.create(customerParams);
   return customer.id;
 }
 
 // Sync SIRET sur un customer existant (ajoute le tax_id si pas déjà présent)
-async function syncCustomerTaxId(customerId: string, siret: string) {
-  try {
-    const cleanSiret = siret.replace(/\s/g, '');
-
-    // Lister les tax_ids existants
-    const taxIds = await stripe.customers.listTaxIds(customerId, { limit: 10 });
-
-    // Vérifier si SIRET déjà présent
-    const alreadyExists = taxIds.data.some(
-      (t: any) => t.type === 'fr_siret' && t.value === cleanSiret
-    );
-
-    if (!alreadyExists) {
-      // Supprimer les anciens fr_siret pour éviter les doublons
-      for (const oldTax of taxIds.data) {
-        if (oldTax.type === 'fr_siret') {
-          await stripe.customers.deleteTaxId(customerId, oldTax.id);
-        }
-      }
-      // Ajouter le nouveau
-      await stripe.customers.createTaxId(customerId, {
-        type: 'fr_siret' as any,
-        value: cleanSiret,
-      });
-    }
-  } catch (err) {
-    console.warn('[customer] Tax ID sync failed (non-critique):', err);
-  }
-}
-
 function jsonResponse(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
