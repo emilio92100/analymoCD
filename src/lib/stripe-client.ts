@@ -8,7 +8,8 @@
 // - VITE_STRIPE_PUBLISHABLE_KEY = pk_live_xxx (clé publique Stripe PRODUCTION)
 // ══════════════════════════════════════════════════════════════════════
 
-import { loadStripe, Stripe } from '@stripe/stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
+import type { Stripe } from '@stripe/stripe-js';
 
 const STRIPE_PK = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
 
