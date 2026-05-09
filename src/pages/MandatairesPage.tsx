@@ -1,11 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import {
   ArrowRight, FileText, Sparkles, Eye, Handshake,
   ShieldCheck, Clock, Award, TrendingUp, Check,
   Calendar, ChevronRight, Zap, Target, Star,
-  AlertTriangle, BarChart3, Send, Download, Building2,
+  AlertTriangle, BarChart3, Send, Building2,
 } from 'lucide-react';
 import { useSEO } from '../hooks/useSEO';
 
@@ -523,7 +523,6 @@ export default function MandatairesPage() {
                 </div>
               }
               reverse={true}
-              fullMockup
             />
           </Reveal>
 
@@ -767,7 +766,7 @@ export default function MandatairesPage() {
 // ────────────────────────────────────────────────────────────────────
 // COMPOSANT : Carte d'un "moment" (avant/avec)
 // ────────────────────────────────────────────────────────────────────
-function MomentCard({ num, tag, title, avant, apres, benefit, icon, mockup, reverse, fullMockup }: {
+function MomentCard({ num, tag, title, avant, apres, benefit, icon, mockup, reverse }: {
   num: string;
   tag: string;
   title: string;
@@ -777,7 +776,6 @@ function MomentCard({ num, tag, title, avant, apres, benefit, icon, mockup, reve
   icon: React.ReactNode;
   mockup: React.ReactNode;
   reverse: boolean;
-  fullMockup?: boolean;
 }) {
   return (
     <div style={{
