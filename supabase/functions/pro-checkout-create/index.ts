@@ -627,10 +627,12 @@ async function handleListInvoices(userId: string) {
 
   const customerId = existingSub.stripe_customer_id;
 
+  // On récupère TOUTES les factures (pas que paid) pour pouvoir afficher les échecs aussi.
+  // Stripe statuses possibles : draft, open, paid, uncollectible, void
   const stripeInvoices = await stripe.invoices.list({
     customer: customerId,
     limit: 50,
-    status: 'paid',
+    expand: ['data.payment_intent'], // pour récupérer last_payment_error
   });
 
   const fmtDate = (ts: number) => {
@@ -650,27 +652,100 @@ async function handleListInvoices(userId: string) {
     'price_1TTtd2BesXB76oWEVM0p27GS': 'Analyse simple (unitaire)',
   };
 
-  const invoiceItems = stripeInvoices.data.map((inv) => {
-    const isSubscription = !!inv.subscription;
-    const lines = inv.lines?.data || [];
-    const firstLine = lines[0];
-    const priceId = firstLine?.price?.id || '';
+  // Mapping codes Stripe → message FR clair pour motif d'échec
+  const FAIL_CODE_TO_FR: Record<string, string> = {
+    card_declined: 'Carte refusée',
+    insufficient_funds: 'Fonds insuffisants',
+    expired_card: 'Carte expirée',
+    incorrect_cvc: 'CVC incorrect',
+    processing_error: 'Erreur de traitement',
+    authentication_required: 'Authentification 3DS requise',
+    do_not_honor: 'Refus banque',
+    generic_decline: 'Refus banque (motif générique)',
+    lost_card: 'Carte déclarée perdue',
+    stolen_card: 'Carte déclarée volée',
+    incorrect_number: 'Numéro de carte invalide',
+    invalid_expiry_month: 'Mois d\'expiration invalide',
+    invalid_expiry_year: 'Année d\'expiration invalide',
+    fraudulent: 'Suspicion de fraude',
+  };
 
-    const description = PRICE_TO_DESCRIPTION[priceId]
-      || (isSubscription ? 'Abonnement Verimo Pro' : 'Achat unitaire');
+  const invoiceItems = stripeInvoices.data
+    // On ne garde pas les drafts (factures non finalisées) — pas pertinent pour l'historique
+    .filter((inv) => inv.status !== 'draft')
+    .map((inv) => {
+      const isSubscription = !!inv.subscription;
+      const lines = inv.lines?.data || [];
+      const firstLine = lines[0];
+      const priceId = firstLine?.price?.id || '';
 
-    return {
-      id: inv.id,
-      date: fmtDate(inv.created),
-      description,
-      amount: fmtAmount(inv.amount_paid || 0),
-      amount_ht: fmtAmount(inv.subtotal || 0),
-      amount_tva: fmtAmount(inv.tax || 0),
-      pdf_url: inv.invoice_pdf || null,
-      type: isSubscription ? 'subscription' as const : 'unit' as const,
-      _ts: inv.created,
-    };
-  });
+      const description = PRICE_TO_DESCRIPTION[priceId]
+        || (isSubscription ? 'Abonnement Verimo Pro' : 'Achat unitaire');
+
+      // Mapping statut Stripe → statut FR + variante UI
+      // - paid : facture payée ✅
+      // - open : facture émise, en attente de paiement (peut être past_due si retries en cours)
+      // - uncollectible : marquée irrécouvrable (après échecs définitifs)
+      // - void : annulée
+      const stripeStatus = inv.status || 'unknown';
+      let statusLabel = '';
+      let statusVariant: 'success' | 'pending' | 'failed' | 'void' = 'success';
+
+      if (stripeStatus === 'paid') {
+        statusLabel = 'Réussi';
+        statusVariant = 'success';
+      } else if (stripeStatus === 'open') {
+        // Si la facture a déjà été tentée au moins 1 fois → échec
+        if ((inv.attempt_count || 0) > 0) {
+          statusLabel = `Échec (${inv.attempt_count} tentative${(inv.attempt_count || 0) > 1 ? 's' : ''})`;
+          statusVariant = 'failed';
+        } else {
+          statusLabel = 'En attente';
+          statusVariant = 'pending';
+        }
+      } else if (stripeStatus === 'uncollectible') {
+        statusLabel = 'Irrécouvrable';
+        statusVariant = 'failed';
+      } else if (stripeStatus === 'void') {
+        statusLabel = 'Annulée';
+        statusVariant = 'void';
+      } else {
+        statusLabel = stripeStatus;
+        statusVariant = 'pending';
+      }
+
+      // Récupération du motif d'échec si applicable
+      let failureReason: string | null = null;
+      const paymentIntent = inv.payment_intent as Stripe.PaymentIntent | null;
+      if (paymentIntent && typeof paymentIntent === 'object' && paymentIntent.last_payment_error) {
+        const errCode = paymentIntent.last_payment_error.decline_code
+          || paymentIntent.last_payment_error.code
+          || '';
+        failureReason = FAIL_CODE_TO_FR[errCode]
+          || paymentIntent.last_payment_error.message
+          || 'Échec de paiement';
+      }
+
+      // Montant à afficher : amount_paid si payé, sinon amount_due
+      const displayAmount = inv.status === 'paid' ? (inv.amount_paid || 0) : (inv.amount_due || 0);
+
+      return {
+        id: inv.id,
+        date: fmtDate(inv.created),
+        description,
+        amount: fmtAmount(displayAmount),
+        amount_ht: fmtAmount(inv.subtotal || 0),
+        amount_tva: fmtAmount(inv.tax || 0),
+        pdf_url: inv.invoice_pdf || null,
+        type: isSubscription ? 'subscription' as const : 'unit' as const,
+        status: stripeStatus,
+        status_label: statusLabel,
+        status_variant: statusVariant,
+        failure_reason: failureReason,
+        attempt_count: inv.attempt_count || 0,
+        _ts: inv.created,
+      };
+    });
 
   const grantItems = await getGrantInvoices(userId);
 
