@@ -1865,6 +1865,7 @@ function ModalArchiveFolder({ folder, mode, onClose, onConfirm }: {
       style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}
       onClick={(e) => { if (e.target === e.currentTarget && !submitting) onClose(); }}>
       <motion.div
+        className="archive-modal-card"
         initial={{ opacity: 0, y: 20, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -1872,26 +1873,27 @@ function ModalArchiveFolder({ folder, mode, onClose, onConfirm }: {
         style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 460, boxShadow: '0 30px 80px rgba(15,45,61,0.35)', overflow: 'hidden' }}>
 
         {/* Header */}
-        <div style={{ padding: '26px 28px 22px', textAlign: 'center', background: colors.headerBg, position: 'relative', borderBottom: `1px solid ${colors.headerBorder}` }}>
+        <div className="archive-modal-header" style={{ padding: '26px 28px 22px', textAlign: 'center', background: colors.headerBg, position: 'relative', borderBottom: `1px solid ${colors.headerBorder}` }}>
           <button onClick={onClose} disabled={submitting} title="Fermer"
             style={{ position: 'absolute', top: 14, right: 14, width: 30, height: 30, borderRadius: 8, background: 'rgba(255,255,255,0.85)', border: `1px solid ${colors.closeBorder}`, cursor: submitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: submitting ? 0.5 : 1 }}>
             <X size={14} style={{ color: colors.closeIconColor }} />
           </button>
           <motion.div
+            className="archive-modal-icon"
             initial={{ scale: 0.6, rotate: -10 }} animate={{ scale: 1, rotate: 0 }} transition={{ delay: 0.1, type: 'spring', stiffness: 280, damping: 18 }}
             style={{ width: 56, height: 56, borderRadius: 14, background: colors.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', boxShadow: colors.iconShadow, fontSize: 26 }}>
             {isArchive ? '📦' : '📂'}
           </motion.div>
-          <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0, marginBottom: 6 }}>
+          <h2 className="archive-modal-title" style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0, marginBottom: 6 }}>
             {isArchive ? 'Archiver ce dossier ?' : 'Restaurer ce dossier ?'}
           </h2>
-          <p style={{ fontSize: 13, color: colors.subtitle, margin: 0, fontWeight: 500 }}>
+          <p className="archive-modal-subtitle" style={{ fontSize: 13, color: colors.subtitle, margin: 0, fontWeight: 500 }}>
             {isArchive ? 'Vous pourrez le restaurer à tout moment.' : 'Le dossier redeviendra entièrement actif.'}
           </p>
         </div>
 
         {/* Body */}
-        <div style={{ padding: '22px 28px 18px' }}>
+        <div className="archive-modal-body" style={{ padding: '22px 28px 18px' }}>
 
           {/* Carte du dossier */}
           <div style={{ marginBottom: 18, padding: '14px 16px', borderRadius: 11, background: '#f8fafc', border: '1px solid #edf2f7', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -1950,7 +1952,7 @@ function ModalArchiveFolder({ folder, mode, onClose, onConfirm }: {
         </div>
 
         {/* Footer */}
-        <div style={{ display: 'flex', gap: 10, padding: '14px 28px 22px', justifyContent: 'flex-end' }}>
+        <div className="archive-modal-footer" style={{ display: 'flex', gap: 10, padding: '14px 28px 22px', justifyContent: 'flex-end' }}>
           <button onClick={onClose} disabled={submitting}
             style={{ padding: '10px 18px', borderRadius: 10, background: '#fff', border: '1.5px solid #edf2f7', color: '#64748b', fontSize: 13, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.5 : 1 }}>
             Annuler
@@ -5754,6 +5756,49 @@ export default function DashboardProPage() {
           }
           .folder-analysis-cta span:first-child {
             font-size: 10.5px !important;
+          }
+          /* Modal archivage / restauration — réduit sur mobile */
+          .archive-modal-card {
+            max-width: 360px !important;
+            border-radius: 14px !important;
+          }
+          .archive-modal-header {
+            padding: 18px 20px 16px !important;
+          }
+          .archive-modal-icon {
+            width: 44px !important;
+            height: 44px !important;
+            border-radius: 11px !important;
+            font-size: 20px !important;
+            margin-bottom: 10px !important;
+          }
+          .archive-modal-title {
+            font-size: 15.5px !important;
+            margin-bottom: 4px !important;
+          }
+          .archive-modal-subtitle {
+            font-size: 11.5px !important;
+          }
+          .archive-modal-body {
+            padding: 16px 20px 12px !important;
+          }
+          .archive-modal-body p {
+            font-size: 12px !important;
+            line-height: 1.5 !important;
+          }
+          .archive-modal-body ul li {
+            font-size: 11.5px !important;
+            line-height: 1.7 !important;
+          }
+          .archive-modal-footer {
+            padding: 12px 20px 18px !important;
+            gap: 8px !important;
+          }
+          .archive-modal-footer button {
+            padding: 9px 14px !important;
+            font-size: 12.5px !important;
+            flex: 1 !important;
+            justify-content: center !important;
           }
         }
         @keyframes spin { to { transform: rotate(360deg); } }
