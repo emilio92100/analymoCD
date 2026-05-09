@@ -3899,6 +3899,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [clientInvoices, setClientInvoices] = useState<{ id: string; date: string; description: string; amount: string; pdf_url: string | null; type: string }[]>([]);
   const [clientInvoicesLoading, setClientInvoicesLoading] = useState(false);
   const [editingIdentity, setEditingIdentity] = useState(false);
+  const [notifyProOnSave, setNotifyProOnSave] = useState(false);
   const [editingPersonal, setEditingPersonal] = useState(false);
   const [editFullName, setEditFullName] = useState('');
   const [editTelephone, setEditTelephone] = useState('');
@@ -4337,9 +4338,20 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                     if (editPostalCode !== ((selected as any).pro_postal_code || '')) changes.push(`Code postal: "${(selected as any).pro_postal_code || '—'}" → "${editPostalCode || '—'}"`);
                     if (editCompanyAddress !== (selected.pro_company_address || '')) changes.push(`Adresse: "${selected.pro_company_address || '—'}" → "${editCompanyAddress || '—'}"`);
                     if (changes.length > 0) logAction(`Identité pro modifiée pour ${selected.full_name}: ${changes.join(', ')}`);
+                    // Notifier le pro si demandé
+                    if (notifyProOnSave) {
+                      await supabase.from('user_notifications').insert({
+                        user_id: selected.id,
+                        title: 'Informations professionnelles mises à jour',
+                        message: 'Suite à votre demande, et après vérification des éléments, vos informations professionnelles ont été mises à jour avec succès. ✅',
+                      });
+                      showToast('Identité mise à jour — notification envoyée');
+                    } else {
+                      showToast('Identité mise à jour');
+                    }
                     setSelected({ ...selected, ...updates });
                     setEditingIdentity(false);
-                    showToast('Identité mise à jour');
+                    setNotifyProOnSave(false);
                   }}
                     style={{ padding: '6px 14px', borderRadius: 8, background: '#2a7d9c', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
                     ✅ Enregistrer
@@ -4379,6 +4391,13 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                   <input value={editVille} onChange={e => setEditVille(e.target.value)} placeholder="Paris"
                     style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
                 </div>
+                <label style={{ gridColumn: 'span 2', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', marginTop: 4 }}>
+                  <input type="checkbox" checked={notifyProOnSave} onChange={e => setNotifyProOnSave(e.target.checked)}
+                    style={{ width: 15, height: 15, cursor: 'pointer', accentColor: '#2a7d9c' }} />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>
+                    🔔 Notifier le pro de la mise à jour
+                  </span>
+                </label>
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
