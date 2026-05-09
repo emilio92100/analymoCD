@@ -3231,23 +3231,9 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
             <h2 className="plan-header-title" style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d', marginBottom: 4, letterSpacing: '-0.02em' }}>
               {isSubscribed ? 'Changer de plan' : 'Choisissez votre plan'}
             </h2>
-            <p className="plan-header-desc" style={{ fontSize: 15, color: '#64748b', margin: '0 0 8px' }}>
+            <p className="plan-header-desc" style={{ fontSize: 15, color: '#64748b', margin: 0 }}>
               {isSubscribed ? 'Vous pouvez upgrader ou changer de formule à tout moment.' : 'Sélectionnez la formule adaptée à votre activité.'}
             </p>
-            <div className="plan-header-guarantees" style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', fontSize: 12.5, fontWeight: 700, color: '#16a34a' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <CheckCircle size={14} strokeWidth={2.5} /> Sans engagement
-              </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <CheckCircle size={14} strokeWidth={2.5} /> Annulez quand vous voulez
-              </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                <CheckCircle size={14} strokeWidth={2.5} /> Crédits cumulables
-                <InfoTooltip text={`Crédits cumulables — précisions
-
-Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, dans la limite d'un mois de report.`} />
-              </span>
-            </div>
           </div>
           {isSubscribed && (
             <button onClick={handleBillingPortal} disabled={loading === 'billing_portal'} className="plan-header-billing-btn"
@@ -3295,18 +3281,25 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 7px', borderRadius: 100, background: '#f0fdf4', border: '1px solid #bbf7d0', whiteSpace: 'nowrap' }}>
                     <CheckCircle size={9} strokeWidth={2.5} style={{ color: '#16a34a' }} />
                     <span style={{ fontSize: 9.5, fontWeight: 700, color: '#15803d' }}>Sans engagement</span>
+                    <InfoTooltip text={`Sans engagement — précisions
+
+Vous pouvez résilier votre abonnement à tout moment depuis votre espace, sans frais ni justification. La résiliation prend effet à la fin de votre cycle de facturation en cours.`} />
                   </span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 18 }}>
                   {[
-                    `${plan.completes} analyse${plan.completes > 1 ? 's' : ''} complète${plan.completes > 1 ? 's' : ''}`,
-                    `${plan.simples} analyse${plan.simples > 1 ? 's' : ''} simple${plan.simples > 1 ? 's' : ''}`,
-                    'Dashboard pro + branding',
-                    'Envoi de rapports clients',
+                    { label: `${plan.completes} analyse${plan.completes > 1 ? 's' : ''} complète${plan.completes > 1 ? 's' : ''}`, tooltip: null },
+                    { label: `${plan.simples} analyse${plan.simples > 1 ? 's' : ''} simple${plan.simples > 1 ? 's' : ''}`, tooltip: null },
+                    { label: 'Dashboard pro + branding', tooltip: null },
+                    { label: 'Envoi de rapports clients', tooltip: null },
+                    { label: 'Crédits cumulables', tooltip: `Crédits cumulables — précisions
+
+Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, dans la limite d'un mois de report.` },
                   ].map((feat, fi) => (
                     <div key={fi} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <CheckCircle size={13} style={{ color: '#16a34a', flexShrink: 0 }} />
-                      <span style={{ fontSize: 13, color: '#374151' }}>{feat}</span>
+                      <span style={{ fontSize: 13, color: '#374151' }}>{feat.label}</span>
+                      {feat.tooltip && <InfoTooltip text={feat.tooltip} />}
                     </div>
                   ))}
                 </div>
@@ -6298,7 +6291,6 @@ export default function DashboardProPage() {
           .plan-header-text { min-width: 0 !important; width: 100% !important; }
           .plan-header-title { font-size: 18px !important; }
           .plan-header-desc { font-size: 13px !important; }
-          .plan-header-guarantees { font-size: 11.5px !important; gap: 10px !important; }
           .plan-header-billing-btn { width: 100% !important; justify-content: center !important; padding: 11px 14px !important; }
           .dossier-actions-grid { grid-template-columns: 1fr 1fr !important; }
           .dossier-icon-desktop { width: 40px !important; height: 40px !important; }
