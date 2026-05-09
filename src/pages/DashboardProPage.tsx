@@ -3414,9 +3414,15 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
       <div style={{ background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderRadius: 16, padding: '22px 26px', border: '1px solid #d0e8f0', textAlign: 'center', marginBottom: 28 }}>
         <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f2d3d', marginBottom: 6 }}>Volumes importants ou besoins spécifiques ?</h3>
         <p style={{ fontSize: 14, color: '#64748b', marginBottom: 14 }}>Agences, cabinets, équipes : contactez-nous pour une offre sur mesure.</p>
-        <Link to="/contact-pro" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '11px 22px', borderRadius: 10, background: '#0f2d3d', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 700 }}>
+        <button onClick={() => {
+          const openHelp = (window as unknown as Record<string, (subject?: string) => void>).__openHelp;
+          if (openHelp) openHelp('Volume important / besoin spécifique');
+        }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '11px 22px', borderRadius: 10, background: '#0f2d3d', color: '#fff', border: 'none', fontSize: 14, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#1e3a4d'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#0f2d3d'; }}>
           Nous contacter <ArrowRight size={14} />
-        </Link>
+        </button>
       </div>
 
       {/* ═══ SECTION 4 : Mes factures (paiements uniquement) ═══ */}
@@ -5684,9 +5690,11 @@ export default function DashboardProPage() {
   // Expose popup openers for topbar buttons
   useEffect(() => {
     (window as unknown as Record<string, unknown>).__openSuggestion = () => setShowSuggestionPopup(true);
-    (window as unknown as Record<string, unknown>).__openHelp = async () => {
+    (window as unknown as Record<string, unknown>).__openHelp = async (presetSubject?: string) => {
       setHelpCheckingTicket(true);
       setShowHelpPopup(true);
+      // Si un sujet est pré-sélectionné, on le pose dans le state
+      if (presetSubject) setHelpSubject(presetSubject);
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { count } = await supabase.from('support_tickets').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('status', 'open');
@@ -6060,6 +6068,7 @@ export default function DashboardProPage() {
                           'Question sur mon abonnement',
                           'Bug technique',
                           'Question sur les crédits',
+                          'Volume important / besoin spécifique',
                           'Autre',
                         ].map(opt => (
                           <button key={opt} onClick={() => setHelpSubject(opt)}
