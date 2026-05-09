@@ -522,7 +522,7 @@ Deno.serve(async (req) => {
       const {
         email, full_name, telephone,
         pro_profile_type, pro_company_name, pro_company_address,
-        pro_siret, pro_ville, pro_network,
+        pro_postal_code, pro_siret, pro_ville, pro_network,
         pro_notes_admin, pro_recommended_plan,
         credits_document, credits_complete,
         contact_pro_id
@@ -548,6 +548,7 @@ Deno.serve(async (req) => {
         pro_profile_type: pro_profile_type || null,
         pro_company_name: pro_company_name || null,
         pro_company_address: pro_company_address || null,
+        pro_postal_code: pro_postal_code || null,
         pro_siret: pro_siret || null,
         pro_ville: pro_ville || null,
         pro_network: pro_network || null,
