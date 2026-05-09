@@ -3873,7 +3873,7 @@ function DemandesProTab({ onConfirm, showToast, onReadChange, onCreatePro }: { o
 type ProClient = {
   id: string; full_name?: string; email?: string; telephone?: string; role: string;
   pro_profile_type?: string; pro_company_name?: string; pro_ville?: string; pro_network?: string;
-  pro_siret?: string; pro_company_address?: string;
+  pro_siret?: string; pro_company_address?: string; pro_postal_code?: string;
   pro_notes_admin?: string; pro_created_at?: string; pro_recommended_plan?: string;
   pro_onboarding_done?: boolean; credits_document?: number; credits_complete?: number;
   suspended?: boolean; created_at: string;
@@ -3906,6 +3906,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [editNetwork, setEditNetwork] = useState('');
   const [editSiret, setEditSiret] = useState('');
   const [editVille, setEditVille] = useState('');
+  const [editPostalCode, setEditPostalCode] = useState('');
   const [editCompanyAddress, setEditCompanyAddress] = useState('');
   const [sendingInvite, setSendingInvite] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -3920,7 +3921,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [form, setForm] = useState({
     full_name: '', email: '', telephone: '',
     pro_profile_type: 'agent', pro_company_name: '', pro_company_address: '',
-    pro_siret: '', pro_ville: '', pro_network: '',
+    pro_postal_code: '', pro_siret: '', pro_ville: '', pro_network: '',
     pro_notes_admin: '', pro_recommended_plan: '' as string,
     credits_document: '0', credits_complete: '0',
     contact_pro_id: '' as string,
@@ -3955,6 +3956,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
         pro_profile_type: d.profile_type || 'agent',
         pro_company_name: pd.nomAgence || pd.nomSociete || pd.nomEtude || pd.nomStructure || pd.nomSocieteMarchand || '',
         pro_company_address: pd.adresseAgence || pd.adresseEtude || '',
+        pro_postal_code: pd.codePostal || '',
         pro_siret: pd.siret || pd.rsac || pd.siretMarchand || '',
         pro_ville: d.ville || pd.zoneGeographique || '',
         pro_network: pd.reseau || '',
@@ -3976,6 +3978,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
     setEditNetwork(client.pro_network || '');
     setEditSiret(client.pro_siret || '');
     setEditVille(client.pro_ville || '');
+    setEditPostalCode((client as any).pro_postal_code || '');
     setEditCompanyAddress(client.pro_company_address || '');
     // Invitations
     const { data: inv } = await supabase.from('pro_invitations').select('*').eq('profile_id', client.id).order('created_at', { ascending: false });
@@ -4041,7 +4044,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       await logAction('Compte pro créé', form.email);
       showToast(`Compte pro ${form.email} créé`);
       setShowCreate(false);
-      setForm({ full_name: '', email: '', telephone: '', pro_profile_type: 'agent', pro_company_name: '', pro_company_address: '', pro_siret: '', pro_ville: '', pro_network: '', pro_notes_admin: '', pro_recommended_plan: '', credits_document: '0', credits_complete: '0', contact_pro_id: '' });
+      setForm({ full_name: '', email: '', telephone: '', pro_profile_type: 'agent', pro_company_name: '', pro_company_address: '', pro_postal_code: '', pro_siret: '', pro_ville: '', pro_network: '', pro_notes_admin: '', pro_recommended_plan: '', credits_document: '0', credits_complete: '0', contact_pro_id: '' });
       loadClients();
     } catch (e) { setCreateError(String(e)); }
     setCreating(false);
@@ -4084,7 +4087,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
           <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Clients Pro</h1>
           <p style={{ fontSize: 13, color: '#94a3b8' }}>{clients.length} client{clients.length > 1 ? 's' : ''} pro</p>
         </div>
-        <button onClick={() => { setForm({ full_name: '', email: '', telephone: '', pro_profile_type: 'agent', pro_company_name: '', pro_company_address: '', pro_siret: '', pro_ville: '', pro_network: '', pro_notes_admin: '', pro_recommended_plan: '', credits_document: '0', credits_complete: '0', contact_pro_id: '' }); setCreateError(''); setShowCreate(true); }}
+        <button onClick={() => { setForm({ full_name: '', email: '', telephone: '', pro_profile_type: 'agent', pro_company_name: '', pro_company_address: '', pro_postal_code: '', pro_siret: '', pro_ville: '', pro_network: '', pro_notes_admin: '', pro_recommended_plan: '', credits_document: '0', credits_complete: '0', contact_pro_id: '' }); setCreateError(''); setShowCreate(true); }}
           style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
           <UserPlus size={14} /> Créer un client pro
         </button>
@@ -4320,16 +4323,18 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                       pro_network: editNetwork.trim() || null,
                       pro_siret: editSiret.trim() || null,
                       pro_ville: editVille.trim() || null,
+                      pro_postal_code: editPostalCode.trim() || null,
                       pro_company_address: editCompanyAddress.trim() || null,
                     };
                     const { error } = await supabase.from('profiles').update(updates).eq('id', selected.id);
                     if (error) { showToast('Erreur: ' + error.message); return; }
                     // Log changes
                     const changes: string[] = [];
-                    if (editCompanyName !== (selected.pro_company_name || '')) changes.push(`Nom commercial: "${selected.pro_company_name || '—'}" → "${editCompanyName || '—'}"`);
+                    if (editCompanyName !== (selected.pro_company_name || '')) changes.push(`Raison sociale: "${selected.pro_company_name || '—'}" → "${editCompanyName || '—'}"`);
                     if (editNetwork !== (selected.pro_network || '')) changes.push(`Réseau: "${selected.pro_network || '—'}" → "${editNetwork || '—'}"`);
                     if (editSiret !== (selected.pro_siret || '')) changes.push(`SIRET: "${selected.pro_siret || '—'}" → "${editSiret || '—'}"`);
                     if (editVille !== (selected.pro_ville || '')) changes.push(`Ville: "${selected.pro_ville || '—'}" → "${editVille || '—'}"`);
+                    if (editPostalCode !== ((selected as any).pro_postal_code || '')) changes.push(`Code postal: "${(selected as any).pro_postal_code || '—'}" → "${editPostalCode || '—'}"`);
                     if (editCompanyAddress !== (selected.pro_company_address || '')) changes.push(`Adresse: "${selected.pro_company_address || '—'}" → "${editCompanyAddress || '—'}"`);
                     if (changes.length > 0) logAction(`Identité pro modifiée pour ${selected.full_name}: ${changes.join(', ')}`);
                     setSelected({ ...selected, ...updates });
@@ -4345,8 +4350,8 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
             {editingIdentity ? (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 4, display: 'block' }}>Nom commercial</label>
-                  <input value={editCompanyName} onChange={e => setEditCompanyName(e.target.value)} placeholder="Dupont Immobilier"
+                  <label style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 4, display: 'block' }}>Raison sociale</label>
+                  <input value={editCompanyName} onChange={e => setEditCompanyName(e.target.value)} placeholder="Agence Dupont SARL"
                     style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
                 </div>
                 <div>
@@ -4354,30 +4359,36 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                   <input value={editNetwork} onChange={e => setEditNetwork(e.target.value)} placeholder="IAD, Safti, Indépendant..."
                     style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
                 </div>
-                <div>
+                <div style={{ gridColumn: 'span 2' }}>
                   <label style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 4, display: 'block' }}>SIRET</label>
                   <input value={editSiret} onChange={e => setEditSiret(e.target.value)} placeholder="123 456 789 00012"
                     style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
                 </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 4, display: 'block' }}>Ville / Zone d'activité</label>
-                  <input value={editVille} onChange={e => setEditVille(e.target.value)} placeholder="Paris, Île-de-France"
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 4, display: 'block' }}>Adresse postale</label>
+                  <input value={editCompanyAddress} onChange={e => setEditCompanyAddress(e.target.value)} placeholder="12 rue de la République"
                     style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
                 </div>
-                <div style={{ gridColumn: 'span 2' }}>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 4, display: 'block' }}>Adresse professionnelle</label>
-                  <input value={editCompanyAddress} onChange={e => setEditCompanyAddress(e.target.value)} placeholder="12 rue de Rivoli, 75001 Paris"
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 4, display: 'block' }}>Code postal</label>
+                  <input value={editPostalCode} onChange={e => setEditPostalCode(e.target.value)} placeholder="75001"
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 4, display: 'block' }}>Ville</label>
+                  <input value={editVille} onChange={e => setEditVille(e.target.value)} placeholder="Paris"
                     style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
                 </div>
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 {[
-                  { label: 'Nom commercial', value: selected.pro_company_name },
+                  { label: 'Raison sociale', value: selected.pro_company_name },
                   { label: 'Réseau', value: selected.pro_network },
-                  { label: 'SIRET', value: selected.pro_siret },
+                  { label: 'SIRET', value: selected.pro_siret, span: true },
+                  { label: 'Adresse postale', value: selected.pro_company_address, span: true },
+                  { label: 'Code postal', value: (selected as any).pro_postal_code },
                   { label: 'Ville', value: selected.pro_ville },
-                  { label: 'Adresse', value: selected.pro_company_address, span: true },
                 ].map((f, i) => (
                   <div key={i} style={{ padding: '10px 12px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7', ...(f.span ? { gridColumn: 'span 2' } : {}) }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginBottom: 3 }}>{f.label}</div>
@@ -4691,12 +4702,20 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-              <div><label style={labelStyle}>Société</label><input value={form.pro_company_name} onChange={e => setForm(f => ({ ...f, pro_company_name: e.target.value }))} style={inputStyle} placeholder="Agence Dupont" /></div>
+              <div><label style={labelStyle}>Raison sociale</label><input value={form.pro_company_name} onChange={e => setForm(f => ({ ...f, pro_company_name: e.target.value }))} style={inputStyle} placeholder="Agence Dupont SARL" /></div>
               <div><label style={labelStyle}>Réseau</label><input value={form.pro_network} onChange={e => setForm(f => ({ ...f, pro_network: e.target.value }))} style={inputStyle} placeholder="IAD, Safti, Indépendant..." /></div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-              <div><label style={labelStyle}>SIRET</label><input value={form.pro_siret} onChange={e => setForm(f => ({ ...f, pro_siret: e.target.value }))} style={inputStyle} /></div>
-              <div><label style={labelStyle}>Ville / Zone</label><input value={form.pro_ville} onChange={e => setForm(f => ({ ...f, pro_ville: e.target.value }))} style={inputStyle} /></div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>SIRET</label>
+              <input value={form.pro_siret} onChange={e => setForm(f => ({ ...f, pro_siret: e.target.value }))} style={inputStyle} placeholder="123 456 789 00012" />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Adresse postale</label>
+              <input value={form.pro_company_address} onChange={e => setForm(f => ({ ...f, pro_company_address: e.target.value }))} style={inputStyle} placeholder="12 rue de la République" />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12, marginBottom: 14 }}>
+              <div><label style={labelStyle}>Code postal</label><input value={form.pro_postal_code} onChange={e => setForm(f => ({ ...f, pro_postal_code: e.target.value }))} style={inputStyle} placeholder="75001" /></div>
+              <div><label style={labelStyle}>Ville</label><input value={form.pro_ville} onChange={e => setForm(f => ({ ...f, pro_ville: e.target.value }))} style={inputStyle} placeholder="Paris" /></div>
             </div>
             <div style={{ marginBottom: 14 }}>
               <label style={labelStyle}>Plan recommandé</label>
