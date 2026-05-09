@@ -2843,13 +2843,24 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
               exit={{ scale: 0.92, opacity: 0, y: 20 }}
               transition={{ type: 'spring', duration: 0.45, bounce: 0.15 }}
               onClick={e => e.stopPropagation()}
-              style={{ background: '#fff', borderRadius: 24, padding: '36px 32px', maxWidth: 480, width: '100%', boxShadow: '0 24px 64px rgba(0,0,0,0.25)', maxHeight: '90vh', overflowY: 'auto' }}>
+              style={{ background: '#fff', borderRadius: 20, maxWidth: 440, width: '100%', boxShadow: '0 24px 64px rgba(0,0,0,0.25)', maxHeight: '90vh', overflowY: 'auto', overflow: 'hidden', position: 'relative' }}>
+
+              {/* Croix en haut à droite (sauf en loading) */}
+              {upgradeFlow !== 'loading' && (
+                <button
+                  onClick={closeUpgradeFlow}
+                  style={{ position: 'absolute', top: 14, right: 14, zIndex: 10, width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,255,255,0.4)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)', transition: 'all 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,1)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.85)'}>
+                  <X size={16} style={{ color: '#0f172a' }} />
+                </button>
+              )}
 
               {/* ═══ ÉTAT 1 : PREVIEW (récap avant validation) ═══ */}
               {upgradeFlow === 'preview' && (
                 <>
                   {!upgradePreview && (
-                    <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                    <div style={{ textAlign: 'center', padding: '60px 0' }}>
                       <div style={{ width: 40, height: 40, border: '3px solid #f0f7fb', borderTopColor: '#2a7d9c', borderRadius: '50%', margin: '0 auto', animation: 'spin 0.8s linear infinite' }} />
                       <p style={{ fontSize: 13, color: '#64748b', marginTop: 16 }}>Calcul du récapitulatif…</p>
                     </div>
@@ -2857,106 +2868,117 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
 
                   {upgradePreview && (
                     <>
-                      {/* Header */}
-                      <div style={{ textAlign: 'center', marginBottom: 24 }}>
-                        <div style={{ width: 56, height: 56, borderRadius: 16, background: upgradePreview.is_upgrade ? 'linear-gradient(135deg, #f0f7fb, #e0f0f6)' : 'linear-gradient(135deg, #fef3c7, #fde68a)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: upgradePreview.is_upgrade ? '2px solid #d0e8f0' : '2px solid #fcd34d' }}>
-                          <ArrowRight size={24} style={{ color: upgradePreview.is_upgrade ? '#2a7d9c' : '#d97706' }} />
-                        </div>
-                        <h2 style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', marginBottom: 6, letterSpacing: '-0.02em' }}>
-                          {upgradePreview.is_upgrade ? `Passer à ${upgradePreview.new_plan_label}` : `Passer à ${upgradePreview.new_plan_label}`}
-                        </h2>
-                        <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
-                          {upgradePreview.is_upgrade
-                            ? 'Votre nouveau plan prend effet immédiatement.'
-                            : `Votre nouveau plan prendra effet le ${upgradePreview.next_billing_date}.`}
-                        </p>
-                      </div>
-
-                      {/* Bandeau info downgrade */}
-                      {upgradePreview.is_downgrade && (
-                        <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 12, padding: '12px 14px', marginBottom: 18 }}>
-                          <p style={{ fontSize: 12.5, color: '#92400e', margin: 0, lineHeight: 1.5 }}>
-                            💡 D'ici la bascule, vous gardez votre plan {upgradePreview.current_plan_label} et vos crédits actuels.
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Récap plan */}
-                      <div style={{ background: '#f8fafc', borderRadius: 16, padding: '20px', marginBottom: 16, border: '1.5px solid #edf2f7' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                          <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Plan {upgradePreview.new_plan_label}</span>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '3px 10px', borderRadius: 100 }}>Mensuel</span>
-                        </div>
-
-                        {/* Crédits avant / après */}
-                        <div style={{ marginBottom: 14, padding: '12px', background: '#fff', borderRadius: 10, border: '1px solid #edf2f7' }}>
-                          <p style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Vos crédits après le changement</p>
-                          <div style={{ display: 'flex', gap: 12 }}>
-                            <div style={{ flex: 1, textAlign: 'center', padding: '8px', background: '#f8fafc', borderRadius: 8 }}>
-                              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 2 }}>Complètes</div>
-                              <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>{upgradePreview.new_credits.complete}</div>
-                              {upgradePreview.current_credits.complete > 0 && (
-                                <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 600, marginTop: 2 }}>
-                                  ({upgradePreview.current_credits.complete} actuel + cumul)
-                                </div>
-                              )}
-                            </div>
-                            <div style={{ flex: 1, textAlign: 'center', padding: '8px', background: '#f8fafc', borderRadius: 8 }}>
-                              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 2 }}>Simples</div>
-                              <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>{upgradePreview.new_credits.simple}</div>
-                              {upgradePreview.current_credits.simple > 0 && (
-                                <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 600, marginTop: 2 }}>
-                                  ({upgradePreview.current_credits.simple} actuel + cumul)
-                                </div>
-                              )}
-                            </div>
+                      {/* Header dégradé compact */}
+                      <div style={{
+                        background: upgradePreview.is_upgrade
+                          ? 'linear-gradient(135deg, #e0f0f6 0%, #f0f7fb 50%, #ffffff 100%)'
+                          : 'linear-gradient(135deg, #fef3c7 0%, #fef9e7 50%, #ffffff 100%)',
+                        padding: '20px 24px 18px',
+                        borderBottom: '1px solid #edf2f7',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div style={{
+                            width: 40, height: 40, borderRadius: 12,
+                            background: upgradePreview.is_upgrade ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : 'linear-gradient(135deg, #d97706, #92400e)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: upgradePreview.is_upgrade ? '0 4px 12px rgba(42,125,156,0.3)' : '0 4px 12px rgba(217,119,6,0.3)',
+                            flexShrink: 0,
+                          }}>
+                            <ArrowRight size={20} style={{ color: '#fff' }} />
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <h2 style={{ fontSize: 17, fontWeight: 900, color: '#0f172a', marginBottom: 2, letterSpacing: '-0.02em' }}>
+                              Passer à {upgradePreview.new_plan_label}
+                            </h2>
+                            <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
+                              {upgradePreview.is_upgrade
+                                ? 'Effet immédiat'
+                                : `Effectif le ${upgradePreview.next_billing_date}`}
+                            </p>
                           </div>
                         </div>
+                      </div>
 
-                        {/* Détail prix (uniquement upgrade) */}
-                        {upgradePreview.is_upgrade && (
-                          <div style={{ borderTop: '1px solid #edf2f7', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            <p style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>À payer aujourd'hui</p>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontSize: 13, color: '#64748b' }}>Prix HT</span>
-                              <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{upgradePreview.amount_ht_str}</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontSize: 13, color: '#64748b' }}>TVA (20%)</span>
-                              <span style={{ fontSize: 14, fontWeight: 600, color: '#64748b' }}>{upgradePreview.amount_tva_str}</span>
-                            </div>
-                            <div style={{ borderTop: '1.5px solid #d0e8f0', paddingTop: 10, marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Total TTC</span>
-                              <span style={{ fontSize: 20, fontWeight: 900, color: '#2a7d9c' }}>{upgradePreview.amount_ttc_str}</span>
-                            </div>
-                            <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, textAlign: 'right' }}>
-                              Prochain prélèvement : {upgradePreview.next_billing_date}
+                      {/* Contenu */}
+                      <div style={{ padding: '18px 24px 22px' }}>
+
+                        {/* Bandeau info downgrade — compact */}
+                        {upgradePreview.is_downgrade && (
+                          <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 10, padding: '10px 12px', marginBottom: 14 }}>
+                            <p style={{ fontSize: 12, color: '#92400e', margin: 0, lineHeight: 1.45 }}>
+                              💡 Vous gardez votre plan {upgradePreview.current_plan_label} jusqu'à la bascule.
                             </p>
                           </div>
                         )}
-                      </div>
 
-                      {/* Mention plafond crédits */}
-                      <p style={{ fontSize: 11.5, color: '#64748b', textAlign: 'center', marginBottom: 16, lineHeight: 1.5 }}>
-                        💡 Vos crédits abonnement non utilisés sont reportés sur le mois suivant. Ils restent valables 2 mois après leur attribution.
-                      </p>
+                        {/* Crédits après — compact */}
+                        <div style={{ background: '#f8fafc', borderRadius: 12, padding: '12px 14px', marginBottom: 12, border: '1px solid #edf2f7' }}>
+                          <p style={{ fontSize: 10.5, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Vos crédits après</p>
+                          <div style={{ display: 'flex', gap: 10 }}>
+                            <div style={{ flex: 1, textAlign: 'center', padding: '8px 6px', background: '#fff', borderRadius: 8, border: '1px solid #edf2f7' }}>
+                              <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', lineHeight: 1, marginBottom: 2 }}>{upgradePreview.new_credits.complete}</div>
+                              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Complète{upgradePreview.new_credits.complete > 1 ? 's' : ''}</div>
+                              {upgradePreview.current_credits.complete > 0 && (
+                                <div style={{ fontSize: 9.5, color: '#16a34a', fontWeight: 700, marginTop: 3 }}>
+                                  +{upgradePreview.current_credits.complete} cumul
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ flex: 1, textAlign: 'center', padding: '8px 6px', background: '#fff', borderRadius: 8, border: '1px solid #edf2f7' }}>
+                              <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', lineHeight: 1, marginBottom: 2 }}>{upgradePreview.new_credits.simple}</div>
+                              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Simple{upgradePreview.new_credits.simple > 1 ? 's' : ''}</div>
+                              {upgradePreview.current_credits.simple > 0 && (
+                                <div style={{ fontSize: 9.5, color: '#16a34a', fontWeight: 700, marginTop: 3 }}>
+                                  +{upgradePreview.current_credits.simple} cumul
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
 
-                      {/* Boutons */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        <button
-                          onClick={confirmUpgradeFlow}
-                          style={{
-                            width: '100%', padding: '14px', borderRadius: 14, border: 'none', cursor: 'pointer',
-                            background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 800,
-                            boxShadow: '0 8px 24px rgba(15,45,61,0.2)',
-                            transition: 'all 0.2s',
-                          }}>
-                          {upgradePreview.is_upgrade ? `Confirmer et payer ${upgradePreview.amount_ttc_str}` : 'Confirmer le changement'}
-                        </button>
-                        <button onClick={closeUpgradeFlow}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#94a3b8', padding: '8px' }}>
-                          Annuler
-                        </button>
+                        {/* Détail prix (uniquement upgrade) — compact */}
+                        {upgradePreview.is_upgrade && (
+                          <div style={{ background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderRadius: 12, padding: '12px 14px', marginBottom: 12, border: '1px solid #d0e8f0' }}>
+                            <p style={{ fontSize: 10.5, fontWeight: 700, color: '#2a7d9c', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>À payer aujourd'hui</p>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                              <span style={{ fontSize: 12.5, color: '#64748b' }}>Prix HT</span>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{upgradePreview.amount_ht_str}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                              <span style={{ fontSize: 12.5, color: '#64748b' }}>TVA (20%)</span>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: '#64748b' }}>{upgradePreview.amount_tva_str}</span>
+                            </div>
+                            <div style={{ borderTop: '1.5px solid #d0e8f0', paddingTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: 13.5, fontWeight: 800, color: '#0f172a' }}>Total TTC</span>
+                              <span style={{ fontSize: 19, fontWeight: 900, color: '#2a7d9c' }}>{upgradePreview.amount_ttc_str}</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Mention prochaine date + plafond — fusionné, plus discret */}
+                        <p style={{ fontSize: 11, color: '#94a3b8', textAlign: 'center', marginBottom: 14, lineHeight: 1.5 }}>
+                          {upgradePreview.is_upgrade && <>Prochain prélèvement : <strong style={{ color: '#64748b' }}>{upgradePreview.next_billing_date}</strong> · </>}
+                          Crédits valables 2 mois après attribution
+                        </p>
+
+                        {/* Boutons */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          <button
+                            onClick={confirmUpgradeFlow}
+                            style={{
+                              width: '100%', padding: '13px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                              background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14.5, fontWeight: 800,
+                              boxShadow: '0 6px 18px rgba(15,45,61,0.2)',
+                              transition: 'all 0.2s',
+                            }}>
+                            {upgradePreview.is_upgrade ? `Confirmer et payer ${upgradePreview.amount_ttc_str}` : 'Confirmer le changement'}
+                          </button>
+                          <button onClick={closeUpgradeFlow}
+                            style={{ background: '#f8fafc', border: '1.5px solid #e5e7eb', borderRadius: 12, cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#64748b', padding: '10px' }}>
+                            Annuler
+                          </button>
+                        </div>
+
                       </div>
                     </>
                   )}
@@ -2965,13 +2987,13 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
 
               {/* ═══ ÉTAT 2 : LOADING (paiement en cours) ═══ */}
               {upgradeFlow === 'loading' && (
-                <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                <div style={{ textAlign: 'center', padding: '48px 28px' }}>
                   <motion.div
                     animate={{ rotate: 360 }}
                     transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
-                    style={{ width: 56, height: 56, border: '4px solid #f0f7fb', borderTopColor: '#2a7d9c', borderRadius: '50%', margin: '0 auto 24px' }}
+                    style={{ width: 52, height: 52, border: '4px solid #f0f7fb', borderTopColor: '#2a7d9c', borderRadius: '50%', margin: '0 auto 22px' }}
                   />
-                  <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 8, letterSpacing: '-0.01em' }}>
+                  <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 8, letterSpacing: '-0.01em' }}>
                     {upgradeLoadingMsg}
                   </h3>
                   <p style={{ fontSize: 13, color: '#64748b', margin: 0, lineHeight: 1.6 }}>
@@ -2983,7 +3005,7 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
 
               {/* ═══ ÉTAT 3 : SUCCESS (plan activé) ═══ */}
               {upgradeFlow === 'success' && upgradeSuccessData && (
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div style={{ textAlign: 'center', padding: '32px 24px 24px' }}>
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
@@ -3038,7 +3060,7 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
 
               {/* ═══ ÉTAT 4 : ERROR (paiement refusé / 3DS échoué) ═══ */}
               {upgradeFlow === 'error' && (
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div style={{ textAlign: 'center', padding: '32px 24px 24px' }}>
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
