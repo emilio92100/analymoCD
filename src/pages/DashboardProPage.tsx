@@ -32,6 +32,7 @@ type ProProfile = {
   pro_profile_type?: string;
   pro_company_name?: string;
   pro_company_address?: string;
+  pro_postal_code?: string;
   pro_siret?: string;
   pro_ville?: string;
   pro_network?: string;
@@ -3437,6 +3438,7 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
     telephone: proProfile.telephone || '',
     pro_company_name: proProfile.pro_company_name || '',
     pro_company_address: proProfile.pro_company_address || '',
+    pro_postal_code: proProfile.pro_postal_code || '',
     pro_siret: proProfile.pro_siret || '',
     pro_ville: proProfile.pro_ville || '',
     pro_network: proProfile.pro_network || '',
@@ -3496,6 +3498,7 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
     if (!isLocked) {
       updateData.pro_company_name = form.pro_company_name;
       updateData.pro_company_address = form.pro_company_address;
+      updateData.pro_postal_code = form.pro_postal_code;
       updateData.pro_siret = form.pro_siret;
       updateData.pro_ville = form.pro_ville;
       updateData.pro_network = form.pro_network;
@@ -3602,27 +3605,31 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
 
         <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
           <div>
-            <label style={labelStyle}>Nom commercial</label>
-            <input value={form.pro_company_name} onChange={e => !isLocked && setForm(f => ({ ...f, pro_company_name: e.target.value }))} placeholder="Dupont Immobilier" style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
+            <label style={labelStyle}>Raison sociale</label>
+            <input value={form.pro_company_name} onChange={e => !isLocked && setForm(f => ({ ...f, pro_company_name: e.target.value }))} placeholder="Agence Dupont SARL" style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
           </div>
           <div>
             <label style={labelStyle}>Réseau</label>
             <input value={form.pro_network} onChange={e => !isLocked && setForm(f => ({ ...f, pro_network: e.target.value }))} placeholder="IAD, Safti, Indépendant..." style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
           </div>
         </div>
-        <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-          <div>
-            <label style={labelStyle}>SIRET</label>
-            <input value={form.pro_siret} onChange={e => !isLocked && setForm(f => ({ ...f, pro_siret: e.target.value }))} style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
-          </div>
-          <div>
-            <label style={labelStyle}>Ville / Zone d'activité</label>
-            <input value={form.pro_ville} onChange={e => !isLocked && setForm(f => ({ ...f, pro_ville: e.target.value }))} style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
-          </div>
+        <div style={{ marginBottom: 14 }}>
+          <label style={labelStyle}>SIRET</label>
+          <input value={form.pro_siret} onChange={e => !isLocked && setForm(f => ({ ...f, pro_siret: e.target.value }))} placeholder="123 456 789 00012" style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
         </div>
-        <div>
-          <label style={labelStyle}>Adresse professionnelle</label>
-          <input value={form.pro_company_address} onChange={e => !isLocked && setForm(f => ({ ...f, pro_company_address: e.target.value }))} style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
+        <div style={{ marginBottom: 14 }}>
+          <label style={labelStyle}>Adresse postale</label>
+          <input value={form.pro_company_address} onChange={e => !isLocked && setForm(f => ({ ...f, pro_company_address: e.target.value }))} placeholder="12 rue de la République" style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
+        </div>
+        <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 14 }}>
+          <div>
+            <label style={labelStyle}>Code postal</label>
+            <input value={form.pro_postal_code} onChange={e => !isLocked && setForm(f => ({ ...f, pro_postal_code: e.target.value }))} placeholder="75001" style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
+          </div>
+          <div>
+            <label style={labelStyle}>Ville</label>
+            <input value={form.pro_ville} onChange={e => !isLocked && setForm(f => ({ ...f, pro_ville: e.target.value }))} placeholder="Paris" style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
+          </div>
         </div>
       </div>
 
@@ -3631,7 +3638,7 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
         <div style={{ background: '#fffbeb', borderRadius: 14, border: '1.5px solid #fde68a', padding: '18px 20px', marginBottom: 16 }}>
           <p style={{ fontSize: 14, fontWeight: 700, color: '#92400e', marginBottom: 8 }}>Confirmez vos informations professionnelles</p>
           <p style={{ fontSize: 13, color: '#92400e', lineHeight: 1.6, marginBottom: 14 }}>
-            Une fois enregistrées, les informations suivantes ne seront plus modifiables sans passer par le support : nom commercial, réseau, SIRET, ville et adresse professionnelle.
+            Une fois enregistrées, les informations suivantes ne seront plus modifiables sans passer par le support : raison sociale, réseau, SIRET, adresse postale, code postal et ville.
           </p>
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={() => setShowLockConfirm(false)} style={{ flex: 1, padding: '11px', borderRadius: 10, background: '#fff', border: '1.5px solid #edf2f7', color: '#64748b', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Modifier</button>
