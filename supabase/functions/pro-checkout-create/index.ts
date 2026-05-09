@@ -1,39 +1,20 @@
 // ══════════════════════════════════════════════════════════════════════
-// VERIMO — Edge Function : pro-checkout-create V2
+// VERIMO — Edge Function : pro-checkout-create V3
+//
+// V3 : ajout adresse postale + SIRET sur le customer Stripe
+//      → factures conformes B2B (SIRET, adresse, raison sociale)
 //
 // Crée une session Stripe Checkout pour les pros.
 // Appelée par le frontend depuis le dashboard pro (MonAbonnement).
 //
-// V2 :
-//   - Fix bug upgrade : plein tarif facturé immédiatement (au lieu de gratuit)
-//   - Support 3DS inline : retourne le client_secret au frontend si requis
-//   - Préparation downgrade différé : nouveau mode "schedule_downgrade"
-//   - Mode "preview_upgrade" : récap pour le popup avant validation
-//
 // Modes supportés :
-//
 // 1. "subscribe" — S'abonner à un plan (Découverte / Starter / Power)
-//    Body : { mode: "subscribe", plan: "decouverte" | "starter" | "power" }
-//
 // 2. "preview_upgrade" — Récap d'upgrade avant validation (pour popup)
-//    Body : { mode: "preview_upgrade", plan: "starter" | "power" }
-//    Renvoie : { current_plan, new_plan, amount_ht, amount_tva, amount_ttc,
-//               next_billing_date, current_credits, new_credits }
-//
-// 3. "buy_unit" — Acheter une analyse à l'unité (réservé aux abonnés actifs)
-//    Body : { mode: "buy_unit", unit_type: "complete" | "document", quantity: number }
-//
-// 4. "cancel" — Annuler l'abonnement (cancel_at_period_end)
-//    Body : { mode: "cancel", reason: string }
-//
+// 3. "buy_unit" — Acheter une analyse à l'unité (réservé aux abonnés)
+// 4. "cancel" — Annuler l'abonnement
 // 5. "reactivate" — Annuler la résiliation
-//    Body : { mode: "reactivate" }
-//
 // 6. "billing_portal" — Ouvrir le portail Stripe (modifier carte)
-//    Body : { mode: "billing_portal" }
-//
 // 7. "list_invoices" — Lister les factures Stripe du client
-//    Body : { mode: "list_invoices", target_user_id?: string }
 //
 // Sécurité :
 // - JWT vérifié (le pro doit être connecté)
@@ -43,7 +24,7 @@
 // - STRIPE_SECRET_KEY
 // - SUPABASE_URL
 // - SUPABASE_SERVICE_ROLE_KEY
-// - SUPABASE_ANON_KEY (pour vérifier le JWT du user)
+// - SUPABASE_ANON_KEY
 // ══════════════════════════════════════════════════════════════════════
 
 import { serve } from 'https://deno.land/std@0.192.0/http/server.ts';
@@ -61,9 +42,9 @@ const PLAN_TO_PRICE: Record<'decouverte' | 'starter' | 'power', string> = {
 };
 
 const PLAN_HT_PRICE: Record<'decouverte' | 'starter' | 'power', number> = {
-  decouverte: 1990,  // 19,90€ HT en centimes
-  starter: 4990,     // 49,90€ HT
-  power: 8990,       // 89,90€ HT
+  decouverte: 1990,
+  starter: 4990,
+  power: 8990,
 };
 
 const PLAN_LABEL: Record<'decouverte' | 'starter' | 'power', string> = {
@@ -83,22 +64,16 @@ const UNIT_TO_PRICE: Record<'complete' | 'document', string> = {
   document: 'price_1TTtd2BesXB76oWEVM0p27GS',
 };
 
-// ─────────────────────────────────────────────────────────────────────
-// TVA France 20% — Tax Rate Stripe (exclusif = ajouté en sus du HT)
-// ─────────────────────────────────────────────────────────────────────
+// TVA France 20%
 const TVA_TAX_RATE_ID = 'txr_1TUAxVBesXB76oWESXBnGdIZ';
-const TVA_RATE = 0.20; // 20%
+const TVA_RATE = 0.20;
 
-// URL de redirection après succès/annulation
+// URL de redirection
 const SITE_URL = Deno.env.get('SITE_URL') ?? 'https://www.verimo.fr';
 const SUCCESS_URL_SUBSCRIBE = `${SITE_URL}/dashboard/abonnement?checkout=success&type=subscribe`;
 const SUCCESS_URL_UPGRADE = `${SITE_URL}/dashboard/abonnement?checkout=success&type=upgrade`;
 const SUCCESS_URL_UNIT = `${SITE_URL}/dashboard/abonnement?checkout=success&type=unit`;
 const CANCEL_URL = `${SITE_URL}/dashboard/abonnement?checkout=cancel`;
-
-// ─────────────────────────────────────────────────────────────────────
-// Init Stripe + Supabase clients
-// ─────────────────────────────────────────────────────────────────────
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
   apiVersion: '2024-04-10',
@@ -109,10 +84,6 @@ const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
 );
-
-// ─────────────────────────────────────────────────────────────────────
-// CORS headers
-// ─────────────────────────────────────────────────────────────────────
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -125,7 +96,6 @@ const CORS = {
 // ═════════════════════════════════════════════════════════════════════
 
 serve(async (req) => {
-  // Preflight CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: CORS });
   }
@@ -135,7 +105,6 @@ serve(async (req) => {
   }
 
   try {
-    // 1. Récupérer le user via le JWT
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return jsonResponse({ error: 'Missing authorization header' }, 401);
@@ -148,7 +117,6 @@ serve(async (req) => {
       return jsonResponse({ error: 'Unauthorized' }, 401);
     }
 
-    // 2. Parser la requête
     const body = await req.json();
     const { mode } = body;
 
@@ -165,10 +133,8 @@ serve(async (req) => {
     } else if (mode === 'billing_portal') {
       return await handleBillingPortal(user.id);
     } else if (mode === 'list_invoices') {
-      // Admin can request another user's invoices
       const targetUserId = body.target_user_id || null;
       if (targetUserId && targetUserId !== user.id) {
-        // Verify caller is admin
         const { data: callerProfile } = await supabaseAdmin
           .from('profiles')
           .select('role')
@@ -193,10 +159,6 @@ serve(async (req) => {
 // HANDLERS
 // ═════════════════════════════════════════════════════════════════════
 
-// ─────────────────────────────────────────────────────────────────────
-// MODE "subscribe" — S'abonner à un plan OU upgrade/downgrade
-// ─────────────────────────────────────────────────────────────────────
-
 async function handleSubscribe(userId: string, body: any) {
   const { plan } = body;
 
@@ -206,10 +168,10 @@ async function handleSubscribe(userId: string, body: any) {
 
   const priceId = PLAN_TO_PRICE[plan as keyof typeof PLAN_TO_PRICE];
 
-  // Récupérer ou créer le customer Stripe
+  // Récupérer ou créer le customer Stripe (avec adresse + SIRET en V3)
   const customerId = await getOrCreateStripeCustomer(userId);
 
-  // Vérifier s'il y a déjà un abo actif → upgrade au lieu de créer un nouveau
+  // Vérifier s'il y a déjà un abo actif → upgrade
   const { data: existingSub } = await supabaseAdmin
     .from('pro_subscriptions')
     .select('stripe_subscription_id, plan')
@@ -218,7 +180,6 @@ async function handleSubscribe(userId: string, body: any) {
     .maybeSingle();
 
   if (existingSub?.stripe_subscription_id) {
-    // Cas upgrade/downgrade : on met à jour la subscription existante
     if (existingSub.plan === plan) {
       return jsonResponse({ error: 'Vous êtes déjà sur ce plan' }, 400);
     }
@@ -256,21 +217,12 @@ async function handleSubscribe(userId: string, body: any) {
   return jsonResponse({ url: session.url });
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// UPGRADE / DOWNGRADE — Logique métier
-// ─────────────────────────────────────────────────────────────────────
-// UPGRADE : plein tarif facturé immédiatement, cycle reset à aujourd'hui
-//           Si 3DS requis, retourne client_secret au frontend (Stripe.js)
-// DOWNGRADE : différé en fin de cycle (cancel current + schedule new plan)
-// ─────────────────────────────────────────────────────────────────────
-
 async function handleUpgradeOrDowngrade(
   stripeSubscriptionId: string,
   currentPlan: string,
   newPlan: string,
   newPriceId: string,
 ) {
-  // Déterminer si c'est un upgrade ou downgrade
   const planOrder = { decouverte: 1, starter: 2, power: 3 };
   const isUpgrade = planOrder[newPlan as keyof typeof planOrder] >
                     planOrder[currentPlan as keyof typeof planOrder];
@@ -282,10 +234,6 @@ async function handleUpgradeOrDowngrade(
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// UPGRADE — Plein tarif immédiat avec support 3DS inline
-// ─────────────────────────────────────────────────────────────────────
-
 async function handleUpgrade(
   stripeSubscriptionId: string,
   newPriceId: string,
@@ -294,26 +242,21 @@ async function handleUpgrade(
   try {
     const sub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
-    // Mise à jour : reset cycle + force génération facture immédiate
-    // payment_behavior: 'default_incomplete' permet à Stripe de retourner
-    // un PaymentIntent en status 'requires_action' si 3DS est requis
     const updated = await stripe.subscriptions.update(stripeSubscriptionId, {
       items: [{
         id: sub.items.data[0].id,
         price: newPriceId,
         tax_rates: [TVA_TAX_RATE_ID],
       }],
-      proration_behavior: 'none',           // Pas de prorata, plein tarif
-      billing_cycle_anchor: 'now',           // Reset cycle à aujourd'hui
-      payment_behavior: 'default_incomplete', // Permet 3DS inline
+      proration_behavior: 'none',
+      billing_cycle_anchor: 'now',
+      payment_behavior: 'default_incomplete',
       expand: ['latest_invoice.payment_intent'],
     });
 
-    // Récupérer le PaymentIntent de la facture générée
     const latestInvoice = updated.latest_invoice as Stripe.Invoice;
     const paymentIntent = latestInvoice?.payment_intent as Stripe.PaymentIntent | null;
 
-    // Cas 1 : pas de PaymentIntent (pas de paiement requis, montant 0 ou crédit suffisant)
     if (!paymentIntent) {
       console.log(`[upgrade] Plan changé sans paiement requis: ${newPlan}`);
       return jsonResponse({
@@ -323,7 +266,6 @@ async function handleUpgrade(
       });
     }
 
-    // Cas 2 : 3DS requis → frontend doit appeler Stripe.confirmCardPayment
     if (paymentIntent.status === 'requires_action' || paymentIntent.status === 'requires_confirmation') {
       console.log(`[upgrade] 3DS requis pour sub ${stripeSubscriptionId}`);
       return jsonResponse({
@@ -334,14 +276,12 @@ async function handleUpgrade(
       });
     }
 
-    // Cas 3 : paiement en cours mais pas finalisé (rare)
     if (paymentIntent.status === 'requires_payment_method') {
       return jsonResponse({
         error: 'Votre carte bancaire a été refusée. Veuillez la mettre à jour via le bouton "Modifier mon moyen de paiement".',
       }, 402);
     }
 
-    // Cas 4 : paiement réussi direct (pas de 3DS, paiement instantané)
     if (paymentIntent.status === 'succeeded') {
       console.log(`[upgrade] Paiement direct réussi pour sub ${stripeSubscriptionId}, plan ${newPlan}`);
       return jsonResponse({
@@ -351,7 +291,6 @@ async function handleUpgrade(
       });
     }
 
-    // Cas 5 : statut inattendu
     console.error(`[upgrade] Status PaymentIntent inattendu: ${paymentIntent.status}`);
     return jsonResponse({
       error: 'Le paiement est en cours de traitement. Veuillez patienter quelques instants puis rafraîchir la page.',
@@ -377,10 +316,6 @@ async function handleUpgrade(
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// DOWNGRADE — Différé en fin de cycle via Subscription Schedule
-// ─────────────────────────────────────────────────────────────────────
-
 async function handleDowngradeScheduled(
   stripeSubscriptionId: string,
   newPriceId: string,
@@ -389,19 +324,13 @@ async function handleDowngradeScheduled(
   try {
     const sub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
-    // On crée un schedule pour appliquer le downgrade en fin de cycle
-    // Phase 1 : plan actuel jusqu'à fin de cycle (current_period_end)
-    // Phase 2 : nouveau plan à partir de fin de cycle, en cycle infini
-
     const schedule = await stripe.subscriptionSchedules.create({
       from_subscription: stripeSubscriptionId,
     });
 
-    // Mettre à jour le schedule avec les phases
     await stripe.subscriptionSchedules.update(schedule.id, {
       end_behavior: 'release',
       phases: [
-        // Phase 1 : plan actuel jusqu'à fin de cycle
         {
           items: [{
             price: sub.items.data[0].price.id,
@@ -412,7 +341,6 @@ async function handleDowngradeScheduled(
           end_date: sub.current_period_end,
           proration_behavior: 'none',
         },
-        // Phase 2 : nouveau plan
         {
           items: [{
             price: newPriceId,
@@ -453,10 +381,6 @@ async function handleDowngradeScheduled(
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// MODE "preview_upgrade" — Récap avant validation pour le popup
-// ─────────────────────────────────────────────────────────────────────
-
 async function handlePreviewUpgrade(userId: string, body: any) {
   const { plan } = body;
 
@@ -464,7 +388,6 @@ async function handlePreviewUpgrade(userId: string, body: any) {
     return jsonResponse({ error: 'Invalid plan' }, 400);
   }
 
-  // Récupérer l'abo actif
   const { data: existingSub } = await supabaseAdmin
     .from('pro_subscriptions')
     .select('id, plan, stripe_subscription_id, current_period_end, credits_complete_total, credits_complete_used, credits_simple_total, credits_simple_used')
@@ -480,34 +403,27 @@ async function handlePreviewUpgrade(userId: string, body: any) {
   const isUpgrade = planOrder[plan as keyof typeof planOrder] >
                     planOrder[existingSub.plan as keyof typeof planOrder];
 
-  // Crédits actuels (restant)
   const currentRemainingComplete = Math.max(0, (existingSub.credits_complete_total || 0) - (existingSub.credits_complete_used || 0));
   const currentRemainingSimple = Math.max(0, (existingSub.credits_simple_total || 0) - (existingSub.credits_simple_used || 0));
 
-  // Quotas du nouveau plan
   const newQuotas = PLAN_QUOTAS[plan as keyof typeof PLAN_QUOTAS];
 
-  // Crédits après bascule (cumul, sauf downgrade qui garde aussi cumul jusqu'au prochain renouvellement)
   const newComplete = currentRemainingComplete + newQuotas.complete;
   const newSimple = currentRemainingSimple + newQuotas.simple;
 
-  // Calcul prix
-  const amountHt = PLAN_HT_PRICE[plan as keyof typeof PLAN_HT_PRICE]; // en centimes
+  const amountHt = PLAN_HT_PRICE[plan as keyof typeof PLAN_HT_PRICE];
   const amountTva = Math.round(amountHt * TVA_RATE);
   const amountTtc = amountHt + amountTva;
 
-  // Date prochain prélèvement
   let nextBillingDate: string;
   let nextBillingDateIso: string;
 
   if (isUpgrade) {
-    // Upgrade : cycle reset à aujourd'hui, prochain prélèvement dans 1 mois
     const nextDate = new Date();
     nextDate.setMonth(nextDate.getMonth() + 1);
     nextBillingDate = nextDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
     nextBillingDateIso = nextDate.toISOString();
   } else {
-    // Downgrade : bascule en fin de cycle actuel, prochain prélèvement = fin du cycle actuel
     const cycleEnd = new Date(existingSub.current_period_end);
     nextBillingDate = cycleEnd.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
     nextBillingDateIso = cycleEnd.toISOString();
@@ -520,7 +436,7 @@ async function handlePreviewUpgrade(userId: string, body: any) {
     current_plan_label: PLAN_LABEL[existingSub.plan as keyof typeof PLAN_LABEL],
     new_plan: plan,
     new_plan_label: PLAN_LABEL[plan as keyof typeof PLAN_LABEL],
-    amount_ht: amountHt,        // en centimes
+    amount_ht: amountHt,
     amount_tva: amountTva,
     amount_ttc: amountTtc,
     amount_ht_str: formatEur(amountHt),
@@ -536,17 +452,13 @@ async function handlePreviewUpgrade(userId: string, body: any) {
       complete: newComplete,
       simple: newSimple,
     },
-    immediate_payment: isUpgrade,  // L'upgrade fait un paiement immédiat, pas le downgrade
+    immediate_payment: isUpgrade,
   });
 }
 
 function formatEur(cents: number): string {
   return (cents / 100).toFixed(2).replace('.', ',') + '€';
 }
-
-// ─────────────────────────────────────────────────────────────────────
-// MODE "buy_unit" — Acheter à l'unité (réservé aux abonnés)
-// ─────────────────────────────────────────────────────────────────────
 
 async function handleBuyUnit(userId: string, body: any) {
   const { unit_type, quantity = 1 } = body;
@@ -559,7 +471,6 @@ async function handleBuyUnit(userId: string, body: any) {
     return jsonResponse({ error: 'Quantity must be between 1 and 50' }, 400);
   }
 
-  // SÉCURITÉ : vérifier que le user a un abonnement actif
   const { data: sub } = await supabaseAdmin
     .from('pro_subscriptions')
     .select('id, plan, status')
@@ -577,7 +488,6 @@ async function handleBuyUnit(userId: string, body: any) {
   const priceId = UNIT_TO_PRICE[unit_type as keyof typeof UNIT_TO_PRICE];
   const customerId = await getOrCreateStripeCustomer(userId);
 
-  // Créer la session Checkout en mode payment (one-shot)
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
     customer: customerId,
@@ -605,10 +515,6 @@ async function handleBuyUnit(userId: string, body: any) {
   return jsonResponse({ url: session.url });
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// MODE "billing_portal" — Ouvrir le portail Stripe pour modifier la carte
-// ─────────────────────────────────────────────────────────────────────
-
 async function handleBillingPortal(userId: string) {
   const customerId = await getOrCreateStripeCustomer(userId);
 
@@ -620,15 +526,9 @@ async function handleBillingPortal(userId: string) {
   return jsonResponse({ url: portalSession.url });
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// MODE "cancel" — Annuler l'abonnement à la fin de la période
-// + Annule le schedule downgrade éventuellement programmé
-// ─────────────────────────────────────────────────────────────────────
-
 async function handleCancel(userId: string, body: any) {
   const { reason } = body;
 
-  // Récupérer l'abo actif
   const { data: existingSub } = await supabaseAdmin
     .from('pro_subscriptions')
     .select('id, stripe_subscription_id')
@@ -641,11 +541,8 @@ async function handleCancel(userId: string, body: any) {
   }
 
   try {
-    // 1. Récupérer la sub pour voir si elle a un schedule (downgrade prévu)
     const sub = await stripe.subscriptions.retrieve(existingSub.stripe_subscription_id);
 
-    // 2. Si un schedule de downgrade existe, l'annuler
-    //    (la résiliation prime sur le downgrade prévu)
     if (sub.schedule) {
       const scheduleId = typeof sub.schedule === 'string' ? sub.schedule : sub.schedule.id;
       try {
@@ -656,7 +553,6 @@ async function handleCancel(userId: string, body: any) {
       }
     }
 
-    // 3. Annuler à la fin de la période sur Stripe
     await stripe.subscriptions.update(existingSub.stripe_subscription_id, {
       cancel_at_period_end: true,
     });
@@ -665,7 +561,6 @@ async function handleCancel(userId: string, body: any) {
     return jsonResponse({ error: 'La résiliation n\'a pas pu être effectuée. Veuillez nous contacter via la page Support.' }, 500);
   }
 
-  // Sauvegarder immédiatement en BDD (sans attendre le webhook)
   const updateFields: Record<string, unknown> = {
     cancel_at_period_end: true,
     updated_at: new Date().toISOString(),
@@ -681,10 +576,6 @@ async function handleCancel(userId: string, body: any) {
 
   return jsonResponse({ success: true, message: 'Abonnement résilié avec succès.' });
 }
-
-// ─────────────────────────────────────────────────────────────────────
-// MODE "reactivate" — Annuler la résiliation
-// ─────────────────────────────────────────────────────────────────────
 
 async function handleReactivate(userId: string) {
   const { data: existingSub } = await supabaseAdmin
@@ -707,7 +598,6 @@ async function handleReactivate(userId: string) {
     return jsonResponse({ error: 'La réactivation n\'a pas pu être effectuée. Veuillez nous contacter via la page Support.' }, 500);
   }
 
-  // Mettre à jour en BDD immédiatement
   await supabaseAdmin
     .from('pro_subscriptions')
     .update({
@@ -722,12 +612,7 @@ async function handleReactivate(userId: string) {
   return jsonResponse({ success: true, message: 'Abonnement réactivé avec succès.' });
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// MODE "list_invoices" — Lister les factures Stripe du client
-// ─────────────────────────────────────────────────────────────────────
-
 async function handleListInvoices(userId: string) {
-  // Trouver le customer Stripe
   const { data: existingSub } = await supabaseAdmin
     .from('pro_subscriptions')
     .select('stripe_customer_id')
@@ -737,13 +622,11 @@ async function handleListInvoices(userId: string) {
     .maybeSingle();
 
   if (!existingSub?.stripe_customer_id) {
-    // Pas de customer Stripe → retourner aussi les credit_grants comme "factures" gratuites
     return jsonResponse({ invoices: await getGrantInvoices(userId) });
   }
 
   const customerId = existingSub.stripe_customer_id;
 
-  // Récupérer les factures Stripe
   const stripeInvoices = await stripe.invoices.list({
     customer: customerId,
     limit: 50,
@@ -759,7 +642,6 @@ async function handleListInvoices(userId: string) {
     return (cents / 100).toFixed(2).replace('.', ',') + '€';
   };
 
-  // Mapping Price ID → description française (PRODUCTION)
   const PRICE_TO_DESCRIPTION: Record<string, string> = {
     'price_1TTtd1BesXB76oWEZuILxjwe': 'Abonnement Découverte — 19,90€ HT/mois',
     'price_1TTtczBesXB76oWEcKaNR2BW': 'Abonnement Starter — 49,90€ HT/mois',
@@ -774,7 +656,6 @@ async function handleListInvoices(userId: string) {
     const firstLine = lines[0];
     const priceId = firstLine?.price?.id || '';
 
-    // Utiliser notre description française si disponible, sinon fallback
     const description = PRICE_TO_DESCRIPTION[priceId]
       || (isSubscription ? 'Abonnement Verimo Pro' : 'Achat unitaire');
 
@@ -791,10 +672,8 @@ async function handleListInvoices(userId: string) {
     };
   });
 
-  // Ajouter les credit_grants (offerts / code promo) sans PDF
   const grantItems = await getGrantInvoices(userId);
 
-  // Fusionner et trier par date desc
   const allSorted = [...invoiceItems, ...grantItems].sort((a, b) => (b._ts || 0) - (a._ts || 0));
 
   return jsonResponse({ invoices: allSorted });
@@ -828,7 +707,32 @@ async function getGrantInvoices(userId: string) {
 // HELPERS
 // ═════════════════════════════════════════════════════════════════════
 
+// V3 : Création/MAJ du customer Stripe avec adresse + SIRET
+//      Si le customer existe déjà, on update ses infos pour que les
+//      futures factures soient à jour (utile si le pro modifie son adresse)
 async function getOrCreateStripeCustomer(userId: string): Promise<string> {
+  // 1. Charger le profil pour avoir toutes les infos de facturation
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('full_name, pro_company_name, telephone, pro_contact_email, pro_company_address, pro_postal_code, pro_ville, pro_siret')
+    .eq('id', userId)
+    .maybeSingle();
+
+  const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(userId);
+
+  // Construire les paramètres customer (nom, email, adresse)
+  const customerName = profile?.pro_company_name || profile?.full_name || undefined;
+  const customerAddress: Stripe.AddressParam | undefined =
+    (profile?.pro_company_address || profile?.pro_postal_code || profile?.pro_ville)
+      ? {
+          line1: profile?.pro_company_address || undefined,
+          postal_code: profile?.pro_postal_code || undefined,
+          city: profile?.pro_ville || undefined,
+          country: 'FR',
+        }
+      : undefined;
+
+  // 2. Chercher un customer existant
   const { data: existingSub } = await supabaseAdmin
     .from('pro_subscriptions')
     .select('stripe_customer_id')
@@ -837,47 +741,102 @@ async function getOrCreateStripeCustomer(userId: string): Promise<string> {
     .limit(1)
     .maybeSingle();
 
-  if (existingSub?.stripe_customer_id) {
-    return existingSub.stripe_customer_id;
-  }
+  let customerId: string | null = existingSub?.stripe_customer_id || null;
 
-  const { data: existingPurchase } = await supabaseAdmin
-    .from('pro_unit_purchases')
-    .select('stripe_session_id')
-    .eq('user_id', userId)
-    .not('stripe_session_id', 'is', null)
-    .limit(1)
-    .maybeSingle();
+  if (!customerId) {
+    // Chercher dans pro_unit_purchases si pas trouvé
+    const { data: existingPurchase } = await supabaseAdmin
+      .from('pro_unit_purchases')
+      .select('stripe_session_id')
+      .eq('user_id', userId)
+      .not('stripe_session_id', 'is', null)
+      .limit(1)
+      .maybeSingle();
 
-  if (existingPurchase?.stripe_session_id) {
-    try {
-      const session = await stripe.checkout.sessions.retrieve(existingPurchase.stripe_session_id);
-      if (session.customer) {
-        return session.customer as string;
+    if (existingPurchase?.stripe_session_id) {
+      try {
+        const session = await stripe.checkout.sessions.retrieve(existingPurchase.stripe_session_id);
+        if (session.customer) {
+          customerId = session.customer as string;
+        }
+      } catch {
+        // Session expirée ou introuvable
       }
-    } catch {
-      // Session expirée ou introuvable, on crée un nouveau customer
     }
   }
 
-  const { data: profile } = await supabaseAdmin
-    .from('profiles')
-    .select('full_name, pro_company_name, telephone, pro_contact_email')
-    .eq('id', userId)
-    .maybeSingle();
+  // 3a. Customer existe → on met à jour ses infos (cas pro qui change d'adresse)
+  if (customerId) {
+    try {
+      await stripe.customers.update(customerId, {
+        email: user?.email,
+        name: customerName,
+        phone: profile?.telephone || undefined,
+        address: customerAddress,
+      });
 
-  const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(userId);
+      // Gérer le SIRET via tax_id_data (à part)
+      if (profile?.pro_siret) {
+        await syncCustomerTaxId(customerId, profile.pro_siret);
+      }
+    } catch (err) {
+      console.warn('[customer] Update failed (non-critique):', err);
+    }
+    return customerId;
+  }
 
-  const customer = await stripe.customers.create({
+  // 3b. Pas de customer → on en crée un nouveau avec toutes les infos
+  const customerParams: Stripe.CustomerCreateParams = {
     email: user?.email,
-    name: profile?.pro_company_name || profile?.full_name || undefined,
+    name: customerName,
     phone: profile?.telephone || undefined,
+    address: customerAddress,
     metadata: {
       user_id: userId,
     },
-  });
+  };
 
+  // Tax ID (SIRET) — type fr_siret pour la France
+  if (profile?.pro_siret) {
+    customerParams.tax_id_data = [{
+      type: 'fr_siret' as any,
+      value: profile.pro_siret.replace(/\s/g, ''), // Retirer les espaces
+    }];
+  }
+
+  const customer = await stripe.customers.create(customerParams);
   return customer.id;
+}
+
+// Sync SIRET sur un customer existant (ajoute le tax_id si pas déjà présent)
+async function syncCustomerTaxId(customerId: string, siret: string) {
+  try {
+    const cleanSiret = siret.replace(/\s/g, '');
+
+    // Lister les tax_ids existants
+    const taxIds = await stripe.customers.listTaxIds(customerId, { limit: 10 });
+
+    // Vérifier si SIRET déjà présent
+    const alreadyExists = taxIds.data.some(
+      (t: any) => t.type === 'fr_siret' && t.value === cleanSiret
+    );
+
+    if (!alreadyExists) {
+      // Supprimer les anciens fr_siret pour éviter les doublons
+      for (const oldTax of taxIds.data) {
+        if (oldTax.type === 'fr_siret') {
+          await stripe.customers.deleteTaxId(customerId, oldTax.id);
+        }
+      }
+      // Ajouter le nouveau
+      await stripe.customers.createTaxId(customerId, {
+        type: 'fr_siret' as any,
+        value: cleanSiret,
+      });
+    }
+  } catch (err) {
+    console.warn('[customer] Tax ID sync failed (non-critique):', err);
+  }
 }
 
 function jsonResponse(data: unknown, status = 200): Response {
