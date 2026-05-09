@@ -200,7 +200,14 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets }: { subs
 
       {/* Crédits restants */}
       <div style={{ margin: '0 14px 6px', padding: '10px 12px', borderRadius: 9, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: MUTED, letterSpacing: '0.1em', marginBottom: 7 }}>CRÉDITS RESTANTS</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 7 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: MUTED, letterSpacing: '0.1em' }}>CRÉDITS RESTANTS</span>
+          <InfoTooltip text={`Comment fonctionnent vos crédits ?
+
+Lorsque vous lancez une analyse, les crédits de votre abonnement sont utilisés en priorité. Vos crédits achetés à l'unité prennent ensuite le relais une fois les crédits abonnement épuisés.
+
+Cette logique vous permet de profiter pleinement de votre forfait mensuel avant de consommer vos crédits unitaires.`} />
+        </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {[
             { label: 'Complète', value: creditsComplete, unit: unitComplete },
@@ -2089,6 +2096,7 @@ function InfoTooltip({ text }: { text: string }) {
                 textAlign: 'left' as const,
                 position: 'relative' as const,
                 pointerEvents: 'auto' as const,
+                whiteSpace: 'pre-line' as const,
               }}>
               {text}
               <button
@@ -3163,6 +3171,9 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
               </span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                 <CheckCircle size={14} strokeWidth={2.5} /> Crédits cumulables
+                <InfoTooltip text={`Crédits cumulables — précisions
+
+Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, dans la limite d'un mois de report.`} />
               </span>
             </div>
           </div>
@@ -3206,13 +3217,13 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
                 )}
                 <h3 style={{ fontSize: 19, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>{plan.name}</h3>
                 <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 14px 0', minHeight: 16 }}>{plan.tagline}</p>
-                <div style={{ marginBottom: 8 }}>
+                <div style={{ marginBottom: 16, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 30, fontWeight: 800, color: '#0f172a' }}>{plan.price}€</span>
-                  <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 4 }}>HT / mois</span>
-                </div>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 100, background: '#f0fdf4', border: '1px solid #bbf7d0', marginBottom: 14 }}>
-                  <CheckCircle size={11} strokeWidth={2.5} style={{ color: '#16a34a' }} />
-                  <span style={{ fontSize: 10.5, fontWeight: 700, color: '#15803d' }}>Sans engagement</span>
+                  <span style={{ fontSize: 12, color: '#94a3b8' }}>HT / mois</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 7px', borderRadius: 100, background: '#f0fdf4', border: '1px solid #bbf7d0', whiteSpace: 'nowrap' }}>
+                    <CheckCircle size={9} strokeWidth={2.5} style={{ color: '#16a34a' }} />
+                    <span style={{ fontSize: 9.5, fontWeight: 700, color: '#15803d' }}>Sans engagement</span>
+                  </span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 18 }}>
                   {[
