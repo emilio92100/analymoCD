@@ -194,7 +194,9 @@ async function handleSubscribe(userId: string, body: any) {
   }
 
   // Pas d'abo actif → création via Checkout
-  const customFields = await getInvoiceCustomFields(userId);
+  // Note : on ne peut PAS passer custom_fields ici dans subscription_data.invoice_settings
+  // (Stripe rejette ce paramètre au moment du Checkout). On les ajoute via le webhook
+  // customer.subscription.created après coup, sur la subscription elle-même.
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
     customer: customerId,
@@ -211,7 +213,6 @@ async function handleSubscribe(userId: string, body: any) {
         plan,
       },
       default_tax_rates: [TVA_TAX_RATE_ID],
-      ...(customFields ? { invoice_settings: { custom_fields: customFields } } : {}),
     },
     automatic_tax: { enabled: false },
     locale: 'fr',
@@ -247,20 +248,11 @@ async function handleUpgrade(
   try {
     const sub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
-    // Mettre à jour les invoice_settings de la subscription pour que les futures factures
-    // (incluant celle générée par cet upgrade) affichent le SIRET du pro.
+    // Récupérer le SIRET pour l'inclure dans le même update (apparaîtra sur la facture upgrade
+    // et toutes les futures factures de la subscription).
     const customFields = await getInvoiceCustomFields(userId);
-    if (customFields) {
-      try {
-        await stripe.subscriptions.update(stripeSubscriptionId, {
-          invoice_settings: { custom_fields: customFields },
-        });
-      } catch (err) {
-        console.warn('[upgrade] custom_fields update failed (non-critique):', err);
-      }
-    }
 
-    const updated = await stripe.subscriptions.update(stripeSubscriptionId, {
+    const updateParams: Stripe.SubscriptionUpdateParams = {
       items: [{
         id: sub.items.data[0].id,
         price: newPriceId,
@@ -270,7 +262,13 @@ async function handleUpgrade(
       billing_cycle_anchor: 'now',
       payment_behavior: 'default_incomplete',
       expand: ['latest_invoice.payment_intent'],
-    });
+    };
+
+    if (customFields) {
+      updateParams.invoice_settings = { custom_fields: customFields };
+    }
+
+    const updated = await stripe.subscriptions.update(stripeSubscriptionId, updateParams);
 
     const latestInvoice = updated.latest_invoice as Stripe.Invoice;
     const paymentIntent = latestInvoice?.payment_intent as Stripe.PaymentIntent | null;
@@ -505,7 +503,6 @@ async function handleBuyUnit(userId: string, body: any) {
 
   const priceId = UNIT_TO_PRICE[unit_type as keyof typeof UNIT_TO_PRICE];
   const customerId = await getOrCreateStripeCustomer(userId);
-  const customFields = await getInvoiceCustomFields(userId);
 
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
@@ -528,9 +525,7 @@ async function handleBuyUnit(userId: string, body: any) {
     },
     automatic_tax: { enabled: false },
     locale: 'fr',
-    invoice_creation: customFields
-      ? { enabled: true, invoice_data: { custom_fields: customFields } }
-      : { enabled: true },
+    invoice_creation: { enabled: true },
   });
 
   return jsonResponse({ url: session.url });
