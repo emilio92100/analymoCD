@@ -274,17 +274,80 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
     const sub = await stripe.subscriptions.retrieve(subId);
     await upsertProSubscription(userId, sub);
+
+    // Ajouter le SIRET en custom_fields sur la subscription pour qu'il apparaisse
+    // sur toutes les futures factures PDF (et la 1ère qui vient d'être générée si possible).
+    // On le fait ici car Stripe ne permet pas de passer custom_fields dans subscription_data
+    // au moment du Checkout.
+    await applySiretCustomFieldToSubscription(userId, subId);
+
     console.log(`[checkout.completed] Subscription created for user ${userId}`);
     return;
   }
 
   if (session.mode === 'payment') {
     await handleUnitPurchase(userId, session);
+
+    // Pour les achats unitaires, ajouter le SIRET sur la facture générée
+    if (session.invoice) {
+      const invId = typeof session.invoice === 'string' ? session.invoice : session.invoice.id;
+      await applySiretCustomFieldToInvoice(userId, invId);
+    }
+
     console.log(`[checkout.completed] Unit purchase recorded for user ${userId}`);
     return;
   }
 
   console.warn(`[checkout.completed] Unhandled mode: ${session.mode}`);
+}
+
+// Helper : récupère le SIRET du pro depuis profiles
+async function getProSiret(userId: string): Promise<string | null> {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('pro_siret')
+    .eq('id', userId)
+    .maybeSingle();
+  if (!profile?.pro_siret) return null;
+  const cleanSiret = (profile.pro_siret as string).replace(/\s/g, '');
+  return cleanSiret || null;
+}
+
+// Helper : applique le SIRET en custom_fields sur une subscription Stripe
+// (apparaîtra en haut des PDF des factures de cette subscription, présentes et futures)
+async function applySiretCustomFieldToSubscription(userId: string, subscriptionId: string) {
+  try {
+    const siret = await getProSiret(userId);
+    if (!siret) return;
+    await stripe.subscriptions.update(subscriptionId, {
+      invoice_settings: {
+        custom_fields: [{ name: 'SIRET', value: siret }],
+      },
+    });
+    console.log(`[siret] Applied to subscription ${subscriptionId}`);
+  } catch (err) {
+    console.warn(`[siret] Failed to apply on subscription ${subscriptionId} (non-critique):`, err);
+  }
+}
+
+// Helper : applique le SIRET en custom_fields sur une facture Stripe (achat unitaire)
+async function applySiretCustomFieldToInvoice(userId: string, invoiceId: string) {
+  try {
+    const siret = await getProSiret(userId);
+    if (!siret) return;
+    // Une facture finalisée ne peut plus être modifiée. On vérifie le status d'abord.
+    const invoice = await stripe.invoices.retrieve(invoiceId);
+    if (invoice.status === 'draft' || invoice.status === 'open') {
+      await stripe.invoices.update(invoiceId, {
+        custom_fields: [{ name: 'SIRET', value: siret }],
+      });
+      console.log(`[siret] Applied to invoice ${invoiceId}`);
+    } else {
+      console.log(`[siret] Invoice ${invoiceId} already finalized (status ${invoice.status}), skip`);
+    }
+  } catch (err) {
+    console.warn(`[siret] Failed to apply on invoice ${invoiceId} (non-critique):`, err);
+  }
 }
 
 async function handleInvoicePaid(invoice: Stripe.Invoice) {
