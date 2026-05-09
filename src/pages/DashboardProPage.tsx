@@ -4965,7 +4965,7 @@ function ModalSeller({ folderId, seller, onClose, onSaved }: {
         <div style={{ padding: '20px 24px 8px' }}>
 
           {/* Civilité + Prénom + Nom */}
-          <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 1fr', gap: 10, marginBottom: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr 1fr', gap: 8, marginBottom: 14 }}>
             <Field label="Civilité" optional>
               <select value={civility} onChange={e => setCivility(e.target.value)} style={{ ...inputStyle, paddingRight: 28, cursor: 'pointer' }}>
                 <option value="M.">M.</option>
@@ -5303,7 +5303,7 @@ function ModalBuyer({ folderId, buyer, onClose, onSaved }: {
         <div style={{ padding: '20px 24px 8px' }}>
 
           {/* Civilité + Prénom + Nom */}
-          <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr 1fr', gap: 10, marginBottom: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr 1fr', gap: 8, marginBottom: 14 }}>
             <Field label="Civilité" optional>
               <select value={civility} onChange={e => setCivility(e.target.value)} style={{ ...inputStyle, paddingRight: 28, cursor: 'pointer' }}>
                 <option value="M.">M.</option>
