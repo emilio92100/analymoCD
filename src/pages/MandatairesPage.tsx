@@ -4,8 +4,8 @@ import type { Variants } from 'framer-motion';
 import {
   FileText, Sparkles, Eye, ShieldCheck, Clock, Award, TrendingUp, Check,
   Calendar, ChevronRight, Zap, Target, Star,
-  AlertTriangle, BarChart3, Send, Building2,
-  CheckCircle2, X, Bell,
+  AlertTriangle, BarChart3, Send, Building2, Bell,
+  CheckCircle2, MousePointerClick,
 } from 'lucide-react';
 import { useSEO } from '../hooks/useSEO';
 
@@ -36,27 +36,7 @@ function Reveal({ children, delay = 0, className = '' }: { children: React.React
 }
 
 // ════════════════════════════════════════════════════════════════════
-// HOOK : Compteur animé
-// ════════════════════════════════════════════════════════════════════
-function useCountUp(target: number, duration = 1.4, trigger: boolean) {
-  const [value, setValue] = useState(0);
-  useEffect(() => {
-    if (!trigger) return;
-    const startTime = Date.now();
-    const interval = setInterval(() => {
-      const elapsed = (Date.now() - startTime) / 1000;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setValue(target * eased);
-      if (progress >= 1) clearInterval(interval);
-    }, 16);
-    return () => clearInterval(interval);
-  }, [target, duration, trigger]);
-  return value;
-}
-
-// ════════════════════════════════════════════════════════════════════
-// MOCKUP : Rapport Verimo (hero)
+// MOCKUP : Rapport Verimo (utilisé dans aperçu rapport)
 // ════════════════════════════════════════════════════════════════════
 function MockupRapport() {
   return (
@@ -119,9 +99,543 @@ function MockupRapport() {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// MOCKUP 1 : iPhone (Moment 3)
+// SCÈNE CINÉMATIQUE HERO : Dashboard envoi 1-clic → iPhone réception
+// L'animation se déclenche en boucle (loop) pour montrer le workflow
 // ════════════════════════════════════════════════════════════════════
-function MockupIPhone() {
+function CinematicScene() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: false, margin: '-100px' });
+  const [phase, setPhase] = useState<'idle' | 'click' | 'sending' | 'received'>('idle');
+
+  // Boucle l'animation : idle → click → sending → received → idle...
+  useEffect(() => {
+    if (!inView) return;
+    const sequence = async () => {
+      setPhase('idle');
+      await new Promise(r => setTimeout(r, 800));
+      setPhase('click');
+      await new Promise(r => setTimeout(r, 600));
+      setPhase('sending');
+      await new Promise(r => setTimeout(r, 1400));
+      setPhase('received');
+      await new Promise(r => setTimeout(r, 2400));
+    };
+    sequence();
+    const interval = setInterval(sequence, 5400);
+    return () => clearInterval(interval);
+  }, [inView]);
+
+  return (
+    <div ref={ref} style={{ position: 'relative' as const, width: '100%', maxWidth: 920, margin: '0 auto' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.15fr) auto minmax(0, 0.85fr)', gap: 24, alignItems: 'center' }} className="cinematic-grid">
+
+        {/* ═══ DASHBOARD PRO (gauche) ═══ */}
+        <motion.div
+          initial={{ opacity: 0, x: -30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          style={{ position: 'relative' as const }}
+        >
+          <div style={{
+            background: '#fff',
+            borderRadius: 14,
+            boxShadow: '0 30px 80px rgba(15,45,61,0.18), 0 6px 20px rgba(15,45,61,0.06)',
+            border: '1px solid rgba(15,45,61,0.06)',
+            overflow: 'hidden',
+          }}>
+            {/* Browser bar */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 12px', background: '#f8fafc', borderBottom: '1px solid #edf2f7' }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fda4a4' }} />
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fcd45d' }} />
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#86efac' }} />
+              <div style={{ flex: 1, marginLeft: 8, fontSize: 9, color: '#94a3b8', fontFamily: 'monospace' }}>verimo.fr/dashboard</div>
+            </div>
+
+            {/* Header dashboard */}
+            <div style={{ padding: '14px 18px', background: 'linear-gradient(135deg, #2a7d9c, #1d5e7a)', color: '#fff' }}>
+              <div style={{ fontSize: 9.5, opacity: 0.85, letterSpacing: '0.06em' }}>VERIMO PRO</div>
+              <div style={{ fontSize: 13.5, fontWeight: 800, marginTop: 1 }}>Dossier · 14 rue de la Paix</div>
+            </div>
+
+            {/* Carte rapport prêt */}
+            <div style={{ padding: 14 }}>
+              <div style={{ padding: '12px 13px', borderRadius: 10, border: '1.5px solid #d0e8f0', background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                  <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'conic-gradient(#16a34a 0% 75%, #e2e8f0 75% 100%)', position: 'relative' as const, flexShrink: 0 }}>
+                    <div style={{ position: 'absolute' as const, inset: 4, background: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: '#16a34a' }}>15</span>
+                    </div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: '#0f172a' }}>Rapport prêt</div>
+                    <div style={{ fontSize: 9.5, color: '#64748b', marginTop: 1 }}>Score 15/20 · Bien sain</div>
+                  </div>
+                </div>
+
+                {/* Mini KPIs */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5, marginBottom: 12 }}>
+                  {[
+                    { l: 'Charges', v: '180€' },
+                    { l: 'Travaux', v: '42k€' },
+                    { l: 'Alertes', v: '2' },
+                  ].map((k, i) => (
+                    <div key={i} style={{ padding: '5px 7px', background: '#fff', borderRadius: 6, border: '1px solid #e8f4f8' }}>
+                      <div style={{ fontSize: 8, color: '#94a3b8', marginBottom: 1 }}>{k.l}</div>
+                      <div style={{ fontSize: 10.5, fontWeight: 800, color: '#2a7d9c' }}>{k.v}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Bouton envoi avec animation click */}
+                <motion.div
+                  animate={{
+                    scale: phase === 'click' ? 0.94 : 1,
+                    boxShadow: phase === 'click'
+                      ? '0 2px 8px rgba(42,125,156,0.4)'
+                      : '0 8px 22px rgba(42,125,156,0.3)',
+                  }}
+                  transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                  style={{
+                    background: 'linear-gradient(135deg, #2a7d9c, #1d5e7a)',
+                    color: '#fff',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 7,
+                    cursor: 'pointer',
+                    position: 'relative' as const,
+                  }}>
+                  {phase === 'sending' ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                        style={{ width: 12, height: 12, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%' }}
+                      />
+                      Envoi en cours...
+                    </>
+                  ) : phase === 'received' ? (
+                    <>
+                      <CheckCircle2 size={14} style={{ color: '#86efac' }} /> Rapport envoyé !
+                    </>
+                  ) : (
+                    <>
+                      <Send size={13} /> Envoyer le rapport au client
+                    </>
+                  )}
+
+                  {/* Curseur animé qui clique */}
+                  {(phase === 'idle' || phase === 'click') && (
+                    <motion.div
+                      initial={{ x: 60, y: 30, opacity: 0 }}
+                      animate={{
+                        x: phase === 'click' ? 0 : 60,
+                        y: phase === 'click' ? 0 : 30,
+                        opacity: 1,
+                        scale: phase === 'click' ? 0.85 : 1,
+                      }}
+                      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                      style={{
+                        position: 'absolute' as const,
+                        right: 30, bottom: -8,
+                        pointerEvents: 'none' as const,
+                        zIndex: 5,
+                      }}>
+                      <MousePointerClick size={18} style={{ color: '#0f172a', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }} />
+                    </motion.div>
+                  )}
+                </motion.div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* ═══ FLÈCHE CENTRALE ANIMÉE ═══ */}
+        <div style={{ position: 'relative' as const, width: 90, height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="cinematic-arrow">
+          {/* Particules de l'envoi */}
+          {[0, 1, 2].map(i => (
+            <motion.div
+              key={i}
+              initial={{ x: -45, opacity: 0, scale: 0.5 }}
+              animate={phase === 'sending'
+                ? { x: 45, opacity: [0, 1, 0], scale: [0.5, 1, 0.5] }
+                : { x: -45, opacity: 0, scale: 0.5 }
+              }
+              transition={{
+                duration: 1.4, delay: i * 0.18,
+                repeat: phase === 'sending' ? Infinity : 0,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              style={{
+                position: 'absolute' as const,
+                width: 8, height: 8, borderRadius: '50%',
+                background: 'linear-gradient(135deg, #2a7d9c, #16a34a)',
+                boxShadow: '0 0 12px rgba(42,125,156,0.6)',
+              }}
+            />
+          ))}
+
+          {/* Flèche dashed qui pulse */}
+          <svg width="90" height="40" viewBox="0 0 90 40" style={{ position: 'absolute' as const }}>
+            <motion.path
+              d="M 5 20 L 80 20"
+              fill="none"
+              stroke="#2a7d9c"
+              strokeWidth="2"
+              strokeDasharray="4 4"
+              initial={{ pathLength: 0, opacity: 0.3 }}
+              animate={{
+                pathLength: 1,
+                opacity: phase === 'sending' ? [0.3, 1, 0.3] : 0.4,
+              }}
+              transition={{
+                pathLength: { duration: 1, ease: [0.22, 1, 0.36, 1] },
+                opacity: { duration: 1.4, repeat: phase === 'sending' ? Infinity : 0, ease: 'easeInOut' },
+              }}
+            />
+            <motion.path
+              d="M 75 12 L 85 20 L 75 28"
+              fill="none"
+              stroke="#2a7d9c"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              initial={{ opacity: 0.4 }}
+              animate={{ opacity: phase === 'sending' ? [0.4, 1, 0.4] : 0.5 }}
+              transition={{ duration: 1.4, repeat: phase === 'sending' ? Infinity : 0 }}
+            />
+          </svg>
+        </div>
+
+        {/* ═══ IPHONE CLIENT (droite) ═══ */}
+        <motion.div
+          initial={{ opacity: 0, x: 30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+          style={{ position: 'relative' as const, display: 'flex', justifyContent: 'center' }}
+        >
+          {/* iPhone frame */}
+          <div style={{
+            width: 220, height: 460,
+            background: 'linear-gradient(160deg, #1a1a1a 0%, #2c2c2c 100%)',
+            borderRadius: 36, padding: 7,
+            boxShadow: '0 30px 80px rgba(15,45,61,0.32), 0 10px 30px rgba(0,0,0,0.18), inset 0 0 0 2px rgba(255,255,255,0.08)',
+            position: 'relative' as const,
+          }}>
+            {/* Notch */}
+            <div style={{ position: 'absolute' as const, top: 7, left: '50%', transform: 'translateX(-50%)', width: 86, height: 20, background: '#000', borderBottomLeftRadius: 14, borderBottomRightRadius: 14, zIndex: 10 }} />
+
+            {/* Screen */}
+            <div style={{
+              width: '100%', height: '100%',
+              background: 'linear-gradient(180deg, #f0f7fb 0%, #e6f3f7 100%)',
+              borderRadius: 30, overflow: 'hidden', position: 'relative' as const,
+            }}>
+              {/* Status bar */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 18px 4px', fontSize: 10, fontWeight: 700, color: '#0f172a' }}>
+                <span>14:32</span>
+                <span style={{ fontSize: 8 }}>📶 🔋</span>
+              </div>
+
+              {/* Notification push qui apparaît */}
+              <motion.div
+                initial={{ y: -100, opacity: 0, scale: 0.85 }}
+                animate={phase === 'received'
+                  ? { y: 0, opacity: 1, scale: 1 }
+                  : { y: -100, opacity: 0, scale: 0.85 }
+                }
+                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                style={{
+                  margin: '12px 10px',
+                  background: 'rgba(255,255,255,0.95)',
+                  backdropFilter: 'blur(20px)',
+                  borderRadius: 12,
+                  padding: '9px 11px',
+                  display: 'flex', alignItems: 'flex-start', gap: 9,
+                  boxShadow: '0 4px 18px rgba(0,0,0,0.08)',
+                }}>
+                <div style={{ width: 28, height: 28, borderRadius: 6, background: 'linear-gradient(135deg, #2a7d9c, #1d5e7a)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span style={{ fontSize: 14, color: '#fff', fontWeight: 800 }}>V</span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 9.5, fontWeight: 800, color: '#0f172a' }}>VERIMO PRO</span>
+                    <span style={{ fontSize: 8, color: '#94a3b8' }}>maintenant</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: '#0f172a', fontWeight: 700, marginTop: 1 }}>Pierre vous a partagé un rapport</div>
+                  <div style={{ fontSize: 9, color: '#475569', marginTop: 1 }}>🔍 Score 15/20 · Bien sain</div>
+                </div>
+              </motion.div>
+
+              {/* Card rapport qui apparaît après notif */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={phase === 'received' ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                style={{
+                  margin: '6px 12px 12px',
+                  background: '#fff',
+                  borderRadius: 10,
+                  padding: 11,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                }}>
+                <div style={{ fontSize: 10.5, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>14 rue de la Paix, Paris 8ᵉ</div>
+                <div style={{ fontSize: 8.5, color: '#64748b', marginBottom: 9 }}>Appartement T3 · 1925</div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 9 }}>
+                  <motion.div
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={phase === 'received' ? { scale: 1, rotate: 0 } : { scale: 0, rotate: -180 }}
+                    transition={{ duration: 0.6, delay: 0.6, type: 'spring', stiffness: 150 }}
+                    style={{ width: 42, height: 42, borderRadius: '50%', background: 'conic-gradient(#16a34a 0% 75%, #e2e8f0 75% 100%)', position: 'relative' as const, flexShrink: 0 }}>
+                    <div style={{ position: 'absolute' as const, inset: 4, background: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: '#16a34a' }}>15</span>
+                    </div>
+                  </motion.div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 9.5, fontWeight: 700, color: '#0f172a' }}>Bien sain</div>
+                    <div style={{ fontSize: 8.5, color: '#64748b', lineHeight: 1.3 }}>Copropriété saine</div>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: 'linear-gradient(135deg, #2a7d9c, #1d5e7a)', color: '#fff',
+                  padding: '6px 9px', borderRadius: 6, fontSize: 9, fontWeight: 700,
+                  textAlign: 'center' as const,
+                }}>
+                  Consulter le rapport →
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Side button */}
+            <div style={{ position: 'absolute' as const, right: -2, top: 90, width: 3, height: 50, background: '#1a1a1a', borderRadius: '0 2px 2px 0' }} />
+          </div>
+
+          {/* Badge "✓ Reçu" qui apparaît */}
+          <motion.div
+            initial={{ scale: 0, opacity: 0, rotate: -10 }}
+            animate={phase === 'received'
+              ? { scale: 1, opacity: 1, rotate: -3 }
+              : { scale: 0, opacity: 0, rotate: -10 }
+            }
+            transition={{ duration: 0.5, delay: 0.4, type: 'spring', stiffness: 200 }}
+            style={{
+              position: 'absolute' as const, top: -10, right: -16,
+              background: 'linear-gradient(135deg, #16a34a, #15803d)',
+              color: '#fff',
+              padding: '6px 10px',
+              borderRadius: 100,
+              fontSize: 10,
+              fontWeight: 800,
+              boxShadow: '0 8px 22px rgba(22,163,74,0.4)',
+              display: 'flex', alignItems: 'center', gap: 5,
+              whiteSpace: 'nowrap' as const,
+            }}>
+            <Bell size={11} /> Reçu !
+          </motion.div>
+        </motion.div>
+      </div>
+
+      {/* Petite indication sous la scène */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 1.2 }}
+        style={{
+          marginTop: 24, textAlign: 'center' as const,
+          fontSize: 12, color: '#64748b', fontWeight: 600, letterSpacing: '0.04em',
+        }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+          <Sparkles size={13} style={{ color: '#2a7d9c' }} />
+          1 clic · Rapport reçu · Client conquis
+        </span>
+      </motion.div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════
+// MOCKUP : Conversation SMS (lente et réaliste, pour Moment 2)
+// ════════════════════════════════════════════════════════════════════
+function MockupSMS() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: '-100px' });
+
+  // 8 messages, rythme lent et réaliste (sur ~12 secondes)
+  const messages = [
+    { from: 'client', text: 'Bonjour, merci beaucoup pour la visite de cet après-midi !', delay: 0.5 },
+    { from: 'client', text: 'Le bien me plaît beaucoup, je voudrais avancer.', delay: 2.0 },
+    { from: 'client', text: 'Vous pouvez m\'envoyer les 3 derniers PV d\'AG, le règlement de copropriété et les diagnostics ?', delay: 3.5 },
+    { from: 'agent', text: 'Bonjour ! Avec plaisir 👍', delay: 5.5 },
+    { from: 'agent', text: 'Je vous envoie le rapport complet du bien tout de suite', delay: 6.8 },
+    { from: 'agent', text: '', delay: 8.2, isRapport: true },
+    { from: 'client', text: 'Whoa, c\'est super clair et bien fait ! 🙌', delay: 10.0 },
+    { from: 'client', text: 'On peut se voir demain pour faire une offre ?', delay: 11.5 },
+  ];
+
+  return (
+    <div ref={ref} style={{ width: 340, maxWidth: '100%', margin: '0 auto' }}>
+      <div style={{
+        background: '#fff',
+        borderRadius: 28,
+        boxShadow: '0 30px 80px rgba(15,45,61,0.25), 0 10px 30px rgba(0,0,0,0.12)',
+        border: '1px solid rgba(15,45,61,0.06)',
+        overflow: 'hidden',
+        height: 600,
+        display: 'flex', flexDirection: 'column' as const,
+      }}>
+        <div style={{ background: '#f6f6f6', padding: '14px 16px 12px', borderBottom: '1px solid #e5e5e5', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 4 }}>
+          <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 600 }}>14:32</div>
+          <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg, #94a3b8, #64748b)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff' }}>M</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#0f172a', marginTop: 2 }}>Marc Dubois</div>
+        </div>
+
+        <div style={{ flex: 1, padding: '14px 12px', display: 'flex', flexDirection: 'column' as const, gap: 6, overflow: 'hidden' }}>
+          {messages.map((msg, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 14, scale: 0.92 }}
+              animate={inView ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 14, scale: 0.92 }}
+              transition={{ duration: 0.5, delay: msg.delay, ease: [0.22, 1, 0.36, 1] }}
+              style={{ display: 'flex', justifyContent: msg.from === 'client' ? 'flex-start' : 'flex-end' }}
+            >
+              {msg.isRapport ? (
+                <div style={{
+                  background: 'linear-gradient(135deg, #2a7d9c, #1d5e7a)',
+                  color: '#fff',
+                  borderRadius: '18px 18px 6px 18px',
+                  padding: '10px 12px',
+                  maxWidth: '78%',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  boxShadow: '0 4px 12px rgba(42,125,156,0.28)',
+                }}>
+                  <div style={{ width: 28, height: 28, borderRadius: 6, background: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <FileText size={14} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 800 }}>📊 Rapport Verimo</div>
+                    <div style={{ fontSize: 10, opacity: 0.85, marginTop: 1 }}>Score 15/20 · Bien sain</div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{
+                  background: msg.from === 'client' ? '#e9e9eb' : '#0084ff',
+                  color: msg.from === 'client' ? '#000' : '#fff',
+                  borderRadius: msg.from === 'client' ? '18px 18px 18px 6px' : '18px 18px 6px 18px',
+                  padding: '8px 13px',
+                  maxWidth: '78%',
+                  fontSize: 12.5,
+                  lineHeight: 1.4,
+                }}>
+                  {msg.text}
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════
+// MOCKUP : Dashboard pro (Moment 1)
+// ════════════════════════════════════════════════════════════════════
+function MockupDashboardSimple() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: '-100px' });
+
+  const bars = [40, 65, 50, 78, 90, 85, 95];
+
+  return (
+    <div ref={ref} style={{ width: 460, maxWidth: '100%', margin: '0 auto', position: 'relative' as const }}>
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        style={{
+          background: '#fff',
+          borderRadius: 16,
+          boxShadow: '0 30px 80px rgba(15,45,61,0.18), 0 6px 20px rgba(15,45,61,0.06)',
+          border: '1px solid rgba(15,45,61,0.06)',
+          overflow: 'hidden',
+        }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid #edf2f7' }}>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#fda4a4' }} />
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#fcd45d' }} />
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#86efac' }} />
+          <div style={{ flex: 1, marginLeft: 10, fontSize: 10, color: '#94a3b8', fontFamily: 'monospace' }}>verimo.fr/dashboard</div>
+        </div>
+
+        <div style={{ padding: '18px 22px', background: 'linear-gradient(135deg, #2a7d9c, #1d5e7a)', color: '#fff' }}>
+          <div style={{ fontSize: 11, opacity: 0.85, letterSpacing: '0.06em', marginBottom: 2 }}>VERIMO PRO</div>
+          <div style={{ fontSize: 16, fontWeight: 800 }}>Mes dossiers</div>
+        </div>
+
+        {/* Mini graphique */}
+        <div style={{ padding: '20px 22px 14px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.05em', marginBottom: 12 }}>RAPPORTS PARTAGÉS / SEMAINE</div>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 70 }}>
+            {bars.map((h, i) => (
+              <motion.div
+                key={i}
+                initial={{ height: 0 }}
+                animate={inView ? { height: `${h}%` } : { height: 0 }}
+                transition={{ duration: 0.7, delay: 0.4 + i * 0.08, ease: [0.22, 1, 0.36, 1] }}
+                style={{
+                  flex: 1,
+                  background: i === bars.length - 1 ? 'linear-gradient(180deg, #16a34a, #15803d)' : 'linear-gradient(180deg, #2a7d9c, #1d5e7a)',
+                  borderRadius: '6px 6px 0 0',
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Liste de dossiers */}
+        <div style={{ padding: '8px 22px 20px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.05em', marginBottom: 10 }}>DOSSIERS RÉCENTS</div>
+          {[
+            { name: 'M. Dupont — Paris 11ᵉ', status: 'Rapport prêt', score: 16, color: '#16a34a' },
+            { name: 'Mme Martin — Lyon 6ᵉ', status: 'En analyse', score: 12, color: '#f59e0b' },
+            { name: 'M. Bernard — Neuilly', status: 'Rapport partagé', score: 18, color: '#16a34a' },
+          ].map((d, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, x: -20 }}
+              animate={inView ? { opacity: 1, x: 0 } : { opacity: 0, x: -20 }}
+              transition={{ duration: 0.4, delay: 1.0 + i * 0.12 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 0', borderBottom: i < 2 ? '1px solid #f1f5f9' : 'none' }}
+            >
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Building2 size={14} style={{ color: '#2a7d9c' }} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0f172a' }}>{d.name}</div>
+                <div style={{ fontSize: 10.5, color: '#64748b', marginTop: 1 }}>{d.status}</div>
+              </div>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: `${d.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: d.color }}>{d.score}</span>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════
+// MOCKUP : iPhone simple (Moment 3 - exclu)
+// ════════════════════════════════════════════════════════════════════
+function MockupIPhoneSimple() {
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: '-100px' });
 
@@ -148,340 +662,76 @@ function MockupIPhone() {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 24px 6px', fontSize: 12, fontWeight: 700, color: '#0f172a' }}>
             <span>14:32</span>
-            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-              <span style={{ fontSize: 10 }}>●●●</span>
-              <span style={{ fontSize: 10 }}>📶</span>
-              <span style={{ fontSize: 10 }}>🔋</span>
-            </div>
+            <span style={{ fontSize: 10 }}>📶 🔋</span>
           </div>
 
+          {/* Header */}
+          <div style={{ padding: '14px 18px 12px' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.06em', marginBottom: 4 }}>RAPPORT D'ANALYSE</div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Bien chez M. Dupont</div>
+          </div>
+
+          {/* Score */}
           <motion.div
-            initial={{ opacity: 0, y: -100, scale: 0.9 }}
-            animate={inView ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: -100, scale: 0.9 }}
-            transition={{ duration: 0.7, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            style={{
-              margin: '14px 12px',
-              background: 'rgba(255,255,255,0.92)',
-              backdropFilter: 'blur(20px)',
-              borderRadius: 14,
-              padding: '10px 12px',
-              display: 'flex', alignItems: 'flex-start', gap: 10,
-              boxShadow: '0 4px 18px rgba(0,0,0,0.08)',
-            }}>
-            <div style={{ width: 32, height: 32, borderRadius: 7, background: 'linear-gradient(135deg, #2a7d9c, #1d5e7a)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <span style={{ fontSize: 16, color: '#fff', fontWeight: 800 }}>V</span>
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 1 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: '#0f172a' }}>VERIMO PRO</span>
-                <span style={{ fontSize: 9, color: '#94a3b8' }}>maintenant</span>
-              </div>
-              <div style={{ fontSize: 11.5, color: '#0f172a', fontWeight: 700, marginBottom: 1 }}>Pierre vous a partagé un rapport</div>
-              <div style={{ fontSize: 10.5, color: '#475569', lineHeight: 1.4 }}>🔍 Votre analyse est prête • Score 15/20</div>
+            initial={{ scale: 0, rotate: -180 }}
+            animate={inView ? { scale: 1, rotate: 0 } : { scale: 0, rotate: -180 }}
+            transition={{ duration: 0.7, delay: 0.5, type: 'spring', stiffness: 130 }}
+            style={{ margin: '6px auto 14px', width: 100, height: 100, borderRadius: '50%', background: 'conic-gradient(#16a34a 0% 80%, #e2e8f0 80% 100%)', position: 'relative' as const }}>
+            <div style={{ position: 'absolute' as const, inset: 9, background: '#fff', borderRadius: '50%', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: 28, fontWeight: 800, color: '#16a34a', lineHeight: 1 }}>16</span>
+              <span style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>/20</span>
             </div>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
-            transition={{ duration: 0.6, delay: 1.1, ease: [0.22, 1, 0.36, 1] }}
-            style={{
-              margin: '8px 14px 14px',
-              background: '#fff',
-              borderRadius: 12,
-              padding: 14,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-            }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>14 rue de la Paix, Paris 8ᵉ</div>
-            <div style={{ fontSize: 10, color: '#64748b', marginBottom: 12 }}>Appartement T3 • 1925</div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 12 }}>
+          {/* Mini KPIs */}
+          <div style={{ padding: '0 16px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 14 }}>
+            {[
+              { l: 'Charges', v: '180€' },
+              { l: 'Travaux', v: '12k€' },
+              { l: 'Alertes', v: '0' },
+            ].map((k, i) => (
               <motion.div
-                initial={{ scale: 0, rotate: -180 }}
-                animate={inView ? { scale: 1, rotate: 0 } : { scale: 0, rotate: -180 }}
-                transition={{ duration: 0.6, delay: 1.5, type: 'spring', stiffness: 150 }}
-                style={{ width: 50, height: 50, borderRadius: '50%', background: 'conic-gradient(#16a34a 0% 75%, #e2e8f0 75% 100%)', position: 'relative' as const, flexShrink: 0 }}>
-                <div style={{ position: 'absolute' as const, inset: 5, background: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: '#16a34a' }}>15</span>
-                </div>
+                key={i}
+                initial={{ opacity: 0, y: 10 }}
+                animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+                transition={{ duration: 0.4, delay: 0.9 + i * 0.1 }}
+                style={{ padding: '8px 6px', background: '#fff', borderRadius: 8, border: '1px solid #e8f4f8', textAlign: 'center' as const }}>
+                <div style={{ fontSize: 9, color: '#94a3b8', marginBottom: 2 }}>{k.l}</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#2a7d9c' }}>{k.v}</div>
               </motion.div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#0f172a' }}>Bien sain</div>
-                <div style={{ fontSize: 9.5, color: '#64748b', lineHeight: 1.3 }}>Copropriété saine, finances OK</div>
-              </div>
-            </div>
+            ))}
+          </div>
 
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={inView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.4, delay: 1.9 }}
-              style={{
-                background: 'linear-gradient(135deg, #2a7d9c, #1d5e7a)', color: '#fff',
-                padding: '8px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700,
-                textAlign: 'center' as const,
-              }}>
-              Consulter le rapport →
-            </motion.div>
+          {/* Verdict */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={inView ? { opacity: 1 } : { opacity: 0 }}
+            transition={{ duration: 0.5, delay: 1.4 }}
+            style={{ padding: '10px 14px', margin: '0 14px', background: '#f0fdf4', borderRadius: 10, border: '1px solid #bbf7d0' }}>
+            <div style={{ fontSize: 9, fontWeight: 800, color: '#15803d', marginBottom: 3, letterSpacing: '0.04em' }}>✓ VERDICT</div>
+            <div style={{ fontSize: 11, color: '#14532d', fontWeight: 600, lineHeight: 1.4 }}>Bien sain, prêt à l'achat.</div>
           </motion.div>
         </div>
 
         <div style={{ position: 'absolute' as const, right: -2, top: 110, width: 4, height: 60, background: '#1a1a1a', borderRadius: '0 2px 2px 0' }} />
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, scale: 0, x: 20 }}
-        animate={inView ? { opacity: 1, scale: 1, x: 0 } : { opacity: 0, scale: 0, x: 20 }}
-        transition={{ duration: 0.5, delay: 1.4, type: 'spring', stiffness: 200 }}
-        style={{
-          position: 'absolute' as const, top: 90, right: -50,
-          background: '#fff', borderRadius: 12, padding: '10px 14px',
-          boxShadow: '0 14px 36px rgba(15,45,61,0.18)',
-          display: 'flex', alignItems: 'center', gap: 9,
-          border: '1px solid rgba(42,125,156,0.18)',
-        }}>
-        <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, #16a34a, #15803d)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Bell size={14} style={{ color: '#fff' }} />
-        </div>
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 800, color: '#0f172a' }}>1 rapport reçu</div>
-          <div style={{ fontSize: 9, color: '#16a34a', fontWeight: 700 }}>via Verimo Pro</div>
-        </div>
-      </motion.div>
-    </div>
-  );
-}
-
-// ════════════════════════════════════════════════════════════════════
-// MOCKUP 2 : Conversation SMS (Moment 2)
-// ════════════════════════════════════════════════════════════════════
-function MockupSMS() {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: '-100px' });
-
-  const messages = [
-    { from: 'client', text: 'Merci pour la visite ! Le bien me plaît bien.', delay: 0.3 },
-    { from: 'client', text: 'Vous pouvez m\'envoyer les 3 derniers PV d\'AG et le règlement de copro ?', delay: 0.9 },
-    { from: 'agent', text: 'Avec plaisir 👍', delay: 1.6 },
-    { from: 'agent', text: 'Je vous envoie tout ça dans la minute', delay: 2.0 },
-    { from: 'agent', text: 'rapport', delay: 2.6, isRapport: true },
-    { from: 'client', text: 'Whoa, c\'est super clair ! Merci 🙌', delay: 3.4 },
-  ];
-
-  return (
-    <div ref={ref} style={{ width: 320, maxWidth: '100%', margin: '0 auto' }}>
-      <div style={{
-        background: '#fff',
-        borderRadius: 28,
-        boxShadow: '0 30px 80px rgba(15,45,61,0.25), 0 10px 30px rgba(0,0,0,0.12)',
-        border: '1px solid rgba(15,45,61,0.06)',
-        overflow: 'hidden',
-        height: 540,
-        display: 'flex', flexDirection: 'column' as const,
-      }}>
-        <div style={{ background: '#f6f6f6', padding: '14px 16px 12px', borderBottom: '1px solid #e5e5e5', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 4 }}>
-          <div style={{ fontSize: 9, color: '#94a3b8', fontWeight: 600 }}>14:32</div>
-          <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg, #94a3b8, #64748b)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff' }}>M</div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#0f172a', marginTop: 2 }}>Marc Dubois</div>
-        </div>
-
-        <div style={{ flex: 1, padding: '14px 12px', display: 'flex', flexDirection: 'column' as const, gap: 6, overflow: 'hidden' }}>
-          {messages.map((msg, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 14, scale: 0.92 }}
-              animate={inView ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 14, scale: 0.92 }}
-              transition={{ duration: 0.4, delay: msg.delay, ease: [0.22, 1, 0.36, 1] }}
-              style={{ display: 'flex', justifyContent: msg.from === 'client' ? 'flex-start' : 'flex-end' }}
-            >
-              {msg.isRapport ? (
-                <div style={{
-                  background: 'linear-gradient(135deg, #2a7d9c, #1d5e7a)',
-                  color: '#fff',
-                  borderRadius: '18px 18px 6px 18px',
-                  padding: '10px 12px',
-                  maxWidth: '78%',
-                  fontSize: 12,
-                  fontWeight: 700,
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  boxShadow: '0 4px 12px rgba(42,125,156,0.28)',
-                }}>
-                  <div style={{ width: 26, height: 26, borderRadius: 6, background: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <FileText size={13} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 800 }}>📊 Rapport Verimo</div>
-                    <div style={{ fontSize: 10, opacity: 0.85, marginTop: 1 }}>Score 15/20 — Bien sain</div>
-                  </div>
-                </div>
-              ) : (
-                <div style={{
-                  background: msg.from === 'client' ? '#e9e9eb' : '#0084ff',
-                  color: msg.from === 'client' ? '#000' : '#fff',
-                  borderRadius: msg.from === 'client' ? '18px 18px 18px 6px' : '18px 18px 6px 18px',
-                  padding: '8px 13px',
-                  maxWidth: '78%',
-                  fontSize: 12.5,
-                  lineHeight: 1.4,
-                }}>
-                  {msg.text}
-                </div>
-              )}
-            </motion.div>
-          ))}
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={inView ? { opacity: 1 } : { opacity: 0 }}
-            transition={{ duration: 0.3, delay: 3.0 }}
-            style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 4 }}
-          >
-            <div style={{ background: '#e9e9eb', borderRadius: 18, padding: '8px 12px', display: 'flex', gap: 4 }}>
-              {[0, 1, 2].map(i => (
-                <motion.span
-                  key={i}
-                  animate={{ opacity: [0.3, 1, 0.3] }}
-                  transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
-                  style={{ width: 6, height: 6, borderRadius: '50%', background: '#94a3b8' }}
-                />
-              ))}
-            </div>
-          </motion.div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ════════════════════════════════════════════════════════════════════
-// MOCKUP 3 : Dashboard pro animé (Moment 1)
-// ════════════════════════════════════════════════════════════════════
-function MockupDashboard() {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: '-100px' });
-
-  const mandats = useCountUp(8, 1.6, inView);
-  const exclus = useCountUp(5, 1.4, inView);
-  const conversion = useCountUp(72, 1.8, inView);
-
-  const bars = [40, 65, 50, 78, 90, 85, 95];
-
-  return (
-    <div ref={ref} style={{ width: 460, maxWidth: '100%', margin: '0 auto', position: 'relative' as const }}>
-      <motion.div
-        initial={{ opacity: 0, y: 30, rotateY: 6 }}
-        animate={inView ? { opacity: 1, y: 0, rotateY: 0 } : { opacity: 0, y: 30, rotateY: 6 }}
-        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-        style={{
-          background: '#fff',
-          borderRadius: 16,
-          boxShadow: '0 30px 80px rgba(15,45,61,0.18), 0 6px 20px rgba(15,45,61,0.06)',
-          border: '1px solid rgba(15,45,61,0.06)',
-          overflow: 'hidden',
-        }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid #edf2f7' }}>
-          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#fda4a4' }} />
-          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#fcd45d' }} />
-          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#86efac' }} />
-          <div style={{ flex: 1, marginLeft: 10, fontSize: 10, color: '#94a3b8', fontFamily: 'monospace' }}>verimo.fr/dashboard</div>
-        </div>
-
-        <div style={{ padding: '18px 22px', background: 'linear-gradient(135deg, #2a7d9c, #1d5e7a)', color: '#fff' }}>
-          <div style={{ fontSize: 11, opacity: 0.85, letterSpacing: '0.06em', marginBottom: 2 }}>VERIMO PRO</div>
-          <div style={{ fontSize: 16, fontWeight: 800 }}>Mes performances</div>
-        </div>
-
-        <div style={{ padding: '20px 22px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-          {[
-            { label: 'Mandats actifs', value: Math.round(mandats), color: '#2a7d9c' },
-            { label: 'Exclusivités', value: Math.round(exclus), color: '#16a34a' },
-            { label: 'Taux conv.', value: `${Math.round(conversion)}%`, color: '#7c3aed' },
-          ].map((kpi, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 14 }}
-              animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
-              transition={{ duration: 0.4, delay: 0.4 + i * 0.1 }}
-              style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: 10, border: '1px solid #edf2f7' }}
-            >
-              <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 3, fontWeight: 600 }}>{kpi.label}</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: kpi.color }}>{kpi.value}</div>
-            </motion.div>
-          ))}
-        </div>
-
-        <div style={{ padding: '0 22px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.05em', marginBottom: 12 }}>RAPPORTS PARTAGÉS / SEMAINE</div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 80 }}>
-            {bars.map((h, i) => (
-              <motion.div
-                key={i}
-                initial={{ height: 0 }}
-                animate={inView ? { height: `${h}%` } : { height: 0 }}
-                transition={{ duration: 0.7, delay: 0.7 + i * 0.08, ease: [0.22, 1, 0.36, 1] }}
-                style={{
-                  flex: 1,
-                  background: i === bars.length - 1 ? 'linear-gradient(180deg, #16a34a, #15803d)' : 'linear-gradient(180deg, #2a7d9c, #1d5e7a)',
-                  borderRadius: '6px 6px 0 0',
-                  position: 'relative' as const,
-                }}
-              >
-                {i === bars.length - 1 && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0 }}
-                    animate={inView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0 }}
-                    transition={{ delay: 1.3 }}
-                    style={{ position: 'absolute' as const, top: -22, left: '50%', transform: 'translateX(-50%)', fontSize: 9, fontWeight: 800, color: '#16a34a', background: '#f0fdf4', padding: '2px 6px', borderRadius: 4, whiteSpace: 'nowrap' as const }}
-                  >+38%</motion.div>
-                )}
-              </motion.div>
-            ))}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 9, color: '#cbd5e1' }}>
-            {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => <span key={i}>{d}</span>)}
-          </div>
-        </div>
-
-        <div style={{ padding: '0 22px 20px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.05em', marginBottom: 10 }}>DOSSIERS RÉCENTS</div>
-          {[
-            { name: 'M. Dupont — Paris 11ᵉ', score: 16, color: '#16a34a' },
-            { name: 'Mme Martin — Lyon 6ᵉ', score: 12, color: '#f59e0b' },
-            { name: 'M. Bernard — Neuilly', score: 18, color: '#16a34a' },
-          ].map((d, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, x: -20 }}
-              animate={inView ? { opacity: 1, x: 0 } : { opacity: 0, x: -20 }}
-              transition={{ duration: 0.4, delay: 1.4 + i * 0.1 }}
-              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < 2 ? '1px solid #f1f5f9' : 'none' }}
-            >
-              <div style={{ width: 26, height: 26, borderRadius: 7, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Building2 size={12} style={{ color: '#2a7d9c' }} />
-              </div>
-              <span style={{ flex: 1, fontSize: 11.5, fontWeight: 600, color: '#0f172a' }}>{d.name}</span>
-              <div style={{ width: 26, height: 26, borderRadius: '50%', background: `${d.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: 10, fontWeight: 800, color: d.color }}>{d.score}</span>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
-
+      {/* Badge "Mandat exclu signé" */}
       <motion.div
         initial={{ opacity: 0, scale: 0, rotate: -10 }}
         animate={inView ? { opacity: 1, scale: 1, rotate: -3 } : { opacity: 0, scale: 0, rotate: -10 }}
-        transition={{ duration: 0.6, delay: 1.7, type: 'spring', stiffness: 200 }}
+        transition={{ duration: 0.5, delay: 1.7, type: 'spring', stiffness: 200 }}
         style={{
-          position: 'absolute' as const, top: -16, right: -10,
-          background: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff',
+          position: 'absolute' as const, top: -16, right: -20,
+          background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff',
           padding: '10px 14px', borderRadius: 12,
-          boxShadow: '0 14px 32px rgba(22,163,74,0.32)',
+          boxShadow: '0 14px 32px rgba(245,158,11,0.4)',
           display: 'flex', alignItems: 'center', gap: 8,
         }}>
         <Award size={16} />
         <div>
-          <div style={{ fontSize: 10, fontWeight: 800, opacity: 0.9 }}>NOUVEAU MANDAT</div>
-          <div style={{ fontSize: 11.5, fontWeight: 800 }}>Exclusivité signée 🎉</div>
+          <div style={{ fontSize: 10, fontWeight: 800, opacity: 0.9 }}>EXCLUSIVITÉ</div>
+          <div style={{ fontSize: 11.5, fontWeight: 800 }}>Mandat signé 🎉</div>
         </div>
       </motion.div>
     </div>
@@ -489,151 +739,11 @@ function MockupDashboard() {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// SECTION CONSTAT — Scénario + stats animées
+// SECTION : Un moment décisif (storytelling pur, pas de stats)
 // ════════════════════════════════════════════════════════════════════
-function ConstatSection() {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: '-100px' });
-
-  const stats = [
-    { number: 73, suffix: '%', label: 'des acheteurs ne lisent pas les documents reçus en ZIP' },
-    { number: 4, suffix: '/10', label: 'mandats sont remportés grâce à la qualité du dossier' },
-    { number: 2, suffix: 'h', label: 'gagnées par dossier pour analyser les documents' },
-  ];
-
-  return (
-    <section ref={ref} style={{ padding: '100px 24px', background: '#fff', position: 'relative' as const, overflow: 'hidden' }}>
-      <motion.div
-        animate={inView ? { x: [0, 30, 0], y: [0, -20, 0] } : {}}
-        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
-        style={{ position: 'absolute' as const, top: '20%', right: '-10%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.06), transparent 70%)' }}
-      />
-      <div style={{ maxWidth: 1180, margin: '0 auto', position: 'relative' as const }}>
-        <Reveal>
-          <div style={{ textAlign: 'center' as const, marginBottom: 70, maxWidth: 720, margin: '0 auto 70px' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.18)', fontSize: 11.5, fontWeight: 800, color: '#dc2626', letterSpacing: '0.06em', marginBottom: 18 }}>
-              <AlertTriangle size={13} /> LE CONSTAT
-            </div>
-            <h2 style={{ fontSize: 'clamp(28px, 3.6vw, 44px)', fontWeight: 800, color: '#0f2d3d', margin: '0 0 18px 0', lineHeight: 1.12, letterSpacing: '-0.02em' }}>
-              Aujourd'hui, vous perdez du temps
-              <br />
-              <span style={{ color: '#dc2626' }}>et vos clients aussi.</span>
-            </h2>
-            <p style={{ fontSize: 17, color: '#475569', lineHeight: 1.6 }}>
-              Sans manager derrière vous, chaque détail fait la différence — et chaque dossier mal présenté coûte un mandat.
-            </p>
-          </div>
-        </Reveal>
-
-        <Reveal delay={1}>
-          <div style={{
-            background: 'linear-gradient(135deg, #fef2f2 0%, #fef5f5 100%)',
-            borderRadius: 24,
-            padding: 40,
-            border: '1px solid #fecaca',
-            marginBottom: 60,
-            position: 'relative' as const,
-            overflow: 'hidden',
-          }}
-            className="scenario-card"
-          >
-            <motion.div
-              initial={{ scaleX: 0 }}
-              animate={inView ? { scaleX: 1 } : { scaleX: 0 }}
-              transition={{ duration: 1.2, delay: 0.4 }}
-              style={{ position: 'absolute' as const, top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg, #dc2626, #f87171)', transformOrigin: 'left' }}
-            />
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 32, alignItems: 'center' }} className="scenario-grid">
-              <div>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 11px', borderRadius: 100, background: '#fff', border: '1px solid #fecaca', fontSize: 10.5, fontWeight: 800, color: '#dc2626', letterSpacing: '0.04em', marginBottom: 14 }}>
-                  <X size={11} /> SANS VERIMO
-                </div>
-                <h3 style={{ fontSize: 19, fontWeight: 800, color: '#7f1d1d', margin: '0 0 10px 0', lineHeight: 1.3 }}>
-                  « Je télécharge 12 PDFs… »
-                </h3>
-                <p style={{ fontSize: 14, color: '#991b1b', lineHeight: 1.6, margin: 0 }}>
-                  Vous lisez en diagonale 200 pages de jargon copro dans la voiture. Vous découvrez les pièges en compromis. Trop tard.
-                </p>
-              </div>
-
-              <motion.div
-                animate={inView ? { x: [0, 6, 0] } : {}}
-                transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-                style={{ fontSize: 32, color: '#dc2626' }}
-                className="scenario-arrow"
-              >
-                →
-              </motion.div>
-
-              <div>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 11px', borderRadius: 100, background: '#fff', border: '1px solid #fecaca', fontSize: 10.5, fontWeight: 800, color: '#dc2626', letterSpacing: '0.04em', marginBottom: 14 }}>
-                  ⚠️ CONSÉQUENCE
-                </div>
-                <h3 style={{ fontSize: 19, fontWeight: 800, color: '#7f1d1d', margin: '0 0 10px 0', lineHeight: 1.3 }}>
-                  Mandats perdus.
-                </h3>
-                <p style={{ fontSize: 14, color: '#991b1b', lineHeight: 1.6, margin: 0 }}>
-                  Le vendeur signe avec un concurrent plus pro. L'acheteur change d'avis. Et vous reprenez à zéro.
-                </p>
-              </div>
-            </div>
-          </div>
-        </Reveal>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 18 }}>
-          {stats.map((stat, i) => (
-            <StatCard key={i} stat={stat} index={i} inView={inView} />
-          ))}
-        </div>
-      </div>
-
-      <style>{`
-        @media (max-width: 800px) {
-          .scenario-card { padding: 26px !important; }
-          .scenario-grid { grid-template-columns: 1fr !important; gap: 22px !important; }
-          .scenario-arrow { transform: rotate(90deg); }
-        }
-      `}</style>
-    </section>
-  );
-}
-
-function StatCard({ stat, index, inView }: { stat: { number: number; suffix: string; label: string }; index: number; inView: boolean }) {
-  const value = useCountUp(stat.number, 1.6, inView);
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-      transition={{ duration: 0.5, delay: 0.6 + index * 0.1, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -4, transition: { duration: 0.2 } }}
-      style={{
-        padding: 26,
-        background: '#fff',
-        borderRadius: 16,
-        border: '1px solid #edf2f7',
-        boxShadow: '0 4px 14px rgba(15,45,61,0.04)',
-        cursor: 'default',
-        transition: 'box-shadow 0.2s',
-      }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = '0 14px 36px rgba(42,125,156,0.12)'; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 14px rgba(15,45,61,0.04)'; }}
-    >
-      <div style={{ fontSize: 'clamp(36px, 4vw, 48px)', fontWeight: 800, color: '#2a7d9c', lineHeight: 1, letterSpacing: '-0.02em', marginBottom: 10 }}>
-        {stat.suffix === '/10' ? `${Math.round(value)}/10` : `${Math.round(value)}${stat.suffix}`}
-      </div>
-      <div style={{ fontSize: 14, color: '#64748b', lineHeight: 1.5 }}>{stat.label}</div>
-    </motion.div>
-  );
-}
-
-// ════════════════════════════════════════════════════════════════════
-// COMPOSANT MOMENT (utilisé pour les 3 moments décisifs)
-// ════════════════════════════════════════════════════════════════════
-function MomentSection({ num, tag, title, scenario, benefit, stats, mockup, reverse, accent }: {
-  num: string; tag: string; title: string;
-  scenario: string; benefit: string;
-  stats: { value: string; label: string }[];
+function MomentSection({ num, tag, title, story, icon, mockup, reverse, accent }: {
+  num: string; tag: string; title: string; story: string;
+  icon: React.ReactNode;
   mockup: React.ReactNode;
   reverse?: boolean;
   accent: string;
@@ -645,7 +755,7 @@ function MomentSection({ num, tag, title, scenario, benefit, stats, mockup, reve
     <div ref={ref} style={{
       display: 'grid',
       gridTemplateColumns: reverse ? 'minmax(0, 0.95fr) minmax(0, 1.05fr)' : 'minmax(0, 1.05fr) minmax(0, 0.95fr)',
-      gap: 70, alignItems: 'center', marginBottom: 110,
+      gap: 80, alignItems: 'center', marginBottom: 130,
     }} className={`moment-section ${reverse ? 'reverse' : ''}`}>
       <motion.div
         initial={{ opacity: 0, x: reverse ? 30 : -30 }}
@@ -653,52 +763,25 @@ function MomentSection({ num, tag, title, scenario, benefit, stats, mockup, reve
         transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
         style={{ order: reverse ? 1 : 0 }}
       >
-        <div style={{ position: 'relative' as const, marginBottom: 14 }}>
-          <div style={{ position: 'absolute' as const, top: -22, left: -10, fontSize: 120, fontWeight: 900, color: 'rgba(42,125,156,0.06)', lineHeight: 1, letterSpacing: '-0.05em', pointerEvents: 'none' as const, fontFamily: 'system-ui' }}>
+        {/* Numéro géant en watermark */}
+        <div style={{ position: 'relative' as const, marginBottom: 18 }}>
+          <div style={{ position: 'absolute' as const, top: -28, left: -14, fontSize: 140, fontWeight: 900, color: `${accent}10`, lineHeight: 1, letterSpacing: '-0.05em', pointerEvents: 'none' as const, fontFamily: 'system-ui' }}>
             {num}
           </div>
-          <div style={{ position: 'relative' as const, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: `${accent}15`, border: `1px solid ${accent}30`, fontSize: 11.5, fontWeight: 800, color: accent, letterSpacing: '0.06em' }}>
-            MOMENT {num} · {tag}
+          <div style={{ position: 'relative' as const, display: 'inline-flex', alignItems: 'center', gap: 9, padding: '8px 14px', borderRadius: 100, background: `${accent}12`, border: `1px solid ${accent}30`, fontSize: 11.5, fontWeight: 800, color: accent, letterSpacing: '0.06em' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{icon} MOMENT {num}</span>
+            <span style={{ opacity: 0.5 }}>·</span>
+            <span>{tag}</span>
           </div>
         </div>
 
-        <h3 style={{ fontSize: 'clamp(26px, 3vw, 36px)', fontWeight: 800, color: '#0f2d3d', margin: '12px 0 22px 0', lineHeight: 1.15, letterSpacing: '-0.02em' }}>
+        <h3 style={{ fontSize: 'clamp(28px, 3.4vw, 42px)', fontWeight: 800, color: '#0f2d3d', margin: '14px 0 24px 0', lineHeight: 1.12, letterSpacing: '-0.025em' }}>
           {title}
         </h3>
 
-        <p style={{ fontSize: 16, color: '#475569', lineHeight: 1.65, margin: '0 0 24px 0' }}>
-          {scenario}
+        <p style={{ fontSize: 17, color: '#475569', lineHeight: 1.7, margin: 0 }}>
+          {story}
         </p>
-
-        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' as const, marginBottom: 24 }}>
-          {stats.map((s, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 14 }}
-              animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
-              transition={{ duration: 0.4, delay: 0.4 + i * 0.1 }}
-              style={{ minWidth: 110 }}
-            >
-              <div style={{ fontSize: 24, fontWeight: 800, color: accent, lineHeight: 1, marginBottom: 5 }}>{s.value}</div>
-              <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.3 }}>{s.label}</div>
-            </motion.div>
-          ))}
-        </div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
-          transition={{ duration: 0.5, delay: 0.7 }}
-          style={{
-            display: 'flex', alignItems: 'flex-start', gap: 12,
-            padding: '14px 18px', borderRadius: 12,
-            background: `linear-gradient(135deg, ${accent}10, ${accent}05)`,
-            border: `1px solid ${accent}25`,
-          }}
-        >
-          <Sparkles size={18} style={{ color: accent, flexShrink: 0, marginTop: 2 }} />
-          <div style={{ fontSize: 14, color: '#0f2d3d', fontWeight: 600, lineHeight: 1.55 }}>{benefit}</div>
-        </motion.div>
       </motion.div>
 
       <motion.div
@@ -719,7 +802,7 @@ function MomentSection({ num, tag, title, scenario, benefit, stats, mockup, reve
 export default function MandatairesPage() {
   useSEO({
     title: 'Verimo Pro pour mandataires immobiliers — Analysez vos documents en 3 minutes',
-    description: 'Mandataires indépendants : analysez les documents de vos biens en quelques minutes. Arrivez en RDV avec une longueur d\'avance, gagnez plus de mandats exclusifs.',
+    description: 'Mandataires indépendants : analysez les documents de vos biens en quelques minutes. Envoyez à vos clients en 1 clic. Gagnez plus de mandats.',
   });
 
   const heroRef = useRef<HTMLDivElement>(null);
@@ -774,15 +857,17 @@ export default function MandatairesPage() {
         />
       )}
 
-      {/* HERO */}
+      {/* ═══════════════════════════════════════════════════════════
+          HERO XXL avec scène cinématique en split-screen
+          Padding top 160px (très aéré)
+      ═══════════════════════════════════════════════════════════ */}
       <section ref={heroRef} style={{
         position: 'relative' as const,
         background: 'linear-gradient(165deg, #ffffff 0%, #f2f9fb 40%, #e6f3f7 100%)',
-        padding: '110px 24px 110px',
+        padding: '160px 24px 120px',
         overflow: 'hidden',
-        minHeight: 'calc(100vh - 80px)',
-        display: 'flex', alignItems: 'center',
       }}>
+        {/* Blobs animés */}
         <motion.div
           animate={{ x: [0, 40, 0], y: [0, -30, 0] }}
           transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
@@ -796,7 +881,8 @@ export default function MandatairesPage() {
         {!_lp && [
           { top: '15%', left: '8%', size: 12, color: 'rgba(42,125,156,0.3)', delay: 0 },
           { top: '70%', left: '5%', size: 8, color: 'rgba(125,211,252,0.4)', delay: 1 },
-          { top: '25%', right: '40%', size: 6, color: 'rgba(42,125,156,0.4)', delay: 2 },
+          { top: '20%', right: '8%', size: 6, color: 'rgba(42,125,156,0.4)', delay: 2 },
+          { top: '55%', right: '6%', size: 10, color: 'rgba(125,211,252,0.3)', delay: 1.5 },
         ].map((dot, i) => (
           <motion.div
             key={i}
@@ -812,10 +898,10 @@ export default function MandatairesPage() {
         ))}
 
         <motion.div
-          style={{ y: heroY, opacity: heroOpacity, maxWidth: 1180, margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(0, 1.05fr) minmax(0, 0.95fr)', gap: 60, alignItems: 'center', position: 'relative' as const, width: '100%' }}
-          className="hero-grid"
+          style={{ y: heroY, opacity: heroOpacity, maxWidth: 1180, margin: '0 auto', position: 'relative' as const }}
         >
-          <div>
+          {/* Texte hero centré au-dessus de la scène cinématique */}
+          <div style={{ textAlign: 'center' as const, marginBottom: 70, maxWidth: 880, marginLeft: 'auto', marginRight: 'auto' }}>
             <motion.div
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
@@ -824,7 +910,7 @@ export default function MandatairesPage() {
                 display: 'inline-flex', alignItems: 'center', gap: 8,
                 padding: '7px 14px', borderRadius: 100,
                 background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.22)',
-                fontSize: 12, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.04em', marginBottom: 26,
+                fontSize: 12, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.04em', marginBottom: 28,
               }}>
               <Sparkles size={13} /> POUR MANDATAIRES INDÉPENDANTS
             </motion.div>
@@ -834,12 +920,12 @@ export default function MandatairesPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.65, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
               style={{
-                fontSize: 'clamp(34px, 4.6vw, 58px)', fontWeight: 800, lineHeight: 1.05,
-                color: '#0f2d3d', margin: '0 0 20px 0', letterSpacing: '-0.025em',
+                fontSize: 'clamp(38px, 5vw, 64px)', fontWeight: 800, lineHeight: 1.05,
+                color: '#0f2d3d', margin: '0 0 22px 0', letterSpacing: '-0.025em',
               }}>
-              Le mandataire qui maîtrise ses dossiers{' '}
+              Vos rapports immobiliers,{' '}
               <span style={{ position: 'relative' as const, display: 'inline-block' }}>
-                <span style={{ color: '#2a7d9c' }}>signe plus de mandats.</span>
+                <span style={{ color: '#2a7d9c' }}>en 1 clic.</span>
                 <motion.span
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: 1 }}
@@ -858,17 +944,17 @@ export default function MandatairesPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.25 }}
               style={{
-                fontSize: 'clamp(15px, 1.4vw, 18px)', lineHeight: 1.6, color: '#475569',
-                maxWidth: 540, margin: '0 0 36px 0',
+                fontSize: 'clamp(16px, 1.5vw, 19px)', lineHeight: 1.6, color: '#475569',
+                maxWidth: 640, margin: '0 auto 36px',
               }}>
-              Verimo analyse en quelques minutes les documents de vos biens. Vous arrivez en RDV avec une longueur d'avance — et vous repartez avec le mandat.
+              Analysez les documents de vos biens en quelques minutes. Envoyez à vos clients un rapport pro en un seul clic, depuis votre dashboard. Gagnez du temps. Gagnez des mandats.
             </motion.p>
 
             <motion.div
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.4 }}
-              style={{ display: 'flex', gap: 12, flexWrap: 'wrap' as const, marginBottom: 30 }}
+              style={{ display: 'flex', gap: 12, flexWrap: 'wrap' as const, justifyContent: 'center', marginBottom: 22 }}
             >
               <motion.a
                 href={CALENDLY_URL}
@@ -903,7 +989,7 @@ export default function MandatairesPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.6 }}
-              style={{ display: 'flex', gap: 22, flexWrap: 'wrap' as const, fontSize: 12.5, color: '#64748b' }}
+              style={{ display: 'flex', gap: 22, flexWrap: 'wrap' as const, justifyContent: 'center', fontSize: 12.5, color: '#64748b' }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <ShieldCheck size={14} style={{ color: '#16a34a' }} /> Sans engagement
@@ -917,44 +1003,17 @@ export default function MandatairesPage() {
             </motion.div>
           </div>
 
+          {/* SCÈNE CINÉMATIQUE — Dashboard ↔ iPhone */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.92, rotateY: 8 }}
-            animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-            transition={{ duration: 0.9, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            style={{ position: 'relative' as const, transformStyle: 'preserve-3d' as const }}
-            className="hero-mockup"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
           >
-            <motion.div
-              animate={{ y: [0, -6, 0] }}
-              transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-              style={{ transform: 'rotate(-1deg)' }}
-            >
-              <MockupRapport />
-            </motion.div>
-            <motion.div
-              initial={{ scale: 0, rotate: -15 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ delay: 1, type: 'spring', stiffness: 220 }}
-              whileHover={{ scale: 1.05, rotate: 3 }}
-              style={{
-                position: 'absolute' as const, top: -22, right: -10,
-                background: '#fff', borderRadius: 12, padding: '10px 14px',
-                boxShadow: '0 14px 36px rgba(15,45,61,0.22)',
-                border: '1px solid rgba(42,125,156,0.18)',
-                display: 'flex', alignItems: 'center', gap: 9,
-                cursor: 'default',
-              }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, #16a34a, #15803d)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Zap size={15} style={{ color: '#fff' }} />
-              </div>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 800, color: '#0f172a' }}>Analyse</div>
-                <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 700 }}>3 minutes</div>
-              </div>
-            </motion.div>
+            <CinematicScene />
           </motion.div>
         </motion.div>
 
+        {/* Indicateur scroll */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1, y: [0, 6, 0] }}
@@ -969,51 +1028,137 @@ export default function MandatairesPage() {
         </motion.div>
       </section>
 
-      {/* CONSTAT */}
-      <ConstatSection />
-
-      {/* SOLUTION 3 ÉTAPES */}
-      <section style={{ padding: '100px 24px', background: 'linear-gradient(180deg, #fafcfd 0%, #f0f7fb 100%)', position: 'relative' as const, overflow: 'hidden' }}>
+      {/* ═══════════════════════════════════════════════════════════
+          SOLUTION 3 ÉTAPES — refonte avec belle UX cards
+      ═══════════════════════════════════════════════════════════ */}
+      <section style={{ padding: '120px 24px', background: '#fff', position: 'relative' as const, overflow: 'hidden' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto' }}>
           <Reveal>
-            <div style={{ textAlign: 'center' as const, marginBottom: 70 }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.22)', fontSize: 11.5, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.06em', marginBottom: 18 }}>
-                <Zap size={13} /> LA SOLUTION
+            <div style={{ textAlign: 'center' as const, marginBottom: 80, maxWidth: 720, margin: '0 auto 80px' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.22)', fontSize: 11.5, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.06em', marginBottom: 20 }}>
+                <Zap size={13} /> COMMENT ÇA MARCHE
               </div>
-              <h2 style={{ fontSize: 'clamp(28px, 3.6vw, 44px)', fontWeight: 800, color: '#0f2d3d', margin: '0 0 16px 0', lineHeight: 1.12, letterSpacing: '-0.02em' }}>
-                Verimo : votre expert documents,{' '}
-                <span style={{ color: '#2a7d9c' }}>en 3 minutes.</span>
+              <h2 style={{ fontSize: 'clamp(30px, 4vw, 48px)', fontWeight: 800, color: '#0f2d3d', margin: '0 0 18px 0', lineHeight: 1.1, letterSpacing: '-0.025em' }}>
+                Trois étapes.{' '}
+                <span style={{ position: 'relative' as const, display: 'inline-block', color: '#2a7d9c' }}>
+                  Trois minutes.
+                  <motion.span
+                    initial={{ scaleX: 0 }}
+                    whileInView={{ scaleX: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 1.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                    style={{ position: 'absolute' as const, bottom: -3, left: 0, right: 0, height: 5, background: 'rgba(42,125,156,0.25)', borderRadius: 99, transformOrigin: 'left', display: 'block' }}
+                  />
+                </span>
               </h2>
-              <p style={{ fontSize: 17, color: '#64748b', maxWidth: 620, margin: '0 auto', lineHeight: 1.6 }}>
-                Notre moteur analyse les documents de copropriété et les diagnostics. Vous recevez un rapport pro, prêt à partager.
+              <p style={{ fontSize: 17, color: '#64748b', lineHeight: 1.6 }}>
+                Un workflow ultra simple, pensé pour les pros qui n'ont pas de temps à perdre.
               </p>
             </div>
           </Reveal>
 
-          <div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
             {[
-              { num: '01', icon: <FileText size={26} style={{ color: '#fff' }} />, title: 'Vous déposez les documents', text: 'PV d\'AG, règlement de copropriété, diagnostics, appels de charges, carnet d\'entretien… jusqu\'à 15 documents par bien.' },
-              { num: '02', icon: <Eye size={26} style={{ color: '#fff' }} />, title: 'Le moteur Verimo analyse', text: 'Chiffres clés extraits, alertes détectées, points de vigilance identifiés. Un score sur 20 résume la santé du bien.' },
-              { num: '03', icon: <Send size={26} style={{ color: '#fff' }} />, title: 'Vous recevez un rapport pro', text: 'Clair, structuré, partageable en 1 clic à vos vendeurs et acheteurs. Avec votre nom.' },
+              {
+                num: '01',
+                icon: <FileText size={28} style={{ color: '#fff' }} />,
+                title: 'Vous déposez',
+                text: 'PV d\'AG, règlement de copro, diagnostics, charges... Glissez vos documents dans Verimo.',
+                visual: (
+                  <div style={{ width: '100%', height: 110, background: 'linear-gradient(180deg, #f0f7fb, #e8f4f8)', borderRadius: 12, border: '2px dashed #d0e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' as const, gap: 8 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 10, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(42,125,156,0.12)' }}>
+                      <FileText size={18} style={{ color: '#2a7d9c' }} />
+                    </div>
+                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Glissez jusqu'à 15 documents</div>
+                  </div>
+                ),
+              },
+              {
+                num: '02',
+                icon: <Eye size={28} style={{ color: '#fff' }} />,
+                title: 'On analyse',
+                text: 'Chiffres clés extraits, alertes détectées, score sur 20. Tout est prêt en quelques minutes.',
+                visual: (
+                  <div style={{ width: '100%', height: 110, background: '#fff', borderRadius: 12, border: '1px solid #edf2f7', padding: 14, position: 'relative' as const, overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', gap: 4, marginBottom: 12, alignItems: 'center' }}>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                        style={{ width: 14, height: 14, border: '2px solid #e2e8f0', borderTopColor: '#2a7d9c', borderRadius: '50%' }}
+                      />
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#2a7d9c' }}>Analyse en cours...</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 5 }}>
+                      {['Charges', 'Travaux', 'Procédures'].map((label, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                          <motion.div
+                            initial={{ width: '0%' }}
+                            whileInView={{ width: ['33%', '66%', '100%'][i] }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 1, delay: 0.2 + i * 0.2 }}
+                            style={{ height: 6, background: 'linear-gradient(90deg, #2a7d9c, #16a34a)', borderRadius: 3 }}
+                          />
+                          <span style={{ fontSize: 9, color: '#64748b', flexShrink: 0 }}>{label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                num: '03',
+                icon: <Send size={28} style={{ color: '#fff' }} />,
+                title: 'Vous envoyez',
+                text: 'Un rapport pro, partageable en 1 clic à votre vendeur ou acheteur. Avec votre nom.',
+                visual: (
+                  <div style={{ width: '100%', height: 110, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderRadius: 12, padding: 14, position: 'relative' as const, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <motion.div
+                      whileInView={{ scale: [1, 1.05, 1] }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 1.2, delay: 0.3 }}
+                      style={{ background: 'linear-gradient(135deg, #2a7d9c, #1d5e7a)', color: '#fff', padding: '11px 18px', borderRadius: 10, fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 8px 20px rgba(42,125,156,0.32)' }}
+                    >
+                      <Send size={14} /> Envoyer le rapport
+                    </motion.div>
+                  </div>
+                ),
+              },
             ].map((step, i) => (
               <Reveal key={i} delay={i}>
                 <motion.div
-                  whileHover={{ y: -6, boxShadow: '0 20px 50px rgba(42,125,156,0.14)' }}
-                  transition={{ duration: 0.25 }}
-                  style={{ position: 'relative' as const, padding: 32, background: '#fff', borderRadius: 20, boxShadow: '0 4px 16px rgba(15,45,61,0.06)', border: '1px solid #e8f4f8', marginBottom: 22, display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 24, alignItems: 'center' }}
-                  className="solution-step"
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexShrink: 0 }}>
+                  whileHover={{ y: -8, boxShadow: '0 24px 60px rgba(42,125,156,0.16)' }}
+                  transition={{ duration: 0.3 }}
+                  style={{
+                    padding: 28,
+                    background: '#fff',
+                    borderRadius: 22,
+                    border: '1px solid #edf2f7',
+                    boxShadow: '0 4px 14px rgba(15,45,61,0.04)',
+                    height: '100%',
+                    boxSizing: 'border-box' as const,
+                    display: 'flex', flexDirection: 'column' as const, gap: 18,
+                    position: 'relative' as const,
+                    overflow: 'hidden',
+                  }}>
+                  {/* Top icon + num */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <motion.div
                       whileHover={{ rotate: 8, scale: 1.05 }}
-                      style={{ width: 60, height: 60, borderRadius: 16, background: 'linear-gradient(135deg, #2a7d9c, #1d5e7a)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 10px 24px rgba(42,125,156,0.32)' }}
+                      style={{ width: 60, height: 60, borderRadius: 16, background: 'linear-gradient(135deg, #2a7d9c, #1d5e7a)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 24px rgba(42,125,156,0.32)' }}
                     >
                       {step.icon}
                     </motion.div>
-                    <div style={{ fontSize: 56, fontWeight: 900, color: 'rgba(42,125,156,0.12)', lineHeight: 1, letterSpacing: '-0.04em' }} className="step-num">{step.num}</div>
+                    <div style={{ fontSize: 50, fontWeight: 900, color: 'rgba(42,125,156,0.1)', lineHeight: 1, letterSpacing: '-0.04em' }}>{step.num}</div>
                   </div>
+
+                  {/* Visual */}
+                  {step.visual}
+
+                  {/* Texte */}
                   <div>
-                    <h3 style={{ fontSize: 19, fontWeight: 800, color: '#0f2d3d', margin: '0 0 8px 0', lineHeight: 1.3 }}>{step.title}</h3>
+                    <h3 style={{ fontSize: 22, fontWeight: 800, color: '#0f2d3d', margin: '0 0 10px 0', lineHeight: 1.25, letterSpacing: '-0.01em' }}>
+                      {step.title}
+                    </h3>
                     <p style={{ fontSize: 14.5, color: '#64748b', lineHeight: 1.6, margin: 0 }}>{step.text}</p>
                   </div>
                 </motion.div>
@@ -1023,15 +1168,17 @@ export default function MandatairesPage() {
         </div>
       </section>
 
-      {/* 3 MOMENTS DÉCISIFS */}
-      <section style={{ padding: '110px 24px 60px', background: '#fff', position: 'relative' as const, overflow: 'hidden' }}>
+      {/* ═══════════════════════════════════════════════════════════
+          3 MOMENTS DÉCISIFS — Storytelling pur, pas de stats
+      ═══════════════════════════════════════════════════════════ */}
+      <section style={{ padding: '120px 24px 60px', background: 'linear-gradient(180deg, #fafcfd 0%, #f0f7fb 100%)', position: 'relative' as const, overflow: 'hidden' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto' }}>
           <Reveal>
-            <div style={{ textAlign: 'center' as const, marginBottom: 80 }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.22)', fontSize: 11.5, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.06em', marginBottom: 18 }}>
+            <div style={{ textAlign: 'center' as const, marginBottom: 100, maxWidth: 760, margin: '0 auto 100px' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.22)', fontSize: 11.5, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.06em', marginBottom: 20 }}>
                 ⭐ 3 MOMENTS DÉCISIFS
               </div>
-              <h2 style={{ fontSize: 'clamp(30px, 4vw, 50px)', fontWeight: 800, color: '#0f2d3d', margin: '0 0 18px 0', lineHeight: 1.08, letterSpacing: '-0.025em' }}>
+              <h2 style={{ fontSize: 'clamp(32px, 4.4vw, 54px)', fontWeight: 800, color: '#0f2d3d', margin: '0 0 20px 0', lineHeight: 1.05, letterSpacing: '-0.03em' }}>
                 Là où Verimo{' '}
                 <span style={{ position: 'relative' as const, display: 'inline-block', color: '#2a7d9c' }}>
                   change tout.
@@ -1044,75 +1191,63 @@ export default function MandatairesPage() {
                   />
                 </span>
               </h2>
-              <p style={{ fontSize: 17, color: '#64748b', maxWidth: 620, margin: '0 auto', lineHeight: 1.6 }}>
-                Trois instants clés du parcours mandataire. Trois moyens concrets de vous démarquer.
+              <p style={{ fontSize: 17, color: '#64748b', lineHeight: 1.6 }}>
+                Trois instants clés du quotidien d'un mandataire. Trois moyens concrets de vous démarquer.
               </p>
             </div>
           </Reveal>
 
+          {/* Moment 1 — Avant la visite */}
           <MomentSection
             num="01"
             tag="AVANT LA VISITE"
-            title="Arrivez chez l'acheteur en mode expert."
-            scenario="Au lieu de lire les PV en diagonale dans la voiture, vous connaissez déjà le bien sur le bout des doigts : charges, travaux votés, fonds travaux, procédures. Vous présentez le bien comme si vous y habitiez."
-            benefit="Effet d'expertise immédiat. Le client se sent en confiance — et vous écoute."
-            stats={[
-              { value: '+38%', label: 'd\'efficacité en visite' },
-              { value: '2h', label: 'gagnées par dossier' },
-            ]}
-            mockup={<MockupDashboard />}
+            title="Vous arrivez chez l'acheteur en mode expert."
+            story="Plus besoin de lire les PV en diagonale dans la voiture. Vous avez déjà tout : les charges, les travaux votés, l'état du fonds travaux, les procédures en cours. Vous présentez le bien comme si vous y habitiez. L'acheteur vous écoute, vous fait confiance, et signe."
+            icon={<Eye size={14} />}
+            mockup={<MockupDashboardSimple />}
             accent="#2a7d9c"
           />
 
+          {/* Moment 2 — Après la visite */}
           <MomentSection
             num="02"
             tag="APRÈS LA VISITE"
-            title="Le client vous demande les documents ? Envoyez bien plus qu'un ZIP."
-            scenario="Vos concurrents envoient un ZIP de 12 PDFs incompréhensibles. Vous, vous envoyez un rapport synthétique avec score /20, alertes et recommandations — directement par SMS, mail ou WhatsApp."
-            benefit="Différenciation immédiate. Le client ne vous oublie pas — et il revient vers vous."
-            stats={[
-              { value: '×3', label: 'mémorisation par le client' },
-              { value: '+24%', label: 'de re-contacts' },
-            ]}
+            title="Le client demande les documents ? Vous faites la différence."
+            story="Vos concurrents envoient un ZIP de PDFs incompréhensibles. Vous, vous envoyez un rapport synthétique avec score, alertes et recommandations — directement par SMS, mail ou WhatsApp. Le client ouvre, comprend, et se souvient de vous."
+            icon={<Send size={14} />}
             mockup={<MockupSMS />}
             reverse
             accent="#16a34a"
           />
 
+          {/* Moment 3 — Mandat exclusif */}
           <MomentSection
             num="03"
             tag="POUR GAGNER L'EXCLUSIVITÉ"
             title="Différenciez-vous dès la première rencontre vendeur."
-            scenario="Pendant que les autres parlent prix et photos pro, vous arrivez avec un rapport d'analyse pro déjà fait sur leur bien. Le vendeur comprend immédiatement votre niveau de service."
-            benefit="Vous gagnez l'exclu. Un seul mandat exclusif rentabilise Verimo Starter pour 6 mois."
-            stats={[
-              { value: '×1', label: 'mandat exclu = ROI' },
-              { value: '4-8K€', label: 'commission moyenne' },
-            ]}
-            mockup={<MockupIPhone />}
-            accent="#7c3aed"
+            story="Pendant que les autres parlent prix et photos pro, vous arrivez avec un rapport déjà fait sur leur bien. Le vendeur comprend votre niveau de service en 30 secondes. Et il signe avec vous, en exclusivité."
+            icon={<Award size={14} />}
+            mockup={<MockupIPhoneSimple />}
+            accent="#f59e0b"
           />
         </div>
       </section>
 
-      {/* APERÇU RAPPORT */}
+      {/* ═══════════════════════════════════════════════════════════
+          APERÇU RAPPORT
+      ═══════════════════════════════════════════════════════════ */}
       <section id="rapport-apercu" style={{
-        padding: '100px 24px',
-        background: 'linear-gradient(165deg, #f0f7fb 0%, #e6f3f7 100%)',
+        padding: '120px 24px',
+        background: '#fff',
         position: 'relative' as const, overflow: 'hidden',
       }}>
-        <motion.div
-          animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
-          transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }}
-          style={{ position: 'absolute' as const, top: '10%', left: '-8%', width: 380, height: 380, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.1), transparent 70%)' }}
-        />
         <div style={{ maxWidth: 1180, margin: '0 auto', position: 'relative' as const }}>
           <Reveal>
-            <div style={{ textAlign: 'center' as const, marginBottom: 60 }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: '#fff', border: '1px solid rgba(42,125,156,0.22)', fontSize: 11.5, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.06em', marginBottom: 18 }}>
+            <div style={{ textAlign: 'center' as const, marginBottom: 70 }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.22)', fontSize: 11.5, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.06em', marginBottom: 20 }}>
                 📄 APERÇU DU RAPPORT
               </div>
-              <h2 style={{ fontSize: 'clamp(28px, 3.6vw, 44px)', fontWeight: 800, color: '#0f2d3d', margin: '0 0 16px 0', lineHeight: 1.12, letterSpacing: '-0.02em' }}>
+              <h2 style={{ fontSize: 'clamp(30px, 4vw, 48px)', fontWeight: 800, color: '#0f2d3d', margin: '0 0 18px 0', lineHeight: 1.1, letterSpacing: '-0.025em' }}>
                 Ce que reçoivent vos clients.
               </h2>
               <p style={{ fontSize: 17, color: '#475569', maxWidth: 620, margin: '0 auto', lineHeight: 1.6 }}>
@@ -1161,15 +1296,17 @@ export default function MandatairesPage() {
         </div>
       </section>
 
-      {/* TARIFS + ROI */}
-      <section style={{ padding: '100px 24px', background: '#fff', position: 'relative' as const, overflow: 'hidden' }}>
-        <div style={{ maxWidth: 1180, margin: '0 auto' }}>
+      {/* ═══════════════════════════════════════════════════════════
+          TARIFS + ROI
+      ═══════════════════════════════════════════════════════════ */}
+      <section style={{ padding: '120px 24px', background: 'linear-gradient(165deg, #f0f7fb 0%, #e6f3f7 100%)', position: 'relative' as const, overflow: 'hidden' }}>
+        <div style={{ maxWidth: 1180, margin: '0 auto', position: 'relative' as const }}>
           <Reveal>
-            <div style={{ textAlign: 'center' as const, marginBottom: 60 }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.22)', fontSize: 11.5, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.06em', marginBottom: 18 }}>
+            <div style={{ textAlign: 'center' as const, marginBottom: 70 }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: '#fff', border: '1px solid rgba(42,125,156,0.22)', fontSize: 11.5, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.06em', marginBottom: 20 }}>
                 <TrendingUp size={13} /> TARIFS PRO
               </div>
-              <h2 style={{ fontSize: 'clamp(28px, 3.6vw, 44px)', fontWeight: 800, color: '#0f2d3d', margin: '0 0 16px 0', lineHeight: 1.12, letterSpacing: '-0.02em' }}>
+              <h2 style={{ fontSize: 'clamp(30px, 4vw, 48px)', fontWeight: 800, color: '#0f2d3d', margin: '0 0 18px 0', lineHeight: 1.1, letterSpacing: '-0.025em' }}>
                 Combien Verimo vous{' '}
                 <span style={{ color: '#2a7d9c' }}>rapporte vraiment.</span>
               </h2>
@@ -1191,30 +1328,31 @@ export default function MandatairesPage() {
                   transition={{ duration: 0.25 }}
                   style={{
                     padding: 32, borderRadius: 20,
-                    background: plan.popular ? 'linear-gradient(165deg, #f0f7fb 0%, #e6f3f7 100%)' : '#fff',
+                    background: plan.popular ? 'linear-gradient(165deg, #2a7d9c 0%, #1d5e7a 100%)' : '#fff',
                     border: plan.popular ? '2px solid #2a7d9c' : '1px solid #edf2f7',
                     position: 'relative' as const,
                     height: '100%', boxSizing: 'border-box' as const,
-                    boxShadow: plan.popular ? '0 18px 44px rgba(42,125,156,0.2)' : '0 2px 8px rgba(15,45,61,0.04)',
+                    boxShadow: plan.popular ? '0 18px 44px rgba(42,125,156,0.3)' : '0 2px 8px rgba(15,45,61,0.04)',
                     cursor: 'default',
+                    color: plan.popular ? '#fff' : '#0f172a',
                   }}>
                   {plan.popular && (
                     <div style={{
                       position: 'absolute' as const, top: -13, left: '50%', transform: 'translateX(-50%)',
-                      background: 'linear-gradient(135deg, #2a7d9c, #1d5e7a)', color: '#fff',
+                      background: '#fff', color: '#2a7d9c',
                       padding: '6px 14px', borderRadius: 100, fontSize: 11, fontWeight: 800, letterSpacing: '0.06em',
-                      boxShadow: '0 6px 16px rgba(42,125,156,0.4)',
+                      boxShadow: '0 6px 16px rgba(0,0,0,0.18)',
                     }}>
                       ⭐ POPULAIRE
                     </div>
                   )}
-                  <div style={{ fontSize: 12.5, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.06em', marginBottom: 10 }}>{plan.tag.toUpperCase()}</div>
-                  <h3 style={{ fontSize: 26, fontWeight: 800, color: '#0f2d3d', margin: '0 0 18px 0', letterSpacing: '-0.02em' }}>{plan.name}</h3>
+                  <div style={{ fontSize: 12.5, fontWeight: 800, color: plan.popular ? '#7dd3fc' : '#94a3b8', letterSpacing: '0.06em', marginBottom: 10 }}>{plan.tag.toUpperCase()}</div>
+                  <h3 style={{ fontSize: 26, fontWeight: 800, margin: '0 0 18px 0', letterSpacing: '-0.02em' }}>{plan.name}</h3>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 24 }}>
-                    <span style={{ fontSize: 40, fontWeight: 800, color: '#0f2d3d', letterSpacing: '-0.02em' }}>{plan.price}€</span>
-                    <span style={{ fontSize: 14, color: '#64748b' }}>HT/mois</span>
+                    <span style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.02em' }}>{plan.price}€</span>
+                    <span style={{ fontSize: 14, opacity: 0.7 }}>HT/mois</span>
                   </div>
-                  <div style={{ borderTop: '1px solid rgba(15,45,61,0.08)', paddingTop: 20 }}>
+                  <div style={{ borderTop: plan.popular ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(15,45,61,0.08)', paddingTop: 20 }}>
                     {[
                       `${plan.completes} analyse${plan.completes > 1 ? 's' : ''} complète${plan.completes > 1 ? 's' : ''} / mois`,
                       `${plan.simples} analyses simples / mois`,
@@ -1222,8 +1360,8 @@ export default function MandatairesPage() {
                       'Marque Verimo Pro',
                       'Achat à l\'unité possible',
                     ].map((feat, j) => (
-                      <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', fontSize: 14, color: '#475569' }}>
-                        <CheckCircle2 size={16} style={{ color: '#16a34a', flexShrink: 0 }} />
+                      <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', fontSize: 14, opacity: plan.popular ? 0.95 : 1 }}>
+                        <CheckCircle2 size={16} style={{ color: plan.popular ? '#86efac' : '#16a34a', flexShrink: 0 }} />
                         <span>{feat}</span>
                       </div>
                     ))}
@@ -1277,8 +1415,10 @@ export default function MandatairesPage() {
         </div>
       </section>
 
-      {/* CTA FINAL */}
-      <section style={{ padding: '100px 24px', background: 'linear-gradient(165deg, #ffffff 0%, #f2f9fb 40%, #e6f3f7 100%)', position: 'relative' as const, overflow: 'hidden' }}>
+      {/* ═══════════════════════════════════════════════════════════
+          CTA FINAL
+      ═══════════════════════════════════════════════════════════ */}
+      <section style={{ padding: '120px 24px', background: 'linear-gradient(165deg, #ffffff 0%, #f2f9fb 40%, #e6f3f7 100%)', position: 'relative' as const, overflow: 'hidden' }}>
         <motion.div
           animate={{ x: [0, 40, 0], y: [0, -30, 0] }}
           transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
@@ -1300,7 +1440,7 @@ export default function MandatairesPage() {
             }}>
               <TrendingUp size={13} /> PRÊT À PASSER À LA VITESSE SUPÉRIEURE ?
             </div>
-            <h2 style={{ fontSize: 'clamp(30px, 4vw, 50px)', fontWeight: 800, color: '#0f2d3d', margin: '0 0 20px 0', lineHeight: 1.08, letterSpacing: '-0.025em' }}>
+            <h2 style={{ fontSize: 'clamp(32px, 4.4vw, 54px)', fontWeight: 800, color: '#0f2d3d', margin: '0 0 22px 0', lineHeight: 1.05, letterSpacing: '-0.03em' }}>
               Devenez le mandataire de référence.
             </h2>
             <p style={{ fontSize: 17, color: '#475569', lineHeight: 1.6, margin: '0 auto 36px', maxWidth: 560 }}>
@@ -1332,13 +1472,15 @@ export default function MandatairesPage() {
 
       <style>{`
         @media (max-width: 920px) {
-          .hero-grid { grid-template-columns: 1fr !important; gap: 50px !important; }
+          .cinematic-grid { grid-template-columns: 1fr !important; gap: 40px !important; justify-items: center; }
+          .cinematic-arrow { transform: rotate(90deg); height: 60px !important; }
           .moment-section { grid-template-columns: 1fr !important; gap: 40px !important; }
           .moment-section.reverse > div:first-child { order: 1 !important; }
           .moment-section > div:nth-child(2) { order: 0 !important; }
           .apercu-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
-          .solution-step { grid-template-columns: 1fr !important; gap: 16px !important; }
-          .step-num { display: none !important; }
+        }
+        @media (max-width: 640px) {
+          section { padding-left: 18px !important; padding-right: 18px !important; }
         }
       `}</style>
     </div>
