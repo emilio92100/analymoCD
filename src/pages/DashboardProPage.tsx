@@ -165,7 +165,7 @@ const proNavItems = [
 /* ══════════════════════════════════════════
    SIDEBAR PRO
 ══════════════════════════════════════════ */
-function SidebarPro({ subscription, proCredits, onClose, unreadTickets }: { subscription: ProSubscription | null; proCredits: ProCredits | null; onClose?: () => void; unreadTickets?: number }) {
+function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsLoading }: { subscription: ProSubscription | null; proCredits: ProCredits | null; onClose?: () => void; unreadTickets?: number; creditsLoading?: boolean }) {
   const location = useLocation();
 
   const BG = '#0e3a4a';
@@ -179,8 +179,26 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets }: { subs
   const unitComplete = proCredits?.unit_complete_remaining ?? 0;
   const unitSimple = proCredits?.unit_document_remaining ?? 0;
 
+  // Skeleton : barre grise pulsante affichée pendant le chargement initial
+  const Skeleton = ({ width = 24, height = 14 }: { width?: number; height?: number }) => (
+    <span style={{
+      display: 'inline-block', width, height, borderRadius: 4,
+      background: 'linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.18), rgba(255,255,255,0.08))',
+      backgroundSize: '200% 100%', animation: 'sidebar-skeleton 1.4s ease-in-out infinite',
+      verticalAlign: 'middle',
+    }} />
+  );
+
   return (
     <aside style={{ width: 260, minHeight: '100vh', height: '100%', background: BG, display: 'flex', flexDirection: 'column' }}>
+      {/* Animation skeleton */}
+      <style>{`
+        @keyframes sidebar-skeleton {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+      `}</style>
+
       {/* Logo + PRO badge — centré et gros */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 18px 0', flexShrink: 0, position: 'relative' }}>
         <Link to="/" onClick={onClose} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -198,7 +216,63 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets }: { subs
         </Link>
       </div>
 
-      {/* Crédits restants */}
+      {/* ─── Bloc abonnement (mis en avant, gradient accent) ─── */}
+      <div style={{ margin: '0 14px 8px' }}>
+        {creditsLoading && !subscription ? (
+          // Skeleton sur le bloc abonnement pendant le chargement
+          <div style={{ padding: '12px 14px', borderRadius: 11, background: 'linear-gradient(135deg, rgba(42,125,156,0.4), rgba(15,80,112,0.4))', border: '1px solid rgba(125,211,252,0.25)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <Skeleton width={10} height={10} />
+              <Skeleton width={130} height={9} />
+            </div>
+            <Skeleton width={90} height={18} />
+            <div style={{ marginTop: 5 }}><Skeleton width={140} height={11} /></div>
+          </div>
+        ) : subscription ? (
+          <div style={{
+            padding: '12px 14px', borderRadius: 11,
+            background: 'linear-gradient(135deg, #2a7d9c 0%, #0a5070 100%)',
+            border: '1px solid rgba(125,211,252,0.35)',
+            boxShadow: '0 4px 14px rgba(125,211,252,0.15), inset 0 1px 0 rgba(255,255,255,0.1)',
+            position: 'relative', overflow: 'hidden',
+          }}>
+            {/* Petit point lumineux qui pulse — indicateur "actif" */}
+            <span style={{
+              position: 'absolute', top: 12, right: 12, width: 7, height: 7, borderRadius: '50%',
+              background: '#86efac', boxShadow: '0 0 0 0 rgba(134,239,172,0.7)',
+              animation: 'pulse-active 2s ease-in-out infinite',
+            }} />
+            <style>{`
+              @keyframes pulse-active {
+                0%, 100% { box-shadow: 0 0 0 0 rgba(134,239,172,0.6); }
+                50% { box-shadow: 0 0 0 6px rgba(134,239,172,0); }
+              }
+            `}</style>
+            <div style={{ fontSize: 9.5, fontWeight: 700, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.12em', marginBottom: 4 }}>
+              ABONNEMENT ACTIF
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.15 }}>
+              {subscription.plan === 'decouverte' ? 'Découverte' : subscription.plan === 'starter' ? 'Starter' : subscription.plan === 'power' ? 'Power' : subscription.plan}
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 500, color: subscription.cancel_at_period_end ? '#fde68a' : 'rgba(255,255,255,0.78)', marginTop: 3 }}>
+              {subscription.cancel_at_period_end ? '⚠ Fin' : 'Renouvellement'} {subscription.current_period_end ? fmtDate(subscription.current_period_end) : '—'}
+            </div>
+          </div>
+        ) : (
+          <Link to="/dashboard/abonnement" onClick={onClose}
+            style={{
+              display: 'block', padding: '12px 14px', borderRadius: 11,
+              background: 'linear-gradient(135deg, rgba(125,211,252,0.12), rgba(125,211,252,0.05))',
+              border: '1.5px dashed rgba(125,211,252,0.4)',
+              textDecoration: 'none', textAlign: 'center',
+            }}>
+            <div style={{ fontSize: 9.5, fontWeight: 700, color: MUTED, letterSpacing: '0.12em', marginBottom: 3 }}>AUCUN ABONNEMENT</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: ACCENT }}>Choisir une offre →</div>
+          </Link>
+        )}
+      </div>
+
+      {/* ─── Crédits restants (avec skeletons pendant chargement) ─── */}
       <div style={{ margin: '0 14px 6px', padding: '9px 11px', borderRadius: 9, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: MUTED, letterSpacing: '0.1em' }}>CRÉDITS RESTANTS</span>
@@ -216,33 +290,25 @@ Cette logique vous permet de profiter pleinement de votre forfait mensuel avant 
             <div key={c.label} style={{ padding: '5px 8px', borderRadius: 7, background: 'rgba(255,255,255,0.04)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.78)', fontWeight: 600 }}>{c.label}</span>
-                <span style={{ fontSize: 12, fontWeight: 800, color: c.value > 0 ? ACCENT : 'rgba(255,255,255,0.25)' }}>{c.value}</span>
+                {creditsLoading
+                  ? <Skeleton width={16} height={14} />
+                  : <span style={{ fontSize: 12, fontWeight: 800, color: c.value > 0 ? ACCENT : 'rgba(255,255,255,0.25)' }}>{c.value}</span>
+                }
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2, paddingLeft: 2 }}>
                 <svg width="9" height="9" viewBox="0 0 9 9" fill="none" style={{ flexShrink: 0, opacity: 0.78 }}>
                   <path d="M1.5 1.5 L1.5 5 Q1.5 7 3.5 7 L7.5 7 M5 4.5 L7.5 7 L5 9.5" stroke="rgba(255,255,255,0.85)" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" transform="translate(0, -1.5)"/>
                 </svg>
-                <span style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.78)', fontWeight: 500 }}>
-                  dont {c.unit} achat{c.unit > 1 ? 's' : ''} unitaire{c.unit > 1 ? 's' : ''}
-                </span>
+                {creditsLoading
+                  ? <Skeleton width={100} height={10} />
+                  : <span style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.78)', fontWeight: 500 }}>
+                      dont {c.unit} achat{c.unit > 1 ? 's' : ''} unitaire{c.unit > 1 ? 's' : ''}
+                    </span>
+                }
               </div>
             </div>
           ))}
         </div>
-        {subscription ? (
-          <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 7, background: 'rgba(255,255,255,0.06)', textAlign: 'center', lineHeight: 1.5 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>
-              Abonnement : {subscription.plan === 'decouverte' ? 'Découverte' : subscription.plan === 'starter' ? 'Starter' : subscription.plan === 'power' ? 'Power' : subscription.plan}
-            </div>
-            <div style={{ fontSize: 12, fontWeight: 500, color: subscription.cancel_at_period_end ? '#fbbf24' : 'rgba(255,255,255,0.65)' }}>
-              {subscription.cancel_at_period_end ? 'Fin d\'abonnement' : 'Renouvellement'} {subscription.current_period_end ? fmtDate(subscription.current_period_end) : '—'}
-            </div>
-          </div>
-        ) : (
-          <Link to="/dashboard/abonnement" onClick={onClose} style={{ display: 'block', marginTop: 7, fontSize: 11, fontWeight: 700, color: ACCENT, textDecoration: 'none', textAlign: 'center' }}>
-            Choisir un abonnement
-          </Link>
-        )}
       </div>
 
       {/* Navigation */}
@@ -5883,7 +5949,7 @@ export default function DashboardProPage() {
       {/* Sidebar desktop */}
       <div className="desktop-sidebar" style={{ width: 260, flexShrink: 0 }}>
         <div style={{ position: 'fixed', top: 0, left: 0, width: 260, height: '100vh', zIndex: 50, overflowY: 'auto' }}>
-          <SidebarPro subscription={subscription} proCredits={proCredits} unreadTickets={unreadTickets} />
+          <SidebarPro subscription={subscription} proCredits={proCredits} unreadTickets={unreadTickets} creditsLoading={loading} />
         </div>
       </div>
 
@@ -5894,7 +5960,7 @@ export default function DashboardProPage() {
             <div onClick={() => setMobileOpen(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(15,45,61,0.45)' }} />
             <motion.div initial={{ x: -260 }} animate={{ x: 0 }} exit={{ x: -260 }} transition={{ type: 'spring', stiffness: 320, damping: 32 }}
               style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 260, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
-              <SidebarPro subscription={subscription} proCredits={proCredits} unreadTickets={unreadTickets} onClose={() => setMobileOpen(false)} />
+              <SidebarPro subscription={subscription} proCredits={proCredits} unreadTickets={unreadTickets} creditsLoading={loading} onClose={() => setMobileOpen(false)} />
             </motion.div>
           </motion.div>
         )}
