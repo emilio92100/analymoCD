@@ -496,7 +496,7 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, h
               <h3 style={{ fontSize: 18, fontWeight: 900, color: '#fff', margin: 0 }}>Bienvenue sur Verimo Pro !</h3>
             </div>
             <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', margin: '0 0 18px 0', lineHeight: 1.6 }}>
-              Nous vous avons pré-sélectionné l'offre <strong style={{ color: '#7dd3fc' }}>{recommendedPlan.name}</strong> — {recommendedPlan.completes} analyse{recommendedPlan.completes > 1 ? 's' : ''} complète{recommendedPlan.completes > 1 ? 's' : ''} + {recommendedPlan.simples} simple{recommendedPlan.simples > 1 ? 's' : ''} à {recommendedPlan.price}€ HT/mois.
+              Nous vous avons pré-sélectionné l'offre <strong style={{ color: '#7dd3fc' }}>{recommendedPlan.name}</strong> — {recommendedPlan.simples} analyse{recommendedPlan.simples > 1 ? 's' : ''} simple{recommendedPlan.simples > 1 ? 's' : ''} d'un document immobilier + {recommendedPlan.completes} analyse{recommendedPlan.completes > 1 ? 's' : ''} complète{recommendedPlan.completes > 1 ? 's' : ''} d'un bien à {recommendedPlan.price}€ HT/mois.
             </p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' as const }}>
               <Link to="/dashboard/abonnement" style={{ padding: '12px 24px', borderRadius: 12, background: '#fff', color: '#0f2d3d', textDecoration: 'none', fontSize: 14, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
@@ -2936,7 +2936,7 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
             <span style={{ fontSize: 15, fontWeight: 800, color: '#fff' }}>Offre recommandée pour vous</span>
           </div>
           <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', margin: '0 0 4px 0', lineHeight: 1.5 }}>
-            L'offre <strong style={{ color: '#7dd3fc' }}>{recommendedPlan.name}</strong> est pré-sélectionnée pour votre activité — <strong>{recommendedPlan.completes} analyse{recommendedPlan.completes > 1 ? 's' : ''} complète{recommendedPlan.completes > 1 ? 's' : ''} + {recommendedPlan.simples} analyse{recommendedPlan.simples > 1 ? 's' : ''} simple{recommendedPlan.simples > 1 ? 's' : ''}</strong> par mois à <strong style={{ color: '#fff' }}>{recommendedPlan.price}€ HT/mois</strong>. Vous pouvez choisir une autre offre ci-dessous.
+            L'offre <strong style={{ color: '#7dd3fc' }}>{recommendedPlan.name}</strong> est pré-sélectionnée pour votre activité — <strong>{recommendedPlan.simples} analyse{recommendedPlan.simples > 1 ? 's' : ''} simple{recommendedPlan.simples > 1 ? 's' : ''} d'un document immobilier + {recommendedPlan.completes} analyse{recommendedPlan.completes > 1 ? 's' : ''} complète{recommendedPlan.completes > 1 ? 's' : ''} d'un bien</strong> par mois à <strong style={{ color: '#fff' }}>{recommendedPlan.price}€ HT/mois</strong>. Vous pouvez choisir une autre offre ci-dessous.
           </p>
         </motion.div>
       )}
