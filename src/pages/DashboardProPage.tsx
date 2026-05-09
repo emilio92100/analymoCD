@@ -2318,7 +2318,11 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
     { id: 'power', name: 'Power', price: '89,90', completes: 10, simples: 30, popular: false, tagline: 'Pour un usage soutenu' },
   ];
 
-  const isSubscribed = subscription?.status === 'active';
+  // Un pro est considéré "abonné" si son abo est actif OU en retard de paiement (past_due) :
+  // dans les deux cas il a encore accès à ses crédits abo et peut renouveler/modifier sa carte.
+  // Stripe lance jusqu'à 4 tentatives en 1 semaine ; pendant cette fenêtre, l'accès est maintenu.
+  const isSubscribed = subscription?.status === 'active' || subscription?.status === 'past_due';
+  const isPastDue = subscription?.status === 'past_due';
 
   // Détecter le retour de Stripe Checkout (?checkout=success ou ?checkout=cancel)
   const [successPopup, setSuccessPopup] = useState<'subscribe' | 'upgrade' | 'unit' | 'reactivate' | null>(null);
@@ -3149,7 +3153,7 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
         <div style={{ padding: '20px 20px 24px' }}>
           <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
           {plans.map(plan => {
-            const isActive = subscription?.plan === plan.id && subscription?.status === 'active';
+            const isActive = subscription?.plan === plan.id && (subscription?.status === 'active' || subscription?.status === 'past_due');
             const btnLoading = loading === `subscribe:${plan.id}`;
             return (
               <div key={plan.id} className="plan-card" style={{
@@ -3213,6 +3217,14 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
                       Annuler mon abonnement
                     </button>
                   )
+                ) : isPastDue ? (
+                  // En past_due : bloquer tout changement de plan tant que le paiement n'est pas régularisé
+                  <button disabled
+                    style={{ width: '100%', padding: '12px', borderRadius: 11, border: '1.5px solid #fecaca', cursor: 'not-allowed',
+                      background: '#fef2f2', color: '#991b1b', fontSize: 12.5, fontWeight: 700 }}
+                    title="Régularisez d'abord votre paiement actuel pour changer de plan">
+                    Paiement à régulariser
+                  </button>
                 ) : (
                   <button disabled={btnLoading} onClick={() => {
                       if (subscription && subscription.status === 'active') {
@@ -5540,6 +5552,27 @@ export default function DashboardProPage() {
   const [helpCheckingTicket, setHelpCheckingTicket] = useState(false);
   const [unreadTickets, setUnreadTickets] = useState(0);
 
+  // ── Bandeau past_due : redirection portail Stripe pour mettre à jour la carte ──
+  const [bannerBillingLoading, setBannerBillingLoading] = useState(false);
+  async function openBillingPortal() {
+    setBannerBillingLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Vous devez être connecté');
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://veszrayromldfgetqaxb.supabase.co'}/functions/v1/pro-checkout-create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+        body: JSON.stringify({ mode: 'billing_portal' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur');
+      if (data.url) window.location.href = data.url;
+    } catch (e) {
+      console.error('Billing portal error:', e);
+      setBannerBillingLoading(false);
+    }
+  }
+
   // Expose popup openers for topbar buttons
   useEffect(() => {
     (window as unknown as Record<string, unknown>).__openSuggestion = () => setShowSuggestionPopup(true);
@@ -5575,8 +5608,8 @@ export default function DashboardProPage() {
     if (!profile || profile.role !== 'pro') { navigate('/dashboard'); return; }
     setProProfile({ ...profile, email: user.email } as ProProfile);
 
-    // Subscription
-    const { data: sub } = await supabase.from('pro_subscriptions').select('*').eq('user_id', user.id).eq('status', 'active').maybeSingle();
+    // Subscription : on charge active ET past_due (paiement échoué — accès maintenu pendant retries)
+    const { data: sub } = await supabase.from('pro_subscriptions').select('*').eq('user_id', user.id).in('status', ['active', 'past_due']).maybeSingle();
     setSubscription(sub as ProSubscription | null);
 
     // Check if user has ever had a subscription (even canceled)
@@ -5738,6 +5771,59 @@ export default function DashboardProPage() {
             ...dbNotifications.map(n => ({ id: n.id, analysisId: '', title: n.title, message: n.message, createdAt: n.created_at, read: n.read })),
           ]} onMarkAllRead={markAllRead}
           onClickNotification={(id) => { window.location.href = `/rapport?id=${id}`; }} />
+
+        {/* Bandeau "paiement échoué" — visible sur toutes les pages tant que statut past_due */}
+        {subscription?.status === 'past_due' && (
+          <div style={{
+            background: 'linear-gradient(135deg, #fef2f2, #fee2e2)',
+            borderBottom: '1px solid #fecaca',
+            padding: '14px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+            flexWrap: 'wrap',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <AlertTriangle size={18} style={{ color: '#fff' }} />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#991b1b', marginBottom: 2 }}>
+                  Le renouvellement de votre abonnement a échoué
+                </div>
+                <div style={{ fontSize: 12.5, color: '#7f1d1d', lineHeight: 1.5 }}>
+                  Votre accès reste actif pour quelques jours. Mettez à jour votre moyen de paiement pour éviter la suspension de votre abonnement.
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={openBillingPortal}
+              disabled={bannerBillingLoading}
+              style={{
+                padding: '10px 18px',
+                borderRadius: 10,
+                background: '#dc2626',
+                color: '#fff',
+                border: 'none',
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: bannerBillingLoading ? 'wait' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                flexShrink: 0,
+                boxShadow: '0 2px 8px rgba(220,38,38,0.3)',
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#b91c1c'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#dc2626'; }}>
+              <CreditCard size={14} />
+              {bannerBillingLoading ? 'Redirection…' : 'Mettre à jour ma carte'}
+            </button>
+          </div>
+        )}
+
         <main className="dashboard-main" style={{ flex: 1, padding: '28px 24px', overflowX: 'hidden' }}>
           <motion.div key={path} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
             {renderContent()}
