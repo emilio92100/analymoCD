@@ -3379,7 +3379,7 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
                   <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 700, color: '#94a3b8', fontSize: 11, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Date</th>
                   <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 700, color: '#94a3b8', fontSize: 11, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Description</th>
                   <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 700, color: '#94a3b8', fontSize: 11, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Type</th>
-                  <th style={{ padding: '10px 16px', textAlign: 'right', fontWeight: 700, color: '#94a3b8', fontSize: 11, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Montant</th>
+                  <th style={{ padding: '10px 16px', textAlign: 'right', fontWeight: 700, color: '#94a3b8', fontSize: 11, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Montant TTC</th>
                   <th style={{ padding: '10px 16px', textAlign: 'center', fontWeight: 700, color: '#94a3b8', fontSize: 11, textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Facture</th>
                 </tr>
               </thead>
@@ -3396,7 +3396,9 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
                         {inv.type === 'subscription' ? 'Abonnement' : 'Achat unitaire'}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 800, color: '#16a34a' }}>{inv.amount}</td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 800, color: '#16a34a', whiteSpace: 'nowrap' as const }}>
+                      {inv.amount} <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>TTC</span>
+                    </td>
                     <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                       {inv.pdf_url ? (
                         <a href={inv.pdf_url} target="_blank" rel="noopener noreferrer"
