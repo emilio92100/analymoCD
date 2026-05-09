@@ -199,8 +199,8 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets }: { subs
       </div>
 
       {/* Crédits restants */}
-      <div style={{ margin: '0 14px 6px', padding: '10px 12px', borderRadius: 9, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 7 }}>
+      <div style={{ margin: '0 14px 6px', padding: '9px 11px', borderRadius: 9, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: MUTED, letterSpacing: '0.1em' }}>CRÉDITS RESTANTS</span>
           <InfoTooltip text={`Comment fonctionnent vos crédits ?
 
@@ -208,21 +208,21 @@ Lorsque vous lancez une analyse, les crédits de votre abonnement sont utilisés
 
 Cette logique vous permet de profiter pleinement de votre forfait mensuel avant de consommer vos crédits unitaires.`} />
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {[
             { label: 'Complète', value: creditsComplete, unit: unitComplete },
             { label: 'Simple', value: creditsSimple, unit: unitSimple },
           ].map(c => (
-            <div key={c.label} style={{ padding: '6px 8px', borderRadius: 7, background: 'rgba(255,255,255,0.04)' }}>
+            <div key={c.label} style={{ padding: '5px 8px', borderRadius: 7, background: 'rgba(255,255,255,0.04)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>{c.label}</span>
-                <span style={{ fontSize: 12, fontWeight: 800, color: c.value > 0 ? ACCENT : 'rgba(255,255,255,0.2)' }}>{c.value}</span>
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.78)', fontWeight: 600 }}>{c.label}</span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: c.value > 0 ? ACCENT : 'rgba(255,255,255,0.25)' }}>{c.value}</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3, paddingLeft: 2 }}>
-                <svg width="9" height="9" viewBox="0 0 9 9" fill="none" style={{ flexShrink: 0, opacity: 0.55 }}>
-                  <path d="M1.5 1.5 L1.5 5 Q1.5 7 3.5 7 L7.5 7 M5 4.5 L7.5 7 L5 9.5" stroke="rgba(255,255,255,0.7)" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" transform="translate(0, -1.5)"/>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2, paddingLeft: 2 }}>
+                <svg width="9" height="9" viewBox="0 0 9 9" fill="none" style={{ flexShrink: 0, opacity: 0.78 }}>
+                  <path d="M1.5 1.5 L1.5 5 Q1.5 7 3.5 7 L7.5 7 M5 4.5 L7.5 7 L5 9.5" stroke="rgba(255,255,255,0.85)" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" transform="translate(0, -1.5)"/>
                 </svg>
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
+                <span style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.78)', fontWeight: 500 }}>
                   dont {c.unit} achat{c.unit > 1 ? 's' : ''} unitaire{c.unit > 1 ? 's' : ''}
                 </span>
               </div>
@@ -5639,6 +5639,27 @@ export default function DashboardProPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Bloquer le scroll de la page quand le menu mobile est ouvert
+  useEffect(() => {
+    if (mobileOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [mobileOpen]);
+
   const [proProfile, setProProfile] = useState<ProProfile | null>(null);
   const [subscription, setSubscription] = useState<ProSubscription | null>(null);
   const [hasEverSubscribed, setHasEverSubscribed] = useState(false);
@@ -5872,7 +5893,7 @@ export default function DashboardProPage() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', inset: 0, zIndex: 200 }}>
             <div onClick={() => setMobileOpen(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(15,45,61,0.45)' }} />
             <motion.div initial={{ x: -260 }} animate={{ x: 0 }} exit={{ x: -260 }} transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-              style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 260 }}>
+              style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 260, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
               <SidebarPro subscription={subscription} proCredits={proCredits} unreadTickets={unreadTickets} onClose={() => setMobileOpen(false)} />
             </motion.div>
           </motion.div>
