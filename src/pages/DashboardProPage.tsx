@@ -650,6 +650,7 @@ function MesDossiersPro() {
   const [search, setSearch] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [folderToDelete, setFolderToDelete] = useState<ProFolder | null>(null);
+  const [folderToArchive, setFolderToArchive] = useState<ProFolder | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'recent' | 'oldest' | 'name' | 'analyses'>('recent');
   const [filter, setFilter] = useState<'all' | 'thisMonth' | 'withShares' | 'noAnalyses'>('all');
@@ -752,6 +753,7 @@ function MesDossiersPro() {
         .eq('id', folder.id);
       if (error) throw error;
       await loadFolders();
+      setFolderToArchive(null);
       setArchiveToast({
         message: willArchive ? `📦 Dossier "${folder.name}" archivé` : `📂 Dossier "${folder.name}" restauré`,
         type: 'success',
@@ -760,6 +762,7 @@ function MesDossiersPro() {
     } catch (e: any) {
       setArchiveToast({ message: 'Erreur : ' + (e.message || 'inconnue'), type: 'error' });
       setTimeout(() => setArchiveToast(null), 4000);
+      throw e; // remonte l'erreur pour que le modal sache
     }
   }
 
@@ -898,7 +901,7 @@ function MesDossiersPro() {
             <FolderCard key={f.id} folder={f}
               onClick={() => navigate(`/dashboard/dossier/${f.id}`)}
               onDelete={() => setFolderToDelete(f)}
-              onArchiveToggle={() => handleArchiveToggle(f)} />
+              onArchiveToggle={() => setFolderToArchive(f)} />
           ))}
         </div>
       ) : (
@@ -954,6 +957,18 @@ function MesDossiersPro() {
             folder={folderToDelete}
             onClose={() => setFolderToDelete(null)}
             onConfirm={() => handleDelete(folderToDelete)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Modale archivage / restauration */}
+      <AnimatePresence>
+        {folderToArchive && (
+          <ModalArchiveFolder
+            folder={folderToArchive}
+            mode={folderToArchive.archived_at ? 'restore' : 'archive'}
+            onClose={() => setFolderToArchive(null)}
+            onConfirm={() => handleArchiveToggle(folderToArchive)}
           />
         )}
       </AnimatePresence>
@@ -1755,6 +1770,175 @@ function DeleteItem({ icon: Icon, label, sublabel }: { icon: React.ElementType; 
         <span style={{ fontSize: 11, color: '#92400e', marginLeft: 6, fontStyle: 'italic' as const }}>{sublabel}</span>
       </div>
     </div>
+  );
+}
+
+/* ══════════════════════════════════════════
+   MODALE ARCHIVAGE / RESTAURATION
+══════════════════════════════════════════ */
+function ModalArchiveFolder({ folder, mode, onClose, onConfirm }: {
+  folder: ProFolder;
+  mode: 'archive' | 'restore';
+  onClose: () => void;
+  onConfirm: () => Promise<void> | void;
+}) {
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !submitting) onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose, submitting]);
+
+  const isArchive = mode === 'archive';
+
+  // Couleurs selon le mode
+  const colors = isArchive ? {
+    headerBg: 'linear-gradient(135deg, #fff7ed, #fed7aa)',
+    headerBorder: '#fed7aa',
+    iconBg: 'linear-gradient(135deg, #fed7aa, #fdba74)',
+    iconColor: '#9a3412',
+    iconShadow: '0 6px 20px rgba(154,52,18,0.18)',
+    subtitle: '#9a3412',
+    btnBg: 'linear-gradient(135deg, #ea580c, #c2410c)',
+    btnShadow: '0 4px 14px rgba(234,88,12,0.35)',
+    closeIconColor: '#7c2d12',
+    closeBorder: 'rgba(154,52,18,0.18)',
+  } : {
+    headerBg: 'linear-gradient(135deg, #f0fdf4, #bbf7d0)',
+    headerBorder: '#bbf7d0',
+    iconBg: 'linear-gradient(135deg, #bbf7d0, #86efac)',
+    iconColor: '#15803d',
+    iconShadow: '0 6px 20px rgba(21,128,61,0.18)',
+    subtitle: '#15803d',
+    btnBg: 'linear-gradient(135deg, #16a34a, #15803d)',
+    btnShadow: '0 4px 14px rgba(22,163,74,0.35)',
+    closeIconColor: '#14532d',
+    closeBorder: 'rgba(21,128,61,0.18)',
+  };
+
+  async function handleSubmit() {
+    setSubmitting(true);
+    try {
+      await onConfirm();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}
+      onClick={(e) => { if (e.target === e.currentTarget && !submitting) onClose(); }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 460, boxShadow: '0 30px 80px rgba(15,45,61,0.35)', overflow: 'hidden' }}>
+
+        {/* Header */}
+        <div style={{ padding: '26px 28px 22px', textAlign: 'center', background: colors.headerBg, position: 'relative', borderBottom: `1px solid ${colors.headerBorder}` }}>
+          <button onClick={onClose} disabled={submitting} title="Fermer"
+            style={{ position: 'absolute', top: 14, right: 14, width: 30, height: 30, borderRadius: 8, background: 'rgba(255,255,255,0.85)', border: `1px solid ${colors.closeBorder}`, cursor: submitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: submitting ? 0.5 : 1 }}>
+            <X size={14} style={{ color: colors.closeIconColor }} />
+          </button>
+          <motion.div
+            initial={{ scale: 0.6, rotate: -10 }} animate={{ scale: 1, rotate: 0 }} transition={{ delay: 0.1, type: 'spring', stiffness: 280, damping: 18 }}
+            style={{ width: 56, height: 56, borderRadius: 14, background: colors.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', boxShadow: colors.iconShadow, fontSize: 26 }}>
+            {isArchive ? '📦' : '📂'}
+          </motion.div>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0, marginBottom: 6 }}>
+            {isArchive ? 'Archiver ce dossier ?' : 'Restaurer ce dossier ?'}
+          </h2>
+          <p style={{ fontSize: 13, color: colors.subtitle, margin: 0, fontWeight: 500 }}>
+            {isArchive ? 'Vous pourrez le restaurer à tout moment.' : 'Le dossier redeviendra entièrement actif.'}
+          </p>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '22px 28px 18px' }}>
+
+          {/* Carte du dossier */}
+          <div style={{ marginBottom: 18, padding: '14px 16px', borderRadius: 11, background: '#f8fafc', border: '1px solid #edf2f7', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 9, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Folder size={16} style={{ color: '#2a7d9c' }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{folder.name}</div>
+              {(folder.property_address || folder.property_city) && (
+                <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                  {[folder.property_address, folder.property_city].filter(Boolean).join(', ')}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Texte explicatif selon le mode */}
+          {isArchive ? (
+            <div>
+              <p style={{ fontSize: 13, color: '#475569', margin: '0 0 14px 0', lineHeight: 1.6 }}>
+                Au fil du temps, votre liste de dossiers s'agrandit. <strong style={{ color: '#9a3412' }}>L'archivage vous aide à garder une vue claire sur ceux qui sont vraiment en cours</strong>, sans perdre l'historique des autres.
+              </p>
+              <div style={{ padding: '14px 16px', borderRadius: 10, background: '#fff7ed', border: '1px solid #fed7aa', marginBottom: 4 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#9a3412', marginBottom: 9 }}>
+                  Archivez par exemple :
+                </div>
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none', fontSize: 12.5, color: '#78350f', lineHeight: 1.85 }}>
+                  <li style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ fontSize: 14 }}>🎉</span> Les ventes abouties</li>
+                  <li style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ fontSize: 14 }}>🤝</span> Les mandats terminés</li>
+                  <li style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ fontSize: 14 }}>⏸️</span> Les dossiers en pause</li>
+                  <li style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ fontSize: 14 }}>🚫</span> Les projets abandonnés</li>
+                  <li style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ fontSize: 14 }}>🔄</span> Les mandats partis chez un confrère</li>
+                </ul>
+              </div>
+              <p style={{ fontSize: 12, color: '#64748b', margin: '12px 0 0 0', lineHeight: 1.5, fontStyle: 'italic' as const }}>
+                Tout reste consultable dans l'onglet 📦 Archivés, et la restauration se fait en un clic.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <p style={{ fontSize: 13, color: '#475569', margin: '0 0 12px 0', lineHeight: 1.55 }}>
+                Le dossier redeviendra <strong style={{ color: '#15803d' }}>actif</strong> et apparaîtra à nouveau dans votre liste principale.
+              </p>
+              <div style={{ padding: '12px 14px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#15803d', marginBottom: 7, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>✓</span> Toutes les actions seront à nouveau disponibles :
+                </div>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#14532d', lineHeight: 1.7 }}>
+                  <li>Ajout de vendeurs et acheteurs</li>
+                  <li>Lancement d'analyses</li>
+                  <li>Modification des informations</li>
+                </ul>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ display: 'flex', gap: 10, padding: '14px 28px 22px', justifyContent: 'flex-end' }}>
+          <button onClick={onClose} disabled={submitting}
+            style={{ padding: '10px 18px', borderRadius: 10, background: '#fff', border: '1.5px solid #edf2f7', color: '#64748b', fontSize: 13, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.5 : 1 }}>
+            Annuler
+          </button>
+          <button onClick={handleSubmit} disabled={submitting}
+            style={{
+              padding: '10px 18px', borderRadius: 10, background: colors.btnBg, color: '#fff',
+              border: 'none', fontSize: 13, fontWeight: 700,
+              cursor: submitting ? 'wait' : 'pointer',
+              boxShadow: colors.btnShadow, opacity: submitting ? 0.7 : 1,
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+            {submitting
+              ? (isArchive ? 'Archivage…' : 'Restauration…')
+              : <>{isArchive ? '📦 Archiver' : '📂 Restaurer'}</>
+            }
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -3516,6 +3700,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
   const [editingBuyer, setEditingBuyer] = useState<ProFolderBuyer | null>(null);
   const [buyerToDelete, setBuyerToDelete] = useState<ProFolderBuyer | null>(null);
   const [showEditFolderModal, setShowEditFolderModal] = useState(false);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [showSendReport, setShowSendReport] = useState(false);
   const [sendHistory, setSendHistory] = useState<{ id: string; recipient_name: string; recipient_email: string; sent_at: string; opened_at?: string; analysis_id: string }[]>([]);
@@ -3523,7 +3708,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
   const navigate = useNavigate();
 
   // Body scroll lock quand une modale est ouverte
-  const anyModalOpen = showSellerModal || showBuyerModal || showEditFolderModal || showSendReport || !!sellerToDelete || !!buyerToDelete;
+  const anyModalOpen = showSellerModal || showBuyerModal || showEditFolderModal || showSendReport || showArchiveModal || !!sellerToDelete || !!buyerToDelete;
   useEffect(() => {
     if (anyModalOpen) {
       document.body.style.overflow = 'hidden';
@@ -3732,24 +3917,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <button onClick={async () => {
-                const willArchive = !folder.archived_at;
-                try {
-                  const { error } = await supabase
-                    .from('pro_folders')
-                    .update({ archived_at: willArchive ? new Date().toISOString() : null })
-                    .eq('id', folder.id);
-                  if (error) throw error;
-                  setToast({ message: willArchive ? `📦 Dossier archivé` : `📂 Dossier restauré`, type: 'success' });
-                  setTimeout(() => setToast(null), 3000);
-                  // Recharger le dossier
-                  const { data: refreshed } = await supabase.from('pro_folders').select('*').eq('id', folder.id).single();
-                  if (refreshed) setFolder(refreshed as ProFolder);
-                } catch (e: any) {
-                  setToast({ message: 'Erreur : ' + (e.message || 'inconnue'), type: 'error' });
-                  setTimeout(() => setToast(null), 4000);
-                }
-              }}
+            <button onClick={() => setShowArchiveModal(true)}
               title={folder.archived_at ? 'Restaurer ce dossier' : 'Archiver ce dossier (vente conclue, abandonné, etc.)'}
               style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10,
                 background: folder.archived_at ? '#f0fdf4' : '#fff7ed',
@@ -3759,11 +3927,17 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
               <span style={{ fontSize: 13 }}>{folder.archived_at ? '📂' : '📦'}</span>
               {folder.archived_at ? 'Restaurer' : 'Archiver'}
             </button>
-            <button onClick={() => setShowEditFolderModal(true)} title="Modifier les infos du dossier"
+            <button
+              onClick={() => { if (!folder.archived_at) setShowEditFolderModal(true); }}
+              disabled={!!folder.archived_at}
+              title={folder.archived_at ? 'Restaurez le dossier pour le modifier' : 'Modifier les infos du dossier'}
               className="dossier-edit-btn"
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, background: '#fff', border: '1.5px solid #edf2f7', color: '#475569', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, flexShrink: 0, transition: 'all 0.15s' }}
-              onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.color = '#2a7d9c'; }}
-              onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.color = '#475569'; }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, background: '#fff', border: '1.5px solid #edf2f7', color: '#475569',
+                cursor: folder.archived_at ? 'not-allowed' : 'pointer',
+                opacity: folder.archived_at ? 0.5 : 1,
+                fontSize: 12.5, fontWeight: 700, flexShrink: 0, transition: 'all 0.15s' }}
+              onMouseOver={e => { if (!folder.archived_at) { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.color = '#2a7d9c'; } }}
+              onMouseOut={e => { if (!folder.archived_at) { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.color = '#475569'; } }}>
               <Pencil size={12} /> Modifier
             </button>
           </div>
@@ -3772,7 +3946,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
         {folder.archived_at && (
           <div style={{ marginTop: 14, padding: '11px 14px', borderRadius: 10, background: '#fff7ed', border: '1px solid #fed7aa', fontSize: 12.5, color: '#9a3412', display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 14 }}>📦</span>
-            <span><strong>Dossier archivé</strong> le {new Date(folder.archived_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}. Cliquez sur "Restaurer" pour le réactiver.</span>
+            <span><strong>Dossier archivé</strong> le {new Date(folder.archived_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}. Cliquez sur "Restaurer" pour le réactiver et débloquer toutes les actions.</span>
           </div>
         )}
 
@@ -3785,20 +3959,37 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
 
       {/* Actions principales — 4 boutons */}
       <div className="dossier-actions-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
-        <ActionButton icon={UserCheck} label="Ajouter un vendeur" onClick={() => { setEditingSeller(null); setShowSellerModal(true); }} />
-        <ActionButton icon={UserPlus} label="Ajouter un acheteur potentiel" onClick={() => { setEditingBuyer(null); setShowBuyerModal(true); }} />
+        <ActionButton icon={UserCheck} label="Ajouter un vendeur"
+          onClick={() => { setEditingSeller(null); setShowSellerModal(true); }}
+          disabled={!!folder.archived_at}
+          disabledReason="Restaurez le dossier pour ajouter un vendeur" />
+        <ActionButton icon={UserPlus} label="Ajouter un acheteur potentiel"
+          onClick={() => { setEditingBuyer(null); setShowBuyerModal(true); }}
+          disabled={!!folder.archived_at}
+          disabledReason="Restaurez le dossier pour ajouter un acheteur" />
         <button
-          onClick={() => navigate(`/dashboard/nouvelle-analyse?folder=${folder.id}`)}
-          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderRadius: 12, background: '#f0f7fb', border: '1.5px solid #bae3f5', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}
-          onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#e0f0f8'; }}
-          onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = '#f0f7fb'; }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(42,125,156,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Plus size={15} style={{ color: '#2a7d9c' }} />
+          onClick={() => { if (!folder.archived_at) navigate(`/dashboard/nouvelle-analyse?folder=${folder.id}`); }}
+          disabled={!!folder.archived_at}
+          title={folder.archived_at ? 'Restaurez le dossier pour lancer une analyse' : undefined}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderRadius: 12,
+            background: folder.archived_at ? '#f8fafc' : '#f0f7fb',
+            border: folder.archived_at ? '1.5px dashed #e2e8f0' : '1.5px solid #bae3f5',
+            cursor: folder.archived_at ? 'not-allowed' : 'pointer',
+            textAlign: 'left' as const, transition: 'all 0.15s',
+            opacity: folder.archived_at ? 0.55 : 1 }}
+          onMouseOver={e => { if (!folder.archived_at) (e.currentTarget as HTMLElement).style.background = '#e0f0f8'; }}
+          onMouseOut={e => { if (!folder.archived_at) (e.currentTarget as HTMLElement).style.background = '#f0f7fb'; }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: folder.archived_at ? '#f1f5f9' : 'rgba(42,125,156,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Plus size={15} style={{ color: folder.archived_at ? '#94a3b8' : '#2a7d9c' }} />
           </div>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#2a7d9c' }}>Lancer une analyse</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: folder.archived_at ? '#64748b' : '#2a7d9c' }}>Lancer une analyse</span>
+            {folder.archived_at && <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 1 }}>🔒 Dossier archivé</div>}
+          </div>
         </button>
         <button
           onClick={() => {
+            if (folder.archived_at) return;
             const completedAnalyses = folderAnalyses.filter(a => a.status === 'completed');
             if (completedAnalyses.length === 0) {
               setToast({ message: 'Aucune analyse terminée à envoyer. Lancez d\'abord une analyse.', type: 'error' });
@@ -3812,13 +4003,23 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
             }
             setShowSendReport(true);
           }}
-          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderRadius: 12, background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', border: '1.5px solid #86efac', cursor: 'pointer', textAlign: 'left' as const, transition: 'all 0.15s' }}
-          onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #dcfce7, #bbf7d0)'; }}
-          onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #f0fdf4, #dcfce7)'; }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(22,163,74,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Send size={15} style={{ color: '#16a34a' }} />
+          disabled={!!folder.archived_at}
+          title={folder.archived_at ? 'Restaurez le dossier pour envoyer une analyse' : undefined}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderRadius: 12,
+            background: folder.archived_at ? '#f8fafc' : 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
+            border: folder.archived_at ? '1.5px dashed #e2e8f0' : '1.5px solid #86efac',
+            cursor: folder.archived_at ? 'not-allowed' : 'pointer',
+            textAlign: 'left' as const, transition: 'all 0.15s',
+            opacity: folder.archived_at ? 0.55 : 1 }}
+          onMouseOver={e => { if (!folder.archived_at) (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #dcfce7, #bbf7d0)'; }}
+          onMouseOut={e => { if (!folder.archived_at) (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #f0fdf4, #dcfce7)'; }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: folder.archived_at ? '#f1f5f9' : 'rgba(22,163,74,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Send size={15} style={{ color: folder.archived_at ? '#94a3b8' : '#16a34a' }} />
           </div>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#16a34a' }}>Envoyer une analyse</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: folder.archived_at ? '#64748b' : '#16a34a' }}>Envoyer une analyse</span>
+            {folder.archived_at && <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 1 }}>🔒 Dossier archivé</div>}
+          </div>
         </button>
       </div>
 
@@ -3829,6 +4030,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
           onAdd={() => { setEditingSeller(null); setShowSellerModal(true); }}
           onEdit={(s) => { setEditingSeller(s); setShowSellerModal(true); }}
           onDelete={(s) => setSellerToDelete(s)}
+          disabled={!!folder.archived_at}
         />
 
         <SectionAcheteurs
@@ -3836,6 +4038,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
           onAdd={() => { setEditingBuyer(null); setShowBuyerModal(true); }}
           onEdit={(b) => { setEditingBuyer(b); setShowBuyerModal(true); }}
           onDelete={(b) => setBuyerToDelete(b)}
+          disabled={!!folder.archived_at}
         />
       </div>
 
@@ -4065,6 +4268,36 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
         )}
       </AnimatePresence>
 
+      {/* Modale archivage / restauration */}
+      <AnimatePresence>
+        {showArchiveModal && folder && (
+          <ModalArchiveFolder
+            folder={folder}
+            mode={folder.archived_at ? 'restore' : 'archive'}
+            onClose={() => setShowArchiveModal(false)}
+            onConfirm={async () => {
+              const willArchive = !folder.archived_at;
+              try {
+                const { error } = await supabase
+                  .from('pro_folders')
+                  .update({ archived_at: willArchive ? new Date().toISOString() : null })
+                  .eq('id', folder.id);
+                if (error) throw error;
+                setShowArchiveModal(false);
+                setToast({ message: willArchive ? `📦 Dossier archivé` : `📂 Dossier restauré`, type: 'success' });
+                setTimeout(() => setToast(null), 3000);
+                const { data: refreshed } = await supabase.from('pro_folders').select('*').eq('id', folder.id).single();
+                if (refreshed) setFolder(refreshed as ProFolder);
+              } catch (e: any) {
+                setToast({ message: 'Erreur : ' + (e.message || 'inconnue'), type: 'error' });
+                setTimeout(() => setToast(null), 4000);
+                throw e;
+              }
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Toast notification */}
       <AnimatePresence>
         {toast && <Toast message={toast.message} type={toast.type} />}
@@ -4135,11 +4368,12 @@ function Toast({ message, type }: { message: string; type: 'success' | 'error' }
 /* ══════════════════════════════════════════
    SECTION VENDEURS
 ══════════════════════════════════════════ */
-function SectionVendeurs({ sellers, onAdd, onEdit, onDelete }: {
+function SectionVendeurs({ sellers, onAdd, onEdit, onDelete, disabled }: {
   sellers: ProFolderSeller[];
   onAdd: () => void;
   onEdit: (s: ProFolderSeller) => void;
   onDelete: (s: ProFolderSeller) => void;
+  disabled?: boolean;
 }) {
   return (
     <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 22px' }}>
@@ -4152,8 +4386,15 @@ function SectionVendeurs({ sellers, onAdd, onEdit, onDelete }: {
           )}
         </h3>
         {sellers.length > 0 && (
-          <button onClick={onAdd}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, background: '#f5f3ff', border: '1px solid #e9d5ff', color: '#7c3aed', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+          <button onClick={() => { if (!disabled) onAdd(); }}
+            disabled={disabled}
+            title={disabled ? 'Restaurez le dossier pour ajouter un vendeur' : undefined}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8,
+              background: disabled ? '#f8fafc' : '#f5f3ff',
+              border: `1px ${disabled ? 'dashed #e2e8f0' : 'solid #e9d5ff'}`,
+              color: disabled ? '#94a3b8' : '#7c3aed',
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              fontSize: 12, fontWeight: 700, opacity: disabled ? 0.6 : 1 }}>
             <Plus size={12} /> Ajouter
           </button>
         )}
@@ -4162,17 +4403,19 @@ function SectionVendeurs({ sellers, onAdd, onEdit, onDelete }: {
       {sellers.length === 0 ? (
         <div style={{ padding: '12px 0' }}>
           <p style={{ fontSize: 12.5, color: '#94a3b8', margin: '0 0 12px 0', fontStyle: 'italic' as const }}>
-            Aucun vendeur enregistré pour ce dossier.
+            {disabled ? 'Dossier archivé — aucun vendeur ne peut être ajouté.' : 'Aucun vendeur enregistré pour ce dossier.'}
           </p>
-          <button onClick={onAdd}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, background: '#f5f3ff', border: '1px dashed #c4b5fd', color: '#7c3aed', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
-            <Plus size={12} /> Ajouter le vendeur
-          </button>
+          {!disabled && (
+            <button onClick={onAdd}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, background: '#f5f3ff', border: '1px dashed #c4b5fd', color: '#7c3aed', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+              <Plus size={12} /> Ajouter le vendeur
+            </button>
+          )}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
           <AnimatePresence initial={false}>
-            {sellers.map(s => <SellerCard key={s.id} seller={s} onEdit={() => onEdit(s)} onDelete={() => onDelete(s)} />)}
+            {sellers.map(s => <SellerCard key={s.id} seller={s} onEdit={() => onEdit(s)} onDelete={() => onDelete(s)} disabled={disabled} />)}
           </AnimatePresence>
         </div>
       )}
@@ -4180,7 +4423,7 @@ function SectionVendeurs({ sellers, onAdd, onEdit, onDelete }: {
   );
 }
 
-function SellerCard({ seller, onEdit, onDelete }: { seller: ProFolderSeller; onEdit: () => void; onDelete: () => void }) {
+function SellerCard({ seller, onEdit, onDelete, disabled }: { seller: ProFolderSeller; onEdit: () => void; onDelete: () => void; disabled?: boolean }) {
   const fullName = [seller.civility, seller.first_name, seller.last_name].filter(Boolean).join(' ');
   return (
     <motion.div
@@ -4189,7 +4432,7 @@ function SellerCard({ seller, onEdit, onDelete }: { seller: ProFolderSeller; onE
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.94, height: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0 }}
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-      style={{ padding: '12px 14px', borderRadius: 11, background: 'linear-gradient(135deg, #fafafa, #f8fafc)', border: '1px solid #f1f5f9', position: 'relative' as const, overflow: 'hidden' }}>
+      style={{ padding: '12px 14px', borderRadius: 11, background: 'linear-gradient(135deg, #fafafa, #f8fafc)', border: '1px solid #f1f5f9', position: 'relative' as const, overflow: 'hidden', opacity: disabled ? 0.65 : 1 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #f5f3ff, #ede9fe)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <UserCheck size={16} style={{ color: '#7c3aed' }} />
@@ -4216,16 +4459,18 @@ function SellerCard({ seller, onEdit, onDelete }: { seller: ProFolderSeller; onE
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-          <button onClick={onEdit} title="Modifier"
-            style={{ width: 28, height: 28, borderRadius: 7, background: '#fff', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Pencil size={12} style={{ color: '#64748b' }} />
-          </button>
-          <button onClick={onDelete} title="Supprimer"
-            style={{ width: 28, height: 28, borderRadius: 7, background: '#fef2f2', border: '1px solid #fee2e2', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Trash2 size={12} style={{ color: '#dc2626' }} />
-          </button>
-        </div>
+        {!disabled && (
+          <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+            <button onClick={onEdit} title="Modifier"
+              style={{ width: 28, height: 28, borderRadius: 7, background: '#fff', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Pencil size={12} style={{ color: '#64748b' }} />
+            </button>
+            <button onClick={onDelete} title="Supprimer"
+              style={{ width: 28, height: 28, borderRadius: 7, background: '#fef2f2', border: '1px solid #fee2e2', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Trash2 size={12} style={{ color: '#dc2626' }} />
+            </button>
+          </div>
+        )}
       </div>
     </motion.div>
   );
@@ -4453,11 +4698,12 @@ function ModalDeleteSeller({ seller, onClose, onConfirm }: {
 /* ══════════════════════════════════════════
    SECTION ACHETEURS
 ══════════════════════════════════════════ */
-function SectionAcheteurs({ buyers, onAdd, onEdit, onDelete }: {
+function SectionAcheteurs({ buyers, onAdd, onEdit, onDelete, disabled }: {
   buyers: ProFolderBuyer[];
   onAdd: () => void;
   onEdit: (b: ProFolderBuyer) => void;
   onDelete: (b: ProFolderBuyer) => void;
+  disabled?: boolean;
 }) {
   return (
     <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 22px' }}>
@@ -4470,8 +4716,15 @@ function SectionAcheteurs({ buyers, onAdd, onEdit, onDelete }: {
           )}
         </h3>
         {buyers.length > 0 && (
-          <button onClick={onAdd}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+          <button onClick={() => { if (!disabled) onAdd(); }}
+            disabled={disabled}
+            title={disabled ? 'Restaurez le dossier pour ajouter un acheteur' : undefined}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8,
+              background: disabled ? '#f8fafc' : '#f0fdf4',
+              border: `1px ${disabled ? 'dashed #e2e8f0' : 'solid #bbf7d0'}`,
+              color: disabled ? '#94a3b8' : '#16a34a',
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              fontSize: 12, fontWeight: 700, opacity: disabled ? 0.6 : 1 }}>
             <Plus size={12} /> Ajouter
           </button>
         )}
@@ -4480,17 +4733,19 @@ function SectionAcheteurs({ buyers, onAdd, onEdit, onDelete }: {
       {buyers.length === 0 ? (
         <div style={{ padding: '12px 0' }}>
           <p style={{ fontSize: 12.5, color: '#94a3b8', margin: '0 0 12px 0', fontStyle: 'italic' as const }}>
-            Aucun acheteur enregistré pour ce dossier.
+            {disabled ? 'Dossier archivé — aucun acheteur ne peut être ajouté.' : 'Aucun acheteur enregistré pour ce dossier.'}
           </p>
-          <button onClick={onAdd}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, background: '#f0fdf4', border: '1px dashed #86efac', color: '#16a34a', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
-            <Plus size={12} /> Ajouter
-          </button>
+          {!disabled && (
+            <button onClick={onAdd}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, background: '#f0fdf4', border: '1px dashed #86efac', color: '#16a34a', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+              <Plus size={12} /> Ajouter
+            </button>
+          )}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
           <AnimatePresence initial={false}>
-            {buyers.map(b => <BuyerCard key={b.id} buyer={b} onEdit={() => onEdit(b)} onDelete={() => onDelete(b)} />)}
+            {buyers.map(b => <BuyerCard key={b.id} buyer={b} onEdit={() => onEdit(b)} onDelete={() => onDelete(b)} disabled={disabled} />)}
           </AnimatePresence>
         </div>
       )}
@@ -4498,7 +4753,7 @@ function SectionAcheteurs({ buyers, onAdd, onEdit, onDelete }: {
   );
 }
 
-function BuyerCard({ buyer, onEdit, onDelete }: { buyer: ProFolderBuyer; onEdit: () => void; onDelete: () => void }) {
+function BuyerCard({ buyer, onEdit, onDelete, disabled }: { buyer: ProFolderBuyer; onEdit: () => void; onDelete: () => void; disabled?: boolean }) {
   const fullName = [buyer.civility, buyer.first_name, buyer.last_name].filter(Boolean).join(' ');
   const statusCfg = BUYER_STATUS_CONFIG[buyer.status];
   return (
@@ -4508,7 +4763,7 @@ function BuyerCard({ buyer, onEdit, onDelete }: { buyer: ProFolderBuyer; onEdit:
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.94, height: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0 }}
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-      style={{ padding: '12px 14px', borderRadius: 11, background: 'linear-gradient(135deg, #fafafa, #f8fafc)', border: '1px solid #f1f5f9', position: 'relative' as const, overflow: 'hidden' }}>
+      style={{ padding: '12px 14px', borderRadius: 11, background: 'linear-gradient(135deg, #fafafa, #f8fafc)', border: '1px solid #f1f5f9', position: 'relative' as const, overflow: 'hidden', opacity: disabled ? 0.65 : 1 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <UserPlus size={16} style={{ color: '#16a34a' }} />
@@ -4540,16 +4795,18 @@ function BuyerCard({ buyer, onEdit, onDelete }: { buyer: ProFolderBuyer; onEdit:
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-          <button onClick={onEdit} title="Modifier"
-            style={{ width: 28, height: 28, borderRadius: 7, background: '#fff', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Pencil size={12} style={{ color: '#64748b' }} />
-          </button>
-          <button onClick={onDelete} title="Supprimer"
-            style={{ width: 28, height: 28, borderRadius: 7, background: '#fef2f2', border: '1px solid #fee2e2', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Trash2 size={12} style={{ color: '#dc2626' }} />
-          </button>
-        </div>
+        {!disabled && (
+          <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+            <button onClick={onEdit} title="Modifier"
+              style={{ width: 28, height: 28, borderRadius: 7, background: '#fff', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Pencil size={12} style={{ color: '#64748b' }} />
+            </button>
+            <button onClick={onDelete} title="Supprimer"
+              style={{ width: 28, height: 28, borderRadius: 7, background: '#fef2f2', border: '1px solid #fee2e2', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Trash2 size={12} style={{ color: '#dc2626' }} />
+            </button>
+          </div>
+        )}
       </div>
     </motion.div>
   );
@@ -4824,28 +5081,31 @@ function TooltipInfo({ text }: { text: string }) {
   );
 }
 
-function ActionButton({ icon: Icon, label, onClick, comingSoon }: { icon: React.ElementType; label: string; onClick?: () => void; comingSoon?: boolean }) {
+function ActionButton({ icon: Icon, label, onClick, comingSoon, disabled, disabledReason }: { icon: React.ElementType; label: string; onClick?: () => void; comingSoon?: boolean; disabled?: boolean; disabledReason?: string }) {
+  const isDisabled = comingSoon || disabled;
   return (
     <button
-      onClick={onClick}
-      disabled={comingSoon}
+      onClick={isDisabled ? undefined : onClick}
+      disabled={isDisabled}
+      title={disabled ? disabledReason : undefined}
       style={{
         display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderRadius: 12,
-        background: comingSoon ? '#f8fafc' : '#fff',
-        border: comingSoon ? '1.5px dashed #e2e8f0' : '1.5px solid #edf2f7',
-        cursor: comingSoon ? 'not-allowed' : 'pointer',
+        background: isDisabled ? '#f8fafc' : '#fff',
+        border: isDisabled ? '1.5px dashed #e2e8f0' : '1.5px solid #edf2f7',
+        cursor: isDisabled ? 'not-allowed' : 'pointer',
         textAlign: 'left' as const,
         transition: 'all 0.15s',
-        opacity: comingSoon ? 0.65 : 1,
+        opacity: isDisabled ? 0.55 : 1,
       }}
-      onMouseOver={e => { if (!comingSoon) { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.background = '#fafdfe'; } }}
-      onMouseOut={e => { if (!comingSoon) { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.background = '#fff'; } }}>
-      <div style={{ width: 32, height: 32, borderRadius: 8, background: comingSoon ? '#f1f5f9' : 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <Icon size={15} style={{ color: comingSoon ? '#94a3b8' : '#2a7d9c' }} />
+      onMouseOver={e => { if (!isDisabled) { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.background = '#fafdfe'; } }}
+      onMouseOut={e => { if (!isDisabled) { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.background = '#fff'; } }}>
+      <div style={{ width: 32, height: 32, borderRadius: 8, background: isDisabled ? '#f1f5f9' : 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <Icon size={15} style={{ color: isDisabled ? '#94a3b8' : '#2a7d9c' }} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{label}</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: isDisabled ? '#64748b' : '#0f172a' }}>{label}</div>
         {comingSoon && <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 1 }}>Bientôt disponible</div>}
+        {disabled && !comingSoon && <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 1 }}>🔒 Dossier archivé</div>}
       </div>
     </button>
   );
