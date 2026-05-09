@@ -206,16 +206,19 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets }: { subs
             { label: 'Complète', value: creditsComplete, unit: unitComplete },
             { label: 'Simple', value: creditsSimple, unit: unitSimple },
           ].map(c => (
-            <div key={c.label} style={{ padding: '5px 8px', borderRadius: 7, background: 'rgba(255,255,255,0.04)' }}>
+            <div key={c.label} style={{ padding: '6px 8px', borderRadius: 7, background: 'rgba(255,255,255,0.04)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>{c.label}</span>
                 <span style={{ fontSize: 12, fontWeight: 800, color: c.value > 0 ? ACCENT : 'rgba(255,255,255,0.2)' }}>{c.value}</span>
               </div>
-              {c.unit > 0 && (
-                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 2, fontStyle: 'italic' }}>
-                  ↳ dont {c.unit} unitaire{c.unit > 1 ? 's' : ''}
-                </div>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3, paddingLeft: 2 }}>
+                <svg width="9" height="9" viewBox="0 0 9 9" fill="none" style={{ flexShrink: 0, opacity: 0.55 }}>
+                  <path d="M1.5 1.5 L1.5 5 Q1.5 7 3.5 7 L7.5 7 M5 4.5 L7.5 7 L5 9.5" stroke="rgba(255,255,255,0.7)" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" transform="translate(0, -1.5)"/>
+                </svg>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
+                  dont {c.unit} achat{c.unit > 1 ? 's' : ''} unitaire{c.unit > 1 ? 's' : ''}
+                </span>
+              </div>
             </div>
           ))}
         </div>
@@ -2853,7 +2856,7 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
             <span style={{ fontSize: 15, fontWeight: 800, color: '#fff' }}>Offre recommandée pour vous</span>
           </div>
           <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', margin: '0 0 4px 0', lineHeight: 1.5 }}>
-            L'offre <strong style={{ color: '#7dd3fc' }}>{recommendedPlan.name}</strong> a été pré-sélectionnée pour votre activité — {recommendedPlan.completes} complète{recommendedPlan.completes > 1 ? 's' : ''} + {recommendedPlan.simples} simple{recommendedPlan.simples > 1 ? 's' : ''} à <strong style={{ color: '#fff' }}>{recommendedPlan.price}€ HT/mois</strong>. Vous pouvez choisir une autre offre ci-dessous.
+            L'offre <strong style={{ color: '#7dd3fc' }}>{recommendedPlan.name}</strong> est pré-sélectionnée pour votre activité — <strong>{recommendedPlan.completes} analyse{recommendedPlan.completes > 1 ? 's' : ''} complète{recommendedPlan.completes > 1 ? 's' : ''} + {recommendedPlan.simples} analyse{recommendedPlan.simples > 1 ? 's' : ''} simple{recommendedPlan.simples > 1 ? 's' : ''}</strong> par mois à <strong style={{ color: '#fff' }}>{recommendedPlan.price}€ HT/mois</strong>. Vous pouvez choisir une autre offre ci-dessous.
           </p>
         </motion.div>
       )}
@@ -3148,9 +3151,20 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
             <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d', marginBottom: 4, letterSpacing: '-0.02em' }}>
               {isSubscribed ? 'Changer de plan' : 'Choisissez votre plan'}
             </h2>
-            <p style={{ fontSize: 15, color: '#64748b', margin: 0 }}>
+            <p style={{ fontSize: 15, color: '#64748b', margin: '0 0 8px' }}>
               {isSubscribed ? 'Vous pouvez upgrader ou changer de formule à tout moment.' : 'Sélectionnez la formule adaptée à votre activité.'}
             </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', fontSize: 12.5, fontWeight: 700, color: '#16a34a' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <CheckCircle size={14} strokeWidth={2.5} /> Sans engagement
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <CheckCircle size={14} strokeWidth={2.5} /> Annulez quand vous voulez
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <CheckCircle size={14} strokeWidth={2.5} /> Crédits cumulables
+              </span>
+            </div>
           </div>
           {isSubscribed && (
             <button onClick={handleBillingPortal} disabled={loading === 'billing_portal'}
@@ -3192,9 +3206,13 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
                 )}
                 <h3 style={{ fontSize: 19, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>{plan.name}</h3>
                 <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 14px 0', minHeight: 16 }}>{plan.tagline}</p>
-                <div style={{ marginBottom: 16 }}>
+                <div style={{ marginBottom: 8 }}>
                   <span style={{ fontSize: 30, fontWeight: 800, color: '#0f172a' }}>{plan.price}€</span>
                   <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 4 }}>HT / mois</span>
+                </div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 100, background: '#f0fdf4', border: '1px solid #bbf7d0', marginBottom: 14 }}>
+                  <CheckCircle size={11} strokeWidth={2.5} style={{ color: '#16a34a' }} />
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: '#15803d' }}>Sans engagement</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 18 }}>
                   {[
