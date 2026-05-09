@@ -2913,39 +2913,43 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
                       {/* Contenu */}
                       <div style={{ padding: '18px 24px 22px' }}>
 
-                        {/* Bandeau info downgrade — compact */}
+                        {/* Bandeau info downgrade — explicatif */}
                         {upgradePreview.is_downgrade && (
-                          <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 10, padding: '10px 12px', marginBottom: 14 }}>
-                            <p style={{ fontSize: 12, color: '#92400e', margin: 0, lineHeight: 1.45 }}>
-                              💡 Vous gardez votre plan {upgradePreview.current_plan_label} jusqu'à la bascule.
+                          <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
+                            <p style={{ fontSize: 12, color: '#92400e', margin: 0, lineHeight: 1.55 }}>
+                              💡 <strong>Aujourd'hui :</strong> vous gardez votre plan {upgradePreview.current_plan_label} et vos {upgradePreview.current_credits.complete} crédit{upgradePreview.current_credits.complete > 1 ? 's' : ''} complet{upgradePreview.current_credits.complete > 1 ? 's' : ''} + {upgradePreview.current_credits.simple} simple{upgradePreview.current_credits.simple > 1 ? 's' : ''} restant{upgradePreview.current_credits.simple > 1 ? 's' : ''}.
+                              <br/><br/>
+                              <strong>Le {upgradePreview.next_billing_date} :</strong> votre plan {upgradePreview.new_plan_label} prendra effet. Vos crédits non utilisés seront reportés et cumulés avec le nouveau plan.
                             </p>
                           </div>
                         )}
 
-                        {/* Crédits après — compact */}
-                        <div style={{ background: '#f8fafc', borderRadius: 12, padding: '12px 14px', marginBottom: 12, border: '1px solid #edf2f7' }}>
-                          <p style={{ fontSize: 10.5, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Vos crédits après</p>
-                          <div style={{ display: 'flex', gap: 10 }}>
-                            <div style={{ flex: 1, textAlign: 'center', padding: '8px 6px', background: '#fff', borderRadius: 8, border: '1px solid #edf2f7' }}>
-                              <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', lineHeight: 1, marginBottom: 2 }}>{upgradePreview.new_credits.complete}</div>
-                              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Complète{upgradePreview.new_credits.complete > 1 ? 's' : ''}</div>
-                              {upgradePreview.current_credits.complete > 0 && (
-                                <div style={{ fontSize: 9.5, color: '#16a34a', fontWeight: 700, marginTop: 3 }}>
-                                  +{upgradePreview.current_credits.complete} cumul
-                                </div>
-                              )}
-                            </div>
-                            <div style={{ flex: 1, textAlign: 'center', padding: '8px 6px', background: '#fff', borderRadius: 8, border: '1px solid #edf2f7' }}>
-                              <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', lineHeight: 1, marginBottom: 2 }}>{upgradePreview.new_credits.simple}</div>
-                              <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Simple{upgradePreview.new_credits.simple > 1 ? 's' : ''}</div>
-                              {upgradePreview.current_credits.simple > 0 && (
-                                <div style={{ fontSize: 9.5, color: '#16a34a', fontWeight: 700, marginTop: 3 }}>
-                                  +{upgradePreview.current_credits.simple} cumul
-                                </div>
-                              )}
+                        {/* Crédits après — UNIQUEMENT pour upgrade (effet immédiat) */}
+                        {upgradePreview.is_upgrade && (
+                          <div style={{ background: '#f8fafc', borderRadius: 12, padding: '12px 14px', marginBottom: 12, border: '1px solid #edf2f7' }}>
+                            <p style={{ fontSize: 10.5, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Vos crédits après le changement</p>
+                            <div style={{ display: 'flex', gap: 10 }}>
+                              <div style={{ flex: 1, textAlign: 'center', padding: '8px 6px', background: '#fff', borderRadius: 8, border: '1px solid #edf2f7' }}>
+                                <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', lineHeight: 1, marginBottom: 2 }}>{upgradePreview.new_credits.complete}</div>
+                                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Complète{upgradePreview.new_credits.complete > 1 ? 's' : ''}</div>
+                                {upgradePreview.current_credits.complete > 0 && (
+                                  <div style={{ fontSize: 9.5, color: '#16a34a', fontWeight: 700, marginTop: 3 }}>
+                                    +{upgradePreview.current_credits.complete} cumul
+                                  </div>
+                                )}
+                              </div>
+                              <div style={{ flex: 1, textAlign: 'center', padding: '8px 6px', background: '#fff', borderRadius: 8, border: '1px solid #edf2f7' }}>
+                                <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', lineHeight: 1, marginBottom: 2 }}>{upgradePreview.new_credits.simple}</div>
+                                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Simple{upgradePreview.new_credits.simple > 1 ? 's' : ''}</div>
+                                {upgradePreview.current_credits.simple > 0 && (
+                                  <div style={{ fontSize: 9.5, color: '#16a34a', fontWeight: 700, marginTop: 3 }}>
+                                    +{upgradePreview.current_credits.simple} cumul
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
+                        )}
 
                         {/* Détail prix (uniquement upgrade) — compact */}
                         {upgradePreview.is_upgrade && (
@@ -2966,11 +2970,14 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
                           </div>
                         )}
 
-                        {/* Mention prochaine date + plafond — fusionné, plus discret */}
-                        <p style={{ fontSize: 11, color: '#94a3b8', textAlign: 'center', marginBottom: 14, lineHeight: 1.55 }}>
-                          {upgradePreview.is_upgrade && <>Prochain prélèvement : <strong style={{ color: '#64748b' }}>{upgradePreview.next_billing_date}</strong><br/></>}
-                          💡 Vos crédits abonnement non utilisés sont reportés sur le mois suivant. Ils restent valables 2 mois après leur attribution.
-                        </p>
+                        {/* Mention prochaine date + plafond — uniquement pour upgrade (le downgrade a son bandeau dédié) */}
+                        {upgradePreview.is_upgrade && (
+                          <p style={{ fontSize: 11, color: '#94a3b8', textAlign: 'center', marginBottom: 14, lineHeight: 1.55 }}>
+                            Prochain prélèvement : <strong style={{ color: '#64748b' }}>{upgradePreview.next_billing_date}</strong>
+                            <br/>
+                            💡 Vos crédits abonnement non utilisés sont reportés sur le mois suivant. Ils restent valables 2 mois après leur attribution.
+                          </p>
+                        )}
 
                         {/* Boutons */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
