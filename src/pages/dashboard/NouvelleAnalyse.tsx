@@ -536,15 +536,29 @@ export default function NouvelleAnalyse() {
           onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.boxShadow = '0 8px 28px rgba(42,125,156,0.1)'; el.style.transform = 'translateY(-2px)'; }}
           onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'; el.style.transform = 'translateY(0)'; }}>
           {isPro ? (
-            <div style={{ position: 'absolute', top: 14, right: 14, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: proHasDocumentCredits ? '#f0fdf4' : '#f8fafc', color: proHasDocumentCredits ? '#16a34a' : '#94a3b8', border: `1px solid ${proHasDocumentCredits ? '#bbf7d0' : '#e2e8f0'}` }}>
-              {(proCredits?.document || 0) > 0 ? `${proCredits?.document} crédit${(proCredits?.document || 0) > 1 ? 's' : ''} restant${(proCredits?.document || 0) > 1 ? 's' : ''}` : '0 crédit'}
+            <div style={{ position: 'absolute', top: 14, right: 14, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, padding: '6px 12px', borderRadius: 8, background: proHasDocumentCredits ? '#f0fdf4' : '#fef2f2', color: proHasDocumentCredits ? '#16a34a' : '#dc2626', border: `1.5px solid ${proHasDocumentCredits ? '#86efac' : '#fca5a5'}` }}>
+                {(proCredits?.document || 0) > 0 ? `${proCredits?.document} crédit${(proCredits?.document || 0) > 1 ? 's' : ''} restant${(proCredits?.document || 0) > 1 ? 's' : ''}` : '0 crédit'}
+              </div>
+              {!proHasDocumentCredits && (
+                <Link to="/dashboard/abonnement" onClick={e => e.stopPropagation()} style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', textDecoration: 'underline', padding: '2px 4px' }}>
+                  Acheter des crédits →
+                </Link>
+              )}
             </div>
           ) : showParticulierPrices && (
-            <div style={{ position: 'absolute', top: 14, right: 14, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: credits.document > 0 ? '#f0fdf4' : '#f8fafc', color: credits.document > 0 ? '#16a34a' : '#94a3b8', border: `1px solid ${credits.document > 0 ? '#bbf7d0' : '#e2e8f0'}` }}>
-              {credits.document > 0 ? `${credits.document} crédit${credits.document > 1 ? 's' : ''} restant${credits.document > 1 ? 's' : ''}` : '0 crédit'}
+            <div style={{ position: 'absolute', top: 14, right: 14, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, padding: '6px 12px', borderRadius: 8, background: credits.document > 0 ? '#f0fdf4' : '#fef2f2', color: credits.document > 0 ? '#16a34a' : '#dc2626', border: `1.5px solid ${credits.document > 0 ? '#86efac' : '#fca5a5'}` }}>
+                {credits.document > 0 ? `${credits.document} crédit${credits.document > 1 ? 's' : ''} restant${credits.document > 1 ? 's' : ''}` : '0 crédit'}
+              </div>
+              {credits.document === 0 && (
+                <Link to="/dashboard/tarifs" onClick={e => e.stopPropagation()} style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', textDecoration: 'underline', padding: '2px 4px' }}>
+                  Acheter des crédits →
+                </Link>
+              )}
             </div>
           )}
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginTop: (isPro || showParticulierPrices) ? 8 : 0 }}><FileText size={24} style={{ color: '#2a7d9c' }} /></div>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginTop: (isPro || showParticulierPrices) ? 22 : 0 }}><FileText size={24} style={{ color: '#2a7d9c' }} /></div>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>Analyse d&apos;un seul document</div>
           <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.7, marginBottom: 20 }}>Retenez l&apos;essentiel d&apos;un document précis :<br /><span style={{ color: '#94a3b8' }}>Règlement de copro, PV d&apos;AG, diagnostic, DPE, appel de charges…</span><br /><span style={{ fontSize: 11, color: '#cbd5e1' }}>1 fichier PDF uniquement</span></div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 28 }}>
@@ -575,15 +589,29 @@ export default function NouvelleAnalyse() {
           <div style={{ position: 'absolute', top: -20, right: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(42,125,156,0.2)', pointerEvents: 'none' }} />
           <div style={{ position: 'absolute', top: 14, left: 14, fontSize: 9, fontWeight: 800, color: '#fff', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)', padding: '3px 10px', borderRadius: 100 }}>★ RECOMMANDÉ</div>
           {isPro ? (
-            <div style={{ position: 'absolute', top: 14, right: 14, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: proHasCompleteCredits ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
-              {(proCredits?.complete || 0) > 0 ? `${proCredits?.complete} crédit${(proCredits?.complete || 0) > 1 ? 's' : ''} restant${(proCredits?.complete || 0) > 1 ? 's' : ''}` : '0 crédit'}
+            <div style={{ position: 'absolute', top: 14, right: 14, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, padding: '6px 12px', borderRadius: 8, background: proHasCompleteCredits ? 'rgba(74,222,128,0.18)' : 'rgba(248,113,113,0.18)', color: proHasCompleteCredits ? '#86efac' : '#fca5a5', border: `1.5px solid ${proHasCompleteCredits ? 'rgba(134,239,172,0.4)' : 'rgba(252,165,165,0.4)'}` }}>
+                {(proCredits?.complete || 0) > 0 ? `${proCredits?.complete} crédit${(proCredits?.complete || 0) > 1 ? 's' : ''} restant${(proCredits?.complete || 0) > 1 ? 's' : ''}` : '0 crédit'}
+              </div>
+              {!proHasCompleteCredits && (
+                <Link to="/dashboard/abonnement" onClick={e => e.stopPropagation()} style={{ fontSize: 11, fontWeight: 700, color: '#fca5a5', textDecoration: 'underline', padding: '2px 4px' }}>
+                  Acheter des crédits →
+                </Link>
+              )}
             </div>
           ) : showParticulierPrices && (
-            <div style={{ position: 'absolute', top: 14, right: 14, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: credits.complete > 0 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
-              {credits.complete > 0 ? `${credits.complete} crédit${credits.complete > 1 ? 's' : ''} restant${credits.complete > 1 ? 's' : ''}` : '0 crédit'}
+            <div style={{ position: 'absolute', top: 14, right: 14, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, padding: '6px 12px', borderRadius: 8, background: credits.complete > 0 ? 'rgba(74,222,128,0.18)' : 'rgba(248,113,113,0.18)', color: credits.complete > 0 ? '#86efac' : '#fca5a5', border: `1.5px solid ${credits.complete > 0 ? 'rgba(134,239,172,0.4)' : 'rgba(252,165,165,0.4)'}` }}>
+                {credits.complete > 0 ? `${credits.complete} crédit${credits.complete > 1 ? 's' : ''} restant${credits.complete > 1 ? 's' : ''}` : '0 crédit'}
+              </div>
+              {credits.complete === 0 && (
+                <Link to="/dashboard/tarifs" onClick={e => e.stopPropagation()} style={{ fontSize: 11, fontWeight: 700, color: '#fca5a5', textDecoration: 'underline', padding: '2px 4px' }}>
+                  Acheter des crédits →
+                </Link>
+              )}
             </div>
           )}
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginTop: (isPro || showParticulierPrices) ? 18 : 10 }}><ShieldCheck size={24} style={{ color: '#fff' }} /></div>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, marginTop: (isPro || showParticulierPrices) ? 32 : 10 }}><ShieldCheck size={24} style={{ color: '#fff' }} /></div>
           <div style={{ fontSize: 18, fontWeight: 800, color: '#fff', marginBottom: 8 }}>Analyse complète d&apos;un logement</div>
           <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, marginBottom: 20 }}>Déposez tous vos documents d&apos;un seul coup :<br /><span style={{ color: 'rgba(255,255,255,0.45)' }}>PV AG 2022/2023/2024, règlement copro, DPE, diagnostic électricité, amiante…</span><br /><span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>Rapport détaillé avec score /20 et recommandation.</span></div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 28 }}>
