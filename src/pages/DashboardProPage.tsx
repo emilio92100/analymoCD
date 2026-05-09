@@ -3240,10 +3240,13 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
       <div style={{ marginBottom: 28, borderRadius: 20, border: isSubscribed ? '1.5px solid #bbf7d0' : '1.5px solid #fde68a', overflow: 'hidden', background: '#fff' }}>
         <div style={{ padding: '20px 24px', background: isSubscribed ? 'linear-gradient(135deg, #f0fdf4, #ecfdf5)' : 'linear-gradient(135deg, #fffbeb, #fef3c7)', borderBottom: isSubscribed ? '1px solid #bbf7d0' : '1px solid #fde68a' }}>
           <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d', marginBottom: 4, letterSpacing: '-0.02em' }}>Crédits supplémentaires</h2>
-          <p style={{ fontSize: 15, color: '#64748b', margin: 0 }}>
+          <p style={{ fontSize: 15, color: '#64748b', margin: 0, marginBottom: 6 }}>
             {isSubscribed
               ? 'Besoin de plus d\'analyses ? Achetez à l\'unité ou utilisez un code promo.'
               : 'Les achats unitaires à tarif préférentiel sont réservés aux abonnés Verimo Pro.'}
+          </p>
+          <p style={{ fontSize: 12.5, color: isSubscribed ? '#16a34a' : '#92400e', margin: 0, fontWeight: 600 }}>
+            ♾️ Crédits unitaires valables sans limite de durée
           </p>
         </div>
         <div style={{ padding: '20px' }}>
