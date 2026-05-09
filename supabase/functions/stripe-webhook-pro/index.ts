@@ -378,28 +378,38 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
     return;
   }
 
-  const { error: notifError } = await supabase.from('user_notifications').insert({
-    user_id: existing.user_id,
-    title: '⚠️ Échec de paiement',
-    message: 'Le renouvellement de votre abonnement a échoué. Veuillez mettre à jour votre moyen de paiement pour éviter la suspension de votre compte.',
-    read: false,
-  });
+  // Anti-spam : n'envoie la notif cloche QUE lors de la 1ère tentative ratée
+  // (attempt_count = 1 chez Stripe). Les retries suivants déclenchent aussi cet event,
+  // mais on ne re-notifie pas le pro pour éviter le spam.
+  // Une notif finale sera envoyée par handleSubscriptionDeleted si tous les retries échouent.
+  const isFirstAttempt = invoice.attempt_count === 1;
 
-  if (notifError) {
-    console.error('[invoice.payment_failed] Notif insert error:', notifError);
+  if (isFirstAttempt) {
+    const { error: notifError } = await supabase.from('user_notifications').insert({
+      user_id: existing.user_id,
+      title: '⚠️ Échec de paiement',
+      message: 'Le renouvellement de votre abonnement a échoué. Votre accès reste actif pour quelques jours. Mettez à jour votre moyen de paiement pour éviter la suspension de votre abonnement.',
+      read: false,
+    });
+
+    if (notifError) {
+      console.error('[invoice.payment_failed] Notif insert error:', notifError);
+    } else {
+      console.log(`[invoice.payment_failed] Initial notification sent to user ${existing.user_id}`);
+    }
+  } else {
+    console.log(`[invoice.payment_failed] Retry attempt ${invoice.attempt_count} for user ${existing.user_id} — no notif (anti-spam)`);
   }
 
-  // Toujours créer une alerte admin pour qu'on puisse réagir si besoin
+  // Alerte admin créée à CHAQUE échec (utile pour suivi côté admin)
   await insertSystemAlert(supabase, {
     type: 'unexpected_error',
     severity: 'warning',
-    title: 'Paiement Pro échoué',
-    message: `Le renouvellement d'un abonnement Pro a échoué (plan ${existing.plan}). Le client a été notifié.`,
+    title: `Paiement Pro échoué (tentative ${invoice.attempt_count || 1})`,
+    message: `Le renouvellement d'un abonnement Pro a échoué (plan ${existing.plan}, tentative ${invoice.attempt_count || 1}). ${isFirstAttempt ? 'Le client a été notifié.' : 'Pas de re-notification client (anti-spam).'}`,
     userId: existing.user_id,
-    metadata: { stage: 'invoice_payment_failed', subscriptionId: subId, plan: existing.plan },
+    metadata: { stage: 'invoice_payment_failed', subscriptionId: subId, plan: existing.plan, attemptCount: invoice.attempt_count },
   });
-
-  console.log(`[invoice.payment_failed] Notification + alert created for user ${existing.user_id}`);
 }
 
 async function handleSubscriptionUpdated(sub: Stripe.Subscription) {
@@ -482,6 +492,13 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription) {
 }
 
 async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
+  // Récupérer user_id avant le update pour pouvoir lui envoyer la notif finale
+  const { data: existing } = await supabase
+    .from('pro_subscriptions')
+    .select('user_id, plan')
+    .eq('stripe_subscription_id', sub.id)
+    .maybeSingle();
+
   const { error } = await supabase
     .from('pro_subscriptions')
     .update({
@@ -503,6 +520,32 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
       metadata: { stage: 'sub_deleted', subscriptionId: sub.id, error: error.message },
     });
     return;
+  }
+
+  // Si on connaît le user_id, envoyer la notif finale
+  // (cas d'annulation suite à des échecs de paiement répétés)
+  if (existing?.user_id) {
+    // On vérifie le motif d'annulation : si c'est lié à des paiements échoués,
+    // on envoie une notif spécifique. Sinon (annulation volontaire fin de cycle),
+    // on n'envoie rien (déjà géré par le flux de résiliation).
+    // Stripe expose cancellation_details.reason pour cela.
+    const cancelReason = (sub as any).cancellation_details?.reason;
+    const isPaymentFailure = cancelReason === 'payment_failed' || cancelReason === 'payment_disputed';
+
+    if (isPaymentFailure) {
+      const { error: notifError } = await supabase.from('user_notifications').insert({
+        user_id: existing.user_id,
+        title: '❌ Abonnement suspendu',
+        message: 'Votre abonnement a été suspendu suite à plusieurs échecs de paiement. Vos crédits abonnement ont été retirés. Vous pouvez vous réabonner à tout moment depuis votre tableau de bord.',
+        read: false,
+      });
+
+      if (notifError) {
+        console.error('[sub.deleted] Final notif insert error:', notifError);
+      } else {
+        console.log(`[sub.deleted] Final cancellation notification sent to user ${existing.user_id}`);
+      }
+    }
   }
 
   console.log(`[sub.deleted] Subscription ${sub.id} canceled`);
