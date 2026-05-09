@@ -3948,8 +3948,9 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
               </div>
             )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <div className="dossier-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <button onClick={() => setShowArchiveModal(true)}
+              className="dossier-archive-btn"
               title={folder.archived_at ? 'Restaurer ce dossier' : 'Archiver ce dossier (vente conclue, abandonné, etc.)'}
               style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10,
                 background: folder.archived_at ? '#f0fdf4' : '#fff7ed',
@@ -4101,6 +4102,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
               const isFailed = a.status === 'failed';
               return (
                 <div key={a.id}
+                  className="folder-analysis-row"
                   onClick={() => isCompleted ? (window.location.href = `/rapport?id=${a.id}`) : undefined}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', borderRadius: 12,
@@ -4126,21 +4128,15 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
                       <span>{fmtDate(a.created_at)}</span>
                       <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#cbd5e1' }} />
                       <span>{a.type === 'complete' || a.type === 'pack2' || a.type === 'pack3' ? 'Complète' : 'Simple'}</span>
-                      {score !== null && (
-                        <>
-                          <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#cbd5e1' }} />
-                          <span style={{ fontWeight: 700, color: getScoreColor(score) }}>{score}/20</span>
-                        </>
-                      )}
                     </div>
                   </div>
                   {isPending && (
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fffbeb', padding: '3px 10px', borderRadius: 100, border: '1px solid #fef3c7' }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fffbeb', padding: '3px 10px', borderRadius: 100, border: '1px solid #fef3c7', flexShrink: 0 }}>
                       {a.status === 'queued' ? 'En cours de traitement' : 'En cours'}
                     </span>
                   )}
                   {isFailed && (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: '#dc2626', background: '#fef2f2', padding: '3px 8px', borderRadius: 100, border: '1px solid #fecaca' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: '#dc2626', background: '#fef2f2', padding: '3px 8px', borderRadius: 100, border: '1px solid #fecaca', flexShrink: 0 }}>
                       Échoué
                       <button
                         onClick={(e) => {
@@ -4156,9 +4152,14 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
                     </span>
                   )}
                   {isCompleted && (
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      Voir le rapport <ChevronRight size={13} />
-                    </span>
+                    <div className="folder-analysis-cta" style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-end', gap: 2, flexShrink: 0 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' as const }}>
+                        Voir le rapport <ChevronRight size={13} />
+                      </span>
+                      {score !== null && (
+                        <span style={{ fontSize: 13, fontWeight: 800, color: getScoreColor(score), whiteSpace: 'nowrap' as const }}>{score}/20</span>
+                      )}
+                    </div>
                   )}
                 </div>
               );
@@ -5732,7 +5733,28 @@ export default function DashboardProPage() {
           .dossier-actions-grid { grid-template-columns: 1fr 1fr !important; }
           .dossier-icon-desktop { width: 40px !important; height: 40px !important; }
           .dossier-header { flex-wrap: wrap !important; }
-          .dossier-edit-btn { width: 100% !important; justify-content: center !important; margin-top: 8px !important; }
+          .dossier-header-actions {
+            width: 100% !important;
+            flex-direction: column !important;
+            gap: 6px !important;
+            margin-top: 10px !important;
+          }
+          .dossier-archive-btn,
+          .dossier-edit-btn {
+            width: 100% !important;
+            justify-content: center !important;
+            padding: 10px 14px !important;
+          }
+          .folder-analysis-row {
+            gap: 10px !important;
+            padding: 10px 12px !important;
+          }
+          .folder-analysis-cta {
+            align-items: center !important;
+          }
+          .folder-analysis-cta span:first-child {
+            font-size: 10.5px !important;
+          }
         }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
