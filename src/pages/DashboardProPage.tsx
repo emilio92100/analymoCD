@@ -2035,77 +2035,149 @@ function Field({ label, required, optional, hint, tooltip, icon: Icon, children 
 }
 
 /* ══════════════════════════════════════════
-   TOOLTIP — Pastille "?" avec popover instantané
+   TOOLTIP — Pastille "i" : popover flottant sur desktop, modale sur mobile
 ══════════════════════════════════════════ */
 function InfoTooltip({ text }: { text: string }) {
   const [show, setShow] = useState(false);
-  const [clicked, setClicked] = useState(false);
+  const [isMobile, setIsMobile] = useState<boolean>(typeof window !== 'undefined' ? window.innerWidth <= 768 : false);
+  const triggerRef = useRef<HTMLSpanElement | null>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; placement: 'right' | 'left' | 'bottom' }>({ top: 0, left: 0, placement: 'right' });
+
+  // Détecte mobile / desktop avec un resize listener
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  // Quand on ouvre sur desktop, on calcule la position du popover
+  useEffect(() => {
+    if (show && !isMobile && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const popoverWidth = 320;
+      const popoverHeight = 180; // estimé
+      const margin = 12;
+
+      let placement: 'right' | 'left' | 'bottom' = 'right';
+      let top = rect.top + rect.height / 2 - popoverHeight / 2;
+      let left = rect.right + margin;
+
+      // Si pas la place à droite → essayer à gauche
+      if (left + popoverWidth > window.innerWidth - 16) {
+        placement = 'left';
+        left = rect.left - popoverWidth - margin;
+      }
+      // Si pas la place à gauche non plus → en dessous
+      if (left < 16) {
+        placement = 'bottom';
+        left = Math.max(16, Math.min(rect.left + rect.width / 2 - popoverWidth / 2, window.innerWidth - popoverWidth - 16));
+        top = rect.bottom + margin;
+      }
+      // Empêcher le popover de sortir verticalement
+      top = Math.max(16, Math.min(top, window.innerHeight - popoverHeight - 16));
+
+      setPos({ top, left, placement });
+    }
+  }, [show, isMobile]);
+
+  const triggerStyle: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 18,
+    height: 18,
+    borderRadius: '50%',
+    background: show ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#cbd5e1',
+    color: show ? '#fff' : '#475569',
+    fontSize: 10,
+    fontWeight: 800,
+    cursor: 'help',
+    textTransform: 'none',
+    letterSpacing: 0,
+    transition: 'all 0.15s',
+    flexShrink: 0,
+    userSelect: 'none',
+  };
 
   return (
     <>
       <span
-        onMouseEnter={() => { if (window.innerWidth > 768 && !clicked) setShow(true); }}
-        onMouseLeave={() => { if (window.innerWidth > 768 && !clicked) setShow(false); }}
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setClicked(true); setShow(true); }}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: 18,
-          height: 18,
-          borderRadius: '50%',
-          background: show ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#cbd5e1',
-          color: show ? '#fff' : '#475569',
-          fontSize: 10,
-          fontWeight: 800,
-          cursor: 'help',
-          textTransform: 'none' as const,
-          letterSpacing: 0,
-          transition: 'all 0.15s',
-          flexShrink: 0,
-          userSelect: 'none' as const,
-        }}>
+        ref={triggerRef}
+        onMouseEnter={() => { if (!isMobile) setShow(true); }}
+        onMouseLeave={() => { if (!isMobile) setShow(false); }}
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShow(s => !s); }}
+        style={triggerStyle}>
         i
       </span>
       <AnimatePresence>
         {show && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            onClick={(e) => { e.stopPropagation(); setShow(false); setClicked(false); }}
-            style={{ position: 'fixed', inset: 0, zIndex: 99999, background: clicked ? 'rgba(15,45,61,0.35)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, pointerEvents: clicked ? 'auto' : 'none' }}>
+          isMobile ? (
+            // ── MOBILE : modale plein écran centrée avec backdrop ──
             <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 6 }}
-              transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              onClick={(e) => { e.stopPropagation(); setShow(false); }}
+              style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(15,45,61,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, pointerEvents: 'auto' }}>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.92, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 6 }}
+                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  background: 'linear-gradient(135deg, #1e3a4d, #0f2d3d)',
+                  color: '#fff',
+                  padding: '20px 22px 18px',
+                  borderRadius: 14,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  lineHeight: 1.65,
+                  maxWidth: 340,
+                  width: '100%',
+                  boxShadow: '0 20px 60px rgba(15,45,61,0.4)',
+                  textAlign: 'left',
+                  position: 'relative',
+                  whiteSpace: 'pre-line',
+                }}>
+                {text}
+                <button
+                  onClick={() => setShow(false)}
+                  style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 6, width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', fontSize: 14, fontWeight: 700 }}>
+                  ×
+                </button>
+              </motion.div>
+            </motion.div>
+          ) : (
+            // ── DESKTOP : popover flottant à côté du "i" ──
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }}
               style={{
+                position: 'fixed',
+                top: pos.top,
+                left: pos.left,
+                zIndex: 99999,
                 background: 'linear-gradient(135deg, #1e3a4d, #0f2d3d)',
                 color: '#fff',
-                padding: '18px 22px',
-                borderRadius: 14,
-                fontSize: 14,
+                padding: '14px 16px',
+                borderRadius: 12,
+                fontSize: 13,
                 fontWeight: 500,
-                lineHeight: 1.65,
-                maxWidth: 340,
-                width: '100%',
-                boxShadow: '0 20px 60px rgba(15,45,61,0.4)',
-                textAlign: 'left' as const,
-                position: 'relative' as const,
-                pointerEvents: 'auto' as const,
-                whiteSpace: 'pre-line' as const,
+                lineHeight: 1.55,
+                width: 320,
+                boxShadow: '0 12px 32px rgba(15,45,61,0.32)',
+                textAlign: 'left',
+                whiteSpace: 'pre-line',
+                pointerEvents: 'none',
               }}>
               {text}
-              <button
-                onClick={() => { setShow(false); setClicked(false); }}
-                style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 6, width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', fontSize: 14, fontWeight: 700 }}>
-                ×
-              </button>
             </motion.div>
-          </motion.div>
+          )
         )}
       </AnimatePresence>
     </>
@@ -3154,15 +3226,15 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
 
       {/* ═══ SECTION 1 : Choisir / Changer de plan ═══ */}
       <div style={{ marginBottom: 28, borderRadius: 20, border: '1.5px solid #d0e8f0', overflow: 'hidden', background: '#fff' }}>
-        <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderBottom: '1px solid #d0e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d', marginBottom: 4, letterSpacing: '-0.02em' }}>
+        <div className="plan-header" style={{ padding: '20px 24px', background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderBottom: '1px solid #d0e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+          <div className="plan-header-text" style={{ flex: 1, minWidth: 220 }}>
+            <h2 className="plan-header-title" style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d', marginBottom: 4, letterSpacing: '-0.02em' }}>
               {isSubscribed ? 'Changer de plan' : 'Choisissez votre plan'}
             </h2>
-            <p style={{ fontSize: 15, color: '#64748b', margin: '0 0 8px' }}>
+            <p className="plan-header-desc" style={{ fontSize: 15, color: '#64748b', margin: '0 0 8px' }}>
               {isSubscribed ? 'Vous pouvez upgrader ou changer de formule à tout moment.' : 'Sélectionnez la formule adaptée à votre activité.'}
             </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', fontSize: 12.5, fontWeight: 700, color: '#16a34a' }}>
+            <div className="plan-header-guarantees" style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', fontSize: 12.5, fontWeight: 700, color: '#16a34a' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                 <CheckCircle size={14} strokeWidth={2.5} /> Sans engagement
               </span>
@@ -3178,7 +3250,7 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
             </div>
           </div>
           {isSubscribed && (
-            <button onClick={handleBillingPortal} disabled={loading === 'billing_portal'}
+            <button onClick={handleBillingPortal} disabled={loading === 'billing_portal'} className="plan-header-billing-btn"
               style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 10, background: '#fff', border: '1.5px solid #d0e8f0', color: '#2a7d9c', fontSize: 12.5, fontWeight: 700, cursor: loading === 'billing_portal' ? 'wait' : 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0 }}
               onMouseEnter={e => { e.currentTarget.style.background = '#f0f7fb'; e.currentTarget.style.borderColor = '#2a7d9c'; }}
               onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#d0e8f0'; }}>
@@ -6221,6 +6293,13 @@ export default function DashboardProPage() {
           .plan-card { padding: 16px !important; }
           .plan-card h3 { font-size: 16px !important; }
           .plan-card span[style*="font-size: 30"] { font-size: 24px !important; }
+          /* Header "Changer de plan" mobile : tout en colonne, bouton pleine largeur */
+          .plan-header { padding: 16px !important; flex-direction: column !important; align-items: stretch !important; }
+          .plan-header-text { min-width: 0 !important; width: 100% !important; }
+          .plan-header-title { font-size: 18px !important; }
+          .plan-header-desc { font-size: 13px !important; }
+          .plan-header-guarantees { font-size: 11.5px !important; gap: 10px !important; }
+          .plan-header-billing-btn { width: 100% !important; justify-content: center !important; padding: 11px 14px !important; }
           .dossier-actions-grid { grid-template-columns: 1fr 1fr !important; }
           .dossier-icon-desktop { width: 40px !important; height: 40px !important; }
           .dossier-header { flex-wrap: wrap !important; }
