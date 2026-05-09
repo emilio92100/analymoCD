@@ -3126,13 +3126,24 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
 
       {/* ═══ SECTION 1 : Choisir / Changer de plan ═══ */}
       <div style={{ marginBottom: 28, borderRadius: 20, border: '1.5px solid #d0e8f0', overflow: 'hidden', background: '#fff' }}>
-        <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderBottom: '1px solid #d0e8f0' }}>
-          <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d', marginBottom: 4, letterSpacing: '-0.02em' }}>
-            {isSubscribed ? 'Changer de plan' : 'Choisissez votre plan'}
-          </h2>
-          <p style={{ fontSize: 15, color: '#64748b', margin: 0 }}>
-            {isSubscribed ? 'Vous pouvez upgrader ou changer de formule à tout moment.' : 'Sélectionnez la formule adaptée à votre activité.'}
-          </p>
+        <div style={{ padding: '20px 24px', background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderBottom: '1px solid #d0e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f2d3d', marginBottom: 4, letterSpacing: '-0.02em' }}>
+              {isSubscribed ? 'Changer de plan' : 'Choisissez votre plan'}
+            </h2>
+            <p style={{ fontSize: 15, color: '#64748b', margin: 0 }}>
+              {isSubscribed ? 'Vous pouvez upgrader ou changer de formule à tout moment.' : 'Sélectionnez la formule adaptée à votre activité.'}
+            </p>
+          </div>
+          {isSubscribed && (
+            <button onClick={handleBillingPortal} disabled={loading === 'billing_portal'}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 10, background: '#fff', border: '1.5px solid #d0e8f0', color: '#2a7d9c', fontSize: 12.5, fontWeight: 700, cursor: loading === 'billing_portal' ? 'wait' : 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap', flexShrink: 0 }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#f0f7fb'; e.currentTarget.style.borderColor = '#2a7d9c'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#d0e8f0'; }}>
+              <CreditCard size={13} />
+              {loading === 'billing_portal' ? 'Redirection…' : 'Modifier mon moyen de paiement'}
+            </button>
+          )}
         </div>
         <div style={{ padding: '20px 20px 24px' }}>
           <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
@@ -3222,19 +3233,6 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
         </div>
         </div>
       </div>
-
-      {/* Bouton modifier moyen de paiement — visible uniquement si abonné */}
-      {isSubscribed && (
-        <div style={{ marginBottom: 28, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-          <button onClick={handleBillingPortal} disabled={loading === 'billing_portal'}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 12, background: '#fff', border: '1.5px solid #edf2f7', color: '#64748b', fontSize: 13, fontWeight: 600, cursor: loading === 'billing_portal' ? 'wait' : 'pointer', transition: 'all 0.15s' }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#2a7d9c'; e.currentTarget.style.color = '#2a7d9c'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = '#edf2f7'; e.currentTarget.style.color = '#64748b'; }}>
-            <CreditCard size={14} />
-            {loading === 'billing_portal' ? 'Redirection…' : 'Modifier mon moyen de paiement'}
-          </button>
-        </div>
-      )}
 
       {/* ═══ SECTION 2 : Achats unitaires + Code promo (une seule ligne) ═══ */}
       <div style={{ marginBottom: 28, borderRadius: 20, border: isSubscribed ? '1.5px solid #bbf7d0' : '1.5px solid #fde68a', overflow: 'hidden', background: '#fff' }}>
