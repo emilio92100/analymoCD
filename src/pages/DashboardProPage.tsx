@@ -12,6 +12,7 @@ import {
   LayoutGrid, LayoutList, ArrowUpDown, Info,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { getStripe } from '../lib/stripe-client';
 
 // Réutiliser les vues existantes
 import NouvelleAnalyse from './dashboard/NouvelleAnalyse';
@@ -2321,8 +2322,148 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
   // Détecter le retour de Stripe Checkout (?checkout=success ou ?checkout=cancel)
   const [successPopup, setSuccessPopup] = useState<'subscribe' | 'upgrade' | 'unit' | 'reactivate' | null>(null);
 
-  // Popup confirmation upgrade avec récap TVA
-  const [upgradeConfirm, setUpgradeConfirm] = useState<{ id: string; name: string; price: string; completes: number; simples: number } | null>(null);
+  // Popup confirmation upgrade avec récap TVA + 3D Secure inline
+  // États du flow : null (fermé) | 'preview' (récap) | 'loading' (paiement) | 'success' | 'error'
+  type UpgradeFlowState = null | 'preview' | 'loading' | 'success' | 'error';
+  type UpgradePreview = {
+    is_upgrade: boolean;
+    is_downgrade: boolean;
+    current_plan: string;
+    current_plan_label: string;
+    new_plan: string;
+    new_plan_label: string;
+    amount_ht_str: string;
+    amount_tva_str: string;
+    amount_ttc_str: string;
+    next_billing_date: string;
+    current_credits: { complete: number; simple: number };
+    new_credits: { complete: number; simple: number };
+    immediate_payment: boolean;
+  };
+  const [upgradeFlow, setUpgradeFlow] = useState<UpgradeFlowState>(null);
+  const [upgradePreview, setUpgradePreview] = useState<UpgradePreview | null>(null);
+  const [upgradeLoadingMsg, setUpgradeLoadingMsg] = useState<string>('Mise à jour de votre plan…');
+  const [upgradeError, setUpgradeError] = useState<string>('');
+  const [upgradeTargetPlan, setUpgradeTargetPlan] = useState<string>('');
+  const [upgradeSuccessData, setUpgradeSuccessData] = useState<{
+    plan_label: string;
+    amount: string;
+    new_credits: { complete: number; simple: number };
+    next_billing: string;
+    is_downgrade: boolean;
+    switch_date?: string;
+  } | null>(null);
+
+  // Ouvrir le popup d'upgrade : appelle preview_upgrade pour obtenir le récap
+  async function openUpgradeFlow(targetPlan: string) {
+    setUpgradeTargetPlan(targetPlan);
+    setUpgradeError('');
+    setUpgradeFlow('preview');
+    setUpgradePreview(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Vous devez être connecté');
+
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://veszrayromldfgetqaxb.supabase.co'}/functions/v1/pro-checkout-create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+        body: JSON.stringify({ mode: 'preview_upgrade', plan: targetPlan }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur lors du calcul du récapitulatif');
+
+      setUpgradePreview(data);
+    } catch (e: any) {
+      setUpgradeError(e.message || 'Une erreur est survenue');
+      setUpgradeFlow('error');
+    }
+  }
+
+  // Confirmer l'upgrade : appelle l'edge function et gère 3D Secure inline si besoin
+  async function confirmUpgradeFlow() {
+    if (!upgradePreview || !upgradeTargetPlan) return;
+    setUpgradeFlow('loading');
+    setUpgradeError('');
+    setUpgradeLoadingMsg(upgradePreview.is_downgrade ? 'Programmation du changement…' : 'Mise à jour de votre plan…');
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Vous devez être connecté');
+
+      // 1. Appel à l'edge function (subscribe = upgrade ou downgrade selon le plan)
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://veszrayromldfgetqaxb.supabase.co'}/functions/v1/pro-checkout-create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+        body: JSON.stringify({ mode: 'subscribe', plan: upgradeTargetPlan }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur lors du changement de plan');
+
+      // 2. Cas downgrade : changement programmé
+      if (data.scheduled) {
+        setUpgradeSuccessData({
+          plan_label: upgradePreview.new_plan_label,
+          amount: '0,00€',
+          new_credits: upgradePreview.new_credits,
+          next_billing: data.switch_date || upgradePreview.next_billing_date,
+          is_downgrade: true,
+          switch_date: data.switch_date,
+        });
+        setUpgradeFlow('success');
+        return;
+      }
+
+      // 3. Cas 3D Secure requis → utiliser Stripe.js pour confirmer
+      if (data.requires_action && data.client_secret) {
+        setUpgradeLoadingMsg('Validation 3D Secure en cours…');
+        const stripe = await getStripe();
+        if (!stripe) throw new Error('Stripe.js n\'a pas pu être chargé');
+
+        const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(data.client_secret);
+
+        if (confirmError) {
+          throw new Error(confirmError.message || 'Validation 3D Secure échouée');
+        }
+
+        if (paymentIntent?.status !== 'succeeded') {
+          throw new Error('Le paiement n\'a pas pu être finalisé. Veuillez réessayer.');
+        }
+        // Si on arrive ici, le paiement est validé : on tombe dans le succès
+      }
+
+      // 4. Succès (avec ou sans 3DS)
+      setUpgradeLoadingMsg('Activation de vos crédits…');
+      // Petit délai pour que le webhook ait le temps de tomber côté serveur
+      await new Promise(r => setTimeout(r, 1200));
+
+      setUpgradeSuccessData({
+        plan_label: upgradePreview.new_plan_label,
+        amount: upgradePreview.amount_ttc_str,
+        new_credits: upgradePreview.new_credits,
+        next_billing: upgradePreview.next_billing_date,
+        is_downgrade: false,
+      });
+      setUpgradeFlow('success');
+    } catch (e: any) {
+      console.error('[upgrade-flow] error:', e);
+      setUpgradeError(e.message || 'Une erreur est survenue lors du paiement');
+      setUpgradeFlow('error');
+    }
+  }
+
+  function closeUpgradeFlow() {
+    if (upgradeFlow === 'loading') return; // Pas de fermeture pendant le paiement
+    setUpgradeFlow(null);
+    setUpgradePreview(null);
+    setUpgradeError('');
+    setUpgradeSuccessData(null);
+  }
+
+  function reloadAfterSuccess() {
+    window.location.reload();
+  }
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -2687,86 +2828,250 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
         </motion.div>
       )}
 
-      {/* ── Popup confirmation upgrade avec récap TVA ── */}
+      {/* ── Popup Upgrade Flow : 4 états (preview → loading → success / error) ── */}
       <AnimatePresence>
-        {upgradeConfirm && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', padding: 16 }}
-            onClick={() => !loading && setUpgradeConfirm(null)}>
-            <motion.div initial={{ scale: 0.92, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.92, opacity: 0, y: 20 }}
+        {upgradeFlow !== null && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.55)', padding: 16, backdropFilter: 'blur(4px)' }}
+            onClick={closeUpgradeFlow}>
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 20 }}
               transition={{ type: 'spring', duration: 0.45, bounce: 0.15 }}
               onClick={e => e.stopPropagation()}
-              style={{ background: '#fff', borderRadius: 24, padding: '36px 32px', maxWidth: 460, width: '100%', boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
+              style={{ background: '#fff', borderRadius: 24, padding: '36px 32px', maxWidth: 480, width: '100%', boxShadow: '0 24px 64px rgba(0,0,0,0.25)', maxHeight: '90vh', overflowY: 'auto' }}>
 
-              {/* Header */}
-              <div style={{ textAlign: 'center', marginBottom: 24 }}>
-                <div style={{ width: 56, height: 56, borderRadius: 16, background: 'linear-gradient(135deg, #f0f7fb, #e0f0f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: '2px solid #d0e8f0' }}>
-                  <ArrowRight size={24} style={{ color: '#2a7d9c' }} />
-                </div>
-                <h2 style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', marginBottom: 6, letterSpacing: '-0.02em' }}>
-                  Changer pour {upgradeConfirm.name}
-                </h2>
-                <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
-                  Votre nouveau plan prend effet immédiatement.
-                </p>
-              </div>
+              {/* ═══ ÉTAT 1 : PREVIEW (récap avant validation) ═══ */}
+              {upgradeFlow === 'preview' && (
+                <>
+                  {!upgradePreview && (
+                    <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                      <div style={{ width: 40, height: 40, border: '3px solid #f0f7fb', borderTopColor: '#2a7d9c', borderRadius: '50%', margin: '0 auto', animation: 'spin 0.8s linear infinite' }} />
+                      <p style={{ fontSize: 13, color: '#64748b', marginTop: 16 }}>Calcul du récapitulatif…</p>
+                    </div>
+                  )}
 
-              {/* Récap plan */}
-              <div style={{ background: '#f8fafc', borderRadius: 16, padding: '20px', marginBottom: 20, border: '1.5px solid #edf2f7' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                  <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Plan {upgradeConfirm.name}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '3px 10px', borderRadius: 100 }}>Mensuel</span>
-                </div>
-                <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-                  <div style={{ flex: 1, background: '#fff', borderRadius: 10, padding: '10px 12px', border: '1px solid #edf2f7', textAlign: 'center' }}>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{upgradeConfirm.completes}</div>
-                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Complète{upgradeConfirm.completes > 1 ? 's' : ''}</div>
-                  </div>
-                  <div style={{ flex: 1, background: '#fff', borderRadius: 10, padding: '10px 12px', border: '1px solid #edf2f7', textAlign: 'center' }}>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a' }}>{upgradeConfirm.simples}</div>
-                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Simple{upgradeConfirm.simples > 1 ? 's' : ''}</div>
-                  </div>
-                </div>
+                  {upgradePreview && (
+                    <>
+                      {/* Header */}
+                      <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                        <div style={{ width: 56, height: 56, borderRadius: 16, background: upgradePreview.is_upgrade ? 'linear-gradient(135deg, #f0f7fb, #e0f0f6)' : 'linear-gradient(135deg, #fef3c7, #fde68a)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: upgradePreview.is_upgrade ? '2px solid #d0e8f0' : '2px solid #fcd34d' }}>
+                          <ArrowRight size={24} style={{ color: upgradePreview.is_upgrade ? '#2a7d9c' : '#d97706' }} />
+                        </div>
+                        <h2 style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', marginBottom: 6, letterSpacing: '-0.02em' }}>
+                          {upgradePreview.is_upgrade ? `Passer à ${upgradePreview.new_plan_label}` : `Passer à ${upgradePreview.new_plan_label}`}
+                        </h2>
+                        <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
+                          {upgradePreview.is_upgrade
+                            ? 'Votre nouveau plan prend effet immédiatement.'
+                            : `Votre nouveau plan prendra effet le ${upgradePreview.next_billing_date}.`}
+                        </p>
+                      </div>
 
-                {/* Détail prix */}
-                <div style={{ borderTop: '1px solid #edf2f7', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 13, color: '#64748b' }}>Prix HT</span>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{upgradeConfirm.price}€</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 13, color: '#64748b' }}>TVA (20%)</span>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: '#64748b' }}>{(parseFloat(upgradeConfirm.price.replace(',', '.')) * 0.2).toFixed(2).replace('.', ',')}€</span>
-                  </div>
-                  <div style={{ borderTop: '1.5px solid #d0e8f0', paddingTop: 10, marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Total TTC / mois</span>
-                    <span style={{ fontSize: 18, fontWeight: 900, color: '#2a7d9c' }}>{(parseFloat(upgradeConfirm.price.replace(',', '.')) * 1.2).toFixed(2).replace('.', ',')}€</span>
+                      {/* Bandeau info downgrade */}
+                      {upgradePreview.is_downgrade && (
+                        <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 12, padding: '12px 14px', marginBottom: 18 }}>
+                          <p style={{ fontSize: 12.5, color: '#92400e', margin: 0, lineHeight: 1.5 }}>
+                            💡 D'ici la bascule, vous gardez votre plan {upgradePreview.current_plan_label} et vos crédits actuels.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Récap plan */}
+                      <div style={{ background: '#f8fafc', borderRadius: 16, padding: '20px', marginBottom: 16, border: '1.5px solid #edf2f7' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Plan {upgradePreview.new_plan_label}</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '3px 10px', borderRadius: 100 }}>Mensuel</span>
+                        </div>
+
+                        {/* Crédits avant / après */}
+                        <div style={{ marginBottom: 14, padding: '12px', background: '#fff', borderRadius: 10, border: '1px solid #edf2f7' }}>
+                          <p style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Vos crédits après le changement</p>
+                          <div style={{ display: 'flex', gap: 12 }}>
+                            <div style={{ flex: 1, textAlign: 'center', padding: '8px', background: '#f8fafc', borderRadius: 8 }}>
+                              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 2 }}>Complètes</div>
+                              <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>{upgradePreview.new_credits.complete}</div>
+                              {upgradePreview.current_credits.complete > 0 && (
+                                <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 600, marginTop: 2 }}>
+                                  ({upgradePreview.current_credits.complete} actuel + cumul)
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ flex: 1, textAlign: 'center', padding: '8px', background: '#f8fafc', borderRadius: 8 }}>
+                              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 2 }}>Simples</div>
+                              <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>{upgradePreview.new_credits.simple}</div>
+                              {upgradePreview.current_credits.simple > 0 && (
+                                <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 600, marginTop: 2 }}>
+                                  ({upgradePreview.current_credits.simple} actuel + cumul)
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Détail prix (uniquement upgrade) */}
+                        {upgradePreview.is_upgrade && (
+                          <div style={{ borderTop: '1px solid #edf2f7', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <p style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>À payer aujourd'hui</p>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: 13, color: '#64748b' }}>Prix HT</span>
+                              <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{upgradePreview.amount_ht_str}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: 13, color: '#64748b' }}>TVA (20%)</span>
+                              <span style={{ fontSize: 14, fontWeight: 600, color: '#64748b' }}>{upgradePreview.amount_tva_str}</span>
+                            </div>
+                            <div style={{ borderTop: '1.5px solid #d0e8f0', paddingTop: 10, marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Total TTC</span>
+                              <span style={{ fontSize: 20, fontWeight: 900, color: '#2a7d9c' }}>{upgradePreview.amount_ttc_str}</span>
+                            </div>
+                            <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, textAlign: 'right' }}>
+                              Prochain prélèvement : {upgradePreview.next_billing_date}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Mention plafond crédits */}
+                      <p style={{ fontSize: 11.5, color: '#64748b', textAlign: 'center', marginBottom: 16, lineHeight: 1.5 }}>
+                        💡 Vos crédits abonnement non utilisés sont reportés sur le mois suivant. Ils restent valables 2 mois après leur attribution.
+                      </p>
+
+                      {/* Boutons */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <button
+                          onClick={confirmUpgradeFlow}
+                          style={{
+                            width: '100%', padding: '14px', borderRadius: 14, border: 'none', cursor: 'pointer',
+                            background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 800,
+                            boxShadow: '0 8px 24px rgba(15,45,61,0.2)',
+                            transition: 'all 0.2s',
+                          }}>
+                          {upgradePreview.is_upgrade ? `Confirmer et payer ${upgradePreview.amount_ttc_str}` : 'Confirmer le changement'}
+                        </button>
+                        <button onClick={closeUpgradeFlow}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#94a3b8', padding: '8px' }}>
+                          Annuler
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+
+              {/* ═══ ÉTAT 2 : LOADING (paiement en cours) ═══ */}
+              {upgradeFlow === 'loading' && (
+                <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+                    style={{ width: 56, height: 56, border: '4px solid #f0f7fb', borderTopColor: '#2a7d9c', borderRadius: '50%', margin: '0 auto 24px' }}
+                  />
+                  <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 8, letterSpacing: '-0.01em' }}>
+                    {upgradeLoadingMsg}
+                  </h3>
+                  <p style={{ fontSize: 13, color: '#64748b', margin: 0, lineHeight: 1.6 }}>
+                    Merci de patienter quelques instants.<br/>
+                    Ne fermez pas cette fenêtre.
+                  </p>
+                </div>
+              )}
+
+              {/* ═══ ÉTAT 3 : SUCCESS (plan activé) ═══ */}
+              {upgradeFlow === 'success' && upgradeSuccessData && (
+                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', duration: 0.6, bounce: 0.4 }}
+                    style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg, #16a34a, #15803d)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 12px 32px rgba(22,163,74,0.3)' }}>
+                    <CheckCircle size={36} style={{ color: '#fff' }} />
+                  </motion.div>
+
+                  <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 10, letterSpacing: '-0.02em' }}>
+                    {upgradeSuccessData.is_downgrade ? 'Changement programmé !' : `Plan ${upgradeSuccessData.plan_label} activé !`}
+                  </h2>
+                  <p style={{ fontSize: 14, color: '#64748b', marginBottom: 22, lineHeight: 1.6, padding: '0 8px' }}>
+                    {upgradeSuccessData.is_downgrade
+                      ? `Vous passerez en ${upgradeSuccessData.plan_label} le ${upgradeSuccessData.switch_date}. D'ici là, vous gardez votre plan actuel.`
+                      : 'Votre paiement a été validé. Vos nouveaux crédits sont disponibles immédiatement.'}
+                  </p>
+
+                  {!upgradeSuccessData.is_downgrade && (
+                    <div style={{ background: '#f0fdf4', borderRadius: 14, padding: '16px', marginBottom: 20, border: '1px solid #bbf7d0' }}>
+                      <p style={{ fontSize: 12, fontWeight: 700, color: '#15803d', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>Récapitulatif</p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <span style={{ fontSize: 13, color: '#64748b' }}>Montant prélevé</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{upgradeSuccessData.amount}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <span style={{ fontSize: 13, color: '#64748b' }}>Crédits disponibles</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{upgradeSuccessData.new_credits.complete} compl. + {upgradeSuccessData.new_credits.simple} simples</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: 13, color: '#64748b' }}>Prochain prélèvement</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{upgradeSuccessData.next_billing}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <p style={{ fontSize: 11.5, color: '#94a3b8', marginBottom: 18, textAlign: 'center' }}>
+                    📧 La facture vous sera envoyée par email dans quelques instants.
+                  </p>
+
+                  <button
+                    onClick={reloadAfterSuccess}
+                    style={{
+                      width: '100%', padding: '14px', borderRadius: 14, border: 'none', cursor: 'pointer',
+                      background: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff', fontSize: 15, fontWeight: 800,
+                      boxShadow: '0 8px 24px rgba(22,163,74,0.25)',
+                      transition: 'all 0.2s',
+                    }}>
+                    Voir mon dashboard
+                  </button>
+                </div>
+              )}
+
+              {/* ═══ ÉTAT 4 : ERROR (paiement refusé / 3DS échoué) ═══ */}
+              {upgradeFlow === 'error' && (
+                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', duration: 0.5, bounce: 0.3 }}
+                    style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg, #dc2626, #991b1b)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 12px 32px rgba(220,38,38,0.3)' }}>
+                    <AlertTriangle size={36} style={{ color: '#fff' }} />
+                  </motion.div>
+
+                  <h2 style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', marginBottom: 10, letterSpacing: '-0.02em' }}>
+                    Le paiement n'a pas pu être effectué
+                  </h2>
+                  <p style={{ fontSize: 14, color: '#64748b', marginBottom: 24, lineHeight: 1.6, padding: '0 8px' }}>
+                    {upgradeError || 'Une erreur est survenue. Aucun montant n\'a été prélevé.'}
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <button
+                      onClick={() => { closeUpgradeFlow(); handleBillingPortal(); }}
+                      style={{
+                        width: '100%', padding: '13px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                        background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14, fontWeight: 700,
+                        transition: 'all 0.2s',
+                      }}>
+                      Mettre à jour mon moyen de paiement
+                    </button>
+                    <button onClick={closeUpgradeFlow}
+                      style={{ background: 'none', border: '1.5px solid #e5e7eb', borderRadius: 12, padding: '12px', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#64748b' }}>
+                      Fermer
+                    </button>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Boutons */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <button
-                  disabled={loading === `subscribe:${upgradeConfirm.id}`}
-                  onClick={() => {
-                    setUpgradeConfirm(null);
-                    handleSubscribe(upgradeConfirm.id);
-                  }}
-                  style={{
-                    width: '100%', padding: '14px', borderRadius: 14, border: 'none', cursor: loading === `subscribe:${upgradeConfirm.id}` ? 'wait' : 'pointer',
-                    background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 800,
-                    opacity: loading === `subscribe:${upgradeConfirm.id}` ? 0.6 : 1,
-                    boxShadow: '0 8px 24px rgba(15,45,61,0.2)',
-                    transition: 'all 0.2s',
-                  }}>
-                  {loading === `subscribe:${upgradeConfirm.id}` ? 'Changement en cours…' : 'Confirmer le changement'}
-                </button>
-                <button onClick={() => setUpgradeConfirm(null)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#94a3b8', padding: '8px' }}>
-                  Annuler
-                </button>
-              </div>
             </motion.div>
           </motion.div>
         )}
@@ -2853,7 +3158,7 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
                   <button disabled={btnLoading} onClick={() => {
                       if (subscription && subscription.status === 'active') {
                         // Upgrade : ouvrir popup de confirmation avec récap TVA
-                        setUpgradeConfirm({ id: plan.id, name: plan.name, price: plan.price, completes: plan.completes, simples: plan.simples });
+                        openUpgradeFlow(plan.id);
                       } else {
                         // Nouveau abo : rediriger vers Stripe Checkout
                         handleSubscribe(plan.id);
