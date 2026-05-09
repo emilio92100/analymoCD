@@ -3570,7 +3570,7 @@ function TabDocuments({ rapport, onComplement }: { rapport: RapportData; onCompl
   // Docs essentiels
   const docsEssentiels = isCopro ? [
     { label: '3 derniers PV d\'Assemblée Générale', present: hasDoc(['PV_AG']), tooltip: null },
-    { label: 'Règlement de copropriété + modificatifs', present: hasDoc(['REGLEMENT_COPRO', 'MODIFICATIF_RCP']), tooltip: null },
+    { label: 'Règlement de copropriété', present: hasDoc(['REGLEMENT_COPRO']), tooltip: 'Document fondamental qui régit la copropriété. Le modificatif seul ne suffit pas — il complète le règlement original mais ne le remplace pas.' },
     { label: 'Carnet d\'entretien de l\'immeuble', present: hasDoc(['CARNET_ENTRETIEN']), tooltip: 'Document tenu par le syndic qui retrace l\'historique des travaux réalisés, les contrats d\'entretien en cours et les diagnostics effectués sur l\'immeuble.' },
     { label: 'Diagnostics privatifs (DDT)', present: hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']), tooltip: `Selon l'année de construction de l'immeuble${anneeNum ? ` (${anneeNum})` : ''}, certains diagnostics peuvent ne pas être obligatoires.` },
     { label: 'Appel de charges / Appel de fonds', present: hasDoc(['APPEL_CHARGES']), tooltip: null },
@@ -3580,7 +3580,9 @@ function TabDocuments({ rapport, onComplement }: { rapport: RapportData; onCompl
   ];
 
   // Docs secondaires
+  // Le modificatif RCP n'est listé en secondaire QUE si le RCP est présent (sinon il est implicitement remplacé par "RCP manquant" en essentiel)
   const docsSecondaires = isCopro ? [
+    ...(hasDoc(['REGLEMENT_COPRO']) ? [{ label: 'Modificatif(s) au règlement de copropriété', present: hasDoc(['MODIFICATIF_RCP']), tooltip: 'Modifications apportées au règlement de copropriété d\'origine. Permet de connaître les évolutions de la copropriété.' }] : []),
     { label: 'Diagnostics parties communes', present: hasDoc(['DIAGNOSTIC_PARTIES_COMMUNES']), tooltip: 'Amiante, plomb et risques environnementaux sur les parties communes de l\'immeuble.' },
     { label: 'DTG — Diagnostic Technique Global', present: false, tooltip: 'Bilan complet de l\'état de l\'immeuble réalisé par un expert. Obligatoire pour les copropriétés de plus de 200 lots ou de plus de 15 ans. Permet d\'anticiper les grands travaux.' },
     { label: 'PPT — Plan Pluriannuel de Travaux', present: false, tooltip: 'Planning des travaux prévus sur 10 ans établi à partir du DTG. Permet d\'anticiper les charges futures liées aux travaux obligatoires.' },
@@ -3819,7 +3821,7 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
   // Identiques à TabDocuments
   const docsEssentielsManquants = isCopro ? [
     !hasDoc(['PV_AG']) ? { emoji: '📋', label: '3 derniers PV d\'Assemblée Générale', tooltip: null } : null,
-    !hasDoc(['REGLEMENT_COPRO', 'MODIFICATIF_RCP']) ? { emoji: '📜', label: 'Règlement de copropriété + modificatifs', tooltip: null } : null,
+    !hasDoc(['REGLEMENT_COPRO']) ? { emoji: '📜', label: 'Règlement de copropriété', tooltip: 'Document fondamental qui régit la copropriété. Le modificatif seul ne suffit pas — il complète le règlement original mais ne le remplace pas.' } : null,
     !hasDoc(['CARNET_ENTRETIEN']) ? { emoji: '📓', label: 'Carnet d\'entretien de l\'immeuble', tooltip: 'Document tenu par le syndic qui retrace l\'historique des travaux réalisés, les contrats d\'entretien en cours et les diagnostics effectués sur l\'immeuble.' } : null,
     !hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']) ? { emoji: '🗂', label: `Diagnostics privatifs (DDT)`, tooltip: `Selon l'année de construction${anneeNum ? ` (${anneeNum})` : ''}, certains diagnostics peuvent ne pas être obligatoires.` } : null,
     !hasDoc(['APPEL_CHARGES']) ? { emoji: '💶', label: 'Appel de charges / Appel de fonds', tooltip: null } : null,
@@ -3828,7 +3830,9 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
     !hasDoc(['TAXE_FONCIERE']) ? { emoji: '🏛', label: 'Taxe foncière', tooltip: null } : null,
   ].filter(Boolean) as { emoji: string; label: string; tooltip: string | null }[];
 
+  // Le modificatif RCP n'est listé en secondaire QUE si le RCP est présent
   const docsSecondairesManquants = isCopro ? [
+    (hasDoc(['REGLEMENT_COPRO']) && !hasDoc(['MODIFICATIF_RCP'])) ? { emoji: '📜', label: 'Modificatif(s) au règlement de copropriété', tooltip: 'Modifications apportées au règlement d\'origine. Permet de connaître les évolutions de la copropriété.' } : null,
     !hasDoc(['DIAGNOSTIC_PARTIES_COMMUNES']) ? { emoji: '🏗', label: 'Diagnostics parties communes', tooltip: 'Amiante, plomb et risques environnementaux sur les parties communes de l\'immeuble.' } : null,
     { emoji: '📊', label: 'DTG — Diagnostic Technique Global', tooltip: 'Bilan complet de l\'état de l\'immeuble. Permet d\'anticiper les grands travaux.' },
     { emoji: '📋', label: 'PPT — Plan Pluriannuel de Travaux', tooltip: 'Planning des travaux prévus sur 10 ans.' },
@@ -4371,7 +4375,7 @@ export default function RapportPage() {
   const isCoproForMissing = typeBien === 'appartement' || typeBien === 'maison_copro';
   const missingEssentielsCount = isCoproForMissing ? [
     !hasDocType(['PV_AG']),
-    !hasDocType(['REGLEMENT_COPRO', 'MODIFICATIF_RCP']),
+    !hasDocType(['REGLEMENT_COPRO']),
     !hasDocType(['CARNET_ENTRETIEN']),
     !hasDocType(['DDT', 'DPE', 'DIAGNOSTIC']),
     !hasDocType(['APPEL_CHARGES']),
