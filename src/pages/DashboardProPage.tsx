@@ -2465,6 +2465,17 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
     window.location.reload();
   }
 
+  // Bloquer le scroll de la page derrière quand le popup d'upgrade est ouvert
+  useEffect(() => {
+    if (upgradeFlow !== null) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [upgradeFlow]);
+
   useEffect(() => {
     const url = new URL(window.location.href);
     const checkout = url.searchParams.get('checkout');
@@ -2956,9 +2967,9 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
                         )}
 
                         {/* Mention prochaine date + plafond — fusionné, plus discret */}
-                        <p style={{ fontSize: 11, color: '#94a3b8', textAlign: 'center', marginBottom: 14, lineHeight: 1.5 }}>
-                          {upgradePreview.is_upgrade && <>Prochain prélèvement : <strong style={{ color: '#64748b' }}>{upgradePreview.next_billing_date}</strong> · </>}
-                          Crédits valables 2 mois après attribution
+                        <p style={{ fontSize: 11, color: '#94a3b8', textAlign: 'center', marginBottom: 14, lineHeight: 1.55 }}>
+                          {upgradePreview.is_upgrade && <>Prochain prélèvement : <strong style={{ color: '#64748b' }}>{upgradePreview.next_billing_date}</strong><br/></>}
+                          💡 Vos crédits abonnement non utilisés sont reportés sur le mois suivant. Ils restent valables 2 mois après leur attribution.
                         </p>
 
                         {/* Boutons */}
