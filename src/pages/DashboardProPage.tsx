@@ -3136,13 +3136,13 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
               <div key={plan.id} className="plan-card" style={{
                 borderRadius: 18, padding: 22, position: 'relative',
                 background: '#fff',
-                border: isActive ? '2px solid #2a7d9c' : (showRecommendedBanner && plan.id === recommendedPlanId) ? '2px solid #16a34a' : plan.popular ? '2px solid #7dd3fc' : '1.5px solid #edf2f7',
-                boxShadow: (showRecommendedBanner && plan.id === recommendedPlanId) ? '0 8px 32px rgba(22,163,74,0.1)' : plan.popular ? '0 8px 32px rgba(42,125,156,0.1)' : 'none',
+                border: isActive ? '2px solid #2a7d9c' : (showRecommendedBanner && plan.id === recommendedPlanId) ? '2px solid #16a34a' : (plan.popular && (!subscription || subscription.plan === 'decouverte')) ? '2px solid #7dd3fc' : '1.5px solid #edf2f7',
+                boxShadow: (showRecommendedBanner && plan.id === recommendedPlanId) ? '0 8px 32px rgba(22,163,74,0.1)' : (plan.popular && (!subscription || subscription.plan === 'decouverte')) ? '0 8px 32px rgba(42,125,156,0.1)' : 'none',
               }}>
                 {showRecommendedBanner && plan.id === recommendedPlanId && !isActive && (
                   <span style={{ position: 'absolute', top: -10, right: 16, background: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 12px', borderRadius: 100, boxShadow: '0 2px 8px rgba(22,163,74,0.3)' }}>✨ Recommandé pour vous</span>
                 )}
-                {plan.popular && !isActive && !(showRecommendedBanner && plan.id === recommendedPlanId) && (
+                {plan.popular && !isActive && !(showRecommendedBanner && plan.id === recommendedPlanId) && (!subscription || subscription.plan === 'decouverte') && (
                   <span style={{ position: 'absolute', top: -10, right: 16, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 12px', borderRadius: 100 }}>Recommandé</span>
                 )}
                 {isActive && (
