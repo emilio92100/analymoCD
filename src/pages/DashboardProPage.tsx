@@ -896,43 +896,75 @@ function MesDossiersPro() {
           )}
         </div>
       ) : viewMode === 'grid' ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 14 }}>
-          {filtered.map((f) => (
-            <FolderCard key={f.id} folder={f}
-              onClick={() => navigate(`/dashboard/dossier/${f.id}`)}
-              onDelete={() => setFolderToDelete(f)}
-              onArchiveToggle={() => setFolderToArchive(f)} />
-          ))}
-        </div>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={archiveView}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 14 }}>
+            {filtered.map((f, i) => (
+              <motion.div
+                key={f.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: i * 0.03, ease: [0.16, 1, 0.3, 1] }}>
+                <FolderCard folder={f}
+                  onClick={() => navigate(`/dashboard/dossier/${f.id}`)}
+                  onDelete={() => setFolderToDelete(f)}
+                  onArchiveToggle={() => setFolderToArchive(f)} />
+              </motion.div>
+            ))}
+          </motion.div>
+        </AnimatePresence>
       ) : (
         /* Vue liste — tableau compact */
-        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
-          {filtered.map((f, i) => (
-            <div key={f.id} onClick={() => navigate(`/dashboard/dossier/${f.id}`)}
-              style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px', cursor: 'pointer', borderBottom: i < filtered.length - 1 ? '1px solid #f1f5f9' : 'none', transition: 'background 0.15s' }}
-              onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#fafcfd'; }}
-              onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
-              <div style={{ width: 36, height: 36, borderRadius: 9, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Folder size={16} style={{ color: '#2a7d9c' }} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{f.name}</div>
-                {(f.property_address || f.property_city) && (
-                  <div style={{ fontSize: 11.5, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
-                    <MapPin size={10} style={{ color: '#94a3b8', flexShrink: 0 }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{[f.property_address, f.property_city].filter(Boolean).join(', ')}</span>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={archiveView}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+            {filtered.map((f, i) => (
+              <motion.div
+                key={f.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.22, delay: i * 0.025, ease: [0.16, 1, 0.3, 1] }}
+                onClick={() => navigate(`/dashboard/dossier/${f.id}`)}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px', cursor: 'pointer', borderBottom: i < filtered.length - 1 ? '1px solid #f1f5f9' : 'none', transition: 'background 0.15s', opacity: f.archived_at ? 0.75 : 1 }}
+                onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#fafcfd'; }}
+                onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
+                <div style={{ width: 36, height: 36, borderRadius: 9, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Folder size={16} style={{ color: '#2a7d9c' }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{f.name}</span>
+                    {f.archived_at && (
+                      <span style={{ fontSize: 9, fontWeight: 800, color: '#7c2d12', background: '#fed7aa', padding: '2px 6px', borderRadius: 5, letterSpacing: '0.04em', flexShrink: 0 }}>📦 ARCHIVÉ</span>
+                    )}
                   </div>
-                )}
-              </div>
-              <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexShrink: 0 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: (f.analyses_count || 0) > 0 ? '#2a7d9c' : '#94a3b8' }}>{f.analyses_count || 0} analyse{(f.analyses_count || 0) > 1 ? 's' : ''}</span>
-                <span style={{ fontSize: 12, color: '#94a3b8' }}>{f.sellers_count || 0} vendeur{(f.sellers_count || 0) > 1 ? 's' : ''}</span>
-                <span style={{ fontSize: 11, color: '#cbd5e1' }}>{fmtDate(f.updated_at)}</span>
-              </div>
-              <ChevronRight size={14} style={{ color: '#cbd5e1', flexShrink: 0 }} />
-            </div>
-          ))}
-        </div>
+                  {(f.property_address || f.property_city) && (
+                    <div style={{ fontSize: 11.5, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
+                      <MapPin size={10} style={{ color: '#94a3b8', flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{[f.property_address, f.property_city].filter(Boolean).join(', ')}</span>
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexShrink: 0 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: (f.analyses_count || 0) > 0 ? '#2a7d9c' : '#94a3b8' }}>{f.analyses_count || 0} analyse{(f.analyses_count || 0) > 1 ? 's' : ''}</span>
+                  <span style={{ fontSize: 12, color: '#94a3b8' }}>{f.sellers_count || 0} vendeur{(f.sellers_count || 0) > 1 ? 's' : ''}</span>
+                  <span style={{ fontSize: 11, color: '#cbd5e1' }}>{fmtDate(f.updated_at)}</span>
+                </div>
+                <ChevronRight size={14} style={{ color: '#cbd5e1', flexShrink: 0 }} />
+              </motion.div>
+            ))}
+          </motion.div>
+        </AnimatePresence>
       )}
 
       {/* Modale création */}
@@ -998,15 +1030,8 @@ function FolderCard({ folder, onClick, onDelete, onArchiveToggle }: { folder: Pr
       onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.boxShadow = '0 8px 24px rgba(42,125,156,0.08)'; el.style.transform = 'translateY(-2px)'; }}
       onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.boxShadow = 'none'; el.style.transform = 'translateY(0)'; }}>
 
-      {/* Badge archivé */}
-      {isArchived && (
-        <div style={{ position: 'absolute' as const, top: 10, left: 10, fontSize: 10, fontWeight: 800, color: '#7c2d12', background: '#fed7aa', padding: '3px 8px', borderRadius: 6, letterSpacing: '0.04em' }}>
-          📦 ARCHIVÉ
-        </div>
-      )}
-
       {/* Boutons d'action (apparaissent au hover) */}
-      <div style={{ position: 'absolute' as const, top: 10, right: 10, display: 'flex', gap: 6, opacity: 0, transition: 'opacity 0.15s' }} className="folder-actions-btns">
+      <div style={{ position: 'absolute' as const, top: 10, right: 10, display: 'flex', gap: 6, opacity: 0, transition: 'opacity 0.15s', zIndex: 2 }} className="folder-actions-btns">
         <button onClick={e => { e.stopPropagation(); onArchiveToggle(); }} title={isArchived ? 'Restaurer' : 'Archiver ce dossier'}
           style={{ width: 28, height: 28, borderRadius: 7, background: isArchived ? '#f0fdf4' : '#fff7ed', border: `1px solid ${isArchived ? '#bbf7d0' : '#fed7aa'}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <span style={{ fontSize: 12 }}>{isArchived ? '📂' : '📦'}</span>
@@ -1021,12 +1046,19 @@ function FolderCard({ folder, onClick, onDelete, onArchiveToggle }: { folder: Pr
         div:hover > .folder-actions-btns { opacity: 1 !important; }
       `}</style>
 
+      {/* Badge archivé — dans le flux, au-dessus du titre */}
+      {isArchived && (
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 800, color: '#7c2d12', background: '#fed7aa', padding: '3px 8px', borderRadius: 6, letterSpacing: '0.04em', marginBottom: 10 }}>
+          <span style={{ fontSize: 11 }}>📦</span> ARCHIVÉ
+        </div>
+      )}
+
       {/* Icône + Nom */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
         <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Folder size={18} style={{ color: '#2a7d9c' }} />
         </div>
-        <div style={{ flex: 1, minWidth: 0, paddingRight: 30 }}>
+        <div style={{ flex: 1, minWidth: 0, paddingRight: 70 }}>
           <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a', margin: 0, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
             {folder.name}
           </h3>
