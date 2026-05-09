@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useSearchParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { fetchAnalyseById, fetchAnalyseByShareToken, getOrCreateShareToken } from '../lib/analyses';
 import { lancerAnalyseEdge } from '../lib/analyse-client';
 import type { AnalyseProgress } from '../lib/analyse-client';
@@ -3607,6 +3608,23 @@ function TabDocuments({ rapport, onComplement }: { rapport: RapportData; onCompl
         </div>
       )}
 
+      {/* 🆕 Bandeau d'alerte si docs essentiels manquants */}
+      {docsEssentielManquants.length > 0 && !complementDate && !expired && (
+        <div style={{ padding: '16px 20px', borderRadius: 14, background: 'linear-gradient(135deg, #fff7ed, #ffedd5)', border: '1.5px solid #fdba74', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <AlertTriangle size={18} color="#fff" />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14.5, fontWeight: 800, color: '#9a3412', marginBottom: 4 }}>
+              Cette analyse pourrait être plus précise
+            </div>
+            <div style={{ fontSize: 13.5, color: '#7c2d12', lineHeight: 1.5 }}>
+              Il manque <strong>{docsEssentielManquants.length} document{docsEssentielManquants.length > 1 ? 's essentiels' : ' essentiel'}</strong> à votre dossier. Pour une analyse complète et fiable, nous vous invitons à utiliser la fonction <strong>Compléter mon dossier</strong> ci-dessous — c'est gratuit et le rapport sera recalculé.
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Section docs manquants EN HAUT */}
       {(docsEssentielManquants.length > 0 || docsSecondairesManquants.length > 0) && (
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
@@ -3861,11 +3879,28 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
     <TooltipBtn text={text} />
   );
 
+  // 🔒 Bloque le scroll du body quand le modal est ouvert
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = originalOverflow; };
+  }, []);
+
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div onClick={!uploading ? onClose : undefined} style={{ position: 'absolute', inset: 0, background: 'rgba(15,45,61,0.6)', backdropFilter: 'blur(4px)' }} />
 
-      <div style={{ position: 'relative', width: '100%', maxWidth: 680, background: '#fff', borderRadius: 20, boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden', maxHeight: '90vh', overflowY: 'auto' }}>
+      <motion.div
+        initial={{ scale: 0.94, opacity: 0, y: 12 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.96, opacity: 0, y: 8 }}
+        transition={{ type: 'spring', damping: 24, stiffness: 280 }}
+        style={{ position: 'relative', width: '100%', maxWidth: 680, background: '#fff', borderRadius: 20, boxShadow: '0 25px 60px rgba(0,0,0,0.25)', overflow: 'hidden', maxHeight: '90vh', overflowY: 'auto' }}>
 
         {/* Header */}
         <div style={{ padding: '18px 24px 14px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -4041,8 +4076,8 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
             </>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -4328,13 +4363,30 @@ export default function RapportPage() {
   const logementLabel = rapport.type_bien === 'maison' ? 'Ma maison' : 'Logement';
   const logementIcon = rapport.type_bien === 'maison' ? <Home size={14} /> : <Building2 size={14} />;
 
+  // 🆕 Calcul des docs essentiels manquants (même logique que TabDocuments / ComplementModal)
+  const docsAnalyses = (rapport.documents_analyses as Array<Record<string, unknown>>) || [];
+  const docsAnalysesTypes = docsAnalyses.map(d => safeStr(d.type));
+  const hasDocType = (types: string[]) => types.some(t => docsAnalysesTypes.includes(t));
+  const typeBien = safeStr(rapport.type_bien);
+  const isCoproForMissing = typeBien === 'appartement' || typeBien === 'maison_copro';
+  const missingEssentielsCount = isCoproForMissing ? [
+    !hasDocType(['PV_AG']),
+    !hasDocType(['REGLEMENT_COPRO', 'MODIFICATIF_RCP']),
+    !hasDocType(['CARNET_ENTRETIEN']),
+    !hasDocType(['DDT', 'DPE', 'DIAGNOSTIC']),
+    !hasDocType(['APPEL_CHARGES']),
+  ].filter(Boolean).length : [
+    !hasDocType(['DDT', 'DPE', 'DIAGNOSTIC']),
+    !hasDocType(['TAXE_FONCIERE']),
+  ].filter(Boolean).length;
+
   // Onglets selon type de bien
-  const tabs: { id: TabId; label: string; icon: React.ReactNode; dotColor: string }[] = [
+  const tabs: { id: TabId; label: string; icon: React.ReactNode; dotColor: string; badge?: number }[] = [
     { id: 'synthese', label: 'Synthèse', icon: <Star size={14} />, dotColor: '#22c55e' },
     ...(hasCopro ? [{ id: 'copropriete' as TabId, label: 'Copropriété', icon: <Building2 size={14} />, dotColor: rapport.travaux_a_prevoir.length > 0 ? '#f97316' : '#22c55e' }] : []),
     { id: 'logement', label: logementLabel, icon: logementIcon, dotColor: rapport.diagnostics.some((d: Record<string, unknown>) => d.alerte && d.perimetre === 'lot_privatif') ? '#ef4444' : '#2a7d9c' },
     { id: 'procedures', label: 'Procédures', icon: <Gavel size={14} />, dotColor: rapport.procedures_en_cours ? '#ef4444' : '#22c55e' },
-    { id: 'documents', label: 'Documents', icon: <FileText size={14} />, dotColor: '#94a3b8' },
+    { id: 'documents', label: 'Documents', icon: <FileText size={14} />, dotColor: missingEssentielsCount > 0 ? '#f97316' : '#94a3b8', badge: missingEssentielsCount > 0 ? missingEssentielsCount : undefined },
   ];
 
   return (
@@ -4382,6 +4434,9 @@ export default function RapportPage() {
                   }}>
                   {tab.icon}
                   {tab.label}
+                  {tab.badge !== undefined && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9, background: active ? 'rgba(255,255,255,0.25)' : '#f97316', color: '#fff', fontSize: 10.5, fontWeight: 800, flexShrink: 0 }}>{tab.badge}</span>
+                  )}
                   <div style={{ width: 6, height: 6, borderRadius: '50%', background: active ? 'rgba(255,255,255,0.85)' : tab.dotColor, flexShrink: 0 }} />
                 </button>
               );
@@ -4406,9 +4461,12 @@ export default function RapportPage() {
                 const active = activeTab === tab.id;
                 return (
                   <button key={tab.id} onClick={() => { setActiveTab(tab.id); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                    style={{ flex: active ? 1.7 : 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, padding: active ? '10px 8px' : '10px 4px', border: 'none', background: active ? `${tab.dotColor}18` : 'transparent', borderRadius: 14, cursor: 'pointer', transition: 'all 0.2s' }}>
-                    <div style={{ fontSize: 26, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', filter: active ? 'none' : 'grayscale(1)', opacity: active ? 1 : 0.45 }}>
+                    style={{ flex: active ? 1.7 : 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 5, padding: active ? '10px 8px' : '10px 4px', border: 'none', background: active ? `${tab.dotColor}18` : 'transparent', borderRadius: 14, cursor: 'pointer', transition: 'all 0.2s', position: 'relative' as const }}>
+                    <div style={{ fontSize: 26, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', filter: active ? 'none' : 'grayscale(1)', opacity: active ? 1 : 0.45, position: 'relative' as const }}>
                       {tab.icon}
+                      {tab.badge !== undefined && (
+                        <span style={{ position: 'absolute' as const, top: -6, right: -8, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8, background: '#f97316', color: '#fff', fontSize: 9.5, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.15)', filter: 'none', opacity: 1 }}>{tab.badge}</span>
+                      )}
                     </div>
                     <span style={{ fontSize: 12, fontWeight: active ? 700 : 500, color: active ? tab.dotColor : '#94a3b8', whiteSpace: 'nowrap' as const, lineHeight: 1 }}>{tab.label}</span>
                   </button>
@@ -4419,15 +4477,17 @@ export default function RapportPage() {
         )}
 
         {/* Popup Compléter le dossier */}
-        {showComplement && rapport && (
-          <ComplementModal
-            analyseId={rapport.id}
-            profil={(rapport.profil as 'rp' | 'invest') || 'rp'}
-            rapport={rapport as unknown as Record<string, unknown>}
-            onClose={() => setShowComplement(false)}
-            onSuccess={() => { setShowComplement(false); loadRapport(); }}
-          />
-        )}
+        <AnimatePresence>
+          {showComplement && rapport && (
+            <ComplementModal
+              analyseId={rapport.id}
+              profil={(rapport.profil as 'rp' | 'invest') || 'rp'}
+              rapport={rapport as unknown as Record<string, unknown>}
+              onClose={() => setShowComplement(false)}
+              onSuccess={() => { setShowComplement(false); loadRapport(); }}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Footer */}
         <div style={{ padding: '14px 18px', background: '#fff', borderRadius: 12, border: '1px solid #edf2f7', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
