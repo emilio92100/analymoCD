@@ -3896,7 +3896,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [clientShares, setClientShares] = useState<{ id: string; recipient_name: string; recipient_email: string; sent_at: string; opened_at?: string }[]>([]);
   const [clientSubscription, setClientSubscription] = useState<{ plan: string; status: string; current_period_end?: string; cancel_at_period_end?: boolean; canceled_at?: string; cancellation_reason?: string; credits_complete_total: number; credits_complete_used: number; credits_simple_total: number; credits_simple_used: number } | null>(null);
   const [proClientCredits, setProClientCredits] = useState<{ total_complete: number; total_document: number } | null>(null);
-  const [clientInvoices, setClientInvoices] = useState<{ id: string; date: string; description: string; amount: string; pdf_url: string | null; type: string }[]>([]);
+  const [clientInvoices, setClientInvoices] = useState<{ id: string; date: string; description: string; amount: string; pdf_url: string | null; type: string; status?: string; status_label?: string; status_variant?: 'success' | 'pending' | 'failed' | 'void'; failure_reason?: string | null; attempt_count?: number }[]>([]);
   const [clientInvoicesLoading, setClientInvoicesLoading] = useState(false);
   const [editingIdentity, setEditingIdentity] = useState(false);
   const [notifyProOnSave, setNotifyProOnSave] = useState(false);
@@ -4484,29 +4484,43 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
               {clientInvoices.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '2px 6px', borderRadius: 100 }}>{clientInvoices.length}</span>}
             </div>
 
-            {/* CA total */}
+            {/* CA total + compteurs (ne compte que les paiements réussis) */}
             {!clientInvoicesLoading && clientInvoices.length > 0 && (() => {
-              const totalCA = clientInvoices.reduce((sum, inv) => {
+              // Le CA total ne compte QUE les paiements réussis (status === 'paid' ou pas de status = grants/legacy considéré OK)
+              const successfulInvoices = clientInvoices.filter(inv => !inv.status || inv.status === 'paid');
+              const failedInvoices = clientInvoices.filter(inv => inv.status_variant === 'failed');
+              const totalCA = successfulInvoices.reduce((sum, inv) => {
                 const amount = parseFloat(inv.amount.replace(/[^0-9.,]/g, '').replace(',', '.'));
                 return sum + (isNaN(amount) ? 0 : amount);
               }, 0);
-              const aboCount = clientInvoices.filter(inv => inv.type === 'subscription').length;
-              const unitCount = clientInvoices.filter(inv => inv.type === 'unit').length;
+              const aboCount = successfulInvoices.filter(inv => inv.type === 'subscription').length;
+              const unitCount = successfulInvoices.filter(inv => inv.type === 'unit').length;
               return (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 14 }}>
-                  <div style={{ padding: '12px 14px', borderRadius: 12, background: 'linear-gradient(135deg, #f0fdf4, #ecfdf5)', border: '1px solid #bbf7d0', textAlign: 'center' as const }}>
-                    <div style={{ fontSize: 22, fontWeight: 900, color: '#16a34a' }}>{totalCA.toFixed(2).replace('.', ',')}€</div>
-                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>CA total généré</div>
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 10 }}>
+                    <div style={{ padding: '12px 14px', borderRadius: 12, background: 'linear-gradient(135deg, #f0fdf4, #ecfdf5)', border: '1px solid #bbf7d0', textAlign: 'center' as const }}>
+                      <div style={{ fontSize: 22, fontWeight: 900, color: '#16a34a' }}>{totalCA.toFixed(2).replace('.', ',')}€</div>
+                      <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>CA total encaissé</div>
+                    </div>
+                    <div style={{ padding: '12px 14px', borderRadius: 12, background: '#f0f7fb', border: '1px solid #d0e8f0', textAlign: 'center' as const }}>
+                      <div style={{ fontSize: 22, fontWeight: 900, color: '#2a7d9c' }}>{aboCount}</div>
+                      <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Paiements abo</div>
+                    </div>
+                    <div style={{ padding: '12px 14px', borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7', textAlign: 'center' as const }}>
+                      <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>{unitCount}</div>
+                      <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Paiements unitaires</div>
+                    </div>
                   </div>
-                  <div style={{ padding: '12px 14px', borderRadius: 12, background: '#f0f7fb', border: '1px solid #d0e8f0', textAlign: 'center' as const }}>
-                    <div style={{ fontSize: 22, fontWeight: 900, color: '#2a7d9c' }}>{aboCount}</div>
-                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Paiements abo</div>
-                  </div>
-                  <div style={{ padding: '12px 14px', borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7', textAlign: 'center' as const }}>
-                    <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>{unitCount}</div>
-                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Paiements unitaires</div>
-                  </div>
-                </div>
+                  {/* Bandeau d'alerte si paiements échoués */}
+                  {failedInvoices.length > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', marginBottom: 14, borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca' }}>
+                      <AlertTriangle size={16} style={{ color: '#dc2626', flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, color: '#991b1b', fontWeight: 600 }}>
+                        {failedInvoices.length} paiement{failedInvoices.length > 1 ? 's' : ''} en échec — voir détails ci-dessous
+                      </span>
+                    </div>
+                  )}
+                </>
               );
             })()}
 
@@ -4516,21 +4530,55 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
               <p style={{ fontSize: 13, color: '#94a3b8', textAlign: 'center' as const, padding: 16 }}>Aucun paiement enregistré.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {clientInvoices.map(inv => (
-                  <div key={inv.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: '#f8fafc' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{inv.description}</div>
-                      <div style={{ fontSize: 11, color: '#94a3b8' }}>{inv.date} · <span style={{ fontWeight: 700, color: inv.type === 'subscription' ? '#2a7d9c' : '#16a34a' }}>{inv.type === 'subscription' ? 'Abo' : 'Unitaire'}</span></div>
+                {clientInvoices.map(inv => {
+                  // Couleurs selon variant
+                  const variantStyles: Record<string, { bg: string; border: string; amountColor: string; badgeBg: string; badgeColor: string }> = {
+                    success: { bg: '#f8fafc', border: 'transparent', amountColor: '#16a34a', badgeBg: '#dcfce7', badgeColor: '#15803d' },
+                    pending: { bg: '#fffbeb', border: '#fde68a', amountColor: '#ca8a04', badgeBg: '#fef3c7', badgeColor: '#92400e' },
+                    failed: { bg: '#fef2f2', border: '#fecaca', amountColor: '#dc2626', badgeBg: '#fee2e2', badgeColor: '#991b1b' },
+                    void: { bg: '#f8fafc', border: '#e2e8f0', amountColor: '#94a3b8', badgeBg: '#f1f5f9', badgeColor: '#64748b' },
+                  };
+                  const variant = inv.status_variant || 'success';
+                  const styles = variantStyles[variant];
+                  const showBadge = inv.status && inv.status !== 'paid';
+
+                  return (
+                    <div key={inv.id} style={{ padding: '10px 12px', borderRadius: 10, background: styles.bg, border: styles.border !== 'transparent' ? `1px solid ${styles.border}` : 'none' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{inv.description}</div>
+                          <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <span>{inv.date}</span>
+                            <span>·</span>
+                            <span style={{ fontWeight: 700, color: inv.type === 'subscription' ? '#2a7d9c' : '#16a34a' }}>{inv.type === 'subscription' ? 'Abo' : 'Unitaire'}</span>
+                            {showBadge && (
+                              <>
+                                <span>·</span>
+                                <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 100, background: styles.badgeBg, color: styles.badgeColor }}>
+                                  {inv.status_label}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: 14, fontWeight: 800, color: styles.amountColor, flexShrink: 0, textDecoration: variant === 'void' ? 'line-through' : 'none' }}>{inv.amount}</span>
+                        {inv.pdf_url && (
+                          <a href={inv.pdf_url} target="_blank" rel="noopener noreferrer"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '4px 10px', borderRadius: 7, background: '#f0f7fb', color: '#2a7d9c', textDecoration: 'none', fontSize: 11, fontWeight: 700, border: '1px solid #d0e8f0', flexShrink: 0 }}>
+                            <Download size={11} /> PDF
+                          </a>
+                        )}
+                      </div>
+                      {/* Motif d'échec si applicable */}
+                      {inv.failure_reason && (
+                        <div style={{ marginTop: 6, padding: '6px 10px', borderRadius: 8, background: '#fff', border: '1px solid #fecaca', fontSize: 11.5, color: '#991b1b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <AlertTriangle size={11} style={{ flexShrink: 0 }} />
+                          <span><strong>Motif :</strong> {inv.failure_reason}</span>
+                        </div>
+                      )}
                     </div>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: '#16a34a', flexShrink: 0 }}>{inv.amount}</span>
-                    {inv.pdf_url && (
-                      <a href={inv.pdf_url} target="_blank" rel="noopener noreferrer"
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '4px 10px', borderRadius: 7, background: '#f0f7fb', color: '#2a7d9c', textDecoration: 'none', fontSize: 11, fontWeight: 700, border: '1px solid #d0e8f0', flexShrink: 0 }}>
-                        <Download size={11} /> PDF
-                      </a>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
