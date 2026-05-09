@@ -366,6 +366,180 @@ async function handleAnalyseFailure(
   }).eq('id', analyseId);
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// 🆕 v9 — NOTIF + EMAIL DE SUCCÈS (uniquement si fromRetry = true)
+// Ces fonctions sont appelées quand une analyse passée par la queue
+// se termine avec succès, pour prévenir le client par email + cloche.
+// ══════════════════════════════════════════════════════════════════════
+
+async function insertNotification(
+  supabaseAdmin: SupabaseClient,
+  userId: string,
+  title: string,
+  message: string,
+): Promise<void> {
+  try {
+    await supabaseAdmin.from('user_notifications').insert({
+      user_id: userId,
+      title,
+      message,
+      read: false,
+    });
+    console.log(`[analyser-run] 🔔 Notif: ${title}`);
+  } catch (err) {
+    console.error('[analyser-run] Notif error:', err);
+  }
+}
+
+async function sendMailjet(
+  to: string,
+  toName: string,
+  subject: string,
+  htmlBody: string,
+  isPro: boolean,
+): Promise<boolean> {
+  const MJ_API_KEY = Deno.env.get('MJ_API_KEY') ?? '';
+  const MJ_SECRET_KEY = Deno.env.get('MJ_SECRET_KEY') ?? '';
+  if (!MJ_API_KEY || !MJ_SECRET_KEY) {
+    console.error('[analyser-run] Mailjet non configuré');
+    return false;
+  }
+
+  const fromEmail = isPro ? 'pro@verimo.fr' : 'notification@verimo.fr';
+  const fromName = isPro ? 'Verimo Pro' : 'Verimo';
+
+  try {
+    const res = await fetch('https://api.mailjet.com/v3.1/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic ' + btoa(`${MJ_API_KEY}:${MJ_SECRET_KEY}`),
+      },
+      body: JSON.stringify({
+        Messages: [{
+          From: { Email: fromEmail, Name: fromName },
+          To: [{ Email: to, Name: toName }],
+          Subject: subject,
+          HTMLPart: htmlBody,
+        }],
+      }),
+    });
+    if (!res.ok) {
+      const errBody = await res.text();
+      console.error(`[analyser-run] Mailjet ${res.status}:`, errBody);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('[analyser-run] Mailjet exception:', err);
+    return false;
+  }
+}
+
+function buildSuccessEmail(opts: {
+  prenom: string;
+  isComplete: boolean;
+  subject: string;
+  reportUrl: string;
+  isPro: boolean;
+}): string {
+  const intro = opts.isComplete
+    ? `Votre analyse complète du bien situé <strong style="color:#0f2d3d;">${opts.subject}</strong> est terminée.`
+    : `Votre analyse du document <strong style="color:#0f2d3d;">"${opts.subject}"</strong> est terminée.`;
+  const summary = opts.isComplete
+    ? `Notre rapport détaille le score global, les points forts et faibles, l'état des finances de la copropriété, les diagnostics, les éventuels risques et nos recommandations avant signature.`
+    : `Notre rapport vous résume les points-clés du document, identifie les éléments importants à retenir et signale les points de vigilance éventuels.`;
+  const proLabel = opts.isPro ? 'PRO · ANALYSE PRÊTE' : '✓ ANALYSE PRÊTE';
+
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f7f9;font-family:'Helvetica Neue',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7f9;padding:20px 12px;">
+<tr><td align="center">
+<table cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);width:100%;max-width:560px;">
+<tr><td style="background:linear-gradient(135deg,#0a1f2d,#1a4a5e);padding:36px 24px 28px;text-align:center;">
+<img src="https://www.verimo.fr/logo-blanc.png" alt="Verimo" width="180" style="display:block;margin:0 auto 14px;max-width:180px;height:auto;" />
+<span style="display:inline-block;background:linear-gradient(135deg,#7dd3fc,#38bdf8);color:#0a1f2d;font-size:11px;font-weight:800;padding:5px 16px;border-radius:100px;letter-spacing:0.1em;">${proLabel}</span>
+</td></tr>
+<tr><td style="padding:32px 28px 8px;">
+<h2 style="color:#0f2d3d;font-size:22px;font-weight:800;margin:0 0 20px;text-align:center;">Bonjour ${opts.prenom},</h2>
+<p style="color:#374151;font-size:15px;line-height:1.8;margin:0 0 12px;">${intro}</p>
+<p style="color:#374151;font-size:15px;line-height:1.8;margin:0 0 24px;">${summary}</p>
+</td></tr>
+<tr><td style="padding:0 28px 28px;text-align:center;">
+<a href="${opts.reportUrl}" style="display:inline-block;background:linear-gradient(135deg,#2a7d9c,#0f2d3d);color:#fff;font-size:16px;font-weight:700;padding:15px 44px;border-radius:14px;text-decoration:none;">🔍 Consulter mon rapport</a>
+</td></tr>
+<tr><td style="padding:0 28px 24px;">
+<p style="color:#94a3b8;font-size:13px;line-height:1.6;margin:0;text-align:center;">Une question ? Créez un ticket depuis votre espace via le bouton "Besoin d'aide".</p>
+</td></tr>
+<tr><td style="background:#f8fafc;padding:20px 28px;text-align:center;border-top:1px solid #f1f5f9;">
+<p style="color:#94a3b8;font-size:11px;margin:0;line-height:1.6;"><strong style="color:#64748b;">Verimo${opts.isPro ? ' Pro' : ''}</strong> — Vos documents décryptés, votre décision éclairée.<br><a href="https://verimo.fr" style="color:#2a7d9c;text-decoration:none;">verimo.fr</a></p>
+</td></tr>
+</table>
+</td></tr></table></body></html>`;
+}
+
+async function notifyAnalysisReady(
+  supabaseAdmin: SupabaseClient,
+  analyseId: string,
+): Promise<void> {
+  try {
+    const { data: a } = await supabaseAdmin
+      .from('analyses')
+      .select('user_id, type, title, address')
+      .eq('id', analyseId)
+      .single();
+
+    if (!a?.user_id) return;
+
+    const subject = a.address || a.title || 'votre analyse';
+    const isComplete = a.type !== 'document';
+
+    // 1. Notification cloche
+    await insertNotification(
+      supabaseAdmin,
+      a.user_id,
+      'Votre analyse est prête',
+      `${subject} — consulter le rapport`,
+    );
+
+    // 2. Email Mailjet
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('email, full_name, role')
+      .eq('id', a.user_id)
+      .single();
+
+    if (!profile?.email) {
+      console.warn('[analyser-run] Email manquant — pas d\'envoi mail');
+      return;
+    }
+
+    const isPro = profile.role === 'pro';
+    const prenom = profile.full_name?.split(' ')[0] || 'Bonjour';
+    const reportUrl = `https://verimo.fr/rapport?id=${analyseId}`;
+
+    const html = buildSuccessEmail({
+      prenom,
+      isComplete,
+      subject,
+      reportUrl,
+      isPro,
+    });
+
+    await sendMailjet(
+      profile.email,
+      profile.full_name || '',
+      '✅ Votre analyse Verimo est prête',
+      html,
+      isPro,
+    );
+    console.log(`[analyser-run] ✅ Email + notif envoyés pour ${analyseId}`);
+  } catch (err) {
+    console.error('[analyser-run] notifyAnalysisReady error:', err);
+  }
+}
+
 
 async function callAI(params: {
   system: string; userContent: unknown[]; maxTokens: number; apiKey: string;
@@ -1046,6 +1220,7 @@ async function runAnalyseWithData(
   existingReport?: Record<string, unknown>,
   complementDocNames?: string[],
   typeBienDeclare?: string | null,
+  fromRetry?: boolean, // 🆕 v9 — true si analyse vient de la queue
 ): Promise<void> {
   const fileIds = files.map(f => f.id);
   try {
@@ -1210,6 +1385,10 @@ async function runAnalyseWithData(
       await handleAnalyseFailure(supabaseAdmin, analyseId, 'save_error', 'Erreur lors de la sauvegarde du rapport. Votre crédit a été remboursé automatiquement. Contactez le support.', 'Erreur sauvegarde rapport');
     } else {
       console.log(`[analyser-run] ${analyseId} termin\u00e9e avec succ\u00e8s (mode: ${mode}).`);
+      // 🆕 v9 — Si l'analyse vient de la queue, notifier le client par email + cloche
+      if (fromRetry) {
+        await notifyAnalysisReady(supabaseAdmin, analyseId);
+      }
     }
   } catch (err) {
     console.error('[analyser-run] Erreur:', err);
@@ -1381,14 +1560,15 @@ Deno.serve(async (req) => {
     const typeBienDeclare = (body?.typeBienDeclare as string) || null;
     const existingReport = body?.existingReport as Record<string, unknown> | undefined;
     const complementDocNames = body?.complementDocNames as string[] | undefined;
+    const fromRetry = body?.fromRetry === true; // 🆕 v9 — flag retry depuis la queue
 
     if (!fileIds.length) {
       console.error(`[analyser-run] Pas de fileIds dans le payload`);
       return new Response(JSON.stringify({ error: 'no_file_ids' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    console.log(`[analyser-run] Lancement — ${fileIds.length} docs | mode:${mode} | typeDeclare:${typeBienDeclare || 'null'}`);
-    EdgeRuntime.waitUntil(runAnalyseWithData(analyseId, fileIds, mode, profil, supabaseAdmin, apiKey, existingReport, complementDocNames, typeBienDeclare));
+    console.log(`[analyser-run] Lancement — ${fileIds.length} docs | mode:${mode} | typeDeclare:${typeBienDeclare || 'null'} | fromRetry:${fromRetry}`);
+    EdgeRuntime.waitUntil(runAnalyseWithData(analyseId, fileIds, mode, profil, supabaseAdmin, apiKey, existingReport, complementDocNames, typeBienDeclare, fromRetry));
 
     return new Response(JSON.stringify({ success: true, analyseId }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
   } catch (err) {
