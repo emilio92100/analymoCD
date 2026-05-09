@@ -1,27 +1,44 @@
 // ══════════════════════════════════════════════════════════════════════
-// VERIMO — Edge Function : pro-checkout-create
-// 
+// VERIMO — Edge Function : pro-checkout-create V2
+//
 // Crée une session Stripe Checkout pour les pros.
 // Appelée par le frontend depuis le dashboard pro (MonAbonnement).
-// 
+//
+// V2 :
+//   - Fix bug upgrade : plein tarif facturé immédiatement (au lieu de gratuit)
+//   - Support 3DS inline : retourne le client_secret au frontend si requis
+//   - Préparation downgrade différé : nouveau mode "schedule_downgrade"
+//   - Mode "preview_upgrade" : récap pour le popup avant validation
+//
 // Modes supportés :
-// 
+//
 // 1. "subscribe" — S'abonner à un plan (Découverte / Starter / Power)
 //    Body : { mode: "subscribe", plan: "decouverte" | "starter" | "power" }
-//    
-// 2. "buy_unit" — Acheter une analyse à l'unité (réservé aux abonnés actifs)
+//
+// 2. "preview_upgrade" — Récap d'upgrade avant validation (pour popup)
+//    Body : { mode: "preview_upgrade", plan: "starter" | "power" }
+//    Renvoie : { current_plan, new_plan, amount_ht, amount_tva, amount_ttc,
+//               next_billing_date, current_credits, new_credits }
+//
+// 3. "buy_unit" — Acheter une analyse à l'unité (réservé aux abonnés actifs)
 //    Body : { mode: "buy_unit", unit_type: "complete" | "document", quantity: number }
 //
-// 3. "cancel" — Annuler l'abonnement (cancel_at_period_end)
+// 4. "cancel" — Annuler l'abonnement (cancel_at_period_end)
 //    Body : { mode: "cancel", reason: string }
 //
-// 4. "list_invoices" — Lister les factures Stripe du client
-//    Body : { mode: "list_invoices" }
-// 
-// Sécurité : 
+// 5. "reactivate" — Annuler la résiliation
+//    Body : { mode: "reactivate" }
+//
+// 6. "billing_portal" — Ouvrir le portail Stripe (modifier carte)
+//    Body : { mode: "billing_portal" }
+//
+// 7. "list_invoices" — Lister les factures Stripe du client
+//    Body : { mode: "list_invoices", target_user_id?: string }
+//
+// Sécurité :
 // - JWT vérifié (le pro doit être connecté)
 // - "buy_unit" refusé si pas d'abonnement pro actif (HTTP 403)
-// 
+//
 // Variables d'environnement requises :
 // - STRIPE_SECRET_KEY
 // - SUPABASE_URL
@@ -43,6 +60,24 @@ const PLAN_TO_PRICE: Record<'decouverte' | 'starter' | 'power', string> = {
   power: 'price_1TTtcxBesXB76oWEPyVYZjCj',
 };
 
+const PLAN_HT_PRICE: Record<'decouverte' | 'starter' | 'power', number> = {
+  decouverte: 1990,  // 19,90€ HT en centimes
+  starter: 4990,     // 49,90€ HT
+  power: 8990,       // 89,90€ HT
+};
+
+const PLAN_LABEL: Record<'decouverte' | 'starter' | 'power', string> = {
+  decouverte: 'Découverte',
+  starter: 'Starter',
+  power: 'Power',
+};
+
+const PLAN_QUOTAS: Record<'decouverte' | 'starter' | 'power', { complete: number; simple: number }> = {
+  decouverte: { complete: 1, simple: 3 },
+  starter: { complete: 5, simple: 15 },
+  power: { complete: 10, simple: 30 },
+};
+
 const UNIT_TO_PRICE: Record<'complete' | 'document', string> = {
   complete: 'price_1TTtcyBesXB76oWEBF1TLHYz',
   document: 'price_1TTtd2BesXB76oWEVM0p27GS',
@@ -52,6 +87,7 @@ const UNIT_TO_PRICE: Record<'complete' | 'document', string> = {
 // TVA France 20% — Tax Rate Stripe (exclusif = ajouté en sus du HT)
 // ─────────────────────────────────────────────────────────────────────
 const TVA_TAX_RATE_ID = 'txr_1TUAxVBesXB76oWESXBnGdIZ';
+const TVA_RATE = 0.20; // 20%
 
 // URL de redirection après succès/annulation
 const SITE_URL = Deno.env.get('SITE_URL') ?? 'https://www.verimo.fr';
@@ -118,6 +154,8 @@ serve(async (req) => {
 
     if (mode === 'subscribe') {
       return await handleSubscribe(user.id, body);
+    } else if (mode === 'preview_upgrade') {
+      return await handlePreviewUpgrade(user.id, body);
     } else if (mode === 'buy_unit') {
       return await handleBuyUnit(user.id, body);
     } else if (mode === 'cancel') {
@@ -156,7 +194,7 @@ serve(async (req) => {
 // ═════════════════════════════════════════════════════════════════════
 
 // ─────────────────────────────────────────────────────────────────────
-// MODE "subscribe" — S'abonner à un plan
+// MODE "subscribe" — S'abonner à un plan OU upgrade/downgrade
 // ─────────────────────────────────────────────────────────────────────
 
 async function handleSubscribe(userId: string, body: any) {
@@ -185,41 +223,12 @@ async function handleSubscribe(userId: string, body: any) {
       return jsonResponse({ error: 'Vous êtes déjà sur ce plan' }, 400);
     }
 
-    // Upgrade Stripe directement (sans passer par Checkout)
-    try {
-      const sub = await stripe.subscriptions.retrieve(existingSub.stripe_subscription_id);
-      await stripe.subscriptions.update(existingSub.stripe_subscription_id, {
-        items: [{
-          id: sub.items.data[0].id,
-          price: priceId,
-          tax_rates: [TVA_TAX_RATE_ID],
-        }],
-        proration_behavior: 'none',
-        billing_cycle_anchor: 'now',
-      });
-    } catch (stripeErr: any) {
-      console.error('[pro-checkout-create] Upgrade Stripe error:', stripeErr);
-
-      const code = stripeErr?.code || stripeErr?.raw?.code || '';
-      let userMessage = 'Le changement de plan n\'a pas pu être effectué. Veuillez vérifier votre moyen de paiement ou nous contacter via la page Support.';
-
-      if (code === 'card_declined' || code === 'insufficient_funds') {
-        userMessage = 'Votre carte bancaire a été refusée. Veuillez mettre à jour votre moyen de paiement ou nous contacter via la page Support.';
-      } else if (code === 'expired_card') {
-        userMessage = 'Votre carte bancaire a expiré. Veuillez mettre à jour votre moyen de paiement ou nous contacter via la page Support.';
-      } else if (code === 'processing_error') {
-        userMessage = 'Une erreur est survenue lors du traitement du paiement. Veuillez réessayer dans quelques minutes.';
-      }
-
-      return jsonResponse({ error: userMessage }, 402);
-    }
-
-    // Le webhook customer.subscription.updated va gérer le cumul des crédits
-    return jsonResponse({
-      url: SUCCESS_URL_UPGRADE,
-      upgraded: true,
-      message: `Plan changé en ${plan}. Les crédits ont été mis à jour.`,
-    });
+    return await handleUpgradeOrDowngrade(
+      existingSub.stripe_subscription_id,
+      existingSub.plan,
+      plan,
+      priceId,
+    );
   }
 
   // Pas d'abo actif → création via Checkout
@@ -245,6 +254,294 @@ async function handleSubscribe(userId: string, body: any) {
   });
 
   return jsonResponse({ url: session.url });
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// UPGRADE / DOWNGRADE — Logique métier
+// ─────────────────────────────────────────────────────────────────────
+// UPGRADE : plein tarif facturé immédiatement, cycle reset à aujourd'hui
+//           Si 3DS requis, retourne client_secret au frontend (Stripe.js)
+// DOWNGRADE : différé en fin de cycle (cancel current + schedule new plan)
+// ─────────────────────────────────────────────────────────────────────
+
+async function handleUpgradeOrDowngrade(
+  stripeSubscriptionId: string,
+  currentPlan: string,
+  newPlan: string,
+  newPriceId: string,
+) {
+  // Déterminer si c'est un upgrade ou downgrade
+  const planOrder = { decouverte: 1, starter: 2, power: 3 };
+  const isUpgrade = planOrder[newPlan as keyof typeof planOrder] >
+                    planOrder[currentPlan as keyof typeof planOrder];
+
+  if (isUpgrade) {
+    return await handleUpgrade(stripeSubscriptionId, newPriceId, newPlan);
+  } else {
+    return await handleDowngradeScheduled(stripeSubscriptionId, newPriceId, newPlan);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// UPGRADE — Plein tarif immédiat avec support 3DS inline
+// ─────────────────────────────────────────────────────────────────────
+
+async function handleUpgrade(
+  stripeSubscriptionId: string,
+  newPriceId: string,
+  newPlan: string,
+) {
+  try {
+    const sub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+
+    // Mise à jour : reset cycle + force génération facture immédiate
+    // payment_behavior: 'default_incomplete' permet à Stripe de retourner
+    // un PaymentIntent en status 'requires_action' si 3DS est requis
+    const updated = await stripe.subscriptions.update(stripeSubscriptionId, {
+      items: [{
+        id: sub.items.data[0].id,
+        price: newPriceId,
+        tax_rates: [TVA_TAX_RATE_ID],
+      }],
+      proration_behavior: 'none',           // Pas de prorata, plein tarif
+      billing_cycle_anchor: 'now',           // Reset cycle à aujourd'hui
+      payment_behavior: 'default_incomplete', // Permet 3DS inline
+      expand: ['latest_invoice.payment_intent'],
+    });
+
+    // Récupérer le PaymentIntent de la facture générée
+    const latestInvoice = updated.latest_invoice as Stripe.Invoice;
+    const paymentIntent = latestInvoice?.payment_intent as Stripe.PaymentIntent | null;
+
+    // Cas 1 : pas de PaymentIntent (pas de paiement requis, montant 0 ou crédit suffisant)
+    if (!paymentIntent) {
+      console.log(`[upgrade] Plan changé sans paiement requis: ${newPlan}`);
+      return jsonResponse({
+        success: true,
+        upgraded: true,
+        message: `Plan changé en ${PLAN_LABEL[newPlan as keyof typeof PLAN_LABEL]}.`,
+      });
+    }
+
+    // Cas 2 : 3DS requis → frontend doit appeler Stripe.confirmCardPayment
+    if (paymentIntent.status === 'requires_action' || paymentIntent.status === 'requires_confirmation') {
+      console.log(`[upgrade] 3DS requis pour sub ${stripeSubscriptionId}`);
+      return jsonResponse({
+        requires_action: true,
+        client_secret: paymentIntent.client_secret,
+        payment_intent_id: paymentIntent.id,
+        message: 'Validation 3D Secure requise',
+      });
+    }
+
+    // Cas 3 : paiement en cours mais pas finalisé (rare)
+    if (paymentIntent.status === 'requires_payment_method') {
+      return jsonResponse({
+        error: 'Votre carte bancaire a été refusée. Veuillez la mettre à jour via le bouton "Modifier mon moyen de paiement".',
+      }, 402);
+    }
+
+    // Cas 4 : paiement réussi direct (pas de 3DS, paiement instantané)
+    if (paymentIntent.status === 'succeeded') {
+      console.log(`[upgrade] Paiement direct réussi pour sub ${stripeSubscriptionId}, plan ${newPlan}`);
+      return jsonResponse({
+        success: true,
+        upgraded: true,
+        message: `Plan changé en ${PLAN_LABEL[newPlan as keyof typeof PLAN_LABEL]}. Vos crédits sont disponibles.`,
+      });
+    }
+
+    // Cas 5 : statut inattendu
+    console.error(`[upgrade] Status PaymentIntent inattendu: ${paymentIntent.status}`);
+    return jsonResponse({
+      error: 'Le paiement est en cours de traitement. Veuillez patienter quelques instants puis rafraîchir la page.',
+    }, 202);
+
+  } catch (stripeErr: any) {
+    console.error('[upgrade] Stripe error:', stripeErr);
+
+    const code = stripeErr?.code || stripeErr?.raw?.code || '';
+    let userMessage = 'Le changement de plan n\'a pas pu être effectué. Veuillez vérifier votre moyen de paiement ou nous contacter via la page Support.';
+
+    if (code === 'card_declined' || code === 'insufficient_funds') {
+      userMessage = 'Votre carte bancaire a été refusée. Veuillez mettre à jour votre moyen de paiement via le bouton dédié.';
+    } else if (code === 'expired_card') {
+      userMessage = 'Votre carte bancaire a expiré. Veuillez mettre à jour votre moyen de paiement.';
+    } else if (code === 'authentication_required') {
+      userMessage = 'Votre banque demande une validation supplémentaire. Veuillez réessayer.';
+    } else if (code === 'processing_error') {
+      userMessage = 'Une erreur est survenue lors du traitement du paiement. Veuillez réessayer dans quelques minutes.';
+    }
+
+    return jsonResponse({ error: userMessage }, 402);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// DOWNGRADE — Différé en fin de cycle via Subscription Schedule
+// ─────────────────────────────────────────────────────────────────────
+
+async function handleDowngradeScheduled(
+  stripeSubscriptionId: string,
+  newPriceId: string,
+  newPlan: string,
+) {
+  try {
+    const sub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+
+    // On crée un schedule pour appliquer le downgrade en fin de cycle
+    // Phase 1 : plan actuel jusqu'à fin de cycle (current_period_end)
+    // Phase 2 : nouveau plan à partir de fin de cycle, en cycle infini
+
+    const schedule = await stripe.subscriptionSchedules.create({
+      from_subscription: stripeSubscriptionId,
+    });
+
+    // Mettre à jour le schedule avec les phases
+    await stripe.subscriptionSchedules.update(schedule.id, {
+      end_behavior: 'release',
+      phases: [
+        // Phase 1 : plan actuel jusqu'à fin de cycle
+        {
+          items: [{
+            price: sub.items.data[0].price.id,
+            quantity: 1,
+            tax_rates: [TVA_TAX_RATE_ID],
+          }],
+          start_date: sub.current_period_start,
+          end_date: sub.current_period_end,
+          proration_behavior: 'none',
+        },
+        // Phase 2 : nouveau plan
+        {
+          items: [{
+            price: newPriceId,
+            quantity: 1,
+            tax_rates: [TVA_TAX_RATE_ID],
+          }],
+          proration_behavior: 'none',
+        },
+      ],
+      metadata: {
+        scheduled_downgrade: 'true',
+        scheduled_to_plan: newPlan,
+      },
+    });
+
+    const switchDate = new Date(sub.current_period_end * 1000).toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+
+    console.log(`[downgrade] Schedule créé pour sub ${stripeSubscriptionId}, switch le ${switchDate} vers ${newPlan}`);
+
+    return jsonResponse({
+      success: true,
+      scheduled: true,
+      switch_date: switchDate,
+      switch_date_iso: new Date(sub.current_period_end * 1000).toISOString(),
+      new_plan: newPlan,
+      message: `Votre passage en ${PLAN_LABEL[newPlan as keyof typeof PLAN_LABEL]} sera effectif le ${switchDate}. D'ici là, vous gardez votre plan actuel et vos crédits.`,
+    });
+
+  } catch (stripeErr: any) {
+    console.error('[downgrade] Stripe error:', stripeErr);
+    return jsonResponse({
+      error: 'Le changement de plan n\'a pas pu être programmé. Veuillez nous contacter via la page Support.',
+    }, 500);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// MODE "preview_upgrade" — Récap avant validation pour le popup
+// ─────────────────────────────────────────────────────────────────────
+
+async function handlePreviewUpgrade(userId: string, body: any) {
+  const { plan } = body;
+
+  if (!plan || !['decouverte', 'starter', 'power'].includes(plan)) {
+    return jsonResponse({ error: 'Invalid plan' }, 400);
+  }
+
+  // Récupérer l'abo actif
+  const { data: existingSub } = await supabaseAdmin
+    .from('pro_subscriptions')
+    .select('id, plan, stripe_subscription_id, current_period_end, credits_complete_total, credits_complete_used, credits_simple_total, credits_simple_used')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (!existingSub) {
+    return jsonResponse({ error: 'Aucun abonnement actif trouvé' }, 404);
+  }
+
+  const planOrder = { decouverte: 1, starter: 2, power: 3 };
+  const isUpgrade = planOrder[plan as keyof typeof planOrder] >
+                    planOrder[existingSub.plan as keyof typeof planOrder];
+
+  // Crédits actuels (restant)
+  const currentRemainingComplete = Math.max(0, (existingSub.credits_complete_total || 0) - (existingSub.credits_complete_used || 0));
+  const currentRemainingSimple = Math.max(0, (existingSub.credits_simple_total || 0) - (existingSub.credits_simple_used || 0));
+
+  // Quotas du nouveau plan
+  const newQuotas = PLAN_QUOTAS[plan as keyof typeof PLAN_QUOTAS];
+
+  // Crédits après bascule (cumul, sauf downgrade qui garde aussi cumul jusqu'au prochain renouvellement)
+  const newComplete = currentRemainingComplete + newQuotas.complete;
+  const newSimple = currentRemainingSimple + newQuotas.simple;
+
+  // Calcul prix
+  const amountHt = PLAN_HT_PRICE[plan as keyof typeof PLAN_HT_PRICE]; // en centimes
+  const amountTva = Math.round(amountHt * TVA_RATE);
+  const amountTtc = amountHt + amountTva;
+
+  // Date prochain prélèvement
+  let nextBillingDate: string;
+  let nextBillingDateIso: string;
+
+  if (isUpgrade) {
+    // Upgrade : cycle reset à aujourd'hui, prochain prélèvement dans 1 mois
+    const nextDate = new Date();
+    nextDate.setMonth(nextDate.getMonth() + 1);
+    nextBillingDate = nextDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    nextBillingDateIso = nextDate.toISOString();
+  } else {
+    // Downgrade : bascule en fin de cycle actuel, prochain prélèvement = fin du cycle actuel
+    const cycleEnd = new Date(existingSub.current_period_end);
+    nextBillingDate = cycleEnd.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    nextBillingDateIso = cycleEnd.toISOString();
+  }
+
+  return jsonResponse({
+    is_upgrade: isUpgrade,
+    is_downgrade: !isUpgrade,
+    current_plan: existingSub.plan,
+    current_plan_label: PLAN_LABEL[existingSub.plan as keyof typeof PLAN_LABEL],
+    new_plan: plan,
+    new_plan_label: PLAN_LABEL[plan as keyof typeof PLAN_LABEL],
+    amount_ht: amountHt,        // en centimes
+    amount_tva: amountTva,
+    amount_ttc: amountTtc,
+    amount_ht_str: formatEur(amountHt),
+    amount_tva_str: formatEur(amountTva),
+    amount_ttc_str: formatEur(amountTtc),
+    next_billing_date: nextBillingDate,
+    next_billing_date_iso: nextBillingDateIso,
+    current_credits: {
+      complete: currentRemainingComplete,
+      simple: currentRemainingSimple,
+    },
+    new_credits: {
+      complete: newComplete,
+      simple: newSimple,
+    },
+    immediate_payment: isUpgrade,  // L'upgrade fait un paiement immédiat, pas le downgrade
+  });
+}
+
+function formatEur(cents: number): string {
+  return (cents / 100).toFixed(2).replace('.', ',') + '€';
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -325,6 +622,7 @@ async function handleBillingPortal(userId: string) {
 
 // ─────────────────────────────────────────────────────────────────────
 // MODE "cancel" — Annuler l'abonnement à la fin de la période
+// + Annule le schedule downgrade éventuellement programmé
 // ─────────────────────────────────────────────────────────────────────
 
 async function handleCancel(userId: string, body: any) {
@@ -342,8 +640,23 @@ async function handleCancel(userId: string, body: any) {
     return jsonResponse({ error: 'Aucun abonnement actif à résilier.' }, 400);
   }
 
-  // Annuler à la fin de la période sur Stripe
   try {
+    // 1. Récupérer la sub pour voir si elle a un schedule (downgrade prévu)
+    const sub = await stripe.subscriptions.retrieve(existingSub.stripe_subscription_id);
+
+    // 2. Si un schedule de downgrade existe, l'annuler
+    //    (la résiliation prime sur le downgrade prévu)
+    if (sub.schedule) {
+      const scheduleId = typeof sub.schedule === 'string' ? sub.schedule : sub.schedule.id;
+      try {
+        await stripe.subscriptionSchedules.release(scheduleId);
+        console.log(`[cancel] Schedule downgrade annulé pour sub ${existingSub.stripe_subscription_id}`);
+      } catch (releaseErr) {
+        console.warn('[cancel] Impossible de release le schedule:', releaseErr);
+      }
+    }
+
+    // 3. Annuler à la fin de la période sur Stripe
     await stripe.subscriptions.update(existingSub.stripe_subscription_id, {
       cancel_at_period_end: true,
     });
