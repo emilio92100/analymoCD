@@ -1,9 +1,15 @@
 // ══════════════════════════════════════════════════════════════
-// EDGE FUNCTION — comparer
+// EDGE FUNCTION — comparer (v2 — retry + alerts admin + UX)
 // Reçoit 2-3 IDs d'analyses complètes
 // Lit les rapports JSON depuis Supabase
 // Appelle Claude pour générer un verdict comparatif personnalisé
 // Stocke le verdict dans la table comparaisons
+//
+// v2 :
+//   - Retry sur 503/529 (3 tentatives, sleep 15s)
+//   - Insertion alertes dans system_alerts (page admin)
+//   - Distinction des erreurs (overload, rate_limit, auth, parse)
+//   - Messages utilisateur clairs et en français
 // ══════════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -18,6 +24,44 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
+
+type SupabaseClient = ReturnType<typeof createClient>;
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// ══════════════════════════════════════════════════════════════
+// INSERTION D'UNE ALERTE SYSTÈME POUR L'ADMIN
+// ══════════════════════════════════════════════════════════════
+async function insertSystemAlert(
+  supabaseAdmin: SupabaseClient,
+  params: {
+    type: string;
+    severity: 'info' | 'warning' | 'critical';
+    title: string;
+    message: string;
+    userId?: string;
+    metadata?: Record<string, unknown>;
+  }
+): Promise<void> {
+  try {
+    const { error } = await supabaseAdmin.from('system_alerts').insert({
+      type: params.type,
+      severity: params.severity,
+      title: params.title,
+      message: params.message,
+      analyse_id: null,
+      user_id: params.userId || null,
+      metadata: params.metadata || {},
+    });
+    if (error) {
+      console.error('[comparer] Erreur insertion alerte:', error.message);
+    } else {
+      console.log(`[comparer] 🔔 Alerte système: ${params.type} — ${params.title}`);
+    }
+  } catch (err) {
+    console.error('[comparer] Erreur insertion alerte:', err);
+  }
+}
 
 function buildComparePrompt(): string {
   return `Tu es l'analyste comparatif de Verimo, un outil d'aide à la décision pour les acheteurs immobiliers.
@@ -110,6 +154,65 @@ COHÉRENCE DU TEXTE NARRATIF :
 - Réponds UNIQUEMENT en JSON strict, sans texte avant ou après.`;
 }
 
+// ══════════════════════════════════════════════════════════════
+// APPEL CLAUDE AVEC RETRY SUR 503/529/429
+// ══════════════════════════════════════════════════════════════
+type ClaudeError = 'overload' | 'rate_limit' | 'auth' | 'api_error' | 'network';
+type ClaudeResult = { text: string; error?: undefined } | { text?: undefined; error: ClaudeError; status?: number };
+
+async function callClaude(systemPrompt: string, userMessage: string, apiKey: string): Promise<ClaudeResult> {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(ANTHROPIC_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': AI_VERSION,
+        },
+        body: JSON.stringify({
+          model: AI_MODEL,
+          max_tokens: MAX_TOKENS,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userMessage }],
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const text = data.content?.find((b: { type: string }) => b.type === 'text')?.text || '';
+        if (!text) return { error: 'api_error' };
+        return { text };
+      }
+
+      const errBody = await res.text();
+      console.error(`[comparer] Anthropic ${res.status} (tentative ${attempt}):`, errBody);
+
+      if (res.status === 503 || res.status === 529) {
+        if (attempt < 3) { await sleep(15000); continue; }
+        return { error: 'overload', status: res.status };
+      }
+      if (res.status === 429) {
+        if (attempt < 3) { await sleep(Math.pow(2, attempt) * 5000); continue; }
+        return { error: 'rate_limit', status: res.status };
+      }
+      if (res.status === 401 || res.status === 403) {
+        return { error: 'auth', status: res.status };
+      }
+      return { error: 'api_error', status: res.status };
+
+    } catch (err) {
+      console.error(`[comparer] Erreur réseau (tentative ${attempt}):`, err);
+      if (attempt < 3) { await sleep(3000); continue; }
+      return { error: 'network' };
+    }
+  }
+  return { error: 'api_error' };
+}
+
+// ══════════════════════════════════════════════════════════════
+// HANDLER PRINCIPAL
+// ══════════════════════════════════════════════════════════════
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
@@ -120,9 +223,9 @@ Deno.serve(async (req) => {
   if (!apiKey) return new Response(JSON.stringify({ error: 'config_error' }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
   const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+  let userIdForCatch: string | undefined;
 
   try {
-    // Vérifier l'auth
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
@@ -130,14 +233,18 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     if (authError || !user) return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
+    userIdForCatch = user.id;
+
     const body = await req.json() as { analyseIds: string[] };
     const { analyseIds } = body;
 
     if (!analyseIds || analyseIds.length < 2 || analyseIds.length > 3) {
-      return new Response(JSON.stringify({ error: 'invalid_params', message: '2 ou 3 analyses requises' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({
+        error: 'invalid_params',
+        userMessage: 'La comparaison nécessite 2 ou 3 analyses.',
+      }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    // Vérifier que les analyses appartiennent à l'utilisateur et sont complètes
     const { data: analyses, error: fetchError } = await supabaseAdmin
       .from('analyses')
       .select('id, title, result, score, user_id')
@@ -146,21 +253,23 @@ Deno.serve(async (req) => {
       .eq('status', 'completed');
 
     if (fetchError || !analyses || analyses.length < 2) {
-      return new Response(JSON.stringify({ error: 'analyses_not_found' }), { status: 404, headers: { ...CORS, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({
+        error: 'analyses_not_found',
+        userMessage: 'Une ou plusieurs analyses sont introuvables ou ne sont pas terminées.',
+      }), { status: 404, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    // IMPORTANT : Supabase .in() ne préserve pas l'ordre d'analyseIds.
-    // On réordonne les analyses dans l'ordre exact demandé par le frontend
-    // pour que "Bien 1" dans le verdict corresponde bien au premier bien affiché côté UI.
     const analysesOrdered = analyseIds
       .map(id => analyses.find(a => a.id === id))
       .filter((a): a is NonNullable<typeof a> => a !== undefined);
 
     if (analysesOrdered.length !== analyseIds.length) {
-      return new Response(JSON.stringify({ error: 'analyses_not_found' }), { status: 404, headers: { ...CORS, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({
+        error: 'analyses_not_found',
+        userMessage: 'Une ou plusieurs analyses sont introuvables.',
+      }), { status: 404, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    // Vérifier si un verdict existe déjà pour cette combinaison
     const sortedIds = [...analyseIds].sort().join(',');
     const { data: existing } = await supabaseAdmin
       .from('comparaisons')
@@ -175,10 +284,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Construire le message pour Claude dans l'ordre demandé par le frontend
     const userContent = analysesOrdered.map((a, i) => {
       const result = a.result as Record<string, unknown>;
-      // Extraire les données pertinentes pour la comparaison (pas tout le JSON)
       const compact = {
         titre: result.titre,
         score: result.score,
@@ -201,45 +308,88 @@ Deno.serve(async (req) => {
       return `=== BIEN ${i + 1} : ${result.titre || a.title} ===\n${JSON.stringify(compact, null, 0)}`;
     }).join('\n\n');
 
-    // Appel Claude
-    const res = await fetch(ANTHROPIC_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': AI_VERSION,
-      },
-      body: JSON.stringify({
-        model: AI_MODEL,
-        max_tokens: MAX_TOKENS,
-        system: buildComparePrompt(),
-        messages: [{ role: 'user', content: `Compare ces ${analysesOrdered.length} biens et génère le verdict comparatif en JSON.\n\n${userContent}` }],
-      }),
-    });
+    const result = await callClaude(
+      buildComparePrompt(),
+      `Compare ces ${analysesOrdered.length} biens et génère le verdict comparatif en JSON.\n\n${userContent}`,
+      apiKey,
+    );
 
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error('[comparer] Anthropic error:', res.status, errText);
-      return new Response(JSON.stringify({ error: 'ai_error', status: res.status }), { status: 502, headers: { ...CORS, 'Content-Type': 'application/json' } });
+    if ('error' in result && result.error) {
+      let alertType: string;
+      let alertSeverity: 'warning' | 'critical';
+      let alertTitle: string;
+      let userMessage: string;
+
+      switch (result.error) {
+        case 'auth':
+          alertType = 'api_billing';
+          alertSeverity = 'critical';
+          alertTitle = 'Comparaison — clé API Anthropic / quota';
+          userMessage = 'Notre service rencontre un problème technique. Notre équipe est informée. Veuillez réessayer plus tard.';
+          break;
+        case 'overload':
+          alertType = 'overload';
+          alertSeverity = 'warning';
+          alertTitle = 'Comparaison — surcharge serveur';
+          userMessage = 'Notre service est temporairement indisponible. Veuillez réessayer dans quelques minutes.';
+          break;
+        case 'rate_limit':
+          alertType = 'rate_limit';
+          alertSeverity = 'warning';
+          alertTitle = 'Comparaison — rate limit';
+          userMessage = 'Notre service est momentanément surchargé. Veuillez réessayer dans 2 à 3 minutes.';
+          break;
+        case 'network':
+          alertType = 'api_error';
+          alertSeverity = 'warning';
+          alertTitle = 'Comparaison — erreur réseau';
+          userMessage = 'Une erreur réseau est survenue. Veuillez vérifier votre connexion et réessayer.';
+          break;
+        default:
+          alertType = 'api_error';
+          alertSeverity = 'warning';
+          alertTitle = 'Comparaison — erreur serveur';
+          userMessage = 'Notre service rencontre une perturbation temporaire. Veuillez réessayer dans quelques minutes.';
+      }
+
+      await insertSystemAlert(supabaseAdmin, {
+        type: alertType,
+        severity: alertSeverity,
+        title: alertTitle,
+        message: userMessage,
+        userId: user.id,
+        metadata: { stage: 'compare_call', error: result.error, status: result.status, analyseIds },
+      });
+
+      return new Response(JSON.stringify({
+        error: result.error,
+        userMessage,
+      }), { status: 502, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    const aiResponse = await res.json();
-    const text = aiResponse.content?.find((b: { type: string }) => b.type === 'text')?.text || '';
-
-    // Parser le JSON
     let verdict;
     try {
-      let clean = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      let clean = result.text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
       const start = clean.indexOf('{');
       const end = clean.lastIndexOf('}');
       if (start !== -1 && end !== -1 && end > start) clean = clean.slice(start, end + 1);
       verdict = JSON.parse(clean);
     } catch (parseErr) {
-      console.error('[comparer] JSON parse error:', parseErr, 'raw:', text.slice(0, 200));
-      return new Response(JSON.stringify({ error: 'parse_error' }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } });
+      console.error('[comparer] JSON parse error:', parseErr, 'raw:', result.text.slice(0, 200));
+      await insertSystemAlert(supabaseAdmin, {
+        type: 'analysis_failed',
+        severity: 'warning',
+        title: 'Comparaison — réponse invalide',
+        message: 'La réponse du moteur de comparaison n\'a pas pu être interprétée.',
+        userId: user.id,
+        metadata: { stage: 'parse', rawSnippet: result.text.slice(0, 200), analyseIds },
+      });
+      return new Response(JSON.stringify({
+        error: 'parse_error',
+        userMessage: 'Une erreur est survenue lors de la génération de la comparaison. Veuillez réessayer.',
+      }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    // Stocker le verdict
     const { error: upsertError } = await supabaseAdmin.from('comparaisons').upsert({
       user_id: user.id,
       analyse_ids: sortedIds,
@@ -249,7 +399,14 @@ Deno.serve(async (req) => {
 
     if (upsertError) {
       console.error('[comparer] UPSERT ERROR:', JSON.stringify(upsertError));
-      // On renvoie quand même le verdict à l'utilisateur, sans casser l'UX
+      await insertSystemAlert(supabaseAdmin, {
+        type: 'save_error',
+        severity: 'warning',
+        title: 'Comparaison — sauvegarde échouée',
+        message: 'Le verdict de comparaison a été généré mais n\'a pas pu être sauvegardé en base. Le client a quand même reçu la réponse.',
+        userId: user.id,
+        metadata: { stage: 'upsert', error: upsertError.message, analyseIds },
+      });
       return new Response(JSON.stringify({ success: true, verdict, cached: false }), {
         headers: { ...CORS, 'Content-Type': 'application/json' },
       });
@@ -262,7 +419,20 @@ Deno.serve(async (req) => {
     });
 
   } catch (err) {
-    console.error('[comparer] Erreur:', err);
-    return new Response(JSON.stringify({ error: 'server_error' }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } });
+    console.error('[comparer] Erreur globale:', err);
+    if (userIdForCatch) {
+      await insertSystemAlert(supabaseAdmin, {
+        type: 'unexpected_error',
+        severity: 'critical',
+        title: 'Comparaison — erreur inattendue',
+        message: 'Une erreur inattendue est survenue lors de la comparaison.',
+        userId: userIdForCatch,
+        metadata: { stage: 'global_catch', error: String(err) },
+      });
+    }
+    return new Response(JSON.stringify({
+      error: 'server_error',
+      userMessage: 'Une erreur inattendue est survenue. Veuillez réessayer ou contacter le support.',
+    }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } });
   }
 });
