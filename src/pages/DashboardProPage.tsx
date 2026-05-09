@@ -3288,8 +3288,8 @@ Vous pouvez résilier votre abonnement à tout moment depuis votre espace, sans 
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 18 }}>
                   {[
-                    { label: `${plan.completes} analyse${plan.completes > 1 ? 's' : ''} complète${plan.completes > 1 ? 's' : ''}`, tooltip: null },
-                    { label: `${plan.simples} analyse${plan.simples > 1 ? 's' : ''} simple${plan.simples > 1 ? 's' : ''}`, tooltip: null },
+                    { label: `${plan.simples} analyse${plan.simples > 1 ? 's' : ''} simple${plan.simples > 1 ? 's' : ''} d'un document immobilier`, tooltip: null },
+                    { label: `${plan.completes} analyse${plan.completes > 1 ? 's' : ''} complète${plan.completes > 1 ? 's' : ''} d'un bien`, tooltip: null },
                     { label: 'Dashboard pro + branding', tooltip: null },
                     { label: 'Envoi de rapports clients', tooltip: null },
                     { label: 'Crédits cumulables', tooltip: `Crédits cumulables — précisions
@@ -3372,7 +3372,7 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
         <div style={{ padding: '20px', borderRadius: 16, background: '#fff', border: '1.5px solid #edf2f7', textAlign: 'center', opacity: isSubscribed ? 1 : 0.55 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 8 }}>ACHAT UNITAIRE</div>
           <div style={{ fontSize: 24, fontWeight: 800, color: '#0f172a' }}>9,90€ <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>HT</span></div>
-          <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, marginBottom: 14 }}>Analyse complète</div>
+          <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, marginBottom: 14 }}>Analyse complète d'un bien</div>
           <button disabled={!isSubscribed || loading === 'unit:complete'} onClick={() => handleBuyUnit('complete', 1)}
             style={{ width: '100%', padding: '10px', borderRadius: 10, background: isSubscribed ? '#0f172a' : '#cbd5e1', color: '#fff', border: 'none', fontSize: 13, fontWeight: 700,
               cursor: isSubscribed ? (loading === 'unit:complete' ? 'wait' : 'pointer') : 'not-allowed', opacity: loading === 'unit:complete' ? 0.6 : 1 }}>
@@ -3384,7 +3384,7 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
         <div style={{ padding: '20px', borderRadius: 16, background: '#fff', border: '1.5px solid #edf2f7', textAlign: 'center', opacity: isSubscribed ? 1 : 0.55 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 8 }}>ACHAT UNITAIRE</div>
           <div style={{ fontSize: 24, fontWeight: 800, color: '#0f172a' }}>2,90€ <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>HT</span></div>
-          <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, marginBottom: 14 }}>Analyse simple</div>
+          <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, marginBottom: 14 }}>Analyse simple d'un document immobilier</div>
           <button disabled={!isSubscribed || loading === 'unit:document'} onClick={() => handleBuyUnit('document', 1)}
             style={{ width: '100%', padding: '10px', borderRadius: 10, background: isSubscribed ? '#0f172a' : '#cbd5e1', color: '#fff', border: 'none', fontSize: 13, fontWeight: 700,
               cursor: isSubscribed ? (loading === 'unit:document' ? 'wait' : 'pointer') : 'not-allowed', opacity: loading === 'unit:document' ? 0.6 : 1 }}>
