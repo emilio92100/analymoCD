@@ -176,6 +176,8 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets }: { subs
 
   const creditsComplete = proCredits?.total_complete ?? 0;
   const creditsSimple = proCredits?.total_document ?? 0;
+  const unitComplete = proCredits?.unit_complete_remaining ?? 0;
+  const unitSimple = proCredits?.unit_document_remaining ?? 0;
 
   return (
     <aside style={{ width: 260, minHeight: '100vh', height: '100%', background: BG, display: 'flex', flexDirection: 'column' }}>
@@ -200,10 +202,20 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets }: { subs
       <div style={{ margin: '0 14px 6px', padding: '10px 12px', borderRadius: 9, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
         <div style={{ fontSize: 10, fontWeight: 700, color: MUTED, letterSpacing: '0.1em', marginBottom: 7 }}>CRÉDITS RESTANTS</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {[{ label: 'Complète', value: creditsComplete }, { label: 'Simple', value: creditsSimple }].map(c => (
-            <div key={c.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 8px', borderRadius: 7, background: 'rgba(255,255,255,0.04)' }}>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>{c.label}</span>
-              <span style={{ fontSize: 12, fontWeight: 800, color: c.value > 0 ? ACCENT : 'rgba(255,255,255,0.2)' }}>{c.value}</span>
+          {[
+            { label: 'Complète', value: creditsComplete, unit: unitComplete },
+            { label: 'Simple', value: creditsSimple, unit: unitSimple },
+          ].map(c => (
+            <div key={c.label} style={{ padding: '5px 8px', borderRadius: 7, background: 'rgba(255,255,255,0.04)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>{c.label}</span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: c.value > 0 ? ACCENT : 'rgba(255,255,255,0.2)' }}>{c.value}</span>
+              </div>
+              {c.unit > 0 && (
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 2, fontStyle: 'italic' }}>
+                  ↳ dont {c.unit} unitaire{c.unit > 1 ? 's' : ''}
+                </div>
+              )}
             </div>
           ))}
         </div>
