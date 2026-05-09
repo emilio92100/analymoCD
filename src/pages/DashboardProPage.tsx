@@ -96,6 +96,7 @@ type ProFolder = {
   property_postal_code?: string | null;
   property_city?: string | null;
   internal_note?: string | null;
+  archived_at?: string | null;
   created_at: string;
   updated_at: string;
   // Stats chargées séparément
@@ -652,6 +653,8 @@ function MesDossiersPro() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'recent' | 'oldest' | 'name' | 'analyses'>('recent');
   const [filter, setFilter] = useState<'all' | 'thisMonth' | 'withShares' | 'noAnalyses'>('all');
+  const [archiveView, setArchiveView] = useState<'active' | 'archived'>('active');
+  const [archiveToast, setArchiveToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const navigate = useNavigate();
 
   const loadFolders = useCallback(async () => {
@@ -703,6 +706,11 @@ function MesDossiersPro() {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   let filtered = folders.filter(f => {
+    // 🆕 Filtre principal : actifs vs archivés
+    const isArchived = !!f.archived_at;
+    if (archiveView === 'active' && isArchived) return false;
+    if (archiveView === 'archived' && !isArchived) return false;
+
     if (search) {
       const q = search.toLowerCase();
       if (!(f.name.toLowerCase().includes(q) || (f.property_address || '').toLowerCase().includes(q) || (f.property_city || '').toLowerCase().includes(q))) return false;
@@ -732,6 +740,26 @@ function MesDossiersPro() {
       await loadFolders();
     } catch (e: any) {
       alert('Erreur lors de la suppression : ' + (e.message || 'inconnue'));
+    }
+  }
+
+  async function handleArchiveToggle(folder: ProFolder) {
+    const willArchive = !folder.archived_at;
+    try {
+      const { error } = await supabase
+        .from('pro_folders')
+        .update({ archived_at: willArchive ? new Date().toISOString() : null })
+        .eq('id', folder.id);
+      if (error) throw error;
+      await loadFolders();
+      setArchiveToast({
+        message: willArchive ? `📦 Dossier "${folder.name}" archivé` : `📂 Dossier "${folder.name}" restauré`,
+        type: 'success',
+      });
+      setTimeout(() => setArchiveToast(null), 3000);
+    } catch (e: any) {
+      setArchiveToast({ message: 'Erreur : ' + (e.message || 'inconnue'), type: 'error' });
+      setTimeout(() => setArchiveToast(null), 4000);
     }
   }
 
@@ -771,6 +799,32 @@ function MesDossiersPro() {
       {/* Toolbar : filters + search + sort + view toggle */}
       {folders.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 18 }}>
+          {/* 🆕 Toggle Actifs / Archivés */}
+          <div style={{ display: 'flex', background: '#f8fafc', borderRadius: 10, padding: 4, border: '1px solid #edf2f7', width: 'fit-content' }}>
+            <button onClick={() => setArchiveView('active')}
+              style={{ padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700,
+                background: archiveView === 'active' ? '#fff' : 'transparent',
+                color: archiveView === 'active' ? '#0f172a' : '#94a3b8',
+                boxShadow: archiveView === 'active' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                display: 'flex', alignItems: 'center', gap: 6 }}>
+              📂 Actifs
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: archiveView === 'active' ? '#2a7d9c' : '#cbd5e1', background: archiveView === 'active' ? '#dbeef5' : 'transparent', padding: '1px 7px', borderRadius: 100 }}>
+                {folders.filter(f => !f.archived_at).length}
+              </span>
+            </button>
+            <button onClick={() => setArchiveView('archived')}
+              style={{ padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700,
+                background: archiveView === 'archived' ? '#fff' : 'transparent',
+                color: archiveView === 'archived' ? '#0f172a' : '#94a3b8',
+                boxShadow: archiveView === 'archived' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                display: 'flex', alignItems: 'center', gap: 6 }}>
+              📦 Archivés
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: archiveView === 'archived' ? '#d97706' : '#cbd5e1', background: archiveView === 'archived' ? '#fef3c7' : 'transparent', padding: '1px 7px', borderRadius: 100 }}>
+                {folders.filter(f => !!f.archived_at).length}
+              </span>
+            </button>
+          </div>
+
           {/* Row 1 : filters pills */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
             {filterOptions.map(f => {
@@ -843,7 +897,8 @@ function MesDossiersPro() {
           {filtered.map((f) => (
             <FolderCard key={f.id} folder={f}
               onClick={() => navigate(`/dashboard/dossier/${f.id}`)}
-              onDelete={() => setFolderToDelete(f)} />
+              onDelete={() => setFolderToDelete(f)}
+              onArchiveToggle={() => handleArchiveToggle(f)} />
           ))}
         </div>
       ) : (
@@ -902,6 +957,11 @@ function MesDossiersPro() {
           />
         )}
       </AnimatePresence>
+
+      {/* Toast archive */}
+      <AnimatePresence>
+        {archiveToast && <Toast message={archiveToast.message} type={archiveToast.type} />}
+      </AnimatePresence>
     </div>
   );
 }
@@ -909,8 +969,9 @@ function MesDossiersPro() {
 /* ══════════════════════════════════════════
    FOLDER CARD — Carte d'un dossier dans la liste
 ══════════════════════════════════════════ */
-function FolderCard({ folder, onClick, onDelete }: { folder: ProFolder; onClick: () => void; onDelete: () => void }) {
+function FolderCard({ folder, onClick, onDelete, onArchiveToggle }: { folder: ProFolder; onClick: () => void; onDelete: () => void; onArchiveToggle: () => void }) {
   const hasAddress = folder.property_address || folder.property_city;
+  const isArchived = !!folder.archived_at;
   const stats = [
     { label: folder.analyses_count === 1 ? 'analyse' : 'analyses', value: folder.analyses_count || 0, color: '#2a7d9c' },
     { label: folder.sellers_count === 1 ? 'vendeur' : 'vendeurs', value: folder.sellers_count || 0, color: '#7c3aed' },
@@ -918,19 +979,31 @@ function FolderCard({ folder, onClick, onDelete }: { folder: ProFolder; onClick:
   ];
   return (
     <div onClick={onClick}
-      style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: 18, cursor: 'pointer', transition: 'all 0.2s', position: 'relative' }}
+      style={{ background: isArchived ? '#fafafa' : '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: 18, cursor: 'pointer', transition: 'all 0.2s', position: 'relative', opacity: isArchived ? 0.85 : 1 }}
       onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.boxShadow = '0 8px 24px rgba(42,125,156,0.08)'; el.style.transform = 'translateY(-2px)'; }}
       onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.boxShadow = 'none'; el.style.transform = 'translateY(0)'; }}>
 
-      {/* Bouton supprimer (apparait au hover) */}
-      <button onClick={e => { e.stopPropagation(); onDelete(); }} title="Supprimer ce dossier"
-        className="folder-delete-btn"
-        style={{ position: 'absolute', top: 10, right: 10, width: 28, height: 28, borderRadius: 7, background: '#fef2f2', border: '1px solid #fee2e2', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.15s' }}>
-        <Trash2 size={13} style={{ color: '#dc2626' }} />
-      </button>
+      {/* Badge archivé */}
+      {isArchived && (
+        <div style={{ position: 'absolute' as const, top: 10, left: 10, fontSize: 10, fontWeight: 800, color: '#7c2d12', background: '#fed7aa', padding: '3px 8px', borderRadius: 6, letterSpacing: '0.04em' }}>
+          📦 ARCHIVÉ
+        </div>
+      )}
+
+      {/* Boutons d'action (apparaissent au hover) */}
+      <div style={{ position: 'absolute' as const, top: 10, right: 10, display: 'flex', gap: 6, opacity: 0, transition: 'opacity 0.15s' }} className="folder-actions-btns">
+        <button onClick={e => { e.stopPropagation(); onArchiveToggle(); }} title={isArchived ? 'Restaurer' : 'Archiver ce dossier'}
+          style={{ width: 28, height: 28, borderRadius: 7, background: isArchived ? '#f0fdf4' : '#fff7ed', border: `1px solid ${isArchived ? '#bbf7d0' : '#fed7aa'}`, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ fontSize: 12 }}>{isArchived ? '📂' : '📦'}</span>
+        </button>
+        <button onClick={e => { e.stopPropagation(); onDelete(); }} title="Supprimer ce dossier"
+          style={{ width: 28, height: 28, borderRadius: 7, background: '#fef2f2', border: '1px solid #fee2e2', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Trash2 size={13} style={{ color: '#dc2626' }} />
+        </button>
+      </div>
 
       <style>{`
-        div:hover > .folder-delete-btn { opacity: 1 !important; }
+        div:hover > .folder-actions-btns { opacity: 1 !important; }
       `}</style>
 
       {/* Icône + Nom */}
@@ -3658,14 +3731,50 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
               </div>
             )}
           </div>
-          <button onClick={() => setShowEditFolderModal(true)} title="Modifier les infos du dossier"
-            className="dossier-edit-btn"
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, background: '#fff', border: '1.5px solid #edf2f7', color: '#475569', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, flexShrink: 0, transition: 'all 0.15s' }}
-            onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.color = '#2a7d9c'; }}
-            onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.color = '#475569'; }}>
-            <Pencil size={12} /> Modifier
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <button onClick={async () => {
+                const willArchive = !folder.archived_at;
+                try {
+                  const { error } = await supabase
+                    .from('pro_folders')
+                    .update({ archived_at: willArchive ? new Date().toISOString() : null })
+                    .eq('id', folder.id);
+                  if (error) throw error;
+                  setToast({ message: willArchive ? `📦 Dossier archivé` : `📂 Dossier restauré`, type: 'success' });
+                  setTimeout(() => setToast(null), 3000);
+                  // Recharger le dossier
+                  const { data: refreshed } = await supabase.from('pro_folders').select('*').eq('id', folder.id).single();
+                  if (refreshed) setFolder(refreshed as ProFolder);
+                } catch (e: any) {
+                  setToast({ message: 'Erreur : ' + (e.message || 'inconnue'), type: 'error' });
+                  setTimeout(() => setToast(null), 4000);
+                }
+              }}
+              title={folder.archived_at ? 'Restaurer ce dossier' : 'Archiver ce dossier (vente conclue, abandonné, etc.)'}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10,
+                background: folder.archived_at ? '#f0fdf4' : '#fff7ed',
+                border: `1.5px solid ${folder.archived_at ? '#bbf7d0' : '#fed7aa'}`,
+                color: folder.archived_at ? '#15803d' : '#9a3412',
+                cursor: 'pointer', fontSize: 12.5, fontWeight: 700, flexShrink: 0, transition: 'all 0.15s' }}>
+              <span style={{ fontSize: 13 }}>{folder.archived_at ? '📂' : '📦'}</span>
+              {folder.archived_at ? 'Restaurer' : 'Archiver'}
+            </button>
+            <button onClick={() => setShowEditFolderModal(true)} title="Modifier les infos du dossier"
+              className="dossier-edit-btn"
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, background: '#fff', border: '1.5px solid #edf2f7', color: '#475569', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, flexShrink: 0, transition: 'all 0.15s' }}
+              onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.color = '#2a7d9c'; }}
+              onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.color = '#475569'; }}>
+              <Pencil size={12} /> Modifier
+            </button>
+          </div>
         </div>
+
+        {folder.archived_at && (
+          <div style={{ marginTop: 14, padding: '11px 14px', borderRadius: 10, background: '#fff7ed', border: '1px solid #fed7aa', fontSize: 12.5, color: '#9a3412', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 14 }}>📦</span>
+            <span><strong>Dossier archivé</strong> le {new Date(folder.archived_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}. Cliquez sur "Restaurer" pour le réactiver.</span>
+          </div>
+        )}
 
         {folder.internal_note && (
           <div style={{ marginTop: 14, padding: '11px 14px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fef3c7', fontSize: 12.5, color: '#78350f', fontStyle: 'italic' as const }}>
