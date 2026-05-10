@@ -628,25 +628,29 @@ export default function AdminPage() {
 ══════════════════════════════════════════ */
 /* ═══ ALERTES SYSTÈME ══════════════════════════════════════════════ */
 function SystemAlertsTab({ showToast }: { showToast: (msg: string) => void }) {
-  const [alerts, setAlerts] = useState<Array<{
+  type Alert = {
     id: string; created_at: string; type: string; severity: string;
     title: string; message: string; analyse_id: string | null;
     user_id: string | null; resolved: boolean; resolved_at: string | null;
     metadata: Record<string, unknown>;
     user_email?: string | null; user_name?: string | null;
-  }>>([]);
+  };
+
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unresolved' | 'critical'>('unresolved');
+  const [activeCategory, setActiveCategory] = useState<'all' | 'stripe' | 'analyse' | 'autre'>('all');
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [expandedAlerts, setExpandedAlerts] = useState<Set<string>>(new Set());
 
   const fetchAlerts = useCallback(async () => {
     setLoading(true);
-    let query = supabase.from('system_alerts').select('*').order('created_at', { ascending: false }).limit(100);
+    let query = supabase.from('system_alerts').select('*').order('created_at', { ascending: false }).limit(200);
     if (filter === 'unresolved') query = query.eq('resolved', false);
     if (filter === 'critical') query = query.eq('severity', 'critical').eq('resolved', false);
     const { data } = await query;
     const alertsRaw = data || [];
 
-    // Récupérer les user_id uniques pour faire un seul fetch profiles
     const userIds = Array.from(new Set(alertsRaw.map(a => a.user_id).filter(Boolean) as string[]));
     let profilesMap: Record<string, { email: string | null; full_name: string | null }> = {};
     if (userIds.length > 0) {
@@ -682,10 +686,155 @@ function SystemAlertsTab({ showToast }: { showToast: (msg: string) => void }) {
     fetchAlerts();
   };
 
-  const severityConfig: Record<string, { bg: string; border: string; icon: string; color: string }> = {
-    critical: { bg: '#fef2f2', border: '#fecaca', icon: '🔴', color: '#dc2626' },
-    warning: { bg: '#fffbeb', border: '#fde68a', icon: '🟡', color: '#d97706' },
-    info: { bg: '#eff6ff', border: '#bfdbfe', icon: '🔵', color: '#2563eb' },
+  const resolveGroup = async (alertIds: string[]) => {
+    await supabase.from('system_alerts').update({ resolved: true, resolved_at: new Date().toISOString() }).in('id', alertIds);
+    showToast(`${alertIds.length} alerte${alertIds.length > 1 ? 's' : ''} marquée${alertIds.length > 1 ? 's' : ''} comme résolue${alertIds.length > 1 ? 's' : ''}`);
+    fetchAlerts();
+  };
+
+  // ─── Catégorisation par source ───
+  const getCategory = (alert: Alert): 'stripe' | 'analyse' | 'autre' => {
+    const title = (alert.title || '').toLowerCase();
+    const eventType = (alert.metadata?.eventType as string || '').toLowerCase();
+    if (title.includes('stripe') || title.includes('webhook') || title.includes('paiement') || title.includes('abonnement') || title.includes('remboursement') || title.includes('upgrade') || eventType.includes('invoice') || eventType.includes('subscription') || eventType.includes('charge') || eventType.includes('checkout')) {
+      return 'stripe';
+    }
+    if (title.includes('analyse') || title.includes('comparaison') || alert.type === 'analysis_failed' || alert.type === 'no_files' || alert.type === 'overload' || alert.type === 'api_billing' || alert.type === 'rate_limit' || alert.type === 'api_error') {
+      return 'analyse';
+    }
+    return 'autre';
+  };
+
+  // ─── Dictionnaire d'explications (Option C : on enrichit au fil du temps) ───
+  const getExplanation = (alert: Alert): { cause: string; impact: string; action: string } | null => {
+    const errorMsg = String(alert.metadata?.error || '').toLowerCase();
+    const stage = String(alert.metadata?.stage || '').toLowerCase();
+    const eventType = String(alert.metadata?.eventType || '').toLowerCase();
+
+    // Erreur date NULL (le bug qu'on a fixé avec getValidPeriods)
+    if (errorMsg.includes('null value') && (errorMsg.includes('current_period_end') || errorMsg.includes('current_period_start'))) {
+      return {
+        cause: 'Stripe a envoyé un event sans timestamps de période (current_period_end null).',
+        impact: 'L\'abonnement n\'a pas pu être mis à jour en base de données.',
+        action: 'Normalement corrigé via le helper getValidPeriods qui refetch la subscription fraîche. Si l\'erreur revient, vérifier que la version récente du webhook est bien déployée.',
+      };
+    }
+
+    // Suppression user → contrainte FK
+    if (errorMsg.includes('foreign key') || errorMsg.includes('violates foreign')) {
+      return {
+        cause: 'Le client a été supprimé entre l\'envoi de l\'event par Stripe et son traitement.',
+        impact: 'L\'event est ignoré silencieusement. Aucune donnée n\'est corrompue.',
+        action: 'Aucune action nécessaire — c\'est un cas normal après suppression d\'un compte. Marquer comme résolu.',
+      };
+    }
+
+    // Subscription introuvable
+    if (errorMsg.includes('subscription not found') || errorMsg.includes('no subscription')) {
+      return {
+        cause: 'Stripe a envoyé un event sur une subscription qui n\'existe plus dans la BDD.',
+        impact: 'L\'event est ignoré. Le client a probablement été supprimé ou la sub a été migrée.',
+        action: 'Vérifier dans Stripe Dashboard que la subscription existe encore. Si non, marquer comme résolu.',
+      };
+    }
+
+    // Event invoice.paid ignoré (le bug qu'on a fixé)
+    if (eventType === 'invoice.paid' && stage === 'handler' && errorMsg.includes('ignored')) {
+      return {
+        cause: 'L\'event invoice.paid n\'était pas géré dans le switch case du webhook.',
+        impact: 'Les paiements n\'étaient pas enregistrés dans la table payments.',
+        action: 'Corrigé en ajoutant le case invoice.paid. Vérifier que le webhook a bien été redéployé.',
+      };
+    }
+
+    // JWT expiré
+    if (errorMsg.includes('jwt expired') || errorMsg.includes('invalid token')) {
+      return {
+        cause: 'Le token d\'authentification utilisateur a expiré ou n\'est plus valide.',
+        impact: 'L\'action n\'a pas pu être exécutée. Le client a sans doute reçu un message d\'erreur.',
+        action: 'Demander au client de se reconnecter. Si l\'erreur revient régulièrement, vérifier la durée de vie des sessions Supabase.',
+      };
+    }
+
+    // Erreur Claude / Anthropic
+    if (errorMsg.includes('anthropic') || errorMsg.includes('claude') || errorMsg.includes('overloaded_error')) {
+      return {
+        cause: 'L\'API Claude est surchargée ou a renvoyé une erreur.',
+        impact: 'L\'analyse a échoué. Si configuré, un crédit a été remboursé automatiquement.',
+        action: 'Le système retente automatiquement. Si l\'erreur persiste sur plusieurs analyses, vérifier le statut d\'Anthropic (status.anthropic.com).',
+      };
+    }
+
+    // Solde API insuffisant
+    if (alert.type === 'api_billing' || errorMsg.includes('insufficient credits') || errorMsg.includes('billing')) {
+      return {
+        cause: 'Le solde de l\'API Anthropic est insuffisant pour exécuter l\'analyse.',
+        impact: 'Bloquant — toutes les analyses échoueront jusqu\'à rechargement.',
+        action: 'Recharger le compte Anthropic dans la console (console.anthropic.com → Billing).',
+      };
+    }
+
+    // Rate limit
+    if (alert.type === 'rate_limit' || errorMsg.includes('rate limit') || errorMsg.includes('429')) {
+      return {
+        cause: 'Trop de requêtes envoyées en peu de temps à l\'API.',
+        impact: 'Certaines analyses ont été temporairement bloquées et retentées.',
+        action: 'Si fréquent, augmenter les limites de rate dans la console Anthropic ou répartir la charge.',
+      };
+    }
+
+    // Aucun fichier
+    if (alert.type === 'no_files') {
+      return {
+        cause: 'L\'utilisateur a lancé une analyse sans fournir de fichiers.',
+        impact: 'L\'analyse n\'a pas pu démarrer.',
+        action: 'Cas normal côté utilisateur. Marquer comme résolu.',
+      };
+    }
+
+    // Erreur sauvegarde
+    if (alert.type === 'save_error' && errorMsg.includes('insert')) {
+      return {
+        cause: 'Une opération d\'insertion en BDD a échoué (probablement un conflit ou une contrainte).',
+        impact: 'Données potentiellement non enregistrées. Vérifier l\'impact selon le contexte.',
+        action: 'Examiner le détail technique ci-dessous pour identifier le champ en cause.',
+      };
+    }
+
+    return null;
+  };
+
+  // ─── Regroupement par signature ───
+  const filteredAlerts = activeCategory === 'all' ? alerts : alerts.filter(a => getCategory(a) === activeCategory);
+
+  const groups = (() => {
+    const map = new Map<string, { key: string; title: string; type: string; severity: string; category: string; alerts: Alert[] }>();
+    filteredAlerts.forEach(a => {
+      const key = `${a.type}::${a.title}`;
+      if (!map.has(key)) {
+        map.set(key, { key, title: a.title, type: a.type, severity: a.severity, category: getCategory(a), alerts: [] });
+      }
+      map.get(key)!.alerts.push(a);
+    });
+    return Array.from(map.values()).sort((a, b) => {
+      const aLast = new Date(a.alerts[0].created_at).getTime();
+      const bLast = new Date(b.alerts[0].created_at).getTime();
+      return bLast - aLast;
+    });
+  })();
+
+  // Compteurs par catégorie (sur les alertes filtrées par statut, avant filtre catégorie)
+  const counts = {
+    all: alerts.length,
+    stripe: alerts.filter(a => getCategory(a) === 'stripe').length,
+    analyse: alerts.filter(a => getCategory(a) === 'analyse').length,
+    autre: alerts.filter(a => getCategory(a) === 'autre').length,
+  };
+
+  const severityConfig: Record<string, { bg: string; border: string; icon: string; color: string; barColor: string }> = {
+    critical: { bg: '#fef2f2', border: '#fecaca', icon: '🔴', color: '#dc2626', barColor: '#dc2626' },
+    warning: { bg: '#fffbeb', border: '#fde68a', icon: '🟡', color: '#d97706', barColor: '#f59e0b' },
+    info: { bg: '#eff6ff', border: '#bfdbfe', icon: '🔵', color: '#2563eb', barColor: '#3b82f6' },
   };
 
   const typeLabels: Record<string, string> = {
@@ -700,8 +849,34 @@ function SystemAlertsTab({ showToast }: { showToast: (msg: string) => void }) {
     refund: 'Remboursement',
   };
 
+  const categoryConfig = {
+    all: { label: 'Toutes', icon: '📋', color: '#0f2d3d', bg: '#fff' },
+    stripe: { label: 'Stripe', icon: '💳', color: '#6366f1', bg: '#eef2ff' },
+    analyse: { label: 'Analyse', icon: '🤖', color: '#16a34a', bg: '#f0fdf4' },
+    autre: { label: 'Autre', icon: '🔧', color: '#64748b', bg: '#f1f5f9' },
+  };
+
+  const toggleGroup = (key: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleAlertDetail = (id: string) => {
+    setExpandedAlerts(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const fmtDate = (s: string) => new Date(s).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
   return (
     <div>
+      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap' as const, gap: 12 }}>
         <div>
           <h2 style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Alertes système</h2>
@@ -723,56 +898,229 @@ function SystemAlertsTab({ showToast }: { showToast: (msg: string) => void }) {
         </div>
       </div>
 
+      {/* Onglets catégories */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 18, flexWrap: 'wrap' as const, padding: 5, background: '#f8fafc', borderRadius: 12, border: '1px solid #edf2f7' }}>
+        {(['all', 'stripe', 'analyse', 'autre'] as const).map(cat => {
+          const c = categoryConfig[cat];
+          const count = counts[cat];
+          const active = activeCategory === cat;
+          return (
+            <button key={cat} onClick={() => setActiveCategory(cat)}
+              style={{
+                flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 9,
+                background: active ? c.bg : 'transparent',
+                border: `1.5px solid ${active ? c.color : 'transparent'}`,
+                color: active ? c.color : '#64748b',
+                fontSize: 13, fontWeight: active ? 800 : 600, cursor: 'pointer',
+                transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                boxShadow: active ? `0 1px 3px ${c.color}20` : 'none',
+              }}>
+              <span style={{ fontSize: 16 }}>{c.icon}</span>
+              <span>{c.label}</span>
+              <span style={{
+                padding: '1px 8px', borderRadius: 100, fontSize: 11, fontWeight: 800,
+                background: active ? c.color : '#e2e8f0',
+                color: active ? '#fff' : '#64748b',
+                minWidth: 20, textAlign: 'center' as const,
+              }}>{count}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Contenu */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>Chargement...</div>
-      ) : alerts.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 60 }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Aucune alerte {filter === 'unresolved' ? 'en attente' : filter === 'critical' ? 'critique' : ''}</div>
+        <div style={{ textAlign: 'center' as const, padding: 40, color: '#94a3b8' }}>Chargement...</div>
+      ) : groups.length === 0 ? (
+        <div style={{ textAlign: 'center' as const, padding: 60, background: '#fff', borderRadius: 14, border: '1px solid #edf2f7' }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>
+            Aucune alerte {filter === 'unresolved' ? 'en attente' : filter === 'critical' ? 'critique' : ''}
+            {activeCategory !== 'all' && ` dans "${categoryConfig[activeCategory].label}"`}
+          </div>
           <div style={{ fontSize: 13, color: '#94a3b8' }}>Tout fonctionne normalement</div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {alerts.map(alert => {
-            const sev = severityConfig[alert.severity] || severityConfig.info;
-            const refunded = alert.metadata?.refunded === true;
-            const analyseType = (alert.metadata?.analyseType as string) || '';
+        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+          {groups.map(group => {
+            const sev = severityConfig[group.severity] || severityConfig.info;
+            const cat = categoryConfig[group.category as 'stripe' | 'analyse' | 'autre'] || categoryConfig.autre;
+            const isExpanded = expandedGroups.has(group.key);
+            const occurrenceCount = group.alerts.length;
+            const lastOccurrence = group.alerts[0];
+            const firstOccurrence = group.alerts[group.alerts.length - 1];
+            const unresolvedInGroup = group.alerts.filter(a => !a.resolved).map(a => a.id);
+
+            // Clients impactés uniques
+            const clients = Array.from(new Set(group.alerts.map(a => a.user_email || (a.metadata?.customerInfo as string) || null).filter(Boolean)));
+
             return (
-              <div key={alert.id} style={{ background: alert.resolved ? '#fafbfc' : sev.bg, border: `1.5px solid ${alert.resolved ? '#e2e8f0' : sev.border}`, borderRadius: 14, padding: '16px 20px', opacity: alert.resolved ? 0.6 : 1, transition: 'opacity 0.2s' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' as const }}>
-                  <div style={{ flex: 1, minWidth: 200 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                      <span>{sev.icon}</span>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>{alert.title}</span>
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: '#f1f5f9', color: '#64748b' }}>{typeLabels[alert.type] || alert.type}</span>
+              <div key={group.key} style={{
+                background: '#fff', borderRadius: 14,
+                border: `1.5px solid ${isExpanded ? sev.barColor + '40' : '#edf2f7'}`,
+                overflow: 'hidden' as const, transition: 'all 0.2s',
+                boxShadow: isExpanded ? `0 4px 12px ${sev.barColor}15` : 'none',
+              }}>
+                {/* En-tête du groupe (cliquable) */}
+                <div onClick={() => toggleGroup(group.key)}
+                  style={{
+                    padding: '14px 18px', cursor: 'pointer', display: 'flex',
+                    alignItems: 'center', gap: 14, transition: 'background 0.15s',
+                    background: isExpanded ? sev.bg + '40' : '#fff',
+                  }}
+                  onMouseOver={e => { if (!isExpanded) (e.currentTarget as HTMLElement).style.background = '#fafbfc'; }}
+                  onMouseOut={e => { if (!isExpanded) (e.currentTarget as HTMLElement).style.background = '#fff'; }}>
+                  {/* Barre colorée à gauche */}
+                  <div style={{ width: 4, alignSelf: 'stretch', borderRadius: 2, background: sev.barColor, flexShrink: 0 }} />
+
+                  {/* Contenu */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' as const }}>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>{group.title}</span>
+                      <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 100, background: cat.bg, color: cat.color, border: `1px solid ${cat.color}25` }}>
+                        {cat.icon} {cat.label}
+                      </span>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: '#f1f5f9', color: '#64748b' }}>
+                        {typeLabels[group.type] || group.type}
+                      </span>
+                      <span style={{
+                        fontSize: 11, fontWeight: 800, padding: '2px 9px', borderRadius: 100,
+                        background: sev.barColor, color: '#fff',
+                      }}>{occurrenceCount} occurrence{occurrenceCount > 1 ? 's' : ''}</span>
                     </div>
-                    <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.5, marginBottom: 8 }}>{alert.message}</p>
-                    {(alert.user_name || alert.user_email) ? (
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: '#0f2d3d', background: '#f0f7fb', border: '1px solid #bae3f5', padding: '3px 9px', borderRadius: 6, marginBottom: 8 }}>
-                        👤 {alert.user_name || 'Sans nom'}
-                        {alert.user_email && <span style={{ color: '#64748b', fontWeight: 500 }}>· {alert.user_email}</span>}
-                      </div>
-                    ) : alert.metadata?.customerInfo ? (
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: '#78350f', background: '#fffbeb', border: '1px solid #fde68a', padding: '3px 9px', borderRadius: 6, marginBottom: 8 }}>
-                        👤 {String(alert.metadata.customerInfo)}
-                        <span style={{ color: '#a16207', fontWeight: 500 }}>· (non rattaché)</span>
-                      </div>
-                    ) : null}
-                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' as const, fontSize: 11, color: '#94a3b8' }}>
-                      <span>{new Date(alert.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                      {alert.analyse_id && <span>Analyse: {alert.analyse_id.slice(0, 8)}...</span>}
-                      {analyseType && <span>Type: {analyseType}</span>}
-                      {refunded && <span style={{ color: '#15803d', fontWeight: 700 }}>✓ Crédit remboursé</span>}
-                      {alert.resolved && alert.resolved_at && <span style={{ color: '#2a7d9c' }}>Résolu le {new Date(alert.resolved_at).toLocaleDateString('fr-FR')}</span>}
+                    <div style={{ display: 'flex', gap: 14, fontSize: 11, color: '#94a3b8', flexWrap: 'wrap' as const }}>
+                      <span>Dernière : <strong style={{ color: '#475569' }}>{fmtDate(lastOccurrence.created_at)}</strong></span>
+                      {occurrenceCount > 1 && (
+                        <span>Première : {fmtDate(firstOccurrence.created_at)}</span>
+                      )}
+                      {clients.length > 0 && (
+                        <span>👤 {clients.length} client{clients.length > 1 ? 's' : ''} impacté{clients.length > 1 ? 's' : ''}</span>
+                      )}
                     </div>
                   </div>
-                  {!alert.resolved && (
-                    <button onClick={() => resolveAlert(alert.id)}
-                      style={{ padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', whiteSpace: 'nowrap' as const }}>
-                      Résoudre
-                    </button>
-                  )}
+
+                  {/* Actions */}
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                    {unresolvedInGroup.length > 0 && (
+                      <button onClick={e => { e.stopPropagation(); resolveGroup(unresolvedInGroup); }}
+                        style={{ padding: '7px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: '1px solid #bbf7d0', background: '#f0fdf4', color: '#15803d', whiteSpace: 'nowrap' as const }}>
+                        ✓ Résoudre {unresolvedInGroup.length > 1 ? `(${unresolvedInGroup.length})` : ''}
+                      </button>
+                    )}
+                    <span style={{ fontSize: 18, color: '#94a3b8', transform: isExpanded ? 'rotate(90deg)' : 'rotate(0)', transition: 'transform 0.2s' }}>›</span>
+                  </div>
                 </div>
+
+                {/* Détail du groupe (déplié) */}
+                {isExpanded && (
+                  <div style={{ borderTop: '1px solid #edf2f7', background: '#fafbfc' }}>
+                    {group.alerts.map((alert, idx) => {
+                      const isDetailOpen = expandedAlerts.has(alert.id);
+                      const explanation = getExplanation(alert);
+                      const errorMsg = alert.metadata?.error as string | undefined;
+                      const eventType = alert.metadata?.eventType as string | undefined;
+                      const eventId = alert.metadata?.eventId as string | undefined;
+                      const stage = alert.metadata?.stage as string | undefined;
+
+                      return (
+                        <div key={alert.id} style={{
+                          padding: '14px 18px', paddingLeft: 32,
+                          borderBottom: idx < group.alerts.length - 1 ? '1px solid #edf2f7' : 'none',
+                          opacity: alert.resolved ? 0.55 : 1,
+                          transition: 'opacity 0.2s',
+                        }}>
+                          {/* Ligne principale */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' as const }}>
+                            <div style={{ flex: 1, minWidth: 200 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' as const }}>
+                                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>
+                                  {fmtDate(alert.created_at)}
+                                </span>
+                                {alert.resolved && (
+                                  <span style={{ fontSize: 10, fontWeight: 700, color: '#15803d', background: '#f0fdf4', padding: '2px 8px', borderRadius: 100, border: '1px solid #bbf7d0' }}>
+                                    ✓ Résolu
+                                  </span>
+                                )}
+                              </div>
+                              {alert.message && (
+                                <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.5, marginBottom: 6 }}>{alert.message}</p>
+                              )}
+                              {(alert.user_name || alert.user_email) ? (
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: '#0f2d3d', background: '#f0f7fb', border: '1px solid #bae3f5', padding: '3px 9px', borderRadius: 6, marginRight: 6 }}>
+                                  👤 {alert.user_name || 'Sans nom'}
+                                  {alert.user_email && <span style={{ color: '#64748b', fontWeight: 500 }}>· {alert.user_email}</span>}
+                                </div>
+                              ) : alert.metadata?.customerInfo ? (
+                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: '#78350f', background: '#fffbeb', border: '1px solid #fde68a', padding: '3px 9px', borderRadius: 6, marginRight: 6 }}>
+                                  👤 {String(alert.metadata.customerInfo)}
+                                  <span style={{ color: '#a16207', fontWeight: 500 }}>· (non rattaché)</span>
+                                </div>
+                              ) : null}
+                            </div>
+
+                            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                              <button onClick={() => toggleAlertDetail(alert.id)}
+                                style={{ padding: '7px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', whiteSpace: 'nowrap' as const }}>
+                                {isDetailOpen ? '− Masquer' : '+ Détails'}
+                              </button>
+                              {!alert.resolved && (
+                                <button onClick={() => resolveAlert(alert.id)}
+                                  style={{ padding: '7px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: '1px solid #bbf7d0', background: '#f0fdf4', color: '#15803d', whiteSpace: 'nowrap' as const }}>
+                                  ✓ Résoudre
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Bloc détails (déplié) */}
+                          {isDetailOpen && (
+                            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+                              {/* Explication humaine */}
+                              {explanation && (
+                                <div style={{ padding: '12px 14px', borderRadius: 10, background: '#f0f7fb', border: '1.5px solid #bae3f5' }}>
+                                  <div style={{ fontSize: 11, fontWeight: 800, color: '#0c4a6e', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8 }}>
+                                    💡 Explication
+                                  </div>
+                                  <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6, fontSize: 12.5, lineHeight: 1.5 }}>
+                                    <div><strong style={{ color: '#0f2d3d' }}>Cause :</strong> <span style={{ color: '#475569' }}>{explanation.cause}</span></div>
+                                    <div><strong style={{ color: '#0f2d3d' }}>Impact :</strong> <span style={{ color: '#475569' }}>{explanation.impact}</span></div>
+                                    <div><strong style={{ color: '#0f2d3d' }}>Action recommandée :</strong> <span style={{ color: '#475569' }}>{explanation.action}</span></div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Détail technique */}
+                              <div style={{ padding: '12px 14px', borderRadius: 10, background: '#0f172a', border: '1.5px solid #1e293b' }}>
+                                <div style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8 }}>
+                                  🔧 Détail technique
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4, fontSize: 11.5, fontFamily: 'monospace', color: '#e2e8f0' }}>
+                                  {stage && <div><span style={{ color: '#94a3b8' }}>stage :</span> <span style={{ color: '#7dd3fc' }}>{stage}</span></div>}
+                                  {eventType && <div><span style={{ color: '#94a3b8' }}>event_type :</span> <span style={{ color: '#7dd3fc' }}>{eventType}</span></div>}
+                                  {eventId && <div><span style={{ color: '#94a3b8' }}>event_id :</span> <span style={{ color: '#7dd3fc' }}>{eventId}</span></div>}
+                                  {errorMsg && (
+                                    <div style={{ marginTop: 6, padding: '8px 10px', background: '#1e293b', borderRadius: 6, color: '#fda4af', wordBreak: 'break-all' as const }}>
+                                      <span style={{ color: '#94a3b8', fontWeight: 700 }}>error :</span> {errorMsg}
+                                    </div>
+                                  )}
+                                  {alert.analyse_id && <div style={{ marginTop: 4 }}><span style={{ color: '#94a3b8' }}>analyse_id :</span> <span style={{ color: '#7dd3fc' }}>{alert.analyse_id}</span></div>}
+                                  {alert.metadata && Object.keys(alert.metadata).filter(k => !['stage', 'eventType', 'eventId', 'error'].includes(k)).length > 0 && (
+                                    <details style={{ marginTop: 8 }}>
+                                      <summary style={{ cursor: 'pointer', color: '#94a3b8', fontWeight: 700 }}>Voir toutes les metadata ({Object.keys(alert.metadata).length} champs)</summary>
+                                      <pre style={{ marginTop: 6, padding: 8, background: '#1e293b', borderRadius: 6, fontSize: 10.5, overflow: 'auto' as const, color: '#cbd5e1' }}>
+{JSON.stringify(alert.metadata, null, 2)}
+                                      </pre>
+                                    </details>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
