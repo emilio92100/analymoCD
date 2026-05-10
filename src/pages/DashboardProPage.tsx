@@ -9,7 +9,7 @@ import {
   ChevronRight, ArrowRight,
   MapPin, Trash2, AlertTriangle, FileText, Pencil,
   UserPlus, UserCheck, Folder, Lightbulb, MessageSquare,
-  LayoutGrid, LayoutList, ArrowUpDown, Info,
+  LayoutGrid, LayoutList, ArrowUpDown, Info, Calendar,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getStripe } from '../lib/stripe-client';
@@ -216,46 +216,50 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
         </Link>
       </div>
 
-      {/* ─── Bloc abonnement (mis en avant, gradient accent) ─── */}
+      {/* ─── Bloc abonnement (A6 - vert + pill ABONNEMENT ACTIF) ─── */}
       <div style={{ margin: '0 14px 8px' }}>
         {creditsLoading && !subscription ? (
           // Skeleton sur le bloc abonnement pendant le chargement
-          <div style={{ padding: '12px 14px', borderRadius: 11, background: 'linear-gradient(135deg, rgba(42,125,156,0.4), rgba(15,80,112,0.4))', border: '1px solid rgba(125,211,252,0.25)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-              <Skeleton width={10} height={10} />
-              <Skeleton width={130} height={9} />
-            </div>
-            <Skeleton width={90} height={18} />
+          <div style={{ padding: '12px 14px', borderRadius: 11, background: 'linear-gradient(135deg, rgba(22,163,74,0.4), rgba(21,128,61,0.4))', border: '1px solid rgba(134,239,172,0.25)' }}>
+            <Skeleton width={75} height={16} />
+            <div style={{ marginTop: 8 }}><Skeleton width={120} height={18} /></div>
             <div style={{ marginTop: 5 }}><Skeleton width={140} height={11} /></div>
           </div>
         ) : subscription ? (
           <div style={{
             padding: '12px 14px', borderRadius: 11,
-            background: 'linear-gradient(135deg, #2a7d9c 0%, #0a5070 100%)',
-            border: '1px solid rgba(125,211,252,0.35)',
-            boxShadow: '0 4px 14px rgba(125,211,252,0.15), inset 0 1px 0 rgba(255,255,255,0.1)',
-            position: 'relative', overflow: 'hidden',
+            background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+            position: 'relative',
+            boxShadow: '0 4px 14px rgba(22,163,74,0.25)',
           }}>
-            {/* Petit point lumineux qui pulse — indicateur "actif" */}
-            <span style={{
-              position: 'absolute', top: 12, right: 12, width: 7, height: 7, borderRadius: '50%',
-              background: '#86efac', boxShadow: '0 0 0 0 rgba(134,239,172,0.7)',
-              animation: 'pulse-active 2s ease-in-out infinite',
-            }} />
+            {/* Pill ACTIF avec point vert pulsant */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                padding: '2px 8px', borderRadius: 100,
+                background: 'rgba(255,255,255,0.22)',
+                fontSize: 9.5, fontWeight: 700, color: '#fff', letterSpacing: '0.06em',
+              }}>
+                <span style={{
+                  display: 'inline-block', width: 5, height: 5, borderRadius: '50%',
+                  background: '#86efac', boxShadow: '0 0 0 0 rgba(134,239,172,0.7)',
+                  animation: 'pulse-active 2s ease-in-out infinite',
+                }} />
+                ABONNEMENT ACTIF
+              </span>
+            </div>
             <style>{`
               @keyframes pulse-active {
                 0%, 100% { box-shadow: 0 0 0 0 rgba(134,239,172,0.6); }
-                50% { box-shadow: 0 0 0 6px rgba(134,239,172,0); }
+                50% { box-shadow: 0 0 0 5px rgba(134,239,172,0); }
               }
             `}</style>
-            <div style={{ fontSize: 9.5, fontWeight: 700, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.12em', marginBottom: 4 }}>
-              ABONNEMENT ACTIF
+            <div style={{ fontSize: 17, fontWeight: 800, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.15 }}>
+              Plan {subscription.plan === 'decouverte' ? 'Découverte' : subscription.plan === 'starter' ? 'Starter' : subscription.plan === 'power' ? 'Power' : subscription.plan}
             </div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.15 }}>
-              {subscription.plan === 'decouverte' ? 'Découverte' : subscription.plan === 'starter' ? 'Starter' : subscription.plan === 'power' ? 'Power' : subscription.plan}
-            </div>
-            <div style={{ fontSize: 11, fontWeight: 500, color: subscription.cancel_at_period_end ? '#fde68a' : 'rgba(255,255,255,0.78)', marginTop: 3 }}>
-              {subscription.cancel_at_period_end ? '⚠ Fin' : 'Renouvellement'} {subscription.current_period_end ? fmtDate(subscription.current_period_end) : '—'}
+            <div style={{ fontSize: 11, fontWeight: 500, color: subscription.cancel_at_period_end ? '#fde68a' : 'rgba(255,255,255,0.85)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Calendar size={12} />
+              {subscription.cancel_at_period_end ? 'Fin' : 'Renouvellement'} {subscription.current_period_end ? fmtDate(subscription.current_period_end) : '—'}
             </div>
           </div>
         ) : (
