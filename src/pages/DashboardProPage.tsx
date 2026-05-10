@@ -2615,7 +2615,7 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
 
   // Popup confirmation upgrade avec récap TVA + 3D Secure inline
   // États du flow : null (fermé) | 'preview' (récap) | 'loading' (paiement) | 'success' | 'error'
-  type UpgradeFlowState = null | 'preview' | 'loading' | 'success' | 'error';
+  type UpgradeFlowState = null | 'preview' | 'loading' | 'success' | 'error' | 'replace-confirm' | 'cancel-scheduled-confirm' | 'cancel-scheduled-success';
   type UpgradePreview = {
     is_upgrade: boolean;
     is_downgrade: boolean;
@@ -2637,6 +2637,18 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
   const [upgradeError, setUpgradeError] = useState<string>('');
   const [upgradeErrorContext, setUpgradeErrorContext] = useState<'downgrade' | 'upgrade' | 'generic'>('generic');
   const [upgradeTargetPlan, setUpgradeTargetPlan] = useState<string>('');
+  // Données pour la popup de remplacement quand un schedule existe déjà
+  const [replaceConfirmData, setReplaceConfirmData] = useState<{
+    existing_plan: string;
+    existing_date: string;
+    new_plan: string;
+    new_date: string;
+  } | null>(null);
+  // Données pour la popup de succès d'annulation de changement programmé
+  const [cancelScheduledSuccessData, setCancelScheduledSuccessData] = useState<{
+    current_plan: string;
+    next_renewal_date: string;
+  } | null>(null);
   const [upgradeSuccessData, setUpgradeSuccessData] = useState<{
     plan_label: string;
     amount: string;
@@ -2674,7 +2686,7 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
   }
 
   // Confirmer l'upgrade : appelle l'edge function et gère 3D Secure inline si besoin
-  async function confirmUpgradeFlow() {
+  async function confirmUpgradeFlow(forceReplace = false) {
     if (!upgradePreview || !upgradeTargetPlan) return;
     setUpgradeFlow('loading');
     setUpgradeError('');
@@ -2688,13 +2700,25 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://veszrayromldfgetqaxb.supabase.co'}/functions/v1/pro-checkout-create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
-        body: JSON.stringify({ mode: 'subscribe', plan: upgradeTargetPlan }),
+        body: JSON.stringify({ mode: 'subscribe', plan: upgradeTargetPlan, force_replace: forceReplace }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erreur lors du changement de plan');
 
-      // 2. Cas downgrade : changement programmé
+      // 2. Cas : un schedule existe déjà → demander confirmation au pro
+      if (data.requires_confirmation && data.confirmation_type === 'replace_scheduled_change') {
+        setReplaceConfirmData({
+          existing_plan: data.existing_plan,
+          existing_date: data.existing_date,
+          new_plan: data.new_plan,
+          new_date: data.new_date,
+        });
+        setUpgradeFlow('replace-confirm');
+        return;
+      }
+
+      // 3. Cas downgrade : changement programmé
       if (data.scheduled) {
         setUpgradeSuccessData({
           plan_label: upgradePreview.new_plan_label,
@@ -2755,6 +2779,45 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
     setUpgradeError('');
     setUpgradeErrorContext('generic');
     setUpgradeSuccessData(null);
+    setReplaceConfirmData(null);
+    setCancelScheduledSuccessData(null);
+  }
+
+  // Ouvre la popup de confirmation pour annuler un changement programmé
+  function openCancelScheduledFlow() {
+    setUpgradeFlow('cancel-scheduled-confirm');
+  }
+
+  // Confirme l'annulation du changement programmé
+  async function confirmCancelScheduledChange() {
+    setUpgradeFlow('loading');
+    setUpgradeLoadingMsg('Annulation du changement…');
+    setUpgradeError('');
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Vous devez être connecté');
+
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://veszrayromldfgetqaxb.supabase.co'}/functions/v1/pro-checkout-create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+        body: JSON.stringify({ mode: 'cancel_scheduled_change' }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erreur lors de l\'annulation');
+
+      setCancelScheduledSuccessData({
+        current_plan: data.current_plan,
+        next_renewal_date: data.next_renewal_date,
+      });
+      setUpgradeFlow('cancel-scheduled-success');
+    } catch (e: any) {
+      console.error('[cancel-scheduled-change] error:', e);
+      setUpgradeError(e.message || 'Une erreur est survenue');
+      setUpgradeErrorContext('downgrade');
+      setUpgradeFlow('error');
+    }
   }
 
   function reloadAfterSuccess() {
@@ -3285,7 +3348,7 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
                         {/* Boutons */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                           <button
-                            onClick={confirmUpgradeFlow}
+                            onClick={() => confirmUpgradeFlow()}
                             style={{
                               width: '100%', padding: '13px', borderRadius: 12, border: 'none', cursor: 'pointer',
                               background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14.5, fontWeight: 800,
@@ -3444,6 +3507,119 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
                 </div>
               )}
 
+              {/* ═══ ÉTAT 5 : REPLACE-CONFIRM (changement déjà programmé, on demande de confirmer le remplacement) ═══ */}
+              {upgradeFlow === 'replace-confirm' && replaceConfirmData && (
+                <div style={{ textAlign: 'center', padding: '32px 24px 24px' }}>
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', duration: 0.5, bounce: 0.3 }}
+                    style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg, #d97706, #b45309)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 12px 32px rgba(217,119,6,0.3)' }}>
+                    <AlertTriangle size={36} style={{ color: '#fff' }} />
+                  </motion.div>
+
+                  <h2 style={{ fontSize: 19, fontWeight: 900, color: '#0f172a', marginBottom: 12, letterSpacing: '-0.02em' }}>
+                    Vous avez déjà un changement programmé
+                  </h2>
+                  <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 12, padding: '14px 16px', marginBottom: 18, textAlign: 'left' }}>
+                    <p style={{ fontSize: 13, color: '#78350f', margin: 0, lineHeight: 1.6 }}>
+                      Vous avez programmé un passage vers <strong>{replaceConfirmData.existing_plan === 'decouverte' ? 'Découverte' : replaceConfirmData.existing_plan === 'starter' ? 'Starter' : 'Power'}</strong> le <strong>{fmtDate(replaceConfirmData.existing_date)}</strong>.
+                    </p>
+                  </div>
+                  <p style={{ fontSize: 14, color: '#475569', marginBottom: 22, lineHeight: 1.6, padding: '0 4px' }}>
+                    Voulez-vous remplacer ce changement par votre nouvelle demande (passage vers <strong>{replaceConfirmData.new_plan === 'decouverte' ? 'Découverte' : replaceConfirmData.new_plan === 'starter' ? 'Starter' : 'Power'}</strong> le <strong>{fmtDate(replaceConfirmData.new_date)}</strong>) ?
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <button
+                      onClick={() => confirmUpgradeFlow(true)}
+                      style={{
+                        width: '100%', padding: '13px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                        background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14, fontWeight: 700,
+                        transition: 'all 0.2s',
+                      }}>
+                      Remplacer le changement
+                    </button>
+                    <button onClick={closeUpgradeFlow}
+                      style={{ background: 'none', border: '1.5px solid #e5e7eb', borderRadius: 12, padding: '12px', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#64748b' }}>
+                      Garder le changement actuel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ═══ ÉTAT 6 : CANCEL-SCHEDULED-CONFIRM (annuler le changement programmé) ═══ */}
+              {upgradeFlow === 'cancel-scheduled-confirm' && subscription?.scheduled_plan_change && subscription?.scheduled_change_date && (
+                <div style={{ textAlign: 'center', padding: '32px 24px 24px' }}>
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', duration: 0.5, bounce: 0.3 }}
+                    style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 12px 32px rgba(42,125,156,0.3)' }}>
+                    <X size={36} style={{ color: '#fff' }} strokeWidth={2.5} />
+                  </motion.div>
+
+                  <h2 style={{ fontSize: 19, fontWeight: 900, color: '#0f172a', marginBottom: 12, letterSpacing: '-0.02em' }}>
+                    Annuler le changement programmé ?
+                  </h2>
+                  <div style={{ background: '#f0f7fb', border: '1px solid #bae3f5', borderRadius: 12, padding: '14px 16px', marginBottom: 18, textAlign: 'left' }}>
+                    <p style={{ fontSize: 13, color: '#0f2d3d', margin: 0, lineHeight: 1.6 }}>
+                      Votre passage vers <strong>{subscription.scheduled_plan_change === 'decouverte' ? 'Découverte' : subscription.scheduled_plan_change === 'starter' ? 'Starter' : 'Power'}</strong> le <strong>{fmtDate(subscription.scheduled_change_date)}</strong> sera annulé.
+                    </p>
+                  </div>
+                  <p style={{ fontSize: 14, color: '#475569', marginBottom: 22, lineHeight: 1.6, padding: '0 4px' }}>
+                    Vous resterez sur votre plan <strong>{subscription.plan === 'decouverte' ? 'Découverte' : subscription.plan === 'starter' ? 'Starter' : 'Power'}</strong> actuel et il se renouvellera normalement.
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <button
+                      onClick={() => confirmCancelScheduledChange()}
+                      style={{
+                        width: '100%', padding: '13px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                        background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14, fontWeight: 700,
+                        transition: 'all 0.2s',
+                      }}>
+                      Confirmer l'annulation
+                    </button>
+                    <button onClick={closeUpgradeFlow}
+                      style={{ background: 'none', border: '1.5px solid #e5e7eb', borderRadius: 12, padding: '12px', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#64748b' }}>
+                      Garder le changement
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ═══ ÉTAT 7 : CANCEL-SCHEDULED-SUCCESS (annulation du changement programmé OK) ═══ */}
+              {upgradeFlow === 'cancel-scheduled-success' && cancelScheduledSuccessData && (
+                <div style={{ textAlign: 'center', padding: '32px 24px 24px' }}>
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', duration: 0.5, bounce: 0.3 }}
+                    style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg, #16a34a, #15803d)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 12px 32px rgba(22,163,74,0.3)' }}>
+                    <CheckCircle size={40} style={{ color: '#fff' }} strokeWidth={2.5} />
+                  </motion.div>
+
+                  <h2 style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', marginBottom: 10, letterSpacing: '-0.02em' }}>
+                    Changement annulé !
+                  </h2>
+                  <p style={{ fontSize: 14, color: '#64748b', marginBottom: 22, lineHeight: 1.6, padding: '0 8px' }}>
+                    Vous restez sur votre plan <strong>{cancelScheduledSuccessData.current_plan === 'decouverte' ? 'Découverte' : cancelScheduledSuccessData.current_plan === 'starter' ? 'Starter' : 'Power'}</strong>.<br />
+                    Renouvellement automatique le <strong>{fmtDate(cancelScheduledSuccessData.next_renewal_date)}</strong>.
+                  </p>
+
+                  <button
+                    onClick={() => { closeUpgradeFlow(); reloadAfterSuccess(); }}
+                    style={{
+                      width: '100%', padding: '13px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                      background: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff', fontSize: 14, fontWeight: 700,
+                      transition: 'all 0.2s',
+                    }}>
+                    Compris
+                  </button>
+                </div>
+              )}
+
             </motion.div>
           </motion.div>
         )}
@@ -3541,6 +3717,19 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
                       <div style={{ fontSize: 11, color: '#ea580c', textAlign: 'center', fontWeight: 600 }}>
                         Fin prévue le {subscription?.current_period_end ? fmtDate(subscription.current_period_end) : '—'}
                       </div>
+                    </div>
+                  ) : subscription?.scheduled_plan_change ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <button onClick={openCancelScheduledFlow}
+                        style={{ width: '100%', padding: '11px', borderRadius: 11, background: 'linear-gradient(135deg, #d97706, #b45309)', border: 'none', textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer', boxShadow: '0 4px 12px rgba(217,119,6,0.2)' }}>
+                        Annuler ce changement
+                      </button>
+                      <button onClick={() => setCancelStep(1)}
+                        style={{ width: '100%', padding: '10px', borderRadius: 11, background: '#fff', border: '1.5px solid #fecaca', textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#dc2626', cursor: 'pointer' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}>
+                        Annuler mon abonnement
+                      </button>
                     </div>
                   ) : (
                     <button onClick={() => setCancelStep(1)}
