@@ -182,7 +182,7 @@ export default function CGVProPage() {
             {/* ─── Section 2 : Définitions ─── */}
             <Section id="definitions" icon={FileText} title="2. Définitions">
               <Table headers={['Terme', 'Définition']} rows={[
-                ['Verimo', 'Le service édité par Alexandre ROGELET, accessible sur verimo.fr.'],
+                ['Verimo', 'Le service édité par VERIMO APP, accessible sur verimo.fr. Responsable : Alexandre ROGELET.'],
                 ['Pro / Client Pro', 'Toute personne morale ou physique exerçant une activité professionnelle dans l\'immobilier et ayant souscrit à un abonnement Verimo Pro.'],
                 ['Abonnement', 'Forfait mensuel permettant l\'accès au service avec un volume de crédits inclus.'],
                 ['Crédit complet', 'Permet de lancer une analyse complète d\'un bien (jusqu\'à 15 documents).'],
@@ -340,7 +340,7 @@ export default function CGVProPage() {
               <p>Le Pro peut néanmoins résilier son abonnement à tout moment, dans les conditions prévues à l'article 7 des présentes CGV.</p>
 
               <SubTitle>8.1 — Geste commercial</SubTitle>
-              <p>Verimo se réserve la possibilité d'accorder, au cas par cas et sans obligation, un remboursement à titre commercial en cas d'erreur manifeste, de problème technique imputable au service ou de demande justifiée formulée dans les premiers jours suivant la souscription. Toute demande doit être adressée à <strong>hello@verimo.fr</strong>.</p>
+              <p>Verimo se réserve la possibilité d'accorder, au cas par cas et sans obligation, un remboursement à titre commercial en cas d'erreur manifeste, de problème technique imputable au service ou de demande justifiée formulée dans les premiers jours suivant la souscription. Toute demande doit être adressée à <strong>pro@verimo.fr</strong>.</p>
             </Section>
 
             {/* ─── Section 9 : Données ─── */}
@@ -360,7 +360,7 @@ export default function CGVProPage() {
                 <li>Ne pas accéder au contenu des documents en dehors du traitement automatisé d'analyse</li>
                 <li>Ne pas partager les données avec des tiers (hors prestataires techniques nécessaires)</li>
                 <li>Conserver les données pendant la durée de l'abonnement + 30 jours après résiliation</li>
-                <li>Permettre l'export et la suppression des données sur simple demande à hello@verimo.fr</li>
+                <li>Permettre l'export et la suppression des données sur simple demande à pro@verimo.fr</li>
               </ul>
 
               <SubTitle>9.3 — Sous-traitants</SubTitle>
@@ -440,10 +440,11 @@ export default function CGVProPage() {
               <div style={{ padding: 20, borderRadius: 12, background: PRO_BG, border: `1.5px solid ${PRO_LIGHT}60`, marginTop: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                   <Mail size={18} style={{ color: PRO_ACCENT }} />
-                  <span style={{ fontSize: 15, fontWeight: 700, color: PRO_DARK }}>hello@verimo.fr</span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: PRO_DARK }}>pro@verimo.fr</span>
                 </div>
                 <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.7 }}>
-                  Verimo — Édité par Alexandre ROGELET<br />
+                  Verimo — Édité par <strong>VERIMO APP</strong><br />
+                  Responsable : Alexandre ROGELET<br />
                   Site : <a href="https://verimo.fr" style={{ color: PRO_ACCENT, textDecoration: 'underline' }}>verimo.fr</a><br />
                   Formulaire de contact : <Link to="/contact" style={{ color: PRO_ACCENT, textDecoration: 'underline' }}>verimo.fr/contact</Link>
                 </div>
