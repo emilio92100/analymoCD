@@ -830,10 +830,11 @@ async function handleListInvoices(userId: string) {
     fraudulent: 'Suspicion de fraude',
   };
 
-  const invoiceItems = stripeInvoices.data
-    // On ne garde pas les drafts (factures non finalisées) — pas pertinent pour l'historique
-    .filter((inv) => inv.status !== 'draft')
-    .map((inv) => {
+  const invoiceItems = await Promise.all(
+    stripeInvoices.data
+      // On ne garde pas les drafts (factures non finalisées) — pas pertinent pour l'historique
+      .filter((inv) => inv.status !== 'draft')
+      .map(async (inv) => {
       const isSubscription = !!inv.subscription;
       const lines = inv.lines?.data || [];
       const firstLine = lines[0];
@@ -843,17 +844,41 @@ async function handleListInvoices(userId: string) {
         || (isSubscription ? 'Abonnement Verimo Pro' : 'Achat unitaire');
 
       // Mapping statut Stripe → statut FR + variante UI
-      // - paid : facture payée ✅
+      // - paid : facture payée ✅ (avec sous-cas : remboursé total ou partiel)
       // - open : facture émise, en attente de paiement (peut être past_due si retries en cours)
       // - uncollectible : marquée irrécouvrable (après échecs définitifs)
       // - void : annulée
       const stripeStatus = inv.status || 'unknown';
       let statusLabel = '';
-      let statusVariant: 'success' | 'pending' | 'failed' | 'void' = 'success';
+      let statusVariant: 'success' | 'pending' | 'failed' | 'void' | 'refunded' = 'success';
+      let refundedAmount = 0;
 
       if (stripeStatus === 'paid') {
-        statusLabel = 'Réussi';
-        statusVariant = 'success';
+        // Détection remboursement via le charge associé
+        const chargeRef = inv.charge as Stripe.Charge | string | null;
+        let charge: Stripe.Charge | null = null;
+        if (chargeRef) {
+          if (typeof chargeRef === 'string') {
+            try { charge = await stripe.charges.retrieve(chargeRef); } catch { charge = null; }
+          } else {
+            charge = chargeRef as Stripe.Charge;
+          }
+        }
+        const amountPaid = inv.amount_paid || 0;
+        const amountRefundedCents = charge?.amount_refunded || 0;
+
+        if (amountRefundedCents >= amountPaid && amountPaid > 0) {
+          statusLabel = 'Remboursé';
+          statusVariant = 'refunded';
+          refundedAmount = amountRefundedCents;
+        } else if (amountRefundedCents > 0) {
+          statusLabel = `Remboursé partiellement (${(amountRefundedCents / 100).toFixed(2)}€)`;
+          statusVariant = 'refunded';
+          refundedAmount = amountRefundedCents;
+        } else {
+          statusLabel = 'Réussi';
+          statusVariant = 'success';
+        }
       } else if (stripeStatus === 'open') {
         // Si la facture a déjà été tentée au moins 1 fois → échec
         if ((inv.attempt_count || 0) > 0) {
@@ -901,11 +926,13 @@ async function handleListInvoices(userId: string) {
         status: stripeStatus,
         status_label: statusLabel,
         status_variant: statusVariant,
+        refunded_amount: refundedAmount > 0 ? fmtAmount(refundedAmount) : null,
         failure_reason: failureReason,
         attempt_count: inv.attempt_count || 0,
         _ts: inv.created,
       };
-    });
+    })
+  );
 
   const grantItems = await getGrantInvoices(userId);
 
