@@ -105,6 +105,10 @@ Deno.serve(async (req: Request) => {
       mode: "payment",
       success_url: SUCCESS_URL,
       cancel_url: CANCEL_URL,
+      // Pré-remplit l'email du client connecté (modifiable par l'utilisateur
+      // s'il veut une autre adresse de facturation). Pas de Customer Stripe
+      // créé — pertinent pour les achats ponctuels particuliers.
+      customer_email: user.email,
       // metadata : transmises au webhook après paiement
       metadata: {
         userId,
