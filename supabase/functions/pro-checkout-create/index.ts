@@ -336,6 +336,21 @@ async function handleDowngradeScheduled(
   try {
     const sub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
+    // ⭐ Si un schedule existe déjà sur cette subscription, on l'annule d'abord
+    // (cas : pro qui programme un downgrade puis change d'avis vers un autre plan)
+    if (sub.schedule) {
+      const existingScheduleId = typeof sub.schedule === 'string' ? sub.schedule : sub.schedule.id;
+      try {
+        await stripe.subscriptionSchedules.release(existingScheduleId);
+        console.log(`[downgrade] Schedule existant ${existingScheduleId} annulé pour permettre le nouveau`);
+      } catch (releaseErr) {
+        console.warn('[downgrade] Impossible de release l\'ancien schedule:', releaseErr);
+      }
+      // Re-fetch la subscription car son état a changé après le release
+      const refreshedSub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+      Object.assign(sub, refreshedSub);
+    }
+
     const schedule = await stripe.subscriptionSchedules.create({
       from_subscription: stripeSubscriptionId,
     });
@@ -368,11 +383,26 @@ async function handleDowngradeScheduled(
       },
     });
 
+    const switchDateIso = new Date(sub.current_period_end * 1000).toISOString();
     const switchDate = new Date(sub.current_period_end * 1000).toLocaleDateString('fr-FR', {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
     });
+
+    // ⭐ Stocker en BDD pour affichage sidebar (Bascule vers X le DATE)
+    const { error: bddErr } = await supabaseAdmin
+      .from('pro_subscriptions')
+      .update({
+        scheduled_plan_change: newPlan,
+        scheduled_change_date: switchDateIso,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('stripe_subscription_id', stripeSubscriptionId);
+
+    if (bddErr) {
+      console.error('[downgrade] BDD update failed (non bloquant):', bddErr);
+    }
 
     console.log(`[downgrade] Schedule créé pour sub ${stripeSubscriptionId}, switch le ${switchDate} vers ${newPlan}`);
 
@@ -380,7 +410,7 @@ async function handleDowngradeScheduled(
       success: true,
       scheduled: true,
       switch_date: switchDate,
-      switch_date_iso: new Date(sub.current_period_end * 1000).toISOString(),
+      switch_date_iso: switchDateIso,
       new_plan: newPlan,
       message: `Votre passage en ${PLAN_LABEL[newPlan as keyof typeof PLAN_LABEL]} sera effectif le ${switchDate}. D'ici là, vous gardez votre plan actuel et vos crédits.`,
     });
@@ -389,6 +419,7 @@ async function handleDowngradeScheduled(
     console.error('[downgrade] Stripe error:', stripeErr);
     return jsonResponse({
       error: 'Le changement de plan n\'a pas pu être programmé. Veuillez nous contacter via la page Support.',
+      error_code: 'downgrade_failed',
     }, 500);
   }
 }
@@ -576,6 +607,9 @@ async function handleCancel(userId: string, body: any) {
   const updateFields: Record<string, unknown> = {
     cancel_at_period_end: true,
     updated_at: new Date().toISOString(),
+    // Si un downgrade était programmé, on le nettoie (la résiliation prime)
+    scheduled_plan_change: null,
+    scheduled_change_date: null,
   };
   if (reason) updateFields.cancellation_reason = reason;
 
