@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, ShieldCheck, GitCompare, BarChart2, CreditCard, CheckCircle, AlertTriangle, Lock, X, Star, Info } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FileText, ShieldCheck, GitCompare, BarChart2, CreditCard, CheckCircle, AlertTriangle, Lock, X, Star, Info, ArrowRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useCredits, type Credits } from '../../hooks/useCredits';
 import DashboardLoader from '../../components/DashboardLoader';
@@ -235,14 +237,19 @@ export default function Tarifs() {
   const { credits, fetchCredits, loadingCredits } = useCredits();
   const [detailPlan, setDetailPlan] = useState<string | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<null | { id: string; label: string; price: string; priceNum: number; color: string; creditLabel: string }>(null);
-  const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [successPopup, setSuccessPopup] = useState<null | { creditsAdded: number; creditType: 'simple' | 'complete' }>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('cancelled') === 'true') { window.history.replaceState({}, '', '/dashboard/tarifs'); return; }
     if (params.get('success') === 'true') {
       window.history.replaceState({}, '', '/dashboard/tarifs');
-      setSuccessToast("✅ Paiement confirmé ! Vos crédits ont bien été ajoutés à votre compte. Vous pouvez dès maintenant lancer une nouvelle analyse ou les utiliser plus tard — ils n'expirent jamais.");
+      // Refresh des crédits pour avoir les valeurs à jour
+      fetchCredits();
+      // Petit délai pour laisser l'animation d'arrivée se faire après le redirect
+      setTimeout(() => {
+        setSuccessPopup({ creditsAdded: 0, creditType: 'complete' }); // valeurs génériques, le message s'adapte
+      }, 200);
     }
   }, []);
 
@@ -270,18 +277,84 @@ export default function Tarifs() {
         </div>
       )}
 
-      {successToast && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div style={{ background: '#0f2d3d', borderRadius: 20, padding: '28px 24px', maxWidth: 420, width: '100%', boxShadow: '0 24px 80px rgba(0,0,0,0.4)', display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-              <span style={{ fontSize: 32 }}>🎉</span>
-              <button onClick={() => setSuccessToast(null)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', flexShrink: 0 }}><X size={14} /></button>
-            </div>
-            <div style={{ fontSize: 15, color: '#fff', lineHeight: 1.7, fontWeight: 500 }}>{successToast}</div>
-            <button onClick={() => setSuccessToast(null)} style={{ width: '100%', padding: '12px', borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.15)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>Compris !</button>
-          </div>
-        </div>
-      )}
+      {/* ── Popup succès paiement (premium, calqué sur le pro) ── */}
+      <AnimatePresence>
+        {successPopup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.55)', padding: 16, backdropFilter: 'blur(4px)' }}
+            onClick={() => setSuccessPopup(null)}>
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', duration: 0.45, bounce: 0.2 }}
+              onClick={e => e.stopPropagation()}
+              style={{ background: '#fff', borderRadius: 24, padding: '36px 32px', maxWidth: 460, width: '100%', textAlign: 'center', boxShadow: '0 24px 64px rgba(0,0,0,0.2)', position: 'relative' }}>
+
+              {/* Croix fermeture en haut à droite */}
+              <button
+                onClick={() => setSuccessPopup(null)}
+                style={{ position: 'absolute', top: 16, right: 16, background: '#f1f5f9', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}>
+                <X size={15} />
+              </button>
+
+              {/* Cercle vert avec icône succès */}
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.15, type: 'spring', bounce: 0.5, duration: 0.6 }}
+                style={{ width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 22px', border: '3px solid #bbf7d0' }}>
+                <CheckCircle size={40} style={{ color: '#16a34a' }} strokeWidth={2.5} />
+              </motion.div>
+
+              {/* Titre */}
+              <h2 style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', marginBottom: 10, letterSpacing: '-0.02em' }}>
+                Paiement confirmé !
+              </h2>
+
+              {/* Message */}
+              <p style={{ fontSize: 15, color: '#64748b', lineHeight: 1.65, marginBottom: 24 }}>
+                Vos crédits ont bien été ajoutés à votre compte. Vous pouvez lancer une nouvelle analyse dès maintenant — vos crédits <strong style={{ color: '#0f172a' }}>n'expirent jamais</strong>.
+              </p>
+
+              {/* Bloc crédits actuels */}
+              <div style={{ background: '#f8fafc', borderRadius: 14, padding: '16px 20px', marginBottom: 24, border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 10, textTransform: 'uppercase' }}>
+                  Vos crédits disponibles
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 14, flexWrap: 'wrap' }}>
+                  <span style={{ padding: '6px 14px', borderRadius: 10, background: credits.document > 0 ? '#f0fdf4' : '#fff', border: `1.5px solid ${credits.document > 0 ? '#86efac' : '#e2e8f0'}`, fontSize: 14, fontWeight: 800, color: credits.document > 0 ? '#16a34a' : '#94a3b8' }}>
+                    {credits.document} simple{credits.document > 1 ? 's' : ''}
+                  </span>
+                  <span style={{ padding: '6px 14px', borderRadius: 10, background: credits.complete > 0 ? '#eff6ff' : '#fff', border: `1.5px solid ${credits.complete > 0 ? '#93c5fd' : '#e2e8f0'}`, fontSize: 14, fontWeight: 800, color: credits.complete > 0 ? '#1d4ed8' : '#94a3b8' }}>
+                    {credits.complete} complet{credits.complete > 1 ? 's' : ''}
+                  </span>
+                </div>
+              </div>
+
+              {/* CTA principal + lien fermer */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <Link to="/dashboard/nouvelle-analyse"
+                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px 28px', borderRadius: 14, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 800, textDecoration: 'none', boxShadow: '0 8px 24px rgba(15,45,61,0.2)' }}>
+                  Lancer une analyse <ArrowRight size={16} />
+                </Link>
+                <button onClick={() => setSuccessPopup(null)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#94a3b8', padding: '8px' }}>
+                  Plus tard
+                </button>
+              </div>
+
+              {/* Mention facture discrète */}
+              <p style={{ marginTop: 18, fontSize: 12, color: '#94a3b8', lineHeight: 1.5 }}>
+                📁 Un reçu vous a été envoyé par email
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div>
         <h1 style={{ fontSize: 'clamp(22px,3vw,30px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.03em', marginBottom: 6 }}>Choisissez votre analyse</h1>
