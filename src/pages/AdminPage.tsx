@@ -4047,8 +4047,10 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
 }) {
   const [clients, setClients] = useState<ProClient[]>([]);
   const [proSubscriptions, setProSubscriptions] = useState<Map<string, string>>(new Map());
+  const [proCancelScheduled, setProCancelScheduled] = useState<Set<string>>(new Set());
+  const [proCanceled, setProCanceled] = useState<Set<string>>(new Set());
   const [proActivated, setProActivated] = useState<Set<string>>(new Set());
-  const [proFilter, setProFilter] = useState<'all' | 'active' | 'activated' | 'inactive'>('all');
+  const [proFilter, setProFilter] = useState<'all' | 'active' | 'cancel_scheduled' | 'activated' | 'inactive' | 'canceled'>('all');
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [selected, setSelected] = useState<ProClient | null>(null);
@@ -4095,16 +4097,29 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
     setLoading(true);
     const [{ data }, { data: subs }, { data: invs }] = await Promise.all([
       supabase.from('profiles').select('*').eq('role', 'pro').order('pro_created_at', { ascending: false }),
-      // On charge active ET past_due : un pro en past_due est encore considéré "abonné"
-      // (Stripe lance des retries pendant 7 jours avant d'annuler)
-      supabase.from('pro_subscriptions').select('user_id, status').in('status', ['active', 'past_due']),
+      // On charge active, past_due ET canceled pour pouvoir filtrer par statut résiliation
+      // - active + cancel_at_period_end=true → résiliation programmée
+      // - canceled → résilié définitivement
+      supabase.from('pro_subscriptions').select('user_id, status, cancel_at_period_end').in('status', ['active', 'past_due', 'canceled']),
       // Invitations acceptées = pro qui a cliqué sur le lien et défini son mot de passe
       supabase.from('pro_invitations').select('profile_id, accepted_at').not('accepted_at', 'is', null),
     ]);
     setClients((data || []) as ProClient[]);
     const subMap = new Map<string, string>();
-    (subs || []).forEach((s: any) => subMap.set(s.user_id, s.status));
+    const cancelScheduled = new Set<string>();
+    const canceled = new Set<string>();
+    (subs || []).forEach((s: any) => {
+      if (s.status === 'canceled') {
+        canceled.add(s.user_id);
+      } else {
+        // active ou past_due → considéré comme abonné
+        subMap.set(s.user_id, s.status);
+        if (s.cancel_at_period_end) cancelScheduled.add(s.user_id);
+      }
+    });
     setProSubscriptions(subMap);
+    setProCancelScheduled(cancelScheduled);
+    setProCanceled(canceled);
     const activatedSet = new Set<string>();
     (invs || []).forEach((inv: any) => activatedSet.add(inv.profile_id));
     setProActivated(activatedSet);
@@ -4889,20 +4904,26 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       ) : (
         /* ── Liste ── */
         <div>
-          {/* Filtres : Tous / Compte activé / Abonnement en cours / Inscrits non activés */}
+          {/* Filtres : Tous / Abonnement en cours / Résiliation programmée / Compte activé / Inscrits non activés / Résilié */}
           <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
             {([
               { id: 'all', label: 'Tous' },
-              { id: 'activated', label: '✓ Compte activé' },
               { id: 'active', label: '🟢 Abonnement en cours' },
+              { id: 'cancel_scheduled', label: '🟡 Résiliation programmée' },
+              { id: 'activated', label: '✓ Compte activé' },
               { id: 'inactive', label: 'Inscrits non activés' },
+              { id: 'canceled', label: '🔴 Résilié' },
             ] as const).map(f => {
               const count = f.id === 'active'
                 ? clients.filter(c => proSubscriptions.has(c.id)).length
+                : f.id === 'cancel_scheduled'
+                ? clients.filter(c => proCancelScheduled.has(c.id)).length
                 : f.id === 'activated'
                 ? clients.filter(c => proActivated.has(c.id)).length
                 : f.id === 'inactive'
                 ? clients.filter(c => !proActivated.has(c.id)).length
+                : f.id === 'canceled'
+                ? clients.filter(c => proCanceled.has(c.id) && !proSubscriptions.has(c.id)).length
                 : clients.length;
               return (
                 <button key={f.id} onClick={() => setProFilter(f.id)}
@@ -4922,8 +4943,10 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 </div>
               ) : (() => {
                 const filtered = proFilter === 'active' ? clients.filter(c => proSubscriptions.has(c.id))
+                  : proFilter === 'cancel_scheduled' ? clients.filter(c => proCancelScheduled.has(c.id))
                   : proFilter === 'activated' ? clients.filter(c => proActivated.has(c.id))
                   : proFilter === 'inactive' ? clients.filter(c => !proActivated.has(c.id))
+                  : proFilter === 'canceled' ? clients.filter(c => proCanceled.has(c.id) && !proSubscriptions.has(c.id))
                   : clients;
                 return filtered.length === 0 ? (
                   <div style={{ padding: 32, textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Aucun client dans cette catégorie.</div>
@@ -4931,6 +4954,8 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                   const b = proTypeBadges[c.pro_profile_type || 'autre'] || proTypeBadges.autre;
                   const isSubscribed = proSubscriptions.has(c.id);
                   const isActivated = proActivated.has(c.id);
+                  const isCancelScheduled = proCancelScheduled.has(c.id);
+                  const isCanceled = proCanceled.has(c.id) && !isSubscribed;
                   return (
                     <div key={c.id} onClick={() => loadClientDetail(c)}
                       style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none', cursor: 'pointer', transition: 'background 0.1s' }}
@@ -4943,14 +4968,20 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                         <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{c.full_name}</div>
                         <div style={{ fontSize: 12, color: '#94a3b8' }}>{c.email}{c.pro_company_name ? ` · ${c.pro_company_name}` : ''}</div>
                       </div>
-                      {/* Badges status (jusqu'à 3 côte à côte : Inscrit + Compte activé + Abonnement en cours) */}
+                      {/* Badges status */}
                       <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
                         <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', background: '#f1f5f9', padding: '3px 9px', borderRadius: 100, border: '1px solid #e2e8f0' }}>Inscrit</span>
                         {isActivated && (
                           <span style={{ fontSize: 10, fontWeight: 700, color: '#1d4ed8', background: '#dbeafe', padding: '3px 9px', borderRadius: 100, border: '1px solid #bfdbfe' }}>Compte activé</span>
                         )}
-                        {isSubscribed && (
+                        {isSubscribed && !isCancelScheduled && (
                           <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 9px', borderRadius: 100, border: '1px solid #bbf7d0' }}>Abonné</span>
+                        )}
+                        {isCancelScheduled && (
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#ca8a04', background: '#fef3c7', padding: '3px 9px', borderRadius: 100, border: '1px solid #fde68a' }}>Résiliation programmée</span>
+                        )}
+                        {isCanceled && (
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', background: '#fee2e2', padding: '3px 9px', borderRadius: 100, border: '1px solid #fecaca' }}>Résilié</span>
                         )}
                       </div>
                       <span style={{ fontSize: 11, fontWeight: 700, color: b.color, background: b.bg, padding: '3px 10px', borderRadius: 8, flexShrink: 0 }}>{b.label}</span>
