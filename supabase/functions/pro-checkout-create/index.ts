@@ -352,24 +352,34 @@ async function handleDowngradeScheduled(
     if (sub.schedule) {
       const existingScheduleId = typeof sub.schedule === 'string' ? sub.schedule : sub.schedule.id;
 
+      // Récupérer les infos du schedule existant
+      const existingSchedule = await stripe.subscriptionSchedules.retrieve(existingScheduleId);
+      const lastPhase = existingSchedule.phases[existingSchedule.phases.length - 1];
+      const priceRef = lastPhase.items[0]?.price;
+      const existingPriceId = typeof priceRef === 'string' ? priceRef : (priceRef as { id: string })?.id;
+      const existingPlan = (existingPriceId && PRICE_TO_PLAN[existingPriceId]) || 'inconnu';
+      const existingDateIso = new Date(sub.current_period_end * 1000).toISOString();
+      const existingDateFr = new Date(sub.current_period_end * 1000).toLocaleDateString('fr-FR', {
+        day: 'numeric', month: 'long', year: 'numeric',
+      });
+
+      // ⭐ Si le pro demande le MÊME plan que celui déjà programmé → on refuse proprement
+      if (existingPlan === newPlan) {
+        return jsonResponse({
+          error: `Vous avez déjà programmé un passage vers ${PLAN_LABEL[newPlan as keyof typeof PLAN_LABEL]} le ${existingDateFr}.`,
+          error_code: 'same_plan_already_scheduled',
+        }, 400);
+      }
+
       // Si le pro n'a pas explicitement confirmé le remplacement, on lui demande
       if (!forceReplace) {
-        // Récupérer les infos du schedule existant pour les afficher au pro
-        const existingSchedule = await stripe.subscriptionSchedules.retrieve(existingScheduleId);
-        const lastPhase = existingSchedule.phases[existingSchedule.phases.length - 1];
-        const priceRef = lastPhase.items[0]?.price;
-        const existingPriceId = typeof priceRef === 'string' ? priceRef : (priceRef as { id: string })?.id;
-        const existingPlan = (existingPriceId && PRICE_TO_PLAN[existingPriceId]) || 'inconnu';
-        // La phase de basculement commence à current_period_end de la subscription
-        const existingDate = new Date(sub.current_period_end * 1000).toISOString();
-
-        console.log(`[downgrade] Schedule existant détecté: bascule vers ${existingPlan} le ${existingDate}`);
+        console.log(`[downgrade] Schedule existant détecté: bascule vers ${existingPlan} le ${existingDateIso}`);
 
         return jsonResponse({
           requires_confirmation: true,
           confirmation_type: 'replace_scheduled_change',
           existing_plan: existingPlan,
-          existing_date: existingDate,
+          existing_date: existingDateIso,
           new_plan: newPlan,
           new_date: new Date(sub.current_period_end * 1000).toISOString(),
           message: 'Un changement de plan est déjà programmé. Voulez-vous le remplacer ?',
