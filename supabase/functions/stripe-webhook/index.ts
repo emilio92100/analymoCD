@@ -1,9 +1,18 @@
 // ══════════════════════════════════════════════════════════════
-// STRIPE WEBHOOK — Verimo Particuliers (v2)
+// STRIPE WEBHOOK — Verimo Particuliers (V3)
 // Écoute checkout.session.completed
 // Attribue les crédits + enregistre le paiement dans payments
 //
-// v2 :
+// V3 (sécurité — 10 mai 2026) :
+//   - Idempotence via processed_stripe_events (empêche le double-crédit
+//     en cas de retry Stripe — même mécanique que stripe-webhook-pro V4)
+//   - Insert promo_uses + RPC increment_promo_uses APRÈS paiement confirmé
+//     (avant V3 c'était fait au moment du checkout → un code promo pouvait
+//     être consommé sans paiement effectif)
+//   - Lecture du code promo via session.metadata.promoCodeId (fiable)
+//     plutôt que via la dernière ligne de promo_uses (race condition)
+//
+// V2 :
 //   - Gestion d'erreur après chaque appel Supabase (plus de bug silencieux)
 //   - Logs structurés à chaque étape
 //   - Insertion alertes dans system_alerts si problème (page admin)
@@ -60,6 +69,53 @@ async function insertSystemAlert(
   }
 }
 
+// ══════════════════════════════════════════════════════════════
+// IDEMPOTENCE — empêche le double-traitement d'un même event Stripe
+// (Stripe retry jusqu'à 16 fois sur 3 jours en cas de timeout/erreur)
+// Réutilise la table processed_stripe_events partagée avec le webhook pro.
+// ══════════════════════════════════════════════════════════════
+async function isEventAlreadyProcessed(
+  supabaseAdmin: SupabaseClient,
+  eventId: string
+): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from('processed_stripe_events')
+    .select('event_id')
+    .eq('event_id', eventId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[idempotence] Erreur lecture processed_stripe_events:', error);
+    // En cas d'erreur de lecture, on traite quand même l'event
+    // (mieux vaut un doublon potentiel qu'un event ignoré)
+    return false;
+  }
+
+  return !!data;
+}
+
+async function markEventAsProcessed(
+  supabaseAdmin: SupabaseClient,
+  eventId: string,
+  eventType: string,
+  metadata?: Record<string, unknown>
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from('processed_stripe_events')
+    .insert({
+      event_id: eventId,
+      event_type: eventType,
+      webhook_source: 'stripe-webhook',
+      metadata: metadata ?? null,
+    });
+
+  if (error) {
+    // Erreur 23505 = duplicate key violation = race condition (2 webhooks en parallèle)
+    // C'est le comportement attendu : on log et on continue
+    console.error('[idempotence] Erreur insertion processed_stripe_events:', error);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
@@ -96,6 +152,16 @@ Deno.serve(async (req) => {
 
     eventTypeForCatch = event.type;
     console.log(`[stripe-webhook] Event reçu: ${event.type} (id=${event.id})`);
+
+    // ─────────────────────────────────────────────────────────────────
+    // IDEMPOTENCE : si l'event a déjà été traité, on skip
+    // ─────────────────────────────────────────────────────────────────
+    if (await isEventAlreadyProcessed(supabase, event.id)) {
+      console.log(`[stripe-webhook] Event ${event.id} déjà traité, skip (idempotence)`);
+      return new Response(JSON.stringify({ received: true, duplicate: true }), {
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
+    }
 
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
@@ -139,6 +205,8 @@ Deno.serve(async (req) => {
           userId,
           metadata: { stage: 'unknown_price', sessionId: session.id, priceId },
         });
+        // On marque quand même l'event comme traité (alerte créée, action manuelle requise)
+        await markEventAsProcessed(supabase, event.id, event.type, { skipped: 'unknown_price' });
         return new Response(JSON.stringify({ received: true }), {
           headers: { ...CORS, 'Content-Type': 'application/json' },
         });
@@ -146,7 +214,9 @@ Deno.serve(async (req) => {
 
       console.log('[stripe-webhook] CreditInfo trouvé:', creditInfo);
 
-      // Récupérer les crédits actuels
+      // ─────────────────────────────────────────────────────────────────
+      // 1. Attribution des crédits sur le profil
+      // ─────────────────────────────────────────────────────────────────
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('credits_document, credits_complete, free_preview_used')
@@ -163,6 +233,7 @@ Deno.serve(async (req) => {
           userId,
           metadata: { stage: 'profile_fetch', error: profileError.message, sessionId: session.id },
         });
+        // On NE marque PAS l'event comme traité → Stripe va retry
         return new Response(JSON.stringify({ received: true }), {
           headers: { ...CORS, 'Content-Type': 'application/json' },
         });
@@ -191,6 +262,10 @@ Deno.serve(async (req) => {
             userId,
             metadata: { stage: 'profile_update', error: updateError.message, sessionId: session.id, updates },
           });
+          // On NE marque PAS l'event comme traité → Stripe va retry
+          return new Response(JSON.stringify({ received: true }), {
+            headers: { ...CORS, 'Content-Type': 'application/json' },
+          });
         } else {
           console.log('[stripe-webhook] Crédits attribués:', updates);
         }
@@ -198,65 +273,135 @@ Deno.serve(async (req) => {
 
       const amountPaid = (session.amount_total || 0) / 100;
 
-      // Récupérer le code promo utilisé
+      // ─────────────────────────────────────────────────────────────────
+      // 2. Consommation du code promo APRÈS paiement confirmé (V3)
+      //    - Lit promoCodeId depuis les metadata Stripe (fiable)
+      //    - Insert dans promo_uses
+      //    - Incrémente uses_count via RPC atomique
+      //    - Tout est idempotent grâce à la garde processed_stripe_events
+      // ─────────────────────────────────────────────────────────────────
       let promoCode: string | null = null;
-      if (session.discounts && session.discounts.length > 0) {
-        const discount = session.discounts[0];
-        if (discount.coupon) {
-          const { data: promoUse } = await supabase
+      const promoCodeId = session.metadata?.promoCodeId || null;
+
+      if (promoCodeId) {
+        // Récupérer le code lisible pour la description
+        const { data: promo } = await supabase
+          .from('promo_codes')
+          .select('code')
+          .eq('id', promoCodeId)
+          .maybeSingle();
+
+        promoCode = promo?.code || null;
+
+        // Anti-doublon : vérifier que ce user n'a pas déjà ce code en promo_uses
+        // (cas théorique : 2 webhooks reçus en parallèle juste avant le mark)
+        const { data: alreadyUsed } = await supabase
+          .from('promo_uses')
+          .select('id')
+          .eq('code_id', promoCodeId)
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (!alreadyUsed) {
+          const { error: promoUseErr } = await supabase
             .from('promo_uses')
-            .select('code_id, promo_codes(code)')
-            .eq('user_id', userId)
-            .order('used_at', { ascending: false })
-            .limit(1)
-            .single();
-          promoCode = (promoUse?.promo_codes as { code: string } | null)?.code || null;
+            .insert({ code_id: promoCodeId, user_id: userId });
+
+          if (promoUseErr) {
+            console.error('[stripe-webhook] Erreur insert promo_uses:', promoUseErr.message);
+            await insertSystemAlert(supabase, {
+              type: 'save_error',
+              severity: 'warning',
+              title: 'Code promo : enregistrement utilisation échoué',
+              message: 'Le paiement avec code promo a abouti mais l\'enregistrement de l\'utilisation a échoué.',
+              userId,
+              metadata: { stage: 'promo_use_insert', error: promoUseErr.message, promoCodeId, sessionId: session.id },
+            });
+          } else {
+            // Incrément atomique du compteur (RPC déjà existante côté front)
+            const { error: rpcErr } = await supabase.rpc('increment_promo_uses', {
+              code_id: promoCodeId,
+            });
+            if (rpcErr) {
+              console.error('[stripe-webhook] Erreur RPC increment_promo_uses:', rpcErr.message);
+              await insertSystemAlert(supabase, {
+                type: 'save_error',
+                severity: 'warning',
+                title: 'Code promo : incrément compteur échoué',
+                message: 'L\'utilisation du code promo a été enregistrée mais le compteur uses_count n\'a pas été incrémenté.',
+                userId,
+                metadata: { stage: 'promo_increment', error: rpcErr.message, promoCodeId },
+              });
+            } else {
+              console.log(`[stripe-webhook] Promo ${promoCode} consommé pour user ${userId}`);
+            }
+          }
+        } else {
+          console.log(`[stripe-webhook] Promo ${promoCode} déjà enregistré pour user ${userId}, skip`);
         }
       }
 
-      // Construire la description
+      // ─────────────────────────────────────────────────────────────────
+      // 3. Construction de la description + enregistrement dans payments
+      // ─────────────────────────────────────────────────────────────────
       let description = creditInfo.label;
       if (promoCode && amountPaid < creditInfo.amount) {
         const reduction = ((creditInfo.amount - amountPaid) / creditInfo.amount * 100).toFixed(0);
         description += ` · Code ${promoCode} (−${reduction}%)`;
       }
 
-      // Enregistrer dans payments
-      const { data: paymentInserted, error: paymentError } = await supabase.from('payments').insert({
-        user_id: userId,
-        amount: amountPaid,
-        currency: 'eur',
-        description,
-        stripe_session_id: session.id,
-        stripe_payment_id: paymentIntentId,
-        promo_code: promoCode,
-        credits_added: creditInfo.credits_document || creditInfo.credits_complete || 0,
-        credit_type: creditInfo.credits_document ? 'document' : 'complete',
-        status: 'completed',
-        retractation_waiver_at: retractationWaiverAt,
-      }).select().single();
+      // Anti-doublon payments : si une ligne existe déjà pour ce stripe_session_id
+      // (filet de sécurité — l'idempotence event_id devrait déjà avoir bloqué)
+      const { data: existingPayment } = await supabase
+        .from('payments')
+        .select('id')
+        .eq('stripe_session_id', session.id)
+        .maybeSingle();
 
-      if (paymentError) {
-        console.error('[stripe-webhook] Erreur insert payment:', paymentError.message);
-        await insertSystemAlert(supabase, {
-          type: 'save_error',
-          severity: 'critical',
-          title: 'Échec enregistrement paiement Stripe',
-          message: `Le paiement de ${amountPaid.toFixed(2)}€ a été reçu de Stripe et le crédit a été attribué, mais l'enregistrement en base a échoué. Vérification manuelle requise.`,
-          userId,
-          metadata: {
-            stage: 'payment_insert',
-            error: paymentError.message,
-            sessionId: session.id,
-            paymentIntentId,
-            amount: amountPaid,
-            description,
-          },
-        });
+      if (existingPayment) {
+        console.log(`[stripe-webhook] Paiement ${session.id} déjà enregistré, skip insert`);
       } else {
-        console.log('[stripe-webhook] Paiement enregistré:', paymentInserted?.id);
+        const { data: paymentInserted, error: paymentError } = await supabase.from('payments').insert({
+          user_id: userId,
+          amount: amountPaid,
+          currency: 'eur',
+          description,
+          stripe_session_id: session.id,
+          stripe_payment_id: paymentIntentId,
+          promo_code: promoCode,
+          credits_added: creditInfo.credits_document || creditInfo.credits_complete || 0,
+          credit_type: creditInfo.credits_document ? 'document' : 'complete',
+          status: 'completed',
+          retractation_waiver_at: retractationWaiverAt,
+        }).select().single();
+
+        if (paymentError) {
+          console.error('[stripe-webhook] Erreur insert payment:', paymentError.message);
+          await insertSystemAlert(supabase, {
+            type: 'save_error',
+            severity: 'critical',
+            title: 'Échec enregistrement paiement Stripe',
+            message: `Le paiement de ${amountPaid.toFixed(2)}€ a été reçu de Stripe et le crédit a été attribué, mais l'enregistrement en base a échoué. Vérification manuelle requise.`,
+            userId,
+            metadata: {
+              stage: 'payment_insert',
+              error: paymentError.message,
+              sessionId: session.id,
+              paymentIntentId,
+              amount: amountPaid,
+              description,
+            },
+          });
+        } else {
+          console.log('[stripe-webhook] Paiement enregistré:', paymentInserted?.id);
+        }
       }
     }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Event traité avec succès → on le marque pour idempotence future
+    // ─────────────────────────────────────────────────────────────────
+    await markEventAsProcessed(supabase, event.id, event.type);
 
     return new Response(JSON.stringify({ received: true }), {
       headers: { ...CORS, 'Content-Type': 'application/json' },
@@ -277,6 +422,8 @@ Deno.serve(async (req) => {
         sessionId: sessionIdForCatch,
       },
     });
+    // En cas d'erreur, on NE marque PAS l'event comme traité
+    // → Stripe va retry, et au prochain essai si ça réussit, on le marquera
     return new Response('Server error', { status: 500, headers: CORS });
   }
 });
