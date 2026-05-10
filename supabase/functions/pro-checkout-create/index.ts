@@ -41,6 +41,13 @@ const PLAN_TO_PRICE: Record<'decouverte' | 'starter' | 'power', string> = {
   power: 'price_1TTtcxBesXB76oWEPyVYZjCj',
 };
 
+// Mapping inverse : Price ID → plan name (utilisé pour identifier le plan d'un schedule existant)
+const PRICE_TO_PLAN: Record<string, string> = {
+  'price_1TTtd1BesXB76oWEZuILxjwe': 'decouverte',
+  'price_1TTtczBesXB76oWEcKaNR2BW': 'starter',
+  'price_1TTtcxBesXB76oWEPyVYZjCj': 'power',
+};
+
 const PLAN_HT_PRICE: Record<'decouverte' | 'starter' | 'power', number> = {
   decouverte: 1990,
   starter: 4990,
