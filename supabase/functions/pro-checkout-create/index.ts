@@ -248,10 +248,6 @@ async function handleUpgrade(
   try {
     const sub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
-    // Récupérer le SIRET pour l'inclure dans le même update (apparaîtra sur la facture upgrade
-    // et toutes les futures factures de la subscription).
-    const customFields = await getInvoiceCustomFields(userId);
-
     const updateParams: Stripe.SubscriptionUpdateParams = {
       items: [{
         id: sub.items.data[0].id,
@@ -264,9 +260,9 @@ async function handleUpgrade(
       expand: ['latest_invoice.payment_intent'],
     };
 
-    if (customFields) {
-      updateParams.invoice_settings = { custom_fields: customFields };
-    }
+    // Note : Stripe rejette invoice_settings.custom_fields sur subscriptions.update()
+    // Le SIRET sera posé sur la subscription via le webhook customer.subscription.updated
+    // (helper applySiretCustomFieldToSubscription) après le succès du paiement.
 
     const updated = await stripe.subscriptions.update(stripeSubscriptionId, updateParams);
 
