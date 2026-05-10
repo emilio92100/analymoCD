@@ -231,6 +231,7 @@ serve(async (req) => {
         break;
 
       case 'invoice.payment_succeeded':
+      case 'invoice.paid':
         await handleInvoicePaid(event.data.object as Stripe.Invoice);
         break;
 
