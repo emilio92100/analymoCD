@@ -585,6 +585,15 @@ function CtaFinalSection() {
           </div>
         </Reveal>
 
+        <Reveal delay={4}>
+          <p className="text-sm text-white/55 mt-2">
+            En souscrivant à Verimo Pro, vous acceptez nos{' '}
+            <Link to="/cgv-pro" className="underline font-semibold hover:opacity-80 transition-opacity" style={{ color: '#7dd3fc' }}>
+              CGV Pro
+            </Link>.
+          </p>
+        </Reveal>
+
         <Reveal delay={5}>
           <p className="text-sm text-white/50 mt-10">* Analyse simple : résultat en ~30 secondes (1 document PDF natif). Analyse complète : généralement prête en quelques minutes selon le nombre de documents.</p>
         </Reveal>
