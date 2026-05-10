@@ -1612,8 +1612,10 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>💰 CA par catégorie ce mois</div>
         <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2, marginBottom: 14 }}>Détail des ventes par produit</div>
 
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8 }}>Particuliers</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 16 }}>
+        <div style={{ padding: '10px 14px', borderRadius: 10, background: 'linear-gradient(135deg, #f0f7fb, #ecfdf5)', border: '1.5px solid #d0e8f0', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.05em' }}>👤 PARTICULIERS</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 24 }}>
           {[
             { key: 'document' as const, label: 'Analyse Simple', color: '#64748b', bg: '#f8fafc' },
             { key: 'complete' as const, label: 'Analyse Complète', color: '#2a7d9c', bg: '#f0f7fb' },
@@ -1621,20 +1623,23 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
             { key: 'pack3' as const, label: 'Pack 3 Biens', color: '#f0a500', bg: '#fffbeb' },
           ].map(t => {
             const d = data.caByCategory[t.key];
+            const hasData = d.count > 0;
             return (
-              <div key={t.key} style={{ padding: '12px 14px', borderRadius: 10, background: d.count > 0 ? t.bg : '#fafbfc', border: `1px solid ${d.count > 0 ? t.color + '30' : '#edf2f7'}` }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 4 }}>{t.label}</div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: d.count > 0 ? t.color : '#cbd5e1', lineHeight: 1 }}>{d.total.toFixed(2).replace('.', ',')}€</div>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8' }}>TTC</div>
+              <div key={t.key} style={{ padding: '14px 16px', borderRadius: 12, background: hasData ? t.bg : '#fff', border: `1.5px solid ${hasData ? t.color + '40' : '#edf2f7'}` }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: hasData ? t.color : '#64748b', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 6 }}>{t.label}</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: hasData ? t.color : '#94a3b8', lineHeight: 1 }}>{d.total.toFixed(2).replace('.', ',')}€</div>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: hasData ? t.color : '#94a3b8' }}>TTC</div>
                 </div>
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{d.count} vente{d.count > 1 ? 's' : ''}</div>
+                <div style={{ fontSize: 12, color: hasData ? '#64748b' : '#94a3b8', marginTop: 6, fontWeight: 600 }}>{d.count} vente{d.count > 1 ? 's' : ''}</div>
               </div>
             );
           })}
         </div>
 
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8 }}>Pro</div>
+        <div style={{ padding: '10px 14px', borderRadius: 10, background: 'linear-gradient(135deg, #0f2d3d, #1a4a60)', border: '1.5px solid #0f2d3d', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 800, color: '#fff', letterSpacing: '0.05em' }}>🏢 PRO</span>
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
           {[
             { key: 'abo_decouverte' as const, label: 'Abo Découverte', color: '#0f2d3d', bg: '#f0f7fb' },
@@ -1646,17 +1651,18 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
             const d = data.caProByCategory[t.key];
             // Pour les pro, calculer le HT (TTC / 1.20) car d.total est en TTC
             const totalHt = d.total / 1.20;
+            const hasData = d.count > 0;
             return (
-              <div key={t.key} style={{ padding: '12px 14px', borderRadius: 10, background: d.count > 0 ? t.bg : '#fafbfc', border: `1px solid ${d.count > 0 ? t.color + '30' : '#edf2f7'}` }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 4 }}>{t.label}</div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: d.count > 0 ? t.color : '#cbd5e1', lineHeight: 1 }}>{totalHt.toFixed(2).replace('.', ',')}€</div>
-                  <div style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8' }}>HT</div>
+              <div key={t.key} style={{ padding: '14px 16px', borderRadius: 12, background: hasData ? t.bg : '#fff', border: `1.5px solid ${hasData ? t.color + '40' : '#edf2f7'}` }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: hasData ? t.color : '#64748b', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 6 }}>{t.label}</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: hasData ? t.color : '#94a3b8', lineHeight: 1 }}>{totalHt.toFixed(2).replace('.', ',')}€</div>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: hasData ? t.color : '#94a3b8' }}>HT</div>
                 </div>
-                {d.count > 0 && (
-                  <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>({d.total.toFixed(2).replace('.', ',')}€ TTC)</div>
+                {hasData && (
+                  <div style={{ fontSize: 12, color: t.color, opacity: 0.8, marginTop: 3, fontWeight: 600 }}>({d.total.toFixed(2).replace('.', ',')}€ TTC)</div>
                 )}
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{d.count} vente{d.count > 1 ? 's' : ''}</div>
+                <div style={{ fontSize: 12, color: hasData ? '#64748b' : '#94a3b8', marginTop: 6, fontWeight: 600 }}>{d.count} vente{d.count > 1 ? 's' : ''}</div>
               </div>
             );
           })}
