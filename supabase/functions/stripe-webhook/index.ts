@@ -389,11 +389,20 @@ Deno.serve(async (req) => {
       if (existingPayment) {
         console.log(`[stripe-webhook] Paiement ${session.id} déjà enregistré, skip insert`);
       } else {
+        // Récupérer email/nom du user pour les stocker dans payments (historique RGPD/comptable)
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('email, full_name')
+          .eq('id', userId)
+          .maybeSingle();
+
         const { data: paymentInserted, error: paymentError } = await supabase.from('payments').insert({
           user_id: userId,
           amount: amountPaid,
           amount_ht: amountPaid, // Particulier = pas de TVA → HT = TTC
           customer_type: 'particulier',
+          customer_email: profile?.email || null,
+          customer_name: profile?.full_name || null,
           currency: 'eur',
           description,
           stripe_session_id: session.id,
