@@ -3654,40 +3654,50 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
             const isActive = subscription?.plan === plan.id && (subscription?.status === 'active' || subscription?.status === 'past_due');
             const btnLoading = loading === `subscribe:${plan.id}`;
 
-            // ⭐ Theme par plan : chaque plan a sa propre ambiance visuelle
-            // Découverte = bleu pâle dégradé / Starter = bleu nuit Verimo plein / Power = anthracite dégradé
+            // ⭐ Theme dynamique : le plan qui ressort visuellement (fond plein bleu Verimo)
+            // est soit le plan ACTIF de l'utilisateur, soit Starter par défaut (pas d'abo).
+            // Les autres plans ont des fonds colorés plus visibles qu'avant (moins transparents).
             const isStarter = plan.id === 'starter';
             const isPower = plan.id === 'power';
+            const isDecouverte = plan.id === 'decouverte';
 
-            const theme = isStarter
+            // Quel plan doit ressortir (fond foncé bleu Verimo) ?
+            const activePlanId = subscription?.plan;
+            const planThatStandsOut = activePlanId || 'starter';
+            const isStandout = plan.id === planThatStandsOut;
+
+            // Theme "standout" : fond bleu nuit plein (le plus visible)
+            const standoutTheme = {
+              cardBg: 'linear-gradient(180deg, #0f2d3d 0%, #2a7d9c 100%)',
+              cardBorder: 'none',
+              cardShadow: '0 12px 32px rgba(15,45,61,0.25)',
+              tagBg: 'rgba(255,255,255,0.22)',
+              tagColor: '#fff',
+              tagline: 'rgba(255,255,255,0.78)',
+              priceColor: '#fff',
+              priceSuffix: 'rgba(255,255,255,0.65)',
+              featuresColor: 'rgba(255,255,255,0.92)',
+              checkColor: '#86efac',
+              engagementBg: 'rgba(134,239,172,0.2)',
+              engagementBorder: 'rgba(134,239,172,0.5)',
+              engagementText: '#86efac',
+              btnBg: '#fff',
+              btnColor: '#0f2d3d',
+            };
+
+            // Theme "secondaire" : fonds colorés plus marqués qu'avant (moins transparents)
+            // Découverte = teinte bleu plus saturée / Power = teinte anthracite plus marquée
+            const secondaryTheme = isPower
               ? {
-                  cardBg: 'linear-gradient(180deg, #0f2d3d 0%, #2a7d9c 100%)',
-                  cardBorder: 'none',
-                  cardShadow: '0 12px 32px rgba(15,45,61,0.25)',
-                  tagBg: 'rgba(255,255,255,0.2)',
-                  tagColor: '#fff',
-                  tagline: 'rgba(255,255,255,0.75)',
-                  priceColor: '#fff',
-                  priceSuffix: 'rgba(255,255,255,0.65)',
-                  featuresColor: 'rgba(255,255,255,0.92)',
-                  checkColor: '#86efac',
-                  engagementBg: 'rgba(134,239,172,0.18)',
-                  engagementBorder: 'rgba(134,239,172,0.45)',
-                  engagementText: '#86efac',
-                  btnBg: '#fff',
-                  btnColor: '#0f2d3d',
-                }
-              : isPower
-              ? {
-                  cardBg: 'linear-gradient(180deg, #f1f5f9 0%, #fff 60%)',
-                  cardBorder: '1.5px solid #cbd5e1',
-                  cardShadow: 'none',
+                  cardBg: 'linear-gradient(180deg, #e2e8f0 0%, #f8fafc 60%)',
+                  cardBorder: '1.5px solid #94a3b8',
+                  cardShadow: '0 4px 12px rgba(15,23,42,0.06)',
                   tagBg: '#0f172a',
                   tagColor: '#fff',
-                  tagline: '#475569',
-                  priceColor: '#0f2d3d',
-                  priceSuffix: '#94a3b8',
-                  featuresColor: '#475569',
+                  tagline: '#334155',
+                  priceColor: '#0f172a',
+                  priceSuffix: '#64748b',
+                  featuresColor: '#334155',
                   checkColor: '#16a34a',
                   engagementBg: '#f0fdf4',
                   engagementBorder: '#bbf7d0',
@@ -3695,16 +3705,34 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
                   btnBg: '#0f172a',
                   btnColor: '#fff',
                 }
-              : { // Découverte par défaut
-                  cardBg: 'linear-gradient(180deg, #f0f7fb 0%, #fff 60%)',
-                  cardBorder: '1.5px solid #d0e8f0',
-                  cardShadow: 'none',
+              : isDecouverte
+              ? {
+                  cardBg: 'linear-gradient(180deg, #dbeafe 0%, #f0f7fb 60%)',
+                  cardBorder: '1.5px solid #93c5fd',
+                  cardShadow: '0 4px 12px rgba(42,125,156,0.08)',
                   tagBg: '#2a7d9c',
                   tagColor: '#fff',
-                  tagline: '#475569',
+                  tagline: '#334155',
                   priceColor: '#0f2d3d',
-                  priceSuffix: '#94a3b8',
-                  featuresColor: '#475569',
+                  priceSuffix: '#64748b',
+                  featuresColor: '#334155',
+                  checkColor: '#16a34a',
+                  engagementBg: '#f0fdf4',
+                  engagementBorder: '#bbf7d0',
+                  engagementText: '#15803d',
+                  btnBg: '#2a7d9c',
+                  btnColor: '#fff',
+                }
+              : { // Starter en mode secondaire (si Power est actif par exemple)
+                  cardBg: 'linear-gradient(180deg, #e0f2fe 0%, #f0f7fb 60%)',
+                  cardBorder: '1.5px solid #7dd3fc',
+                  cardShadow: '0 4px 12px rgba(42,125,156,0.08)',
+                  tagBg: '#2a7d9c',
+                  tagColor: '#fff',
+                  tagline: '#334155',
+                  priceColor: '#0f2d3d',
+                  priceSuffix: '#64748b',
+                  featuresColor: '#334155',
                   checkColor: '#16a34a',
                   engagementBg: '#f0fdf4',
                   engagementBorder: '#bbf7d0',
@@ -3712,6 +3740,8 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
                   btnBg: '#2a7d9c',
                   btnColor: '#fff',
                 };
+
+            const theme = isStandout ? standoutTheme : secondaryTheme;
 
             // Override si plan actif (priorité visuelle absolue)
             const finalCardBorder = isActive
@@ -3726,6 +3756,8 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
                 background: theme.cardBg,
                 border: finalCardBorder,
                 boxShadow: theme.cardShadow,
+                display: 'flex',
+                flexDirection: 'column',
               }}>
                 {showRecommendedBanner && plan.id === recommendedPlanId && !isActive && (
                   <span style={{ position: 'absolute', top: -10, right: 16, background: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 12px', borderRadius: 100, boxShadow: '0 2px 8px rgba(22,163,74,0.3)' }}>✨ Recommandé pour vous</span>
@@ -3746,11 +3778,14 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
                   </span>
                 )}
 
-                {/* Tag du nom du plan en haut (style Direction 3) */}
-                <div style={{ display: 'inline-block', padding: '4px 10px', background: theme.tagBg, color: theme.tagColor, fontSize: 10, fontWeight: 700, borderRadius: 6, letterSpacing: '0.05em', marginBottom: 10 }}>
-                  {plan.name.toUpperCase()}
+                {/* Bloc identité du plan : tag discret + nom en grand + tagline */}
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ display: 'inline-block', padding: '3px 9px', background: theme.tagBg, color: theme.tagColor, fontSize: 9.5, fontWeight: 700, borderRadius: 5, letterSpacing: '0.08em', marginBottom: 8 }}>
+                    {plan.name.toUpperCase()}
+                  </div>
+                  <h3 style={{ fontSize: 22, fontWeight: 800, color: theme.priceColor, margin: '0 0 4px 0', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{plan.name}</h3>
+                  <p style={{ fontSize: 12.5, color: theme.tagline, margin: 0, lineHeight: 1.4 }}>{plan.tagline}</p>
                 </div>
-                <p style={{ fontSize: 12, color: theme.tagline, margin: '0 0 14px 0', minHeight: 16 }}>{plan.tagline}</p>
                 <div style={{ marginBottom: 16, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 32, fontWeight: 800, color: theme.priceColor, letterSpacing: '-0.02em' }}>{plan.price}€</span>
                   <span style={{ fontSize: 12, color: theme.priceSuffix }}>HT / mois</span>
@@ -3762,7 +3797,7 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
 Vous pouvez résilier votre abonnement à tout moment depuis votre espace, sans frais ni justification. La résiliation prend effet à la fin de votre cycle de facturation en cours.`} />
                   </span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 18 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 18, flex: 1 }}>
                   {[
                     { label: `${plan.simples} analyse${plan.simples > 1 ? 's' : ''} simple${plan.simples > 1 ? 's' : ''} d'un document immobilier`, tooltip: null },
                     { label: `${plan.completes} analyse${plan.completes > 1 ? 's' : ''} complète${plan.completes > 1 ? 's' : ''} d'un bien`, tooltip: null },
@@ -3871,7 +3906,7 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
           <div style={{ fontSize: 24, fontWeight: 800, color: '#0f172a' }}>9,90€ <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>HT</span></div>
           <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, marginBottom: 14 }}>Analyse complète d'un bien</div>
           <button disabled={!isSubscribed || loading === 'unit:complete'} onClick={() => handleBuyUnit('complete', 1)}
-            style={{ width: '100%', padding: '10px', borderRadius: 10, background: isSubscribed ? '#0f172a' : '#cbd5e1', color: '#fff', border: 'none', fontSize: 13, fontWeight: 700,
+            style={{ width: '100%', padding: '10px', borderRadius: 10, background: isSubscribed ? '#2a7d9c' : '#cbd5e1', color: '#fff', border: 'none', fontSize: 13, fontWeight: 700,
               cursor: isSubscribed ? (loading === 'unit:complete' ? 'wait' : 'pointer') : 'not-allowed', opacity: loading === 'unit:complete' ? 0.6 : 1 }}>
             {loading === 'unit:complete' ? 'Redirection…' : 'Acheter'}
           </button>
@@ -3883,7 +3918,7 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
           <div style={{ fontSize: 24, fontWeight: 800, color: '#0f172a' }}>2,90€ <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>HT</span></div>
           <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, marginBottom: 14 }}>Analyse simple d'un document immobilier</div>
           <button disabled={!isSubscribed || loading === 'unit:document'} onClick={() => handleBuyUnit('document', 1)}
-            style={{ width: '100%', padding: '10px', borderRadius: 10, background: isSubscribed ? '#0f172a' : '#cbd5e1', color: '#fff', border: 'none', fontSize: 13, fontWeight: 700,
+            style={{ width: '100%', padding: '10px', borderRadius: 10, background: isSubscribed ? '#2a7d9c' : '#cbd5e1', color: '#fff', border: 'none', fontSize: 13, fontWeight: 700,
               cursor: isSubscribed ? (loading === 'unit:document' ? 'wait' : 'pointer') : 'not-allowed', opacity: loading === 'unit:document' ? 0.6 : 1 }}>
             {loading === 'unit:document' ? 'Redirection…' : 'Acheter'}
           </button>
@@ -3915,9 +3950,9 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
           const openHelp = (window as unknown as Record<string, (subject?: string) => void>).__openHelp;
           if (openHelp) openHelp('Volume important / besoin spécifique');
         }}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '11px 22px', borderRadius: 10, background: '#0f2d3d', color: '#fff', border: 'none', fontSize: 14, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#1e3a4d'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = '#0f2d3d'; }}>
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '11px 22px', borderRadius: 10, background: '#2a7d9c', color: '#fff', border: 'none', fontSize: 14, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#1e6783'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#2a7d9c'; }}>
           Nous contacter <ArrowRight size={14} />
         </button>
       </div>
