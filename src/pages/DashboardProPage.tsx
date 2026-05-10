@@ -671,18 +671,12 @@ function ScoreRing({ score, size = 40 }: { score: number; size?: number }) {
 /* ══════════════════════════════════════════
    HOME VIEW PRO
 ══════════════════════════════════════════ */
-function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, hasEverSubscribed }: { proProfile: ProProfile; subscription: ProSubscription | null; proCredits: ProCredits | null; analyses: ProAnalysis[]; shares: ReportShare[]; hasEverSubscribed: boolean }) {
+function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, folders, hasEverSubscribed }: { proProfile: ProProfile; subscription: ProSubscription | null; proCredits: ProCredits | null; analyses: ProAnalysis[]; shares: ReportShare[]; folders: ProFolder[]; hasEverSubscribed: boolean }) {
   const prenom = proProfile.full_name?.split(' ')[0] || 'Pro';
   const completedAnalyses = analyses.filter(a => a.status === 'completed');
-  const thisMonth = analyses.filter(a => { const d = new Date(a.created_at); const now = new Date(); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); });
   const creditsLeft = (proCredits?.total_complete ?? 0) + (proCredits?.total_document ?? 0);
   const totalShares = shares.length;
-
-  // Toggle Ce mois / Total pour la KPI analyses
-  const [analysesPeriod, setAnalysesPeriod] = useState<'month' | 'total'>('month');
-  const periodAnalyses = analysesPeriod === 'month' ? thisMonth : analyses;
-  const periodFailed = periodAnalyses.filter(a => a.status === 'failed').length;
-  const periodInProgress = periodAnalyses.filter(a => a.status === 'queued' || a.status === 'processing' || a.status === 'pending').length;
+  const activeFolders = folders.filter(f => !f.archived_at).length;
 
   const lastAnalyses = completedAnalyses.slice(0, 3);
   const lastShares = shares.slice(0, 3);
@@ -771,39 +765,15 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, h
           <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>Analyses effectuées</div>
         </div>
 
-        {/* Tile 2 — Analyses (avec toggle Ce mois / Total + sous-texte) */}
+        {/* Tile 2 — Dossiers actifs */}
         <div style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', border: '1px solid #edf2f7' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
             <div style={{ width: 32, height: 32, borderRadius: 8, background: '#7c3aed12', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Clock size={16} style={{ color: '#7c3aed' }} />
-            </div>
-            <div style={{ display: 'flex', background: '#f8fafc', borderRadius: 7, padding: 2, border: '1px solid #edf2f7' }}>
-              <button
-                onClick={() => setAnalysesPeriod('month')}
-                style={{ padding: '3px 8px', borderRadius: 5, background: analysesPeriod === 'month' ? '#fff' : 'transparent', border: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 700, color: analysesPeriod === 'month' ? '#7c3aed' : '#94a3b8', boxShadow: analysesPeriod === 'month' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none' }}>
-                Mois
-              </button>
-              <button
-                onClick={() => setAnalysesPeriod('total')}
-                style={{ padding: '3px 8px', borderRadius: 5, background: analysesPeriod === 'total' ? '#fff' : 'transparent', border: 'none', cursor: 'pointer', fontSize: 10, fontWeight: 700, color: analysesPeriod === 'total' ? '#7c3aed' : '#94a3b8', boxShadow: analysesPeriod === 'total' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none' }}>
-                Total
-              </button>
+              <FolderOpen size={16} style={{ color: '#7c3aed' }} />
             </div>
           </div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>{periodAnalyses.length}</div>
-          <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>
-            {analysesPeriod === 'month' ? 'Ce mois' : 'Total'}
-          </div>
-          {(periodFailed > 0 || periodInProgress > 0) && (
-            <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px dashed #edf2f7', fontSize: 10.5, color: '#64748b', fontWeight: 600, display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
-              {periodInProgress > 0 && (
-                <span style={{ color: '#d97706' }}>⏳ {periodInProgress} en cours</span>
-              )}
-              {periodFailed > 0 && (
-                <span style={{ color: '#dc2626' }}>✕ {periodFailed} échouée{periodFailed > 1 ? 's' : ''}</span>
-              )}
-            </div>
-          )}
+          <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>{activeFolders}</div>
+          <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>Dossiers actifs</div>
         </div>
 
         {/* Tile 3 — Crédits restants */}
@@ -6227,6 +6197,7 @@ export default function DashboardProPage() {
   const [proCredits, setProCredits] = useState<ProCredits | null>(null);
   const [analyses, setAnalyses] = useState<ProAnalysis[]>([]);
   const [shares, setShares] = useState<ReportShare[]>([]);
+  const [folders, setFolders] = useState<ProFolder[]>([]);
   const [loading, setLoading] = useState(true);
   const [sendReportId, setSendReportId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
@@ -6325,6 +6296,10 @@ export default function DashboardProPage() {
 
     // Shares
     const { data: sh } = await supabase.from('report_shares').select('*').eq('sender_id', user.id).order('sent_at', { ascending: false });
+
+    // Folders (pour KPI dossiers actifs sur dashboard home)
+    const { data: fld } = await supabase.from('pro_folders').select('id, user_id, name, archived_at, created_at, updated_at').eq('user_id', user.id);
+    setFolders((fld || []) as ProFolder[]);
 
     // Unread support tickets
     const { count: unreadCount } = await supabase.from('support_tickets').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('unread_by_user', true);
@@ -6436,7 +6411,7 @@ export default function DashboardProPage() {
     if (path === '/dashboard/compte') return <ComptePro proProfile={proProfile} onUpdate={loadData} />;
     if (path === '/dashboard/aide') return <Aide />;
     if (path === '/dashboard/support') return <Support />;
-    return <HomeViewPro proProfile={proProfile} subscription={subscription} proCredits={proCredits} analyses={analyses} shares={shares} hasEverSubscribed={hasEverSubscribed} />;
+    return <HomeViewPro proProfile={proProfile} subscription={subscription} proCredits={proCredits} analyses={analyses} shares={shares} folders={folders} hasEverSubscribed={hasEverSubscribed} />;
   };
 
   return (
