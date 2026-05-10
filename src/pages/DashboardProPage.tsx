@@ -3010,7 +3010,7 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
   }
 
   // ── Invoices ──
-  type InvoiceItem = { id: string; date: string; description: string; amount: string; pdf_url: string | null; type: 'subscription' | 'unit' | 'promo' | 'grant' };
+  type InvoiceItem = { id: string; date: string; description: string; amount: string; pdf_url: string | null; type: 'subscription' | 'unit' | 'promo' | 'grant'; status?: string };
   const [invoices, setInvoices] = useState<InvoiceItem[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(true);
 
@@ -3853,7 +3853,12 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
 
       {/* ═══ SECTION 4 : Mes factures (paiements uniquement) ═══ */}
       {(() => {
-        const paidInvoices = invoices.filter(inv => inv.type === 'subscription' || inv.type === 'unit');
+        // Côté pro : on n'affiche QUE les factures réellement payées
+        // (les "En attente" / "Échec" sont visibles uniquement côté admin pour le suivi technique)
+        const paidInvoices = invoices.filter(inv =>
+          (inv.type === 'subscription' || inv.type === 'unit')
+          && (!inv.status || inv.status === 'paid')
+        );
         const grantInvoices = invoices.filter(inv => inv.type === 'promo' || inv.type === 'grant');
         return (<>
       <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', marginBottom: 28 }}>
