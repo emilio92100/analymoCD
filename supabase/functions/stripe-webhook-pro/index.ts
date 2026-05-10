@@ -334,6 +334,32 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     // au moment du Checkout.
     await applySiretCustomFieldToSubscription(userId, subId);
 
+    // ⭐ Enregistrer la souscription initiale dans `payments` pour les stats admin
+    const planFromPrice = PRICE_TO_PLAN[sub.items.data[0]?.price.id] || 'inconnu';
+    const latestInv = sub.latest_invoice;
+    let invoiceId: string | undefined;
+    let amountPaid = 0;
+    if (latestInv) {
+      if (typeof latestInv === 'string') {
+        const inv = await stripe.invoices.retrieve(latestInv);
+        invoiceId = inv.id;
+        amountPaid = inv.amount_paid || 0;
+      } else {
+        invoiceId = latestInv.id;
+        amountPaid = latestInv.amount_paid || 0;
+      }
+    }
+    if (amountPaid > 0) {
+      await recordProPayment({
+        userId,
+        amountTtcCents: amountPaid,
+        description: `Abonnement ${planLabel(planFromPrice)} (souscription)`,
+        stripeInvoiceId: invoiceId,
+        stripeSessionId: session.id,
+        stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id,
+      });
+    }
+
     console.log(`[checkout.completed] Subscription created for user ${userId}`);
     return;
   }
@@ -345,6 +371,36 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     if (session.invoice) {
       const invId = typeof session.invoice === 'string' ? session.invoice : session.invoice.id;
       await applySiretCustomFieldToInvoice(userId, invId);
+    }
+
+    // ⭐ Enregistrer l'achat unitaire dans `payments` pour les stats admin
+    // Le montant TTC est dans session.amount_total (ou amount_subtotal en HT, mais TTC = total)
+    const amountTtc = session.amount_total || 0;
+    if (amountTtc > 0) {
+      // Récupérer le détail des line items pour le label
+      const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 100 });
+      const labels: string[] = [];
+      for (const item of lineItems.data) {
+        const priceId = item.price?.id;
+        const unit = priceId ? PRICE_TO_UNIT[priceId] : null;
+        if (unit) {
+          const qty = item.quantity ?? 1;
+          const unitLabel = unit.type === 'complete' ? 'analyse complète d\'un bien' : 'analyse simple d\'un document';
+          labels.push(qty > 1 ? `${qty} × ${unitLabel}s` : unitLabel);
+        }
+      }
+      const description = labels.length > 0
+        ? `Achat unitaire — ${labels.join(', ')}`
+        : 'Achat unitaire';
+      const invId = session.invoice ? (typeof session.invoice === 'string' ? session.invoice : session.invoice.id) : null;
+      await recordProPayment({
+        userId,
+        amountTtcCents: amountTtc,
+        description,
+        stripeInvoiceId: invId,
+        stripeSessionId: session.id,
+        stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id,
+      });
     }
 
     console.log(`[checkout.completed] Unit purchase recorded for user ${userId}`);
@@ -401,6 +457,87 @@ async function applySiretCustomFieldToInvoice(userId: string, invoiceId: string)
   } catch (err) {
     console.warn(`[siret] Failed to apply on invoice ${invoiceId} (non-critique):`, err);
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Helper : enregistre un paiement pro dans la table `payments`
+// (alimente les statistiques admin — CA pro, tableau de bord, analyse CA)
+// Idempotent : si un paiement avec le même stripe_invoice_id ou
+// stripe_session_id existe déjà, on skip pour éviter les doublons.
+// ─────────────────────────────────────────────────────────────────────
+async function recordProPayment(params: {
+  userId: string;
+  amountTtcCents: number;
+  description: string;
+  stripeInvoiceId?: string | null;
+  stripeSessionId?: string | null;
+  stripePaymentIntentId?: string | null;
+}) {
+  if (!params.userId) {
+    console.warn('[recordProPayment] No userId, skip');
+    return;
+  }
+  if (!params.amountTtcCents || params.amountTtcCents <= 0) {
+    console.warn('[recordProPayment] amount is 0 or negative, skip');
+    return;
+  }
+
+  // Anti-doublon : vérifier si on a déjà inséré ce paiement
+  if (params.stripeInvoiceId) {
+    const { data: existing } = await supabase
+      .from('payments')
+      .select('id')
+      .eq('stripe_invoice_id', params.stripeInvoiceId)
+      .maybeSingle();
+    if (existing) {
+      console.log(`[recordProPayment] Invoice ${params.stripeInvoiceId} déjà enregistrée, skip`);
+      return;
+    }
+  } else if (params.stripeSessionId) {
+    const { data: existing } = await supabase
+      .from('payments')
+      .select('id')
+      .eq('stripe_session_id', params.stripeSessionId)
+      .maybeSingle();
+    if (existing) {
+      console.log(`[recordProPayment] Session ${params.stripeSessionId} déjà enregistrée, skip`);
+      return;
+    }
+  }
+
+  const amountEur = params.amountTtcCents / 100;
+  const { error } = await supabase.from('payments').insert({
+    user_id: params.userId,
+    amount: amountEur,
+    currency: 'eur',
+    description: params.description,
+    stripe_session_id: params.stripeSessionId || null,
+    stripe_payment_id: params.stripePaymentIntentId || null,
+    stripe_invoice_id: params.stripeInvoiceId || null,
+    status: 'completed',
+  });
+
+  if (error) {
+    console.error('[recordProPayment] Insert failed:', error.message);
+    await insertSystemAlert(supabase, {
+      type: 'save_error',
+      severity: 'critical',
+      title: 'Enregistrement paiement Pro échoué',
+      message: `Un paiement Pro de ${amountEur.toFixed(2)}€ TTC a été reçu mais l'enregistrement dans la table payments a échoué (impacte les statistiques admin).`,
+      userId: params.userId,
+      metadata: { stage: 'pro_payment_insert', error: error.message, ...params },
+    });
+  } else {
+    console.log(`[recordProPayment] Paiement Pro enregistré: ${amountEur.toFixed(2)}€ TTC pour user ${params.userId}`);
+  }
+}
+
+// Helper : génère un label lisible pour la description du paiement
+function planLabel(plan: string): string {
+  if (plan === 'decouverte') return 'Découverte';
+  if (plan === 'starter') return 'Starter';
+  if (plan === 'power') return 'Power';
+  return plan;
 }
 
 async function handleInvoicePaid(invoice: Stripe.Invoice) {
@@ -481,6 +618,15 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
       console.error('[invoice.paid] Update sub after upgrade failed:', updErr);
     }
 
+    // ⭐ Enregistrer le paiement upgrade dans `payments` pour les stats admin
+    await recordProPayment({
+      userId: existing.user_id,
+      amountTtcCents: invoice.amount_paid || 0,
+      description: `Abonnement ${planLabel(stripePlan)} (upgrade depuis ${planLabel(existing.plan)})`,
+      stripeInvoiceId: invoice.id,
+      stripePaymentIntentId: typeof invoice.payment_intent === 'string' ? invoice.payment_intent : invoice.payment_intent?.id,
+    });
+
     console.log(`[invoice.paid] Upgrade ${existing.plan} → ${stripePlan} appliqué après paiement confirmé`);
     return;
   }
@@ -517,6 +663,15 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
   if (updateError) {
     console.error('[invoice.paid] Update period failed:', updateError);
   }
+
+  // ⭐ Enregistrer le renouvellement dans `payments` pour les stats admin
+  await recordProPayment({
+    userId: existing.user_id,
+    amountTtcCents: invoice.amount_paid || 0,
+    description: `Abonnement ${planLabel(existing.plan)} (renouvellement)`,
+    stripeInvoiceId: invoice.id,
+    stripePaymentIntentId: typeof invoice.payment_intent === 'string' ? invoice.payment_intent : invoice.payment_intent?.id,
+  });
 
   console.log(`[invoice.paid] Crédits cumulés (plafond 2×) pour sub ${existing.id} (plan ${existing.plan})`);
 }
