@@ -181,6 +181,40 @@ function safeDate(ts: number | null | undefined): string | null {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// HELPER : récupère les vraies dates current_period_start/end
+// Si les timestamps reçus dans l'event sont null/invalides (ce qui arrive
+// sur certains events Stripe lors d'upgrades), on va chercher la sub
+// fraîche via l'API Stripe qui aura toujours les bonnes dates.
+// ─────────────────────────────────────────────────────────────────────
+async function getValidPeriods(sub: Stripe.Subscription): Promise<{ start: string | null; end: string | null }> {
+  let start = safeDate(sub.current_period_start);
+  let end = safeDate(sub.current_period_end);
+
+  // Si l'un des deux est null, on retente via Stripe API
+  if (!start || !end) {
+    try {
+      console.log(`[getValidPeriods] Timestamps null sur sub ${sub.id}, fetch fresh from Stripe`);
+      const fresh = await stripe.subscriptions.retrieve(sub.id);
+      start = start || safeDate(fresh.current_period_start);
+      end = end || safeDate(fresh.current_period_end);
+
+      // Si toujours null, on essaie de lire depuis items.data[0] (parfois Stripe les y met)
+      if (!start || !end) {
+        const item = fresh.items.data[0] as any;
+        if (item) {
+          start = start || safeDate(item.current_period_start);
+          end = end || safeDate(item.current_period_end);
+        }
+      }
+    } catch (e) {
+      console.warn('[getValidPeriods] Stripe fetch failed:', e);
+    }
+  }
+
+  return { start, end };
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // HANDLER PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────
 
@@ -702,12 +736,13 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
     }
 
     // Met à jour le price_id et les dates de cycle (on ne met PAS le plan ici, c'est fait dans la RPC upgrade_pro_subscription_credits)
+    const periods = await getValidPeriods(sub);
     const { error: updErr } = await supabase
       .from('pro_subscriptions')
       .update({
         stripe_price_id: stripePriceId,
-        current_period_start: safeDate(sub.current_period_start),
-        current_period_end: safeDate(sub.current_period_end),
+        current_period_start: periods.start,
+        current_period_end: periods.end,
         status: sub.status === 'active' ? 'active' : sub.status,
         // Si un downgrade était programmé, l'upgrade le supprime (l'upgrade prime)
         scheduled_plan_change: null,
@@ -752,11 +787,12 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
     return;
   }
 
+  const periodsRenew = await getValidPeriods(sub);
   const { error: updateError } = await supabase
     .from('pro_subscriptions')
     .update({
-      current_period_start: safeDate(sub.current_period_start),
-      current_period_end: safeDate(sub.current_period_end),
+      current_period_start: periodsRenew.start,
+      current_period_end: periodsRenew.end,
       status: sub.status === 'active' ? 'active' : sub.status,
       // Au renouvellement, on nettoie un éventuel scheduled_plan_change qui aurait été release
       scheduled_plan_change: null,
@@ -955,9 +991,10 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription) {
 
   // Ne mettre à jour stripe_price_id QUE si le changement de plan a été confirmé (paiement OK).
   // Sinon on garde l'ancien price_id pour rester cohérent avec le plan actuel en BDD.
+  const periodsUpd = await getValidPeriods(sub);
   const updateFields: Record<string, unknown> = {
-    current_period_start: safeDate(sub.current_period_start),
-    current_period_end: safeDate(sub.current_period_end),
+    current_period_start: periodsUpd.start,
+    current_period_end: periodsUpd.end,
     cancel_at_period_end: sub.cancel_at_period_end,
     status: sub.status === 'active' ? 'active' : sub.status,
     updated_at: new Date().toISOString(),
@@ -1072,6 +1109,7 @@ async function upsertProSubscription(userId: string, sub: Stripe.Subscription) {
     .eq('stripe_subscription_id', sub.id)
     .maybeSingle();
 
+  const periodsUpsert = await getValidPeriods(sub);
   const subData = {
     user_id: userId,
     plan,
@@ -1079,8 +1117,8 @@ async function upsertProSubscription(userId: string, sub: Stripe.Subscription) {
     stripe_subscription_id: sub.id,
     stripe_customer_id: sub.customer as string,
     stripe_price_id: priceId,
-    current_period_start: safeDate(sub.current_period_start),
-    current_period_end: safeDate(sub.current_period_end),
+    current_period_start: periodsUpsert.start,
+    current_period_end: periodsUpsert.end,
     cancel_at_period_end: sub.cancel_at_period_end,
     credits_complete_total: quotas.complete,
     credits_complete_used: 0,
