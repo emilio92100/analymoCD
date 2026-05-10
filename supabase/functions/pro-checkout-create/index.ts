@@ -350,9 +350,13 @@ async function handleDowngradeScheduled(
         // Récupérer les infos du schedule existant pour les afficher au pro
         const existingSchedule = await stripe.subscriptionSchedules.retrieve(existingScheduleId);
         const lastPhase = existingSchedule.phases[existingSchedule.phases.length - 1];
-        const existingPriceId = lastPhase.items[0].price as string;
-        const existingPlan = PRICE_TO_PLAN[existingPriceId] || 'inconnu';
-        const existingDate = new Date((lastPhase.start_date || sub.current_period_end) * 1000).toISOString();
+        const priceRef = lastPhase.items[0]?.price;
+        const existingPriceId = typeof priceRef === 'string' ? priceRef : (priceRef as { id: string })?.id;
+        const existingPlan = (existingPriceId && PRICE_TO_PLAN[existingPriceId]) || 'inconnu';
+        // La phase de basculement commence à current_period_end de la subscription
+        const existingDate = new Date(sub.current_period_end * 1000).toISOString();
+
+        console.log(`[downgrade] Schedule existant détecté: bascule vers ${existingPlan} le ${existingDate}`);
 
         return jsonResponse({
           requires_confirmation: true,
