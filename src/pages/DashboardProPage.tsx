@@ -409,24 +409,24 @@ Cette logique vous permet de profiter pleinement de votre forfait mensuel avant 
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {[
-            { label: 'Complète', value: creditsComplete, unit: unitComplete },
-            { label: 'Simple', value: creditsSimple, unit: unitSimple },
+            { label: "Analyses simples d'un document", value: creditsSimple, unit: unitSimple },
+            { label: "Analyses complètes d'un bien", value: creditsComplete, unit: unitComplete },
           ].map(c => (
-            <div key={c.label} style={{ padding: '5px 8px', borderRadius: 7, background: 'rgba(255,255,255,0.04)' }}>
+            <div key={c.label} style={{ padding: '5px 8px', borderRadius: 7, background: 'rgba(255,255,255,0.10)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.78)', fontWeight: 600 }}>{c.label}</span>
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.95)', fontWeight: 600 }}>{c.label}</span>
                 {creditsLoading
                   ? <Skeleton width={16} height={14} />
-                  : <span style={{ fontSize: 12, fontWeight: 800, color: c.value > 0 ? ACCENT : 'rgba(255,255,255,0.25)' }}>{c.value}</span>
+                  : <span style={{ fontSize: 13, fontWeight: 800, color: c.value > 0 ? ACCENT : 'rgba(255,255,255,0.4)' }}>{c.value}</span>
                 }
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2, paddingLeft: 2 }}>
-                <svg width="9" height="9" viewBox="0 0 9 9" fill="none" style={{ flexShrink: 0, opacity: 0.78 }}>
-                  <path d="M1.5 1.5 L1.5 5 Q1.5 7 3.5 7 L7.5 7 M5 4.5 L7.5 7 L5 9.5" stroke="rgba(255,255,255,0.85)" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" transform="translate(0, -1.5)"/>
+                <svg width="9" height="9" viewBox="0 0 9 9" fill="none" style={{ flexShrink: 0, opacity: 0.95 }}>
+                  <path d="M1.5 1.5 L1.5 5 Q1.5 7 3.5 7 L7.5 7 M5 4.5 L7.5 7 L5 9.5" stroke="rgba(255,255,255,0.95)" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" transform="translate(0, -1.5)"/>
                 </svg>
                 {creditsLoading
                   ? <Skeleton width={100} height={10} />
-                  : <span style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.78)', fontWeight: 500 }}>
+                  : <span style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.92)', fontWeight: 500 }}>
                       dont {c.unit} achat{c.unit > 1 ? 's' : ''} unitaire{c.unit > 1 ? 's' : ''}
                     </span>
                 }
@@ -3949,11 +3949,10 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
 
       {/* ═══ SECTION 4 : Mes factures (paiements uniquement) ═══ */}
       {(() => {
-        // Côté pro : on affiche les factures réellement payées (incluant remboursées pour transparence)
-        // (les "En attente" / "Échec" sont visibles uniquement côté admin pour le suivi technique)
+        // Côté pro : on affiche les factures payées ET les remboursées (badge + PDF désactivé)
         const paidInvoices = invoices.filter(inv =>
           (inv.type === 'subscription' || inv.type === 'unit')
-          && (!inv.status || inv.status === 'paid')
+          && (!inv.status || inv.status === 'paid' || (inv as any).status_variant === 'refunded')
         );
         const grantInvoices = invoices.filter(inv => inv.type === 'promo' || inv.type === 'grant');
         return (<>
@@ -3985,37 +3984,42 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
                 {paidInvoices.map((inv, i) => {
                   const isRefunded = (inv as any).status_variant === 'refunded';
                   return (
-                    <tr key={inv.id} style={{ borderBottom: i < paidInvoices.length - 1 ? '1px solid #f8fafc' : 'none', opacity: isRefunded ? 0.7 : 1 }}>
-                      <td style={{ padding: '12px 16px', color: '#64748b', whiteSpace: 'nowrap' as const }}>{inv.date}</td>
-                      <td style={{ padding: '12px 16px', color: isRefunded ? '#94a3b8' : '#0f172a', fontWeight: 600, textDecoration: isRefunded ? 'line-through' : 'none' }}>{inv.description}</td>
-                      <td style={{ padding: '12px 16px' }}>
-                        {isRefunded ? (
-                          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100, background: '#fef2f2', color: '#dc2626' }}>
-                            {(inv as any).status_label || 'Remboursé'}
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100,
-                            background: inv.type === 'subscription' ? '#f0f7fb' : '#f0fdf4',
-                            color: inv.type === 'subscription' ? '#2a7d9c' : '#16a34a',
-                          }}>
-                            {inv.type === 'subscription' ? 'Abonnement' : 'Achat unitaire'}
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 800, color: isRefunded ? '#94a3b8' : '#16a34a', whiteSpace: 'nowrap' as const, textDecoration: isRefunded ? 'line-through' : 'none' }}>
-                        {inv.amount} <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>TTC</span>
-                      </td>
-                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                        {inv.pdf_url ? (
-                          <a href={inv.pdf_url} target="_blank" rel="noopener noreferrer"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 12px', borderRadius: 8, background: '#f0f7fb', color: '#2a7d9c', textDecoration: 'none', fontSize: 12, fontWeight: 700, border: '1px solid #d0e8f0' }}>
-                            <Download size={12} /> PDF
-                          </a>
-                        ) : (
-                          <span style={{ fontSize: 12, color: '#cbd5e1' }}>—</span>
-                        )}
-                      </td>
-                    </tr>
+                  <tr key={inv.id} style={{ borderBottom: i < paidInvoices.length - 1 ? '1px solid #f8fafc' : 'none', opacity: isRefunded ? 0.65 : 1 }}>
+                    <td style={{ padding: '12px 16px', color: '#64748b', whiteSpace: 'nowrap' as const }}>{inv.date}</td>
+                    <td style={{ padding: '12px 16px', color: '#0f172a', fontWeight: 600, textDecoration: isRefunded ? 'line-through' : 'none' }}>{inv.description}</td>
+                    <td style={{ padding: '12px 16px' }}>
+                      {isRefunded ? (
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100, background: '#fef2f2', color: '#dc2626' }}>
+                          Remboursé
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100,
+                          background: inv.type === 'subscription' ? '#f0f7fb' : '#f0fdf4',
+                          color: inv.type === 'subscription' ? '#2a7d9c' : '#16a34a',
+                        }}>
+                          {inv.type === 'subscription' ? 'Abonnement' : 'Achat unitaire'}
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 800, color: isRefunded ? '#94a3b8' : '#16a34a', whiteSpace: 'nowrap' as const, textDecoration: isRefunded ? 'line-through' : 'none' }}>
+                      {inv.amount} <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>TTC</span>
+                    </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                      {inv.pdf_url && !isRefunded ? (
+                        <a href={inv.pdf_url} target="_blank" rel="noopener noreferrer"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 12px', borderRadius: 8, background: '#f0f7fb', color: '#2a7d9c', textDecoration: 'none', fontSize: 12, fontWeight: 700, border: '1px solid #d0e8f0' }}>
+                          <Download size={12} /> PDF
+                        </a>
+                      ) : isRefunded ? (
+                        <span title="Facture remboursée — non téléchargeable"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 12px', borderRadius: 8, background: '#f8fafc', color: '#cbd5e1', fontSize: 12, fontWeight: 700, border: '1px solid #edf2f7', cursor: 'not-allowed' }}>
+                          <Download size={12} /> PDF
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: 12, color: '#cbd5e1' }}>—</span>
+                      )}
+                    </td>
+                  </tr>
                   );
                 })}
               </tbody>
