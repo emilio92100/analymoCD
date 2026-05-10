@@ -3045,22 +3045,22 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
               onClick={e => e.stopPropagation()}
               style={{ background: '#fff', borderRadius: 20, padding: '28px 24px', maxWidth: 420, width: '100%', textAlign: 'center', boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
               <div style={{ fontSize: 44, marginBottom: 10 }}>😢</div>
-              <h2 style={{ fontSize: 18, fontWeight: 900, color: '#0f172a', marginBottom: 8, letterSpacing: '-0.01em' }}>
+              <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 12, letterSpacing: '-0.01em' }}>
                 Vous souhaitez nous quitter ?
               </h2>
-              <p style={{ fontSize: 13, color: '#64748b', lineHeight: 1.55, marginBottom: 6 }}>
+              <p style={{ fontSize: 15, color: '#475569', lineHeight: 1.6, marginBottom: 8 }}>
                 Votre abonnement reste actif jusqu'au <strong style={{ color: '#0f172a' }}>{subscription?.current_period_end ? fmtDate(subscription.current_period_end) : '—'}</strong>.
               </p>
-              <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5, marginBottom: 20 }}>
+              <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.55, marginBottom: 24 }}>
                 Après cette date, vous perdrez l'accès à vos crédits d'abonnement. Vos crédits unitaires achetés resteront disponibles.
               </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <button onClick={() => setCancelStep(0)}
-                  style={{ padding: '12px 24px', borderRadius: 12, background: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff', fontSize: 14, fontWeight: 800, border: 'none', cursor: 'pointer', boxShadow: '0 6px 18px rgba(22,163,74,0.25)' }}>
+                  style={{ padding: '14px 24px', borderRadius: 12, background: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff', fontSize: 15, fontWeight: 800, border: 'none', cursor: 'pointer', boxShadow: '0 6px 18px rgba(22,163,74,0.25)' }}>
                   Je reste 💪
                 </button>
                 <button onClick={() => setCancelStep(2)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, color: '#94a3b8', padding: '6px' }}>
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: 600, color: '#94a3b8', padding: '8px' }}>
                   Continuer la résiliation
                 </button>
               </div>
@@ -3082,27 +3082,27 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
               <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', border: '2px solid #fed7aa' }}>
                 <FileText size={20} style={{ color: '#ea580c' }} />
               </div>
-              <h2 style={{ fontSize: 17, fontWeight: 900, color: '#0f172a', marginBottom: 4, letterSpacing: '-0.01em' }}>Avant de partir, aidez-nous à nous améliorer</h2>
-              <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>Pourquoi résiliez-vous ?</p>
+              <h2 style={{ fontSize: 19, fontWeight: 900, color: '#0f172a', marginBottom: 6, letterSpacing: '-0.01em' }}>Avant de partir, aidez-nous à nous améliorer</h2>
+              <p style={{ fontSize: 14.5, color: '#475569', marginBottom: 18 }}>Pourquoi résiliez-vous ?</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 18, textAlign: 'left' }}>
                 {CANCEL_REASONS.map(reason => (
                   <label key={reason} onClick={() => setCancelReason(reason)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 12px', borderRadius: 10,
+                    style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '11px 12px', borderRadius: 10,
                       background: cancelReason === reason ? '#f0f7fb' : '#f8fafc',
                       border: cancelReason === reason ? '2px solid #2a7d9c' : '1.5px solid #edf2f7',
                       cursor: 'pointer', transition: 'all 0.15s' }}>
                     <div style={{ width: 16, height: 16, borderRadius: '50%', border: cancelReason === reason ? '5px solid #2a7d9c' : '2px solid #cbd5e1', flexShrink: 0, background: '#fff' }} />
-                    <span style={{ fontSize: 12.5, fontWeight: cancelReason === reason ? 600 : 500, color: cancelReason === reason ? '#0f172a' : '#475569', lineHeight: 1.35 }}>{reason}</span>
+                    <span style={{ fontSize: 13.5, fontWeight: cancelReason === reason ? 600 : 500, color: cancelReason === reason ? '#0f172a' : '#475569', lineHeight: 1.4 }}>{reason}</span>
                   </label>
                 ))}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => { setCancelStep(0); setCancelReason(''); }}
-                  style={{ flex: 1, padding: '11px', borderRadius: 11, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 13, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>
+                  style={{ flex: 1, padding: '12px', borderRadius: 11, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 14, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}>
                   Annuler
                 </button>
                 <button disabled={!cancelReason || cancelLoading} onClick={handleCancelSubscription}
-                  style={{ flex: 1, padding: '11px', borderRadius: 11, border: 'none', background: cancelReason ? '#dc2626' : '#e5e7eb', fontSize: 13, fontWeight: 700, color: '#fff',
+                  style={{ flex: 1, padding: '12px', borderRadius: 11, border: 'none', background: cancelReason ? '#dc2626' : '#e5e7eb', fontSize: 14, fontWeight: 700, color: '#fff',
                     cursor: cancelReason ? (cancelLoading ? 'wait' : 'pointer') : 'default', opacity: cancelLoading ? 0.6 : 1 }}>
                   {cancelLoading ? 'Résiliation…' : 'Confirmer'}
                 </button>
@@ -3124,15 +3124,15 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
               <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', border: '3px solid #fed7aa' }}>
                 <XCircle size={36} style={{ color: '#ea580c' }} />
               </div>
-              <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 8 }}>Abonnement résilié</h2>
-              <p style={{ fontSize: 15, color: '#64748b', lineHeight: 1.7, marginBottom: 12 }}>
+              <h2 style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', marginBottom: 12 }}>Abonnement résilié</h2>
+              <p style={{ fontSize: 16, color: '#475569', lineHeight: 1.7, marginBottom: 14 }}>
                 Votre accès reste actif jusqu'au <strong style={{ color: '#0f172a' }}>{subscription?.current_period_end ? fmtDate(subscription.current_period_end) : '—'}</strong>.
               </p>
-              <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.6, marginBottom: 28 }}>
+              <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6, marginBottom: 28 }}>
                 Vous pouvez vous réabonner à tout moment depuis cette page.
               </p>
               <button onClick={() => { setCancelStep(0); window.location.reload(); }}
-                style={{ padding: '12px 28px', borderRadius: 12, background: '#0f172a', color: '#fff', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer' }}>
+                style={{ padding: '13px 32px', borderRadius: 12, background: '#0f172a', color: '#fff', fontSize: 15, fontWeight: 700, border: 'none', cursor: 'pointer' }}>
                 Fermer
               </button>
             </motion.div>
@@ -3398,36 +3398,38 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
                     <CheckCircle size={36} style={{ color: '#fff' }} />
                   </motion.div>
 
-                  <h2 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 10, letterSpacing: '-0.02em' }}>
+                  <h2 style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', marginBottom: 14, letterSpacing: '-0.02em' }}>
                     {upgradeSuccessData.is_downgrade ? 'Changement programmé !' : `Plan ${upgradeSuccessData.plan_label} activé !`}
                   </h2>
-                  <p style={{ fontSize: 14, color: '#64748b', marginBottom: 22, lineHeight: 1.6, padding: '0 8px' }}>
+                  <p style={{ fontSize: 16, color: '#475569', marginBottom: 24, lineHeight: 1.6, padding: '0 8px' }}>
                     {upgradeSuccessData.is_downgrade
                       ? `Vous passerez en ${upgradeSuccessData.plan_label} le ${upgradeSuccessData.switch_date}. D'ici là, vous gardez votre plan actuel.`
                       : 'Votre paiement a été validé. Vos nouveaux crédits sont disponibles immédiatement.'}
                   </p>
 
                   {!upgradeSuccessData.is_downgrade && (
-                    <div style={{ background: '#f0fdf4', borderRadius: 14, padding: '16px', marginBottom: 20, border: '1px solid #bbf7d0' }}>
-                      <p style={{ fontSize: 12, fontWeight: 700, color: '#15803d', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>Récapitulatif</p>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                        <span style={{ fontSize: 13, color: '#64748b' }}>Montant prélevé</span>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{upgradeSuccessData.amount}</span>
+                    <div style={{ background: '#f0fdf4', borderRadius: 14, padding: '18px', marginBottom: 22, border: '1px solid #bbf7d0' }}>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: '#15803d', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Récapitulatif</p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <span style={{ fontSize: 14, color: '#475569' }}>Montant prélevé</span>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{upgradeSuccessData.amount}</span>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                        <span style={{ fontSize: 13, color: '#64748b' }}>Crédits disponibles</span>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{upgradeSuccessData.new_credits.complete} compl. + {upgradeSuccessData.new_credits.simple} simples</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <span style={{ fontSize: 14, color: '#475569' }}>Crédits disponibles</span>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{upgradeSuccessData.new_credits.complete} compl. + {upgradeSuccessData.new_credits.simple} simples</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: 13, color: '#64748b' }}>Prochain prélèvement</span>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{upgradeSuccessData.next_billing}</span>
+                        <span style={{ fontSize: 14, color: '#475569' }}>Prochain prélèvement</span>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{upgradeSuccessData.next_billing}</span>
                       </div>
                     </div>
                   )}
 
-                  <p style={{ fontSize: 11.5, color: '#94a3b8', marginBottom: 18, textAlign: 'center' }}>
-                    📧 La facture vous sera envoyée par email dans quelques instants.
-                  </p>
+                  {!upgradeSuccessData.is_downgrade && (
+                    <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20, textAlign: 'center' }}>
+                      📁 Retrouvez votre facture dans <strong>Mon abonnement</strong>.
+                    </p>
+                  )}
 
                   <button
                     onClick={reloadAfterSuccess}
