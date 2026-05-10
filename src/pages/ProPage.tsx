@@ -503,10 +503,10 @@ function FaqProSection() {
           </h2>
         </Reveal>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="md:columns-2 md:gap-4 space-y-4 md:space-y-0">
           {faqPro.map((faq, i) => (
             <Reveal key={i} delay={i * 0.3}>
-              <div className={`bg-[#f8fafc] rounded-2xl border overflow-hidden transition-all duration-200 h-full ${openIdx === i ? 'border-[#2a7d9c]/20 shadow-md' : 'border-slate-100 hover:border-slate-200'}`}>
+              <div className={`bg-[#f8fafc] rounded-2xl border overflow-hidden transition-all duration-200 break-inside-avoid md:mb-4 ${openIdx === i ? 'border-[#2a7d9c]/20 shadow-md' : 'border-slate-100 hover:border-slate-200'}`}>
                 <button onClick={() => setOpenIdx(openIdx === i ? null : i)}
                   className="w-full flex items-center gap-4 p-5 md:p-6 text-left">
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
@@ -521,7 +521,7 @@ function FaqProSection() {
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
                       <div className="px-5 md:px-6 pb-5 md:pb-6 pl-[76px] md:pl-[84px]">
-                        <p className="text-sm text-slate-400 leading-relaxed">{faq.a}</p>
+                        <p className="text-[15px] text-slate-700 leading-relaxed">{faq.a}</p>
                       </div>
                     </motion.div>
                   )}
