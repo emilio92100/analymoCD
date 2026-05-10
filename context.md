@@ -1,420 +1,273 @@
-# VERIMO — Contexte projet — 9 mai 2026 (après sessions 1 à 30)
+# VERIMO — Contexte projet — 10 mai 2026
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
 ---
 
-## Profil développeur
-- Débutant en développement
-- Modifie les fichiers directement sur **GitHub.com** (crayon ✏️ → Ctrl+A → colle → Commit)
-- Pour créer un nouveau fichier : GitHub → dossier cible → "Add file" → "Create new file"
-- Vercel redéploie automatiquement après chaque push GitHub
-- Edge Functions Supabase : modifiées aussi directement dans le dashboard Supabase (en plus de GitHub)
-- Claude peut cloner le repo : `https://github.com/emilio92100/analymoCD.git`
-- Claude doit **toujours re-cloner** avant de modifier : `git clone https://github.com/emilio92100/analymoCD.git`
-- Claude livre les fichiers **complets** via `present_files` depuis `/mnt/user-data/outputs/`
-- L'utilisateur push manuellement sur GitHub
-- **Pour chaque fichier modifié, Claude doit le générer à nouveau dans sa totalité** — l'utilisateur remplace le fichier entier sur GitHub (pas de modification ligne par ligne)
+## 🛠️ Méthode de travail avec Alex
+
+- **Profil** : débutant développement, modifie les fichiers directement sur **GitHub.com** (crayon ✏️ → Ctrl+A → colle → Commit)
+- **Repo** : `github.com/emilio92100/analymoCD`
+- Claude clone `https://github.com/emilio92100/analymoCD.git` et livre les fichiers **complets** via `present_files` depuis `/mnt/user-data/outputs/`
+- Alex push manuellement sur GitHub
+- **Vercel redéploie auto** le frontend après chaque push GitHub
+- ⚠️ **Edge Functions Supabase NE sont PAS déployées par push GitHub** — il faut aller manuellement dans Supabase → Edge Functions → coller le code → Deploy. Bug récurrent : Alex push, l'erreur persiste, c'est parce que l'edge function n'est pas redéployée
 - **Ne jamais coder sans accord préalable** — toujours échanger et valider avant de toucher au code
-- **Une étape à la fois** — Alex préfère qu'on avance étape par étape, pas en lui balançant 10 actions à faire d'un coup
-- **Réponses courtes et concises avec Alex** — il préfère aller à l'essentiel, pas de pavés explicatifs sauf si question technique précise
-- **Ne jamais mentionner Tonton Immo ou Emilio Immo sur Verimo** — focus produit strict
-- **Mot "IA" / "AI" banni** des pages publiques Verimo — utiliser "technologie Verimo", "moteur d'analyse", "nos algorithmes", "analyse experte"
+- **Une étape à la fois** — pas 10 actions d'un coup
+- **Réponses courtes et concises** — pas de pavés sauf question technique précise
+- **Pas de QCM cascade** — quand Alex demande un choix, lui en proposer 2-4 max
+- **Challenger les sur-ingénieries** — Alex préfère faire simple
+- **Mot "IA" / "AI" banni** des pages publiques Verimo (HomePage, ExemplePage, TarifsPage, MethodePage, ContactPage, ProPage, ContactProPage, RapportPage, Navbar, Footer) — utiliser "technologie Verimo", "moteur d'analyse", "nos algorithmes", "analyse experte". AI uniquement autorisé dans admin, edge functions, prompts, logs, context.md.
+- **Tests live avec vraie carte CB d'Alex** (pas Visa 4242)
+- Compte test live actuel : Jean DUMONT / ARTY CONSEIL (acct_1TIateBesXB76oWE)
 
 ---
 
-## Le produit
+## 📦 Le produit
 
-**Verimo** — SaaS d'analyse de documents immobiliers (PV d'AG, règlements copro, diagnostics, appels de charges, DPE, compromis, carnet d'entretien, DTG, pré-état daté, état daté, taxe foncière, modificatifs RCP, fiche synthétique...). Rapport clair avec score /20, risques, recommandations. Fonctionne pour **appartements et maisons**.
+**Verimo** — SaaS d'analyse de documents immobiliers (PV d'AG, règlements copro, diagnostics, appels de charges, DPE, compromis, carnet d'entretien, DTG, pré-état daté, état daté, taxe foncière, modificatifs RCP, fiche synthétique...). Rapport clair avec score /20, risques, recommandations. Fonctionne pour appartements et maisons.
 
-**Slogan :** *Vos documents décryptés, votre décision éclairée.*
+**Slogan** : *Vos documents décryptés, votre décision éclairée.*
+**H1 HomePage** : *Analysez vos documents immobiliers avant de signer.*
+**Cible** : Acheteurs particuliers (primo-accédants, RP) et professionnels (agents immo, investisseurs, marchands de bien, notaires).
 
-**H1 HomePage :** *Analysez vos documents immobiliers avant de signer.*
+---
 
-**Cible :** Acheteurs particuliers (primo-accédants et résidence principale), et professionnels (agents immobiliers, investisseurs, marchands de bien, notaires).
+## 💰 Tarification
 
-### Tarification — Particuliers
-- 4,90€ → 1 crédit analyse simple (1 seul document) — PAS de score /20
-- 19,90€ → 1 crédit analyse complète (jusqu'à 15 documents)
+### Particuliers
+- 4,90€ → 1 crédit analyse simple (1 doc) — PAS de score /20
+- 19,90€ → 1 crédit analyse complète (jusqu'à 15 docs)
 - 29,90€ → 2 crédits (Pack 2 biens)
 - 39,90€ → 3 crédits (Pack 3 biens)
-- Les crédits n'expirent jamais
+- Crédits jamais expirés
 
-### Tarification — Professionnels
-
-**Abonnements mensuels HT :**
-| Plan | Prix/mois HT | Complètes | Simples |
+### Pros — Abonnements mensuels HT
+| Plan | Prix HT/mois | Complètes | Simples |
 |------|-------------|-----------|---------|
 | Découverte | 19,90€ | 1 | 3 |
 | Starter | 49,90€ | 5 | 15 |
 | Power | 89,90€ | 10 | 30 |
 
-**Achats unitaires pro (réservés aux abonnés) :** Complète 9,90€ HT · Simple 2,90€ HT
+**Achats unitaires pro (réservés aux abonnés)** : Complète 9,90€ HT · Simple 2,90€ HT
 
-### Stripe Price IDs
+### Stripe Price IDs (PRODUCTION)
+
 ```
-# Particuliers (PRODUCTION)
+# Particuliers
 document : price_1TTtd1BesXB76oWECAGA9ywf
 complete : price_1TTtd2BesXB76oWEsZ9LsLS9
 pack2    : price_1TTtcxBesXB76oWETkokxLgB
 pack3    : price_1TTtczBesXB76oWEloTMvEZF
 
-# Pro (PRODUCTION)
+# Pro
 DECOUVERTE 19,90€ → price_1TTtd1BesXB76oWEZuILxjwe
 STARTER 49,90€    → price_1TTtczBesXB76oWEcKaNR2BW
 POWER 89,90€      → price_1TTtcxBesXB76oWEPyVYZjCj
 UNIT_COMPLETE 9,90€ → price_1TTtcyBesXB76oWEBF1TLHYz
 UNIT_SIMPLE 2,90€   → price_1TTtd2BesXB76oWEVM0p27GS
 
-TVA Tax Rate ID (Stripe, exclusif HT) : txr_1TUAxVBesXB76oWESXBnGdIZ
+# TVA France 20% (mode exclusif HT)
+TVA Tax Rate ID : txr_1TUAxVBesXB76oWESXBnGdIZ
 ```
 
 ---
 
-## Stack technique
+## 🏗️ Stack technique
+
 - **Frontend** : React + Vite + TypeScript + Tailwind
 - **Backend** : Supabase Pro (auth + DB + Edge Functions Deno + Storage)
-- **IA** : Claude Sonnet 4.6 via API Anthropic + Files API
+- **IA** : Claude Sonnet 4.6 via API Anthropic + Files API (modèle `claude-sonnet-4-6`)
 - **Paiement** : Stripe (PRODUCTION)
 - **Email** : Mailjet (`notification@verimo.fr` particuliers, `pro@verimo.fr` pro)
-- **Déploiement** : Vercel (frontend auto depuis GitHub) + Supabase (edge functions manuelles)
-- **Repo** : `github.com/emilio92100/analymoCD`
+- **Déploiement** : Vercel (frontend auto via GitHub) + Supabase (edge functions **manuelles**)
 - **URL Supabase** : `veszrayromldfgetqaxb.supabase.co`
-- **Domaine** : verimo.fr (OVH registrar) + pro.verimo.fr (CNAME → Vercel)
+- **Site** : `https://www.verimo.fr` + `pro.verimo.fr` (CNAME → Vercel)
 
 ---
 
-## Edge Functions Supabase (production)
+## ⚙️ Edge Functions Supabase (production)
 
 | Nom | Rôle |
 |-----|------|
 | `analyser` | Lance une analyse — gère la queue Anthropic 503 |
 | `analyser-run` | Worker qui traite l'analyse en background |
-| `analyser-retry` | Cron qui retraite les analyses en queue (12 retries max) |
+| `analyser-retry` | Cron pg_cron 5 min — retraite les analyses queued (12 retries max) |
 | `comparer` | Compare 2 ou 3 rapports |
-| `admin-user-management` | Actions admin (create, invite, delete, reset password, etc.) |
-| `pro-checkout-create` | Stripe : subscribe / buy_unit / cancel / reactivate / billing_portal / list_invoices |
-| `stripe-webhook` | Webhook Stripe particuliers (checkout.session.completed) |
+| `admin-user-management` | Actions admin (create, invite, delete, reset password) |
+| `pro-checkout-create` | Stripe pro : subscribe / preview_upgrade / buy_unit / cancel / cancel_scheduled_change / reactivate / billing_portal / list_invoices |
 | `stripe-webhook-pro` | Webhook Stripe pro (5 events : checkout, invoice paid/failed, sub updated/deleted) |
+| `stripe-webhook` | Webhook Stripe particuliers (checkout.session.completed) |
 | `create-checkout-session` | Stripe particuliers (checkout) |
 
----
-
-## Routes principales
-```
-/                             → HomePage
-/pro                          → ProPage
-/tarifs                       → TarifsPage
-/exemple                      → ExemplePage
-/methode                      → MethodePage
-/guides                       → GuidesPage
-/connexion, /inscription      → Auth
-/admin                        → AdminPage
-/dashboard                    → SmartDashboard (détecte role)
-/dashboard/nouvelle-analyse   → NouvelleAnalyse
-/dashboard/analyses           → MesAnalyses (particulier)
-/dashboard/dossiers           → MesDossiersPro (pro)
-/dashboard/dossier/:id        → DossierDetail (pro)
-/dashboard/abonnement         → MonAbonnement (pro)
-/dashboard/compte             → Compte ou ComptePro
-/dashboard/support            → Support
-/rapport?id=XXX               → RapportPage
-```
+⚠️ **Rappel critique** : push GitHub ne déploie pas les edge functions → toujours redéployer manuellement dans Supabase Studio.
 
 ---
 
-## 🔥 BACKLOG PRIORITÉ HAUTE (à faire prochaines sessions)
+## 🗺️ Routes principales
 
-### 🔴 1. Système d'abonnement Pro — Bug Stripe prorata + Popup de récap
-
-**Bug critique identifié (8 mai 2026) — non corrigé :**
-
-Dans `pro-checkout-create.ts`, fonction `handleSubscribe`, en cas d'upgrade :
-```ts
-proration_behavior: 'none',        // ❌ BUG : Stripe ne facture pas la différence
-billing_cycle_anchor: 'now',        // ❌ BUG : reset cycle à maintenant
 ```
-
-**Conséquence :** un client qui upgrade Découverte → Power en milieu de mois ne paie **rien immédiatement** alors qu'il devrait payer (89,90 - 19,90) × jours_restants/30 = ~58€. Manque à gagner ~70€ par client malin par mois.
-
-**Fix prévu :**
-```ts
-proration_behavior: 'create_prorations',  // ✅ Stripe facture la différence
-// (supprimer billing_cycle_anchor)
+/                              → HomePage
+/pro                           → ProPage
+/tarifs                        → TarifsPage
+/exemple                       → ExemplePage
+/methode                       → MethodePage
+/guides                        → GuidesPage
+/connexion, /inscription       → Auth
+/admin                         → AdminPage
+/dashboard                     → SmartDashboard (détecte role)
+/dashboard/nouvelle-analyse    → NouvelleAnalyse
+/dashboard/analyses            → MesAnalyses (particulier)
+/dashboard/dossiers            → MesDossiersPro (pro)
+/dashboard/dossier/:id         → DossierDetail (pro)
+/dashboard/abonnement          → MonAbonnement (pro)
+/dashboard/compte              → Compte ou ComptePro
+/dashboard/support             → Support
+/rapport?id=XXX                → RapportPage
 ```
-
-**Politique de crédits sur upgrade — choix à valider :**
-- **Option A (MAX, recommandée)** : le client reçoit les crédits du nouveau plan complet (ex: Découverte → Power = solde devient 10 complètes + 30 simples, peu importe le solde précédent)
-- **Option B (CUMUL)** : on ajoute uniquement la différence entre plans (déjà ce que fait `upgrade_pro_subscription_credits` actuellement, à confirmer)
-- Alex doit trancher A ou B avant de coder
-
-**Popup de confirmation à créer (validé par Alex) :**
-- S'affiche AVANT que le client confirme l'upgrade
-- Récapitule : plan actuel, nouveau plan, crédits ajoutés, montant à payer aujourd'hui (prorata depuis Stripe `invoices.upcoming`), date du prochain prélèvement complet
-- Détail HT/TVA/TTC
-
-**Ordre d'action prévu pour la session :**
-1. Lancer SQL pour voir le code actuel de `upgrade_pro_subscription_credits` et `reset_pro_subscription_credits` :
-   ```sql
-   SELECT prosrc FROM pg_proc 
-   WHERE proname IN ('upgrade_pro_subscription_credits', 'reset_pro_subscription_credits');
-   ```
-2. Décider option A ou B (probablement adapter la fonction SQL)
-3. Coder la nouvelle route "preview prorata" dans `pro-checkout-create` (utilise `stripe.invoices.upcoming`)
-4. Coder le popup de confirmation dans `DashboardProPage.tsx`
-5. Modifier `proration_behavior` + retirer `billing_cycle_anchor`
-6. Tester avec carte test Stripe avant de pousser en prod
-
-**Fichiers concernés :**
-- `supabase/functions/pro-checkout-create/index.ts`
-- `src/pages/DashboardProPage.tsx` (composant `MonAbonnement` autour de `setUpgradeConfirm`)
-- Fonction SQL `upgrade_pro_subscription_credits` (peut-être à modifier selon option choisie)
-
-**Vérifications complémentaires à faire :**
-- ⚠️ Vérifier que la fonction SQL `upgrade_pro_subscription_credits` ne génère pas de crédits négatifs sur un downgrade Power → Découverte
-- ⚠️ Vérifier que l'ordre des webhooks (`subscription.updated` vs `invoice.payment_succeeded`) ne crée pas de race condition entre cumul et reset
-
-### 🔴 2. Tester en prod le système de queue Anthropic
-
-Le système de queue est déployé et fonctionne en environnement test, MAIS pas encore testé en conditions réelles.
-
-**Action :**
-1. Vérifier que `FORCE_OVERLOAD = false` dans Supabase Secrets (CRITIQUE pour la prod)
-2. Mettre temporairement `FORCE_OVERLOAD = true`
-3. Lancer une analyse depuis verimo.fr
-4. Vérifier popup queue + email + notification cloche + entrée DB
-5. Remettre `FORCE_OVERLOAD = false`
-6. Déclencher retry manuellement
-7. Vérifier que l'analyse passe + email reçu + lien rapport fonctionne
-
-### 🔴 3. Edge function `comparer` — remplacer version debug par version propre prod
-
-Mentionné dans backlog depuis longtemps, toujours pas fait.
-
-### 🔴 4. SEO — soumettre les ~40 URLs guides restantes dans Google Search Console
-
-Quota dépassé lors de la dernière soumission, reprendre.
 
 ---
 
-## 🟡 BACKLOG PRIORITÉ NORMALE
+## 💳 Système d'abonnement Pro Stripe — État actuel (✅ stable)
 
-- [ ] **Stripe Tax — automatic_tax: true** dans `pro-checkout-create` (fichier prêt mais non pushé, attendre activation Stripe Tax)
-- [ ] **Bouton "Modifier mon moyen de paiement"** dans MonAbonnement (mode `billing_portal` déjà codé dans edge function, frontend à faire)
-- [ ] **Branding Stripe Checkout** — Logo + couleurs Verimo
-- [ ] **Domaine custom Stripe** — `pay.verimo.fr` au lieu de `checkout.stripe.com`
-- [ ] **Reçus email Stripe** — Activer envoi auto
-- [ ] **Remboursement depuis l'admin** — Bouton qui appelle Stripe refund
-- [ ] **Guides — articles individuels** : route `/guides/:slug` + rendu d'article
-- [ ] **Guides — rédaction** : 5 articles stratégiques SEO (PV AG, DPE, 10 docs avant offre, charges copro, compromis)
-- [ ] **Veille réglementaire — prompt analyser-run** : DPE collectif copros <50 lots (jan 2026), PPT obligatoire (jan 2026)
-- [ ] **Prompt caching API Anthropic** — ~90% d'économie possible
-- [ ] **Compare : redesign verdict** — split synthèse par bien, layout two-column
-- [ ] **Différence analyse simple vs complète** : mieux expliquer sur Méthode et/ou Tarifs
+**Le système Stripe pro est entièrement opérationnel et testé en live**. Tous les bugs critiques identifiés en mai 2026 ont été résolus.
 
----
+### Flow d'upgrade (paiement immédiat)
+- `proration_behavior: 'none'` + `billing_cycle_anchor: 'now'` → cycle redémarre, plein tarif facturé immédiatement
+- `payment_behavior: 'default_incomplete'` → permet de gérer 3DS, carte refusée, etc.
+- 4 cas gérés côté backend :
+  - ✅ Paiement direct OK → popup vert "Plan activé !" + crédits cumulés
+  - 🔐 3DS demandé → popup Stripe inline → si validé OK
+  - ❌ Carte refusée → popup rouge contextuelle "Mettez à jour votre moyen de paiement"
+  - ⏳ Paiement en cours → popup "Patientez, rafraîchissez"
+- **Sécurité backend** : webhook `customer.subscription.updated` vérifie `latest_invoice.status === 'paid'` AVANT de cumuler les crédits → impossible de bénéficier d'un upgrade sans paiement effectif
+- **Pas de retry automatique** sur upgrade échoué (contrairement aux renouvellements de cycle où Stripe retente 3 fois)
 
-## ✅ Session 30 — 8-9 mai 2026 — Système de queue Anthropic + Archivage dossiers pro + UX mobile
+### Flow de downgrade (Stripe Subscription Schedule)
+- Création d'un `subscription_schedule` via `from_subscription` → bascule programmée à `current_period_end`
+- Mode `cancel_scheduled_change` permet d'annuler une bascule programmée
+- Stockage BDD dans colonnes `pro_subscriptions.scheduled_plan_change` + `scheduled_change_date` pour affichage UX
+- Si schedule existe déjà et pro demande **même plan** : refus propre `same_plan_already_scheduled`
+- Si schedule existe déjà et pro demande **autre plan** : popup ambre "Voulez-vous remplacer le changement programmé ?"
+- Bouton "Passer à ce plan" **désactivé** sur le plan déjà programmé (affiche "Passage programmé le DATE")
+- Bouton "Annuler ce changement" sur la carte du plan actif si scheduled_plan_change rempli
+- Webhook nettoie scheduled_* aux moments clés (upgrade payé, renouvellement, résiliation)
 
-### Résumé
-Très grosse session technique : système de queue complet pour gérer les surcharges Anthropic 503, multiple bugs RLS corrigés, archivage de dossiers pro avec popup de confirmation et UX mobile, fix logique RCP, KPI dashboard pro, popups de complétion dossier améliorés.
+### Popups UX abonnement (DashboardProPage.tsx)
+- **Popup confirmation upgrade** (avant Checkout) : récap HT/TVA/TTC + crédits
+- **Popup succès upgrade** (vert) : récap montant + crédits + "📁 Retrouvez votre facture dans Mon abonnement"
+- **Popup succès downgrade** (vert) : "Vous passerez en X le DATE" — pas de message facture (cohérent : pas de paiement immédiat)
+- **Popup erreur contextuelle** (downgrade ambre / upgrade rouge / generic) avec bouton adapté
+- **Popup confirmation remplacement schedule** (ambre)
+- **Popup confirmation annulation schedule** (bleu) + popup succès vert
+- **Popup résiliation 3 étapes** : "Vous souhaitez nous quitter ?" → "Pourquoi résiliez-vous ?" → "Abonnement résilié"
+- Tailles typo agrandies (titres 22→24, textes 13-14→14-16)
 
-### A. Système de queue Anthropic 503 — déployé
+### Sidebar SidebarPro (états abonnement)
+Priorité d'affichage :
+1. 🔴 Past due / paiement échoué (rouge)
+2. 🔴 Cancel at period end (rouge "Actif jusqu'au DATE")
+3. 🟡 **BASCULE PROGRAMMÉE** (ambre) : "Plan X · Bascule vers Y le DATE"
+4. 🟢 Actif normal (vert "Renouvellement DATE")
 
-**Backend complet :**
-- Status `'queued'` ajouté au CHECK constraint de la table `analyses`
-- Colonnes `queue_attempts`, `progress_message` ajoutées
-- Edge function `analyser` : retourne HTTP 202 avec `{ queued: true }` quand Anthropic répond 503 (overload)
-- Edge function `analyser-retry` : cron Supabase, retraite les `queued` toutes les 30 min
-- Après 12 retries échoués → status `failed` + email + notification cloche + remboursement crédit auto
-- Texte queue user message : *"...nous vous prévenons par email ET par notification dans la cloche 🔔 dès que c'est terminé."*
+### Bandeau "Votre plan actuel" (carte plan actif)
+- Si `cancel_at_period_end` → "Actif jusqu'au DATE" (orange)
+- Si `scheduled_plan_change` → "Bascule vers X le DATE" (orange)
+- Sinon → "Renouvellement DATE" (vert)
 
-**Frontend (NouvelleAnalyse.tsx) :**
-- `QueuedDialogPopup` qui s'affiche quand HTTP 202 reçu
-- **Bug critique fixé** : `step === 'analyse'` empêchait le rendu du popup. Fix par `setStep('upload')` + `resetUpload()` dans le branche `result.queued`
-- Console logs `[VERIMO-DEBUG]` ajoutés à 4 points dans `analyse-client.ts` pour diagnostiquer les problèmes futurs
+### Mes factures (côté pro vs admin)
+- **Pro** : affiche **uniquement les factures payées** (`status === 'paid'` ou status absent). Les factures `open` (en attente) et `uncollectible` (échec) sont cachées
+- **Admin** : affiche TOUTES les factures avec statut visible (En attente jaune / Échec rouge / Réussi vert) — utile pour le suivi technique
 
-**Variable Supabase Secrets** : `FORCE_OVERLOAD` (true/false) pour forcer le mode queue en test. **DOIT ÊTRE À FALSE EN PROD.**
+### Facturation B2B Stripe
+- Customer Stripe enrichi : email, name, phone, address (pro_company_address, pro_postal_code, pro_ville, country FR), metadata.user_id + metadata.siret
+- SIRET stocké en metadata + affiché en custom_field sur factures (Stripe ne supporte pas SIRET comme Tax ID officiel)
+- Toutes les factures pro avec TVA 20% via `txr_1TUAxVBesXB76oWESXBnGdIZ` (mode exclusif)
 
-### B. Bugs RLS corrigés (codes promo pro)
+### Stats admin via table `payments`
+- Helper `recordProPayment` dans webhook insère paiements pro dans `payments` (anti-doublon par stripeInvoiceId puis stripeSessionId)
+- Appelé 4 endroits : souscription initiale, upgrade payé, renouvellement, achat unitaire
+- ⏳ **Pending** : refonte AdminPage.tsx pour utiliser cette table pour les stats CA Pro/Particulier (estimé ~300 lignes)
 
-- `credit_grants` : ajout policy `INSERT` `credit_grants_insert_own` avec `auth.uid()=user_id`
-- `promo_uses` : `with_check NULL` corrigé sur `user_own_promo_uses` (DROP + CREATE avec USING + WITH CHECK)
-- `promo_codes` : `with_check NULL` corrigé sur `admin_all_promo_codes`
-- Fonction `increment_promo_uses` : param `code_id` corrigé (était `promo_id`), ajout `SECURITY DEFINER`
-
-### C. Fix route email rapport
-
-**Bug :** `analyser-run` construisait `https://verimo.fr/dashboard/pro/rapport?id=...` (pro) ou `/dashboard/rapport?id=...` (particulier) → 404. La vraie route est `/rapport?id=...`.
-
-**Fix :** unique URL `https://verimo.fr/rapport?id=${analyseId}` quel que soit le rôle.
-
-### D. KPI Dashboard Pro — "Ce mois / Total + dont X échouées"
-
-`HomeViewPro` : remplacement de la tile "Ce mois" par une carte custom avec toggle Mois/Total + sub-text *"⏳ X en cours · ✕ X échouées"* (affiché seulement si pertinent).
-
-### E. Page dossier pro — Badge en cours + ℹ️ Échouée
-
-- `'queued'` ajouté à `isPending`
-- Renommage "Analyses" → "Analyses effectuées"
-- Icône Info + ErrorPopup pour analyses échouées (mirroir du comportement particulier dans `MesAnalyses`)
-
-### F. Mobile UX — barre de progression analyse
-
-CSS media query @max-width:640px ajouté dans `index.css` pour les classes `na-progress-*` (header padding, title font 20→16, pct 48→36, etc).
-
-### G. Admin — Badge "⏳ En queue"
-
-`AdminPage.tsx` : 4 endroits modifiés pour afficher correctement le statut `queued` (counts, filter, badge, detail badge, isInProgress) au lieu du fallback "✗ Échouée".
-
-### H. Popup "Compléter mon dossier" — UX premium
-
-- Animations Framer Motion (initial/animate/exit avec spring)
-- Wrap dans `AnimatePresence`
-- `useEffect` lock body `overflow: hidden` (prévient scroll background)
-- Badge orange avec count sur tab Documents (desktop + mobile) si docs essentiels manquants
-- Alert banner orange en haut de TabDocuments si missing essentials AND not completed AND not expired
-
-### I. Popup code promo — bouton "Voir mes crédits"
-
-Après application d'un code promo réussi, popup avec bouton qui fait `window.location.reload()`.
-
-### J. Logique RCP corrigée
-
-**Problème :** `MODIFICATIF_RCP` était considéré comme équivalent à `REGLEMENT_COPRO` (`hasDoc(['REGLEMENT_COPRO', 'MODIFICATIF_RCP'])`).
-
-**Règle métier (validée par Alex) :**
-- Si juste un Modificatif → demander RCP en essentiel
-- Si juste le RCP → Modificatif en **secondaire** (peut ne pas exister)
-- Si les 2 → tout va bien
-- Si aucun → RCP en essentiel + Modificatif PAS listé (on ne sait pas s'il en existe)
-
-**Fix dans `RapportPage.tsx`** : 3 endroits modifiés (TabDocuments, ComplementModal, calcul badge missingEssentielsCount).
-
-### K. Système d'archivage dossiers pro — complet
-
-**Migration SQL exécutée :**
+### Schéma BDD pro_subscriptions (colonnes clés)
 ```sql
-ALTER TABLE pro_folders ADD COLUMN archived_at TIMESTAMPTZ DEFAULT NULL;
-CREATE INDEX idx_pro_folders_archived_at ON pro_folders (archived_at) WHERE archived_at IS NULL;
+- user_id, plan, status, stripe_subscription_id, stripe_customer_id
+- credits_complete_total/used, credits_simple_total/used
+- current_period_start, current_period_end
+- cancel_at_period_end, cancellation_reason
+- scheduled_plan_change, scheduled_change_date  -- ⭐ ajouté pour downgrade UX
 ```
-
-**UI Mes dossiers :**
-- Toggle **"📂 Actifs / 📦 Archivés"** en haut de la page (avec compteurs)
-- Bouton 📦 archive sur chaque carte de dossier (au hover, à côté de supprimer)
-- Badge **"📦 ARCHIVÉ"** dans le flux au-dessus du titre (pas en absolute pour éviter chevauchement)
-- Carte légèrement grisée si archivée (background #fafafa, opacity 0.85)
-- **Transitions fluides** : `AnimatePresence mode="wait"` + `motion.div` avec stagger en cascade (30ms entre cartes) au switch Actifs/Archivés
-- Vue liste : mini badge ARCHIVÉ à côté du nom + opacity 0.75
-
-**UI Page détail dossier :**
-- Bouton "📦 Archiver" / "📂 Restaurer" dans le header (à côté de "Modifier")
-- Bandeau orange "Dossier archivé le X" en haut si archivé
-- **Tous les boutons grisés** sur dossier archivé : Modifier, Ajouter vendeur, Ajouter acheteur, Lancer analyse, Envoyer analyse, boutons éditer/supprimer dans les cartes vendeur/acheteur
-- Sous-texte "🔒 Dossier archivé" sur les boutons grisés
-- Tooltips "Restaurez le dossier pour [action]"
-
-**Popup `ModalArchiveFolder` (composant créé) :**
-- Pattern basé sur `ModalDeleteFolder` mais en orange (archive) ou vert (restore) au lieu de rouge
-- Mode `archive` : header orange, icône 📦 animée (spring physics)
-- Mode `restore` : header vert, icône 📂 animée
-- **Texte d'archivage validé par Alex (proposition narrative) :**
-  > Au fil du temps, votre liste de dossiers s'agrandit. **L'archivage vous aide à garder une vue claire sur ceux qui sont vraiment en cours**, sans perdre l'historique des autres.
-  > 
-  > **Archivez par exemple :**
-  > 🎉 Les ventes abouties
-  > 🤝 Les mandats terminés
-  > ⏸️ Les dossiers en pause
-  > 🚫 Les projets abandonnés
-  > 🔄 Les mandats partis chez un confrère
-  > 
-  > *Tout reste consultable dans l'onglet 📦 Archivés, et la restauration se fait en un clic.*
-- **Mention "irréversible" / "réversible" supprimée** (Alex a fait la remarque que c'était trompeur)
-- Boutons : Annuler / 📦 Archiver le dossier (orange) | Annuler / 📂 Restaurer (vert)
-- AnimatePresence + scroll lock + click hors modal pour fermer
-
-**Mobile UX du popup :**
-- Largeur max 360px (vs 460 desktop)
-- Padding réduit, icône 44×44 (vs 56), titre 15.5 (vs 18)
-- Boutons en pleine largeur 50/50 (flex: 1)
-
-**Mobile UX du header dossier (archivé) :**
-- Boutons "Restaurer" + "Modifier" empilés en colonne pleine largeur (au lieu de côte à côte qui débordait)
-- Class `dossier-header-actions` ajoutée
-
-**Mobile UX de la liste analyses dans dossier détail :**
-- Score retiré de la meta (était dupliqué)
-- Voir le rapport + score empilés verticalement à droite (au lieu de wrap horizontal cassé)
-
-### Fichiers modifiés session 30
-```
-src/pages/RapportPage.tsx           → Fix logique RCP (3 endroits) + popup compléter premium
-src/pages/DashboardProPage.tsx      → KPI ce mois/total, page dossier (badge queued, ℹ️ échoué, "Analyses effectuées"), système archivage complet (toggle, modal, badges, boutons grisés), mobile UX header + analyses
-src/pages/AdminPage.tsx             → Badge "⏳ En queue" (4 endroits)
-src/pages/NouvelleAnalyse.tsx       → Fix render popup queue (setStep upload + resetUpload), texte popup, mobile UX
-src/lib/analyse-client.ts           → Console logs [VERIMO-DEBUG] 4 points
-src/index.css                       → Mobile media @640px barre progression
-
-Edge functions :
-- analyser/index.ts                 → Texte queue user message avec mention email + cloche
-- analyser-run/index.ts             → Fix reportUrl (single route /rapport?id=)
-
-SQL exécutés (Supabase SQL Editor) :
-- ALTER TABLE analyses CHECK constraint pour autoriser status='queued'
-- ALTER TABLE pro_folders ADD COLUMN archived_at TIMESTAMPTZ
-- CREATE INDEX idx_pro_folders_archived_at
-- 6+ corrections RLS (credit_grants, promo_uses, promo_codes)
-- DROP + CREATE function increment_promo_uses (SECURITY DEFINER)
-```
-
-### Découverte importante session 30 — Admin Support Inbox
-La refonte admin support inbox (split-view, regroupement par utilisateur, filtres archivés) **est déjà implémentée** dans `AdminSupportTab` (AdminPage.tsx ligne ~787). Anciennes notes mémoire indiquaient à tort qu'elle restait à faire.
-
-### Diagnostic système d'abonnement Pro (en fin de session)
-Lecture complète du code de `pro-checkout-create` et `stripe-webhook-pro V3`. Diagnostic = 80% du système est bien fait MAIS :
-- 🔴 Bug `proration_behavior: 'none'` + `billing_cycle_anchor: 'now'` = upgrade gratuit pour le client (perte ~70€/abus)
-- 🟡 Risque sur downgrade : la fonction `upgrade_pro_subscription_credits` est appelée pour TOUT changement, peut générer crédits négatifs sur Power→Découverte (à vérifier)
-- 🟡 Race condition possible entre `subscription.updated` (cumul) et `invoice.payment_succeeded` (reset)
-
-**Voir Backlog Priorité Haute #1 pour le plan de fix.**
 
 ---
 
-## ✅ Sessions précédentes (résumé condensé)
+## 🎨 Design System — Page abonnement pro (refonte 10 mai 2026)
 
-### Session 29 — 7 mai 2026 — UI/UX support, Admin, Legal, Loader, Stripe production
-- Stripe production complet (9 produits, webhooks Pro/Particuliers, FK ON DELETE SET NULL pour protéger CA)
-- Admin Support Inbox split-view par utilisateur (vu dans cette session que c'était DÉJÀ fait)
-- Pages légales : Alexandre ROGELET fondateur, Claude Sonnet 4 mentionné, 960px width
-- DashboardProPage : Mon Compte simplifié (email readonly, 1 téléphone), rapports envoyés pliables
-- Support : badge nouvelle réponse, barre saisie visible, headers inversés
+### Cartes plans Découverte / Starter / Power
 
-### Session 28 — 6 mai 2026
-Voir précédentes sessions stockées (résumé : Stripe production basculé, redesign admin support, pages légales, UX support).
+**Direction Premium hiérarchie** avec theme dynamique par plan actif.
 
-### Sessions 25-27 (4-5 mai 2026)
-SEO complet (canonical fix, GuidesPage, headers dégradés), redesign admin sidebar catégorisée, dashboards pro/particulier harmonisés.
+**Logique commerciale du plan qui ressort (fond bleu nuit dégradé) :**
+- Pas d'abo / Découverte / Starter actif → **Starter** ressort (recommandé sans push agressif)
+- Power actif → **Power** ressort (on valorise le plan max)
 
-### Sessions 21-24 (28 avril - 4 mai 2026)
-Stripe pro complet, dossiers pro complets, credit_grants + trigger, code promo, popups succès, page Guides, optimisation SEO mots-clés.
+**Theme "standout"** (plan qui ressort) :
+- Fond : `linear-gradient(180deg, #0f2d3d 0%, #2a7d9c 100%)`
+- Texte blanc, prix blanc
+- Badge ambre "★ RECOMMANDÉ" si Starter en standout sans abo / Découverte
+- Bouton blanc avec texte bleu nuit
 
-### Sessions 1-20 (19-30 avril 2026)
-Conception initiale, prompt enrichi, scoring déterministe /20, comparaison v1, AdminPage, dashboard pro, edge functions, config DNS pro.verimo.fr.
+**Theme "secondaire"** (plans non standout, fond clair pastel) :
+- Découverte : `linear-gradient(180deg, #f0f7fb 0%, #fff 70%)` + bordure `#d0e8f0`
+- Power : `linear-gradient(180deg, #f1f5f9 0%, #fff 70%)` + bordure `#e2e8f0`
+- Starter (si Power actif) : `linear-gradient(180deg, #e0f2fe 0%, #f0f7fb 70%)` + bordure `#bae6fd`
+- Boutons : Découverte/Starter bleu Verimo (`#2a7d9c`), Power anthracite (`#0f172a`)
+
+**Structure carte** (display flex column pour aligner boutons) :
+1. Titre nom du plan (24px gras, pas de badge en majuscules)
+2. Tagline (13px)
+3. Prix + suffix HT/mois + badge "Sans engagement"
+4. Liste features avec CheckCircle (flex:1 pour pousser bouton en bas)
+5. Bouton "Passer à ce plan" / "Annuler mon abonnement" / état spécial
+
+**Boutons spéciaux selon état** :
+- Plan actif normal → "Annuler mon abonnement" (rouge)
+- Plan actif + cancel_at_period_end → "Réactiver mon abonnement" (vert)
+- Plan actif + scheduled_plan_change → "Annuler ce changement" (ambre) + "Annuler mon abonnement" (rouge)
+- Plan = scheduled_plan_change cible → bouton désactivé "Passage programmé le DATE" (ambre clair)
+- past_due → bouton désactivé "Paiement à régulariser" (rouge clair)
+
+### Boutons unitaires + Nous contacter
+- **"Acheter" (analyse complète/simple)** : `#2a7d9c` (bleu Verimo)
+- **"Nous contacter"** (volumes importants) : `#2a7d9c` avec hover `#1e6783`
+- ⚠️ Anciens boutons noirs (`#0f172a` / `#0f2d3d`) corrigés le 10 mai 2026
+
+### Palette couleurs Verimo
+- **Bleu Verimo** : `#2a7d9c`
+- **Bleu nuit Verimo** : `#0f2d3d`
+- **Sidebar pro + particulier** : `#0e3a4a`
+- **Accent pro** : `#7dd3fc`
+- **Header dark** : `#0f2d3d`
+- **Bouton aide / badge support** : `#f59e0b`
+- **Anthracite (Power, premium)** : `#0f172a`
+- **Ambre (warning, scheduled)** : `#d97706` / `#fde68a` / `#fffbeb`
+- **Rouge (cancel, danger)** : `#dc2626` / `#fecaca`
+- **Vert (success)** : `#16a34a` / `#bbf7d0` / `#f0fdf4`
 
 ---
 
-## 📊 Architecture crédits (récap)
+## 📊 Architecture crédits
 
 ### Sources de crédits pro
 Lues par sidebar et NouvelleAnalyse via `get_pro_credits_balance(p_user_id)` qui agrège :
-1. **Abonnement** → `pro_subscriptions` (colonnes `credits_complete_total/used`, `credits_simple_total/used`)
+1. **Abonnement** → `pro_subscriptions` (`credits_complete_total/used`, `credits_simple_total/used`)
 2. **Achats unitaires** → `pro_unit_purchases` (avec `credits_remaining`)
 3. **Crédits offerts** → `credit_grants` + trigger `apply_credit_grant`
 
-**Consommation** : `consume_pro_credit(p_user_id, p_credit_type)`
-**Remboursement** : `refund_pro_credit(p_user_id, p_credit_type)`
-**Reset cycle abonnement** : `reset_pro_subscription_credits(p_subscription_id)`
-**Cumul upgrade** : `upgrade_pro_subscription_credits(p_subscription_id, p_new_plan)`
+### Fonctions SQL crédits
+- **Consommation** : `consume_pro_credit(p_user_id, p_credit_type)`
+- **Remboursement** : `refund_pro_credit(p_user_id, p_credit_type)`
+- **Reset cycle abo** : `reset_pro_subscription_credits(p_subscription_id)`
+- **Cumul upgrade** : `upgrade_pro_subscription_credits(p_subscription_id, p_new_plan)`
 
 ### Contraintes BDD
 - `pro_unit_purchases.type` : CHECK `('document', 'complete')`
@@ -424,7 +277,7 @@ Lues par sidebar et NouvelleAnalyse via `get_pro_credits_balance(p_user_id)` qui
 
 ---
 
-## Règles de notation — Score /20
+## 📐 Règles de notation — Score /20
 
 | Catégorie | Max |
 |-----------|-----|
@@ -437,36 +290,55 @@ Lues par sidebar et NouvelleAnalyse via `get_pro_credits_balance(p_user_id)` qui
 
 ---
 
-## Palette couleurs
-- **Bleu Verimo** : `#2a7d9c`
-- **Sidebar pro + particulier** : `#0e3a4a` (harmonisé)
-- **Accent pro** : `#7dd3fc`
-- **Accent particulier** : `#5dbfe0`
-- **Header dark** : `#0f2d3d`
-- **Header email** : `#1a3a4a` → `#2a5a6e`
-- **Bouton aide / badge support** : `#f59e0b` (orange)
-- **Archive (orange)** : `#9a3412` text, `#fed7aa` bg, `#ea580c` button
-- **Restore (vert)** : `#15803d` text, `#bbf7d0` bg, `#16a34a` button
-- **Admin sidebar catégories** : Activité `#2a7d9c`, Utilisateurs `#7c3aed`, Contenu `#16a34a`, Outils `#d97706`, Support `#f59e0b`, Système `#94a3b8`
+## ⏳ Backlog — En attente
+
+### Court terme
+1. **Refonte AdminPage.tsx CA Pro/Particulier** basée sur table `payments` (~300 lignes, session dédiée)
+2. **47 URLs guides** à soumettre Google Search Console
+3. **Test E2E complet** abonnement pro avant pub
+4. **Branding Stripe Checkout** : logo + couleurs + domaine `pay.verimo.fr`
+5. **Auto-envoi factures par email Stripe** : activer toggles "Paiements réussis" + "Remboursements" dans Stripe Settings → Customer emails
+
+### Moyen terme
+6. **Bannière persistante "Paiement à régulariser"** sur dashboard si une facture upgrade plante
+7. **Popup bienvenue pro 1ère connexion** (onboarding)
+8. **Veille réglementaire** prompt analyser-run
+9. **Compare Verimo redesign verdict** (split par bien, "Bien 1"/"Bien 2", forces/issues 2 colonnes)
+10. **Mention CGV discrète** dans popup TVA upgrade (sans checkbox bloquante)
+
+### Stratégique pro
+11. **Pro dashboard architecture B2B** : Option B (`/dashboard` + `/dashboard/pro` même domaine)
+12. **B2B targeting mandataires indépendants** (IAD, Capifrance, SAFTI) — tiers 29/59/129€/mois proposés
+13. **Speak to real pro prospects** avant de coder pro-specific features
+14. **White-label PDFs** : soft co-branding recommandé (vs full white-label)
+
+### Infra
+15. **Vérifier upgrade Supabase Compute NANO → MICRO** (gratuit avec plan Pro, double RAM + Disk IO Budget)
+16. **SIRET sur factures unitaires** : option B `customer.invoice_settings.custom_fields`
+17. **Toggles Stripe Checkout** : Politique remboursement / CGV / Coordonnées support
 
 ---
 
-## 🎯 PROCHAINE SESSION — Action prioritaire
+## 📜 Historique condensé des sessions
 
-**Le sujet du système d'abonnement pro est resté en plan en fin de session 30.**
+### Sessions récentes (mai 2026)
+- **Session 10 mai (cette session)** : Suite fix Stripe pro, refonte UX downgrade complet (popups confirmation/remplacement/annulation, bouton "Annuler ce changement", sidebar BASCULE PROGRAMMÉE), bouton "Passage programmé" désactivé, popup erreur contextuelle, agrandissement typo popups, message facture remplacé "📁 Retrouvez votre facture dans Mon abonnement", filtre Mes factures payées côté pro, redesign cartes plans (Direction 3 + Power anthracite + theme dynamique selon plan actif + couleurs claires + suppression badges nom plan + alignement boutons + boutons unitaires bleu Verimo)
+- **Sessions précédentes mai 2026** : Stripe pro complet (proration_behavior, schedule downgrade, payment_behavior 3DS), facturation B2B (adresse, SIRET), faille sécurité upgrade non payé (vérif latest_invoice.status), table payments pour stats admin, refonte UX page abonnement pro (badges sans engagement, tooltips, sidebar états colorés)
+- **Session 30 (7 mai 2026)** : RapportPage logique RCP, KPI dashboard, archivage dossiers pro, badges "⏳ En queue", mobile UX
 
-Pour reprendre proprement :
+### Sessions plus anciennes (avril 2026)
+- **Sessions 25-29** : Stripe production, admin support inbox split-view, pages légales, SEO complet (canonical, GuidesPage), redesign admin sidebar catégorisée
+- **Sessions 21-24** : Dossiers pro complets, credit_grants + trigger, code promo, popups succès, page Guides, optimisation SEO mots-clés
+- **Sessions 1-20** : Conception initiale, prompt enrichi, scoring déterministe /20, comparaison v1, AdminPage, dashboard pro, edge functions, config DNS pro.verimo.fr
 
-1. **Décider option A ou B** pour les crédits sur upgrade (Alex doit trancher)
-2. **Lancer le SQL** pour voir le code de `upgrade_pro_subscription_credits` :
-   ```sql
-   SELECT prosrc FROM pg_proc 
-   WHERE proname IN ('upgrade_pro_subscription_credits', 'reset_pro_subscription_credits');
-   ```
-3. **Coder la route preview prorata** dans `pro-checkout-create` (utilise `stripe.invoices.upcoming`)
-4. **Coder le popup confirmation upgrade** dans `DashboardProPage.tsx` avec récap HT/TVA/TTC
-5. **Modifier** `proration_behavior` → `'create_prorations'` + supprimer `billing_cycle_anchor`
-6. **Tester** avec carte test Stripe AVANT push prod
-7. **Adapter** `upgrade_pro_subscription_credits` selon option choisie
+---
 
-**Méthode :** une étape à la fois, comme demandé par Alex. Pas de pavé à 10 actions.
+## 🎯 Prochaine session — Action prioritaire
+
+Le système Stripe pro est **stable et déployé en prod**. Les chantiers à reprendre :
+
+1. **Refonte stats admin CA** basée sur table `payments` (~300 lignes)
+2. **Soumission 47 URLs guides** Google Search Console
+3. **Test E2E pré-pub** abonnement pro complet (souscription / upgrade / downgrade / résiliation / réactivation)
+
+**Méthode** : une étape à la fois, fichiers livrés via `present_files` depuis `/mnt/user-data/outputs/`, pas de code sans accord.
