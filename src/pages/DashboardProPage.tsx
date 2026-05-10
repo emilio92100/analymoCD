@@ -164,11 +164,10 @@ const proNavItems = [
   { to: '/dashboard/support', icon: LifeBuoy, label: 'Support' },
 ];
 
-// Navigation regroupée par sections pour une meilleure UX
-const proNavGroups: { title: string; emoji: string; items: typeof proNavItems }[] = [
+// Navigation regroupée par sections (Option A : séparateurs fins)
+const proNavGroups: { title: string; items: typeof proNavItems }[] = [
   {
     title: 'Pilotage',
-    emoji: '📊',
     items: [
       { to: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord' },
       { to: '/dashboard/dossiers', icon: FolderOpen, label: 'Mes dossiers' },
@@ -177,7 +176,6 @@ const proNavGroups: { title: string; emoji: string; items: typeof proNavItems }[
   },
   {
     title: 'Mon espace',
-    emoji: '👤',
     items: [
       { to: '/dashboard/abonnement', icon: CreditCard, label: 'Mon abonnement' },
       { to: '/dashboard/compte', icon: User, label: 'Mon compte' },
@@ -185,7 +183,6 @@ const proNavGroups: { title: string; emoji: string; items: typeof proNavItems }[
   },
   {
     title: 'Assistance',
-    emoji: '💬',
     items: [
       { to: '/dashboard/aide', icon: BookOpen, label: 'Aide & Méthode' },
       { to: '/dashboard/support', icon: LifeBuoy, label: 'Support' },
@@ -467,7 +464,7 @@ Cette logique vous permet de profiter pleinement de votre forfait mensuel avant 
         </div>
       </div>
 
-      {/* Navigation avec séparateurs entre groupes */}
+      {/* Navigation avec séparateurs entre groupes (Option A) */}
       <nav style={{ flex: 1, padding: '8px 10px 12px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
         {proNavGroups.map((group, gIdx) => (
           <div key={group.title}>
@@ -763,7 +760,7 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, h
 
       {/* Stats */}
       <div className="pro-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 32 }}>
-        {/* Tile 1 — Dossiers analysés */}
+        {/* Tile 1 — Analyses effectuées (total) */}
         <div style={{ background: '#fff', borderRadius: 14, padding: '18px 20px', border: '1px solid #edf2f7' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
             <div style={{ width: 32, height: 32, borderRadius: 8, background: '#2a7d9c12', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -771,7 +768,7 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, h
             </div>
           </div>
           <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>{completedAnalyses.length}</div>
-          <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>Dossiers analysés</div>
+          <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 500 }}>Analyses effectuées</div>
         </div>
 
         {/* Tile 2 — Analyses (avec toggle Ce mois / Total + sous-texte) */}
@@ -3986,10 +3983,11 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
 
       {/* ═══ SECTION 4 : Mes factures (paiements uniquement) ═══ */}
       {(() => {
-        // Côté pro : on affiche les factures payées ET les remboursées (badge + PDF désactivé)
+        // Côté pro : on n'affiche QUE les factures réellement payées
+        // (les "En attente" / "Échec" sont visibles uniquement côté admin pour le suivi technique)
         const paidInvoices = invoices.filter(inv =>
           (inv.type === 'subscription' || inv.type === 'unit')
-          && (!inv.status || inv.status === 'paid' || (inv as any).status_variant === 'refunded')
+          && (!inv.status || inv.status === 'paid')
         );
         const grantInvoices = invoices.filter(inv => inv.type === 'promo' || inv.type === 'grant');
         return (<>
@@ -4018,47 +4016,33 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
                 </tr>
               </thead>
               <tbody>
-                {paidInvoices.map((inv, i) => {
-                  const isRefunded = (inv as any).status_variant === 'refunded';
-                  return (
-                  <tr key={inv.id} style={{ borderBottom: i < paidInvoices.length - 1 ? '1px solid #f8fafc' : 'none', opacity: isRefunded ? 0.65 : 1 }}>
+                {paidInvoices.map((inv, i) => (
+                  <tr key={inv.id} style={{ borderBottom: i < paidInvoices.length - 1 ? '1px solid #f8fafc' : 'none' }}>
                     <td style={{ padding: '12px 16px', color: '#64748b', whiteSpace: 'nowrap' as const }}>{inv.date}</td>
-                    <td style={{ padding: '12px 16px', color: '#0f172a', fontWeight: 600, textDecoration: isRefunded ? 'line-through' : 'none' }}>{inv.description}</td>
+                    <td style={{ padding: '12px 16px', color: '#0f172a', fontWeight: 600 }}>{inv.description}</td>
                     <td style={{ padding: '12px 16px' }}>
-                      {isRefunded ? (
-                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100, background: '#fef2f2', color: '#dc2626' }}>
-                          Remboursé
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100,
-                          background: inv.type === 'subscription' ? '#f0f7fb' : '#f0fdf4',
-                          color: inv.type === 'subscription' ? '#2a7d9c' : '#16a34a',
-                        }}>
-                          {inv.type === 'subscription' ? 'Abonnement' : 'Achat unitaire'}
-                        </span>
-                      )}
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100,
+                        background: inv.type === 'subscription' ? '#f0f7fb' : '#f0fdf4',
+                        color: inv.type === 'subscription' ? '#2a7d9c' : '#16a34a',
+                      }}>
+                        {inv.type === 'subscription' ? 'Abonnement' : 'Achat unitaire'}
+                      </span>
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 800, color: isRefunded ? '#94a3b8' : '#16a34a', whiteSpace: 'nowrap' as const, textDecoration: isRefunded ? 'line-through' : 'none' }}>
+                    <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 800, color: '#16a34a', whiteSpace: 'nowrap' as const }}>
                       {inv.amount} <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>TTC</span>
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                      {inv.pdf_url && !isRefunded ? (
+                      {inv.pdf_url ? (
                         <a href={inv.pdf_url} target="_blank" rel="noopener noreferrer"
                           style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 12px', borderRadius: 8, background: '#f0f7fb', color: '#2a7d9c', textDecoration: 'none', fontSize: 12, fontWeight: 700, border: '1px solid #d0e8f0' }}>
                           <Download size={12} /> PDF
                         </a>
-                      ) : isRefunded ? (
-                        <span title="Facture remboursée — non téléchargeable"
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 12px', borderRadius: 8, background: '#f8fafc', color: '#cbd5e1', fontSize: 12, fontWeight: 700, border: '1px solid #edf2f7', cursor: 'not-allowed' }}>
-                          <Download size={12} /> PDF
-                        </span>
                       ) : (
                         <span style={{ fontSize: 12, color: '#cbd5e1' }}>—</span>
                       )}
                     </td>
                   </tr>
-                  );
-                })}
+                ))}
               </tbody>
             </table>
           </div>
