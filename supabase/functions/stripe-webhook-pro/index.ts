@@ -610,6 +610,9 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
         current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
         current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
         status: sub.status === 'active' ? 'active' : sub.status,
+        // Si un downgrade était programmé, l'upgrade le supprime (l'upgrade prime)
+        scheduled_plan_change: null,
+        scheduled_change_date: null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', existing.id);
@@ -656,6 +659,9 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
       current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
       current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
       status: sub.status === 'active' ? 'active' : sub.status,
+      // Au renouvellement, on nettoie un éventuel scheduled_plan_change qui aurait été release
+      scheduled_plan_change: null,
+      scheduled_change_date: null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', existing.id);
