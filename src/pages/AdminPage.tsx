@@ -2910,7 +2910,8 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
                 const isRefunded = (p as any).status === 'refunded';
                 const isPartialRefund = (p as any).status === 'partially_refunded';
                 const refundedAmt = (p as any).refunded_amount || 0;
-                const eligible = days < 14 && p.amount > 0 && !isRefunded && !isPartialRefund;
+                // Pros n'ont pas de droit de rétractation légal sur contrats à distance B2B
+                const eligible = p._source !== 'pro' && days < 14 && p.amount > 0 && !isRefunded && !isPartialRefund;
                 return (
                   <div key={p.id} style={{ padding: '14px 22px', borderBottom: i < userPayments.length - 1 ? '1px solid #f8fafc' : 'none', opacity: isRefunded ? 0.6 : 1 }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
@@ -5479,7 +5480,8 @@ function PaymentsTab({ onOpenUser, showToast }: { onOpenUser: (userId: string) =
     if (filter === 'free' && p.amount > 0) return false;
     if (filter === 'refundable') {
       const days = daysSince(p.created_at);
-      if (days >= 14 || p.amount === 0) return false;
+      // Les pros n'ont pas de droit de rétractation légal — exclus du filtre Remboursables
+      if (p._source === 'pro' || days >= 14 || p.amount === 0) return false;
     }
     // Recherche
     const q = search.toLowerCase().trim();
@@ -5577,7 +5579,9 @@ function PaymentsTab({ onOpenUser, showToast }: { onOpenUser: (userId: string) =
           : filtered.length === 0 ? <div style={{ padding: '40px', textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Aucun paiement ne correspond à vos filtres</div>
           : filtered.map((p, i) => {
             const days = daysSince(p.created_at);
-            const eligible = days < 14 && p.amount > 0 && p.status === 'completed';
+            // Les pros n'ont pas de droit de rétractation légal sur les contrats à distance B2B
+            // → badge "Éligible remboursement" affiché uniquement pour les particuliers
+            const eligible = p._source !== 'pro' && days < 14 && p.amount > 0 && p.status === 'completed';
             const isRefunded = p.status === 'refunded';
             const isPartialRefund = p.status === 'partially_refunded';
             const refundedAmt = (p as any).refunded_amount || 0;
