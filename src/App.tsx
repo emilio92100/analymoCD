@@ -35,6 +35,7 @@ const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const MethodePage = lazy(() => import('./pages/MethodePage'));
 const ConfidentialitePage = lazy(() => import('./pages/ConfidentialitePage'));
 const CGUPage = lazy(() => import('./pages/CGUPage'));
+const CGVProPage = lazy(() => import('./pages/CGVProPage'));
 const MentionsLegalesPage = lazy(() => import('./pages/MentionsLegalesPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const ProPage = lazy(() => import('./pages/ProPage'));
@@ -288,6 +289,7 @@ export default function App() {
           <Route path="/methode" element={<PublicLayout><MethodePage /></PublicLayout>} />
           <Route path="/confidentialite" element={<PublicLayout><ConfidentialitePage /></PublicLayout>} />
           <Route path="/cgu" element={<PublicLayout><CGUPage /></PublicLayout>} />
+          <Route path="/cgv-pro" element={<PublicLayout><CGVProPage /></PublicLayout>} />
           <Route path="/mentions-legales" element={<PublicLayout><MentionsLegalesPage /></PublicLayout>} />
           <Route path="/pro" element={<PublicLayout><ProPage /></PublicLayout>} />
           <Route path="/pro/mandataires" element={<PublicLayout><MandatairesPage /></PublicLayout>} />
