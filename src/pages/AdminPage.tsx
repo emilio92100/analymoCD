@@ -4967,7 +4967,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
 /* ══════════════════════════════════════════
    PAYMENTS TAB
 ══════════════════════════════════════════ */
-type PaymentWithUser = AdminPayment & { userEmail?: string; userName?: string };
+type PaymentWithUser = AdminPayment & { userEmail?: string; userName?: string; _orphan?: boolean };
 
 function PaymentsTab({ onOpenUser, showToast }: { onOpenUser: (userId: string) => void; showToast: (m: string) => void }) {
   const [payments, setPayments] = useState<PaymentWithUser[]>([]);
@@ -4999,12 +4999,18 @@ function PaymentsTab({ onOpenUser, showToast }: { onOpenUser: (userId: string) =
     const profileMap = new Map((profiles || []).map(p => [p.id, p]));
 
     // Enrich payments avec _source dérivé de customer_type
-    const all: PaymentWithUser[] = (rawPayments || []).map(p => ({
-      ...p,
-      userEmail: profileMap.get(p.user_id)?.email,
-      userName: profileMap.get(p.user_id)?.full_name,
-      _source: p.customer_type === 'pro' ? 'pro' : 'particulier',
-    } as PaymentWithUser));
+    // Fallback sur customer_email/name si le user a été supprimé (user_id NULL ou pas trouvé dans profiles)
+    const all: PaymentWithUser[] = (rawPayments || []).map(p => {
+      const profile = p.user_id ? profileMap.get(p.user_id) : null;
+      const isOrphan = !profile;
+      return {
+        ...p,
+        userEmail: profile?.email || (p as any).customer_email || undefined,
+        userName: profile?.full_name || (p as any).customer_name || undefined,
+        _source: p.customer_type === 'pro' ? 'pro' : 'particulier',
+        _orphan: isOrphan,
+      } as PaymentWithUser;
+    });
 
     setPayments(all);
     setLoading(false);
@@ -5158,12 +5164,23 @@ function PaymentsTab({ onOpenUser, showToast }: { onOpenUser: (userId: string) =
                           </span>
                         )}
                         {p.userEmail ? (
-                          <button onClick={() => onOpenUser(p.user_id)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 13, color: '#2a7d9c', fontWeight: 700, textDecoration: 'underline', textDecorationColor: '#bae3f5' }}>
-                            {p.userEmail}
-                          </button>
+                          p._orphan ? (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: 13, color: '#94a3b8', fontStyle: 'italic' as const, textDecoration: 'line-through' }}>
+                                {p.userEmail}
+                              </span>
+                              <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 6, background: '#fef2f2', color: '#dc2626' }}>
+                                COMPTE SUPPRIMÉ
+                              </span>
+                            </span>
+                          ) : (
+                            <button onClick={() => onOpenUser(p.user_id)}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 13, color: '#2a7d9c', fontWeight: 700, textDecoration: 'underline', textDecorationColor: '#bae3f5' }}>
+                              {p.userEmail}
+                            </button>
+                          )
                         ) : (
-                          <span style={{ fontSize: 13, color: '#94a3b8', fontStyle: 'italic' as const }}>Client supprimé</span>
+                          <span style={{ fontSize: 13, color: '#94a3b8', fontStyle: 'italic' as const }}>Client inconnu</span>
                         )}
                       </div>
                       <div style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{fmtDateTime(p.created_at)}</div>
