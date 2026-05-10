@@ -1,7 +1,16 @@
 // ══════════════════════════════════════════════════════════════
-// STRIPE WEBHOOK — Verimo Particuliers (V3.1)
-// Écoute checkout.session.completed
+// STRIPE WEBHOOK — Verimo Particuliers (V3.2)
+// Écoute checkout.session.completed + charge.refunded
 // Attribue les crédits + enregistre le paiement dans payments
+// Synchronise les remboursements Stripe → payments
+//
+// V3.2 (10 mai 2026) :
+//   - Handler charge.refunded ajouté
+//   - Sync automatique des remboursements vers la table payments
+//   - Match via stripe_payment_id (= payment_intent_id)
+//   - Ne touche PAS aux crédits / analyses (décision produit)
+//   - Skip silencieux si le paiement n'est pas dans cette table
+//     (= géré par le webhook pro)
 //
 // V3.1 (10 mai 2026) :
 //   - Filtre paiements pro : si metadata.user_id (underscore) présent,
@@ -383,6 +392,8 @@ Deno.serve(async (req) => {
         const { data: paymentInserted, error: paymentError } = await supabase.from('payments').insert({
           user_id: userId,
           amount: amountPaid,
+          amount_ht: amountPaid, // Particulier = pas de TVA → HT = TTC
+          customer_type: 'particulier',
           currency: 'eur',
           description,
           stripe_session_id: session.id,
@@ -417,6 +428,16 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ═════════════════════════════════════════════════════════════════
+    // V3.2 — Handler charge.refunded
+    // Synchronise les remboursements Stripe → table payments
+    // Ne touche pas aux crédits / analyses (décision produit)
+    // ═════════════════════════════════════════════════════════════════
+    else if (event.type === 'charge.refunded') {
+      const charge = event.data.object as Stripe.Charge;
+      await handleChargeRefunded(charge);
+    }
+
     // ─────────────────────────────────────────────────────────────────
     // Event traité avec succès → on le marque pour idempotence future
     // ─────────────────────────────────────────────────────────────────
@@ -446,3 +467,72 @@ Deno.serve(async (req) => {
     return new Response('Server error', { status: 500, headers: CORS });
   }
 });
+
+// ══════════════════════════════════════════════════════════════
+// HANDLER charge.refunded — V3.2 (10 mai 2026)
+// Synchronise les remboursements Stripe vers la table payments
+// Match via stripe_payment_id (= payment_intent) — le plus fiable
+// ══════════════════════════════════════════════════════════════
+async function handleChargeRefunded(charge: Stripe.Charge): Promise<void> {
+  const paymentIntentId = typeof charge.payment_intent === 'string'
+    ? charge.payment_intent
+    : charge.payment_intent?.id;
+
+  if (!paymentIntentId) {
+    console.warn('[charge.refunded] Pas de payment_intent sur le charge, skip');
+    return;
+  }
+
+  // Match sur stripe_payment_id (= payment_intent_id stocké à l'insert)
+  const { data: payment, error: findError } = await supabase
+    .from('payments')
+    .select('id, amount, status, customer_type')
+    .eq('stripe_payment_id', paymentIntentId)
+    .maybeSingle();
+
+  if (findError) {
+    console.error('[charge.refunded] Erreur lookup payments:', findError.message);
+    return;
+  }
+
+  if (!payment) {
+    // Pas dans cette table → c'est probablement un paiement géré par l'autre webhook (pro)
+    // Skip silencieux : l'autre webhook s'en occupera.
+    console.log(`[charge.refunded] Payment intent ${paymentIntentId} non trouvé dans payments — skip (probablement géré par webhook pro)`);
+    return;
+  }
+
+  // Stripe envoie les montants en cents
+  const amountTotalCents = charge.amount;
+  const amountRefundedCents = charge.amount_refunded;
+  const amountTotal = amountTotalCents / 100;
+  const amountRefunded = amountRefundedCents / 100;
+
+  const isFullRefund = amountRefundedCents >= amountTotalCents;
+  const newStatus = isFullRefund ? 'refunded' : 'partially_refunded';
+
+  const { error: updateError } = await supabase
+    .from('payments')
+    .update({
+      status: newStatus,
+      refunded_amount: amountRefunded,
+      refunded_at: new Date().toISOString(),
+    })
+    .eq('id', payment.id);
+
+  if (updateError) {
+    console.error('[charge.refunded] Update payment failed:', updateError.message);
+    await insertSystemAlert(supabase, {
+      type: 'save_error',
+      severity: 'critical',
+      title: 'Remboursement Stripe — sync BDD échouée',
+      message: `Un remboursement de ${amountRefunded.toFixed(2)}€ a été reçu de Stripe (payment_intent: ${paymentIntentId}) mais la mise à jour de la table payments a échoué.`,
+      metadata: { stage: 'refund_update', paymentIntentId, amountRefunded, error: updateError.message },
+    });
+    return;
+  }
+
+  console.log(
+    `[charge.refunded] Payment ${payment.id} mis à jour: ${newStatus}, refunded=${amountRefunded.toFixed(2)}€ / ${amountTotal.toFixed(2)}€`
+  );
+}
