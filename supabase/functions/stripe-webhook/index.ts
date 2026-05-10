@@ -1,7 +1,12 @@
 // ══════════════════════════════════════════════════════════════
-// STRIPE WEBHOOK — Verimo Particuliers (V3)
+// STRIPE WEBHOOK — Verimo Particuliers (V3.1)
 // Écoute checkout.session.completed
 // Attribue les crédits + enregistre le paiement dans payments
+//
+// V3.1 (10 mai 2026) :
+//   - Filtre paiements pro : si metadata.user_id (underscore) présent,
+//     on skip silencieusement — plus d'alerte critique inutile sur
+//     la page admin (le webhook pro gère ce paiement)
 //
 // V3 (sécurité — 10 mai 2026) :
 //   - Idempotence via processed_stripe_events (empêche le double-crédit
@@ -166,6 +171,20 @@ Deno.serve(async (req) => {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
       sessionIdForCatch = session.id;
+
+      // ─────────────────────────────────────────────────────────────────
+      // FILTRE V3.1 : si la session est destinée au webhook pro
+      // (metadata.user_id avec underscore = paiement pro), on skip
+      // silencieusement — pas d'alerte critique inutile.
+      // Le webhook pro (stripe-webhook-pro) va gérer ce paiement.
+      // ─────────────────────────────────────────────────────────────────
+      if (session.metadata?.user_id && !session.metadata?.userId) {
+        console.log(`[stripe-webhook] Session ${session.id} = paiement pro (metadata.user_id présent), skip côté particulier`);
+        await markEventAsProcessed(supabase, event.id, event.type, { skipped: 'pro_payment' });
+        return new Response(JSON.stringify({ received: true, skipped: 'pro_payment' }), {
+          headers: { ...CORS, 'Content-Type': 'application/json' },
+        });
+      }
 
       const userId = session.metadata?.userId || session.client_reference_id;
       if (!userId) {
