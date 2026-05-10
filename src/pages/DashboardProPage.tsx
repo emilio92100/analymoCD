@@ -199,7 +199,7 @@ const proNavGroups: { title: string; emoji: string; items: typeof proNavItems }[
 function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsLoading }: { subscription: ProSubscription | null; proCredits: ProCredits | null; onClose?: () => void; unreadTickets?: number; creditsLoading?: boolean }) {
   const location = useLocation();
 
-  const BG = '#0e3a4a';
+  const BG = '#16475a';
   const ACCENT = '#7dd3fc';
   const TEXT = 'rgba(255,255,255,0.75)';
   const TEXT_ACTIVE = '#ffffff';
@@ -457,9 +457,9 @@ Cette logique vous permet de profiter pleinement de votre forfait mensuel avant 
                 </div>
               </div>
               {creditsLoading
-                ? <Skeleton width={48} height={36} />
-                : <div style={{ width: 52, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, background: c.value > 0 ? 'rgba(125,211,250,0.15)' : 'rgba(255,255,255,0.06)', flexShrink: 0 }}>
-                    <span style={{ fontSize: 18, fontWeight: 900, color: c.value > 0 ? ACCENT : 'rgba(255,255,255,0.4)', lineHeight: 1 }}>{c.value}</span>
+                ? <Skeleton width={44} height={30} />
+                : <div style={{ width: 44, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 7, background: c.value > 0 ? 'rgba(125,211,250,0.15)' : 'rgba(255,255,255,0.06)', flexShrink: 0 }}>
+                    <span style={{ fontSize: 15, fontWeight: 900, color: c.value > 0 ? ACCENT : 'rgba(255,255,255,0.4)', lineHeight: 1 }}>{c.value}</span>
                   </div>
               }
             </div>
@@ -467,36 +467,32 @@ Cette logique vous permet de profiter pleinement de votre forfait mensuel avant 
         </div>
       </div>
 
-      {/* Navigation regroupée par sections */}
-      <nav style={{ flex: 1, padding: '8px 10px 12px', display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto' }}>
+      {/* Navigation avec séparateurs entre groupes */}
+      <nav style={{ flex: 1, padding: '8px 10px 12px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
         {proNavGroups.map((group, gIdx) => (
           <div key={group.title}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: gIdx === 0 ? '8px 12px 8px' : '4px 12px 8px' }}>
-              <span style={{ fontSize: 14 }}>{group.emoji}</span>
-              <span style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{group.title}</span>
-              <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, rgba(255,255,255,0.10), transparent)' }} />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {group.items.map(item => {
-                const Icon = item.icon;
-                const active = location.pathname === item.to || (item.to === '/dashboard/dossiers' && location.pathname.startsWith('/dashboard/dossier'));
-                return (
-                  <Link key={item.to} to={item.to} onClick={onClose}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', textDecoration: 'none',
-                      fontSize: 14, fontWeight: active ? 700 : 500, color: active ? TEXT_ACTIVE : TEXT,
-                      background: active ? 'rgba(255,255,255,0.1)' : 'transparent', transition: 'all 0.15s',
-                      borderLeft: active ? `3px solid ${ACCENT}` : '3px solid transparent', borderRadius: 0,
-                    }}>
-                    <Icon size={18} style={{ color: active ? ACCENT : TEXT, flexShrink: 0 }} />
-                    {item.label}
-                    {item.to === '/dashboard/support' && (unreadTickets || 0) > 0 && (
-                      <span style={{ minWidth: 18, height: 18, borderRadius: 100, background: '#f59e0b', color: '#fff', fontSize: 10, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', flexShrink: 0, marginLeft: 4 }}>{unreadTickets}</span>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
+            {gIdx > 0 && (
+              <div style={{ height: 1, background: 'rgba(255,255,255,0.10)', margin: '8px 12px' }} />
+            )}
+            {group.items.map(item => {
+              const Icon = item.icon;
+              const active = location.pathname === item.to || (item.to === '/dashboard/dossiers' && location.pathname.startsWith('/dashboard/dossier'));
+              return (
+                <Link key={item.to} to={item.to} onClick={onClose}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12, padding: '9px 12px', textDecoration: 'none',
+                    fontSize: 14, fontWeight: active ? 700 : 500, color: active ? TEXT_ACTIVE : TEXT,
+                    background: active ? 'rgba(255,255,255,0.1)' : 'transparent', transition: 'all 0.15s',
+                    borderLeft: active ? `3px solid ${ACCENT}` : '3px solid transparent', borderRadius: 0,
+                  }}>
+                  <Icon size={18} style={{ color: active ? ACCENT : TEXT, flexShrink: 0 }} />
+                  {item.label}
+                  {item.to === '/dashboard/support' && (unreadTickets || 0) > 0 && (
+                    <span style={{ minWidth: 18, height: 18, borderRadius: 100, background: '#f59e0b', color: '#fff', fontSize: 10, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', flexShrink: 0, marginLeft: 4 }}>{unreadTickets}</span>
+                  )}
+                </Link>
+              );
+            })}
           </div>
         ))}
       </nav>
