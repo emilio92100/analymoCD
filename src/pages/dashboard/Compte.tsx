@@ -30,7 +30,7 @@ export default function Compte() {
   const [pwdMsg, setPwdMsg] = useState('');
   const [pwdError, setPwdError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
-  const [payments, setPayments] = useState<{ id: string; description: string; amount: number; source: string; created_at: string }[]>([]);
+  const [payments, setPayments] = useState<{ id: string; description: string; amount: number; source: string; created_at: string; status?: string; refunded_amount?: number }[]>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(true);
   const [createdAt, setCreatedAt] = useState('');
   const [analysesCount, setAnalysesCount] = useState(0);
