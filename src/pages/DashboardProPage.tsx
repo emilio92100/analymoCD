@@ -3655,15 +3655,16 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
             const btnLoading = loading === `subscribe:${plan.id}`;
 
             // ⭐ Theme dynamique : le plan qui ressort visuellement (fond plein bleu Verimo)
-            // est soit le plan ACTIF de l'utilisateur, soit Starter par défaut (pas d'abo).
-            // Les autres plans ont des fonds colorés plus visibles qu'avant (moins transparents).
+            // suit une logique commerciale douce :
+            // - Pas d'abo / Découverte / Starter → Starter ressort (recommandé / pas de push agressif)
+            // - Power → Power ressort (on valorise le plan max)
             const isStarter = plan.id === 'starter';
             const isPower = plan.id === 'power';
             const isDecouverte = plan.id === 'decouverte';
 
             // Quel plan doit ressortir (fond foncé bleu Verimo) ?
             const activePlanId = subscription?.plan;
-            const planThatStandsOut = activePlanId || 'starter';
+            const planThatStandsOut = activePlanId === 'power' ? 'power' : 'starter';
             const isStandout = plan.id === planThatStandsOut;
 
             // Theme "standout" : fond bleu nuit plein (le plus visible)
@@ -3671,8 +3672,6 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
               cardBg: 'linear-gradient(180deg, #0f2d3d 0%, #2a7d9c 100%)',
               cardBorder: 'none',
               cardShadow: '0 12px 32px rgba(15,45,61,0.25)',
-              tagBg: 'rgba(255,255,255,0.22)',
-              tagColor: '#fff',
               tagline: 'rgba(255,255,255,0.78)',
               priceColor: '#fff',
               priceSuffix: 'rgba(255,255,255,0.65)',
@@ -3685,19 +3684,17 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
               btnColor: '#0f2d3d',
             };
 
-            // Theme "secondaire" : fonds colorés plus marqués qu'avant (moins transparents)
-            // Découverte = teinte bleu plus saturée / Power = teinte anthracite plus marquée
+            // Theme "secondaire" : fonds doux et clairs (pas trop saturés)
+            // Découverte = bleu très pâle / Power = gris très pâle / Starter = bleu pastel
             const secondaryTheme = isPower
               ? {
-                  cardBg: 'linear-gradient(180deg, #e2e8f0 0%, #f8fafc 60%)',
-                  cardBorder: '1.5px solid #94a3b8',
-                  cardShadow: '0 4px 12px rgba(15,23,42,0.06)',
-                  tagBg: '#0f172a',
-                  tagColor: '#fff',
-                  tagline: '#334155',
+                  cardBg: 'linear-gradient(180deg, #f1f5f9 0%, #fff 70%)',
+                  cardBorder: '1.5px solid #e2e8f0',
+                  cardShadow: '0 2px 8px rgba(15,23,42,0.04)',
+                  tagline: '#475569',
                   priceColor: '#0f172a',
-                  priceSuffix: '#64748b',
-                  featuresColor: '#334155',
+                  priceSuffix: '#94a3b8',
+                  featuresColor: '#475569',
                   checkColor: '#16a34a',
                   engagementBg: '#f0fdf4',
                   engagementBorder: '#bbf7d0',
@@ -3707,15 +3704,13 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
                 }
               : isDecouverte
               ? {
-                  cardBg: 'linear-gradient(180deg, #dbeafe 0%, #f0f7fb 60%)',
-                  cardBorder: '1.5px solid #93c5fd',
-                  cardShadow: '0 4px 12px rgba(42,125,156,0.08)',
-                  tagBg: '#2a7d9c',
-                  tagColor: '#fff',
-                  tagline: '#334155',
+                  cardBg: 'linear-gradient(180deg, #f0f7fb 0%, #fff 70%)',
+                  cardBorder: '1.5px solid #d0e8f0',
+                  cardShadow: '0 2px 8px rgba(42,125,156,0.04)',
+                  tagline: '#475569',
                   priceColor: '#0f2d3d',
-                  priceSuffix: '#64748b',
-                  featuresColor: '#334155',
+                  priceSuffix: '#94a3b8',
+                  featuresColor: '#475569',
                   checkColor: '#16a34a',
                   engagementBg: '#f0fdf4',
                   engagementBorder: '#bbf7d0',
@@ -3723,16 +3718,14 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
                   btnBg: '#2a7d9c',
                   btnColor: '#fff',
                 }
-              : { // Starter en mode secondaire (si Power est actif par exemple)
-                  cardBg: 'linear-gradient(180deg, #e0f2fe 0%, #f0f7fb 60%)',
-                  cardBorder: '1.5px solid #7dd3fc',
-                  cardShadow: '0 4px 12px rgba(42,125,156,0.08)',
-                  tagBg: '#2a7d9c',
-                  tagColor: '#fff',
-                  tagline: '#334155',
+              : { // Starter en mode secondaire (si Power est actif)
+                  cardBg: 'linear-gradient(180deg, #e0f2fe 0%, #f0f7fb 70%)',
+                  cardBorder: '1.5px solid #bae6fd',
+                  cardShadow: '0 2px 8px rgba(42,125,156,0.05)',
+                  tagline: '#475569',
                   priceColor: '#0f2d3d',
-                  priceSuffix: '#64748b',
-                  featuresColor: '#334155',
+                  priceSuffix: '#94a3b8',
+                  featuresColor: '#475569',
                   checkColor: '#16a34a',
                   engagementBg: '#f0fdf4',
                   engagementBorder: '#bbf7d0',
@@ -3778,13 +3771,10 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
                   </span>
                 )}
 
-                {/* Bloc identité du plan : tag discret + nom en grand + tagline */}
+                {/* Identité du plan : titre en grand + tagline */}
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ display: 'inline-block', padding: '3px 9px', background: theme.tagBg, color: theme.tagColor, fontSize: 9.5, fontWeight: 700, borderRadius: 5, letterSpacing: '0.08em', marginBottom: 8 }}>
-                    {plan.name.toUpperCase()}
-                  </div>
-                  <h3 style={{ fontSize: 22, fontWeight: 800, color: theme.priceColor, margin: '0 0 4px 0', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{plan.name}</h3>
-                  <p style={{ fontSize: 12.5, color: theme.tagline, margin: 0, lineHeight: 1.4 }}>{plan.tagline}</p>
+                  <h3 style={{ fontSize: 24, fontWeight: 800, color: theme.priceColor, margin: '0 0 5px 0', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{plan.name}</h3>
+                  <p style={{ fontSize: 13, color: theme.tagline, margin: 0, lineHeight: 1.4 }}>{plan.tagline}</p>
                 </div>
                 <div style={{ marginBottom: 16, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 32, fontWeight: 800, color: theme.priceColor, letterSpacing: '-0.02em' }}>{plan.price}€</span>
