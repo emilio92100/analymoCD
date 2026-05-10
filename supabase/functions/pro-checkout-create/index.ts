@@ -128,6 +128,8 @@ serve(async (req) => {
       return await handleBuyUnit(user.id, body);
     } else if (mode === 'cancel') {
       return await handleCancel(user.id, body);
+    } else if (mode === 'cancel_scheduled_change') {
+      return await handleCancelScheduledChange(user.id);
     } else if (mode === 'reactivate') {
       return await handleReactivate(user.id);
     } else if (mode === 'billing_portal') {
@@ -190,6 +192,7 @@ async function handleSubscribe(userId: string, body: any) {
       existingSub.plan,
       plan,
       priceId,
+      body.force_replace === true,
     );
   }
 
@@ -227,6 +230,7 @@ async function handleUpgradeOrDowngrade(
   currentPlan: string,
   newPlan: string,
   newPriceId: string,
+  forceReplace = false,
 ) {
   const planOrder = { decouverte: 1, starter: 2, power: 3 };
   const isUpgrade = planOrder[newPlan as keyof typeof planOrder] >
@@ -235,7 +239,7 @@ async function handleUpgradeOrDowngrade(
   if (isUpgrade) {
     return await handleUpgrade(userId, stripeSubscriptionId, newPriceId, newPlan);
   } else {
-    return await handleDowngradeScheduled(stripeSubscriptionId, newPriceId, newPlan);
+    return await handleDowngradeScheduled(stripeSubscriptionId, newPriceId, newPlan, forceReplace);
   }
 }
 
@@ -332,14 +336,36 @@ async function handleDowngradeScheduled(
   stripeSubscriptionId: string,
   newPriceId: string,
   newPlan: string,
+  forceReplace = false,
 ) {
   try {
     const sub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
-    // ⭐ Si un schedule existe déjà sur cette subscription, on l'annule d'abord
-    // (cas : pro qui programme un downgrade puis change d'avis vers un autre plan)
+    // ⭐ Si un schedule existe déjà sur cette subscription
     if (sub.schedule) {
       const existingScheduleId = typeof sub.schedule === 'string' ? sub.schedule : sub.schedule.id;
+
+      // Si le pro n'a pas explicitement confirmé le remplacement, on lui demande
+      if (!forceReplace) {
+        // Récupérer les infos du schedule existant pour les afficher au pro
+        const existingSchedule = await stripe.subscriptionSchedules.retrieve(existingScheduleId);
+        const lastPhase = existingSchedule.phases[existingSchedule.phases.length - 1];
+        const existingPriceId = lastPhase.items[0].price as string;
+        const existingPlan = PRICE_TO_PLAN[existingPriceId] || 'inconnu';
+        const existingDate = new Date((lastPhase.start_date || sub.current_period_end) * 1000).toISOString();
+
+        return jsonResponse({
+          requires_confirmation: true,
+          confirmation_type: 'replace_scheduled_change',
+          existing_plan: existingPlan,
+          existing_date: existingDate,
+          new_plan: newPlan,
+          new_date: new Date(sub.current_period_end * 1000).toISOString(),
+          message: 'Un changement de plan est déjà programmé. Voulez-vous le remplacer ?',
+        });
+      }
+
+      // forceReplace = true → on annule l'ancien schedule
       try {
         await stripe.subscriptionSchedules.release(existingScheduleId);
         console.log(`[downgrade] Schedule existant ${existingScheduleId} annulé pour permettre le nouveau`);
@@ -420,6 +446,73 @@ async function handleDowngradeScheduled(
     return jsonResponse({
       error: 'Le changement de plan n\'a pas pu être programmé. Veuillez nous contacter via la page Support.',
       error_code: 'downgrade_failed',
+    }, 500);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// handleCancelScheduledChange : annule un changement de plan programmé
+// (sans résilier l'abonnement — le pro reste sur son plan actuel)
+// ─────────────────────────────────────────────────────────────────────
+async function handleCancelScheduledChange(userId: string) {
+  const { data: existingSub } = await supabaseAdmin
+    .from('pro_subscriptions')
+    .select('stripe_subscription_id, plan, scheduled_plan_change, scheduled_change_date')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (!existingSub?.stripe_subscription_id) {
+    return jsonResponse({ error: 'Aucun abonnement actif.' }, 400);
+  }
+
+  if (!existingSub.scheduled_plan_change) {
+    return jsonResponse({ error: 'Aucun changement programmé à annuler.' }, 400);
+  }
+
+  try {
+    const sub = await stripe.subscriptions.retrieve(existingSub.stripe_subscription_id);
+
+    if (sub.schedule) {
+      const scheduleId = typeof sub.schedule === 'string' ? sub.schedule : sub.schedule.id;
+      try {
+        await stripe.subscriptionSchedules.release(scheduleId);
+        console.log(`[cancel-scheduled] Schedule ${scheduleId} annulé pour user ${userId}`);
+      } catch (releaseErr) {
+        console.warn('[cancel-scheduled] Impossible de release le schedule:', releaseErr);
+      }
+    }
+
+    // Nettoyer les colonnes BDD
+    const { error: bddErr } = await supabaseAdmin
+      .from('pro_subscriptions')
+      .update({
+        scheduled_plan_change: null,
+        scheduled_change_date: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId);
+
+    if (bddErr) {
+      console.error('[cancel-scheduled] BDD update failed:', bddErr);
+    }
+
+    // Récupérer la prochaine date de renouvellement (= current_period_end de la subscription, qui reste sur le plan actuel)
+    const refreshedSub = await stripe.subscriptions.retrieve(existingSub.stripe_subscription_id);
+    const nextRenewalIso = new Date(refreshedSub.current_period_end * 1000).toISOString();
+
+    return jsonResponse({
+      success: true,
+      current_plan: existingSub.plan,
+      next_renewal_date: nextRenewalIso,
+      message: `Le changement programmé a été annulé. Vous restez sur votre plan ${PLAN_LABEL[existingSub.plan as keyof typeof PLAN_LABEL]}.`,
+    });
+
+  } catch (stripeErr: any) {
+    console.error('[cancel-scheduled] Stripe error:', stripeErr);
+    return jsonResponse({
+      error: 'L\'annulation du changement n\'a pas pu être effectuée. Veuillez nous contacter via la page Support.',
+      error_code: 'cancel_scheduled_failed',
     }, 500);
   }
 }
