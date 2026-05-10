@@ -216,53 +216,135 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
         </Link>
       </div>
 
-      {/* ─── Bloc abonnement (A6 - vert + pill ABONNEMENT ACTIF) ─── */}
+      {/* ─── Bloc abonnement (5 états : actif / résilié / past_due / aucun / chargement) ─── */}
       <div style={{ margin: '0 14px 8px' }}>
         {creditsLoading && !subscription ? (
-          // Skeleton sur le bloc abonnement pendant le chargement
+          // ── État 5 : Skeleton pendant le chargement ──
           <div style={{ padding: '12px 14px', borderRadius: 11, background: 'linear-gradient(135deg, rgba(22,163,74,0.4), rgba(21,128,61,0.4))', border: '1px solid rgba(134,239,172,0.25)' }}>
             <Skeleton width={75} height={16} />
             <div style={{ marginTop: 8 }}><Skeleton width={120} height={18} /></div>
             <div style={{ marginTop: 5 }}><Skeleton width={140} height={11} /></div>
           </div>
         ) : subscription ? (
-          <div style={{
-            padding: '12px 14px', borderRadius: 11,
-            background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
-            position: 'relative',
-            boxShadow: '0 4px 14px rgba(22,163,74,0.25)',
-          }}>
-            {/* Pill ACTIF avec point vert pulsant */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-                padding: '2px 8px', borderRadius: 100,
-                background: 'rgba(255,255,255,0.22)',
-                fontSize: 9.5, fontWeight: 700, color: '#fff', letterSpacing: '0.06em',
+          (() => {
+            const planName = subscription.plan === 'decouverte' ? 'Découverte' : subscription.plan === 'starter' ? 'Starter' : subscription.plan === 'power' ? 'Power' : subscription.plan;
+            const dateStr = subscription.current_period_end ? fmtDate(subscription.current_period_end) : '—';
+
+            // ── État 3 : Paiement en retard (past_due) — ROUGE ──
+            if (subscription.status === 'past_due') {
+              return (
+                <Link to="/dashboard/abonnement" onClick={onClose} style={{ display: 'block', textDecoration: 'none' }}>
+                  <div style={{
+                    padding: '12px 14px', borderRadius: 11,
+                    background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
+                    boxShadow: '0 4px 14px rgba(220,38,38,0.3)',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        padding: '2px 8px', borderRadius: 100,
+                        background: 'rgba(255,255,255,0.22)',
+                        fontSize: 9.5, fontWeight: 700, color: '#fff', letterSpacing: '0.06em',
+                      }}>
+                        <span style={{
+                          display: 'inline-block', width: 5, height: 5, borderRadius: '50%',
+                          background: '#fecaca',
+                          animation: 'pulse-pastdue 1.4s ease-in-out infinite',
+                        }} />
+                        PAIEMENT EN RETARD
+                      </span>
+                    </div>
+                    <style>{`
+                      @keyframes pulse-pastdue {
+                        0%, 100% { box-shadow: 0 0 0 0 rgba(254,202,202,0.7); }
+                        50% { box-shadow: 0 0 0 5px rgba(254,202,202,0); }
+                      }
+                    `}</style>
+                    <div style={{ fontSize: 17, fontWeight: 800, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.15 }}>
+                      Plan {planName}
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#fef2f2', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <CreditCard size={12} />
+                      Mettre à jour la carte →
+                    </div>
+                  </div>
+                </Link>
+              );
+            }
+
+            // ── État 2 : Résilié programmé (cancel_at_period_end) — AMBRE ──
+            if (subscription.cancel_at_period_end) {
+              return (
+                <Link to="/dashboard/abonnement" onClick={onClose} style={{ display: 'block', textDecoration: 'none' }}>
+                  <div style={{
+                    padding: '12px 14px', borderRadius: 11,
+                    background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+                    boxShadow: '0 4px 14px rgba(217,119,6,0.25)',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        padding: '2px 8px', borderRadius: 100,
+                        background: 'rgba(255,255,255,0.22)',
+                        fontSize: 9.5, fontWeight: 700, color: '#fff', letterSpacing: '0.06em',
+                      }}>
+                        <span style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: '#fde68a' }} />
+                        RÉSILIATION PROGRAMMÉE
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 17, fontWeight: 800, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.15 }}>
+                      Plan {planName}
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,0.92)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Calendar size={12} />
+                      Fin {dateStr}
+                    </div>
+                  </div>
+                </Link>
+              );
+            }
+
+            // ── État 1 : Actif normal — VERT ──
+            return (
+              <div style={{
+                padding: '12px 14px', borderRadius: 11,
+                background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                position: 'relative',
+                boxShadow: '0 4px 14px rgba(22,163,74,0.25)',
               }}>
-                <span style={{
-                  display: 'inline-block', width: 5, height: 5, borderRadius: '50%',
-                  background: '#86efac', boxShadow: '0 0 0 0 rgba(134,239,172,0.7)',
-                  animation: 'pulse-active 2s ease-in-out infinite',
-                }} />
-                ABONNEMENT ACTIF
-              </span>
-            </div>
-            <style>{`
-              @keyframes pulse-active {
-                0%, 100% { box-shadow: 0 0 0 0 rgba(134,239,172,0.6); }
-                50% { box-shadow: 0 0 0 5px rgba(134,239,172,0); }
-              }
-            `}</style>
-            <div style={{ fontSize: 17, fontWeight: 800, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.15 }}>
-              Plan {subscription.plan === 'decouverte' ? 'Découverte' : subscription.plan === 'starter' ? 'Starter' : subscription.plan === 'power' ? 'Power' : subscription.plan}
-            </div>
-            <div style={{ fontSize: 11, fontWeight: 500, color: subscription.cancel_at_period_end ? '#fde68a' : 'rgba(255,255,255,0.85)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Calendar size={12} />
-              {subscription.cancel_at_period_end ? 'Fin' : 'Renouvellement'} {subscription.current_period_end ? fmtDate(subscription.current_period_end) : '—'}
-            </div>
-          </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                    padding: '2px 8px', borderRadius: 100,
+                    background: 'rgba(255,255,255,0.22)',
+                    fontSize: 9.5, fontWeight: 700, color: '#fff', letterSpacing: '0.06em',
+                  }}>
+                    <span style={{
+                      display: 'inline-block', width: 5, height: 5, borderRadius: '50%',
+                      background: '#86efac',
+                      animation: 'pulse-active 2s ease-in-out infinite',
+                    }} />
+                    ABONNEMENT ACTIF
+                  </span>
+                </div>
+                <style>{`
+                  @keyframes pulse-active {
+                    0%, 100% { box-shadow: 0 0 0 0 rgba(134,239,172,0.6); }
+                    50% { box-shadow: 0 0 0 5px rgba(134,239,172,0); }
+                  }
+                `}</style>
+                <div style={{ fontSize: 17, fontWeight: 800, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.15 }}>
+                  Plan {planName}
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,0.85)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Calendar size={12} />
+                  Renouvellement {dateStr}
+                </div>
+              </div>
+            );
+          })()
         ) : (
+          // ── État 4 : Aucun abonnement — BLEU POINTILLÉ ──
           <Link to="/dashboard/abonnement" onClick={onClose}
             style={{
               display: 'block', padding: '12px 14px', borderRadius: 11,
