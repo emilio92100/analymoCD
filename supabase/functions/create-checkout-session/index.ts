@@ -9,7 +9,8 @@
 //   - userId pris du JWT (plus depuis le body, qui était falsifiable)
 //   - Vérification serveur : promo expiré / max_uses / restricted_email / déjà utilisé
 //   - successUrl / cancelUrl hardcodés serveur (plus de phishing possible)
-//   - automatic_payment_methods : ouvre Apple Pay / Google Pay / Link
+//   - Méthodes de paiement gérées via dashboard Stripe (cartes + Apple Pay /
+//     Google Pay / Link si activés dans Settings → Payment methods)
 //   - Le compteur uses_count + l'insert promo_uses sont DÉPLACÉS dans
 //     le webhook stripe-webhook (après confirmation paiement)
 //     → un code promo n'est plus consommé tant que le client n'a pas payé
@@ -95,11 +96,11 @@ Deno.serve(async (req: Request) => {
     // ─────────────────────────────────────────────────────────────────
     // 3. Construction de la session Checkout
     // ─────────────────────────────────────────────────────────────────
+    // Note : pas de payment_method_types ni d'automatic_payment_methods.
+    // Stripe utilise alors les méthodes de paiement activées dans le dashboard
+    // Stripe (Settings → Payment methods) — cartes par défaut, + Apple Pay /
+    // Google Pay / Link automatiquement si activés.
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
-      // automatic_payment_methods active toutes les méthodes activées
-      // dans le dashboard Stripe (Apple Pay / Google Pay / Link / cartes…)
-      // → meilleure conversion mobile
-      automatic_payment_methods: { enabled: true },
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "payment",
       success_url: SUCCESS_URL,
