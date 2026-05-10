@@ -1375,6 +1375,7 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
     caMonth: 0,
     caMonthPrev: 0,
     caProMonth: 0,
+    caProMonthHt: 0,
     caProMonthPrev: 0,
     newClientsMonth: 0,
     newProMonth: 0,
@@ -1404,61 +1405,91 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         { data: analysesMonth },
         { count: msgUnread },
         { count: proUnreadCount },
-        { data: proSubsMonth },
-        { data: proSubsPrevMonth },
-        { data: proUnitsMonth },
-        { data: proUnitsPrevMonth },
         { count: newProMonth },
         { count: activeProCount },
       ] = await Promise.all([
-        supabase.from('payments').select('amount,description').eq('status', 'completed').gt('amount', 0).gte('created_at', startOfMonth),
-        supabase.from('payments').select('amount').eq('status', 'completed').gt('amount', 0).gte('created_at', startOfPrevMonth).lte('created_at', endOfPrevMonth),
+        // ─── CA V2 : on lit UNIQUEMENT payments, avec customer_type + amount_ht + status refunded ───
+        supabase.from('payments')
+          .select('amount,amount_ht,description,customer_type,status,refunded_amount')
+          .in('status', ['completed', 'partially_refunded'])
+          .gt('amount', 0)
+          .gte('created_at', startOfMonth),
+        supabase.from('payments')
+          .select('amount,amount_ht,customer_type,status,refunded_amount')
+          .in('status', ['completed', 'partially_refunded'])
+          .gt('amount', 0)
+          .gte('created_at', startOfPrevMonth)
+          .lte('created_at', endOfPrevMonth),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('email_verified', true).gte('created_at', startOfMonth),
         supabase.from('analyses').select('type').gte('created_at', startOfMonth),
         supabase.from('contact_messages').select('*', { count: 'exact', head: true }).eq('read', false),
         supabase.from('contact_pro').select('*', { count: 'exact', head: true }).eq('read', false),
-        supabase.from('pro_subscriptions').select('plan,current_period_start').gte('current_period_start', startOfMonth),
-        supabase.from('pro_subscriptions').select('plan,current_period_start').gte('current_period_start', startOfPrevMonth).lte('current_period_start', endOfPrevMonth),
-        supabase.from('pro_unit_purchases').select('type,quantity,amount').gt('amount', 0).gte('purchased_at', startOfMonth),
-        supabase.from('pro_unit_purchases').select('type,quantity,amount').gt('amount', 0).gte('purchased_at', startOfPrevMonth).lte('purchased_at', endOfPrevMonth),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'pro').gte('created_at', startOfMonth),
         supabase.from('pro_subscriptions').select('*', { count: 'exact', head: true }).eq('status', 'active'),
       ]);
 
+      // Helper : montant TTC net (déduit le refunded_amount sur les remboursements partiels)
+      const netTtc = (p: any) => (p.amount || 0) - (p.refunded_amount || 0);
+      // Helper : montant HT net
+      const netHt = (p: any) => {
+        const ht = p.amount_ht ?? p.amount ?? 0;
+        // Pour partiellement remboursé, on calcule la part HT remboursée au prorata
+        if (p.status === 'partially_refunded' && p.amount > 0 && p.refunded_amount) {
+          const ratio = (p.amount - p.refunded_amount) / p.amount;
+          return ht * ratio;
+        }
+        return ht;
+      };
+
       const monthPayments = paymentsMonth || [];
-      const caMonth = monthPayments.reduce((s, p) => s + (p.amount || 0), 0);
-      const caMonthPrev = (paymentsPrevMonth || []).reduce((s, p) => s + (p.amount || 0), 0);
-      const ticketMoyen = monthPayments.length > 0 ? caMonth / monthPayments.length : 0;
+      const prevPayments = paymentsPrevMonth || [];
 
-      // CA Pro : abonnements
-      const PLAN_PRICES: Record<string, number> = { decouverte: 19.90, starter: 49.90, power: 89.90 };
-      const caProSubs = (proSubsMonth || []).reduce((s, sub) => s + (PLAN_PRICES[(sub as any).plan] || 0), 0);
-      const caProSubsPrev = (proSubsPrevMonth || []).reduce((s, sub) => s + (PLAN_PRICES[(sub as any).plan] || 0), 0);
+      // ─── CA Particuliers (TTC = HT, pas de TVA) ───
+      const partPayments = monthPayments.filter(p => p.customer_type === 'particulier');
+      const caMonth = partPayments.reduce((s, p) => s + netTtc(p), 0);
+      const caMonthPrev = prevPayments
+        .filter(p => p.customer_type === 'particulier')
+        .reduce((s, p) => s + netTtc(p), 0);
 
-      // CA Pro : unitaires
-      const caProUnits = (proUnitsMonth || []).reduce((s, u) => s + ((u as any).amount || 0) / 100, 0);
-      const caProUnitsPrev = (proUnitsPrevMonth || []).reduce((s, u) => s + ((u as any).amount || 0) / 100, 0);
+      // Ticket moyen sur particuliers ce mois
+      const ticketMoyen = partPayments.length > 0 ? caMonth / partPayments.length : 0;
 
-      const caProMonth = caProSubs + caProUnits;
-      const caProMonthPrev = caProSubsPrev + caProUnitsPrev;
+      // ─── CA Pro (TTC + HT) ───
+      const proPayments = monthPayments.filter(p => p.customer_type === 'pro');
+      const caProMonth = proPayments.reduce((s, p) => s + netTtc(p), 0);
+      const caProMonthHt = proPayments.reduce((s, p) => s + netHt(p), 0);
+      const caProMonthPrev = prevPayments
+        .filter(p => p.customer_type === 'pro')
+        .reduce((s, p) => s + netTtc(p), 0);
 
-      // CA Pro par catégorie
+      // ─── CA Pro par catégorie (basé sur description) ───
       const caProByCategory = { abo_decouverte: { count: 0, total: 0 }, abo_starter: { count: 0, total: 0 }, abo_power: { count: 0, total: 0 }, unit_complete: { count: 0, total: 0 }, unit_simple: { count: 0, total: 0 } };
-      (proSubsMonth || []).forEach((sub: any) => {
-        const key = `abo_${sub.plan}` as keyof typeof caProByCategory;
-        if (caProByCategory[key]) { caProByCategory[key].count++; caProByCategory[key].total += PLAN_PRICES[sub.plan] || 0; }
-      });
-      (proUnitsMonth || []).forEach((u: any) => {
-        const key = u.type === 'complete' ? 'unit_complete' : 'unit_simple';
-        caProByCategory[key].count += u.quantity || 1;
-        caProByCategory[key].total += (u.amount || 0) / 100;
+      proPayments.forEach((p: any) => {
+        const desc = (p.description || '').toLowerCase();
+        const amt = netTtc(p);
+        if (desc.includes('découverte') || desc.includes('decouverte')) {
+          caProByCategory.abo_decouverte.count++;
+          caProByCategory.abo_decouverte.total += amt;
+        } else if (desc.includes('starter')) {
+          caProByCategory.abo_starter.count++;
+          caProByCategory.abo_starter.total += amt;
+        } else if (desc.includes('power')) {
+          caProByCategory.abo_power.count++;
+          caProByCategory.abo_power.total += amt;
+        } else if (desc.includes('achat unitaire') && desc.includes('complète')) {
+          caProByCategory.unit_complete.count++;
+          caProByCategory.unit_complete.total += amt;
+        } else if (desc.includes('achat unitaire') && (desc.includes('simple') || desc.includes('document'))) {
+          caProByCategory.unit_simple.count++;
+          caProByCategory.unit_simple.total += amt;
+        }
       });
 
-      // CA par catégorie basé sur la description des paiements
+      // ─── CA particuliers par catégorie (basé sur description) ───
       const caByCategory = { document: { count: 0, total: 0 }, complete: { count: 0, total: 0 }, pack2: { count: 0, total: 0 }, pack3: { count: 0, total: 0 } };
-      monthPayments.forEach(p => {
+      partPayments.forEach(p => {
         const desc = (p.description || '').toLowerCase();
-        const amt = p.amount || 0;
+        const amt = netTtc(p);
         if (desc.includes('pack 3')) { caByCategory.pack3.count++; caByCategory.pack3.total += amt; }
         else if (desc.includes('pack 2')) { caByCategory.pack2.count++; caByCategory.pack2.total += amt; }
         else if (desc.includes('complète')) { caByCategory.complete.count++; caByCategory.complete.total += amt; }
@@ -1474,6 +1505,7 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         caMonth,
         caMonthPrev,
         caProMonth,
+        caProMonthHt,
         caProMonthPrev,
         newClientsMonth: newClients || 0,
         newProMonth: newProMonth || 0,
@@ -1524,9 +1556,14 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
               {diffLabel}
             </div>
             {(data.caMonth > 0 || data.caProMonth > 0) && (
-              <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
+              <div style={{ display: 'flex', gap: 16, marginTop: 12, flexWrap: 'wrap' as const }}>
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>Particuliers : <span style={{ fontWeight: 800, color: 'rgba(255,255,255,0.85)' }}>{data.caMonth.toFixed(2).replace('.', ',')}€</span></div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>Pro : <span style={{ fontWeight: 800, color: 'rgba(255,255,255,0.85)' }}>{data.caProMonth.toFixed(2).replace('.', ',')}€</span></div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
+                  Pro : <span style={{ fontWeight: 800, color: 'rgba(255,255,255,0.85)' }}>{data.caProMonth.toFixed(2).replace('.', ',')}€ TTC</span>
+                  {data.caProMonth > 0 && (
+                    <span style={{ marginLeft: 6, color: 'rgba(255,255,255,0.45)' }}>· {data.caProMonthHt.toFixed(2).replace('.', ',')}€ HT</span>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -1684,10 +1721,9 @@ function StatsTab() {
   const [source, setSource] = useState<StatsSource>('all');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
-  const PLAN_PRICES: Record<string, number> = { decouverte: 19.90, starter: 49.90, power: 89.90 };
 
   const [stats, setStats] = useState({
-    caParticulier: 0, caPro: 0, caProSubs: 0, caProUnits: 0,
+    caParticulier: 0, caPro: 0, caProHt: 0, caProSubs: 0, caProUnits: 0,
     paymentsCountPart: 0, paymentsCountPro: 0,
     newUsersVerified: 0, newProUsers: 0,
     analysesTotal: 0,
@@ -1740,48 +1776,71 @@ function StatsTab() {
         { count: newProUsers },
         { data: analyses },
         { data: freePaymentsData },
-        { data: proSubsData },
-        { data: proUnitsData },
         { count: activeProCount },
       ] = await Promise.all([
-        supabase.from('payments').select('amount,description').eq('status', 'completed').gt('amount', 0).gte('created_at', start).lte('created_at', end),
+        // ─── CA V2 : on lit UNIQUEMENT payments avec customer_type, amount_ht, status remboursés ───
+        supabase.from('payments')
+          .select('amount,amount_ht,description,customer_type,status,refunded_amount')
+          .in('status', ['completed', 'partially_refunded'])
+          .gt('amount', 0)
+          .gte('created_at', start).lte('created_at', end),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('email_verified', true).gte('created_at', start).lte('created_at', end),
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'pro').gte('created_at', start).lte('created_at', end),
         supabase.from('analyses').select('type,paid,stripe_payment_id,created_at,user_id,profiles!inner(role)').gte('created_at', start).lte('created_at', end),
         supabase.from('payments').select('credits_added,credit_type').eq('status', 'completed').eq('amount', 0).gte('created_at', start).lte('created_at', end),
-        supabase.from('pro_subscriptions').select('plan,current_period_start').gte('current_period_start', start).lte('current_period_start', end),
-        supabase.from('pro_unit_purchases').select('type,quantity,amount').gt('amount', 0).gte('purchased_at', start).lte('purchased_at', end),
         supabase.from('pro_subscriptions').select('*', { count: 'exact', head: true }).eq('status', 'active'),
       ]);
 
-      // Prev period (if not "all")
+      // Helpers V2 : montants nets après remboursement partiel
+      const netTtc = (p: any) => (p.amount || 0) - (p.refunded_amount || 0);
+      const netHt = (p: any) => {
+        const ht = p.amount_ht ?? p.amount ?? 0;
+        if (p.status === 'partially_refunded' && p.amount > 0 && p.refunded_amount) {
+          const ratio = (p.amount - p.refunded_amount) / p.amount;
+          return ht * ratio;
+        }
+        return ht;
+      };
+
+      // Prev period (if not "all") — même logique unifiée
       let prevCaPart = 0, prevCaPro = 0, prevNewUsers = 0, prevNewPro = 0, prevAnalyses = 0;
       if (prevStart && prevEnd && period !== 'all') {
-        const [{ data: pp }, { count: pu }, { count: ppr }, { count: pa }, { data: pps }, { data: ppu }] = await Promise.all([
-          supabase.from('payments').select('amount').eq('status', 'completed').gt('amount', 0).gte('created_at', prevStart).lte('created_at', prevEnd),
+        const [{ data: pp }, { count: pu }, { count: ppr }, { count: pa }] = await Promise.all([
+          supabase.from('payments')
+            .select('amount,refunded_amount,customer_type,status')
+            .in('status', ['completed', 'partially_refunded'])
+            .gt('amount', 0)
+            .gte('created_at', prevStart).lte('created_at', prevEnd),
           supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('email_verified', true).gte('created_at', prevStart).lte('created_at', prevEnd),
           supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'pro').gte('created_at', prevStart).lte('created_at', prevEnd),
           supabase.from('analyses').select('*', { count: 'exact', head: true }).gte('created_at', prevStart).lte('created_at', prevEnd),
-          supabase.from('pro_subscriptions').select('plan').gte('current_period_start', prevStart).lte('current_period_start', prevEnd),
-          supabase.from('pro_unit_purchases').select('amount').gt('amount', 0).gte('purchased_at', prevStart).lte('purchased_at', prevEnd),
         ]);
-        prevCaPart = (pp || []).reduce((s, p) => s + (p.amount || 0), 0);
-        const PLAN_PRICES_P: Record<string, number> = { decouverte: 19.90, starter: 49.90, power: 89.90 };
-        prevCaPro = (pps || []).reduce((s, sub: any) => s + (PLAN_PRICES_P[sub.plan] || 0), 0) + (ppu || []).reduce((s, u: any) => s + ((u.amount || 0) / 100), 0);
+        prevCaPart = (pp || []).filter((p: any) => p.customer_type === 'particulier').reduce((s: number, p: any) => s + netTtc(p), 0);
+        prevCaPro = (pp || []).filter((p: any) => p.customer_type === 'pro').reduce((s: number, p: any) => s + netTtc(p), 0);
         prevNewUsers = pu || 0;
         prevNewPro = ppr || 0;
         prevAnalyses = pa || 0;
       }
 
       const payments = paymentsData || [];
-      const caParticulier = payments.reduce((s, p) => s + (p.amount || 0), 0);
-      const paymentsCountPart = payments.length;
+      const partPayments = payments.filter((p: any) => p.customer_type === 'particulier');
+      const proPayments = payments.filter((p: any) => p.customer_type === 'pro');
 
-      // CA Pro
-      const caProSubs = (proSubsData || []).reduce((s, sub: any) => s + (PLAN_PRICES[sub.plan] || 0), 0);
-      const caProUnits = (proUnitsData || []).reduce((s, u: any) => s + ((u.amount || 0) / 100), 0);
-      const caPro = caProSubs + caProUnits;
-      const paymentsCountPro = (proSubsData || []).length + (proUnitsData || []).length;
+      // ─── CA Particuliers (TTC = HT, pas de TVA) ───
+      const caParticulier = partPayments.reduce((s, p: any) => s + netTtc(p), 0);
+      const paymentsCountPart = partPayments.length;
+
+      // ─── CA Pro (TTC + HT séparés) ───
+      const caPro = proPayments.reduce((s, p: any) => s + netTtc(p), 0);
+      const caProHt = proPayments.reduce((s, p: any) => s + netHt(p), 0);
+      const paymentsCountPro = proPayments.length;
+      // Split abos / unitaires (pour l'affichage actuel qui demande caProSubs/caProUnits)
+      const caProSubs = proPayments
+        .filter((p: any) => /^abonnement/i.test(p.description || ''))
+        .reduce((s, p: any) => s + netTtc(p), 0);
+      const caProUnits = proPayments
+        .filter((p: any) => /^achat unitaire/i.test(p.description || ''))
+        .reduce((s, p: any) => s + netTtc(p), 0);
 
       // Analyses par type — split pro / particulier selon le rôle du user
       const analysesByType = { document: 0, complete: 0, pack2: 0, pack3: 0 };
@@ -1811,32 +1870,43 @@ function StatsTab() {
         else if (p.credit_type === 'complete') creditsOffered.complete += (p.credits_added || 0);
       });
 
-      // CA par catégorie particulier
+      // CA par catégorie particulier (basé sur description)
       const caPartCateg = { document: { count: 0, total: 0 }, complete: { count: 0, total: 0 }, pack2: { count: 0, total: 0 }, pack3: { count: 0, total: 0 } };
-      payments.forEach(p => {
+      partPayments.forEach((p: any) => {
         const desc = (p.description || '').toLowerCase();
-        const amt = p.amount || 0;
+        const amt = netTtc(p);
         if (desc.includes('pack 3')) { caPartCateg.pack3.count++; caPartCateg.pack3.total += amt; }
         else if (desc.includes('pack 2')) { caPartCateg.pack2.count++; caPartCateg.pack2.total += amt; }
         else if (desc.includes('complète')) { caPartCateg.complete.count++; caPartCateg.complete.total += amt; }
         else { caPartCateg.document.count++; caPartCateg.document.total += amt; }
       });
 
-      // CA par catégorie pro
+      // CA par catégorie pro (basé sur description)
       const caProCateg = { abo_decouverte: { count: 0, total: 0 }, abo_starter: { count: 0, total: 0 }, abo_power: { count: 0, total: 0 }, unit_complete: { count: 0, total: 0 }, unit_simple: { count: 0, total: 0 } };
-      (proSubsData || []).forEach((sub: any) => {
-        const key = `abo_${sub.plan}` as keyof typeof caProCateg;
-        if (caProCateg[key]) { caProCateg[key].count++; caProCateg[key].total += PLAN_PRICES[sub.plan] || 0; }
-      });
-      (proUnitsData || []).forEach((u: any) => {
-        const key = u.type === 'complete' ? 'unit_complete' : 'unit_simple';
-        caProCateg[key].count += u.quantity || 1;
-        caProCateg[key].total += (u.amount || 0) / 100;
+      proPayments.forEach((p: any) => {
+        const desc = (p.description || '').toLowerCase();
+        const amt = netTtc(p);
+        if (desc.includes('découverte') || desc.includes('decouverte')) {
+          caProCateg.abo_decouverte.count++;
+          caProCateg.abo_decouverte.total += amt;
+        } else if (desc.includes('starter')) {
+          caProCateg.abo_starter.count++;
+          caProCateg.abo_starter.total += amt;
+        } else if (desc.includes('power')) {
+          caProCateg.abo_power.count++;
+          caProCateg.abo_power.total += amt;
+        } else if (desc.includes('achat unitaire') && desc.includes('complète')) {
+          caProCateg.unit_complete.count++;
+          caProCateg.unit_complete.total += amt;
+        } else if (desc.includes('achat unitaire') && (desc.includes('simple') || desc.includes('document'))) {
+          caProCateg.unit_simple.count++;
+          caProCateg.unit_simple.total += amt;
+        }
       });
 
-      setStats({ caParticulier, caPro, caProSubs, caProUnits, paymentsCountPart, paymentsCountPro, newUsersVerified: newUsersVerified || 0, newProUsers: newProUsers || 0, analysesTotal: (analyses || []).length, analysesPart, analysesPro, analysesByType, analysesByTypePart, analysesByTypePro, freeAnalysesByType, creditsOffered, caPartCateg, caProCateg, activeProCount: activeProCount || 0, prevCaPart, prevCaPro, prevNewUsers, prevNewPro, prevAnalyses, prevActiveProCount: 0 });
+      setStats({ caParticulier, caPro, caProHt, caProSubs, caProUnits, paymentsCountPart, paymentsCountPro, newUsersVerified: newUsersVerified || 0, newProUsers: newProUsers || 0, analysesTotal: (analyses || []).length, analysesPart, analysesPro, analysesByType, analysesByTypePart, analysesByTypePro, freeAnalysesByType, creditsOffered, caPartCateg, caProCateg, activeProCount: activeProCount || 0, prevCaPart, prevCaPro, prevNewUsers, prevNewPro, prevAnalyses, prevActiveProCount: 0 });
 
-      // Graphiques 8 dernières semaines — avec split pro/part
+      // Graphiques 8 dernières semaines — basés sur payments uniquement
       const weeks: { week: string; caPart: number; caPro: number; users: number }[] = [];
       const now = new Date();
       for (let i = 7; i >= 0; i--) {
@@ -1844,14 +1914,16 @@ function StatsTab() {
         const weekEnd = new Date(now); weekEnd.setDate(now.getDate() - (i * 7)); weekEnd.setHours(23, 59, 59, 999);
         const ws = weekStart.toISOString(); const we = weekEnd.toISOString();
 
-        const [{ data: wPay }, { count: wUsers }, { data: wProSubs }, { data: wProUnits }] = await Promise.all([
-          supabase.from('payments').select('amount').eq('status', 'completed').gt('amount', 0).gte('created_at', ws).lte('created_at', we),
+        const [{ data: wPay }, { count: wUsers }] = await Promise.all([
+          supabase.from('payments')
+            .select('amount,refunded_amount,customer_type,status')
+            .in('status', ['completed', 'partially_refunded'])
+            .gt('amount', 0)
+            .gte('created_at', ws).lte('created_at', we),
           supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('email_verified', true).gte('created_at', ws).lte('created_at', we),
-          supabase.from('pro_subscriptions').select('plan').gte('current_period_start', ws).lte('current_period_start', we),
-          supabase.from('pro_unit_purchases').select('amount').gt('amount', 0).gte('purchased_at', ws).lte('purchased_at', we),
         ]);
-        const wCaPart = (wPay || []).reduce((s, p) => s + (p.amount || 0), 0);
-        const wCaPro = (wProSubs || []).reduce((s, sub: any) => s + (PLAN_PRICES[sub.plan] || 0), 0) + (wProUnits || []).reduce((s, u: any) => s + ((u.amount || 0) / 100), 0);
+        const wCaPart = (wPay || []).filter((p: any) => p.customer_type === 'particulier').reduce((s: number, p: any) => s + netTtc(p), 0);
+        const wCaPro = (wPay || []).filter((p: any) => p.customer_type === 'pro').reduce((s: number, p: any) => s + netTtc(p), 0);
         const label = `${weekStart.getDate().toString().padStart(2, '0')}/${(weekStart.getMonth() + 1).toString().padStart(2, '0')}`;
         weeks.push({ week: label, caPart: wCaPart, caPro: wCaPro, users: wUsers || 0 });
       }
@@ -1927,12 +1999,18 @@ function StatsTab() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div style={{ padding: '18px 20px', borderRadius: 14, background: 'linear-gradient(135deg,#16a34a,#14532d)', color: '#fff' }}>
           <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.7, letterSpacing: '0.1em', marginBottom: 6 }}>CA {source === 'all' ? 'TOTAL' : source === 'pro' ? 'PRO' : 'PARTICULIERS'}</div>
-          <div style={{ fontSize: 28, fontWeight: 900 }}>{totalCa.toFixed(2).replace('.', ',')}€</div>
+          <div style={{ fontSize: 28, fontWeight: 900 }}>{totalCa.toFixed(2).replace('.', ',')}€{source === 'pro' ? ' TTC' : ''}</div>
+          {source === 'pro' && stats.caPro > 0 && (
+            <div style={{ fontSize: 12, marginTop: 2, opacity: 0.75 }}>{stats.caProHt.toFixed(2).replace('.', ',')}€ HT</div>
+          )}
           {caEvo && <div style={{ fontSize: 11, marginTop: 4, color: caEvo.up ? '#bbf7d0' : '#fca5a5' }}>{caEvo.up ? '↑' : '↓'} {caEvo.pct > 0 ? '+' : ''}{caEvo.pct}% vs période préc.</div>}
           {source === 'all' && (
-            <div style={{ display: 'flex', gap: 14, marginTop: 8, fontSize: 11 }}>
+            <div style={{ display: 'flex', gap: 14, marginTop: 8, fontSize: 11, flexWrap: 'wrap' as const }}>
               <span style={{ opacity: 0.6 }}>Part. : <strong style={{ opacity: 1 }}>{stats.caParticulier.toFixed(2).replace('.', ',')}€</strong></span>
-              <span style={{ opacity: 0.6 }}>Pro : <strong style={{ opacity: 1 }}>{stats.caPro.toFixed(2).replace('.', ',')}€</strong></span>
+              <span style={{ opacity: 0.6 }}>
+                Pro : <strong style={{ opacity: 1 }}>{stats.caPro.toFixed(2).replace('.', ',')}€ TTC</strong>
+                {stats.caPro > 0 && <span style={{ opacity: 0.65, marginLeft: 4 }}>({stats.caProHt.toFixed(2).replace('.', ',')}€ HT)</span>}
+              </span>
             </div>
           )}
         </div>
@@ -3900,7 +3978,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [invitations, setInvitations] = useState<ProInvitation[]>([]);
   const [clientAnalyses, setClientAnalyses] = useState<{ id: string; title: string; address?: string; status: string; score?: number; created_at: string }[]>([]);
   const [clientShares, setClientShares] = useState<{ id: string; recipient_name: string; recipient_email: string; sent_at: string; opened_at?: string }[]>([]);
-  const [clientSubscription, setClientSubscription] = useState<{ plan: string; status: string; current_period_end?: string; cancel_at_period_end?: boolean; canceled_at?: string; cancellation_reason?: string; credits_complete_total: number; credits_complete_used: number; credits_simple_total: number; credits_simple_used: number } | null>(null);
+  const [clientSubscription, setClientSubscription] = useState<{ plan: string; status: string; current_period_end?: string; cancel_at_period_end?: boolean; canceled_at?: string; cancellation_reason?: string; credits_complete_total: number; credits_complete_used: number; credits_simple_total: number; credits_simple_used: number; scheduled_plan_change?: string | null; scheduled_change_date?: string | null } | null>(null);
   const [proClientCredits, setProClientCredits] = useState<{ total_complete: number; total_document: number } | null>(null);
   const [clientInvoices, setClientInvoices] = useState<{ id: string; date: string; description: string; amount: string; pdf_url: string | null; type: string; status?: string; status_label?: string; status_variant?: 'success' | 'pending' | 'failed' | 'void'; failure_reason?: string | null; attempt_count?: number }[]>([]);
   const [clientInvoicesLoading, setClientInvoicesLoading] = useState(false);
@@ -4180,36 +4258,55 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
               <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 8 }}>Abonnement</div>
               {clientSubscription ? (
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontSize: 15, fontWeight: 800, color: '#0f2d3d' }}>Plan {clientSubscription.plan === 'decouverte' ? 'Découverte' : clientSubscription.plan === 'starter' ? 'Starter' : 'Power'}</span>
-                    {clientSubscription.status === 'canceled' ? (
-                      <span style={{ fontSize: 11, fontWeight: 600, color: '#dc2626', background: '#fef2f2', padding: '2px 8px', borderRadius: 100, border: '1px solid #fecaca' }}>Résilié</span>
-                    ) : clientSubscription.cancel_at_period_end ? (
-                      <span style={{ fontSize: 11, fontWeight: 600, color: '#ea580c', background: '#fff7ed', padding: '2px 8px', borderRadius: 100, border: '1px solid #fed7aa' }}>Résiliation en cours</span>
-                    ) : (
-                      <span style={{ fontSize: 11, fontWeight: 600, color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: 100, border: '1px solid #bbf7d0' }}>Actif</span>
-                    )}
-                  </div>
-                  {clientSubscription.status !== 'canceled' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, flexWrap: 'wrap' }}>
-                      <div style={{ color: '#64748b' }}>Complètes : <strong style={{ color: '#0f172a' }}>{clientSubscription.credits_complete_used}/{clientSubscription.credits_complete_total}</strong> utilisées</div>
-                      <div style={{ color: '#64748b' }}>Simples : <strong style={{ color: '#0f172a' }}>{clientSubscription.credits_simple_used}/{clientSubscription.credits_simple_total}</strong> utilisées</div>
-                    </div>
-                  )}
-                  {clientSubscription.cancel_at_period_end && clientSubscription.current_period_end && (
-                    <div style={{ fontSize: 11, color: '#ea580c', marginTop: 6, fontWeight: 600 }}>⚠️ Actif jusqu'au {fmtDate(clientSubscription.current_period_end)}</div>
-                  )}
-                  {clientSubscription.status === 'canceled' && clientSubscription.canceled_at && (
-                    <div style={{ fontSize: 11, color: '#dc2626', marginTop: 6, fontWeight: 600 }}>Résilié le {fmtDate(clientSubscription.canceled_at)}</div>
-                  )}
-                  {!clientSubscription.cancel_at_period_end && clientSubscription.status !== 'canceled' && clientSubscription.current_period_end && (
-                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Renouvellement le {fmtDate(clientSubscription.current_period_end)}</div>
-                  )}
-                  {clientSubscription.cancellation_reason && (
-                    <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 12, color: '#991b1b' }}>
-                      <span style={{ fontWeight: 700 }}>Raison :</span> {clientSubscription.cancellation_reason}
-                    </div>
-                  )}
+                  {(() => {
+                    const PLAN_LABEL: Record<string, string> = { decouverte: 'Découverte', starter: 'Starter', power: 'Power' };
+                    const scheduledPlan = clientSubscription.scheduled_plan_change;
+                    const scheduledDate = clientSubscription.scheduled_change_date;
+                    const hasSchedule = !!scheduledPlan && clientSubscription.status !== 'canceled' && !clientSubscription.cancel_at_period_end;
+                    return (
+                      <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' as const }}>
+                          <span style={{ fontSize: 15, fontWeight: 800, color: '#0f2d3d' }}>Plan {PLAN_LABEL[clientSubscription.plan] || clientSubscription.plan}</span>
+                          {clientSubscription.status === 'canceled' ? (
+                            <span style={{ fontSize: 11, fontWeight: 600, color: '#dc2626', background: '#fef2f2', padding: '2px 8px', borderRadius: 100, border: '1px solid #fecaca' }}>Résilié</span>
+                          ) : clientSubscription.cancel_at_period_end ? (
+                            <span style={{ fontSize: 11, fontWeight: 600, color: '#ea580c', background: '#fff7ed', padding: '2px 8px', borderRadius: 100, border: '1px solid #fed7aa' }}>Résiliation en cours</span>
+                          ) : hasSchedule ? (
+                            <span style={{ fontSize: 11, fontWeight: 600, color: '#7c3aed', background: '#f5f3ff', padding: '2px 8px', borderRadius: 100, border: '1px solid #ddd6fe' }}>
+                              Bascule programmée vers {PLAN_LABEL[scheduledPlan!] || scheduledPlan}
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: 11, fontWeight: 600, color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: 100, border: '1px solid #bbf7d0' }}>Actif</span>
+                          )}
+                        </div>
+                        {clientSubscription.status !== 'canceled' && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, flexWrap: 'wrap' }}>
+                            <div style={{ color: '#64748b' }}>Complètes : <strong style={{ color: '#0f172a' }}>{clientSubscription.credits_complete_used}/{clientSubscription.credits_complete_total}</strong> utilisées</div>
+                            <div style={{ color: '#64748b' }}>Simples : <strong style={{ color: '#0f172a' }}>{clientSubscription.credits_simple_used}/{clientSubscription.credits_simple_total}</strong> utilisées</div>
+                          </div>
+                        )}
+                        {clientSubscription.cancel_at_period_end && clientSubscription.current_period_end && (
+                          <div style={{ fontSize: 11, color: '#ea580c', marginTop: 6, fontWeight: 600 }}>⚠️ Actif jusqu'au {fmtDate(clientSubscription.current_period_end)}</div>
+                        )}
+                        {clientSubscription.status === 'canceled' && clientSubscription.canceled_at && (
+                          <div style={{ fontSize: 11, color: '#dc2626', marginTop: 6, fontWeight: 600 }}>Résilié le {fmtDate(clientSubscription.canceled_at)}</div>
+                        )}
+                        {hasSchedule && scheduledDate && (
+                          <div style={{ fontSize: 11, color: '#7c3aed', marginTop: 6, fontWeight: 600 }}>
+                            🔄 Bascule effective le {fmtDate(scheduledDate)}
+                          </div>
+                        )}
+                        {!hasSchedule && !clientSubscription.cancel_at_period_end && clientSubscription.status !== 'canceled' && clientSubscription.current_period_end && (
+                          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>Renouvellement le {fmtDate(clientSubscription.current_period_end)}</div>
+                        )}
+                        {clientSubscription.cancellation_reason && (
+                          <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 12, color: '#991b1b' }}>
+                            <span style={{ fontWeight: 700 }}>Raison :</span> {clientSubscription.cancellation_reason}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               ) : (
                 <div style={{ fontSize: 13, color: '#94a3b8' }}>Aucun abonnement actif</div>
@@ -4863,33 +4960,16 @@ function PaymentsTab({ onOpenUser, showToast }: { onOpenUser: (userId: string) =
   const loadPayments = useCallback(async () => {
     setLoading(true);
 
-    // Paiements particuliers
+    // ─── CA V2 : on lit UNIQUEMENT payments (pro + particulier confondus) ───
     const { data: rawPayments } = await supabase
       .from('payments')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(500);
-
-    // Abonnements pro
-    const { data: proSubs } = await supabase
-      .from('pro_subscriptions')
-      .select('id, user_id, plan, status, current_period_start, created_at, stripe_subscription_id')
-      .order('created_at', { ascending: false })
-      .limit(200);
-
-    // Achats unitaires pro (uniquement les vrais achats, pas les crédits offerts)
-    const { data: proUnits } = await supabase
-      .from('pro_unit_purchases')
-      .select('id, user_id, type, quantity, amount, purchased_at, stripe_session_id')
-      .gt('amount', 0)
-      .order('purchased_at', { ascending: false })
-      .limit(200);
+      .limit(700);
 
     // Collect all user IDs
     const allUserIds = new Set<string>();
     (rawPayments || []).forEach(p => p.user_id && allUserIds.add(p.user_id));
-    (proSubs || []).forEach(s => s.user_id && allUserIds.add(s.user_id));
-    (proUnits || []).forEach(u => u.user_id && allUserIds.add(u.user_id));
 
     const { data: profiles } = await supabase
       .from('profiles')
@@ -4897,49 +4977,14 @@ function PaymentsTab({ onOpenUser, showToast }: { onOpenUser: (userId: string) =
       .in('id', [...allUserIds]);
 
     const profileMap = new Map((profiles || []).map(p => [p.id, p]));
-    const PLAN_PRICES: Record<string, number> = { decouverte: 19.90, starter: 49.90, power: 89.90 };
-    const PLAN_NAMES: Record<string, string> = { decouverte: 'Découverte', starter: 'Starter', power: 'Power' };
 
-    // Enrich particulier payments
-    const partPayments: PaymentWithUser[] = (rawPayments || []).map(p => ({
+    // Enrich payments avec _source dérivé de customer_type
+    const all: PaymentWithUser[] = (rawPayments || []).map(p => ({
       ...p,
       userEmail: profileMap.get(p.user_id)?.email,
       userName: profileMap.get(p.user_id)?.full_name,
-      _source: 'particulier',
-    }));
-
-    // Convert pro subs to PaymentWithUser format
-    const proSubPayments: PaymentWithUser[] = (proSubs || []).map((s: any) => ({
-      id: `pro-sub-${s.id}`,
-      user_id: s.user_id,
-      amount: PLAN_PRICES[s.plan] || 0,
-      status: 'completed',
-      description: `Abo Pro ${PLAN_NAMES[s.plan] || s.plan} — ${(PLAN_PRICES[s.plan] || 0).toFixed(2).replace('.', ',')}€ HT/mois`,
-      stripe_session_id: s.stripe_subscription_id,
-      created_at: s.current_period_start || s.created_at,
-      userEmail: profileMap.get(s.user_id)?.email,
-      userName: profileMap.get(s.user_id)?.full_name,
-      _source: 'pro',
+      _source: p.customer_type === 'pro' ? 'pro' : 'particulier',
     } as PaymentWithUser));
-
-    // Convert pro units to PaymentWithUser format
-    const proUnitPayments: PaymentWithUser[] = (proUnits || []).map((u: any) => ({
-      id: `pro-unit-${u.id}`,
-      user_id: u.user_id,
-      amount: (u.amount || 0) / 100,
-      status: 'completed',
-      description: `Achat unitaire Pro — ${u.quantity}x ${u.type === 'complete' ? 'Complète' : 'Simple'}`,
-      stripe_session_id: u.stripe_session_id,
-      credits_added: u.quantity,
-      credit_type: u.type,
-      created_at: u.purchased_at,
-      userEmail: profileMap.get(u.user_id)?.email,
-      userName: profileMap.get(u.user_id)?.full_name,
-      _source: 'pro',
-    } as PaymentWithUser));
-
-    // Merge and sort by date desc
-    const all = [...partPayments, ...proSubPayments, ...proUnitPayments].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
     setPayments(all);
     setLoading(false);
@@ -5061,17 +5106,20 @@ function PaymentsTab({ onOpenUser, showToast }: { onOpenUser: (userId: string) =
           : filtered.length === 0 ? <div style={{ padding: '40px', textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Aucun paiement ne correspond à vos filtres</div>
           : filtered.map((p, i) => {
             const days = daysSince(p.created_at);
-            const eligible = days < 14 && p.amount > 0;
+            const eligible = days < 14 && p.amount > 0 && p.status === 'completed';
+            const isRefunded = p.status === 'refunded';
+            const isPartialRefund = p.status === 'partially_refunded';
+            const refundedAmt = (p as any).refunded_amount || 0;
             return (
-              <div key={p.id} style={{ padding: '14px 18px', borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
+              <div key={p.id} style={{ padding: '14px 18px', borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc', opacity: isRefunded ? 0.65 : 1 }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-                  <div style={{ width: 38, height: 38, borderRadius: 10, background: p.amount === 0 ? '#f5f3ff' : '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {p.amount === 0 ? <Tag size={16} style={{ color: '#7c3aed' }} /> : <Euro size={16} style={{ color: '#16a34a' }} />}
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: p.amount === 0 ? '#f5f3ff' : isRefunded ? '#fef2f2' : '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {p.amount === 0 ? <Tag size={16} style={{ color: '#7c3aed' }} /> : <Euro size={16} style={{ color: isRefunded ? '#dc2626' : '#16a34a' }} />}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 4 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 15, fontWeight: 900, color: p.amount === 0 ? '#7c3aed' : '#16a34a' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
+                        <span style={{ fontSize: 15, fontWeight: 900, color: p.amount === 0 ? '#7c3aed' : isRefunded ? '#94a3b8' : '#16a34a', textDecoration: isRefunded ? 'line-through' : 'none' }}>
                           {p.amount === 0 ? 'Gratuit' : `${p.amount.toFixed(2)}€`}
                         </span>
                         <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 6,
@@ -5079,6 +5127,16 @@ function PaymentsTab({ onOpenUser, showToast }: { onOpenUser: (userId: string) =
                           color: p._source === 'pro' ? '#fff' : '#2a7d9c' }}>
                           {p._source === 'pro' ? 'PRO' : 'PART.'}
                         </span>
+                        {isRefunded && (
+                          <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 6, background: '#fef2f2', color: '#dc2626' }}>
+                            REMBOURSÉ
+                          </span>
+                        )}
+                        {isPartialRefund && (
+                          <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 6, background: '#fffbeb', color: '#d97706' }}>
+                            REMBOURSÉ {refundedAmt.toFixed(2)}€/{p.amount.toFixed(2)}€
+                          </span>
+                        )}
                         {p.userEmail ? (
                           <button onClick={() => onOpenUser(p.user_id)}
                             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 13, color: '#2a7d9c', fontWeight: 700, textDecoration: 'underline', textDecorationColor: '#bae3f5' }}>
