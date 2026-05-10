@@ -1551,17 +1551,20 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
             <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.12em', textTransform: 'uppercase' as const, marginBottom: 6 }}>
               CA de {currentMonthLabel}
             </div>
-            <div style={{ fontSize: 48, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em', lineHeight: 1 }}>{totalCaMonth.toFixed(2).replace('.', ',')}€</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+              <div style={{ fontSize: 48, fontWeight: 900, color: '#fff', letterSpacing: '-0.03em', lineHeight: 1 }}>{totalCaMonth.toFixed(2).replace('.', ',')}€</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.05em' }}>TTC</div>
+            </div>
             <div style={{ fontSize: 13, color: diff >= 0 ? '#7dd3f0' : '#fca5a5', marginTop: 10, fontWeight: 600 }}>
               {diffLabel}
             </div>
             {(data.caMonth > 0 || data.caProMonth > 0) && (
               <div style={{ display: 'flex', gap: 16, marginTop: 12, flexWrap: 'wrap' as const }}>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>Particuliers : <span style={{ fontWeight: 800, color: 'rgba(255,255,255,0.85)' }}>{data.caMonth.toFixed(2).replace('.', ',')}€</span></div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>Particuliers : <span style={{ fontWeight: 800, color: 'rgba(255,255,255,0.85)' }}>{data.caMonth.toFixed(2).replace('.', ',')}€ TTC</span></div>
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
-                  Pro : <span style={{ fontWeight: 800, color: 'rgba(255,255,255,0.85)' }}>{data.caProMonth.toFixed(2).replace('.', ',')}€ TTC</span>
+                  Pro : <span style={{ fontWeight: 800, color: 'rgba(255,255,255,0.85)' }}>{data.caProMonthHt.toFixed(2).replace('.', ',')}€ HT</span>
                   {data.caProMonth > 0 && (
-                    <span style={{ marginLeft: 6, color: 'rgba(255,255,255,0.45)' }}>· {data.caProMonthHt.toFixed(2).replace('.', ',')}€ HT</span>
+                    <span style={{ marginLeft: 4, color: 'rgba(255,255,255,0.55)' }}>({data.caProMonth.toFixed(2).replace('.', ',')}€ TTC)</span>
                   )}
                 </div>
               </div>
@@ -1596,7 +1599,10 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
         </div>
         <div style={{ background: '#fff', borderRadius: 12, border: '1.5px solid #edf2f7', padding: '16px 18px' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8 }}>Ticket moyen</div>
-          <div style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{data.ticketMoyen.toFixed(2).replace('.', ',')}€</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+            <div style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{data.ticketMoyen.toFixed(2).replace('.', ',')}€</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8' }}>TTC</div>
+          </div>
           <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4 }}>Par paiement ce mois</div>
         </div>
       </div>
@@ -1618,7 +1624,10 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
             return (
               <div key={t.key} style={{ padding: '12px 14px', borderRadius: 10, background: d.count > 0 ? t.bg : '#fafbfc', border: `1px solid ${d.count > 0 ? t.color + '30' : '#edf2f7'}` }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 4 }}>{t.label}</div>
-                <div style={{ fontSize: 18, fontWeight: 900, color: d.count > 0 ? t.color : '#cbd5e1', lineHeight: 1 }}>{d.total.toFixed(2).replace('.', ',')}€</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: d.count > 0 ? t.color : '#cbd5e1', lineHeight: 1 }}>{d.total.toFixed(2).replace('.', ',')}€</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8' }}>TTC</div>
+                </div>
                 <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{d.count} vente{d.count > 1 ? 's' : ''}</div>
               </div>
             );
@@ -1635,10 +1644,18 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
             { key: 'unit_simple' as const, label: 'Unitaire Simple', color: '#64748b', bg: '#f8fafc' },
           ].map(t => {
             const d = data.caProByCategory[t.key];
+            // Pour les pro, calculer le HT (TTC / 1.20) car d.total est en TTC
+            const totalHt = d.total / 1.20;
             return (
               <div key={t.key} style={{ padding: '12px 14px', borderRadius: 10, background: d.count > 0 ? t.bg : '#fafbfc', border: `1px solid ${d.count > 0 ? t.color + '30' : '#edf2f7'}` }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 4 }}>{t.label}</div>
-                <div style={{ fontSize: 18, fontWeight: 900, color: d.count > 0 ? t.color : '#cbd5e1', lineHeight: 1 }}>{d.total.toFixed(2).replace('.', ',')}€</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: d.count > 0 ? t.color : '#cbd5e1', lineHeight: 1 }}>{totalHt.toFixed(2).replace('.', ',')}€</div>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8' }}>HT</div>
+                </div>
+                {d.count > 0 && (
+                  <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>({d.total.toFixed(2).replace('.', ',')}€ TTC)</div>
+                )}
                 <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{d.count} vente{d.count > 1 ? 's' : ''}</div>
               </div>
             );
@@ -1999,17 +2016,29 @@ function StatsTab() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
         <div style={{ padding: '18px 20px', borderRadius: 14, background: 'linear-gradient(135deg,#16a34a,#14532d)', color: '#fff' }}>
           <div style={{ fontSize: 10, fontWeight: 700, opacity: 0.7, letterSpacing: '0.1em', marginBottom: 6 }}>CA {source === 'all' ? 'TOTAL' : source === 'pro' ? 'PRO' : 'PARTICULIERS'}</div>
-          <div style={{ fontSize: 28, fontWeight: 900 }}>{totalCa.toFixed(2).replace('.', ',')}€{source === 'pro' ? ' TTC' : ''}</div>
-          {source === 'pro' && stats.caPro > 0 && (
-            <div style={{ fontSize: 12, marginTop: 2, opacity: 0.75 }}>{stats.caProHt.toFixed(2).replace('.', ',')}€ HT</div>
+          {source === 'pro' ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <div style={{ fontSize: 28, fontWeight: 900 }}>{stats.caProHt.toFixed(2).replace('.', ',')}€</div>
+                <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.75 }}>HT</div>
+              </div>
+              {stats.caPro > 0 && (
+                <div style={{ fontSize: 12, marginTop: 2, opacity: 0.75 }}>({stats.caPro.toFixed(2).replace('.', ',')}€ TTC)</div>
+              )}
+            </>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+              <div style={{ fontSize: 28, fontWeight: 900 }}>{totalCa.toFixed(2).replace('.', ',')}€</div>
+              <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.75 }}>TTC</div>
+            </div>
           )}
           {caEvo && <div style={{ fontSize: 11, marginTop: 4, color: caEvo.up ? '#bbf7d0' : '#fca5a5' }}>{caEvo.up ? '↑' : '↓'} {caEvo.pct > 0 ? '+' : ''}{caEvo.pct}% vs période préc.</div>}
           {source === 'all' && (
             <div style={{ display: 'flex', gap: 14, marginTop: 8, fontSize: 11, flexWrap: 'wrap' as const }}>
-              <span style={{ opacity: 0.6 }}>Part. : <strong style={{ opacity: 1 }}>{stats.caParticulier.toFixed(2).replace('.', ',')}€</strong></span>
+              <span style={{ opacity: 0.6 }}>Part. : <strong style={{ opacity: 1 }}>{stats.caParticulier.toFixed(2).replace('.', ',')}€ TTC</strong></span>
               <span style={{ opacity: 0.6 }}>
-                Pro : <strong style={{ opacity: 1 }}>{stats.caPro.toFixed(2).replace('.', ',')}€ TTC</strong>
-                {stats.caPro > 0 && <span style={{ opacity: 0.65, marginLeft: 4 }}>({stats.caProHt.toFixed(2).replace('.', ',')}€ HT)</span>}
+                Pro : <strong style={{ opacity: 1 }}>{stats.caProHt.toFixed(2).replace('.', ',')}€ HT</strong>
+                {stats.caPro > 0 && <span style={{ opacity: 0.65, marginLeft: 4 }}>({stats.caPro.toFixed(2).replace('.', ',')}€ TTC)</span>}
               </span>
             </div>
           )}
@@ -2017,7 +2046,10 @@ function StatsTab() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div style={{ padding: '14px', borderRadius: 12, background: '#fff', border: '1.5px solid #edf2f7' }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 4 }}>TICKET MOYEN</div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: '#0f172a' }}>{ticketMoyen.toFixed(2).replace('.', ',')}€</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+              <div style={{ fontSize: 20, fontWeight: 900, color: '#0f172a' }}>{ticketMoyen.toFixed(2).replace('.', ',')}€</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8' }}>TTC</div>
+            </div>
           </div>
           <div style={{ padding: '14px', borderRadius: 12, background: '#0f2d3d' }}>
             <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.08em', marginBottom: 4 }}>NB PRO ABONNÉS</div>
@@ -2082,7 +2114,10 @@ function StatsTab() {
               return (
                 <div key={t.key} style={{ padding: '12px 14px', borderRadius: 10, background: d.count > 0 ? t.bg : '#fafbfc', border: `1px solid ${d.count > 0 ? t.color + '30' : '#edf2f7'}` }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 4 }}>{t.label}</div>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: d.count > 0 ? t.color : '#cbd5e1', lineHeight: 1 }}>{d.total.toFixed(2).replace('.', ',')}€</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: d.count > 0 ? t.color : '#cbd5e1', lineHeight: 1 }}>{d.total.toFixed(2).replace('.', ',')}€</div>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8' }}>TTC</div>
+                  </div>
                   <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{d.count} vente{d.count > 1 ? 's' : ''}</div>
                 </div>
               );
@@ -2101,10 +2136,17 @@ function StatsTab() {
               { key: 'unit_simple' as const, label: 'Unit. Simple', color: '#64748b', bg: '#f8fafc' },
             ]).map(t => {
               const d = stats.caProCateg[t.key];
+              const totalHt = d.total / 1.20;
               return (
                 <div key={t.key} style={{ padding: '12px 14px', borderRadius: 10, background: d.count > 0 ? t.bg : '#fafbfc', border: `1px solid ${d.count > 0 ? t.color + '30' : '#edf2f7'}` }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 4 }}>{t.label}</div>
-                  <div style={{ fontSize: 18, fontWeight: 900, color: d.count > 0 ? t.color : '#cbd5e1', lineHeight: 1 }}>{d.total.toFixed(2).replace('.', ',')}€</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: d.count > 0 ? t.color : '#cbd5e1', lineHeight: 1 }}>{totalHt.toFixed(2).replace('.', ',')}€</div>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: '#94a3b8' }}>HT</div>
+                  </div>
+                  {d.count > 0 && (
+                    <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>({d.total.toFixed(2).replace('.', ',')}€ TTC)</div>
+                  )}
                   <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{d.count} vente{d.count > 1 ? 's' : ''}</div>
                 </div>
               );
@@ -2452,7 +2494,7 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
                   { l: 'Crédits simples restants', v: detailUser.role === 'pro' ? (proCreditsBalance?.total_document ?? '…') : (detailUser.credits_document || 0), c: '#2a7d9c', sub: null as string | null },
                   { l: 'Crédits complets restants', v: detailUser.role === 'pro' ? (proCreditsBalance?.total_complete ?? '…') : (detailUser.credits_complete || 0), c: '#7c3aed', sub: null as string | null },
                   { l: 'Analyses réalisées', v: userAnalyses.length, c: '#16a34a', sub: failedCount > 0 ? `dont ${failedCount} en erreur` : null },
-                  { l: 'Total dépensé', v: `${totalSpent.toFixed(2)}€`, c: '#f0a500', sub: null as string | null },
+                  { l: 'Total dépensé', v: `${totalSpent.toFixed(2)}€ TTC`, c: '#f0a500', sub: null as string | null },
                 ];
                 return stats.map((s, i) => (
                   <div key={i} style={{ display: 'flex', flexDirection: 'column' as const, padding: '10px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7' }}>
@@ -2498,7 +2540,7 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f1f5f9', padding: '2px 8px', borderRadius: 6 }}>{userPayments.length}</span>
                 </div>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#16a34a' }}>
-                  {totalSpent.toFixed(2)}€ · {totalPaidPayments} paiement{totalPaidPayments > 1 ? 's' : ''}
+                  {totalSpent.toFixed(2)}€ TTC · {totalPaidPayments} paiement{totalPaidPayments > 1 ? 's' : ''}
                 </div>
               </div>
               {userPayments.length === 0 ? (
@@ -2517,8 +2559,13 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 3 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: isRefunded ? '#94a3b8' : '#0f172a', textDecoration: isRefunded ? 'line-through' : 'none' }}>
-                            {p.amount === 0 ? 'Crédits offerts' : `${p.amount.toFixed(2)}€`}
+                          <div style={{ fontSize: 13, fontWeight: 700, color: isRefunded ? '#94a3b8' : '#0f172a', textDecoration: isRefunded ? 'line-through' : 'none', display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                            {p.amount === 0 ? 'Crédits offerts' : (
+                              <>
+                                <span>{p.amount.toFixed(2)}€</span>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8' }}>TTC</span>
+                              </>
+                            )}
                           </div>
                           <div style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDateTime(p.created_at)}</div>
                         </div>
@@ -4622,14 +4669,21 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 const amount = parseFloat(inv.amount.replace(/[^0-9.,]/g, '').replace(',', '.'));
                 return sum + (isNaN(amount) ? 0 : amount);
               }, 0);
+              const totalCAHt = totalCA / 1.20;
               const aboCount = successfulInvoices.filter(inv => inv.type === 'subscription').length;
               const unitCount = successfulInvoices.filter(inv => inv.type === 'unit').length;
               return (
                 <>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 10 }}>
                     <div style={{ padding: '12px 14px', borderRadius: 12, background: 'linear-gradient(135deg, #f0fdf4, #ecfdf5)', border: '1px solid #bbf7d0', textAlign: 'center' as const }}>
-                      <div style={{ fontSize: 22, fontWeight: 900, color: '#16a34a' }}>{totalCA.toFixed(2).replace('.', ',')}€</div>
-                      <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>CA total encaissé</div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 4 }}>
+                        <div style={{ fontSize: 22, fontWeight: 900, color: '#16a34a' }}>{totalCAHt.toFixed(2).replace('.', ',')}€</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: '#16a34a' }}>HT</div>
+                      </div>
+                      {totalCA > 0 && (
+                        <div style={{ fontSize: 10, color: '#16a34a', opacity: 0.7 }}>({totalCA.toFixed(2).replace('.', ',')}€ TTC)</div>
+                      )}
+                      <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginTop: 2 }}>CA total encaissé</div>
                     </div>
                     <div style={{ padding: '12px 14px', borderRadius: 12, background: '#f0f7fb', border: '1px solid #d0e8f0', textAlign: 'center' as const }}>
                       <div style={{ fontSize: 22, fontWeight: 900, color: '#2a7d9c' }}>{aboCount}</div>
@@ -5145,9 +5199,20 @@ function PaymentsTab({ onOpenUser, showToast }: { onOpenUser: (userId: string) =
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 4 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
-                        <span style={{ fontSize: 15, fontWeight: 900, color: p.amount === 0 ? '#7c3aed' : isRefunded ? '#94a3b8' : '#16a34a', textDecoration: isRefunded ? 'line-through' : 'none' }}>
-                          {p.amount === 0 ? 'Gratuit' : `${p.amount.toFixed(2)}€`}
-                        </span>
+                        {p.amount === 0 ? (
+                          <span style={{ fontSize: 15, fontWeight: 900, color: '#7c3aed' }}>Gratuit</span>
+                        ) : p._source === 'pro' ? (
+                          <span style={{ display: 'flex', alignItems: 'baseline', gap: 4, color: isRefunded ? '#94a3b8' : '#16a34a', textDecoration: isRefunded ? 'line-through' : 'none' }}>
+                            <span style={{ fontSize: 15, fontWeight: 900 }}>{((p as any).amount_ht || p.amount / 1.20).toFixed(2)}€</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, opacity: 0.85 }}>HT</span>
+                            <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.7, marginLeft: 2 }}>({p.amount.toFixed(2)}€ TTC)</span>
+                          </span>
+                        ) : (
+                          <span style={{ display: 'flex', alignItems: 'baseline', gap: 4, color: isRefunded ? '#94a3b8' : '#16a34a', textDecoration: isRefunded ? 'line-through' : 'none' }}>
+                            <span style={{ fontSize: 15, fontWeight: 900 }}>{p.amount.toFixed(2)}€</span>
+                            <span style={{ fontSize: 10, fontWeight: 700, opacity: 0.85 }}>TTC</span>
+                          </span>
+                        )}
                         <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 6,
                           background: p._source === 'pro' ? '#0f2d3d' : '#f0f7fb',
                           color: p._source === 'pro' ? '#fff' : '#2a7d9c' }}>
