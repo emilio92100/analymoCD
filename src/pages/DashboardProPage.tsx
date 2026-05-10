@@ -3747,6 +3747,14 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
                     title="Régularisez d'abord votre paiement actuel pour changer de plan">
                     Paiement à régulariser
                   </button>
+                ) : subscription?.scheduled_plan_change === plan.id && subscription?.scheduled_change_date ? (
+                  // Plan déjà programmé pour bascule → bouton désactivé
+                  <button disabled
+                    style={{ width: '100%', padding: '12px', borderRadius: 11, border: '1.5px solid #fde68a', cursor: 'not-allowed',
+                      background: '#fffbeb', color: '#78350f', fontSize: 12.5, fontWeight: 700 }}
+                    title={`Passage déjà programmé le ${fmtDate(subscription.scheduled_change_date)}`}>
+                    Passage programmé le {fmtDate(subscription.scheduled_change_date)}
+                  </button>
                 ) : (
                   <button disabled={btnLoading} onClick={() => {
                       if (subscription && subscription.status === 'active') {
