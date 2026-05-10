@@ -1,13 +1,19 @@
 // ══════════════════════════════════════════════════════════════════════
-// VERIMO — Edge Function : stripe-webhook-pro V4
+// VERIMO — Edge Function : stripe-webhook-pro V5
 //
 // Gère les événements Stripe pour les ABONNEMENTS PRO uniquement
 // (Découverte, Starter, Power) + les achats unitaires pro.
 //
+// V5 (10 mai 2026) :
+//   - Helper safeDate() : protection contre les timestamps Stripe null/undefined
+//     qui faisaient planter handleSubscriptionUpdated avec "Invalid time value"
+//     (typiquement sur customer.subscription.updated lié à un schedule)
+//   - Filtre paiements particuliers : si metadata.userId (U majuscule) présent,
+//     on skip silencieusement — plus d'alerte critique inutile sur la page admin
+//
 // V4 :
 //   - Idempotence via la table processed_stripe_events
 //     → empêche le double-traitement d'un même event Stripe (retry, doublon)
-//   - Conservation de toute la logique V3 (alertes admin, gestion erreurs)
 //
 // V3 :
 //   - Gestion d'erreur après chaque appel Supabase critique
@@ -153,6 +159,20 @@ async function markEventAsProcessed(
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// HELPER : conversion sécurisée timestamp Stripe → ISO string
+// (V5 fix : Stripe envoie parfois current_period_start/end à null sur
+// certains events transitoires — ex: customer.subscription.updated lié
+// à un schedule. new Date(null * 1000).toISOString() plante avec
+// "RangeError: Invalid time value". On retourne null si invalide.)
+// ─────────────────────────────────────────────────────────────────────
+function safeDate(ts: number | null | undefined): string | null {
+  if (!ts || typeof ts !== 'number' || !Number.isFinite(ts)) return null;
+  const d = new Date(ts * 1000);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // HANDLER PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────
 
@@ -281,6 +301,17 @@ serve(async (req) => {
 // ═════════════════════════════════════════════════════════════════════
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
+  // ─────────────────────────────────────────────────────────────────
+  // FILTRE V5 : si la session est destinée au webhook particulier
+  // (metadata.userId avec U majuscule = paiement particulier),
+  // on skip silencieusement — pas d'alerte critique inutile.
+  // Le webhook particulier (stripe-webhook) va gérer ce paiement.
+  // ─────────────────────────────────────────────────────────────────
+  if (session.metadata?.userId && !session.metadata?.user_id) {
+    console.log(`[checkout.completed] Session ${session.id} = paiement particulier (metadata.userId présent), skip côté pro`);
+    return;
+  }
+
   const userId = session.metadata?.user_id;
   if (!userId) {
     console.warn('[checkout.completed] Missing user_id in metadata, skip');
@@ -607,8 +638,8 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
       .from('pro_subscriptions')
       .update({
         stripe_price_id: stripePriceId,
-        current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
-        current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+        current_period_start: safeDate(sub.current_period_start),
+        current_period_end: safeDate(sub.current_period_end),
         status: sub.status === 'active' ? 'active' : sub.status,
         // Si un downgrade était programmé, l'upgrade le supprime (l'upgrade prime)
         scheduled_plan_change: null,
@@ -656,8 +687,8 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
   const { error: updateError } = await supabase
     .from('pro_subscriptions')
     .update({
-      current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+      current_period_start: safeDate(sub.current_period_start),
+      current_period_end: safeDate(sub.current_period_end),
       status: sub.status === 'active' ? 'active' : sub.status,
       // Au renouvellement, on nettoie un éventuel scheduled_plan_change qui aurait été release
       scheduled_plan_change: null,
@@ -825,8 +856,8 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription) {
   // Ne mettre à jour stripe_price_id QUE si le changement de plan a été confirmé (paiement OK).
   // Sinon on garde l'ancien price_id pour rester cohérent avec le plan actuel en BDD.
   const updateFields: Record<string, unknown> = {
-    current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
-    current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+    current_period_start: safeDate(sub.current_period_start),
+    current_period_end: safeDate(sub.current_period_end),
     cancel_at_period_end: sub.cancel_at_period_end,
     status: sub.status === 'active' ? 'active' : sub.status,
     updated_at: new Date().toISOString(),
@@ -948,8 +979,8 @@ async function upsertProSubscription(userId: string, sub: Stripe.Subscription) {
     stripe_subscription_id: sub.id,
     stripe_customer_id: sub.customer as string,
     stripe_price_id: priceId,
-    current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
-    current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+    current_period_start: safeDate(sub.current_period_start),
+    current_period_end: safeDate(sub.current_period_end),
     cancel_at_period_end: sub.cancel_at_period_end,
     credits_complete_total: quotas.complete,
     credits_complete_used: 0,
