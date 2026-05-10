@@ -61,7 +61,7 @@ export default function Compte() {
     const [{ data }, { data: grants }] = await Promise.all([
       supabase
         .from('payments')
-        .select('id, description, amount, credit_type, promo_code, created_at')
+        .select('id, description, amount, credit_type, promo_code, created_at, status, refunded_amount')
         .eq('user_id', u.id)
         .order('created_at', { ascending: false })
         .limit(20),
@@ -77,6 +77,8 @@ export default function Compte() {
       description: p.description || 'Achat',
       amount: p.amount,
       source: p.promo_code && p.amount === 0 ? 'Code promo' : 'Paiement sécurisé Stripe',
+      status: p.status as string | undefined,
+      refunded_amount: (p as any).refunded_amount || 0,
       created_at_raw: new Date(p.created_at).getTime(),
       created_at: new Date(p.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
     }));
@@ -85,6 +87,8 @@ export default function Compte() {
       description: `+${g.quantity} crédit${(g.quantity as number) > 1 ? 's' : ''} ${g.credit_type === 'complete' ? 'Complète' : 'Simple'} offert${(g.quantity as number) > 1 ? 's' : ''}${g.reason ? ` — ${g.reason}` : ''}`,
       amount: 0,
       source: 'Crédits offerts 🎁',
+      status: 'completed' as string | undefined,
+      refunded_amount: 0,
       created_at_raw: new Date(g.created_at as string).getTime(),
       created_at: new Date(g.created_at as string).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
     }));
@@ -206,24 +210,36 @@ export default function Compte() {
             <div style={{ textAlign: 'center', padding: '24px', color: '#94a3b8', fontSize: 13 }}>
               Aucun achat pour le moment.
             </div>
-          ) : payments.map(p => (
-            <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 10, background: '#f8fafc', border: '1px solid #edf2f7', flexWrap: 'wrap', gap: 8 }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{p.description}</div>
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3, display: 'flex', gap: 6, alignItems: 'center' }}>
-                  <span>{p.created_at}</span>
-                  <span>·</span>
-                  <span style={{ fontWeight: 600, color: p.source === 'Code promo' ? '#7c3aed' : '#2a7d9c' }}>{p.source}</span>
+          ) : payments.map(p => {
+            const isRefunded = p.status === 'refunded';
+            const isPartialRefund = p.status === 'partially_refunded';
+            return (
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 10, background: isRefunded ? '#fef2f2' : '#f8fafc', border: isRefunded ? '1px solid #fecaca' : '1px solid #edf2f7', flexWrap: 'wrap', gap: 8, opacity: isRefunded ? 0.75 : 1 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: isRefunded ? '#94a3b8' : '#0f172a', textDecoration: isRefunded ? 'line-through' : 'none' }}>{p.description}</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3, display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <span>{p.created_at}</span>
+                    <span>·</span>
+                    <span style={{ fontWeight: 600, color: p.source === 'Code promo' ? '#7c3aed' : '#2a7d9c' }}>{p.source}</span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: isRefunded ? '#94a3b8' : '#0f172a', textDecoration: isRefunded ? 'line-through' : 'none' }}>
+                    {p.amount === 0 ? 'Gratuit' : `${p.amount.toFixed(2).replace('.', ',')}€`}
+                  </span>
+                  {isRefunded ? (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', background: '#fef2f2', border: '1px solid #fecaca', padding: '2px 8px', borderRadius: 6 }}>Remboursé</span>
+                  ) : isPartialRefund ? (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fffbeb', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 6 }}>
+                      Remboursé {(p.refunded_amount as number).toFixed(2).replace('.', ',')}€
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '2px 8px', borderRadius: 6 }}>Confirmé</span>
+                  )}
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>
-                  {p.amount === 0 ? 'Gratuit' : `${p.amount.toFixed(2).replace('.', ',')}€`}
-                </span>
-                <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '2px 8px', borderRadius: 6 }}>Confirmé</span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
