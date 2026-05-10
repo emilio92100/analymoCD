@@ -667,6 +667,13 @@ Deno.serve(async (req) => {
     /* ── Supprimer un compte (existant) ────────────────── */
     if (action === 'delete') {
       const { user_id } = body
+      // Forcer la déconnexion de toutes les sessions actives du user
+      // (sinon le user supprimé continue à naviguer ~1h tant que son JWT est valide)
+      try {
+        await adminClient.auth.admin.signOut(user_id, 'global')
+      } catch (e) {
+        console.warn('[delete] signOut failed (continuing):', e)
+      }
       const { error } = await adminClient.auth.admin.deleteUser(user_id)
       if (error) return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: corsHeaders })
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
