@@ -120,23 +120,28 @@ function CheckoutModal({ plan, onClose }: {
 
     setPayLoading(true); setPayError('');
     try {
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-      const session = refreshData.session;
+      // Refresh la session pour s'assurer d'un access_token frais
+      const { error: refreshError } = await supabase.auth.refreshSession();
+      const { data: { session } } = await supabase.auth.getSession();
       if (refreshError || !session) {
-        const { data: { session: existingSession } } = await supabase.auth.getSession();
-        if (!existingSession) { window.location.href = '/connexion'; return; }
+        window.location.href = '/connexion';
+        return;
       }
-      const finalSession = refreshData.session || (await supabase.auth.getSession()).data.session;
-      if (!finalSession) throw new Error('Session expirée — veuillez vous reconnecter');
-      const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${finalSession.access_token}`, 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZlc3pyYXlyb21sZGZnZXRxYXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0MzI5NTUsImV4cCI6MjA2MTAwODk1NX0.XsqzBPDMfHRFKgMhJxoLhgVWZMdV5YnFKM3VCBe9hOk' },
-        body: JSON.stringify({ priceId: PRICE_IDS[plan.id], userId: finalSession.user.id, promoCodeId: promoResult?.id ?? null, retractationWaiverAt: new Date().toISOString() }),
+
+      // ⚠️ Sécurité V2 : on n'envoie plus userId dans le body
+      // (l'edge function le déduit du JWT). On n'envoie plus successUrl non plus
+      // (l'edge function utilise une URL hardcodée pour éviter le phishing).
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: {
+          priceId: PRICE_IDS[plan.id],
+          promoCodeId: promoResult?.id ?? null,
+          retractationWaiverAt: new Date().toISOString(),
+        },
       });
-      if (!res.ok) { const err = await res.text(); throw new Error(err || `Erreur ${res.status}`); }
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      if (data.url) window.location.href = data.url;
+
+      if (error) throw new Error(error.message || 'Erreur lors de la création du paiement');
+      if (data?.error) throw new Error(data.error);
+      if (data?.url) window.location.href = data.url;
       else throw new Error('Lien de paiement non reçu');
     } catch (e) { setPayError((e as Error).message); }
     setPayLoading(false);
