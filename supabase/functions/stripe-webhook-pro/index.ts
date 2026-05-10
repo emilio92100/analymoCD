@@ -385,6 +385,54 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
     return;
   }
 
+  // ⭐ Détection upgrade en attente : si la subscription Stripe a un plan
+  // différent de celui en BDD, c'est qu'on avait skippé le changement
+  // dans subscription.updated (paiement pas encore confirmé). Maintenant
+  // que la facture est payée, on applique le changement.
+  const stripePriceId = sub.items.data[0]?.price.id;
+  const stripePlan = PRICE_TO_PLAN[stripePriceId];
+
+  if (stripePlan && stripePlan !== existing.plan) {
+    console.log(`[invoice.paid] Upgrade en attente détecté : ${existing.plan} → ${stripePlan}, application maintenant`);
+    const { error: upErr } = await supabase.rpc('upgrade_pro_subscription_credits', {
+      p_subscription_id: existing.id,
+      p_new_plan: stripePlan,
+    });
+
+    if (upErr) {
+      console.error('[invoice.paid] Upgrade credits failed:', upErr);
+      await insertSystemAlert(supabase, {
+        type: 'save_error',
+        severity: 'critical',
+        title: 'Upgrade Pro post-paiement — échec cumul crédits',
+        message: `Le paiement de l'upgrade ${existing.plan} → ${stripePlan} a réussi mais le cumul de crédits a échoué.`,
+        userId: existing.user_id,
+        metadata: { stage: 'invoice_paid_upgrade_credits', subscriptionId: subId, oldPlan: existing.plan, newPlan: stripePlan, error: upErr.message },
+      });
+      return;
+    }
+
+    // Met à jour le price_id et les dates de cycle (on ne met PAS le plan ici, c'est fait dans la RPC upgrade_pro_subscription_credits)
+    const { error: updErr } = await supabase
+      .from('pro_subscriptions')
+      .update({
+        stripe_price_id: stripePriceId,
+        current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
+        current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+        status: sub.status === 'active' ? 'active' : sub.status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id);
+
+    if (updErr) {
+      console.error('[invoice.paid] Update sub after upgrade failed:', updErr);
+    }
+
+    console.log(`[invoice.paid] Upgrade ${existing.plan} → ${stripePlan} appliqué après paiement confirmé`);
+    return;
+  }
+
+  // ─── Sinon : simple renouvellement mensuel du même plan ───
   // Cumul des crédits + plafond 2× appliqué dans la fonction SQL
   const { error: rpcErr } = await supabase.rpc('reset_pro_subscription_credits', {
     p_subscription_id: existing.id,
@@ -517,36 +565,81 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription) {
   }
 
   if (existing.plan !== newPlan) {
-    const { error: upErr } = await supabase.rpc('upgrade_pro_subscription_credits', {
-      p_subscription_id: existing.id,
-      p_new_plan: newPlan,
-    });
-
-    if (upErr) {
-      console.error('[sub.updated] Upgrade credits failed:', upErr);
-      await insertSystemAlert(supabase, {
-        type: 'save_error',
-        severity: 'critical',
-        title: 'Upgrade Pro — échec cumul crédits',
-        message: `Le client a changé de plan (${existing.plan} → ${newPlan}) mais le cumul de crédits a échoué.`,
-        userId: existing.user_id,
-        metadata: { stage: 'upgrade_credits', subscriptionId: sub.id, oldPlan: existing.plan, newPlan, error: upErr.message },
-      });
-    } else {
-      console.log(`[sub.updated] Plan changed ${existing.plan} → ${newPlan} (cumul appliqué)`);
+    // ⚠️ FIX FAILLE : avant d'appliquer le changement de plan,
+    // on s'assure que la facture associée a bien été PAYÉE.
+    // Sinon (3DS échoué, carte refusée, etc.), Stripe peut envoyer
+    // ce webhook AVANT que le paiement soit finalisé. Dans ce cas
+    // on skip — le changement de plan sera appliqué plus tard via
+    // 'invoice.payment_succeeded' quand le paiement aboutira vraiment.
+    const latestInvoice = sub.latest_invoice;
+    let invoicePaid = false;
+    if (latestInvoice) {
+      if (typeof latestInvoice === 'string') {
+        const inv = await stripe.invoices.retrieve(latestInvoice);
+        invoicePaid = inv.status === 'paid';
+      } else {
+        invoicePaid = latestInvoice.status === 'paid';
+      }
     }
+
+    if (!invoicePaid) {
+      console.log(`[sub.updated] Plan change ${existing.plan} → ${newPlan} en attente paiement, skip cumul crédits`);
+      // On ne touche PAS au plan ni aux crédits.
+      // On peut toutefois mettre à jour les autres champs (period, status, cancel_at_period_end).
+    } else {
+      const { error: upErr } = await supabase.rpc('upgrade_pro_subscription_credits', {
+        p_subscription_id: existing.id,
+        p_new_plan: newPlan,
+      });
+
+      if (upErr) {
+        console.error('[sub.updated] Upgrade credits failed:', upErr);
+        await insertSystemAlert(supabase, {
+          type: 'save_error',
+          severity: 'critical',
+          title: 'Upgrade Pro — échec cumul crédits',
+          message: `Le client a changé de plan (${existing.plan} → ${newPlan}) mais le cumul de crédits a échoué.`,
+          userId: existing.user_id,
+          metadata: { stage: 'upgrade_credits', subscriptionId: sub.id, oldPlan: existing.plan, newPlan, error: upErr.message },
+        });
+      } else {
+        console.log(`[sub.updated] Plan changed ${existing.plan} → ${newPlan} (cumul appliqué, paiement confirmé)`);
+      }
+    }
+  }
+
+  // Ne mettre à jour stripe_price_id QUE si le changement de plan a été confirmé (paiement OK).
+  // Sinon on garde l'ancien price_id pour rester cohérent avec le plan actuel en BDD.
+  const updateFields: Record<string, unknown> = {
+    current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
+    current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+    cancel_at_period_end: sub.cancel_at_period_end,
+    status: sub.status === 'active' ? 'active' : sub.status,
+    updated_at: new Date().toISOString(),
+  };
+
+  // On vérifie à nouveau si la facture est payée (factorisation TODO mais OK)
+  const latestInv = sub.latest_invoice;
+  let isPaid = false;
+  if (latestInv) {
+    if (typeof latestInv === 'string') {
+      const i = await stripe.invoices.retrieve(latestInv);
+      isPaid = i.status === 'paid';
+    } else {
+      isPaid = latestInv.status === 'paid';
+    }
+  }
+
+  // Si on est sur le même plan que celui en BDD, pas de souci (renouvellement, cancel toggle…)
+  // Si on est sur un nouveau plan ET payé, on met à jour le price_id
+  // Si on est sur un nouveau plan mais pas payé, on ne change PAS le price_id
+  if (existing.plan === newPlan || isPaid) {
+    updateFields.stripe_price_id = newPriceId;
   }
 
   const { error: updateError } = await supabase
     .from('pro_subscriptions')
-    .update({
-      stripe_price_id: newPriceId,
-      current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
-      cancel_at_period_end: sub.cancel_at_period_end,
-      status: sub.status === 'active' ? 'active' : sub.status,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updateFields)
     .eq('id', existing.id);
 
   if (updateError) {
