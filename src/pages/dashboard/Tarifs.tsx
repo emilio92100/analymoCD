@@ -292,7 +292,7 @@ export default function Tarifs() {
               exit={{ scale: 0.92, opacity: 0, y: 20 }}
               transition={{ type: 'spring', duration: 0.45, bounce: 0.2 }}
               onClick={e => e.stopPropagation()}
-              style={{ background: '#fff', borderRadius: 24, padding: '36px 32px', maxWidth: 460, width: '100%', textAlign: 'center', boxShadow: '0 24px 64px rgba(0,0,0,0.2)', position: 'relative' }}>
+              style={{ background: '#fff', borderRadius: 24, padding: '36px 32px', maxWidth: 440, width: '100%', textAlign: 'center', boxShadow: '0 24px 64px rgba(0,0,0,0.2)', position: 'relative' }}>
 
               {/* Croix fermeture en haut à droite */}
               <button
@@ -301,7 +301,7 @@ export default function Tarifs() {
                 <X size={15} />
               </button>
 
-              {/* Cercle vert avec icône succès */}
+              {/* Cercle vert avec icône succès (animation spring) */}
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -312,28 +312,13 @@ export default function Tarifs() {
 
               {/* Titre */}
               <h2 style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', marginBottom: 10, letterSpacing: '-0.02em' }}>
-                Paiement confirmé !
+                Merci pour votre achat !
               </h2>
 
-              {/* Message */}
-              <p style={{ fontSize: 15, color: '#64748b', lineHeight: 1.65, marginBottom: 24 }}>
-                Vos crédits ont bien été ajoutés à votre compte. Vous pouvez lancer une nouvelle analyse dès maintenant — vos crédits <strong style={{ color: '#0f172a' }}>n'expirent jamais</strong>.
+              {/* Message court */}
+              <p style={{ fontSize: 15, color: '#64748b', lineHeight: 1.65, marginBottom: 28 }}>
+                Vos crédits sont disponibles immédiatement.
               </p>
-
-              {/* Bloc crédits actuels */}
-              <div style={{ background: '#f8fafc', borderRadius: 14, padding: '16px 20px', marginBottom: 24, border: '1px solid #e2e8f0' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 10, textTransform: 'uppercase' }}>
-                  Vos crédits disponibles
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 14, flexWrap: 'wrap' }}>
-                  <span style={{ padding: '6px 14px', borderRadius: 10, background: credits.document > 0 ? '#f0fdf4' : '#fff', border: `1.5px solid ${credits.document > 0 ? '#86efac' : '#e2e8f0'}`, fontSize: 14, fontWeight: 800, color: credits.document > 0 ? '#16a34a' : '#94a3b8' }}>
-                    {credits.document} simple{credits.document > 1 ? 's' : ''}
-                  </span>
-                  <span style={{ padding: '6px 14px', borderRadius: 10, background: credits.complete > 0 ? '#eff6ff' : '#fff', border: `1.5px solid ${credits.complete > 0 ? '#93c5fd' : '#e2e8f0'}`, fontSize: 14, fontWeight: 800, color: credits.complete > 0 ? '#1d4ed8' : '#94a3b8' }}>
-                    {credits.complete} complet{credits.complete > 1 ? 's' : ''}
-                  </span>
-                </div>
-              </div>
 
               {/* CTA principal + lien fermer */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -346,11 +331,6 @@ export default function Tarifs() {
                   Plus tard
                 </button>
               </div>
-
-              {/* Mention facture discrète */}
-              <p style={{ marginTop: 18, fontSize: 12, color: '#94a3b8', lineHeight: 1.5 }}>
-                📁 Un reçu vous a été envoyé par email
-              </p>
             </motion.div>
           </motion.div>
         )}
