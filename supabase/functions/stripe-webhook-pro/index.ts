@@ -233,12 +233,39 @@ serve(async (req) => {
     });
   } catch (err) {
     console.error(`[stripe-webhook-pro] Handler error for ${event.type}:`, err);
+
+    // ─── Tentative d'extraction du user_id et des infos client à partir de l'événement ───
+    let extractedUserId: string | undefined;
+    let userInfo: string | null = null;
+    try {
+      const obj = event.data.object as Record<string, unknown>;
+      // Selon le type d'event, le customer Stripe est à des endroits différents
+      const customerRef = (obj.customer as string | { id: string } | undefined)
+        || ((obj as { subscription?: { customer?: string } }).subscription as string | { customer?: string } | undefined);
+      const customerId = typeof customerRef === 'string' ? customerRef : customerRef?.id;
+
+      if (customerId) {
+        const customer = await stripe.customers.retrieve(customerId);
+        if (customer && !customer.deleted) {
+          extractedUserId = (customer as Stripe.Customer).metadata?.user_id;
+          const email = (customer as Stripe.Customer).email;
+          const name = (customer as Stripe.Customer).name;
+          userInfo = [name, email].filter(Boolean).join(' · ') || customerId;
+        }
+      }
+    } catch (extractErr) {
+      console.warn('[stripe-webhook-pro] Impossible d\'extraire user_id de l\'event:', extractErr);
+    }
+
     await insertSystemAlert(supabase, {
       type: 'unexpected_error',
       severity: 'critical',
       title: `Webhook Stripe Pro — erreur ${event.type}`,
-      message: `Une erreur inattendue est survenue dans le traitement de l'event ${event.type}.`,
-      metadata: { stage: 'handler', eventType: event.type, eventId: event.id, error: (err as Error).message },
+      message: userInfo
+        ? `Une erreur inattendue est survenue dans le traitement de l'event ${event.type}. Client concerné : ${userInfo}.`
+        : `Une erreur inattendue est survenue dans le traitement de l'event ${event.type}.`,
+      userId: extractedUserId,
+      metadata: { stage: 'handler', eventType: event.type, eventId: event.id, error: (err as Error).message, customerInfo: userInfo },
     });
     // En cas d'erreur, on NE marque PAS l'event comme traité
     // → Stripe va retry, et au prochain essai si ça réussit, on le marquera
@@ -257,12 +284,38 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const userId = session.metadata?.user_id;
   if (!userId) {
     console.warn('[checkout.completed] Missing user_id in metadata, skip');
+
+    // Tente de récupérer email/nom du customer Stripe pour enrichir l'alerte
+    let customerInfo: string | null = null;
+    try {
+      const custRef = session.customer;
+      const custId = typeof custRef === 'string' ? custRef : custRef?.id;
+      if (custId) {
+        const customer = await stripe.customers.retrieve(custId);
+        if (customer && !customer.deleted) {
+          const email = (customer as Stripe.Customer).email;
+          const name = (customer as Stripe.Customer).name;
+          customerInfo = [name, email].filter(Boolean).join(' · ') || custId;
+        }
+      }
+      // Fallback sur les coordonnées du checkout si dispo
+      if (!customerInfo) {
+        const email = session.customer_details?.email;
+        const name = session.customer_details?.name;
+        customerInfo = [name, email].filter(Boolean).join(' · ') || null;
+      }
+    } catch (extractErr) {
+      console.warn('[checkout.completed] Impossible d\'extraire infos customer:', extractErr);
+    }
+
     await insertSystemAlert(supabase, {
       type: 'unexpected_error',
       severity: 'critical',
       title: 'Paiement Pro reçu sans user_id',
-      message: 'Un paiement Pro Stripe a été reçu mais ne contient pas de user_id dans les metadata.',
-      metadata: { stage: 'no_user_id', sessionId: session.id, mode: session.mode },
+      message: customerInfo
+        ? `Un paiement Pro Stripe a été reçu mais ne contient pas de user_id dans les metadata. Client : ${customerInfo}. Le crédit n'a pas été attribué.`
+        : 'Un paiement Pro Stripe a été reçu mais ne contient pas de user_id dans les metadata. Le crédit n\'a pas été attribué.',
+      metadata: { stage: 'no_user_id', sessionId: session.id, mode: session.mode, customerInfo },
     });
     return;
   }
