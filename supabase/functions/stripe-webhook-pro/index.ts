@@ -917,6 +917,38 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription) {
         });
       } else {
         console.log(`[sub.updated] Plan changed ${existing.plan} → ${newPlan} (cumul appliqué, paiement confirmé)`);
+
+        // ⭐ FIX UPGRADE : enregistrer le paiement dans `payments`
+        // Aligné avec la souscription initiale (handleCheckoutCompleted) :
+        // on récupère le montant payé depuis latest_invoice et on appelle recordProPayment.
+        // L'anti-doublon par stripe_invoice_id empêchera un éventuel double-insert
+        // si invoice.paid arrive aussi de son côté.
+        try {
+          let invoiceId: string | undefined;
+          let amountPaid = 0;
+          if (latestInvoice) {
+            if (typeof latestInvoice === 'string') {
+              const inv = await stripe.invoices.retrieve(latestInvoice);
+              invoiceId = inv.id;
+              amountPaid = inv.amount_paid || 0;
+            } else {
+              invoiceId = latestInvoice.id;
+              amountPaid = latestInvoice.amount_paid || 0;
+            }
+          }
+          if (amountPaid > 0) {
+            await recordProPayment({
+              userId: existing.user_id,
+              amountTtcCents: amountPaid,
+              description: `Abonnement ${planLabel(newPlan)} (upgrade depuis ${planLabel(existing.plan)})`,
+              stripeInvoiceId: invoiceId,
+            });
+          } else {
+            console.warn(`[sub.updated] Upgrade ${existing.plan} → ${newPlan} : amount_paid=0, pas d'insertion dans payments`);
+          }
+        } catch (recordErr) {
+          console.error('[sub.updated] recordProPayment failed:', recordErr);
+        }
       }
     }
   }
