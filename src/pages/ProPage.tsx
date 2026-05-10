@@ -503,31 +503,41 @@ function FaqProSection() {
           </h2>
         </Reveal>
 
-        <div className="md:columns-2 md:gap-4 space-y-4 md:space-y-0">
-          {faqPro.map((faq, i) => (
-            <Reveal key={i} delay={i * 0.3}>
-              <div className={`bg-[#f8fafc] rounded-2xl border overflow-hidden transition-all duration-200 break-inside-avoid md:mb-4 ${openIdx === i ? 'border-[#2a7d9c]/20 shadow-md' : 'border-slate-100 hover:border-slate-200'}`}>
-                <button onClick={() => setOpenIdx(openIdx === i ? null : i)}
-                  className="w-full flex items-center gap-4 p-5 md:p-6 text-left">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: openIdx === i ? '#2a7d9c' : '#e8f4f8' }}>
-                    <faq.icon size={16} style={{ color: openIdx === i ? '#fff' : '#2a7d9c' }} />
-                  </div>
-                  <span className="text-sm md:text-[15px] font-bold text-[#0f172a] leading-snug flex-1">{faq.q}</span>
-                  <ChevronDown size={16} className={`text-slate-400 shrink-0 transition-transform duration-200 ${openIdx === i ? 'rotate-180' : ''}`} />
-                </button>
-                <AnimatePresence>
-                  {openIdx === i && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
-                      <div className="px-5 md:px-6 pb-5 md:pb-6 pl-[76px] md:pl-[84px]">
-                        <p className="text-[15px] text-slate-700 leading-relaxed">{faq.a}</p>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </Reveal>
+        {/* 2 colonnes manuelles indépendantes : chaque colonne a son propre flow.
+            Pairs (0,2,4,6) à gauche, impairs (1,3,5,7) à droite.
+            → quand on déplie une carte, seule sa colonne s'allonge, l'autre reste fixe. */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[0, 1].map(col => (
+            <div key={col} className="flex flex-col gap-4">
+              {faqPro.filter((_, i) => i % 2 === col).map((faq) => {
+                const i = faqPro.indexOf(faq);
+                return (
+                  <Reveal key={i} delay={i * 0.3}>
+                    <div className={`bg-[#f8fafc] rounded-2xl border overflow-hidden transition-all duration-200 ${openIdx === i ? 'border-[#2a7d9c]/20 shadow-md' : 'border-slate-100 hover:border-slate-200'}`}>
+                      <button onClick={() => setOpenIdx(openIdx === i ? null : i)}
+                        className="w-full flex items-center gap-4 p-5 md:p-6 text-left">
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ background: openIdx === i ? '#2a7d9c' : '#e8f4f8' }}>
+                          <faq.icon size={16} style={{ color: openIdx === i ? '#fff' : '#2a7d9c' }} />
+                        </div>
+                        <span className="text-sm md:text-[15px] font-bold text-[#0f172a] leading-snug flex-1">{faq.q}</span>
+                        <ChevronDown size={16} className={`text-slate-400 shrink-0 transition-transform duration-200 ${openIdx === i ? 'rotate-180' : ''}`} />
+                      </button>
+                      <AnimatePresence>
+                        {openIdx === i && (
+                          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
+                            <div className="px-5 md:px-6 pb-5 md:pb-6 pl-[76px] md:pl-[84px]">
+                              <p className="text-[15px] text-slate-700 leading-relaxed">{faq.a}</p>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </Reveal>
+                );
+              })}
+            </div>
           ))}
         </div>
       </div>
