@@ -3949,7 +3949,7 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
 
       {/* ═══ SECTION 4 : Mes factures (paiements uniquement) ═══ */}
       {(() => {
-        // Côté pro : on n'affiche QUE les factures réellement payées
+        // Côté pro : on affiche les factures réellement payées (incluant remboursées pour transparence)
         // (les "En attente" / "Échec" sont visibles uniquement côté admin pour le suivi technique)
         const paidInvoices = invoices.filter(inv =>
           (inv.type === 'subscription' || inv.type === 'unit')
@@ -3982,33 +3982,42 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
                 </tr>
               </thead>
               <tbody>
-                {paidInvoices.map((inv, i) => (
-                  <tr key={inv.id} style={{ borderBottom: i < paidInvoices.length - 1 ? '1px solid #f8fafc' : 'none' }}>
-                    <td style={{ padding: '12px 16px', color: '#64748b', whiteSpace: 'nowrap' as const }}>{inv.date}</td>
-                    <td style={{ padding: '12px 16px', color: '#0f172a', fontWeight: 600 }}>{inv.description}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100,
-                        background: inv.type === 'subscription' ? '#f0f7fb' : '#f0fdf4',
-                        color: inv.type === 'subscription' ? '#2a7d9c' : '#16a34a',
-                      }}>
-                        {inv.type === 'subscription' ? 'Abonnement' : 'Achat unitaire'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 800, color: '#16a34a', whiteSpace: 'nowrap' as const }}>
-                      {inv.amount} <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>TTC</span>
-                    </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                      {inv.pdf_url ? (
-                        <a href={inv.pdf_url} target="_blank" rel="noopener noreferrer"
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 12px', borderRadius: 8, background: '#f0f7fb', color: '#2a7d9c', textDecoration: 'none', fontSize: 12, fontWeight: 700, border: '1px solid #d0e8f0' }}>
-                          <Download size={12} /> PDF
-                        </a>
-                      ) : (
-                        <span style={{ fontSize: 12, color: '#cbd5e1' }}>—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {paidInvoices.map((inv, i) => {
+                  const isRefunded = (inv as any).status_variant === 'refunded';
+                  return (
+                    <tr key={inv.id} style={{ borderBottom: i < paidInvoices.length - 1 ? '1px solid #f8fafc' : 'none', opacity: isRefunded ? 0.7 : 1 }}>
+                      <td style={{ padding: '12px 16px', color: '#64748b', whiteSpace: 'nowrap' as const }}>{inv.date}</td>
+                      <td style={{ padding: '12px 16px', color: isRefunded ? '#94a3b8' : '#0f172a', fontWeight: 600, textDecoration: isRefunded ? 'line-through' : 'none' }}>{inv.description}</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        {isRefunded ? (
+                          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100, background: '#fef2f2', color: '#dc2626' }}>
+                            {(inv as any).status_label || 'Remboursé'}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 100,
+                            background: inv.type === 'subscription' ? '#f0f7fb' : '#f0fdf4',
+                            color: inv.type === 'subscription' ? '#2a7d9c' : '#16a34a',
+                          }}>
+                            {inv.type === 'subscription' ? 'Abonnement' : 'Achat unitaire'}
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 800, color: isRefunded ? '#94a3b8' : '#16a34a', whiteSpace: 'nowrap' as const, textDecoration: isRefunded ? 'line-through' : 'none' }}>
+                        {inv.amount} <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>TTC</span>
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                        {inv.pdf_url ? (
+                          <a href={inv.pdf_url} target="_blank" rel="noopener noreferrer"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 12px', borderRadius: 8, background: '#f0f7fb', color: '#2a7d9c', textDecoration: 'none', fontSize: 12, fontWeight: 700, border: '1px solid #d0e8f0' }}>
+                            <Download size={12} /> PDF
+                          </a>
+                        ) : (
+                          <span style={{ fontSize: 12, color: '#cbd5e1' }}>—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
