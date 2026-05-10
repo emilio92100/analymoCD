@@ -3653,18 +3653,85 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
           {plans.map(plan => {
             const isActive = subscription?.plan === plan.id && (subscription?.status === 'active' || subscription?.status === 'past_due');
             const btnLoading = loading === `subscribe:${plan.id}`;
+
+            // ⭐ Theme par plan : chaque plan a sa propre ambiance visuelle
+            // Découverte = bleu pâle dégradé / Starter = bleu nuit Verimo plein / Power = anthracite dégradé
+            const isStarter = plan.id === 'starter';
+            const isPower = plan.id === 'power';
+
+            const theme = isStarter
+              ? {
+                  cardBg: 'linear-gradient(180deg, #0f2d3d 0%, #2a7d9c 100%)',
+                  cardBorder: 'none',
+                  cardShadow: '0 12px 32px rgba(15,45,61,0.25)',
+                  tagBg: 'rgba(255,255,255,0.2)',
+                  tagColor: '#fff',
+                  tagline: 'rgba(255,255,255,0.75)',
+                  priceColor: '#fff',
+                  priceSuffix: 'rgba(255,255,255,0.65)',
+                  featuresColor: 'rgba(255,255,255,0.92)',
+                  checkColor: '#86efac',
+                  engagementBg: 'rgba(134,239,172,0.18)',
+                  engagementBorder: 'rgba(134,239,172,0.45)',
+                  engagementText: '#86efac',
+                  btnBg: '#fff',
+                  btnColor: '#0f2d3d',
+                }
+              : isPower
+              ? {
+                  cardBg: 'linear-gradient(180deg, #f1f5f9 0%, #fff 60%)',
+                  cardBorder: '1.5px solid #cbd5e1',
+                  cardShadow: 'none',
+                  tagBg: '#0f172a',
+                  tagColor: '#fff',
+                  tagline: '#475569',
+                  priceColor: '#0f2d3d',
+                  priceSuffix: '#94a3b8',
+                  featuresColor: '#475569',
+                  checkColor: '#16a34a',
+                  engagementBg: '#f0fdf4',
+                  engagementBorder: '#bbf7d0',
+                  engagementText: '#15803d',
+                  btnBg: '#0f172a',
+                  btnColor: '#fff',
+                }
+              : { // Découverte par défaut
+                  cardBg: 'linear-gradient(180deg, #f0f7fb 0%, #fff 60%)',
+                  cardBorder: '1.5px solid #d0e8f0',
+                  cardShadow: 'none',
+                  tagBg: '#2a7d9c',
+                  tagColor: '#fff',
+                  tagline: '#475569',
+                  priceColor: '#0f2d3d',
+                  priceSuffix: '#94a3b8',
+                  featuresColor: '#475569',
+                  checkColor: '#16a34a',
+                  engagementBg: '#f0fdf4',
+                  engagementBorder: '#bbf7d0',
+                  engagementText: '#15803d',
+                  btnBg: '#2a7d9c',
+                  btnColor: '#fff',
+                };
+
+            // Override si plan actif (priorité visuelle absolue)
+            const finalCardBorder = isActive
+              ? '2px solid #2a7d9c'
+              : (showRecommendedBanner && plan.id === recommendedPlanId)
+                ? '2px solid #16a34a'
+                : theme.cardBorder;
+
             return (
               <div key={plan.id} className="plan-card" style={{
                 borderRadius: 18, padding: 22, position: 'relative',
-                background: '#fff',
-                border: isActive ? '2px solid #2a7d9c' : (showRecommendedBanner && plan.id === recommendedPlanId) ? '2px solid #16a34a' : (plan.popular && (!subscription || subscription.plan === 'decouverte')) ? '2px solid #7dd3fc' : '1.5px solid #edf2f7',
-                boxShadow: (showRecommendedBanner && plan.id === recommendedPlanId) ? '0 8px 32px rgba(22,163,74,0.1)' : (plan.popular && (!subscription || subscription.plan === 'decouverte')) ? '0 8px 32px rgba(42,125,156,0.1)' : 'none',
+                background: theme.cardBg,
+                border: finalCardBorder,
+                boxShadow: theme.cardShadow,
               }}>
                 {showRecommendedBanner && plan.id === recommendedPlanId && !isActive && (
                   <span style={{ position: 'absolute', top: -10, right: 16, background: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 12px', borderRadius: 100, boxShadow: '0 2px 8px rgba(22,163,74,0.3)' }}>✨ Recommandé pour vous</span>
                 )}
                 {plan.popular && !isActive && !(showRecommendedBanner && plan.id === recommendedPlanId) && (!subscription || subscription.plan === 'decouverte') && (
-                  <span style={{ position: 'absolute', top: -10, right: 16, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '3px 12px', borderRadius: 100 }}>Recommandé</span>
+                  <span style={{ position: 'absolute', top: -10, right: 16, background: 'linear-gradient(135deg, #fbbf24, #d97706)', color: '#78350f', fontSize: 10, fontWeight: 700, padding: '4px 14px', borderRadius: 100, boxShadow: '0 2px 8px rgba(251,191,36,0.4)' }}>★ RECOMMANDÉ</span>
                 )}
                 {isActive && (
                   <span style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)',
@@ -3678,14 +3745,18 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
                     }
                   </span>
                 )}
-                <h3 style={{ fontSize: 19, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>{plan.name}</h3>
-                <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 14px 0', minHeight: 16 }}>{plan.tagline}</p>
+
+                {/* Tag du nom du plan en haut (style Direction 3) */}
+                <div style={{ display: 'inline-block', padding: '4px 10px', background: theme.tagBg, color: theme.tagColor, fontSize: 10, fontWeight: 700, borderRadius: 6, letterSpacing: '0.05em', marginBottom: 10 }}>
+                  {plan.name.toUpperCase()}
+                </div>
+                <p style={{ fontSize: 12, color: theme.tagline, margin: '0 0 14px 0', minHeight: 16 }}>{plan.tagline}</p>
                 <div style={{ marginBottom: 16, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 30, fontWeight: 800, color: '#0f172a' }}>{plan.price}€</span>
-                  <span style={{ fontSize: 12, color: '#94a3b8' }}>HT / mois</span>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 7px', borderRadius: 100, background: '#f0fdf4', border: '1px solid #bbf7d0', whiteSpace: 'nowrap' }}>
-                    <CheckCircle size={9} strokeWidth={2.5} style={{ color: '#16a34a' }} />
-                    <span style={{ fontSize: 9.5, fontWeight: 700, color: '#15803d' }}>Sans engagement</span>
+                  <span style={{ fontSize: 32, fontWeight: 800, color: theme.priceColor, letterSpacing: '-0.02em' }}>{plan.price}€</span>
+                  <span style={{ fontSize: 12, color: theme.priceSuffix }}>HT / mois</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 7px', borderRadius: 100, background: theme.engagementBg, border: `1px solid ${theme.engagementBorder}`, whiteSpace: 'nowrap' }}>
+                    <CheckCircle size={9} strokeWidth={2.5} style={{ color: theme.engagementText }} />
+                    <span style={{ fontSize: 9.5, fontWeight: 700, color: theme.engagementText }}>Sans engagement</span>
                     <InfoTooltip text={`Sans engagement — précisions
 
 Vous pouvez résilier votre abonnement à tout moment depuis votre espace, sans frais ni justification. La résiliation prend effet à la fin de votre cycle de facturation en cours.`} />
@@ -3702,8 +3773,8 @@ Vous pouvez résilier votre abonnement à tout moment depuis votre espace, sans 
 Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, dans la limite d'un mois de report.` },
                   ].map((feat, fi) => (
                     <div key={fi} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <CheckCircle size={13} style={{ color: '#16a34a', flexShrink: 0 }} />
-                      <span style={{ fontSize: 13, color: '#374151' }}>{feat.label}</span>
+                      <CheckCircle size={13} style={{ color: theme.checkColor, flexShrink: 0 }} />
+                      <span style={{ fontSize: 13, color: theme.featuresColor }}>{feat.label}</span>
                       {feat.tooltip && <InfoTooltip text={feat.tooltip} />}
                     </div>
                   ))}
@@ -3768,7 +3839,7 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
                       }
                     }}
                     style={{ width: '100%', padding: '12px', borderRadius: 11, border: 'none', cursor: btnLoading ? 'wait' : 'pointer',
-                      background: plan.popular ? 'linear-gradient(135deg,#2a7d9c,#0f2d3d)' : '#0f172a', color: '#fff', fontSize: 14, fontWeight: 700, opacity: btnLoading ? 0.6 : 1 }}>
+                      background: theme.btnBg, color: theme.btnColor, fontSize: 14, fontWeight: isStarter ? 800 : 700, opacity: btnLoading ? 0.6 : 1 }}>
                     {btnLoading ? 'Redirection…' : (subscription ? 'Passer à ce plan' : 'Choisir ce plan')}
                   </button>
                 )}
