@@ -398,9 +398,9 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
       </div>
 
       {/* ─── Crédits restants (avec skeletons pendant chargement) ─── */}
-      <div style={{ margin: '0 14px 6px', padding: '9px 11px', borderRadius: 9, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
+      <div style={{ margin: '0 14px 6px', padding: '9px 11px', borderRadius: 9, background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.15)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: MUTED, letterSpacing: '0.1em' }}>CRÉDITS RESTANTS</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.85)', letterSpacing: '0.1em' }}>CRÉDITS RESTANTS</span>
           <InfoTooltip text={`Comment fonctionnent vos crédits ?
 
 Lorsque vous lancez une analyse, les crédits de votre abonnement sont utilisés en priorité. Vos crédits achetés à l'unité prennent ensuite le relais une fois les crédits abonnement épuisés.
@@ -409,12 +409,12 @@ Cette logique vous permet de profiter pleinement de votre forfait mensuel avant 
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {[
-            { label: "Analyses simples d'un document", value: creditsSimple, unit: unitSimple },
-            { label: "Analyses complètes d'un bien", value: creditsComplete, unit: unitComplete },
+            { label: 'Analyse simple', value: creditsSimple, unit: unitSimple },
+            { label: 'Analyse complète', value: creditsComplete, unit: unitComplete },
           ].map(c => (
             <div key={c.label} style={{ padding: '5px 8px', borderRadius: 7, background: 'rgba(255,255,255,0.10)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.95)', fontWeight: 600 }}>{c.label}</span>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.95)', fontWeight: 600 }}>{c.label}</span>
                 {creditsLoading
                   ? <Skeleton width={16} height={14} />
                   : <span style={{ fontSize: 13, fontWeight: 800, color: c.value > 0 ? ACCENT : 'rgba(255,255,255,0.4)' }}>{c.value}</span>
