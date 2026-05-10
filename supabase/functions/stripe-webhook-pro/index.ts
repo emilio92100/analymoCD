@@ -551,11 +551,21 @@ async function recordProPayment(params: {
   const amountEur = params.amountTtcCents / 100;
   // TVA 20% côté pro → HT = TTC / 1.20 (arrondi 2 décimales)
   const amountHt = Math.round((amountEur / 1.20) * 100) / 100;
+
+  // Récupérer email/nom du user pour les stocker dans payments (historique RGPD/comptable)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('email, full_name')
+    .eq('id', params.userId)
+    .maybeSingle();
+
   const { error } = await supabase.from('payments').insert({
     user_id: params.userId,
     amount: amountEur,
     amount_ht: amountHt,
     customer_type: 'pro',
+    customer_email: profile?.email || null,
+    customer_name: profile?.full_name || null,
     currency: 'eur',
     description: params.description,
     stripe_session_id: params.stripeSessionId || null,
