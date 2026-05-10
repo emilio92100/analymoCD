@@ -607,8 +607,45 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
     ? invoice.subscription
     : invoice.subscription.id;
 
+  // ⭐ Helper : enregistre le paiement dans `payments` à partir de l'invoice
+  // Récupère le user_id via le customer Stripe
+  const recordFromInvoice = async (description: string, fallbackUserId?: string | null) => {
+    if ((invoice.amount_paid || 0) <= 0) return;
+    let userId = fallbackUserId || null;
+    if (!userId) {
+      // Récupérer user_id depuis le customer Stripe
+      const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
+      if (customerId) {
+        try {
+          const customer = await stripe.customers.retrieve(customerId);
+          if (customer && !customer.deleted) {
+            userId = (customer as Stripe.Customer).metadata?.user_id || null;
+          }
+        } catch (e) {
+          console.warn('[invoice.paid] Impossible de récupérer le customer:', e);
+        }
+      }
+    }
+    if (!userId) {
+      console.warn('[invoice.paid] Pas de user_id trouvé, skip recordProPayment');
+      return;
+    }
+    await recordProPayment({
+      userId,
+      amountTtcCents: invoice.amount_paid || 0,
+      description,
+      stripeInvoiceId: invoice.id,
+      stripePaymentIntentId: typeof invoice.payment_intent === 'string' ? invoice.payment_intent : invoice.payment_intent?.id,
+    });
+  };
+
   if (invoice.billing_reason === 'subscription_create') {
-    console.log('[invoice.paid] First invoice, skip');
+    // Première invoice (souscription initiale) — checkout.session.completed s'en charge en principe
+    // Mais on enregistre ici aussi par sécurité (l'anti-doublon par stripe_invoice_id empêche le double insert)
+    console.log('[invoice.paid] First invoice (subscription_create) — enregistrement de sécurité');
+    const stripePriceId = (invoice.lines?.data?.[0] as any)?.price?.id;
+    const planFromPrice = stripePriceId ? PRICE_TO_PLAN[stripePriceId] : null;
+    await recordFromInvoice(`Abonnement ${planFromPrice ? planLabel(planFromPrice) : 'Pro'} (souscription)`);
     return;
   }
 
@@ -621,12 +658,16 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
     .maybeSingle();
 
   if (error || !existing) {
-    console.error(`[invoice.paid] Subscription ${subId} not found in DB`);
+    console.error(`[invoice.paid] Subscription ${subId} not found in DB — enregistrement payment quand même`);
+    // ⭐ Le paiement a quand même eu lieu côté Stripe → on l'enregistre
+    const stripePriceId = sub.items.data[0]?.price.id;
+    const planFromPrice = stripePriceId ? PRICE_TO_PLAN[stripePriceId] : null;
+    await recordFromInvoice(`Abonnement ${planFromPrice ? planLabel(planFromPrice) : 'Pro'} (paiement orphelin)`);
     await insertSystemAlert(supabase, {
       type: 'save_error',
       severity: 'warning',
       title: 'Renouvellement Pro — abonnement introuvable',
-      message: 'Un renouvellement de paiement Pro est arrivé mais l\'abonnement correspondant est introuvable en base.',
+      message: 'Un renouvellement de paiement Pro est arrivé mais l\'abonnement correspondant est introuvable en base. Le paiement a été enregistré dans `payments` mais les crédits ne peuvent pas être attribués.',
       metadata: { stage: 'invoice_paid_lookup', subscriptionId: subId, error: error?.message },
     });
     return;
