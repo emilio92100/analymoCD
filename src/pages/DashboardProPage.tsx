@@ -58,6 +58,8 @@ type ProSubscription = {
   cancel_at_period_end?: boolean;
   canceled_at?: string;
   cancellation_reason?: string;
+  scheduled_plan_change?: string | null;
+  scheduled_change_date?: string | null;
 };
 
 type ProCredits = {
@@ -298,6 +300,43 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
                     <div style={{ fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,0.92)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
                       <Calendar size={12} />
                       Fin {dateStr}
+                    </div>
+                  </div>
+                </Link>
+              );
+            }
+
+            // ── État 2bis : Bascule programmée (downgrade scheduled) — AMBRE ──
+            if (subscription.scheduled_plan_change && subscription.scheduled_change_date) {
+              const targetPlanName = subscription.scheduled_plan_change === 'decouverte' ? 'Découverte'
+                : subscription.scheduled_plan_change === 'starter' ? 'Starter'
+                : subscription.scheduled_plan_change === 'power' ? 'Power'
+                : subscription.scheduled_plan_change;
+              const switchDateStr = fmtDate(subscription.scheduled_change_date);
+              return (
+                <Link to="/dashboard/abonnement" onClick={onClose} style={{ display: 'block', textDecoration: 'none' }}>
+                  <div style={{
+                    padding: '12px 14px', borderRadius: 11,
+                    background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+                    boxShadow: '0 4px 14px rgba(217,119,6,0.25)',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        padding: '2px 8px', borderRadius: 100,
+                        background: 'rgba(255,255,255,0.22)',
+                        fontSize: 9.5, fontWeight: 700, color: '#fff', letterSpacing: '0.06em',
+                      }}>
+                        <span style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: '#fde68a' }} />
+                        BASCULE PROGRAMMÉE
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 17, fontWeight: 800, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.15 }}>
+                      Plan {planName}
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,0.92)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Calendar size={12} />
+                      Bascule vers {targetPlanName} le {switchDateStr}
                     </div>
                   </div>
                 </Link>
@@ -2596,6 +2635,7 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
   const [upgradePreview, setUpgradePreview] = useState<UpgradePreview | null>(null);
   const [upgradeLoadingMsg, setUpgradeLoadingMsg] = useState<string>('Mise à jour de votre plan…');
   const [upgradeError, setUpgradeError] = useState<string>('');
+  const [upgradeErrorContext, setUpgradeErrorContext] = useState<'downgrade' | 'upgrade' | 'generic'>('generic');
   const [upgradeTargetPlan, setUpgradeTargetPlan] = useState<string>('');
   const [upgradeSuccessData, setUpgradeSuccessData] = useState<{
     plan_label: string;
@@ -2628,6 +2668,7 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
       setUpgradePreview(data);
     } catch (e: any) {
       setUpgradeError(e.message || 'Une erreur est survenue');
+      setUpgradeErrorContext('generic');
       setUpgradeFlow('error');
     }
   }
@@ -2701,6 +2742,8 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
     } catch (e: any) {
       console.error('[upgrade-flow] error:', e);
       setUpgradeError(e.message || 'Une erreur est survenue lors du paiement');
+      // Détermine le contexte : downgrade ou upgrade selon ce qui était en cours
+      setUpgradeErrorContext(upgradePreview?.is_downgrade ? 'downgrade' : 'upgrade');
       setUpgradeFlow('error');
     }
   }
@@ -2710,6 +2753,7 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
     setUpgradeFlow(null);
     setUpgradePreview(null);
     setUpgradeError('');
+    setUpgradeErrorContext('generic');
     setUpgradeSuccessData(null);
   }
 
@@ -3342,31 +3386,60 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ type: 'spring', duration: 0.5, bounce: 0.3 }}
-                    style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg, #dc2626, #991b1b)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 12px 32px rgba(220,38,38,0.3)' }}>
+                    style={{ width: 72, height: 72, borderRadius: '50%', background: upgradeErrorContext === 'downgrade' ? 'linear-gradient(135deg, #d97706, #b45309)' : 'linear-gradient(135deg, #dc2626, #991b1b)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: upgradeErrorContext === 'downgrade' ? '0 12px 32px rgba(217,119,6,0.3)' : '0 12px 32px rgba(220,38,38,0.3)' }}>
                     <AlertTriangle size={36} style={{ color: '#fff' }} />
                   </motion.div>
 
                   <h2 style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', marginBottom: 10, letterSpacing: '-0.02em' }}>
-                    Le paiement n'a pas pu être effectué
+                    {upgradeErrorContext === 'downgrade'
+                      ? 'Le changement de plan n\'a pas pu être programmé'
+                      : upgradeErrorContext === 'upgrade'
+                        ? 'Le paiement n\'a pas pu être effectué'
+                        : 'Une erreur est survenue'}
                   </h2>
                   <p style={{ fontSize: 14, color: '#64748b', marginBottom: 24, lineHeight: 1.6, padding: '0 8px' }}>
                     {upgradeError || 'Une erreur est survenue. Aucun montant n\'a été prélevé.'}
                   </p>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <button
-                      onClick={() => { closeUpgradeFlow(); handleBillingPortal(); }}
-                      style={{
-                        width: '100%', padding: '13px', borderRadius: 12, border: 'none', cursor: 'pointer',
-                        background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14, fontWeight: 700,
-                        transition: 'all 0.2s',
-                      }}>
-                      Mettre à jour mon moyen de paiement
-                    </button>
-                    <button onClick={closeUpgradeFlow}
-                      style={{ background: 'none', border: '1.5px solid #e5e7eb', borderRadius: 12, padding: '12px', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#64748b' }}>
-                      Fermer
-                    </button>
+                    {upgradeErrorContext === 'upgrade' ? (
+                      <>
+                        <button
+                          onClick={() => { closeUpgradeFlow(); handleBillingPortal(); }}
+                          style={{
+                            width: '100%', padding: '13px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                            background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14, fontWeight: 700,
+                            transition: 'all 0.2s',
+                          }}>
+                          Mettre à jour mon moyen de paiement
+                        </button>
+                        <button onClick={closeUpgradeFlow}
+                          style={{ background: 'none', border: '1.5px solid #e5e7eb', borderRadius: 12, padding: '12px', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#64748b' }}>
+                          Fermer
+                        </button>
+                      </>
+                    ) : upgradeErrorContext === 'downgrade' ? (
+                      <>
+                        <button
+                          onClick={() => { closeUpgradeFlow(); const openHelp = (window as unknown as Record<string, (subject?: string) => void>).__openHelp; if (openHelp) openHelp(); }}
+                          style={{
+                            width: '100%', padding: '13px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                            background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14, fontWeight: 700,
+                            transition: 'all 0.2s',
+                          }}>
+                          Contacter le support
+                        </button>
+                        <button onClick={closeUpgradeFlow}
+                          style={{ background: 'none', border: '1.5px solid #e5e7eb', borderRadius: 12, padding: '12px', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#64748b' }}>
+                          Fermer
+                        </button>
+                      </>
+                    ) : (
+                      <button onClick={closeUpgradeFlow}
+                        style={{ background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: 'none', borderRadius: 12, padding: '13px', cursor: 'pointer', fontSize: 14, fontWeight: 700 }}>
+                        Fermer
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -3417,11 +3490,13 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
                 )}
                 {isActive && (
                   <span style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)',
-                    background: subscription?.cancel_at_period_end ? '#ea580c' : '#16a34a',
+                    background: (subscription?.cancel_at_period_end || subscription?.scheduled_plan_change) ? '#ea580c' : '#16a34a',
                     color: '#fff', fontSize: 11, fontWeight: 700, padding: '4px 16px', borderRadius: 100, whiteSpace: 'nowrap' }}>
                     {subscription?.cancel_at_period_end
                       ? `Actif jusqu'au ${subscription?.current_period_end ? fmtDate(subscription.current_period_end) : '—'}`
-                      : `Votre plan actuel ${subscription?.current_period_end ? `· Renouvellement ${fmtDate(subscription.current_period_end)}` : ''}`
+                      : subscription?.scheduled_plan_change && subscription?.scheduled_change_date
+                        ? `Bascule vers ${subscription.scheduled_plan_change === 'decouverte' ? 'Découverte' : subscription.scheduled_plan_change === 'starter' ? 'Starter' : subscription.scheduled_plan_change === 'power' ? 'Power' : subscription.scheduled_plan_change} le ${fmtDate(subscription.scheduled_change_date)}`
+                        : `Votre plan actuel ${subscription?.current_period_end ? `· Renouvellement ${fmtDate(subscription.current_period_end)}` : ''}`
                     }
                   </span>
                 )}
