@@ -1,6 +1,25 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useSEO } from '../hooks/useSEO';
 import { Building2, FileText, CreditCard, RefreshCw, X, Repeat, Shield, Mail, ChevronRight, CheckCircle, AlertTriangle } from 'lucide-react';
+
+// Sections du sommaire (utilisées pour le scroll spy + rendu)
+const SECTIONS = [
+  { id: 'objet', label: '1. Objet' },
+  { id: 'definitions', label: '2. Définitions' },
+  { id: 'inscription', label: '3. Inscription' },
+  { id: 'tarifs', label: '4. Tarifs et facturation' },
+  { id: 'credits', label: '5. Crédits et cumul' },
+  { id: 'upgrade', label: '6. Upgrade / Downgrade' },
+  { id: 'resiliation', label: '7. Résiliation' },
+  { id: 'retractation', label: '8. Rétractation' },
+  { id: 'donnees', label: '9. Données' },
+  { id: 'ip', label: '10. Propriété intellectuelle' },
+  { id: 'responsabilite', label: '11. Responsabilité' },
+  { id: 'modif', label: '12. Modification CGV' },
+  { id: 'litige', label: '13. Litiges' },
+  { id: 'contact', label: '14. Contact' },
+];
 
 export default function CGVProPage() {
   useSEO({
@@ -8,6 +27,30 @@ export default function CGVProPage() {
     description: "Conditions générales de vente Verimo Pro : abonnements, achats unitaires, résiliation, données et obligations.",
     canonical: '/cgv-pro',
   });
+
+  // ─── Scroll spy : track la section visible pour le sommaire ───
+  const [activeSection, setActiveSection] = useState<string>('objet');
+
+  useEffect(() => {
+    const handleScroll = () => {
+      // Décalage = offset du sticky topbar + un peu de marge pour activer
+      // la section dès qu'elle approche du haut du viewport
+      const triggerY = 180;
+      // On parcourt les sections du bas vers le haut et on prend la première
+      // dont le top est passé sous triggerY
+      for (let i = SECTIONS.length - 1; i >= 0; i--) {
+        const el = document.getElementById(SECTIONS[i].id);
+        if (el && el.getBoundingClientRect().top <= triggerY) {
+          setActiveSection(SECTIONS[i].id);
+          return;
+        }
+      }
+      setActiveSection(SECTIONS[0].id);
+    };
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // ─── Palette pro distincte ───
   const PRO_DARK = '#0f2d3d';
@@ -39,9 +82,11 @@ export default function CGVProPage() {
       {/* ─── Hero avec badge B2B distinct ─── */}
       <section style={{ background: `linear-gradient(135deg, ${PRO_DARK} 0%, ${PRO_ACCENT} 100%)`, padding: '64px 24px 80px', borderBottom: `4px solid ${PRO_LIGHT}` }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'rgba(255,255,255,0.85)', textDecoration: 'none', fontWeight: 600, marginBottom: 28 }}>
-            ← Retour à l'accueil
-          </Link>
+          <div style={{ marginBottom: 32 }}>
+            <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'rgba(255,255,255,0.85)', textDecoration: 'none', fontWeight: 600 }}>
+              ← Retour à l'accueil
+            </Link>
+          </div>
 
           {/* Badge B2B */}
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: 'rgba(125,211,250,0.18)', border: '1.5px solid rgba(125,211,250,0.4)', marginBottom: 18 }}>
@@ -58,7 +103,7 @@ export default function CGVProPage() {
           <div style={{ marginTop: 22, display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
             <span>Dernière mise à jour : mai 2026</span>
             <span>·</span>
-            <span>Version 1.0</span>
+            <span>Version 2.3</span>
           </div>
         </div>
       </section>
@@ -72,28 +117,40 @@ export default function CGVProPage() {
             <div style={{ padding: 18, borderRadius: 14, background: '#fff', border: `1.5px solid ${PRO_BG}`, boxShadow: '0 1px 4px rgba(15,45,61,0.04)' }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: PRO_ACCENT, letterSpacing: '0.12em', marginBottom: 14 }}>SOMMAIRE</div>
               <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {[
-                  { id: 'objet', label: '1. Objet' },
-                  { id: 'definitions', label: '2. Définitions' },
-                  { id: 'inscription', label: '3. Inscription' },
-                  { id: 'tarifs', label: '4. Tarifs et facturation' },
-                  { id: 'credits', label: '5. Crédits et cumul' },
-                  { id: 'upgrade', label: '6. Upgrade / Downgrade' },
-                  { id: 'resiliation', label: '7. Résiliation' },
-                  { id: 'retractation', label: '8. Rétractation' },
-                  { id: 'donnees', label: '9. Données' },
-                  { id: 'ip', label: '10. Propriété intellectuelle' },
-                  { id: 'responsabilite', label: '11. Responsabilité' },
-                  { id: 'modif', label: '12. Modification CGV' },
-                  { id: 'litige', label: '13. Litiges' },
-                  { id: 'contact', label: '14. Contact' },
-                ].map(s => (
-                  <a key={s.id} href={`#${s.id}`} style={{ padding: '8px 10px', fontSize: 13, color: '#475569', textDecoration: 'none', borderRadius: 7, fontWeight: 500, transition: 'all 0.15s' }}
-                    onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = PRO_BG; (e.currentTarget as HTMLElement).style.color = PRO_DARK; }}
-                    onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = '#475569'; }}>
-                    {s.label}
-                  </a>
-                ))}
+                {SECTIONS.map(s => {
+                  const isActive = activeSection === s.id;
+                  return (
+                    <a
+                      key={s.id}
+                      href={`#${s.id}`}
+                      style={{
+                        padding: '8px 10px',
+                        paddingLeft: isActive ? 12 : 10,
+                        fontSize: 13,
+                        color: isActive ? PRO_DARK : '#475569',
+                        textDecoration: 'none',
+                        borderRadius: 7,
+                        borderLeft: isActive ? `3px solid ${PRO_ACCENT}` : '3px solid transparent',
+                        background: isActive ? PRO_BG : 'transparent',
+                        fontWeight: isActive ? 800 : 500,
+                        transition: 'all 0.15s',
+                      }}
+                      onMouseOver={e => {
+                        if (!isActive) {
+                          (e.currentTarget as HTMLElement).style.background = PRO_BG;
+                          (e.currentTarget as HTMLElement).style.color = PRO_DARK;
+                        }
+                      }}
+                      onMouseOut={e => {
+                        if (!isActive) {
+                          (e.currentTarget as HTMLElement).style.background = 'transparent';
+                          (e.currentTarget as HTMLElement).style.color = '#475569';
+                        }
+                      }}>
+                      {s.label}
+                    </a>
+                  );
+                })}
               </nav>
             </div>
 
@@ -396,7 +453,7 @@ export default function CGVProPage() {
             {/* Footer de page */}
             <div style={{ marginTop: 60, padding: 24, borderRadius: 14, background: `linear-gradient(135deg, ${PRO_DARK} 0%, ${PRO_ACCENT} 100%)`, color: '#fff', textAlign: 'center' }}>
               <CheckCircle size={32} style={{ color: PRO_LIGHT, margin: '0 auto 12px', display: 'block' }} />
-              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>Document Verimo Pro · Version 1.0 · Mai 2026</div>
+              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>Document Verimo Pro · Version 2.3 · Mai 2026</div>
               <div style={{ fontSize: 13, opacity: 0.85 }}>En souscrivant à Verimo Pro, vous reconnaissez avoir lu, compris et accepté les présentes CGV.</div>
             </div>
           </div>
