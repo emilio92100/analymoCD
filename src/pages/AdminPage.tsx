@@ -2402,8 +2402,13 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
   };
 
   if (detailUser) {
-    const totalSpent = userPayments.filter(p => p.status === 'completed').reduce((s, p) => s + (p.amount || 0), 0);
-    const totalPaidPayments = userPayments.filter(p => p.status === 'completed' && p.amount > 0).length;
+    // Helper : montant TTC net (déduit refunded_amount)
+    const netTtcUser = (p: any) => (p.amount || 0) - (p.refunded_amount || 0);
+    // Total dépensé : completed full + partially_refunded au prorata net
+    const totalSpent = userPayments
+      .filter((p: any) => p.status === 'completed' || p.status === 'partially_refunded')
+      .reduce((s, p: any) => s + netTtcUser(p), 0);
+    const totalPaidPayments = userPayments.filter((p: any) => (p.status === 'completed' || p.status === 'partially_refunded') && p.amount > 0).length;
 
     return (
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: 'easeOut' }}>
@@ -2500,16 +2505,19 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
                 <div style={{ padding: '32px', textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Aucun paiement</div>
               ) : userPayments.map((p, i) => {
                 const days = daysSince(p.created_at);
-                const eligible = days < 14 && p.amount > 0;
+                const isRefunded = (p as any).status === 'refunded';
+                const isPartialRefund = (p as any).status === 'partially_refunded';
+                const refundedAmt = (p as any).refunded_amount || 0;
+                const eligible = days < 14 && p.amount > 0 && !isRefunded && !isPartialRefund;
                 return (
-                  <div key={p.id} style={{ padding: '14px 22px', borderBottom: i < userPayments.length - 1 ? '1px solid #f8fafc' : 'none' }}>
+                  <div key={p.id} style={{ padding: '14px 22px', borderBottom: i < userPayments.length - 1 ? '1px solid #f8fafc' : 'none', opacity: isRefunded ? 0.6 : 1 }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 9, background: p.amount === 0 ? '#f5f3ff' : '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        {p.amount === 0 ? <Tag size={15} style={{ color: '#7c3aed' }} /> : <Euro size={15} style={{ color: '#16a34a' }} />}
+                      <div style={{ width: 36, height: 36, borderRadius: 9, background: p.amount === 0 ? '#f5f3ff' : isRefunded ? '#fef2f2' : '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {p.amount === 0 ? <Tag size={15} style={{ color: '#7c3aed' }} /> : <Euro size={15} style={{ color: isRefunded ? '#dc2626' : '#16a34a' }} />}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 3 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: isRefunded ? '#94a3b8' : '#0f172a', textDecoration: isRefunded ? 'line-through' : 'none' }}>
                             {p.amount === 0 ? 'Crédits offerts' : `${p.amount.toFixed(2)}€`}
                           </div>
                           <div style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDateTime(p.created_at)}</div>
@@ -2519,6 +2527,16 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
                           {p.promo_code && <span style={{ color: '#7c3aed', fontWeight: 700, marginLeft: 6 }}>· Code {p.promo_code}</span>}
                         </div>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginTop: 8 }}>
+                          {isRefunded && (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#dc2626', background: '#fef2f2', padding: '3px 7px', borderRadius: 6 }}>
+                              REMBOURSÉ
+                            </span>
+                          )}
+                          {isPartialRefund && (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fffbeb', padding: '3px 7px', borderRadius: 6 }}>
+                              REMBOURSÉ {refundedAmt.toFixed(2)}€/{p.amount.toFixed(2)}€
+                            </span>
+                          )}
                           {p._source === 'admin_grant' && (
                             <span style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', background: '#f5f3ff', padding: '3px 7px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 3 }}>
                               🎁 Offert par Admin
@@ -3980,7 +3998,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [clientShares, setClientShares] = useState<{ id: string; recipient_name: string; recipient_email: string; sent_at: string; opened_at?: string }[]>([]);
   const [clientSubscription, setClientSubscription] = useState<{ plan: string; status: string; current_period_end?: string; cancel_at_period_end?: boolean; canceled_at?: string; cancellation_reason?: string; credits_complete_total: number; credits_complete_used: number; credits_simple_total: number; credits_simple_used: number; scheduled_plan_change?: string | null; scheduled_change_date?: string | null } | null>(null);
   const [proClientCredits, setProClientCredits] = useState<{ total_complete: number; total_document: number } | null>(null);
-  const [clientInvoices, setClientInvoices] = useState<{ id: string; date: string; description: string; amount: string; pdf_url: string | null; type: string; status?: string; status_label?: string; status_variant?: 'success' | 'pending' | 'failed' | 'void'; failure_reason?: string | null; attempt_count?: number }[]>([]);
+  const [clientInvoices, setClientInvoices] = useState<{ id: string; date: string; description: string; amount: string; pdf_url: string | null; type: string; status?: string; status_label?: string; status_variant?: 'success' | 'pending' | 'failed' | 'void' | 'refunded'; refunded_amount?: string | null; failure_reason?: string | null; attempt_count?: number }[]>([]);
   const [clientInvoicesLoading, setClientInvoicesLoading] = useState(false);
   const [editingIdentity, setEditingIdentity] = useState(false);
   const [notifyProOnSave, setNotifyProOnSave] = useState(false);
@@ -4597,7 +4615,8 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
             {/* CA total + compteurs (ne compte que les paiements réussis) */}
             {!clientInvoicesLoading && clientInvoices.length > 0 && (() => {
               // Le CA total ne compte QUE les paiements réussis (status === 'paid' ou pas de status = grants/legacy considéré OK)
-              const successfulInvoices = clientInvoices.filter(inv => !inv.status || inv.status === 'paid');
+              // Les remboursés (status_variant === 'refunded') sont exclus
+              const successfulInvoices = clientInvoices.filter(inv => (!inv.status || inv.status === 'paid') && inv.status_variant !== 'refunded');
               const failedInvoices = clientInvoices.filter(inv => inv.status_variant === 'failed');
               const totalCA = successfulInvoices.reduce((sum, inv) => {
                 const amount = parseFloat(inv.amount.replace(/[^0-9.,]/g, '').replace(',', '.'));
@@ -4647,10 +4666,11 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                     pending: { bg: '#fffbeb', border: '#fde68a', amountColor: '#ca8a04', badgeBg: '#fef3c7', badgeColor: '#92400e' },
                     failed: { bg: '#fef2f2', border: '#fecaca', amountColor: '#dc2626', badgeBg: '#fee2e2', badgeColor: '#991b1b' },
                     void: { bg: '#f8fafc', border: '#e2e8f0', amountColor: '#94a3b8', badgeBg: '#f1f5f9', badgeColor: '#64748b' },
+                    refunded: { bg: '#fef2f2', border: '#fecaca', amountColor: '#94a3b8', badgeBg: '#fee2e2', badgeColor: '#dc2626' },
                   };
                   const variant = inv.status_variant || 'success';
-                  const styles = variantStyles[variant];
-                  const showBadge = inv.status && inv.status !== 'paid';
+                  const styles = variantStyles[variant] || variantStyles.success;
+                  const showBadge = (inv.status && inv.status !== 'paid') || variant === 'refunded';
 
                   return (
                     <div key={inv.id} style={{ padding: '10px 12px', borderRadius: 10, background: styles.bg, border: styles.border !== 'transparent' ? `1px solid ${styles.border}` : 'none' }}>
