@@ -407,30 +407,32 @@ Lorsque vous lancez une analyse, les crédits de votre abonnement sont utilisés
 
 Cette logique vous permet de profiter pleinement de votre forfait mensuel avant de consommer vos crédits unitaires.`} />
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
           {[
             { label: 'Analyse simple', value: creditsSimple, unit: unitSimple },
             { label: 'Analyse complète', value: creditsComplete, unit: unitComplete },
           ].map(c => (
-            <div key={c.label} style={{ padding: '5px 8px', borderRadius: 7, background: 'rgba(255,255,255,0.10)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.95)', fontWeight: 600 }}>{c.label}</span>
-                {creditsLoading
-                  ? <Skeleton width={16} height={14} />
-                  : <span style={{ fontSize: 13, fontWeight: 800, color: c.value > 0 ? ACCENT : 'rgba(255,255,255,0.4)' }}>{c.value}</span>
-                }
+            <div key={c.label} style={{ padding: '8px 10px', borderRadius: 7, background: 'rgba(255,255,255,0.10)', display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'center' }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.95)', fontWeight: 600, marginBottom: 3 }}>{c.label}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" style={{ flexShrink: 0, opacity: 0.95 }}>
+                    <path d="M1.5 1.5 L1.5 5 Q1.5 7 3.5 7 L7.5 7 M5 4.5 L7.5 7 L5 9.5" stroke="rgba(255,255,255,0.95)" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" transform="translate(0, -1.5)"/>
+                  </svg>
+                  {creditsLoading
+                    ? <Skeleton width={100} height={10} />
+                    : <span style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.92)', fontWeight: 500 }}>
+                        dont {c.unit} achat{c.unit > 1 ? 's' : ''} unitaire{c.unit > 1 ? 's' : ''}
+                      </span>
+                  }
+                </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2, paddingLeft: 2 }}>
-                <svg width="9" height="9" viewBox="0 0 9 9" fill="none" style={{ flexShrink: 0, opacity: 0.95 }}>
-                  <path d="M1.5 1.5 L1.5 5 Q1.5 7 3.5 7 L7.5 7 M5 4.5 L7.5 7 L5 9.5" stroke="rgba(255,255,255,0.95)" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" transform="translate(0, -1.5)"/>
-                </svg>
-                {creditsLoading
-                  ? <Skeleton width={100} height={10} />
-                  : <span style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.92)', fontWeight: 500 }}>
-                      dont {c.unit} achat{c.unit > 1 ? 's' : ''} unitaire{c.unit > 1 ? 's' : ''}
-                    </span>
-                }
-              </div>
+              {creditsLoading
+                ? <Skeleton width={28} height={28} />
+                : <div style={{ minWidth: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px 10px', borderRadius: 8, background: c.value > 0 ? 'rgba(125,211,250,0.15)' : 'rgba(255,255,255,0.06)' }}>
+                    <span style={{ fontSize: 22, fontWeight: 900, color: c.value > 0 ? ACCENT : 'rgba(255,255,255,0.4)', lineHeight: 1 }}>{c.value}</span>
+                  </div>
+              }
             </div>
           ))}
         </div>
