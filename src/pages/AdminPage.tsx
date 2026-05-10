@@ -747,12 +747,17 @@ function SystemAlertsTab({ showToast }: { showToast: (msg: string) => void }) {
                       <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: '#f1f5f9', color: '#64748b' }}>{typeLabels[alert.type] || alert.type}</span>
                     </div>
                     <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.5, marginBottom: 8 }}>{alert.message}</p>
-                    {(alert.user_name || alert.user_email) && (
+                    {(alert.user_name || alert.user_email) ? (
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: '#0f2d3d', background: '#f0f7fb', border: '1px solid #bae3f5', padding: '3px 9px', borderRadius: 6, marginBottom: 8 }}>
                         👤 {alert.user_name || 'Sans nom'}
                         {alert.user_email && <span style={{ color: '#64748b', fontWeight: 500 }}>· {alert.user_email}</span>}
                       </div>
-                    )}
+                    ) : alert.metadata?.customerInfo ? (
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: '#78350f', background: '#fffbeb', border: '1px solid #fde68a', padding: '3px 9px', borderRadius: 6, marginBottom: 8 }}>
+                        👤 {String(alert.metadata.customerInfo)}
+                        <span style={{ color: '#a16207', fontWeight: 500 }}>· (non rattaché)</span>
+                      </div>
+                    ) : null}
                     <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' as const, fontSize: 11, color: '#94a3b8' }}>
                       <span>{new Date(alert.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                       {alert.analyse_id && <span>Analyse: {alert.analyse_id.slice(0, 8)}...</span>}
