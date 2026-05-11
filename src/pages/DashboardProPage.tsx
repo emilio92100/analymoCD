@@ -6164,6 +6164,94 @@ function ActionButton({ icon: Icon, label, onClick, comingSoon, disabled, disabl
 }
 
 /* ══════════════════════════════════════════
+   BANNER PRO — affiche les bannières actives qui ciblent ce user pro
+   audience='all' OU 'pro' OU 'specific' (avec target_user_id = user.id)
+   Dismiss : sessionStorage avec date du jour. Revient demain.
+══════════════════════════════════════════ */
+type ProBannerData = {
+  id: string;
+  message: string;
+  type: 'info' | 'warning' | 'success';
+  audience: 'all' | 'pro' | 'particulier' | 'specific';
+  target_user_id: string | null;
+};
+
+function ProDashboardBanner() {
+  const [banners, setBanners] = useState<ProBannerData[]>([]);
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      setUserId(user.id);
+
+      const { data } = await supabase
+        .from('banners')
+        .select('id, message, type, audience, target_user_id')
+        .eq('active', true)
+        .order('created_at', { ascending: false });
+
+      if (!data) return;
+
+      // Filtrage : on garde celles qui concernent ce user pro
+      const visible = data.filter(b => {
+        if (b.audience === 'all') return true;
+        if (b.audience === 'pro') return true; // on est dans le dashboard pro
+        if (b.audience === 'particulier') return false;
+        if (b.audience === 'specific') return b.target_user_id === user.id;
+        return false;
+      }) as ProBannerData[];
+
+      const today = new Date().toISOString().slice(0, 10);
+      const dismissed = new Set<string>();
+      for (const b of visible) {
+        const key = `verimo_banner_dismiss_${b.id}_${user.id}`;
+        if (sessionStorage.getItem(key) === today) dismissed.add(b.id);
+      }
+      setDismissedIds(dismissed);
+      setBanners(visible);
+    };
+    load();
+  }, []);
+
+  const handleDismiss = (bannerId: string) => {
+    if (!userId) return;
+    const today = new Date().toISOString().slice(0, 10);
+    sessionStorage.setItem(`verimo_banner_dismiss_${bannerId}_${userId}`, today);
+    setDismissedIds(prev => new Set([...prev, bannerId]));
+  };
+
+  const visibleBanners = banners.filter(b => !dismissedIds.has(b.id));
+  if (visibleBanners.length === 0) return null;
+
+  const STYLES: Record<string, { bg: string; border: string; color: string; icon: string }> = {
+    info:    { bg: '#f0f7fb', border: '#bae3f5', color: '#2a7d9c', icon: 'ℹ️' },
+    warning: { bg: '#fffbeb', border: '#fde68a', color: '#d97706', icon: '⚠️' },
+    success: { bg: '#f0fdf4', border: '#86efac', color: '#16a34a', icon: '✅' },
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {visibleBanners.map(b => {
+        const s = STYLES[b.type] || STYLES.info;
+        return (
+          <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px', background: s.bg, borderLeft: `4px solid ${s.color}`, borderBottom: `1px solid ${s.border}` }}>
+            <span style={{ fontSize: 16, flexShrink: 0 }}>{s.icon}</span>
+            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: s.color, lineHeight: 1.5 }}>{b.message}</span>
+            <button onClick={() => handleDismiss(b.id)} aria-label="Fermer"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: s.color, opacity: 0.5, padding: 4, flexShrink: 0 }}>
+              <X size={15} />
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
    DASHBOARD PRO — EXPORT
 ══════════════════════════════════════════ */
 export default function DashboardProPage() {
@@ -6502,6 +6590,8 @@ export default function DashboardProPage() {
             </button>
           </div>
         )}
+
+        <ProDashboardBanner />
 
         <main className="dashboard-main" style={{ flex: 1, padding: '28px 24px', overflowX: 'hidden' }}>
           <motion.div key={path} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: 'easeOut' }}>
