@@ -1595,80 +1595,259 @@ function AdminSuggestionsTab({ onGoToUser, showToast, onUnreadChange }: { onGoTo
 }
 
 function BannerTab({ showToast, logAction }: { showToast: (m: string) => void; logAction: (a: string, t?: string) => Promise<void> }) {
-  const [banner, setBanner] = useState<{ id: string; message: string; type: string; active: boolean } | null>(null);
-  const [message, setMessage] = useState('');
-  const [type, setType] = useState<'info' | 'warning' | 'success'>('info');
-  const [saving, setSaving] = useState(false);
+  type BannerAudience = 'all' | 'pro' | 'particulier' | 'specific';
+  type Banner = {
+    id: string;
+    message: string;
+    type: 'info' | 'warning' | 'success';
+    audience: BannerAudience;
+    target_user_id: string | null;
+    target_user_label?: string | null; // hydraté côté front (nom/email du user ciblé)
+    active: boolean;
+    created_at: string;
+  };
+
+  const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const load = async () => {
-      const { data } = await supabase.from('banners').select('*').eq('active', true).order('created_at', { ascending: false }).limit(1);
-      if (data && data.length > 0) {
-        setBanner(data[0]);
-        setMessage(data[0].message);
-        setType(data[0].type);
-      }
-      setLoading(false);
-    };
-    load();
-  }, []);
+  // ── Form state (création OU édition) ─────────────────────
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
+  const [type, setType] = useState<'info' | 'warning' | 'success'>('info');
+  const [audience, setAudience] = useState<BannerAudience>('all');
+  const [targetUserId, setTargetUserId] = useState<string | null>(null);
+  const [targetUserLabel, setTargetUserLabel] = useState<string>('');
+  const [userSearch, setUserSearch] = useState('');
+  const [userResults, setUserResults] = useState<Array<{ id: string; email: string; full_name: string | null; role: string }>>([]);
+  const [searching, setSearching] = useState(false);
+  const [saving, setSaving] = useState(false);
 
+  const COLORS: Record<'info' | 'warning' | 'success', { bg: string; border: string; color: string; label: string }> = {
+    info: { bg: '#f0f7fb', border: '#bae3f5', color: '#2a7d9c', label: 'ℹ️ Information' },
+    warning: { bg: '#fffbeb', border: '#fde68a', color: '#d97706', label: '⚠️ Avertissement' },
+    success: { bg: '#f0fdf4', border: '#86efac', color: '#16a34a', label: '✅ Succès' },
+  };
+
+  const AUDIENCE_LABEL: Record<BannerAudience, { label: string; icon: string; color: string }> = {
+    all: { label: 'Tous les utilisateurs', icon: '👥', color: '#0f2d3d' },
+    pro: { label: 'Clients Pro uniquement', icon: '💼', color: '#7c3aed' },
+    particulier: { label: 'Particuliers uniquement', icon: '👤', color: '#0891b2' },
+    specific: { label: 'Client spécifique', icon: '🎯', color: '#d97706' },
+  };
+
+  // ── Charger la liste des bannières actives ───────────────
+  const loadBanners = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from('banners')
+      .select('*')
+      .eq('active', true)
+      .order('created_at', { ascending: false });
+
+    if (!data) {
+      setBanners([]);
+      setLoading(false);
+      return;
+    }
+
+    // Hydrater les target_user_label pour les bannières 'specific'
+    const targetIds = data.filter(b => b.audience === 'specific' && b.target_user_id).map(b => b.target_user_id);
+    let usersMap: Record<string, { email: string; full_name: string | null }> = {};
+    if (targetIds.length > 0) {
+      const { data: users } = await supabase.from('profiles').select('id, email, full_name').in('id', targetIds);
+      if (users) {
+        usersMap = Object.fromEntries(users.map(u => [u.id, { email: u.email, full_name: u.full_name }]));
+      }
+    }
+
+    setBanners(data.map(b => ({
+      ...b,
+      target_user_label: b.target_user_id && usersMap[b.target_user_id]
+        ? (usersMap[b.target_user_id].full_name || usersMap[b.target_user_id].email)
+        : null,
+    })));
+    setLoading(false);
+  };
+
+  useEffect(() => { loadBanners(); }, []);
+
+  // ── Recherche utilisateur pour ciblage 'specific' ─────────
+  useEffect(() => {
+    if (audience !== 'specific' || userSearch.trim().length < 2) {
+      setUserResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      const term = `%${userSearch.trim()}%`;
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, email, full_name, role')
+        .or(`email.ilike.${term},full_name.ilike.${term}`)
+        .limit(8);
+      setUserResults(data || []);
+      setSearching(false);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [userSearch, audience]);
+
+  // ── Reset form ────────────────────────────────────────────
+  const resetForm = () => {
+    setEditingId(null);
+    setMessage('');
+    setType('info');
+    setAudience('all');
+    setTargetUserId(null);
+    setTargetUserLabel('');
+    setUserSearch('');
+    setUserResults([]);
+  };
+
+  // ── Démarrer édition d'une bannière existante ─────────────
+  const startEdit = (b: Banner) => {
+    setEditingId(b.id);
+    setMessage(b.message);
+    setType(b.type);
+    setAudience(b.audience);
+    setTargetUserId(b.target_user_id);
+    setTargetUserLabel(b.target_user_label || '');
+    setUserSearch('');
+    setUserResults([]);
+    // Scroll vers le formulaire
+    setTimeout(() => document.getElementById('banner-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  };
+
+  // ── Save (create or update) ───────────────────────────────
   const handleSave = async () => {
     if (!message.trim()) return;
+    if (audience === 'specific' && !targetUserId) {
+      showToast('Sélectionnez un client pour le ciblage spécifique');
+      return;
+    }
     setSaving(true);
-    if (banner) {
-      await supabase.from('banners').update({ message, type, updated_at: new Date().toISOString() }).eq('id', banner.id);
-      setBanner({ ...banner, message, type });
+
+    const payload = {
+      message: message.trim(),
+      type,
+      audience,
+      target_user_id: audience === 'specific' ? targetUserId : null,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (editingId) {
+      await supabase.from('banners').update(payload).eq('id', editingId);
       await logAction('Bannière modifiée', message.substring(0, 50));
       showToast('Bannière mise à jour !');
     } else {
-      const { data } = await supabase.from('banners').insert({ message, type, active: true }).select().single();
-      if (data) setBanner(data);
-      await logAction('Bannière créée', message.substring(0, 50));
+      await supabase.from('banners').insert({ ...payload, active: true });
+      await logAction('Bannière créée', `${audience} — ${message.substring(0, 40)}`);
       showToast('Bannière créée et activée !');
     }
+
+    resetForm();
+    await loadBanners();
     setSaving(false);
   };
 
-  const handleDelete = async () => {
-    if (!banner) return;
-    await supabase.from('banners').delete().eq('id', banner.id);
-    setBanner(null);
-    setMessage('');
-    await logAction('Bannière supprimée');
-    showToast('Bannière supprimée — plus visible sur le dashboard');
-  };
-
-  const COLORS: Record<string, { bg: string; border: string; color: string; label: string }> = {
-    info:    { bg: '#f0f7fb', border: '#bae3f5', color: '#2a7d9c', label: 'ℹ️ Information' },
-    warning: { bg: '#fffbeb', border: '#fde68a', color: '#d97706', label: '⚠️ Avertissement' },
-    success: { bg: '#f0fdf4', border: '#86efac', color: '#16a34a', label: '✅ Succès' },
+  // ── Delete ────────────────────────────────────────────────
+  const handleDelete = async (b: Banner) => {
+    if (!confirm(`Supprimer cette bannière ?\n\n"${b.message.substring(0, 80)}"`)) return;
+    await supabase.from('banners').delete().eq('id', b.id);
+    await logAction('Bannière supprimée', b.message.substring(0, 50));
+    showToast('Bannière supprimée — disparaît au prochain rafraîchissement client');
+    // Si on était en train d'éditer celle-là, reset le form
+    if (editingId === b.id) resetForm();
+    await loadBanners();
   };
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center' as const, color: '#94a3b8' }}>Chargement...</div>;
 
   return (
-    <div style={{ maxWidth: 620 }}>
+    <div style={{ maxWidth: 760 }}>
+      {/* ═══════ HEADER ═══════ */}
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Bannière dashboard</h1>
-        <p style={{ fontSize: 13, color: '#94a3b8' }}>Affichez un message sur le dashboard de tous vos utilisateurs connectés.</p>
+        <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Bannières dashboard</h1>
+        <p style={{ fontSize: 13, color: '#94a3b8' }}>Affichez des messages sur le dashboard de vos utilisateurs. Vous pouvez cibler tout le monde, les pros, les particuliers ou un client spécifique.</p>
       </div>
 
-      {/* Aperçu */}
+      {/* ═══════ LISTE DES BANNIÈRES ACTIVES ═══════ */}
+      {banners.length > 0 && (
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', marginBottom: 10, letterSpacing: '0.08em' }}>
+            BANNIÈRES ACTIVES ({banners.length})
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+            {banners.map(b => {
+              const aud = AUDIENCE_LABEL[b.audience];
+              const col = COLORS[b.type];
+              return (
+                <div key={b.id} style={{ background: '#fff', borderRadius: 12, border: '1.5px solid #edf2f7', padding: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
+                  {/* Icône de type */}
+                  <div style={{ width: 36, height: 36, borderRadius: 9, background: col.bg, border: `1px solid ${col.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 16 }}>
+                    {b.type === 'info' ? 'ℹ️' : b.type === 'warning' ? '⚠️' : '✅'}
+                  </div>
+
+                  {/* Contenu */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' as const }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: aud.color, background: '#f8fafc', border: '1px solid #edf2f7', padding: '3px 9px', borderRadius: 100 }}>
+                        {aud.icon} {aud.label}
+                        {b.audience === 'specific' && b.target_user_label && ` · ${b.target_user_label}`}
+                      </span>
+                      <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                        {new Date(b.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 13.5, color: '#0f172a', fontWeight: 500, lineHeight: 1.5, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
+                      {b.message}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    <button onClick={() => startEdit(b)}
+                      title="Modifier"
+                      style={{ width: 34, height: 34, borderRadius: 8, background: '#f0f7fb', border: '1px solid #bae3f5', color: '#2a7d9c', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>
+                      ✏️
+                    </button>
+                    <button onClick={() => handleDelete(b)}
+                      title="Supprimer"
+                      style={{ width: 34, height: 34, borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ═══════ APERÇU ═══════ */}
       {message.trim() && (
-        <div style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 20 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', marginBottom: 8, letterSpacing: '0.08em' }}>APERÇU</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', borderRadius: 12, background: COLORS[type].bg, border: `1.5px solid ${COLORS[type].border}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', borderRadius: 12, background: COLORS[type].bg, borderLeft: `4px solid ${COLORS[type].color}`, border: `1.5px solid ${COLORS[type].border}` }}>
             <span style={{ fontSize: 18, flexShrink: 0 }}>{type === 'info' ? 'ℹ️' : type === 'warning' ? '⚠️' : '✅'}</span>
-            <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: COLORS[type].color }}>{message}</span>
+            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: COLORS[type].color }}>{message}</span>
             <X size={16} style={{ color: COLORS[type].color, opacity: 0.5, flexShrink: 0 }} />
           </div>
         </div>
       )}
 
-      {/* Formulaire */}
-      <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: 24, display: 'flex', flexDirection: 'column' as const, gap: 18 }}>
+      {/* ═══════ FORMULAIRE ═══════ */}
+      <div id="banner-form" style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: 24, display: 'flex', flexDirection: 'column' as const, gap: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+            {editingId ? '✏️ Modifier la bannière' : '✨ Nouvelle bannière'}
+          </h3>
+          {editingId && (
+            <button onClick={resetForm}
+              style={{ fontSize: 12, color: '#64748b', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+              Annuler l&apos;édition
+            </button>
+          )}
+        </div>
 
         {/* Type */}
         <div>
@@ -1683,6 +1862,82 @@ function BannerTab({ showToast, logAction }: { showToast: (m: string) => void; l
           </div>
         </div>
 
+        {/* Audience */}
+        <div>
+          <label style={{ fontSize: 13, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 10 }}>Qui doit voir cette bannière ?</label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+            {(['all', 'pro', 'particulier', 'specific'] as const).map(a => {
+              const info = AUDIENCE_LABEL[a];
+              const selected = audience === a;
+              return (
+                <button key={a} onClick={() => { setAudience(a); if (a !== 'specific') { setTargetUserId(null); setTargetUserLabel(''); setUserSearch(''); } }}
+                  style={{ padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${selected ? info.color : '#edf2f7'}`, background: selected ? '#f8fafc' : '#fff', color: selected ? info.color : '#64748b', fontSize: 12.5, fontWeight: selected ? 700 : 500, cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left' as const, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 16 }}>{info.icon}</span>
+                  <span>{info.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Recherche client (uniquement si audience = 'specific') */}
+        {audience === 'specific' && (
+          <div>
+            <label style={{ fontSize: 13, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 8 }}>
+              {targetUserId ? 'Client ciblé' : 'Rechercher un client (email ou nom)'}
+            </label>
+
+            {targetUserId ? (
+              // Client sélectionné
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, background: '#fef3c7', border: '1.5px solid #fbbf24' }}>
+                <span style={{ fontSize: 16 }}>🎯</span>
+                <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: '#92400e' }}>{targetUserLabel}</span>
+                <button onClick={() => { setTargetUserId(null); setTargetUserLabel(''); setUserSearch(''); }}
+                  style={{ background: 'transparent', border: 'none', color: '#92400e', cursor: 'pointer', padding: 4, fontSize: 16 }}>
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  value={userSearch}
+                  onChange={e => setUserSearch(e.target.value)}
+                  placeholder="Ex : alex@gmail.com ou Alexandre Rogelet"
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 14, outline: 'none', boxSizing: 'border-box' as const, fontFamily: 'inherit', color: '#0f172a', background: '#f8fafc' }}
+                />
+                {userSearch.trim().length >= 2 && (
+                  <div style={{ marginTop: 8, background: '#fff', border: '1.5px solid #edf2f7', borderRadius: 10, maxHeight: 240, overflowY: 'auto' as const }}>
+                    {searching ? (
+                      <div style={{ padding: 16, fontSize: 13, color: '#94a3b8', textAlign: 'center' as const }}>Recherche…</div>
+                    ) : userResults.length === 0 ? (
+                      <div style={{ padding: 16, fontSize: 13, color: '#94a3b8', textAlign: 'center' as const }}>Aucun résultat</div>
+                    ) : (
+                      userResults.map(u => (
+                        <button key={u.id}
+                          onClick={() => { setTargetUserId(u.id); setTargetUserLabel(u.full_name || u.email); setUserSearch(''); setUserResults([]); }}
+                          style={{ width: '100%', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, background: 'transparent', border: 'none', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', textAlign: 'left' as const }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: u.role === 'pro' ? '#7c3aed' : '#0891b2', background: u.role === 'pro' ? '#f3e8ff' : '#cffafe', padding: '2px 7px', borderRadius: 100, flexShrink: 0 }}>
+                            {u.role === 'pro' ? 'PRO' : 'PART.'}
+                          </span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                              {u.full_name || '(sans nom)'}
+                            </div>
+                            <div style={{ fontSize: 11.5, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                              {u.email}
+                            </div>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
         {/* Message */}
         <div>
           <label style={{ fontSize: 13, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 8 }}>Message</label>
@@ -1691,29 +1946,15 @@ function BannerTab({ showToast, logAction }: { showToast: (m: string) => void; l
             onChange={e => setMessage(e.target.value)}
             placeholder="Ex : Verimo est en maintenance ce soir de 22h à 23h. Merci de votre compréhension."
             rows={3}
-            style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 14, outline: 'none', boxSizing: 'border-box' as const, resize: 'vertical', fontFamily: 'inherit', color: '#0f172a', background: '#f8fafc' }}
+            style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 14, outline: 'none', boxSizing: 'border-box' as const, resize: 'vertical' as const, fontFamily: 'inherit', color: '#0f172a', background: '#f8fafc' }}
           />
         </div>
 
-        {/* Boutons */}
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={handleSave} disabled={saving || !message.trim()}
-            style={{ flex: 1, padding: '12px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: saving || !message.trim() ? 'not-allowed' : 'pointer', opacity: saving || !message.trim() ? 0.6 : 1 }}>
-            {saving ? 'Enregistrement...' : banner ? '💾 Mettre à jour' : '🚀 Publier la bannière'}
-          </button>
-          {banner && (
-            <button onClick={handleDelete}
-              style={{ padding: '12px 18px', borderRadius: 11, background: '#fef2f2', border: '1.5px solid #fecaca', color: '#dc2626', fontSize: 14, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
-              🗑️ Supprimer
-            </button>
-          )}
-        </div>
-
-        {banner && (
-          <div style={{ fontSize: 12, color: '#16a34a', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '10px 14px', fontWeight: 600 }}>
-            ✓ Bannière active — visible sur le dashboard de tous les utilisateurs
-          </div>
-        )}
+        {/* Bouton */}
+        <button onClick={handleSave} disabled={saving || !message.trim() || (audience === 'specific' && !targetUserId)}
+          style={{ padding: '12px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, cursor: saving || !message.trim() || (audience === 'specific' && !targetUserId) ? 'not-allowed' : 'pointer', opacity: saving || !message.trim() || (audience === 'specific' && !targetUserId) ? 0.6 : 1 }}>
+          {saving ? 'Enregistrement…' : editingId ? '💾 Mettre à jour' : '🚀 Publier la bannière'}
+        </button>
       </div>
     </div>
   );
