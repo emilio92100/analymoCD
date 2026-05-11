@@ -120,10 +120,6 @@ export default function Support() {
             <Lightbulb size={14} /> J&apos;ai une idée
           </button>
         )}
-        <button onClick={handleNewTicket}
-          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, boxShadow: '0 4px 12px rgba(15,45,61,0.2)' }}>
-          <Plus size={14} /> Nouveau ticket
-        </button>
       </div>
 
       {/* Tickets ouverts */}
