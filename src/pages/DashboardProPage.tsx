@@ -2554,37 +2554,52 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
 
       if (promo.type !== 'credits') { setPromoError('Ce code n\'est pas compatible avec votre compte pro.'); setPromoLoading(false); return; }
 
-      const creditType = promo.credit_type === 'document' ? 'document' : 'complete';
       const toAdd = promo.value;
+      const isBoth = promo.credit_type === 'both';
 
-      // Ajouter via credit_grants (le trigger crée la ligne pro_unit_purchases)
-      const { error: grantErr } = await supabase.from('credit_grants').insert({
-        user_id: user.id,
-        granted_by: null,
-        credit_type: creditType,
-        quantity: toAdd,
-        reason: `Code promo ${promo.code}`,
-      });
-      if (grantErr) throw new Error('Impossible d\'ajouter les crédits.');
+      // Si "both" → on ajoute X complete + X document (2 grants)
+      // Sinon → on ajoute X du type choisi
+      const creditTypesToGrant: ('document' | 'complete')[] = isBoth
+        ? ['complete', 'document']
+        : [promo.credit_type === 'document' ? 'document' : 'complete'];
+
+      // Ajouter via credit_grants pour chaque type (le trigger crée la ligne pro_unit_purchases)
+      for (const ct of creditTypesToGrant) {
+        const { error: grantErr } = await supabase.from('credit_grants').insert({
+          user_id: user.id,
+          granted_by: null,
+          credit_type: ct,
+          quantity: toAdd,
+          reason: `Code promo ${promo.code}`,
+        });
+        if (grantErr) throw new Error('Impossible d\'ajouter les crédits.');
+      }
 
       // Enregistrer l'usage
       await supabase.from('promo_uses').insert({ code_id: promo.id, user_id: user.id });
       await supabase.rpc('increment_promo_uses', { code_id: promo.id });
 
-      // Enregistrer dans payments pour l'historique
+      // Libellés pour les messages
+      const labelSimple = `${toAdd} crédit${toAdd > 1 ? 's' : ''} Simple${toAdd > 1 ? 's' : ''}`;
+      const labelComplete = `${toAdd} crédit${toAdd > 1 ? 's' : ''} Complète${toAdd > 1 ? 's' : ''}`;
+      const fullLabel = isBoth
+        ? `${labelComplete} + ${labelSimple}`
+        : (creditTypesToGrant[0] === 'complete' ? labelComplete : labelSimple);
+
+      // Enregistrer dans payments pour l'historique (1 ligne récapitulative)
       await supabase.from('payments').insert({
         user_id: user.id,
         amount: 0,
         currency: 'eur',
-        description: `${toAdd} crédit${toAdd > 1 ? 's' : ''} ${creditType === 'complete' ? 'Complète' : 'Simple'} offert${toAdd > 1 ? 's' : ''} · Code ${promo.code}`,
+        description: `${fullLabel} offert${toAdd > 1 || isBoth ? 's' : ''} · Code ${promo.code}`,
         promo_code: promo.code,
-        credits_added: toAdd,
-        credit_type: creditType,
+        credits_added: isBoth ? toAdd * 2 : toAdd,
+        credit_type: creditTypesToGrant[0], // 'complete' si both (juste pour la contrainte BDD ; description = source de vérité)
         status: 'completed',
       });
 
-      setPromoSuccess(`+${toAdd} crédit${toAdd > 1 ? 's' : ''} ${creditType === 'complete' ? 'Complète' : 'Simple'} ajouté${toAdd > 1 ? 's' : ''} !`);
-      setPromoSuccessPopup({ message: `🎉 +${toAdd} crédit${toAdd > 1 ? 's' : ''} ${creditType === 'complete' ? 'Complète' : 'Simple'} ajouté${toAdd > 1 ? 's' : ''} sur votre compte !` });
+      setPromoSuccess(`+${fullLabel} ajouté${toAdd > 1 || isBoth ? 's' : ''} !`);
+      setPromoSuccessPopup({ message: `🎉 +${fullLabel} ajouté${toAdd > 1 || isBoth ? 's' : ''} sur votre compte !` });
       setPromoCode('');
 
       // Rafraîchir les factures (le useEffect sur invoices se relance via setInvoicesLoading)
