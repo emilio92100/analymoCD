@@ -148,6 +148,23 @@ Deno.serve(async (req: Request) => {
         return jsonResponse({ error: "Ce code promo n'est pas disponible pour votre compte." }, 400);
       }
 
+      // ⭐ Audience (ciblage Pros / Particuliers / Tous)
+      if (promo.audience && promo.audience !== 'all') {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', userId)
+          .maybeSingle();
+        const role = profile?.role || 'particulier';
+        const isPro = role === 'pro';
+        if (promo.audience === 'pro' && !isPro) {
+          return jsonResponse({ error: "Ce code promo est réservé aux comptes Pro." }, 400);
+        }
+        if (promo.audience === 'particulier' && isPro) {
+          return jsonResponse({ error: "Ce code promo est réservé aux comptes Particuliers." }, 400);
+        }
+      }
+
       // Déjà utilisé par ce user
       const { data: alreadyUsed } = await supabase
         .from("promo_uses")
