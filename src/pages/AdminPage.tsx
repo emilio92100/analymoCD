@@ -4140,6 +4140,7 @@ function PromosTab({ onConfirm, showToast, logAction }: { onConfirm: (a: Confirm
   const [form, setForm] = useState({
     code: generateCode(), type: 'credits' as 'credits' | 'percent' | 'fixed',
     value: 1, credit_type: 'complete', expires_at: '', max_uses: '', restricted_email: '',
+    audience: 'all' as 'all' | 'pro' | 'particulier',
   });
 
   const loadPromos = useCallback(async () => {
@@ -4167,6 +4168,7 @@ function PromosTab({ onConfirm, showToast, logAction }: { onConfirm: (a: Confirm
       expires_at: form.expires_at || null,
       max_uses: form.max_uses ? parseInt(form.max_uses) : null,
       restricted_email: form.restricted_email || null,
+      audience: form.audience,
     };
     const { error } = await supabase.from('promo_codes').insert(payload);
     if (error) { showToast('Erreur : ' + error.message); return; }
@@ -4326,6 +4328,28 @@ function PromosTab({ onConfirm, showToast, logAction }: { onConfirm: (a: Confirm
                   onChange={e => setForm(f => ({ ...f, value: parseFloat(e.target.value) || 0 }))} min={0} />
               )}
 
+              {/* Audience */}
+              <div style={{ padding: '14px 16px', borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.07em', textTransform: 'uppercase' as const, marginBottom: 12 }}>Qui peut utiliser ce code ?</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  {([
+                    { value: 'all',         icon: '👥', label: 'Tous',          color: '#0f2d3d' },
+                    { value: 'pro',         icon: '💼', label: 'Pros',          color: '#7c3aed' },
+                    { value: 'particulier', icon: '👤', label: 'Particuliers',  color: '#0891b2' },
+                  ] as const).map(a => {
+                    const selected = form.audience === a.value;
+                    return (
+                      <button key={a.value}
+                        onClick={() => setForm(f => ({ ...f, audience: a.value }))}
+                        style={{ padding: '10px 8px', borderRadius: 10, border: `1.5px solid ${selected ? a.color : '#edf2f7'}`, background: selected ? '#fff' : '#f8fafc', color: selected ? a.color : '#64748b', fontSize: 12.5, fontWeight: selected ? 700 : 500, cursor: 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 14 }}>{a.icon}</span>
+                        <span>{a.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Restrictions */}
               <div style={{ padding: '14px 16px', borderRadius: 12, background: '#f8fafc', border: '1px solid #edf2f7' }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.07em', textTransform: 'uppercase' as const, marginBottom: 12 }}>Restrictions (optionnel)</div>
@@ -4339,6 +4363,7 @@ function PromosTab({ onConfirm, showToast, logAction }: { onConfirm: (a: Confirm
               {/* Récapitulatif */}
               <div style={{ padding: '12px 16px', borderRadius: 11, background: '#f0f7fb', border: '1px solid #bae3f5', fontSize: 13, color: '#1a5e78', fontWeight: 600 }}>
                 Code <strong style={{ fontFamily: 'monospace' }}>{form.code}</strong> → {typeLabel(form.type, form.value, form.credit_type)}
+                {form.audience !== 'all' && ` · ${form.audience === 'pro' ? '💼 Pros seulement' : '👤 Particuliers seulement'}`}
                 {form.expires_at && ` · expire le ${fmtDate(form.expires_at)}`}
                 {form.max_uses && ` · max ${form.max_uses} utilisations`}
                 {form.restricted_email && ` · limité à ${form.restricted_email}`}
