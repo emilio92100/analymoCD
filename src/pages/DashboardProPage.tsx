@@ -6232,9 +6232,9 @@ function ProDashboardBanner() {
 
   // Couleurs vives — texte blanc sur fond saturé pour bien attirer l'œil
   const STYLES: Record<string, { bg: string; borderLeft: string; iconBg: string }> = {
-    info:    { bg: '#0284c7', borderLeft: '#075985', iconBg: 'rgba(7,89,133,0.55)' },
-    warning: { bg: '#f97316', borderLeft: '#c2410c', iconBg: 'rgba(124,45,18,0.5)' },
-    success: { bg: '#16a34a', borderLeft: '#15803d', iconBg: 'rgba(20,83,45,0.5)' },
+    info:    { bg: '#0284c7', borderLeft: '#075985', iconBg: '#fff' },
+    warning: { bg: '#f97316', borderLeft: '#c2410c', iconBg: '#fff' },
+    success: { bg: '#16a34a', borderLeft: '#15803d', iconBg: '#fff' },
   };
   const ICONS: Record<string, string> = { info: 'ℹ️', warning: '⚠️', success: '✅' };
 
