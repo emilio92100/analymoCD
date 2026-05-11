@@ -1,8 +1,14 @@
 // ══════════════════════════════════════════════════════════════════════
-// VERIMO — Edge Function : stripe-webhook-pro V6
+// VERIMO — Edge Function : stripe-webhook-pro V7
 //
 // Gère les événements Stripe pour les ABONNEMENTS PRO uniquement
 // (Découverte, Starter, Power) + les achats unitaires pro.
+//
+// V7 (11 mai 2026) :
+//   - Email de confirmation de résiliation envoyé au client quand
+//     cancel_at_period_end passe de false à true (peu importe qui
+//     a déclenché : client depuis dashboard OU admin depuis Stripe)
+//   - Date de fin d'accès affichée dans le mail
 //
 // V6 (10 mai 2026) :
 //   - Handler charge.refunded ajouté
@@ -88,6 +94,129 @@ const supabase = createClient(
 );
 
 const WEBHOOK_SECRET = Deno.env.get('STRIPE_WEBHOOK_SECRET_PRO') ?? '';
+
+// ─────────────────────────────────────────────────────────────────────
+// MAILJET — envoi d'email transactionnel (expéditeur pro@verimo.fr)
+// ─────────────────────────────────────────────────────────────────────
+async function sendMailjet(to: string, subject: string, htmlBody: string) {
+  const MJ_API_KEY = Deno.env.get('MJ_API_KEY') ?? '';
+  const MJ_SECRET_KEY = Deno.env.get('MJ_SECRET_KEY') ?? '';
+
+  if (!MJ_API_KEY || !MJ_SECRET_KEY) {
+    console.error('[mailjet] Keys not configured, skip');
+    return { success: false, error: 'Mailjet non configuré' };
+  }
+
+  try {
+    const res = await fetch('https://api.mailjet.com/v3.1/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic ' + btoa(`${MJ_API_KEY}:${MJ_SECRET_KEY}`),
+      },
+      body: JSON.stringify({
+        Messages: [{
+          From: { Email: 'pro@verimo.fr', Name: 'Verimo Pro' },
+          To: [{ Email: to }],
+          Subject: subject,
+          HTMLPart: htmlBody,
+        }],
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      console.error('[mailjet] Send failed:', JSON.stringify(data));
+      return { success: false, error: JSON.stringify(data) };
+    }
+    return { success: true };
+  } catch (e) {
+    console.error('[mailjet] Exception:', e);
+    return { success: false, error: String(e) };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// TEMPLATE MAIL — Confirmation de résiliation programmée
+// ─────────────────────────────────────────────────────────────────────
+function buildCancellationEmail(prenom: string, planLabel: string, endDateFr: string) {
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f7f9;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7f9;padding:20px 12px;">
+    <tr><td align="center">
+      <table cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);width:100%;max-width:560px;">
+
+        <tr><td style="background:linear-gradient(135deg,#0a1f2d,#1a4a5e);padding:36px 24px 28px;text-align:center;">
+          <img src="https://www.verimo.fr/logo-blanc.png" alt="Verimo" width="180" style="display:block;margin:0 auto 14px;max-width:180px;height:auto;" />
+          <span style="display:inline-block;background:linear-gradient(135deg,#7dd3fc,#38bdf8);color:#0a1f2d;font-size:11px;font-weight:800;padding:5px 16px;border-radius:100px;letter-spacing:0.1em;">PRO</span>
+        </td></tr>
+
+        <tr><td style="padding:32px 28px 12px;">
+          <h2 style="color:#0f2d3d;font-size:22px;font-weight:800;margin:0 0 16px;text-align:center;">✅ Résiliation prise en compte</h2>
+          <p style="color:#374151;font-size:15px;line-height:1.8;margin:0 0 20px;text-align:center;">
+            Bonjour ${prenom},<br>
+            Nous avons bien pris en compte votre demande de résiliation de l'abonnement <strong>Verimo Pro ${planLabel}</strong>.
+          </p>
+        </td></tr>
+
+        <tr><td style="padding:0 28px 24px;">
+          <div style="background:linear-gradient(135deg,#f0f7fb,#e8f4f8);border-radius:12px;padding:18px 22px;border:1px solid #d0e8f0;text-align:center;">
+            <p style="color:#2a7d9c;font-size:13px;font-weight:600;margin:0 0 6px;letter-spacing:0.05em;">📅 VOTRE ACCÈS RESTE ACTIF</p>
+            <p style="color:#0f2d3d;font-size:17px;font-weight:800;margin:0;">jusqu'au ${endDateFr}</p>
+          </div>
+        </td></tr>
+
+        <tr><td style="padding:0 28px 24px;">
+          <p style="color:#374151;font-size:14px;line-height:1.7;margin:0;text-align:center;">
+            Vous pouvez continuer à utiliser vos crédits et générer des analyses jusqu'à cette date.<br>
+            Aucun nouveau prélèvement ne sera effectué.
+          </p>
+        </td></tr>
+
+        <tr><td style="padding:0 28px 24px;">
+          <div style="background:#fffbeb;border-radius:10px;padding:14px 18px;border:1px solid #fde68a;">
+            <p style="color:#92400e;font-size:13px;line-height:1.7;margin:0;text-align:center;">
+              💡 <strong>Vous changez d'avis ?</strong><br>
+              Vous pouvez réactiver votre abonnement à tout moment depuis votre dashboard avant le ${endDateFr}.
+            </p>
+          </div>
+        </td></tr>
+
+        <tr><td style="padding:0 28px 32px;text-align:center;">
+          <a href="https://pro.verimo.fr/dashboard/abonnement" style="display:inline-block;background:linear-gradient(135deg,#2a7d9c,#0f2d3d);color:#fff;font-size:16px;font-weight:700;padding:15px 36px;border-radius:14px;text-decoration:none;box-shadow:0 8px 24px rgba(15,45,61,0.2);">
+            🔐 Accéder à mon dashboard
+          </a>
+        </td></tr>
+
+        <tr><td style="background:#f8fafc;padding:20px 28px;text-align:center;border-top:1px solid #f1f5f9;">
+          <p style="color:#94a3b8;font-size:11px;margin:0 0 6px;line-height:1.6;">
+            Une question ? Écrivez-nous à <a href="mailto:pro@verimo.fr" style="color:#2a7d9c;text-decoration:none;">pro@verimo.fr</a>
+          </p>
+          <p style="color:#94a3b8;font-size:11px;margin:0;line-height:1.6;">
+            <strong style="color:#64748b;">Verimo</strong> — Vos documents décryptés, votre décision éclairée.<br>
+            <a href="https://verimo.fr" style="color:#2a7d9c;text-decoration:none;">verimo.fr</a>
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Format date FR (ex: "11 juin 2026")
+// ─────────────────────────────────────────────────────────────────────
+function formatDateFr(date: Date): string {
+  const months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+                  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+}
+
 
 // ─────────────────────────────────────────────────────────────────────
 // INSERTION D'UNE ALERTE SYSTÈME POUR L'ADMIN
@@ -890,7 +1019,7 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription) {
 
   const { data: existing, error } = await supabase
     .from('pro_subscriptions')
-    .select('id, plan, user_id')
+    .select('id, plan, user_id, cancel_at_period_end')
     .eq('stripe_subscription_id', sub.id)
     .maybeSingle();
 
@@ -1026,6 +1155,52 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription) {
 
   if (updateError) {
     console.error('[sub.updated] Update failed:', updateError);
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // ⭐ V7 — Email de confirmation de résiliation programmée
+  // On envoie SEULEMENT quand cancel_at_period_end passe de false à true
+  // (1ère fois). Évite les doublons sur les events ultérieurs.
+  // Couvre les 2 cas : client résilie depuis dashboard OU admin annule
+  // depuis Stripe Dashboard ("Cancel at end of period").
+  // ─────────────────────────────────────────────────────────────────
+  const wasNotCancelling = !existing.cancel_at_period_end;
+  const isNowCancelling = sub.cancel_at_period_end === true;
+
+  if (wasNotCancelling && isNowCancelling) {
+    try {
+      // Récupérer email + prénom du client
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email, full_name')
+        .eq('id', existing.user_id)
+        .maybeSingle();
+
+      if (!profile?.email) {
+        console.warn('[sub.updated] Résiliation détectée mais email user introuvable, skip mail');
+      } else {
+        const prenom = profile.full_name?.split(' ')[0] || 'Bonjour';
+        const endDate = periodsUpd.end ? new Date(periodsUpd.end) : null;
+        const endDateFr = endDate ? formatDateFr(endDate) : 'la fin de votre cycle en cours';
+        const planLabelFr = planLabel(existing.plan);
+
+        const html = buildCancellationEmail(prenom, planLabelFr, endDateFr);
+        const mailResult = await sendMailjet(
+          profile.email,
+          '✅ Verimo Pro — Résiliation prise en compte',
+          html,
+        );
+
+        if (mailResult.success) {
+          console.log(`[sub.updated] Mail résiliation envoyé à ${profile.email} (fin: ${endDateFr})`);
+        } else {
+          console.error(`[sub.updated] Échec envoi mail résiliation: ${mailResult.error}`);
+        }
+      }
+    } catch (mailErr) {
+      // On ne fait pas échouer le webhook si le mail plante — c'est secondaire
+      console.error('[sub.updated] Exception envoi mail résiliation:', mailErr);
+    }
   }
 }
 
