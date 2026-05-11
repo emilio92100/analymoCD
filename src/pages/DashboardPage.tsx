@@ -472,14 +472,21 @@ export default function DashboardPage() {
 
   useEffect(() => {
     (window as unknown as Record<string, unknown>).__openHelp = async () => {
-      setHelpCheckingTicket(true);
-      setShowHelpPopup(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { count } = await supabase.from('support_tickets').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('status', 'open');
-        setHelpHasOpenTicket((count || 0) > 0);
+      // ⭐ Vérifier d'abord si un ticket est ouvert, AVANT d'afficher le popup.
+      // Comme ça le popup s'ouvre directement avec le bon contenu (pas de spinner
+      // qui saute en cours d'animation → animation fluide identique à Suggestion).
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { count } = await supabase.from('support_tickets').select('*', { count: 'exact', head: true }).eq('user_id', user.id).eq('status', 'open');
+          setHelpHasOpenTicket((count || 0) > 0);
+        }
+      } catch (e) {
+        console.warn('[help] Check ticket failed:', e);
+        setHelpHasOpenTicket(false);
       }
-      setHelpCheckingTicket(false);
+      // Maintenant on ouvre le popup avec le bon contenu prêt
+      setShowHelpPopup(true);
     };
     return () => { delete (window as unknown as Record<string, unknown>).__openHelp; };
   }, []);
@@ -572,11 +579,9 @@ export default function DashboardPage() {
       <AnimatePresence>
         {showHelpPopup && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
             style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,45,61,0.5)', padding: 20, backdropFilter: 'blur(3px)' }}
             onClick={() => { if (!helpSending) { setShowHelpPopup(false); setHelpSent(false); setHelpSubject(''); setHelpCustomSubject(''); setHelpMessage(''); setHelpCreatedId(null); setHelpHasOpenTicket(false); } }}>
-            <motion.div initial={{ scale: 0.96, opacity: 0, y: 10 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.96, opacity: 0, y: 6 }}
-              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            <motion.div initial={{ scale: 0.95, opacity: 0, y: 12 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 8 }}
               onClick={e => e.stopPropagation()}
               style={{ background: '#fff', borderRadius: 22, width: '100%', maxWidth: 520, boxShadow: '0 32px 80px rgba(0,0,0,0.2)', overflow: 'hidden', maxHeight: '90vh', overflowY: 'auto' }}>
 
