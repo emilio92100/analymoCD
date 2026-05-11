@@ -1815,15 +1815,18 @@ function DashboardTab({ onNavigate }: { onNavigate: (t: TabId) => void }) {
       proPayments.forEach((p: any) => {
         const desc = (p.description || '').toLowerCase();
         const amt = netTtc(p);
-        if (desc.includes('découverte') || desc.includes('decouverte')) {
-          caProByCategory.abo_decouverte.count++;
-          caProByCategory.abo_decouverte.total += amt;
-        } else if (desc.includes('starter')) {
+        // Pour les abonnements, on regarde le plan en début de description
+        // ("Abonnement Starter (upgrade depuis Découverte)" → Starter, pas Découverte)
+        const isAbo = desc.startsWith('abonnement');
+        if (isAbo && (desc.startsWith('abonnement starter') || desc.includes('abonnement starter'))) {
           caProByCategory.abo_starter.count++;
           caProByCategory.abo_starter.total += amt;
-        } else if (desc.includes('power')) {
+        } else if (isAbo && (desc.startsWith('abonnement power') || desc.includes('abonnement power'))) {
           caProByCategory.abo_power.count++;
           caProByCategory.abo_power.total += amt;
+        } else if (isAbo && (desc.startsWith('abonnement découverte') || desc.startsWith('abonnement decouverte') || desc.includes('abonnement découverte') || desc.includes('abonnement decouverte'))) {
+          caProByCategory.abo_decouverte.count++;
+          caProByCategory.abo_decouverte.total += amt;
         } else if (desc.includes('achat unitaire') && desc.includes('complète')) {
           caProByCategory.unit_complete.count++;
           caProByCategory.unit_complete.total += amt;
@@ -2257,15 +2260,18 @@ function StatsTab() {
       proPayments.forEach((p: any) => {
         const desc = (p.description || '').toLowerCase();
         const amt = netTtc(p);
-        if (desc.includes('découverte') || desc.includes('decouverte')) {
-          caProCateg.abo_decouverte.count++;
-          caProCateg.abo_decouverte.total += amt;
-        } else if (desc.includes('starter')) {
+        // Pour les abonnements, on regarde le plan en début de description
+        // ("Abonnement Starter (upgrade depuis Découverte)" → Starter, pas Découverte)
+        const isAbo = desc.startsWith('abonnement');
+        if (isAbo && (desc.startsWith('abonnement starter') || desc.includes('abonnement starter'))) {
           caProCateg.abo_starter.count++;
           caProCateg.abo_starter.total += amt;
-        } else if (desc.includes('power')) {
+        } else if (isAbo && (desc.startsWith('abonnement power') || desc.includes('abonnement power'))) {
           caProCateg.abo_power.count++;
           caProCateg.abo_power.total += amt;
+        } else if (isAbo && (desc.startsWith('abonnement découverte') || desc.startsWith('abonnement decouverte') || desc.includes('abonnement découverte') || desc.includes('abonnement decouverte'))) {
+          caProCateg.abo_decouverte.count++;
+          caProCateg.abo_decouverte.total += amt;
         } else if (desc.includes('achat unitaire') && desc.includes('complète')) {
           caProCateg.unit_complete.count++;
           caProCateg.unit_complete.total += amt;
