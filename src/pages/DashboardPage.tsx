@@ -468,7 +468,6 @@ export default function DashboardPage() {
   const [helpSent, setHelpSent] = useState(false);
   const [, setHelpCreatedId] = useState<string | null>(null);
   const [helpHasOpenTicket, setHelpHasOpenTicket] = useState(false);
-  const [helpCheckingTicket, setHelpCheckingTicket] = useState(false);
 
   useEffect(() => {
     (window as unknown as Record<string, unknown>).__openHelp = async () => {
@@ -585,12 +584,7 @@ export default function DashboardPage() {
               onClick={e => e.stopPropagation()}
               style={{ background: '#fff', borderRadius: 22, width: '100%', maxWidth: 520, boxShadow: '0 32px 80px rgba(0,0,0,0.2)', overflow: 'hidden', maxHeight: '90vh', overflowY: 'auto' }}>
 
-              {helpCheckingTicket ? (
-                <div style={{ padding: '48px 32px', textAlign: 'center' }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid #edf2f7', borderTopColor: '#2a7d9c', animation: 'spin 0.9s linear infinite', margin: '0 auto' }} />
-                  <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-                </div>
-              ) : helpHasOpenTicket ? (
+              {helpHasOpenTicket ? (
                 <div style={{ padding: '48px 32px', textAlign: 'center' }}>
                   <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: '2px solid #fde68a' }}>
                     <MessageSquare size={28} style={{ color: '#d97706' }} />
