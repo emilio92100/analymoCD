@@ -2544,6 +2544,10 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
       if (promo.max_uses && promo.uses_count >= promo.max_uses) { setPromoError("Ce code a atteint sa limite d'utilisation."); setPromoLoading(false); return; }
       if (promo.restricted_email && promo.restricted_email !== user.email) { setPromoError("Ce code n'est pas disponible pour votre compte."); setPromoLoading(false); return; }
 
+      // ⭐ Audience (Pros / Particuliers / Tous) — ici on est dans le dashboard pro
+      if (promo.audience === 'particulier') { setPromoError('Ce code est réservé aux comptes Particuliers.'); setPromoLoading(false); return; }
+      // (audience 'pro' et 'all' OK ici)
+
       // Vérifier anti-doublon
       const { data: alreadyUsed } = await supabase.from('promo_uses').select('id').eq('code_id', promo.id).eq('user_id', user.id).single();
       if (alreadyUsed) { setPromoError('Vous avez déjà utilisé ce code.'); setPromoLoading(false); return; }
