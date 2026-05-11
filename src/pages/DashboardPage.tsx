@@ -353,22 +353,26 @@ function DashboardBanner() {
   const visibleBanners = banners.filter(b => !dismissedIds.has(b.id));
   if (visibleBanners.length === 0) return null;
 
-  const STYLES: Record<string, { bg: string; border: string; color: string; icon: string }> = {
-    info:    { bg: '#f0f7fb', border: '#bae3f5', color: '#2a7d9c', icon: 'ℹ️' },
-    warning: { bg: '#fffbeb', border: '#fde68a', color: '#d97706', icon: '⚠️' },
-    success: { bg: '#f0fdf4', border: '#86efac', color: '#16a34a', icon: '✅' },
+  // Couleurs vives — texte blanc sur fond saturé pour bien attirer l'œil
+  const STYLES: Record<string, { bg: string; borderLeft: string; iconBg: string }> = {
+    info:    { bg: '#0284c7', borderLeft: '#075985', iconBg: 'rgba(255,255,255,0.2)' },
+    warning: { bg: '#f97316', borderLeft: '#c2410c', iconBg: 'rgba(255,255,255,0.2)' },
+    success: { bg: '#16a34a', borderLeft: '#15803d', iconBg: 'rgba(255,255,255,0.2)' },
   };
+  const ICONS: Record<string, string> = { info: 'ℹ️', warning: '⚠️', success: '✅' };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       {visibleBanners.map(b => {
         const s = STYLES[b.type] || STYLES.info;
         return (
-          <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px', background: s.bg, borderLeft: `4px solid ${s.color}`, borderBottom: `1px solid ${s.border}` }}>
-            <span style={{ fontSize: 16, flexShrink: 0 }}>{s.icon}</span>
-            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: s.color, lineHeight: 1.5 }}>{b.message}</span>
+          <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 22px', background: s.bg, borderLeft: `5px solid ${s.borderLeft}`, color: '#fff' }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: s.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>
+              {ICONS[b.type] || ICONS.info}
+            </div>
+            <span style={{ flex: 1, fontSize: 14, fontWeight: 500, color: '#fff', lineHeight: 1.5 }}>{b.message}</span>
             <button onClick={() => handleDismiss(b.id)} aria-label="Fermer"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: s.color, opacity: 0.5, padding: 4, flexShrink: 0 }}>
+              style={{ background: 'rgba(255,255,255,0.18)', border: 'none', cursor: 'pointer', color: '#fff', padding: 6, borderRadius: 6, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <X size={15} />
             </button>
           </div>
