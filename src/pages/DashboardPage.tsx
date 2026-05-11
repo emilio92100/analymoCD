@@ -281,45 +281,99 @@ function Topbar({ onMenuClick, title, unreadCount, notifications, onMarkAllRead,
 }
 
 /* ═══════════════════════════════════════════
-   BANNER (inchangé)
+   BANNER — V2 : ciblage audience + dismiss journalier
+   Affiche les bannières actives qui ciblent ce user :
+   - audience='all' → tout le monde
+   - audience='particulier' → user.role = 'particulier'
+   - audience='specific' → target_user_id = user.id
+   Dismiss : sessionStorage avec date du jour. Revient demain.
 ═══════════════════════════════════════════ */
+type BannerData = {
+  id: string;
+  message: string;
+  type: 'info' | 'warning' | 'success';
+  audience: 'all' | 'pro' | 'particulier' | 'specific';
+  target_user_id: string | null;
+};
+
 function DashboardBanner() {
-  const [banner, setBanner] = useState<{ id:string; message:string; type:string }|null>(null);
-  const [dismissed, setDismissed] = useState(false);
+  const [banners, setBanners] = useState<BannerData[]>([]);
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      const { data } = await supabase.from('banners').select('*').eq('active', true).order('created_at', { ascending:false }).limit(1);
-      if (data && data.length > 0) {
-        const b = data[0];
-        const key = `verimo_banner_${b.id}_${user?.id}`;
-        if (sessionStorage.getItem(key) === 'dismissed') setDismissed(true);
-        setBanner(b);
+      if (!user) return;
+      setUserId(user.id);
+
+      // Récupère le role pour filtrer côté client (l'audience pro/particulier)
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
+      const role = profile?.role || 'particulier';
+
+      // On récupère TOUTES les bannières actives, puis on filtre côté front
+      // (plus simple que des `or` Supabase imbriqués, et il y a peu de bannières)
+      const { data } = await supabase
+        .from('banners')
+        .select('id, message, type, audience, target_user_id')
+        .eq('active', true)
+        .order('created_at', { ascending: false });
+
+      if (!data) return;
+
+      // Filtrage : on garde celles qui concernent ce user
+      const visible = data.filter(b => {
+        if (b.audience === 'all') return true;
+        if (b.audience === 'pro') return role === 'pro';
+        if (b.audience === 'particulier') return role !== 'pro';
+        if (b.audience === 'specific') return b.target_user_id === user.id;
+        return false;
+      }) as BannerData[];
+
+      // Lire les dismiss du jour pour chaque bannière visible
+      const today = new Date().toISOString().slice(0, 10); // ex: "2026-05-11"
+      const dismissed = new Set<string>();
+      for (const b of visible) {
+        const key = `verimo_banner_dismiss_${b.id}_${user.id}`;
+        if (sessionStorage.getItem(key) === today) dismissed.add(b.id);
       }
+      setDismissedIds(dismissed);
+      setBanners(visible);
     };
     load();
   }, []);
 
-  const handleDismiss = async () => {
-    if (!banner) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    sessionStorage.setItem(`verimo_banner_${banner.id}_${user?.id}`, 'dismissed');
-    setDismissed(true);
+  const handleDismiss = (bannerId: string) => {
+    if (!userId) return;
+    const today = new Date().toISOString().slice(0, 10);
+    sessionStorage.setItem(`verimo_banner_dismiss_${bannerId}_${userId}`, today);
+    setDismissedIds(prev => new Set([...prev, bannerId]));
   };
 
-  if (!banner || dismissed) return null;
-  const STYLES: Record<string, { bg:string; border:string; color:string; icon:string }> = {
-    info:    { bg:'#f0f7fb', border:'#bae3f5', color:'#2a7d9c', icon:'ℹ️' },
-    warning: { bg:'#fffbeb', border:'#fde68a', color:'#d97706', icon:'⚠️' },
-    success: { bg:'#f0fdf4', border:'#86efac', color:'#16a34a', icon:'✅' },
+  const visibleBanners = banners.filter(b => !dismissedIds.has(b.id));
+  if (visibleBanners.length === 0) return null;
+
+  const STYLES: Record<string, { bg: string; border: string; color: string; icon: string }> = {
+    info:    { bg: '#f0f7fb', border: '#bae3f5', color: '#2a7d9c', icon: 'ℹ️' },
+    warning: { bg: '#fffbeb', border: '#fde68a', color: '#d97706', icon: '⚠️' },
+    success: { bg: '#f0fdf4', border: '#86efac', color: '#16a34a', icon: '✅' },
   };
-  const s = STYLES[banner.type] || STYLES.info;
+
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 20px', background:s.bg, borderBottom:`1.5px solid ${s.border}` }}>
-      <span style={{ fontSize:16, flexShrink:0 }}>{s.icon}</span>
-      <span style={{ flex:1, fontSize:13, fontWeight:600, color:s.color }}>{banner.message}</span>
-      <button onClick={handleDismiss} style={{ background:'none', border:'none', cursor:'pointer', color:s.color, opacity:0.5, padding:4, flexShrink:0 }}><X size={15}/></button>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {visibleBanners.map(b => {
+        const s = STYLES[b.type] || STYLES.info;
+        return (
+          <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px', background: s.bg, borderLeft: `4px solid ${s.color}`, borderBottom: `1px solid ${s.border}` }}>
+            <span style={{ fontSize: 16, flexShrink: 0 }}>{s.icon}</span>
+            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: s.color, lineHeight: 1.5 }}>{b.message}</span>
+            <button onClick={() => handleDismiss(b.id)} aria-label="Fermer"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: s.color, opacity: 0.5, padding: 4, flexShrink: 0 }}>
+              <X size={15} />
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }
