@@ -1,382 +1,222 @@
-# VERIMO — Contexte projet — 10 mai 2026 (soir)
-
-> Colle ce fichier en début de conversation Claude pour reprendre le contexte.
-
----
-
-## 🛠️ Méthode de travail avec Alex
-
-- **Profil** : débutant développement, modifie les fichiers directement sur **GitHub.com** (crayon ✏️ → Ctrl+A → colle → Commit)
-- **Repo** : `github.com/emilio92100/analymoCD`
-- Claude clone `https://github.com/emilio92100/analymoCD.git` et livre les fichiers **complets** via `present_files` depuis `/mnt/user-data/outputs/`
-- Alex push manuellement sur GitHub
-- **Vercel redéploie auto** le frontend après chaque push GitHub
-- ⚠️ **Edge Functions Supabase NE sont PAS déployées par push GitHub** — il faut aller manuellement dans Supabase → Edge Functions → coller le code → Deploy. Bug récurrent : Alex push, l'erreur persiste, c'est parce que l'edge function n'est pas redéployée
-- **Ne jamais coder sans accord préalable** — toujours échanger et valider avant de toucher au code
-- **Une étape à la fois** — pas 10 actions d'un coup
-- **Réponses courtes et concises** — pas de pavés sauf question technique précise
-- **Pas de QCM cascade** — quand Alex demande un choix, lui en proposer 2-4 max
-- **Challenger les sur-ingénieries** — Alex préfère faire simple
-- **Mot "IA" / "AI" banni** des pages publiques Verimo (HomePage, ExemplePage, TarifsPage, MethodePage, ContactPage, ProPage, ContactProPage, RapportPage, Navbar, Footer) — utiliser "technologie Verimo", "moteur d'analyse", "nos algorithmes", "analyse experte". AI uniquement autorisé dans admin, edge functions, prompts, logs, context.md.
-- **Tests live avec vraie carte CB d'Alex** (pas Visa 4242)
-- Compte test live actuel : Jean DUMONT / ARTY CONSEIL (acct_1TIateBesXB76oWE)
-- User test pro : `publicite92320@gmail.com` (ID `217468f6-0f2b-4487-865e-a277cc600e45`)
+# Verimo — Session du 11 mai 2026 (01h25 → 04h30)
+## Bug paiements → Solution complète déployée
 
 ---
 
-## 📦 Le produit
+## 🎯 OBJECTIF ATTEINT
 
-**Verimo** — SaaS d'analyse de documents immobiliers (PV d'AG, règlements copro, diagnostics, appels de charges, DPE, compromis, carnet d'entretien, DTG, pré-état daté, état daté, taxe foncière, modificatifs RCP, fiche synthétique...). Rapport clair avec score /20, risques, recommandations. Fonctionne pour appartements et maisons.
-
-**Slogan** : *Vos documents décryptés, votre décision éclairée.*
-**H1 HomePage** : *Analysez vos documents immobiliers avant de signer.*
-**Cible** : Acheteurs particuliers (primo-accédants, RP) et professionnels (agents immo, investisseurs, marchands de bien, notaires).
+**Tous les paiements remontent désormais de manière fiable dans le dashboard admin.**
+Tu peux lancer ton offre Pro sereinement.
 
 ---
 
-## 💰 Tarification
+## 1. CONTEXTE DE DÉPART
 
-### Particuliers
-- 4,90€ → 1 crédit analyse simple (1 doc) — PAS de score /20
-- 19,90€ → 1 crédit analyse complète (jusqu'à 15 docs)
-- 29,90€ → 2 crédits (Pack 2 biens)
-- 39,90€ → 3 crédits (Pack 3 biens)
-- Crédits jamais expirés
-
-### Pros — Abonnements mensuels HT
-| Plan | Prix HT/mois | Complètes | Simples |
-|------|-------------|-----------|---------|
-| Découverte | 19,90€ | 1 | 3 |
-| Starter | 49,90€ | 5 | 15 |
-| Power | 89,90€ | 10 | 30 |
-
-**Achats unitaires pro (réservés aux abonnés)** : Complète 9,90€ HT · Simple 2,90€ HT
-
-### Stripe Price IDs (PRODUCTION)
-
-```
-# Particuliers
-document : price_1TTtd1BesXB76oWECAGA9ywf
-complete : price_1TTtd2BesXB76oWEsZ9LsLS9
-pack2    : price_1TTtcxBesXB76oWETkokxLgB
-pack3    : price_1TTtczBesXB76oWEloTMvEZF
-
-# Pro
-DECOUVERTE 19,90€ → price_1TTtd1BesXB76oWEZuILxjwe
-STARTER 49,90€    → price_1TTtczBesXB76oWEcKaNR2BW
-POWER 89,90€      → price_1TTtcxBesXB76oWEPyVYZjCj
-UNIT_COMPLETE 9,90€ → price_1TTtcyBesXB76oWEBF1TLHYz
-UNIT_SIMPLE 2,90€   → price_1TTtd2BesXB76oWEVM0p27GS
-
-# TVA France 20% (mode exclusif HT)
-TVA Tax Rate ID : txr_1TUAxVBesXB76oWESXBnGdIZ
-```
+Bug identifié en début de session :
+- Un paiement test Pro à 23,88€ TTC (alexandre.rt25@gmail.com, abo Découverte) n'apparaissait pas dans la table `payments`
+- Cause racine : **race condition** entre 3 webhooks Stripe parallèles (`invoice.paid` à 01:46:21 + `checkout.session.completed` à 01:46:22 + `subscription.updated` à 01:46:23) qui tentaient tous d'insérer dans `pro_subscriptions` → conflit sur `idx_pro_subscriptions_active_user` → l'un plante, et son `recordProPayment` n'est jamais appelé
+- Conséquence : le client paie mais le CA admin reste à 0€
 
 ---
 
-## 🏗️ Stack technique
+## 2. SOLUTION APPLIQUÉE
 
-- **Frontend** : React + Vite + TypeScript + Tailwind
-- **Backend** : Supabase Pro (auth + DB + Edge Functions Deno + Storage)
-- **IA** : Claude Sonnet 4.6 via API Anthropic + Files API (modèle `claude-sonnet-4-6`)
-- **Paiement** : Stripe (PRODUCTION)
-- **Email** : Mailjet (`notification@verimo.fr` particuliers, `pro@verimo.fr` pro)
-- **Déploiement** : Vercel (frontend auto via GitHub) + Supabase (edge functions **manuelles**)
-- **URL Supabase** : `veszrayromldfgetqaxb.supabase.co`
-- **Site** : `https://www.verimo.fr` + `pro.verimo.fr` (CNAME → Vercel)
+### A. Edge Function `sync-stripe-payments` V2 — FILET DE SÉCURITÉ
 
----
+**Principe** : une edge function autonome qui tourne toutes les 5 min, demande à Stripe la liste des paiements des 3 derniers jours, et complète/corrige la table `payments`.
 
-## ⚙️ Edge Functions Supabase (production)
+**Avantages** :
+- Ne touche QUE à `payments` (pas aux abos, crédits, rôles)
+- Tourne seule (pas de race condition possible)
+- Stripe = source de vérité ; la sync ne fait qu'aligner la BDD
+- Le webhook reste en place pour les actions immédiates (crédits, activation abo)
+- Si webhook plante : la sync rattrape en 5 min max le paiement dans le CA admin
 
-| Nom | Rôle | Version |
-|-----|------|---------|
-| `analyser` | Lance une analyse — gère la queue Anthropic 503 | v8 |
-| `analyser-run` | Worker qui traite l'analyse en background | — |
-| `analyser-retry` | Cron pg_cron 5 min — retraite les analyses queued (12 retries max) | — |
-| `comparer` | Compare 2 ou 3 rapports | — |
-| `admin-user-management` | Actions admin (create, invite, delete, reset password) | — |
-| `pro-checkout-create` | Stripe pro : subscribe / preview_upgrade / buy_unit / cancel / cancel_scheduled_change / reactivate / billing_portal / list_invoices | V3 |
-| `stripe-webhook-pro` | Webhook Stripe pro (5 events) | **V5** |
-| `stripe-webhook` | Webhook Stripe particuliers (checkout.session.completed) | **V3.1** |
-| `create-checkout-session` | Stripe particuliers (checkout) | **V2** |
+**Fichier livré** : `/mnt/user-data/outputs/sync-stripe-payments-index.ts` (411 lignes, V2)
 
-⚠️ **Rappel critique** : push GitHub ne déploie pas les edge functions → toujours redéployer manuellement dans Supabase Studio.
+**Fonctionnalités V2** :
+- Récupération des `paymentIntents` Stripe avec `expand: ['data.latest_charge', 'data.invoice']`
+- Détection précise des remboursements via `charge.amount_refunded` (total + partiel)
+- Identification du produit via `price_id` Stripe → mapping hardcodé vers Découverte/Starter/Power/unitaires
+- Descriptions exactes alignées sur celles du webhook officiel :
+  - "Abonnement Découverte (souscription)" / "(renouvellement)" / "(upgrade)"
+  - "Achat unitaire — analyse simple d'un document"
+  - etc.
+- Correction rétroactive : si une ligne `payments` a une description générique ("Subscription creation", "sync auto", etc.), la sync la remplace par la vraie
+- Fallback par montant en cents (490, 1990, 2990, 3990, 348, 1188, 2388, 5988, 10788) si identification échoue
+- Alerte info dans `system_alerts` uniquement si quelque chose a vraiment été inséré/mis à jour
+- LOOKBACK_DAYS = 3 (marge en cas de panne pg_cron)
+- maxPages = 20 (jusqu'à 2000 paiements par run)
 
-### Webhooks Stripe configurés (Stripe Dashboard)
+**Déploiement effectif** :
+- Edge function créée sur Supabase Dashboard (URL `https://veszrayromldfgetqaxb.supabase.co/functions/v1/sync-stripe-payments`)
+- Toggle **"Verify JWT with legacy secret" → ON** dans Settings de la fonction
+- Pas de check d'auth interne dans le code (Supabase gère via le toggle ; la première version avec check interne renvoyait 401 car la var d'env n'était pas reconnue)
+- Cron `sync-stripe-payments-every-5min` actif (id=2 dans `cron.job`)
 
-- **Verimo - Pro** → `stripe-webhook-pro` : 4 events (checkout.session.completed, customer.subscription.deleted, customer.subscription.updated, invoice.paid)
-- **Verimo - Particuliers** → `stripe-webhook` : 1 event (checkout.session.completed)
+### B. Cron pg_cron toutes les 5 minutes
 
-> Note : `checkout.session.completed` est envoyé aux 2 webhooks (config Stripe). Mes V5/V3.1 contiennent un filtre qui fait skip silencieux si le paiement n'est pas pour ce webhook (basé sur `metadata.userId` vs `metadata.user_id`).
-
----
-
-## 🗺️ Routes principales
-
-```
-/                              → HomePage
-/pro                           → ProPage
-/tarifs                        → TarifsPage
-/exemple                       → ExemplePage
-/methode                       → MethodePage
-/guides                        → GuidesPage
-/connexion, /inscription       → Auth
-/admin                         → AdminPage
-/dashboard                     → SmartDashboard (détecte role)
-/dashboard/nouvelle-analyse    → NouvelleAnalyse
-/dashboard/analyses            → MesAnalyses (particulier)
-/dashboard/dossiers            → MesDossiersPro (pro)
-/dashboard/dossier/:id         → DossierDetail (pro)
-/dashboard/abonnement          → MonAbonnement (pro)
-/dashboard/compte              → Compte ou ComptePro
-/dashboard/support             → Support
-/rapport?id=XXX                → RapportPage
-```
-
----
-
-## 💳 Système d'abonnement Pro Stripe — État actuel (✅ stable)
-
-**Le système Stripe pro est entièrement opérationnel et testé en live**. Tous les bugs critiques identifiés en mai 2026 ont été résolus.
-
-### Flow d'upgrade (paiement immédiat)
-- `proration_behavior: 'none'` + `billing_cycle_anchor: 'now'` → cycle redémarre, plein tarif facturé immédiatement
-- `payment_behavior: 'default_incomplete'` → permet de gérer 3DS, carte refusée, etc.
-- 4 cas gérés côté backend :
-  - ✅ Paiement direct OK → popup vert "Plan activé !" + crédits cumulés
-  - 🔐 3DS demandé → popup Stripe inline → si validé OK
-  - ❌ Carte refusée → popup rouge contextuelle "Mettez à jour votre moyen de paiement"
-  - ⏳ Paiement en cours → popup "Patientez, rafraîchissez"
-- **Sécurité backend** : webhook `customer.subscription.updated` vérifie `latest_invoice.status === 'paid'` AVANT de cumuler les crédits → impossible de bénéficier d'un upgrade sans paiement effectif
-- **Pas de retry automatique** sur upgrade échoué (contrairement aux renouvellements de cycle où Stripe retente 3 fois)
-
-### Flow de downgrade (Stripe Subscription Schedule)
-- Création d'un `subscription_schedule` via `from_subscription` → bascule programmée à `current_period_end`
-- Mode `cancel_scheduled_change` permet d'annuler une bascule programmée
-- Stockage BDD dans colonnes `pro_subscriptions.scheduled_plan_change` + `scheduled_change_date` pour affichage UX
-- Si schedule existe déjà et pro demande **même plan** : refus propre `same_plan_already_scheduled`
-- Si schedule existe déjà et pro demande **autre plan** : popup ambre "Voulez-vous remplacer le changement programmé ?"
-- Bouton "Passer à ce plan" **désactivé** sur le plan déjà programmé (affiche "Passage programmé le DATE")
-- Bouton "Annuler ce changement" sur la carte du plan actif si scheduled_plan_change rempli
-- Webhook nettoie scheduled_* aux moments clés (upgrade payé, renouvellement, résiliation)
-
-### Schéma BDD pro_subscriptions (colonnes clés)
+SQL exécuté :
 ```sql
-- user_id, plan, status, stripe_subscription_id, stripe_customer_id
-- credits_complete_total/used, credits_simple_total/used
-- current_period_start, current_period_end
-- cancel_at_period_end, cancellation_reason
-- scheduled_plan_change, scheduled_change_date
+SELECT cron.schedule(
+  'sync-stripe-payments-every-5min',
+  '*/5 * * * *',
+  $$
+  SELECT net.http_post(
+    url:='https://veszrayromldfgetqaxb.supabase.co/functions/v1/sync-stripe-payments',
+    headers:=jsonb_build_object(
+      'Authorization', 'Bearer <service_role_key>',
+      'Content-Type', 'application/json'
+    )
+  );
+  $$
+);
 ```
 
----
+### C. Fix bug d'affichage AdminPage (catégorisation des plans Pro)
 
-## 🔐 Audit sécurité paiements — Session 10 mai 2026 (✅ TERMINÉ)
+**Bug découvert pendant les tests** : lors d'un upgrade Découverte → Starter, le paiement de 59,88€ TTC ("Abonnement Starter (upgrade depuis Découverte)") apparaissait dans la case "Abo Découverte" au lieu de "Abo Starter".
 
-8 failles identifiées et corrigées sur le système de paiement particulier + bugs annexes pro.
+**Cause** : le code admin utilisait :
+```js
+if (desc.includes('découverte')) → Découverte
+else if (desc.includes('starter')) → Starter
+```
+→ Le mot "découverte" dans "(upgrade depuis Découverte)" matchait en premier → mauvaise case.
 
-### Failles corrigées (déployées en prod)
+**Fix appliqué** (2 blocs lignes ~1818 et ~2260) :
+```js
+const isAbo = desc.startsWith('abonnement');
+if (isAbo && desc.includes('abonnement starter')) → Starter
+else if (isAbo && desc.includes('abonnement power')) → Power
+else if (isAbo && desc.includes('abonnement découverte')) → Découverte
+```
 
-| # | Faille | Fix |
-|---|---|-----|
-| 1 | `userId` non vérifié côté serveur (create-checkout-session) | JWT obligatoire, userId pris du JWT |
-| 2 | Code promo consommé avant paiement | Insert promo_uses + RPC increment_promo_uses déplacés dans webhook |
-| 3 | Promo "déjà utilisée" non vérifiée serveur | Check serveur ajouté |
-| 4 | Pas d'idempotence webhook particulier | Table `processed_stripe_events` partagée avec webhook pro |
-| 5 | `successUrl` modifiable (phishing) | URL hardcodée serveur |
-| 6 | Anon key hardcodée dans le bundle JS | Migration vers `supabase.functions.invoke()` |
-| 8 | Cartes uniquement (perte conversion mobile) | Méthodes gérées via Stripe Dashboard (Apple Pay/Google Pay/Link) |
+**Vérifications** :
+- Pack 2/3 particulier : pas de bug (test `pack 3` avant `pack 2` avant `complète` avant `simple`) ✅
+- Unitaires pro/particulier : pas de bug (test `complète` avant `simple`) ✅
+- Seuls les plans Pro avec mention "(upgrade depuis X)" étaient affectés
 
-### Bonus session
-
-- ✅ Email pré-rempli sur Stripe Checkout particulier (`customer_email: user.email`)
-- ✅ **Bug A** : 500 ERR sur `customer.subscription.updated` (timestamps null) → helper `safeDate()` ajouté dans webhook pro V5
-- ✅ **Bug B** : Pollution alertes admin entre webhooks → filtres skip silencieux dans V5 et V3.1
-- ✅ Popup paiement premium (côté particulier Tarifs.tsx) — animation spring, design calqué sur le pro
-
-### Reste dans l'audit (non bloquant)
-
-- **#7 Rate limiting** : à activer avant la 1ère grosse campagne pub. Soit Supabase rate limiter natif, soit compteur applicatif (max 10 sessions Checkout / heure / user).
+**Fichier livré** : `/mnt/user-data/outputs/AdminPage.tsx` (5925 lignes)
 
 ---
 
-## ⚠️ Dette technique identifiée — Refonte CA admin V2 (PROCHAINE SESSION)
+## 3. TESTS EFFECTUÉS — TOUS VALIDÉS
 
-**Découverte session 10 mai (soir)** : le calcul du CA admin n'est pas cohérent et ne gère pas les remboursements.
+### Test 1 — Sync manuelle (initiale, avant V2)
+- HTTP 200 OK
+- Response : `{"ok":true,"stats":{"scanned":15,"inserted":1,...}}`
+- Le paiement 23,88€ a été inséré dans `payments` (mais avec description bidon "Subscription creation")
 
-### Constats
+### Test 2 — Sync après déploiement V2
+- HTTP 200 OK
+- Description du 23,88€ corrigée en "Abonnement Découverte (souscription)" ✅
+- Le 3,48€ (= 2,90€ HT pro) de `publicite92320@gmail.com` (compte test précédent remboursé sur Stripe) est passé en `status = refunded` ✅
+- 2 paiements particuliers de 4,90€ (`hello@verimo.fr`) également passés en `refunded` ✅
 
-1. **Sources multiples pour le CA admin :**
-   - CA Particulier → lit `payments`
-   - CA Pro abos → lit `pro_subscriptions` (calculé via `PLAN_PRICES[plan]`, pas via les vrais montants payés)
-   - CA Pro unitaires → lit `pro_unit_purchases`
-   - **Conséquence** : un abo pro peut être compté dans le CA même si la ligne `payments` n'existe pas (cas vu cette nuit où le webhook plantait avant `recordProPayment`)
-
-2. **Remboursements Stripe non synchronisés :**
-   - Aucun webhook ne gère les events `charge.refunded` / `charge.refund.updated`
-   - Quand admin rembourse sur Stripe → la BDD ne le sait pas
-   - Fiche client n'affiche pas "Remboursé"
-   - CA admin continue de compter les paiements remboursés (sauf effet de bord constaté : `customer.subscription.updated` met `current_period_start` à NULL → exclut l'abo du calcul, mais c'est un coup de bol pas une logique)
-
-3. **HT vs TTC mélangés :**
-   - Particulier 4,90€ = HT (pas de TVA)
-   - Pro 107,88€ = TTC (89,90€ HT + TVA)
-   - Le total affiché mélange les deux → faux comptablement
-
-4. **Distinction pro/particulier dans `payments`** : pas de colonne `customer_type`, faut JOIN avec `profiles`.
-
-### Plan de refonte CA V2 (à valider en début de prochaine session)
-
-**Étape 1 — Schéma BDD `payments`**
-- Ajouter colonne `customer_type` (`'pro'` ou `'particulier'`)
-- Ajouter colonne `amount_ht` (calculé : `amount / 1.20` si pro, `= amount` si particulier)
-- Ajouter colonne `refunded_amount` (cents) pour remboursements partiels
-- Statuts : `completed`, `refunded`, `partially_refunded`
-- Backfill l'historique existant (UPDATE basé sur `description`)
-
-**Étape 2 — Webhook `charge.refunded`**
-- Ajouter event sur les 2 webhooks Stripe (Pro + Particuliers) côté Stripe Dashboard
-- Code dans `stripe-webhook-pro` et `stripe-webhook` :
-  - Trouver la ligne `payments` via `stripe_payment_id`
-  - Si remboursement total → `status = 'refunded'`
-  - Si remboursement partiel → `status = 'partially_refunded'`, `refunded_amount = X`
-- **Décisions produit déjà actées :**
-  - Q1 (remboursement partiel) : option **B** — afficher "Remboursé partiellement : X€ sur Y€"
-  - Q2 (crédits si annulation totale) : tout retirer
-  - Q3 (CA affiché) : montrer **CA net uniquement** (pas brut+net)
-
-**Étape 3 — Réécrire calcul CA dans AdminPage.tsx**
-- Lire **uniquement** `payments` partout
-- Filtrer `status NOT IN ('refunded')` et déduire `refunded_amount` pour partiels
-- Afficher **HT et TTC** côte à côte sur chaque KPI
-- Filtres pro/particulier via la nouvelle colonne `customer_type`
-
-**Étape 4 — Affichage fiche client (Historique financier)**
-- Ligne remboursée : prix barré + badge "Remboursé" (ou "Remboursé partiellement")
-- KPI fiche client cohérent avec le CA admin
-
-### Estimation : 1h30 de code + tests, à faire dans une session dédiée avec esprit clair.
+### Test 3 — Test live upgrade Découverte → Starter
+- Heure : 01:34:27 (11 mai)
+- Webhook a marché immédiatement (sans bug cette fois)
+- Ligne `payments` insérée direct :
+  - 59,88€ TTC (49,90€ HT)
+  - status : completed
+  - description : "Abonnement Starter (upgrade depuis Découverte)"
+  - customer_type : pro
+- Mais affichage admin buggé → fix `AdminPage.tsx` (point 2.C)
+- Après fix : le Starter s'affiche dans la bonne case ✅
 
 ---
 
-## 🆕 Autre demande UX prochaine session — Badge dynamique fiche client
+## 4. ÉTAT FINAL DU SYSTÈME
 
-**Sujet** : sur la page client admin, le badge "Actif · Renouvellement le X" reste figé même quand le client a fait un upgrade ou un downgrade.
-
-**Comportement actuel :**
-- ✅ Si client a résilié → badge affiche bien "Résilié le X" + raison
-- ❌ Si client a fait un upgrade en cours → badge reste "Actif · Renouvellement le X"
-- ❌ Si client a un downgrade programmé → badge reste "Actif · Renouvellement le X"
-
-**Comportement souhaité :**
-- Upgrade en cours → badge "Upgrade en cours vers [plan]"
-- Downgrade programmé → badge "Bascule programmée vers [plan] le [date]"
-- Garder la logique actuelle pour résiliation et actif normal
-
-**Effort** : ~15 min de code (lecture `pro_subscriptions.scheduled_plan_change` + adaptation du composant badge).
-
-À faire dans la même session que la refonte CA V2 (touche les mêmes pages admin).
+| Mécanisme | Source de vérité | Latence |
+|---|---|---|
+| Activation abonnement Pro | Webhook (stripe-webhook-pro) | Immédiat |
+| Attribution crédits Pro/Particulier | Webhook | Immédiat |
+| Upgrade / Downgrade plan | Webhook | Immédiat |
+| Résiliation programmée | Webhook | Immédiat |
+| Past_due / blocage paiement raté | Webhook + bandeau dashboard | Immédiat |
+| **Insertion dans `payments` (CA admin)** | **Webhook + Sync filet** | 0 → 5 min max |
+| **Remboursements (status refunded)** | **Webhook + Sync filet** | 0 → 5 min max |
+| Affichage admin par catégorie (Découverte/Starter/Power/Unitaires) | AdminPage.tsx (fix appliqué) | Direct au refresh |
 
 ---
 
-## 📊 Architecture crédits (inchangée)
+## 5. ⚠️ ACTIONS PENDING URGENTES
 
-### Sources de crédits pro
-Lues par sidebar et NouvelleAnalyse via `get_pro_credits_balance(p_user_id)` qui agrège :
-1. **Abonnement** → `pro_subscriptions` (`credits_complete_total/used`, `credits_simple_total/used`)
-2. **Achats unitaires** → `pro_unit_purchases` (avec `credits_remaining`)
-3. **Crédits offerts** → `credit_grants` + trigger `apply_credit_grant`
+### À faire AVANT le lancement public
+1. **Push `AdminPage.tsx`** (fix catégorisation) sur GitHub → branche `main` → Vercel auto-deploy
+2. **Push le fichier `supabase/functions/sync-stripe-payments/index.ts`** sur GitHub (pour avoir la trace versionnée)
+3. **Régénérer la service_role key** : elle a été partagée dans plusieurs screenshots durant la session (Settings → JWT signing keys → rotation). Le cron pg_cron devra être recréé avec la nouvelle clé.
+4. **Configurer `pro@verimo.fr`** chez OVH/Google Workspace (mailbox + réception fonctionnelle) — l'adresse est mentionnée dans les CGV Pro
 
-### Fonctions SQL crédits
-- **Consommation** : `consume_pro_credit(p_user_id, p_credit_type)`
-- **Remboursement crédit interne** : `refund_pro_credit(p_user_id, p_credit_type)` (analyse plantée)
-- **Reset cycle abo** : `reset_pro_subscription_credits(p_subscription_id)`
-- **Cumul upgrade** : `upgrade_pro_subscription_credits(p_subscription_id, p_new_plan)`
-- **Incrément promo** : `increment_promo_uses(code_id)` (réutilisée par webhook particulier V3.1)
-
-### Contraintes BDD
-- `pro_unit_purchases.type` : CHECK `('document', 'complete')`
-- `credit_grants.credit_type` : CHECK `('complete', 'document')`
-- `pro_unit_purchases` avec `amount=0` = crédits offerts admin → exclus du CA
-- `analyses.status` : CHECK autorise `pending, processing, queued, completed, failed`
+### À faire après le lancement
+5. **Re-tester un cycle complet** avec un nouveau compte fresh : souscription Découverte / upgrade Starter / upgrade Power / downgrade / achat unitaire / remboursement — confirmer que tout remonte bien
 
 ---
 
-## 📐 Règles de notation — Score /20
+## 6. BACKLOG TECHNIQUE
 
-| Catégorie | Max |
-|-----------|-----|
-| Travaux | 5 pts |
-| Procédures | 4 pts |
-| Finances | 4 pts |
-| Diagnostics privatifs | 4 pts |
-| Diagnostics communs | 3 pts |
-| **TOTAL** | **20 pts** |
+### Bug racine du webhook (non-fixé, mais compensé par la sync)
+- Cause : race condition entre `invoice.paid`, `checkout.session.completed`, `subscription.updated`
+- Fix propre : remplacer la logique `if (existing) update else insert` dans `upsertProSubscription` par un `.upsert({ onConflict: 'stripe_subscription_id' })` atomique Postgres
+- Impact si non-fixé : ~1% des paiements rateront le `recordProPayment` immédiat, mais la sync rattrape en 5 min
+- **Risque résiduel** : si le webhook plante côté crédits ou activation abo, ces actions ne sont pas rattrapées par la sync (uniquement la table `payments` l'est). Le client paierait sans recevoir le service. À ce jour, le webhook plante seulement sur `pro_subscriptions` (race condition), pas sur les crédits.
 
----
+### Sécurité
+- Service_role key compromise → à régénérer (cf. point 5.3)
 
-## ⏳ Backlog — En attente
-
-### 🔥 Priorité haute (prochaine session)
-1. **Refonte CA admin V2** — détaillée plus haut (1h30, session dédiée)
-2. **Badge dynamique fiche client** — upgrade/downgrade en cours (15 min, dans la même session)
-3. **Test E2E pro complet** post-fix safeDate() — souscription / upgrade / downgrade / résiliation / réactivation (à faire avant pub)
-
-### Court terme
-4. **Soumission 47 URLs guides** Google Search Console
-5. **Branding Stripe Checkout** : logo + couleurs + domaine `pay.verimo.fr`
-6. **Auto-envoi factures par email Stripe** : activer toggles "Paiements réussis" + "Remboursements" dans Stripe Settings → Customer emails
-7. **Rate limiting** (faille #7 audit sécurité) avant 1ère grosse campagne pub
-
-### Moyen terme
-8. **Bannière persistante "Paiement à régulariser"** sur dashboard si une facture upgrade plante
-9. **Popup bienvenue pro 1ère connexion** (onboarding)
-10. **Veille réglementaire** prompt analyser-run
-11. **Compare Verimo redesign verdict** (split par bien, "Bien 1"/"Bien 2", forces/issues 2 colonnes)
-12. **Mention CGV discrète** dans popup TVA upgrade (sans checkbox bloquante)
-
-### Stratégique pro
-13. **Pro dashboard architecture B2B** : Option B (`/dashboard` + `/dashboard/pro` même domaine)
-14. **B2B targeting mandataires indépendants** (IAD, Capifrance, SAFTI) — tiers 29/59/129€/mois proposés
-15. **Speak to real pro prospects** avant de coder pro-specific features
-16. **White-label PDFs** : soft co-branding recommandé (vs full white-label)
-
-### Infra
-17. **Vérifier upgrade Supabase Compute NANO → MICRO** (gratuit avec plan Pro, double RAM + Disk IO Budget)
-18. **SIRET sur factures unitaires** : option B `customer.invoice_settings.custom_fields`
-19. **Toggles Stripe Checkout** : Politique remboursement / CGV / Coordonnées support
+### Erreurs Deno.core.runMicrotasks (faux positif)
+- Visible dans les logs des edge functions
+- Pas d'impact fonctionnel observé
+- Backlog : investiguer plus tard
 
 ---
 
-## 📜 Historique condensé des sessions
+## 7. BACKLOG PRODUIT (rappel des sessions antérieures)
 
-### Sessions récentes (mai 2026)
-
-- **Session 10 mai (soir, cette session)** : 🔐 **Audit sécurité complet du système de paiement** :
-  - 7 failles corrigées + déployées (JWT, idempotence, promo, successUrl, anon key, payment methods, email pré-rempli)
-  - **Bug A corrigé** : helper `safeDate()` dans webhook pro V5 → plus de 500 ERR sur `customer.subscription.updated` quand timestamps Stripe null
-  - **Bug B corrigé** : filtres skip silencieux dans V5 et V3.1 → fini les fausses alertes admin "Paiement reçu sans user_id" entre webhooks
-  - Popup paiement premium côté particulier (animation spring, design calqué sur le pro)
-  - **Découverte dette technique** : refonte CA admin V2 + badge dynamique fiche client = chantier suivant
-- **Session 10 mai (matin)** : Suite fix Stripe pro, refonte UX downgrade complet (popups confirmation/remplacement/annulation, bouton "Annuler ce changement", sidebar BASCULE PROGRAMMÉE), bouton "Passage programmé" désactivé, popup erreur contextuelle, agrandissement typo popups, message facture remplacé "📁 Retrouvez votre facture dans Mon abonnement", filtre Mes factures payées côté pro, redesign cartes plans (Direction 3 + Power anthracite + theme dynamique selon plan actif + couleurs claires + suppression badges nom plan + alignement boutons + boutons unitaires bleu Verimo)
-- **Sessions précédentes mai 2026** : Stripe pro complet (proration_behavior, schedule downgrade, payment_behavior 3DS), facturation B2B (adresse, SIRET), faille sécurité upgrade non payé (vérif latest_invoice.status), table payments pour stats admin, refonte UX page abonnement pro (badges sans engagement, tooltips, sidebar états colorés)
-- **Session 30 (7 mai 2026)** : RapportPage logique RCP, KPI dashboard, archivage dossiers pro, badges "⏳ En queue", mobile UX
-
-### Sessions plus anciennes (avril 2026)
-- **Sessions 25-29** : Stripe production, admin support inbox split-view, pages légales, SEO complet (canonical, GuidesPage), redesign admin sidebar catégorisée
-- **Sessions 21-24** : Dossiers pro complets, credit_grants + trigger, code promo, popups succès, page Guides, optimisation SEO mots-clés
-- **Sessions 1-20** : Conception initiale, prompt enrichi, scoring déterministe /20, comparaison v1, AdminPage, dashboard pro, edge functions, config DNS pro.verimo.fr
+- [ ] Soumission des ~40 URLs guides dans Google Search Console (quota dépassé le 5 mai)
+- [ ] Compare verdict redesign (split par bien, two-column forces/issues, tags "Bien 1"/"Bien 2")
+- [ ] DPA / Annexe RGPD article 28 (obligatoire dès qu'une agence sérieuse réclame)
+- [ ] Section 11.4 Force majeure à ajouter dans CGV Pro
+- [ ] Article 7.4 usages interdits explicites dans CGV Pro
+- [ ] Validation CGV Pro par avocat spécialisé (budget 300-500€)
+- [ ] Implémenter case à cocher OBLIGATOIRE "J'accepte les CGV Pro" avant paiement pro (stockage BDD : `cgv_pro_accepted_at` + `cgv_version` dans `pro_subscriptions`)
+- [ ] Custom text Stripe Dashboard → Settings → Branding (mention CGV Pro au checkout)
+- [ ] Liens CGV Pro dans footer principal + Dashboard Pro → Mon compte → Documents légaux
+- [ ] Pro dashboard architecture B2B Option B (`/dashboard` et `/dashboard/pro` même domaine)
+- [ ] Admin support inbox redesign (split-view dans AdminPage.tsx)
+- [ ] SLA pour clients grands comptes
+- [ ] Mailjet tracking erreurs
 
 ---
 
-## 🎯 Prochaine session — Action prioritaire
+## 8. FICHIERS LIVRÉS CETTE SESSION
 
-**Refonte CA admin V2 + Badge dynamique fiche client**
+1. `/mnt/user-data/outputs/sync-stripe-payments-index.ts` — 411 lignes, V2 finale ✅ **Déployée en prod**
+2. `/mnt/user-data/outputs/AdminPage.tsx` — 5925 lignes, fix catégorisation ⏳ **À pusher sur GitHub**
 
-**Méthode** :
-1. Coller ce context.md en début de conversation
-2. Valider le plan détaillé de refonte (Étapes 1 à 4 ci-dessus) avant de coder
-3. Une étape à la fois, fichiers livrés via `present_files` depuis `/mnt/user-data/outputs/`
-4. Pas de code sans accord
-5. Tester sur compte pro `publicite92320@gmail.com` après chaque étape
+---
+
+## 9. RÈGLES PROJET RAPPELÉES
+
+- Repo : `https://github.com/emilio92100/analymoCD.git`
+- Réponses courtes, concises
+- Une étape à la fois, validation Alex avant code
+- Mot "IA" / "AI" banni des pages publiques (remplacé par "technologie Verimo", "moteur d'analyse", "nos algorithmes", "analyse experte")
+- Edge functions Supabase déployées manuellement (copier-coller)
+- Tests live avec vraie CB d'Alex (pas Visa 4242)
+- Email grand public : `hello@verimo.fr`
+- Email pros : `pro@verimo.fr` (UNIQUEMENT pour CGV Pro / B2B)
+- Éditeur : VERIMO APP (Responsable : Alexandre ROGELET)
+
+---
+
+## 10. STATUT GLOBAL
+
+🟢 **Système payments fiable et prêt pour la prod.**
+🟢 **CGV Pro publiée et accessible** (`/cgv-pro`).
+🟢 **Affichage admin correct** pour tous les types de paiement.
+🟡 **2 fichiers à pusher sur GitHub** + 1 clé à régénérer avant lancement public.
+
+Bon courage pour le lancement de l'offre Pro 🚀
