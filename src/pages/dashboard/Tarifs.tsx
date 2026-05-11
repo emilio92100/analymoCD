@@ -82,19 +82,29 @@ function CheckoutModal({ plan, onClose }: {
       if (alreadyUsed) throw new Error('Vous avez déjà utilisé ce code.');
 
       // Lire les crédits actuels
-      const creditCol = promoResult.credit_type === 'document' ? 'credits_document'
-        : promoResult.credit_type === 'complete' ? 'credits_complete'
-        : 'credits_complete'; // par défaut complete si credit_type non défini
-
-      const { data: profile } = await supabase.from('profiles').select(creditCol).eq('id', user.id).single();
-      if (!profile) throw new Error('Profil introuvable.');
-
-      const current = (profile as Record<string, number>)[creditCol] || 0;
       const toAdd = promoResult.value;
+      const isBoth = promoResult.credit_type === 'both';
 
-      // Ajouter les crédits
-      const { error: updateError } = await supabase.from('profiles').update({ [creditCol]: current + toAdd }).eq('id', user.id);
-      if (updateError) throw new Error('Impossible d\'ajouter les crédits. Veuillez réessayer.');
+      // Si "both" → on ajoute toAdd à credits_complete ET credits_document
+      // Sinon → on ajoute toAdd à la colonne du type choisi
+      if (isBoth) {
+        const { data: profile } = await supabase.from('profiles').select('credits_complete, credits_document').eq('id', user.id).single();
+        if (!profile) throw new Error('Profil introuvable.');
+        const currentComplete = (profile as Record<string, number>).credits_complete || 0;
+        const currentDocument = (profile as Record<string, number>).credits_document || 0;
+        const { error: updateError } = await supabase.from('profiles').update({
+          credits_complete: currentComplete + toAdd,
+          credits_document: currentDocument + toAdd,
+        }).eq('id', user.id);
+        if (updateError) throw new Error('Impossible d\'ajouter les crédits. Veuillez réessayer.');
+      } else {
+        const creditCol = promoResult.credit_type === 'document' ? 'credits_document' : 'credits_complete';
+        const { data: profile } = await supabase.from('profiles').select(creditCol).eq('id', user.id).single();
+        if (!profile) throw new Error('Profil introuvable.');
+        const current = (profile as Record<string, number>)[creditCol] || 0;
+        const { error: updateError } = await supabase.from('profiles').update({ [creditCol]: current + toAdd }).eq('id', user.id);
+        if (updateError) throw new Error('Impossible d\'ajouter les crédits. Veuillez réessayer.');
+      }
 
       // Enregistrer l'usage du code
       await supabase.from('promo_uses').insert({ code_id: promoResult.id, user_id: user.id });
@@ -102,23 +112,27 @@ function CheckoutModal({ plan, onClose }: {
       // Incrémenter uses_count
       await supabase.rpc('increment_promo_uses', { code_id: promoResult.id });
 
+      // Libellés pour la description payments
+      const labelSimple = `${toAdd} crédit${toAdd > 1 ? 's' : ''} simple${toAdd > 1 ? 's' : ''}`;
+      const labelComplete = `${toAdd} crédit${toAdd > 1 ? 's' : ''} complet${toAdd > 1 ? 's' : ''}`;
+      const fullLabel = isBoth ? `${labelComplete} + ${labelSimple}` : (promoResult.credit_type === 'document' ? labelSimple : labelComplete);
+
       // Enregistrer dans l'historique payments
-      const creditTypeLabel = creditCol === 'credits_document' ? 'simple' : 'complet';
-      const creditTypeLabelPlural = creditCol === 'credits_document' ? 'simples' : 'complets';
       await supabase.from('payments').insert({
         user_id: user.id,
         amount: 0,
         currency: 'eur',
-        description: `${toAdd} crédit${toAdd > 1 ? 's' : ''} ${toAdd > 1 ? creditTypeLabelPlural : creditTypeLabel} offert${toAdd > 1 ? 's' : ''} · Code ${promoResult.code}`,
+        description: `${fullLabel} offert${toAdd > 1 || isBoth ? 's' : ''} · Code ${promoResult.code}`,
         promo_code: promoResult.code,
-        credits_added: toAdd,
-        credit_type: creditCol === 'credits_document' ? 'document' : 'complete',
+        credits_added: isBoth ? toAdd * 2 : toAdd,
+        credit_type: isBoth ? 'complete' : (promoResult.credit_type === 'document' ? 'document' : 'complete'),
         status: 'completed',
         retractation_waiver_at: new Date().toISOString(),
       });
 
       // Fermer la modale et afficher un toast de succès
-      onClose('credits_applied', toAdd, creditCol === 'credits_document' ? 'simple' : 'complet');
+      // Si "both", on passe creditType='both' pour adapter le message en aval
+      onClose('credits_applied', toAdd, isBoth ? 'both' : (promoResult.credit_type === 'document' ? 'simple' : 'complet'));
     } catch (e) { setPayError((e as Error).message); }
     setPayLoading(false);
   };
@@ -457,7 +471,15 @@ export default function Tarifs() {
         setCheckoutPlan(null);
         if (type === 'credits_applied' && count) {
           fetchCredits();
-          setCreditsToast(`🎉 ${count} crédit${count > 1 ? 's' : ''} ${count > 1 ? (creditType === 'simple' ? 'simples' : 'complets') : creditType} ajouté${count > 1 ? 's' : ''} à votre compte ! Vous pouvez les utiliser dès maintenant depuis "Nouvelle analyse".`);
+          let msg = '';
+          if (creditType === 'both') {
+            // Cas "Les deux" : count crédits complets + count crédits simples
+            msg = `🎉 ${count} crédit${count > 1 ? 's' : ''} complet${count > 1 ? 's' : ''} + ${count} crédit${count > 1 ? 's' : ''} simple${count > 1 ? 's' : ''} ajoutés à votre compte ! Vous pouvez les utiliser dès maintenant depuis "Nouvelle analyse".`;
+          } else {
+            const label = count > 1 ? (creditType === 'simple' ? 'simples' : 'complets') : creditType;
+            msg = `🎉 ${count} crédit${count > 1 ? 's' : ''} ${label} ajouté${count > 1 ? 's' : ''} à votre compte ! Vous pouvez les utiliser dès maintenant depuis "Nouvelle analyse".`;
+          }
+          setCreditsToast(msg);
         }
       }} />}
     </div>
