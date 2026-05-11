@@ -38,6 +38,13 @@ function CheckoutModal({ plan, onClose }: {
       if (promo.expires_at && new Date(promo.expires_at) < new Date()) { setPromoError('Ce code a expiré.'); setPromoLoading(false); return; }
       if (promo.max_uses && promo.uses_count >= promo.max_uses) { setPromoError("Ce code a atteint sa limite d'utilisation."); setPromoLoading(false); return; }
       if (promo.restricted_email && promo.restricted_email !== user.email) { setPromoError("Ce code n'est pas disponible pour votre compte."); setPromoLoading(false); return; }
+      // ⭐ Audience (Pros / Particuliers / Tous)
+      if (promo.audience && promo.audience !== 'all') {
+        const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
+        const isPro = profile?.role === 'pro';
+        if (promo.audience === 'pro' && !isPro) { setPromoError('Ce code est réservé aux comptes Pro.'); setPromoLoading(false); return; }
+        if (promo.audience === 'particulier' && isPro) { setPromoError('Ce code est réservé aux comptes Particuliers.'); setPromoLoading(false); return; }
+      }
       const { data: alreadyUsed } = await supabase.from('promo_uses').select('id').eq('code_id', promo.id).eq('user_id', user.id).single();
       if (alreadyUsed) { setPromoError('Vous avez déjà utilisé ce code.'); setPromoLoading(false); return; }
       setPromoResult(promo); setPromoApplied(true);
