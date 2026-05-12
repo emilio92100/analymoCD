@@ -334,8 +334,8 @@ export default function RejoindrePage() {
   return (
     <div style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
 
-      {/* FOND HERO — dégradé plus lumineux */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 480, background: 'linear-gradient(170deg, #1a4a5e 0%, #2a7d9c 35%, #3a96b8 70%, #5bb8d4 100%)', zIndex: 0 }}>
+      {/* FOND HERO — dégradé équilibré, ni trop sombre ni trop clair */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 480, background: 'linear-gradient(170deg, #0f2d3d 0%, #1a4a5e 35%, #2a7d9c 75%, #3a96b8 100%)', zIndex: 0 }}>
         {/* Pattern de points subtil */}
         <div style={{ position: 'absolute', inset: 0, opacity: 0.35, backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.08) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
         {/* Halo central */}
@@ -365,7 +365,7 @@ export default function RejoindrePage() {
             transition={{ duration: 0.5 }}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 14px', borderRadius: 100, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.95)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16, backdropFilter: 'blur(8px)' }}
           >
-            <Sparkles size={12} style={{ color: '#a8e3f5' }} /> Offre Professionnelle
+            <Sparkles size={12} style={{ color: '#7dd3fc' }} /> Offre Professionnelle
           </motion.div>
 
           <motion.h1
@@ -376,12 +376,12 @@ export default function RejoindrePage() {
           >
             Rejoindre{' '}
             <span style={{ position: 'relative', display: 'inline-block' }}>
-              <span style={{ color: '#a8e3f5', position: 'relative', zIndex: 1 }}>Verimo Pro</span>
+              <span style={{ color: '#7dd3fc', position: 'relative', zIndex: 1 }}>Verimo Pro</span>
               <motion.span
                 initial={{ scaleX: 0 }}
                 animate={{ scaleX: 1 }}
                 transition={{ delay: 0.8, duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
-                style={{ position: 'absolute', bottom: -2, left: 0, right: 0, height: 4, borderRadius: 100, background: 'rgba(168,227,245,0.45)', transformOrigin: 'left' }}
+                style={{ position: 'absolute', bottom: -2, left: 0, right: 0, height: 4, borderRadius: 100, background: 'rgba(125,211,252,0.4)', transformOrigin: 'left' }}
               />
             </span>
           </motion.h1>
