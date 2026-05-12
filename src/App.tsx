@@ -41,6 +41,7 @@ const AdminPage = lazy(() => import('./pages/AdminPage'));
 const ProPage = lazy(() => import('./pages/ProPage'));
 const MandatairesPage = lazy(() => import('./pages/MandatairesPage'));
 const ContactProPage = lazy(() => import('./pages/ContactProPage'));
+const RejoindrePage = lazy(() => import('./pages/RejoindrePage'));
 const DashboardProPage = lazy(() => import('./pages/DashboardProPage'));
 const SetupAccountPage = lazy(() => import('./pages/SetupAccountPage'));
 const GuidesPage = lazy(() => import('./pages/GuidesPage'));
@@ -294,6 +295,7 @@ export default function App() {
           <Route path="/pro" element={<PublicLayout><ProPage /></PublicLayout>} />
           <Route path="/pro/mandataires" element={<PublicLayout><MandatairesPage /></PublicLayout>} />
           <Route path="/contact-pro" element={<PublicLayout><ContactProPage /></PublicLayout>} />
+          <Route path="/rejoindre" element={<PublicLayout><RejoindrePage /></PublicLayout>} />
           <Route path="/guides" element={<PublicLayout><GuidesPage /></PublicLayout>} />
           <Route path="/guides/:slug" element={<PublicLayout><GuideArticlePage /></PublicLayout>} />
           <Route path="/connexion" element={<LoginPage />} />
