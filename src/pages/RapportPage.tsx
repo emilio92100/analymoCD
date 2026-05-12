@@ -547,7 +547,7 @@ function PdfButton({ rapportId: _rapportId }: { rapportId: string }) {
 ══════════════════════════════════ */
 export type RapportData = ReturnType<typeof buildRapport>;
 
-function RapportHeader({ rapport, isShared, backUrl }: { rapport: RapportData; isShared: boolean; backUrl?: string }) {
+function RapportHeader({ rapport, isShared, backUrl, hideVerimoBranding }: { rapport: RapportData; isShared: boolean; backUrl?: string; hideVerimoBranding?: boolean }) {
   const scoreColor = getScoreColor(rapport.score);
   const isComplete = rapport.type === 'complete';
   const backTo = backUrl || '/dashboard/analyses';
@@ -570,7 +570,7 @@ function RapportHeader({ rapport, isShared, backUrl }: { rapport: RapportData; i
           )}
           <div style={{ flex: 1 }} />
           <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
-            {!isShared && <ShareButton analyseId={rapport.id} />}
+            {!isShared && !hideVerimoBranding && <ShareButton analyseId={rapport.id} />}
             <PdfButton rapportId={rapport.id} />
           </div>
         </div>
@@ -756,7 +756,7 @@ function ResumeBlock({ resume }: { resume: string | ResumeStructured | null }) {
 /* ══════════════════════════════════
    ONGLET SYNTHÈSE
 ══════════════════════════════════ */
-function TabSynthese({ rapport, isShared }: { rapport: RapportData; isShared?: boolean }) {
+function TabSynthese({ rapport, isShared, hideVerimoBranding }: { rapport: RapportData; isShared?: boolean; hideVerimoBranding?: boolean }) {
   const docsIgnores = (rapport as Record<string, unknown>).documents_ignores as string[] | undefined;
   const avertissement = (rapport as Record<string, unknown>).avertissement_docs as string | undefined;
   const isComplete = rapport.type === 'complete';
@@ -1061,7 +1061,7 @@ function TabSynthese({ rapport, isShared }: { rapport: RapportData; isShared?: b
       })()}
 
       {/* 5. AVIS VERIMO */}
-      <AvisVerimoBlock avis={rapport.avis_verimo} isSimple={rapport.type !== 'complete'} isShared={isShared} />
+      <AvisVerimoBlock avis={rapport.avis_verimo} isSimple={rapport.type !== 'complete'} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />
 
     </div>
   );
@@ -1071,7 +1071,7 @@ function TabSynthese({ rapport, isShared }: { rapport: RapportData; isShared?: b
    AVIS VERIMO BLOCK — nouveau format structuré (verdict + contexte + démarches)
    avec fallback retrocompat pour ancien format string
 ══════════════════════════════════ */
-function AvisVerimoBlock({ avis, isSimple, isShared }: { avis: string | AvisVerimoStructured | null; isSimple: boolean; isShared?: boolean }) {
+function AvisVerimoBlock({ avis, isSimple, isShared, hideVerimoBranding }: { avis: string | AvisVerimoStructured | null; isSimple: boolean; isShared?: boolean; hideVerimoBranding?: boolean }) {
   // Rétrocompat : ancien format string → affichage legacy (3 paragraphes fusionnés)
   if (typeof avis === 'string') {
     if (!avis.trim()) return null;
@@ -1089,8 +1089,8 @@ function AvisVerimoBlock({ avis, isSimple, isShared }: { avis: string | AvisVeri
         <div className="avis-header" style={{ padding: '16px 20px 14px', borderBottom: '0.5px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 18, flexShrink: 0 }}>⭐</span>
           <div style={{ position: 'relative', display: 'inline-block' }}>
-            <span className="avis-title" style={{ fontSize: 16, fontWeight: 600, color: '#fff', position: 'relative', zIndex: 1 }}>Avis Verimo</span>
-            <div style={{ position: 'absolute', bottom: 1, left: 0, right: 0, height: 6, background: 'rgba(91,184,212,0.45)', zIndex: 0, borderRadius: 2 }} />
+            <span className="avis-title" style={{ fontSize: 16, fontWeight: 600, color: '#fff', position: 'relative', zIndex: 1 }}>{hideVerimoBranding ? 'Synthèse de l\u2019analyse' : 'Avis Verimo'}</span>
+            {!hideVerimoBranding && <div style={{ position: 'absolute', bottom: 1, left: 0, right: 0, height: 6, background: 'rgba(91,184,212,0.45)', zIndex: 0, borderRadius: 2 }} />}
           </div>
         </div>
         <div className="avis-body" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 0 }}>
@@ -1145,8 +1145,8 @@ function AvisVerimoBlock({ avis, isSimple, isShared }: { avis: string | AvisVeri
       <div className="avis-header" style={{ padding: '16px 24px 14px', borderBottom: '0.5px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 10 }}>
         <span style={{ fontSize: 18, flexShrink: 0 }}>⭐</span>
         <div style={{ position: 'relative', display: 'inline-block' }}>
-          <span className="avis-title" style={{ fontSize: 16, fontWeight: 600, color: '#fff', position: 'relative', zIndex: 1 }}>Avis Verimo</span>
-          <div style={{ position: 'absolute', bottom: 1, left: 0, right: 0, height: 6, background: 'rgba(91,184,212,0.45)', zIndex: 0, borderRadius: 2 }} />
+          <span className="avis-title" style={{ fontSize: 16, fontWeight: 600, color: '#fff', position: 'relative', zIndex: 1 }}>{hideVerimoBranding ? 'Synthèse de l\u2019analyse' : 'Avis Verimo'}</span>
+          {!hideVerimoBranding && <div style={{ position: 'absolute', bottom: 1, left: 0, right: 0, height: 6, background: 'rgba(91,184,212,0.45)', zIndex: 0, borderRadius: 2 }} />}
         </div>
       </div>
 
@@ -4283,6 +4283,10 @@ export default function RapportPage() {
   const [rapport, setRapport] = useState<RapportData | null>(null);
   const [documentResult, setDocumentResult] = useState<Record<string, unknown> | null>(null);
   const [backUrl, setBackUrl] = useState('/dashboard/analyses');
+  // Masque les mentions "Verimo" (titre Avis Verimo + disclaimer bas) quand contexte pro :
+  // - Pro connecté qui consulte son propre rapport
+  // - Client qui ouvre un rapport partagé via le système d'envoi pro (report_shares)
+  const [hideVerimoBranding, setHideVerimoBranding] = useState(false);
 
   const loadRapport = useCallback(async () => {
     setLoading(true);
@@ -4291,6 +4295,8 @@ export default function RapportPage() {
     if (shareToken) {
       const data = await fetchAnalyseByShareToken(shareToken);
       if (data?.result) {
+        // Si le créateur du rapport est un pro, on masque toutes les mentions Verimo
+        if ((data as { _ownerIsPro?: boolean })._ownerIsPro) setHideVerimoBranding(true);
         setRapport(buildRapport(data.result as Record<string, unknown>, {
           id: data.id, type: data.type, profil: data.profil,
           created_at: data.created_at, document_names: data.document_names,
@@ -4308,10 +4314,10 @@ export default function RapportPage() {
     if (user) {
       const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
       const { data: analyse } = await supabase.from('analyses').select('folder_id').eq('id', id).single();
-      if (profile?.role === 'pro' && analyse?.folder_id) {
-        setBackUrl(`/dashboard/dossier/${analyse.folder_id}`);
-      } else if (profile?.role === 'pro') {
-        setBackUrl('/dashboard');
+      if (profile?.role === 'pro') {
+        setHideVerimoBranding(true);
+        if (analyse?.folder_id) setBackUrl(`/dashboard/dossier/${analyse.folder_id}`);
+        else setBackUrl('/dashboard');
       } else {
         setBackUrl('/dashboard/analyses');
       }
@@ -4376,7 +4382,7 @@ export default function RapportPage() {
               <ChevronLeft size={15} /> Mes analyses
             </Link>
           </div>
-          <DocumentRenderer result={documentResult} isShared={isShared} />
+          <DocumentRenderer result={documentResult} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />
         </div>
       </div>
     );
@@ -4423,7 +4429,7 @@ export default function RapportPage() {
     <div className="rapport-wrapper" style={{ minHeight: '100vh', background: '#f5f9fb', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <div className="rapport-inner" style={{ maxWidth: 1250, margin: '0 auto', padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-        <RapportHeader rapport={rapport} isShared={isShared} backUrl={backUrl} />
+        <RapportHeader rapport={rapport} isShared={isShared} backUrl={backUrl} hideVerimoBranding={hideVerimoBranding} />
 
         {/* Bandeau re-upload */}
         {showReupload && (
@@ -4476,7 +4482,7 @@ export default function RapportPage() {
 
         {/* Contenu onglets */}
         <div key={activeTab} className="rapport-tab-content">
-          {(activeTab === 'synthese' || !isComplete) && <SafeTabBoundary><TabSynthese rapport={rapport} isShared={isShared} /></SafeTabBoundary>}
+          {(activeTab === 'synthese' || !isComplete) && <SafeTabBoundary><TabSynthese rapport={rapport} isShared={isShared} hideVerimoBranding={hideVerimoBranding} /></SafeTabBoundary>}
           {activeTab === 'copropriete' && isComplete && hasCopro && <SafeTabBoundary><TabCopropriete rapport={rapport} /></SafeTabBoundary>}
           {activeTab === 'logement' && isComplete && <SafeTabBoundary><TabLogement rapport={rapport} onSwitchTab={setActiveTab} /></SafeTabBoundary>}
           {activeTab === 'procedures' && isComplete && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
@@ -4523,7 +4529,9 @@ export default function RapportPage() {
         <div style={{ padding: '14px 18px', background: '#fff', borderRadius: 12, border: '1px solid #edf2f7', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <Shield size={13} style={{ color: '#94a3b8', flexShrink: 0 }} />
           <span style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5, flex: 1 }}>
-            Ce rapport est fourni à titre informatif par Verimo. Il ne constitue pas un conseil juridique ou financier et ne remplace pas l'avis d'un notaire ou d'un expert immobilier.
+            {hideVerimoBranding
+              ? "Ce rapport est fourni à titre informatif. Il ne constitue pas un conseil juridique ou financier et ne remplace pas l'avis d'un notaire ou d'un expert immobilier."
+              : "Ce rapport est fourni à titre informatif par Verimo. Il ne constitue pas un conseil juridique ou financier et ne remplace pas l'avis d'un notaire ou d'un expert immobilier."}
           </span>
           {id && <span style={{ fontSize: 11, color: '#cbd5e1', flexShrink: 0 }}>#{id.slice(0, 8)}</span>}
         </div>
