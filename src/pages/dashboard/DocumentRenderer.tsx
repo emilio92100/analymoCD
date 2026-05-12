@@ -251,7 +251,7 @@ function PointsFortsVigilances({ forts, vigilances }: { forts: string[]; vigilan
   );
 }
 
-function AvisVerimo({ text, isShared }: { text: string; isShared?: boolean }) {
+function AvisVerimo({ text, isShared, hideVerimoBranding }: { text: string; isShared?: boolean; hideVerimoBranding?: boolean }) {
   // Découpe le texte en paragraphes : priorité aux doubles sauts de ligne (\n\n)
   // Fallback : si pas de \n\n, on tente \n simple ; sinon on rend en un seul bloc
   const paragraphs = (() => {
@@ -267,8 +267,8 @@ function AvisVerimo({ text, isShared }: { text: string; isShared?: boolean }) {
       <div className="dr-avis-pad" style={{ padding: '20px 28px 16px', borderBottom: '0.5px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 12 }}>
         <span style={{ fontSize: 22, flexShrink: 0 }}>⭐</span>
         <div style={{ position: 'relative', display: 'inline-block' }}>
-          <span style={{ fontSize: 22, fontWeight: 500, color: '#fff', position: 'relative', zIndex: 1 }}>Avis Verimo</span>
-          <div style={{ position: 'absolute', bottom: 1, left: 0, right: 0, height: 8, background: 'rgba(91,184,212,0.45)', zIndex: 0, borderRadius: 2 }} />
+          <span style={{ fontSize: 22, fontWeight: 500, color: '#fff', position: 'relative', zIndex: 1 }}>{hideVerimoBranding ? 'Synthèse de l\u2019analyse' : 'Avis Verimo'}</span>
+          {!hideVerimoBranding && <div style={{ position: 'absolute', bottom: 1, left: 0, right: 0, height: 8, background: 'rgba(91,184,212,0.45)', zIndex: 0, borderRadius: 2 }} />}
         </div>
       </div>
       <div className="dr-avis-pad" style={{ padding: '20px 28px' }}>
@@ -277,7 +277,7 @@ function AvisVerimo({ text, isShared }: { text: string; isShared?: boolean }) {
             <p key={i} style={{ margin: 0, fontSize: 15, color: 'rgba(255,255,255,0.88)', lineHeight: 1.85 }}>{para}</p>
           ))}
         </div>
-        {!isShared && (
+        {!isShared && !hideVerimoBranding && (
           <div style={{ marginTop: 16, padding: '12px 16px', background: 'rgba(255,255,255,0.06)', borderRadius: 8, fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>
             Pour une vision complète de votre futur bien, lancez une{' '}
             <Link to="/dashboard/nouvelle-analyse" style={{ color: '#7dd3fc', textDecoration: 'none', fontWeight: 600 }}>Analyse Complète</Link>.
@@ -452,7 +452,7 @@ function DiagnosticCardDetail({ d }: { d: any }) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererDDT({ r, isShared }: { r: any; isShared?: boolean }) {
+function RendererDDT({ r, isShared, hideVerimoBranding }: { r: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
   const diags = r.diagnostics || [];
   const lotsIdf = r.lots_identifies || [];
   const sub = [r.diagnostiqueur?.nom ? `Diagnostiqueur : ${r.diagnostiqueur.nom}` : null, r.diagnostiqueur?.date ? `le ${formatDate(r.diagnostiqueur.date)}` : null].filter(Boolean).join(' · ');
@@ -717,13 +717,13 @@ function RendererDDT({ r, isShared }: { r: any; isShared?: boolean }) {
 
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />
     </div>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererPVAG({ r, isShared }: { r: any; isShared?: boolean }) {
+function RendererPVAG({ r, isShared, hideVerimoBranding }: { r: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
   const typeAGLabel = r.type_ag === 'extraordinaire' ? 'Assemblée Générale Extraordinaire'
     : r.type_ag === 'mixte' ? 'Assemblée Générale Ordinaire & Extraordinaire'
     : 'Assemblée Générale Ordinaire';
@@ -960,13 +960,13 @@ function RendererPVAG({ r, isShared }: { r: any; isShared?: boolean }) {
 
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />
     </div>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererAppelCharges({ r, isShared }: { r: any; isShared?: boolean }) {
+function RendererAppelCharges({ r, isShared, hideVerimoBranding }: { r: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
   const lots = r.lots || [];
   const lotIcon = (type: string) => type === 'cave' ? '🔒' : type === 'parking' || type === 'garage' ? '🚗' : type === 'grenier' || type === 'combles' ? '📦' : '🏠';
 
@@ -1087,13 +1087,13 @@ function RendererAppelCharges({ r, isShared }: { r: any; isShared?: boolean }) {
 
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />
     </div>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererRCP({ r, isShared }: { r: any; isShared?: boolean }) {
+function RendererRCP({ r, isShared, hideVerimoBranding }: { r: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
   const sub = [r.date_reglement ? `Établi en ${r.date_reglement}` : null, r.modificatifs?.length ? `${r.modificatifs.length} modificatif(s)` : null].filter(Boolean).join(' · ');
   const usageLabel = r.usage === 'habitation' ? 'Habitation' : r.usage === 'mixte' ? 'Mixte' : r.usage === 'commercial' ? 'Commercial' : null;
   const totalAnnexes = (r.lots_caves || 0) + (r.lots_parkings || 0) + (r.lots_commerces || 0);
@@ -1203,13 +1203,13 @@ function RendererRCP({ r, isShared }: { r: any; isShared?: boolean }) {
 
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />
     </div>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererDTGPPT({ r, isShared }: { r: any; isShared?: boolean }) {
+function RendererDTGPPT({ r, isShared, hideVerimoBranding }: { r: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
   const sub = [r.date ? `Réalisé en ${r.date}` : null, r.cabinet].filter(Boolean).join(' · ');
   const etatColor = r.etat_general === 'bon' ? '#16a34a' : r.etat_general === 'moyen' ? '#d97706' : '#dc2626';
   return (
@@ -1260,13 +1260,13 @@ function RendererDTGPPT({ r, isShared }: { r: any; isShared?: boolean }) {
       )}
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />
     </div>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererCarnetEntretien({ r, isShared }: { r: any; isShared?: boolean }) {
+function RendererCarnetEntretien({ r, isShared, hideVerimoBranding }: { r: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
   const sub = [r.syndic, r.date_maj ? `Mis à jour le ${formatDate(r.date_maj)}` : null, r.annee_construction ? `Construit en ${r.annee_construction}` : null].filter(Boolean).join(' · ');
   const nbLotsTotal = r.nb_lots_total ?? r.nb_lots_principaux ?? (r.nb_lots_detail ? Object.values(r.nb_lots_detail).reduce((a: number, b: any) => a + (Number(b) || 0), 0) : null);
   const diagColor = (res: string) => res === 'negatif' ? C.green : res === 'positif' ? C.red : C.orange;
@@ -1507,13 +1507,13 @@ function RendererCarnetEntretien({ r, isShared }: { r: any; isShared?: boolean }
 
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />
     </div>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererPreEtatDate({ r, isShared }: { r: any; isShared?: boolean }) {
+function RendererPreEtatDate({ r, isShared, hideVerimoBranding }: { r: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
   const sub = [r.date ? `Établi le ${r.date}` : null, r.syndic ? `Syndic : ${r.syndic}` : null].filter(Boolean).join(' · ');
   const lotIcon = (type: string) => type === 'cave' ? '🔒' : type === 'parking' || type === 'garage' ? '🚗' : type === 'grenier' || type === 'combles' ? '📦' : '🏠';
   const totalAnnuel = r.charges_futures?.montant_annuel || ((Number(r.charges_futures?.montant_trimestriel || 0) + Number(r.charges_futures?.fonds_travaux_trimestriel || 0)) * 4);
@@ -1747,13 +1747,13 @@ function RendererPreEtatDate({ r, isShared }: { r: any; isShared?: boolean }) {
 
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />
     </div>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererEtatDate({ r, isShared }: { r: any; isShared?: boolean }) {
+function RendererEtatDate({ r, isShared, hideVerimoBranding }: { r: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
   const sub = [r.date ? `Établi le ${r.date}` : null, r.syndic ? `Syndic : ${r.syndic}` : null].filter(Boolean).join(' · ');
   const soldeColor = r.solde_sens === 'acheteur' ? '#16a34a' : '#dc2626';
   const soldeLabel = r.solde_sens === 'acheteur' ? "En faveur de l'acheteur" : 'En faveur du vendeur';
@@ -1923,13 +1923,13 @@ function RendererEtatDate({ r, isShared }: { r: any; isShared?: boolean }) {
 
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />
     </div>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererTaxeFonciere({ r, isShared }: { r: any; isShared?: boolean }) {
+function RendererTaxeFonciere({ r, isShared, hideVerimoBranding }: { r: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
   const sub = [r.annee ? `Année ${r.annee}` : null, r.reference_cadastrale].filter(Boolean).join(' · ');
   return (
     <div>
@@ -1965,13 +1965,13 @@ function RendererTaxeFonciere({ r, isShared }: { r: any; isShared?: boolean }) {
       </Card>
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />
     </div>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererCompromis({ r, isShared }: { r: any; isShared?: boolean }) {
+function RendererCompromis({ r, isShared, hideVerimoBranding }: { r: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
   const sub = [r.date_signature ? `Signé le ${formatDate(r.date_signature)}` : null, r.agence, r.notaire_acheteur ? `Notaire acheteur : ${r.notaire_acheteur}` : null].filter(Boolean).join(' · ');
   const statutStyle = (s: string) => s === 'levee' || s === 'purge' ? { bg: C.green.bg, text: '#166534', border: C.green.border, label: s === 'levee' ? 'Levée' : 'Purgée' } : { bg: C.orange.bg, text: '#92400e', border: C.orange.border, label: 'En cours' };
   return (
@@ -2054,13 +2054,13 @@ function RendererCompromis({ r, isShared }: { r: any; isShared?: boolean }) {
       )}
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />
     </div>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererDiagCommunes({ r, isShared }: { r: any; isShared?: boolean }) {
+function RendererDiagCommunes({ r, isShared, hideVerimoBranding }: { r: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [showNonDetecte, setShowNonDetecte] = useState<Record<string, boolean>>({});
   const toggleSection = (key: string) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
@@ -2419,13 +2419,13 @@ function RendererDiagCommunes({ r, isShared }: { r: any; isShared?: boolean }) {
 
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />
     </div>
   );
 }
 
 
-function RendererModificatifRCP({ r, isShared }: { r: any; isShared?: boolean }) {
+function RendererModificatifRCP({ r, isShared, hideVerimoBranding }: { r: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
   const typeLabel: Record<string, string> = {
     creation_lot: 'Création de lot',
     suppression_lot: 'Suppression de lot',
@@ -2589,13 +2589,13 @@ function RendererModificatifRCP({ r, isShared }: { r: any; isShared?: boolean })
 
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />
     </div>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererAutre({ r, isShared }: { r: any; isShared?: boolean }) {
+function RendererAutre({ r, isShared, hideVerimoBranding }: { r: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
   return (
     <div>
       <Header type="Analyse de Document" titre={r.titre} />
@@ -2621,38 +2621,38 @@ function RendererAutre({ r, isShared }: { r: any; isShared?: boolean }) {
       )}
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />
     </div>
   );
 }
 
 // ── Export principal ────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function SafeRenderer({ result, isShared }: { result: any; isShared?: boolean }) {
+function SafeRenderer({ result, isShared, hideVerimoBranding }: { result: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
   const type = result?.document_type || 'AUTRE';
   try {
     switch (type) {
-      case 'DDT': return <RendererDDT r={result} isShared={isShared} />;
-      case 'PV_AG': return <RendererPVAG r={result} isShared={isShared} />;
-      case 'APPEL_CHARGES': return <RendererAppelCharges r={result} isShared={isShared} />;
-      case 'RCP': return <RendererRCP r={result} isShared={isShared} />;
-      case 'DTG_PPT': return <RendererDTGPPT r={result} isShared={isShared} />;
-      case 'CARNET_ENTRETIEN': return <RendererCarnetEntretien r={result} isShared={isShared} />;
-      case 'PRE_ETAT_DATE': return <RendererPreEtatDate r={result} isShared={isShared} />;
-      case 'ETAT_DATE': return <RendererEtatDate r={result} isShared={isShared} />;
-      case 'TAXE_FONCIERE': return <RendererTaxeFonciere r={result} isShared={isShared} />;
-      case 'COMPROMIS': return <RendererCompromis r={result} isShared={isShared} />;
-      case 'DIAGNOSTIC_PARTIES_COMMUNES': return <RendererDiagCommunes r={result} isShared={isShared} />;
-      case 'MODIFICATIF_RCP': return <RendererModificatifRCP r={result} isShared={isShared} />;
-      default: return <RendererAutre r={result} isShared={isShared} />;
+      case 'DDT': return <RendererDDT r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
+      case 'PV_AG': return <RendererPVAG r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
+      case 'APPEL_CHARGES': return <RendererAppelCharges r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
+      case 'RCP': return <RendererRCP r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
+      case 'DTG_PPT': return <RendererDTGPPT r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
+      case 'CARNET_ENTRETIEN': return <RendererCarnetEntretien r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
+      case 'PRE_ETAT_DATE': return <RendererPreEtatDate r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
+      case 'ETAT_DATE': return <RendererEtatDate r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
+      case 'TAXE_FONCIERE': return <RendererTaxeFonciere r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
+      case 'COMPROMIS': return <RendererCompromis r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
+      case 'DIAGNOSTIC_PARTIES_COMMUNES': return <RendererDiagCommunes r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
+      case 'MODIFICATIF_RCP': return <RendererModificatifRCP r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
+      default: return <RendererAutre r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
     }
   } catch {
-    return <RendererAutre r={result} isShared={isShared} />;
+    return <RendererAutre r={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />;
   }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default function DocumentRenderer({ result, isShared }: { result: any; isShared?: boolean }) {
+export default function DocumentRenderer({ result, isShared, hideVerimoBranding }: { result: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
   return (
     <>
       <style>{`
@@ -2737,7 +2737,7 @@ export default function DocumentRenderer({ result, isShared }: { result: any; is
         }
       `}</style>
       <div className="dr-root">
-        <SafeRenderer result={result} isShared={isShared} />
+        <SafeRenderer result={result} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />
       </div>
     </>
   );
