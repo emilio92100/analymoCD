@@ -118,7 +118,22 @@ export default function RejoindrePage() {
 
   const activeProfile = profileTypes.find(p => p.id === profileType);
 
-  /* Pas de forçage de la navbar : on garde son apparence par défaut (transparente sur fond sombre comme ProPage) */
+  /* Forcer navbar blanche au-dessus du hero sombre pour lisibilite */
+  useEffect(() => {
+    const nav = document.querySelector('header nav') as HTMLElement | null;
+    if (nav) {
+      nav.style.backgroundColor = 'rgba(255,255,255,0.97)';
+      nav.style.backdropFilter = 'none';
+      (nav.style as unknown as { webkitBackdropFilter: string }).webkitBackdropFilter = 'none';
+    }
+    return () => {
+      if (nav) {
+        nav.style.backgroundColor = '';
+        nav.style.backdropFilter = '';
+        (nav.style as unknown as { webkitBackdropFilter: string }).webkitBackdropFilter = '';
+      }
+    };
+  }, []);
 
   /* Scroll top a chaque changement d'etape */
   useEffect(() => {
@@ -210,7 +225,7 @@ export default function RejoindrePage() {
               {[
                 { step: '1', label: 'Vérification de votre dossier', sub: 'Sous 24h ouvrées', icon: '🔍' },
                 { step: '2', label: 'Appel découverte (15 min)', sub: 'Pour comprendre vos besoins et vous présenter Verimo Pro', icon: '📞' },
-                { step: '3', label: 'Accès à votre espace pro', sub: 'Avec 3 analyses offertes pour démarrer', icon: '🎁' },
+                { step: '3', label: 'Accès à votre espace pro', sub: 'Votre compte est créé après notre échange', icon: '🎁' },
               ].map((s, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, paddingTop: i > 0 ? 16 : 0, borderTop: i > 0 ? '0.5px solid rgba(42, 125, 156, 0.15)' : 'none', marginTop: i > 0 ? 16 : 0 }}>
                   <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#fff', border: '1.5px solid #c7dde8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 13, fontWeight: 800, color: '#2a7d9c' }}>{s.step}</div>
@@ -291,47 +306,46 @@ export default function RejoindrePage() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)', margin: 0, maxWidth: 500, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.6, fontWeight: 500 }}
+            style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)', margin: 0, maxWidth: 640, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.6, fontWeight: 500 }}
           >
-            Quelques étapes simples pour rejoindre la communauté des pros de l'immobilier qui font confiance à Verimo.
+            Quelques étapes simples pour rejoindre la communauté des pros qui font confiance à Verimo.
           </motion.p>
         </div>
 
-        {/* PROGRESS BAR — carte blanche flottante */}
+        {/* CARTE FORMULAIRE UNIFIÉE — progress + contenu étape */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
-          style={{ background: '#fff', borderRadius: 16, border: '1px solid rgba(15, 45, 61, 0.06)', padding: '18px 22px', marginBottom: 14, boxShadow: '0 8px 32px rgba(15, 45, 61, 0.12), 0 2px 8px rgba(15, 45, 61, 0.04)' }}
+          style={{ background: '#fff', borderRadius: 20, border: '1px solid rgba(15, 45, 61, 0.06)', overflow: 'hidden', marginBottom: 14, boxShadow: '0 24px 64px rgba(15, 45, 61, 0.12), 0 4px 16px rgba(15, 45, 61, 0.04)' }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <span style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Étape {step} sur 4</span>
-            <span style={{ fontSize: 12, color: '#2a7d9c', fontWeight: 800 }}>{Math.round((step / 4) * 100)}%</span>
+          {/* Header de la carte avec progress bar intégrée */}
+          <div style={{ padding: '20px 32px 18px', borderBottom: '0.5px solid #edf2f7', background: 'linear-gradient(180deg, #fafbfc 0%, #fff 100%)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 10.5, color: '#2a7d9c', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Étape {step} sur 4</span>
+                <span style={{ color: '#cbd5e1' }}>·</span>
+                <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>{stepLabels[step - 1]}</span>
+              </div>
+              <span style={{ fontSize: 12, color: '#2a7d9c', fontWeight: 800 }}>{Math.round((step / 4) * 100)}%</span>
+            </div>
+            <div style={{ display: 'flex', gap: 5 }}>
+              {[1, 2, 3, 4].map(s => (
+                <div key={s} style={{ flex: 1, height: 5, borderRadius: 100, background: s <= step ? 'linear-gradient(90deg, #2a7d9c, #7dd3fc)' : '#edf2f7', transition: 'background 0.3s' }} />
+              ))}
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-            {[1, 2, 3, 4].map(s => (
-              <div key={s} style={{ flex: 1, height: 4, borderRadius: 100, background: s <= step ? 'linear-gradient(90deg, #2a7d9c, #7dd3fc)' : '#edf2f7', transition: 'background 0.3s' }} />
-            ))}
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            {stepLabels.map((label, i) => (
-              <span key={i} style={{ fontSize: 10.5, fontWeight: 600, color: i + 1 < step ? '#2a7d9c' : i + 1 === step ? '#0f172a' : '#cbd5e1', display: 'flex', alignItems: 'center', gap: 4 }}>
-                {i + 1 < step && '✓'} {label}
-              </span>
-            ))}
-          </div>
-        </motion.div>
 
-        {/* CONTENU ETAPE — slide animation */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -30 }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-            style={{ background: '#fff', borderRadius: 18, border: '1px solid rgba(15, 45, 61, 0.06)', padding: '32px 32px', marginBottom: 14, boxShadow: '0 20px 60px rgba(15, 45, 61, 0.10), 0 4px 16px rgba(15, 45, 61, 0.04)' }}
-          >
+          {/* CONTENU ETAPE — slide animation */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={step}
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -30 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              style={{ padding: '28px 32px' }}
+            >
             {/* ========== ETAPE 1 — PROFIL ========== */}
             {step === 1 && (
               <div>
@@ -601,6 +615,7 @@ export default function RejoindrePage() {
             )}
           </motion.div>
         </AnimatePresence>
+        </motion.div>
 
         {/* NAVIGATION ETAPES */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 18 }}>
@@ -654,10 +669,35 @@ export default function RejoindrePage() {
           )}
         </div>
 
-        {/* BANDEAU RASSURANT */}
-        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(15, 45, 61, 0.06)', padding: '13px 18px', display: 'flex', alignItems: 'center', gap: 11, fontSize: 12, color: '#64748b', boxShadow: '0 4px 16px rgba(15, 45, 61, 0.05)' }}>
-          <Shield size={16} style={{ color: '#16a34a', flexShrink: 0 }} />
-          <span>Vos données sont protégées · <strong style={{ color: '#0f172a' }}>Aucun engagement</strong> à ce stade · Réponse sous 24h ouvrées</span>
+        {/* BLOC RÉASSURANCE 3 STATS */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 6 }}>
+          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(15, 45, 61, 0.06)', padding: '18px 16px', textAlign: 'center', boxShadow: '0 4px 16px rgba(15, 45, 61, 0.05)' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Phone size={16} style={{ color: '#2a7d9c' }} />
+              </div>
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 2, letterSpacing: '-0.01em' }}>Démo perso</div>
+            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500, lineHeight: 1.4 }}>15 min en visio</div>
+          </div>
+          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(15, 45, 61, 0.06)', padding: '18px 16px', textAlign: 'center', boxShadow: '0 4px 16px rgba(15, 45, 61, 0.05)' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CheckCircle size={16} style={{ color: '#16a34a' }} />
+              </div>
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 2, letterSpacing: '-0.01em' }}>24h ouvrées</div>
+            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500, lineHeight: 1.4 }}>Réponse de notre équipe</div>
+          </div>
+          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(15, 45, 61, 0.06)', padding: '18px 16px', textAlign: 'center', boxShadow: '0 4px 16px rgba(15, 45, 61, 0.05)' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #fafbfc, #f1f5f9)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Shield size={16} style={{ color: '#475569' }} />
+              </div>
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 2, letterSpacing: '-0.01em' }}>Sans engagement</div>
+            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500, lineHeight: 1.4 }}>Données protégées</div>
+          </div>
         </div>
 
       </div>
