@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Building2, TrendingUp, Key, Scale, HelpCircle,
   User, Briefcase, Target, CheckCircle, ChevronLeft, ChevronRight,
-  Mail, Phone, MapPin, Sparkles, Shield, Send,
+  Mail, Phone, MapPin, Sparkles, Send,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -51,25 +51,86 @@ const labelStyle: React.CSSProperties = {
   letterSpacing: '0.01em',
 };
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function Field({ label, required, children, helper }: { label: string; required?: boolean; children: React.ReactNode; helper?: string }) {
   return (
     <div>
       <label style={labelStyle}>
         {label}{required && <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>}
       </label>
       {children}
+      {helper && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 5, fontStyle: 'italic' }}>{helper}</div>}
     </div>
   );
 }
 
-function SelectField({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: string[]; placeholder?: string }) {
+/* Pilules horizontales — pour listes courtes (3-6 options) */
+function PillSelect({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) {
   return (
-    <select value={value} onChange={e => onChange(e.target.value)}
-      style={{ ...inputStyle, appearance: 'none' as const, backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2394a3b8\' stroke-width=\'2\'%3E%3Cpath d=\'M6 9l6 6 6-6\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center', paddingRight: 36, cursor: 'pointer' }}>
-      <option value="">{placeholder || 'Sélectionner...'}</option>
-      {options.map(o => <option key={o} value={o}>{o}</option>)}
-    </select>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      {options.map(o => {
+        const active = value === o;
+        return (
+          <button key={o} type="button" onClick={() => onChange(active ? '' : o)}
+            style={{
+              padding: '8px 14px',
+              borderRadius: 100,
+              border: active ? '1.5px solid #2a7d9c' : '1.5px solid #edf2f7',
+              background: active ? '#f0f7fb' : '#fff',
+              color: active ? '#0c447c' : '#475569',
+              fontSize: 12.5,
+              fontWeight: active ? 700 : 500,
+              fontFamily: 'inherit',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              whiteSpace: 'nowrap',
+            }}>
+            {o}
+          </button>
+        );
+      })}
+    </div>
   );
+}
+
+/* Grid de pilules — pour listes longues (8+ options comme reseaux) */
+function GridSelect({ value, onChange, options, columns = 3 }: { value: string; onChange: (v: string) => void; options: string[]; columns?: number }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: 6 }}>
+      {options.map(o => {
+        const active = value === o;
+        return (
+          <button key={o} type="button" onClick={() => onChange(active ? '' : o)}
+            style={{
+              padding: '9px 12px',
+              borderRadius: 9,
+              border: active ? '1.5px solid #2a7d9c' : '1.5px solid #edf2f7',
+              background: active ? '#f0f7fb' : '#fff',
+              color: active ? '#0c447c' : '#475569',
+              fontSize: 12,
+              fontWeight: active ? 700 : 500,
+              fontFamily: 'inherit',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              textAlign: 'center',
+            }}>
+            {o}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* Validation helpers */
+function isValidEmail(v: string): boolean {
+  // Email basique : doit contenir @ et au moins un . après @
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+}
+
+function isValidPhone(v: string): boolean {
+  // Exactement 10 chiffres (espaces et tirets autorisés mais ignorés)
+  const digits = v.replace(/\D/g, '');
+  return digits.length === 10;
 }
 
 export default function RejoindrePage() {
@@ -145,7 +206,7 @@ export default function RejoindrePage() {
   };
 
   const canContinue1 = !!profileType;
-  const canContinue2 = !!(nom && prenom && email && telephone);
+  const canContinue2 = !!(nom && prenom && isValidEmail(email) && isValidPhone(telephone));
   const canSubmit = canContinue1 && canContinue2 && rgpd;
 
   const handleSubmit = async () => {
@@ -197,7 +258,7 @@ export default function RejoindrePage() {
         </div>
         <div style={{ position: 'absolute', top: 560, left: 0, right: 0, bottom: 0, background: '#f5f9fb', zIndex: 0 }} />
 
-        <div style={{ position: 'relative', zIndex: 10, padding: '120px 20px 60px', maxWidth: 640, margin: '0 auto' }}>
+        <div style={{ position: 'relative', zIndex: 10, padding: '120px 24px 60px', maxWidth: 680, margin: '0 auto' }}>
           <motion.div
             initial={{ scale: 0.92, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -270,8 +331,8 @@ export default function RejoindrePage() {
       {/* FOND CLAIR — bas de page */}
       <div style={{ position: 'absolute', top: 480, left: 0, right: 0, bottom: 0, background: '#f5f9fb', zIndex: 0 }} />
 
-      {/* CONTENU — padding top reduit, hero compact */}
-      <div style={{ position: 'relative', zIndex: 10, padding: '80px 20px 50px', maxWidth: 720, margin: '0 auto' }}>
+      {/* CONTENU — padding top suffisant pour ne pas être masqué par navbar */}
+      <div style={{ position: 'relative', zIndex: 10, padding: '120px 24px 50px', maxWidth: 880, margin: '0 auto' }}>
 
         {/* HEADER — compacte */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
@@ -306,9 +367,9 @@ export default function RejoindrePage() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', margin: 0, lineHeight: 1.5, fontWeight: 500 }}
+            style={{ fontSize: 14.5, color: 'rgba(255,255,255,0.85)', margin: 0, lineHeight: 1.5, fontWeight: 500 }}
           >
-            Rejoignez les pros qui font confiance à Verimo.
+            Quelques étapes simples pour rejoindre les pros qui font confiance à Verimo au quotidien.
           </motion.p>
         </div>
 
@@ -413,18 +474,18 @@ export default function RejoindrePage() {
                   </Field>
                 </div>
                 <div style={{ marginBottom: 14 }}>
-                  <Field label="Email professionnel" required>
+                  <Field label="Email professionnel" required helper={email && !isValidEmail(email) ? "Format d'email invalide" : undefined}>
                     <div style={{ position: 'relative' }}>
-                      <Mail size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
-                      <input style={{ ...inputStyle, paddingLeft: 38 }} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="alexandre@agence.fr" />
+                      <Mail size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: email && !isValidEmail(email) ? '#ef4444' : '#94a3b8', pointerEvents: 'none' }} />
+                      <input style={{ ...inputStyle, paddingLeft: 38, borderColor: email && !isValidEmail(email) ? '#fecaca' : '#edf2f7' }} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="alexandre@agence.fr" />
                     </div>
                   </Field>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: 14 }}>
-                  <Field label="Téléphone" required>
+                  <Field label="Téléphone" required helper={telephone && !isValidPhone(telephone) ? `${telephone.replace(/\D/g, '').length}/10 chiffres` : undefined}>
                     <div style={{ position: 'relative' }}>
-                      <Phone size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
-                      <input style={{ ...inputStyle, paddingLeft: 38 }} type="tel" value={telephone} onChange={e => setTelephone(e.target.value)} placeholder="06 12 34 56 78" />
+                      <Phone size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: telephone && !isValidPhone(telephone) ? '#ef4444' : '#94a3b8', pointerEvents: 'none' }} />
+                      <input style={{ ...inputStyle, paddingLeft: 38, borderColor: telephone && !isValidPhone(telephone) ? '#fecaca' : '#edf2f7' }} type="tel" value={telephone} onChange={e => setTelephone(e.target.value)} placeholder="06 12 34 56 78" maxLength={14} />
                     </div>
                   </Field>
                   <Field label="Ville / Région">
@@ -451,93 +512,91 @@ export default function RejoindrePage() {
                 </div>
 
                 {profileType === 'agent' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    <Field label="Nom de votre agence ou activité">
-                      <input style={inputStyle} value={nomAgence} onChange={e => setNomAgence(e.target.value)} placeholder="Emilio Immo" />
-                    </Field>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                      <Field label="Réseau d'appartenance">
-                        <SelectField value={reseau} onChange={setReseau} options={reseaux} />
+                      <Field label="Nom de votre agence" helper="Laissez vide si vous êtes indépendant">
+                        <input style={inputStyle} value={nomAgence} onChange={e => setNomAgence(e.target.value)} placeholder="Emilio Immo" />
                       </Field>
-                      <Field label="Taille de la structure">
-                        <SelectField value={tailleAgence} onChange={setTailleAgence} options={taillesAgence} />
-                      </Field>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 14 }}>
-                      <Field label="Volume de dossiers traités">
-                        <SelectField value={volume} onChange={setVolume} options={volumes} />
-                      </Field>
-                      <Field label="N° RSAC (si applicable)">
+                      <Field label="N° RSAC" helper="Si vous en avez un">
                         <input style={inputStyle} value={rsac} onChange={e => setRsac(e.target.value)} placeholder="123 456 789" />
                       </Field>
                     </div>
+                    <Field label="Réseau d'appartenance">
+                      <GridSelect value={reseau} onChange={setReseau} options={reseaux} columns={4} />
+                    </Field>
+                    <Field label="Taille de la structure">
+                      <PillSelect value={tailleAgence} onChange={setTailleAgence} options={taillesAgence} />
+                    </Field>
+                    <Field label="Volume de dossiers traités par mois">
+                      <PillSelect value={volume} onChange={setVolume} options={volumes} />
+                    </Field>
                   </div>
                 )}
 
                 {profileType === 'investisseur' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    <Field label="Nom de votre société (si applicable)">
-                      <input style={inputStyle} value={nomSociete} onChange={e => setNomSociete(e.target.value)} placeholder="SCI Patrimoine 75" />
-                    </Field>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                      <Field label="SIRET">
+                      <Field label="Nom de votre société" helper="Si vous investissez en SCI ou en société">
+                        <input style={inputStyle} value={nomSociete} onChange={e => setNomSociete(e.target.value)} placeholder="SCI Patrimoine 75" />
+                      </Field>
+                      <Field label="SIRET" helper="Si société">
                         <input style={inputStyle} value={siret} onChange={e => setSiret(e.target.value)} placeholder="123 456 789 00012" />
                       </Field>
-                      <Field label="Type de biens visés">
-                        <input style={inputStyle} value={typeBien} onChange={e => setTypeBien(e.target.value)} placeholder="Appartement T2-T3 Paris" />
-                      </Field>
                     </div>
+                    <Field label="Type de biens visés">
+                      <input style={inputStyle} value={typeBien} onChange={e => setTypeBien(e.target.value)} placeholder="Appartement T2-T3 Paris" />
+                    </Field>
                     <Field label="Volume d'acquisitions par an">
-                      <SelectField value={volume} onChange={setVolume} options={volumes.map(v => v.replace('/ mois', '/ an'))} />
+                      <PillSelect value={volume} onChange={setVolume} options={volumes.map(v => v.replace('/ mois', '/ an'))} />
                     </Field>
                   </div>
                 )}
 
                 {profileType === 'marchand' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    <Field label="Nom de votre société">
-                      <input style={inputStyle} value={nomSocieteMarchand} onChange={e => setNomSocieteMarchand(e.target.value)} placeholder="Marchand Immo Paris SAS" />
-                    </Field>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      <Field label="Nom de votre société">
+                        <input style={inputStyle} value={nomSocieteMarchand} onChange={e => setNomSocieteMarchand(e.target.value)} placeholder="Marchand Immo Paris SAS" />
+                      </Field>
                       <Field label="SIRET">
                         <input style={inputStyle} value={siretMarchand} onChange={e => setSiretMarchand(e.target.value)} placeholder="123 456 789 00012" />
                       </Field>
-                      <Field label="Zone géographique d'activité">
-                        <input style={inputStyle} value={zoneMarchand} onChange={e => setZoneMarchand(e.target.value)} placeholder="Île-de-France" />
-                      </Field>
                     </div>
+                    <Field label="Zone géographique d'activité">
+                      <input style={inputStyle} value={zoneMarchand} onChange={e => setZoneMarchand(e.target.value)} placeholder="Île-de-France" />
+                    </Field>
                     <Field label="Volume d'opérations par an">
-                      <SelectField value={volume} onChange={setVolume} options={volumes.map(v => v.replace('/ mois', '/ an'))} />
+                      <PillSelect value={volume} onChange={setVolume} options={volumes.map(v => v.replace('/ mois', '/ an'))} />
                     </Field>
                   </div>
                 )}
 
                 {profileType === 'notaire' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                     <Field label="Nom de l'étude">
                       <input style={inputStyle} value={nomEtude} onChange={e => setNomEtude(e.target.value)} placeholder="Étude Notariale Dupont & Associés" />
                     </Field>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                      <Field label="Votre fonction">
-                        <SelectField value={fonction} onChange={setFonction} options={['Notaire', 'Notaire assistant', 'Clerc de notaire', 'Collaborateur', 'Autre']} />
-                      </Field>
-                      <Field label="Volume de transactions / mois">
-                        <SelectField value={volume} onChange={setVolume} options={volumes} />
-                      </Field>
-                    </div>
+                    <Field label="Votre fonction">
+                      <PillSelect value={fonction} onChange={setFonction} options={['Notaire', 'Notaire assistant', 'Clerc de notaire', 'Collaborateur', 'Autre']} />
+                    </Field>
+                    <Field label="Volume de transactions par mois">
+                      <PillSelect value={volume} onChange={setVolume} options={volumes} />
+                    </Field>
                   </div>
                 )}
 
                 {profileType === 'autre' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    <Field label="Votre profession">
-                      <input style={inputStyle} value={profession} onChange={e => setProfession(e.target.value)} placeholder="Courtier en immobilier, expert, chasseur immobilier..." />
-                    </Field>
-                    <Field label="Nom de votre structure">
-                      <input style={inputStyle} value={nomStructure} onChange={e => setNomStructure(e.target.value)} placeholder="Nom de votre société ou activité" />
-                    </Field>
-                    <Field label="Volume estimé">
-                      <SelectField value={volume} onChange={setVolume} options={volumes} />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      <Field label="Votre profession">
+                        <input style={inputStyle} value={profession} onChange={e => setProfession(e.target.value)} placeholder="Courtier, chasseur, expert..." />
+                      </Field>
+                      <Field label="Nom de votre structure">
+                        <input style={inputStyle} value={nomStructure} onChange={e => setNomStructure(e.target.value)} placeholder="Votre société ou activité" />
+                      </Field>
+                    </div>
+                    <Field label="Volume estimé par mois">
+                      <PillSelect value={volume} onChange={setVolume} options={volumes} />
                     </Field>
                   </div>
                 )}
@@ -655,37 +714,6 @@ export default function RejoindrePage() {
               {sending ? 'Envoi en cours...' : <>Envoyer ma demande <Send size={14} /></>}
             </button>
           )}
-        </div>
-
-        {/* BLOC RÉASSURANCE 3 STATS */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 6 }}>
-          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(15, 45, 61, 0.06)', padding: '18px 16px', textAlign: 'center', boxShadow: '0 4px 16px rgba(15, 45, 61, 0.05)' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Phone size={16} style={{ color: '#2a7d9c' }} />
-              </div>
-            </div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 2, letterSpacing: '-0.01em' }}>Démo perso</div>
-            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500, lineHeight: 1.4 }}>15 min en visio</div>
-          </div>
-          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(15, 45, 61, 0.06)', padding: '18px 16px', textAlign: 'center', boxShadow: '0 4px 16px rgba(15, 45, 61, 0.05)' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <CheckCircle size={16} style={{ color: '#16a34a' }} />
-              </div>
-            </div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 2, letterSpacing: '-0.01em' }}>24h ouvrées</div>
-            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500, lineHeight: 1.4 }}>Réponse de notre équipe</div>
-          </div>
-          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(15, 45, 61, 0.06)', padding: '18px 16px', textAlign: 'center', boxShadow: '0 4px 16px rgba(15, 45, 61, 0.05)' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #fafbfc, #f1f5f9)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Shield size={16} style={{ color: '#475569' }} />
-              </div>
-            </div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 2, letterSpacing: '-0.01em' }}>Sans engagement</div>
-            <div style={{ fontSize: 11, color: '#64748b', fontWeight: 500, lineHeight: 1.4 }}>Données protégées</div>
-          </div>
         </div>
 
       </div>
