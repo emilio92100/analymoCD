@@ -251,7 +251,17 @@ function PointsFortsVigilances({ forts, vigilances }: { forts: string[]; vigilan
   );
 }
 
-function AvisVerimo({ text }: { text: string }) {
+function AvisVerimo({ text, isShared }: { text: string; isShared?: boolean }) {
+  // Découpe le texte en paragraphes : priorité aux doubles sauts de ligne (\n\n)
+  // Fallback : si pas de \n\n, on tente \n simple ; sinon on rend en un seul bloc
+  const paragraphs = (() => {
+    const t = (text || '').trim();
+    if (!t) return [];
+    const doubleSplit = t.split(/\n{2,}/).map(s => s.trim()).filter(Boolean);
+    if (doubleSplit.length > 1) return doubleSplit;
+    const singleSplit = t.split(/\n+/).map(s => s.trim()).filter(Boolean);
+    return singleSplit.length > 0 ? singleSplit : [t];
+  })();
   return (
     <div style={{ background: C.dark, borderRadius: 12, overflow: 'hidden' }}>
       <div className="dr-avis-pad" style={{ padding: '20px 28px 16px', borderBottom: '0.5px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -262,11 +272,17 @@ function AvisVerimo({ text }: { text: string }) {
         </div>
       </div>
       <div className="dr-avis-pad" style={{ padding: '20px 28px' }}>
-        <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.88)', lineHeight: 1.85 }}>{text}</div>
-        <div style={{ marginTop: 16, padding: '12px 16px', background: 'rgba(255,255,255,0.06)', borderRadius: 8, fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>
-          Pour une vision complète de votre futur bien, lancez une{' '}
-          <Link to="/dashboard/nouvelle-analyse" style={{ color: '#7dd3fc', textDecoration: 'none', fontWeight: 600 }}>Analyse Complète</Link>.
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {paragraphs.map((para, i) => (
+            <p key={i} style={{ margin: 0, fontSize: 15, color: 'rgba(255,255,255,0.88)', lineHeight: 1.85 }}>{para}</p>
+          ))}
         </div>
+        {!isShared && (
+          <div style={{ marginTop: 16, padding: '12px 16px', background: 'rgba(255,255,255,0.06)', borderRadius: 8, fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>
+            Pour une vision complète de votre futur bien, lancez une{' '}
+            <Link to="/dashboard/nouvelle-analyse" style={{ color: '#7dd3fc', textDecoration: 'none', fontWeight: 600 }}>Analyse Complète</Link>.
+          </div>
+        )}
       </div>
     </div>
   );
@@ -436,7 +452,7 @@ function DiagnosticCardDetail({ d }: { d: any }) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererDDT({ r }: { r: any }) {
+function RendererDDT({ r, isShared }: { r: any; isShared?: boolean }) {
   const diags = r.diagnostics || [];
   const lotsIdf = r.lots_identifies || [];
   const sub = [r.diagnostiqueur?.nom ? `Diagnostiqueur : ${r.diagnostiqueur.nom}` : null, r.diagnostiqueur?.date ? `le ${formatDate(r.diagnostiqueur.date)}` : null].filter(Boolean).join(' · ');
@@ -599,16 +615,18 @@ function RendererDDT({ r }: { r: any }) {
         const label = r.carrez.surface_type === 'boutin' ? 'Surface habitable (Loi Boutin)'
           : r.carrez.surface_type === 'autre' ? 'Surface mesurée'
           : 'Surface loi Carrez';
-        const piecesCarrez = (r.carrez.pieces || []).filter((p: any) => !p.hors_carrez);
-        const piecesHorsCarrez = (r.carrez.pieces || []).filter((p: any) => p.hors_carrez);
-        const annexes = r.carrez.annexes || [];
+        // Filet de sécurité : on n'affiche le détail par pièce que si on a de vraies surfaces > 0
+        const piecesCarrez = (r.carrez.pieces || []).filter((p: any) => !p.hors_carrez && Number(p.surface) > 0);
+        const piecesHorsCarrez = (r.carrez.pieces || []).filter((p: any) => p.hors_carrez && Number(p.surface) > 0);
+        const annexes = (r.carrez.annexes || []).filter((a: any) => a.surface !== null && a.surface !== undefined);
+        const hasDetail = piecesCarrez.length > 0 || piecesHorsCarrez.length > 0 || annexes.length > 0;
         return (
           <Card>
             <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: 15, fontWeight: 600, color: C.textSec }}>{label}</span>
               <span style={{ fontSize: 24, fontWeight: 600, color: C.text }}>{r.carrez.surface_totale} m²</span>
             </div>
-            {(piecesCarrez.length > 0 || piecesHorsCarrez.length > 0 || annexes.length > 0) && (
+            {hasDetail && (
               <CarrezAccordeon pieces={piecesCarrez} piecesHorsCarrez={piecesHorsCarrez} annexes={annexes} />
             )}
           </Card>
@@ -699,13 +717,13 @@ function RendererDDT({ r }: { r: any }) {
 
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
     </div>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererPVAG({ r }: { r: any }) {
+function RendererPVAG({ r, isShared }: { r: any; isShared?: boolean }) {
   const typeAGLabel = r.type_ag === 'extraordinaire' ? 'Assemblée Générale Extraordinaire'
     : r.type_ag === 'mixte' ? 'Assemblée Générale Ordinaire & Extraordinaire'
     : 'Assemblée Générale Ordinaire';
@@ -942,13 +960,13 @@ function RendererPVAG({ r }: { r: any }) {
 
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
     </div>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererAppelCharges({ r }: { r: any }) {
+function RendererAppelCharges({ r, isShared }: { r: any; isShared?: boolean }) {
   const lots = r.lots || [];
   const lotIcon = (type: string) => type === 'cave' ? '🔒' : type === 'parking' || type === 'garage' ? '🚗' : type === 'grenier' || type === 'combles' ? '📦' : '🏠';
 
@@ -1069,13 +1087,13 @@ function RendererAppelCharges({ r }: { r: any }) {
 
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
     </div>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererRCP({ r }: { r: any }) {
+function RendererRCP({ r, isShared }: { r: any; isShared?: boolean }) {
   const sub = [r.date_reglement ? `Établi en ${r.date_reglement}` : null, r.modificatifs?.length ? `${r.modificatifs.length} modificatif(s)` : null].filter(Boolean).join(' · ');
   const usageLabel = r.usage === 'habitation' ? 'Habitation' : r.usage === 'mixte' ? 'Mixte' : r.usage === 'commercial' ? 'Commercial' : null;
   const totalAnnexes = (r.lots_caves || 0) + (r.lots_parkings || 0) + (r.lots_commerces || 0);
@@ -1185,13 +1203,13 @@ function RendererRCP({ r }: { r: any }) {
 
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
     </div>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererDTGPPT({ r }: { r: any }) {
+function RendererDTGPPT({ r, isShared }: { r: any; isShared?: boolean }) {
   const sub = [r.date ? `Réalisé en ${r.date}` : null, r.cabinet].filter(Boolean).join(' · ');
   const etatColor = r.etat_general === 'bon' ? '#16a34a' : r.etat_general === 'moyen' ? '#d97706' : '#dc2626';
   return (
@@ -1242,13 +1260,13 @@ function RendererDTGPPT({ r }: { r: any }) {
       )}
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
     </div>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererCarnetEntretien({ r }: { r: any }) {
+function RendererCarnetEntretien({ r, isShared }: { r: any; isShared?: boolean }) {
   const sub = [r.syndic, r.date_maj ? `Mis à jour le ${formatDate(r.date_maj)}` : null, r.annee_construction ? `Construit en ${r.annee_construction}` : null].filter(Boolean).join(' · ');
   const nbLotsTotal = r.nb_lots_total ?? r.nb_lots_principaux ?? (r.nb_lots_detail ? Object.values(r.nb_lots_detail).reduce((a: number, b: any) => a + (Number(b) || 0), 0) : null);
   const diagColor = (res: string) => res === 'negatif' ? C.green : res === 'positif' ? C.red : C.orange;
@@ -1489,13 +1507,13 @@ function RendererCarnetEntretien({ r }: { r: any }) {
 
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
     </div>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererPreEtatDate({ r }: { r: any }) {
+function RendererPreEtatDate({ r, isShared }: { r: any; isShared?: boolean }) {
   const sub = [r.date ? `Établi le ${r.date}` : null, r.syndic ? `Syndic : ${r.syndic}` : null].filter(Boolean).join(' · ');
   const lotIcon = (type: string) => type === 'cave' ? '🔒' : type === 'parking' || type === 'garage' ? '🚗' : type === 'grenier' || type === 'combles' ? '📦' : '🏠';
   const totalAnnuel = r.charges_futures?.montant_annuel || ((Number(r.charges_futures?.montant_trimestriel || 0) + Number(r.charges_futures?.fonds_travaux_trimestriel || 0)) * 4);
@@ -1729,13 +1747,13 @@ function RendererPreEtatDate({ r }: { r: any }) {
 
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
     </div>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererEtatDate({ r }: { r: any }) {
+function RendererEtatDate({ r, isShared }: { r: any; isShared?: boolean }) {
   const sub = [r.date ? `Établi le ${r.date}` : null, r.syndic ? `Syndic : ${r.syndic}` : null].filter(Boolean).join(' · ');
   const soldeColor = r.solde_sens === 'acheteur' ? '#16a34a' : '#dc2626';
   const soldeLabel = r.solde_sens === 'acheteur' ? "En faveur de l'acheteur" : 'En faveur du vendeur';
@@ -1905,13 +1923,13 @@ function RendererEtatDate({ r }: { r: any }) {
 
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
     </div>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererTaxeFonciere({ r }: { r: any }) {
+function RendererTaxeFonciere({ r, isShared }: { r: any; isShared?: boolean }) {
   const sub = [r.annee ? `Année ${r.annee}` : null, r.reference_cadastrale].filter(Boolean).join(' · ');
   return (
     <div>
@@ -1947,13 +1965,13 @@ function RendererTaxeFonciere({ r }: { r: any }) {
       </Card>
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
     </div>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererCompromis({ r }: { r: any }) {
+function RendererCompromis({ r, isShared }: { r: any; isShared?: boolean }) {
   const sub = [r.date_signature ? `Signé le ${formatDate(r.date_signature)}` : null, r.agence, r.notaire_acheteur ? `Notaire acheteur : ${r.notaire_acheteur}` : null].filter(Boolean).join(' · ');
   const statutStyle = (s: string) => s === 'levee' || s === 'purge' ? { bg: C.green.bg, text: '#166534', border: C.green.border, label: s === 'levee' ? 'Levée' : 'Purgée' } : { bg: C.orange.bg, text: '#92400e', border: C.orange.border, label: 'En cours' };
   return (
@@ -2036,13 +2054,13 @@ function RendererCompromis({ r }: { r: any }) {
       )}
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
     </div>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererDiagCommunes({ r }: { r: any }) {
+function RendererDiagCommunes({ r, isShared }: { r: any; isShared?: boolean }) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [showNonDetecte, setShowNonDetecte] = useState<Record<string, boolean>>({});
   const toggleSection = (key: string) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
@@ -2401,13 +2419,13 @@ function RendererDiagCommunes({ r }: { r: any }) {
 
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
     </div>
   );
 }
 
 
-function RendererModificatifRCP({ r }: { r: any }) {
+function RendererModificatifRCP({ r, isShared }: { r: any; isShared?: boolean }) {
   const typeLabel: Record<string, string> = {
     creation_lot: 'Création de lot',
     suppression_lot: 'Suppression de lot',
@@ -2571,13 +2589,13 @@ function RendererModificatifRCP({ r }: { r: any }) {
 
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
     </div>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererAutre({ r }: { r: any }) {
+function RendererAutre({ r, isShared }: { r: any; isShared?: boolean }) {
   return (
     <div>
       <Header type="Analyse de Document" titre={r.titre} />
@@ -2603,38 +2621,38 @@ function RendererAutre({ r }: { r: any }) {
       )}
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
-      <AvisVerimo text={r.avis_verimo} />
+      <AvisVerimo text={r.avis_verimo} isShared={isShared} />
     </div>
   );
 }
 
 // ── Export principal ────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function SafeRenderer({ result }: { result: any }) {
+function SafeRenderer({ result, isShared }: { result: any; isShared?: boolean }) {
   const type = result?.document_type || 'AUTRE';
   try {
     switch (type) {
-      case 'DDT': return <RendererDDT r={result} />;
-      case 'PV_AG': return <RendererPVAG r={result} />;
-      case 'APPEL_CHARGES': return <RendererAppelCharges r={result} />;
-      case 'RCP': return <RendererRCP r={result} />;
-      case 'DTG_PPT': return <RendererDTGPPT r={result} />;
-      case 'CARNET_ENTRETIEN': return <RendererCarnetEntretien r={result} />;
-      case 'PRE_ETAT_DATE': return <RendererPreEtatDate r={result} />;
-      case 'ETAT_DATE': return <RendererEtatDate r={result} />;
-      case 'TAXE_FONCIERE': return <RendererTaxeFonciere r={result} />;
-      case 'COMPROMIS': return <RendererCompromis r={result} />;
-      case 'DIAGNOSTIC_PARTIES_COMMUNES': return <RendererDiagCommunes r={result} />;
-      case 'MODIFICATIF_RCP': return <RendererModificatifRCP r={result} />;
-      default: return <RendererAutre r={result} />;
+      case 'DDT': return <RendererDDT r={result} isShared={isShared} />;
+      case 'PV_AG': return <RendererPVAG r={result} isShared={isShared} />;
+      case 'APPEL_CHARGES': return <RendererAppelCharges r={result} isShared={isShared} />;
+      case 'RCP': return <RendererRCP r={result} isShared={isShared} />;
+      case 'DTG_PPT': return <RendererDTGPPT r={result} isShared={isShared} />;
+      case 'CARNET_ENTRETIEN': return <RendererCarnetEntretien r={result} isShared={isShared} />;
+      case 'PRE_ETAT_DATE': return <RendererPreEtatDate r={result} isShared={isShared} />;
+      case 'ETAT_DATE': return <RendererEtatDate r={result} isShared={isShared} />;
+      case 'TAXE_FONCIERE': return <RendererTaxeFonciere r={result} isShared={isShared} />;
+      case 'COMPROMIS': return <RendererCompromis r={result} isShared={isShared} />;
+      case 'DIAGNOSTIC_PARTIES_COMMUNES': return <RendererDiagCommunes r={result} isShared={isShared} />;
+      case 'MODIFICATIF_RCP': return <RendererModificatifRCP r={result} isShared={isShared} />;
+      default: return <RendererAutre r={result} isShared={isShared} />;
     }
   } catch {
-    return <RendererAutre r={result} />;
+    return <RendererAutre r={result} isShared={isShared} />;
   }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default function DocumentRenderer({ result }: { result: any }) {
+export default function DocumentRenderer({ result, isShared }: { result: any; isShared?: boolean }) {
   return (
     <>
       <style>{`
@@ -2719,7 +2737,7 @@ export default function DocumentRenderer({ result }: { result: any }) {
         }
       `}</style>
       <div className="dr-root">
-        <SafeRenderer result={result} />
+        <SafeRenderer result={result} isShared={isShared} />
       </div>
     </>
   );
