@@ -10,6 +10,7 @@ import {
   MapPin, Trash2, AlertTriangle, FileText, Pencil,
   UserPlus, UserCheck, Folder, Lightbulb, MessageSquare,
   LayoutGrid, LayoutList, ArrowUpDown, Info, Calendar,
+  Shield, Lock,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getStripe } from '../lib/stripe-client';
@@ -4199,24 +4200,36 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
 
-      {/* Informations personnelles + coordonnées visibles */}
-      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '22px 24px', marginBottom: 20 }}>
-        <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Informations personnelles</h3>
-        <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>Vos informations de contact visibles par vos clients dans les rapports envoyés.</p>
-        <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-          <div style={{ position: 'relative' }}>
-            <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
-              Nom complet
-              <TooltipInfo text="Ce prénom / nom sera affiché comme expéditeur lors de l'envoi de rapports par email à vos clients." />
-            </label>
-            <input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} style={inputStyle} />
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* SECTION 1 — INFORMATIONS PERSONNELLES (modifiable)      */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', overflow: 'hidden', marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 22px', background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderBottom: '1px solid #d0e8f0' }}>
+          <div style={{ width: 32, height: 32, borderRadius: 9, background: '#2a7d9c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <User size={16} style={{ color: '#fff' }} />
           </div>
-          <div>
-            <label style={labelStyle}>Téléphone</label>
-            <input value={form.telephone} onChange={e => setForm(f => ({ ...f, telephone: e.target.value }))} placeholder="06 12 34 56 78" style={inputStyle} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#0c447c', margin: 0 }}>Informations personnelles</h3>
+            <p style={{ fontSize: 11.5, color: '#2a7d9c', margin: '2px 0 0' }}>Vos coordonnées de contact, modifiables à tout moment.</p>
           </div>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#15803d', background: '#f0fdf4', padding: '4px 10px', borderRadius: 100, border: '1px solid #bbf7d0', flexShrink: 0 }}>
+            <Pencil size={11} /> Modifiable
+          </span>
         </div>
-        <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        <div style={{ padding: '18px 22px 20px' }}>
+          <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+            <div style={{ position: 'relative' }}>
+              <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
+                Nom complet
+                <TooltipInfo text="Ce prénom / nom sera affiché comme expéditeur lors de l'envoi de rapports par email à vos clients." />
+              </label>
+              <input value={form.full_name} onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Téléphone</label>
+              <input value={form.telephone} onChange={e => setForm(f => ({ ...f, telephone: e.target.value }))} placeholder="06 12 34 56 78" style={inputStyle} />
+            </div>
+          </div>
           <div>
             <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 6 }}>
               Email
@@ -4227,84 +4240,112 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
         </div>
       </div>
 
-      {/* Identité professionnelle */}
-      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '22px 24px', marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', margin: 0 }}>Mon identité professionnelle</h3>
-          {isLocked && <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', background: '#f1f5f9', padding: '3px 10px', borderRadius: 100 }}>🔒 Verrouillé</span>}
-        </div>
-        {isLocked && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
-            <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>
-              Ces informations ne sont plus modifiables directement.
-            </p>
-            <button onClick={() => { setModifMessage(''); setModifSent(false); setShowModifRequest(true); }}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 8, background: '#f8fafc', border: '1.5px solid #edf2f7', color: '#2a7d9c', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const }}>
-              Demander une modification
-            </button>
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* SECTION 2 — IDENTITÉ PROFESSIONNELLE (verrouillée)      */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', overflow: 'hidden', marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 22px', background: isLocked ? 'linear-gradient(135deg, #fffbeb, #fef3c7)' : 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderBottom: `1px solid ${isLocked ? '#fde68a' : '#d0e8f0'}` }}>
+          <div style={{ width: 32, height: 32, borderRadius: 9, background: isLocked ? '#d97706' : '#2a7d9c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Shield size={16} style={{ color: '#fff' }} />
           </div>
-        )}
-        {!isLocked && (
-          <p style={{ fontSize: 12, color: '#d97706', marginBottom: 16, background: '#fffbeb', padding: '8px 12px', borderRadius: 8, border: '1px solid #fde68a' }}>
-            Vérifiez bien ces informations avant d'enregistrer. Une fois validées, elles ne seront plus modifiables.
-          </p>
-        )}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 style={{ fontSize: 14.5, fontWeight: 700, color: isLocked ? '#78350f' : '#0c447c', margin: 0 }}>Mon identité professionnelle</h3>
+            <p style={{ fontSize: 11.5, color: isLocked ? '#92400e' : '#2a7d9c', margin: '2px 0 0' }}>
+              {isLocked ? 'Informations vérifiées et utilisées sur vos rapports.' : 'Renseignez ces informations pour activer votre compte pro.'}
+            </p>
+          </div>
+          {isLocked ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#92400e', background: '#fef3c7', padding: '4px 10px', borderRadius: 100, border: '1px solid #fde68a', flexShrink: 0 }}>
+              <Lock size={11} /> Verrouillé
+            </span>
+          ) : (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#15803d', background: '#f0fdf4', padding: '4px 10px', borderRadius: 100, border: '1px solid #bbf7d0', flexShrink: 0 }}>
+              <Pencil size={11} /> Modifiable
+            </span>
+          )}
+        </div>
 
-        {/* Logo (toujours modifiable) */}
-        <div style={{ marginBottom: 16 }}>
-          <label style={labelStyle}>Logo</label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            {logoPreview ? (
-              <img src={logoPreview} alt="Logo" style={{ width: 64, height: 64, borderRadius: 12, objectFit: 'contain', background: '#f8fafc', border: '1px solid #edf2f7' }} />
-            ) : (
-              <div style={{ width: 64, height: 64, borderRadius: 12, background: '#f8fafc', border: '1.5px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Upload size={20} style={{ color: '#cbd5e1' }} />
+        <div style={{ padding: '18px 22px 20px' }}>
+          {/* Bandeau info doux pour demande de modification (seulement si verrouillé) */}
+          {isLocked && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px', background: '#fafbfc', border: '0.5px solid #edf2f7', borderRadius: 10, marginBottom: 18 }}>
+              <Info size={16} style={{ color: '#94a3b8', flexShrink: 0, marginTop: 1 }} />
+              <div style={{ flex: 1, fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>
+                Ces informations sont vérifiées et ne sont plus modifiables directement. Pour les corriger, faites une demande à notre équipe.
               </div>
-            )}
-            <div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#374151' }}>
-                  <Upload size={13} /> Choisir un fichier
-                  <input type="file" accept="image/*" onChange={handleLogoChange} style={{ display: 'none' }} />
-                </label>
-                {logoPreview && (
-                  <button onClick={() => { setLogoFile(null); setLogoPreview(null); }}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#dc2626' }}>
-                    ✕ Supprimer
-                  </button>
-                )}
+              <button onClick={() => { setModifMessage(''); setModifSent(false); setShowModifRequest(true); }}
+                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 13px', borderRadius: 8, background: '#fff', border: '1px solid #c7dde8', color: '#2a7d9c', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const, flexShrink: 0, transition: 'all 0.15s' }}
+                onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.background = '#f0f7fb'; el.style.borderColor = '#2a7d9c'; }}
+                onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.background = '#fff'; el.style.borderColor = '#c7dde8'; }}>
+                <Pencil size={12} /> Demander une modification
+              </button>
+            </div>
+          )}
+          {!isLocked && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, marginBottom: 18 }}>
+              <Info size={16} style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }} />
+              <div style={{ flex: 1, fontSize: 12, color: '#92400e', lineHeight: 1.5 }}>
+                Vérifiez bien ces informations avant d'enregistrer. Une fois validées, elles ne seront plus modifiables.
               </div>
-              <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>PNG ou JPG, max 2 Mo. Affiché sur les rapports envoyés.</p>
+            </div>
+          )}
+
+          {/* Logo (toujours modifiable) */}
+          <div style={{ marginBottom: 18 }}>
+            <label style={labelStyle}>Logo</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              {logoPreview ? (
+                <img src={logoPreview} alt="Logo" style={{ width: 64, height: 64, borderRadius: 12, objectFit: 'contain', background: '#f8fafc', border: '1px solid #edf2f7' }} />
+              ) : (
+                <div style={{ width: 64, height: 64, borderRadius: 12, background: '#f8fafc', border: '1.5px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Upload size={20} style={{ color: '#cbd5e1' }} />
+                </div>
+              )}
+              <div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: '#f8fafc', border: '1px solid #edf2f7', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#374151' }}>
+                    <Upload size={13} /> Choisir un fichier
+                    <input type="file" accept="image/*" onChange={handleLogoChange} style={{ display: 'none' }} />
+                  </label>
+                  {logoPreview && (
+                    <button onClick={() => { setLogoFile(null); setLogoPreview(null); }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '8px 14px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#dc2626' }}>
+                      ✕ Supprimer
+                    </button>
+                  )}
+                </div>
+                <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>PNG ou JPG, max 2 Mo. Affiché sur les rapports envoyés.</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-          <div>
-            <label style={labelStyle}>Raison sociale</label>
-            <input value={form.pro_company_name} onChange={e => !isLocked && setForm(f => ({ ...f, pro_company_name: e.target.value }))} placeholder="Agence Dupont SARL" style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
+          <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+            <div>
+              <label style={labelStyle}>Raison sociale</label>
+              <input value={form.pro_company_name} onChange={e => !isLocked && setForm(f => ({ ...f, pro_company_name: e.target.value }))} placeholder="Agence Dupont SARL" style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
+            </div>
+            <div>
+              <label style={labelStyle}>Réseau</label>
+              <input value={form.pro_network} onChange={e => !isLocked && setForm(f => ({ ...f, pro_network: e.target.value }))} placeholder="IAD, Safti, Indépendant..." style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
+            </div>
           </div>
-          <div>
-            <label style={labelStyle}>Réseau</label>
-            <input value={form.pro_network} onChange={e => !isLocked && setForm(f => ({ ...f, pro_network: e.target.value }))} placeholder="IAD, Safti, Indépendant..." style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
+          <div style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>SIRET</label>
+            <input value={form.pro_siret} onChange={e => !isLocked && setForm(f => ({ ...f, pro_siret: e.target.value }))} placeholder="123 456 789 00012" style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
           </div>
-        </div>
-        <div style={{ marginBottom: 14 }}>
-          <label style={labelStyle}>SIRET</label>
-          <input value={form.pro_siret} onChange={e => !isLocked && setForm(f => ({ ...f, pro_siret: e.target.value }))} placeholder="123 456 789 00012" style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
-        </div>
-        <div style={{ marginBottom: 14 }}>
-          <label style={labelStyle}>Adresse postale</label>
-          <input value={form.pro_company_address} onChange={e => !isLocked && setForm(f => ({ ...f, pro_company_address: e.target.value }))} placeholder="12 rue de la République" style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
-        </div>
-        <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 14 }}>
-          <div>
-            <label style={labelStyle}>Code postal</label>
-            <input value={form.pro_postal_code} onChange={e => !isLocked && setForm(f => ({ ...f, pro_postal_code: e.target.value }))} placeholder="75001" style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
+          <div style={{ marginBottom: 14 }}>
+            <label style={labelStyle}>Adresse postale</label>
+            <input value={form.pro_company_address} onChange={e => !isLocked && setForm(f => ({ ...f, pro_company_address: e.target.value }))} placeholder="12 rue de la République" style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
           </div>
-          <div>
-            <label style={labelStyle}>Ville</label>
-            <input value={form.pro_ville} onChange={e => !isLocked && setForm(f => ({ ...f, pro_ville: e.target.value }))} placeholder="Paris" style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
+          <div className="compte-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 14 }}>
+            <div>
+              <label style={labelStyle}>Code postal</label>
+              <input value={form.pro_postal_code} onChange={e => !isLocked && setForm(f => ({ ...f, pro_postal_code: e.target.value }))} placeholder="75001" style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
+            </div>
+            <div>
+              <label style={labelStyle}>Ville</label>
+              <input value={form.pro_ville} onChange={e => !isLocked && setForm(f => ({ ...f, pro_ville: e.target.value }))} placeholder="Paris" style={isLocked ? lockedInputStyle : inputStyle} readOnly={isLocked} />
+            </div>
           </div>
         </div>
       </div>
