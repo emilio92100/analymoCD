@@ -118,22 +118,7 @@ export default function RejoindrePage() {
 
   const activeProfile = profileTypes.find(p => p.id === profileType);
 
-  /* Forcer navbar blanche */
-  useEffect(() => {
-    const nav = document.querySelector('header nav') as HTMLElement | null;
-    if (nav) {
-      nav.style.backgroundColor = 'rgba(255,255,255,0.97)';
-      nav.style.backdropFilter = 'none';
-      (nav.style as unknown as { webkitBackdropFilter: string }).webkitBackdropFilter = 'none';
-    }
-    return () => {
-      if (nav) {
-        nav.style.backgroundColor = '';
-        nav.style.backdropFilter = '';
-        (nav.style as unknown as { webkitBackdropFilter: string }).webkitBackdropFilter = '';
-      }
-    };
-  }, []);
+  /* Pas de forçage de la navbar : on garde son apparence par défaut (transparente sur fond sombre comme ProPage) */
 
   /* Scroll top a chaque changement d'etape */
   useEffect(() => {
@@ -187,41 +172,50 @@ export default function RejoindrePage() {
   // ========================================
   if (sent) {
     return (
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #f5f9fb 0%, #fff 100%)', padding: '60px 20px', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-        <div style={{ maxWidth: 640, margin: '0 auto' }}>
+      <div style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+
+        {/* FOND HERO SOMBRE */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 560, background: 'linear-gradient(170deg, #0a1f2d 0%, #0f2d3d 30%, #1a4a5e 65%, #2a7d9c 100%)', zIndex: 0 }}>
+          <div style={{ position: 'absolute', inset: 0, opacity: 0.4, backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.07) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+          <div style={{ position: 'absolute', top: '-10%', left: '50%', width: 600, height: 600, borderRadius: '50%', transform: 'translateX(-50%)', background: 'radial-gradient(circle, rgba(34,197,94,0.12) 0%, transparent 65%)' }} />
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 120, background: 'linear-gradient(180deg, transparent 0%, #f5f9fb 100%)' }} />
+        </div>
+        <div style={{ position: 'absolute', top: 560, left: 0, right: 0, bottom: 0, background: '#f5f9fb', zIndex: 0 }} />
+
+        <div style={{ position: 'relative', zIndex: 10, padding: '120px 20px 60px', maxWidth: 640, margin: '0 auto' }}>
           <motion.div
-            initial={{ scale: 0.85, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.4, ease: 'easeOut' }}
-            style={{ background: '#fff', borderRadius: 24, border: '1px solid #edf2f7', padding: '50px 40px', textAlign: 'center', boxShadow: '0 4px 20px rgba(15, 45, 61, 0.04)' }}
+            initial={{ scale: 0.92, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            style={{ background: '#fff', borderRadius: 22, border: '1px solid rgba(15, 45, 61, 0.06)', padding: '52px 44px', textAlign: 'center', boxShadow: '0 24px 64px rgba(15, 45, 61, 0.15), 0 4px 16px rgba(15, 45, 61, 0.06)' }}
           >
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: 'spring', stiffness: 200, damping: 18 }}
-              style={{ width: 88, height: 88, borderRadius: '50%', background: 'linear-gradient(135deg, #16a34a, #22c55e)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 28px', boxShadow: '0 8px 24px rgba(22, 163, 74, 0.25)' }}
+              style={{ width: 92, height: 92, borderRadius: '50%', background: 'linear-gradient(135deg, #16a34a, #22c55e)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 28px', boxShadow: '0 12px 32px rgba(22, 163, 74, 0.3)' }}
             >
-              <CheckCircle size={44} style={{ color: '#fff' }} strokeWidth={2.5} />
+              <CheckCircle size={46} style={{ color: '#fff' }} strokeWidth={2.5} />
             </motion.div>
 
-            <h1 style={{ fontSize: 28, fontWeight: 800, color: '#0f172a', margin: '0 0 12px', letterSpacing: '-0.01em' }}>
+            <h1 style={{ fontSize: 30, fontWeight: 900, color: '#0f172a', margin: '0 0 14px', letterSpacing: '-0.025em' }}>
               Votre demande est bien arrivée
             </h1>
-            <p style={{ fontSize: 15, color: '#64748b', lineHeight: 1.65, margin: '0 0 32px', maxWidth: 440, marginLeft: 'auto', marginRight: 'auto' }}>
+            <p style={{ fontSize: 15, color: '#64748b', lineHeight: 1.65, margin: '0 0 36px', maxWidth: 460, marginLeft: 'auto', marginRight: 'auto' }}>
               Notre équipe vous recontacte sous <strong style={{ color: '#0f172a' }}>24h ouvrées</strong> pour un échange personnalisé. Un email de confirmation vient d'être envoyé à <strong style={{ color: '#2a7d9c' }}>{email}</strong>.
             </p>
 
-            <div style={{ background: '#f8fafc', borderRadius: 14, padding: '20px 24px', textAlign: 'left', marginBottom: 28 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>Les prochaines étapes</div>
+            <div style={{ background: 'linear-gradient(180deg, #f8fafc 0%, #f0f7fb 100%)', borderRadius: 16, padding: '24px 28px', textAlign: 'left', marginBottom: 32, border: '1px solid rgba(42, 125, 156, 0.1)' }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Les prochaines étapes</div>
               {[
                 { step: '1', label: 'Vérification de votre dossier', sub: 'Sous 24h ouvrées', icon: '🔍' },
                 { step: '2', label: 'Appel découverte (15 min)', sub: 'Pour comprendre vos besoins et vous présenter Verimo Pro', icon: '📞' },
                 { step: '3', label: 'Accès à votre espace pro', sub: 'Avec 3 analyses offertes pour démarrer', icon: '🎁' },
               ].map((s, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, paddingTop: i > 0 ? 14 : 0, borderTop: i > 0 ? '0.5px solid #edf2f7' : 'none', marginTop: i > 0 ? 14 : 0 }}>
-                  <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#fff', border: '1.5px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 13, fontWeight: 800, color: '#2a7d9c' }}>{s.step}</div>
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, paddingTop: i > 0 ? 16 : 0, borderTop: i > 0 ? '0.5px solid rgba(42, 125, 156, 0.15)' : 'none', marginTop: i > 0 ? 16 : 0 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#fff', border: '1.5px solid #c7dde8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 13, fontWeight: 800, color: '#2a7d9c' }}>{s.step}</div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a', marginBottom: 2 }}>{s.icon} {s.label}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>{s.icon} {s.label}</div>
                     <div style={{ fontSize: 12, color: '#64748b' }}>{s.sub}</div>
                   </div>
                 </div>
@@ -229,7 +223,7 @@ export default function RejoindrePage() {
             </div>
 
             <button onClick={() => navigate('/')}
-              style={{ padding: '13px 28px', borderRadius: 12, background: '#0f2d3d', color: '#fff', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              style={{ padding: '14px 30px', borderRadius: 12, background: 'linear-gradient(135deg, #0f2d3d, #1a4a5e)', color: '#fff', fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 16px rgba(15, 45, 61, 0.2)' }}>
               Retour à l'accueil <ChevronRight size={16} />
             </button>
           </motion.div>
@@ -244,29 +238,79 @@ export default function RejoindrePage() {
   const stepLabels = ['Profil', 'Coordonnées', 'Activité', 'Besoins'];
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #f5f9fb 0%, #fff 100%)', padding: '40px 20px 60px', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      <div style={{ maxWidth: 680, margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
 
-        {/* HEADER */}
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 14px', borderRadius: 100, background: '#2a7d9c', color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 14 }}>
-            <Sparkles size={12} /> Verimo Pro
-          </div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, color: '#0f172a', margin: '0 0 8px', letterSpacing: '-0.01em' }}>Rejoindre Verimo Pro</h1>
-          <p style={{ fontSize: 14, color: '#64748b', margin: 0, maxWidth: 480, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.5 }}>
+      {/* FOND HERO SOMBRE — limité au haut de la page */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 560, background: 'linear-gradient(170deg, #0a1f2d 0%, #0f2d3d 30%, #1a4a5e 65%, #2a7d9c 100%)', zIndex: 0 }}>
+        {/* Pattern de points subtil */}
+        <div style={{ position: 'absolute', inset: 0, opacity: 0.4, backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.07) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+        {/* Halo central */}
+        <div style={{ position: 'absolute', top: '-10%', left: '50%', width: 600, height: 600, borderRadius: '50%', transform: 'translateX(-50%)', background: 'radial-gradient(circle, rgba(42,125,156,0.15) 0%, transparent 65%)' }} />
+        {/* Halo droite */}
+        <div style={{ position: 'absolute', top: '20%', right: '-5%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(125,211,252,0.08) 0%, transparent 65%)' }} />
+        {/* Transition fluide vers le fond clair */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 120, background: 'linear-gradient(180deg, transparent 0%, #f5f9fb 100%)' }} />
+      </div>
+
+      {/* FOND CLAIR — bas de page */}
+      <div style={{ position: 'absolute', top: 560, left: 0, right: 0, bottom: 0, background: '#f5f9fb', zIndex: 0 }} />
+
+      {/* CONTENU */}
+      <div style={{ position: 'relative', zIndex: 10, padding: '120px 20px 60px', maxWidth: 720, margin: '0 auto' }}>
+
+        {/* HEADER — sur fond sombre */}
+        <div style={{ textAlign: 'center', marginBottom: 40 }}>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 16px', borderRadius: 100, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 22, backdropFilter: 'blur(8px)' }}
+          >
+            <Sparkles size={13} style={{ color: '#7dd3fc' }} /> Offre Professionnelle
+          </motion.div>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            style={{ fontSize: 'clamp(28px, 4.5vw, 44px)', fontWeight: 900, color: '#fff', margin: '0 0 14px', letterSpacing: '-0.025em', lineHeight: 1.1 }}
+          >
+            Rejoindre{' '}
+            <span style={{ position: 'relative', display: 'inline-block' }}>
+              <span style={{ color: '#7dd3fc', position: 'relative', zIndex: 1 }}>Verimo Pro</span>
+              <motion.span
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ delay: 0.8, duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
+                style={{ position: 'absolute', bottom: -2, left: 0, right: 0, height: 4, borderRadius: 100, background: 'rgba(125,211,252,0.35)', transformOrigin: 'left' }}
+              />
+            </span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)', margin: 0, maxWidth: 500, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.6, fontWeight: 500 }}
+          >
             Quelques étapes simples pour rejoindre la communauté des pros de l'immobilier qui font confiance à Verimo.
-          </p>
+          </motion.p>
         </div>
 
-        {/* PROGRESS BAR */}
-        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '16px 20px', marginBottom: 14 }}>
+        {/* PROGRESS BAR — carte blanche flottante */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          style={{ background: '#fff', borderRadius: 16, border: '1px solid rgba(15, 45, 61, 0.06)', padding: '18px 22px', marginBottom: 14, boxShadow: '0 8px 32px rgba(15, 45, 61, 0.12), 0 2px 8px rgba(15, 45, 61, 0.04)' }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <span style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Étape {step} sur 4</span>
-            <span style={{ fontSize: 11.5, color: '#2a7d9c', fontWeight: 700 }}>{Math.round((step / 4) * 100)}%</span>
+            <span style={{ fontSize: 12, color: '#2a7d9c', fontWeight: 800 }}>{Math.round((step / 4) * 100)}%</span>
           </div>
           <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
             {[1, 2, 3, 4].map(s => (
-              <div key={s} style={{ flex: 1, height: 4, borderRadius: 100, background: s <= step ? '#2a7d9c' : '#edf2f7', transition: 'background 0.3s' }} />
+              <div key={s} style={{ flex: 1, height: 4, borderRadius: 100, background: s <= step ? 'linear-gradient(90deg, #2a7d9c, #7dd3fc)' : '#edf2f7', transition: 'background 0.3s' }} />
             ))}
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -276,7 +320,7 @@ export default function RejoindrePage() {
               </span>
             ))}
           </div>
-        </div>
+        </motion.div>
 
         {/* CONTENU ETAPE — slide animation */}
         <AnimatePresence mode="wait">
@@ -286,7 +330,7 @@ export default function RejoindrePage() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -30 }}
             transition={{ duration: 0.25, ease: 'easeOut' }}
-            style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '28px 30px', marginBottom: 14, boxShadow: '0 2px 8px rgba(15, 45, 61, 0.03)' }}
+            style={{ background: '#fff', borderRadius: 18, border: '1px solid rgba(15, 45, 61, 0.06)', padding: '32px 32px', marginBottom: 14, boxShadow: '0 20px 60px rgba(15, 45, 61, 0.10), 0 4px 16px rgba(15, 45, 61, 0.04)' }}
           >
             {/* ========== ETAPE 1 — PROFIL ========== */}
             {step === 1 && (
@@ -611,8 +655,8 @@ export default function RejoindrePage() {
         </div>
 
         {/* BANDEAU RASSURANT */}
-        <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #edf2f7', padding: '11px 16px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: '#64748b' }}>
-          <Shield size={15} style={{ color: '#16a34a', flexShrink: 0 }} />
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(15, 45, 61, 0.06)', padding: '13px 18px', display: 'flex', alignItems: 'center', gap: 11, fontSize: 12, color: '#64748b', boxShadow: '0 4px 16px rgba(15, 45, 61, 0.05)' }}>
+          <Shield size={16} style={{ color: '#16a34a', flexShrink: 0 }} />
           <span>Vos données sont protégées · <strong style={{ color: '#0f172a' }}>Aucun engagement</strong> à ce stade · Réponse sous 24h ouvrées</span>
         </div>
 
