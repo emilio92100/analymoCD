@@ -1971,87 +1971,517 @@ function RendererTaxeFonciere({ r, isShared, hideVerimoBranding }: { r: any; isS
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function RendererCompromis({ r, isShared, hideVerimoBranding }: { r: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
-  const sub = [r.date_signature ? `Signé le ${formatDate(r.date_signature)}` : null, r.agence, r.notaire_acheteur ? `Notaire acheteur : ${r.notaire_acheteur}` : null].filter(Boolean).join(' · ');
-  const statutStyle = (s: string) => s === 'levee' || s === 'purge' ? { bg: C.green.bg, text: '#166534', border: C.green.border, label: s === 'levee' ? 'Levée' : 'Purgée' } : { bg: C.orange.bg, text: '#92400e', border: C.orange.border, label: 'En cours' };
+// Exporte pour usage dans RapportPage (onglet Compromis de l'analyse complete)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function RendererCompromis({ r, isShared, hideVerimoBranding }: { r: any; isShared?: boolean; hideVerimoBranding?: boolean }) {
+  // Helpers
+  const fmt = (v: any) => v != null ? Number(v).toLocaleString('fr-FR') : null;
+  const safeArr = (a: any) => Array.isArray(a) ? a : [];
+
+  // Donnees structurees ou fallback ancien schema
+  const vendeurs = safeArr(r.vendeurs);
+  const acheteurs = safeArr(r.acheteurs);
+  const notaires = safeArr(r.notaires);
+  const bien = r.bien || {};
+  const lotsCedes = safeArr(bien.lots_cedes);
+  const finances = r.finances || {};
+  const financement = r.financement || {};
+  const condSusp = safeArr(r.conditions_suspensives);
+  const calendrier = safeArr(r.calendrier);
+  const droitsPreemption = safeArr(r.droits_preemption);
+  const diagAnnexes = safeArr(r.diagnostics_annexes);
+  const annexesCopro = r.annexes_copropriete_l721_2;
+  const finCopro = r.copropriete_finances_synthese;
+  const sitLoc = r.situation_locative;
+  const clausesCrit = safeArr(r.clauses_critiques);
+  const servitudes = safeArr(r.servitudes);
+
+  // Type avant-contrat label
+  const typeLabel = r.type_avant_contrat === 'promesse_unilaterale' ? 'Promesse unilatérale' : 'Compromis de vente';
+
+  // KPIs calculs
+  const prixNet = finances.prix_net_vendeur;
+  const honoraires = finances.honoraires_agence;
+  const honPct = finances.honoraires_pct;
+  const honCharge = finances.honoraires_charge;
+  const prixTotal = finances.prix_total_acte;
+  const fraisNotaire = finances.frais_notaire_estimes_verimo;
+  const fraisNotairePct = finances.frais_notaire_pct_verimo;
+  const coutTotal = finances.cout_total_estime_acheteur_verimo;
+  const depotGarantie = finances.depot_garantie_montant;
+  const depotGarantiePct = finances.depot_garantie_pct;
+  const clausePenalePct = finances.clause_penale_pct;
+
+  // Statut suspensive
+  const statutStyle = (s: string) => {
+    if (s === 'levee' || s === 'purge') return { bg: C.green.bg, text: '#166534', border: C.green.border, label: s === 'levee' ? 'Levée' : 'Purgée' };
+    if (s === 'caduque') return { bg: C.red.bg, text: '#991b1b', border: C.red.border, label: 'Caduque' };
+    return { bg: '#fef3c7', text: '#92400e', border: '#fde68a', label: 'En cours' };
+  };
+
+  // Diag styling
+  const diagStyle = (d: any) => {
+    const t = String(d.type || '').toUpperCase();
+    const res = String(d.resultat_synthese || '').toLowerCase();
+    if (t === 'DPE') {
+      if (res.includes('f') || res.includes('g')) return { bg: '#fef2f2', color: '#991b1b', border: '#fecaca', emoji: '⚡' };
+      if (res.includes('e')) return { bg: '#fff7ed', color: '#9a3412', border: '#fed7aa', emoji: '⚡' };
+      return { bg: '#f0fdf4', color: '#15803d', border: '#bbf7d0', emoji: '⚡' };
+    }
+    if (t === 'CARREZ' || t === 'BOUTIN') return { bg: '#f0fdf4', color: '#15803d', border: '#bbf7d0', emoji: '📐' };
+    if (t === 'ERP') return { bg: '#f8fafc', color: '#475569', border: '#e2e8f0', emoji: '📋' };
+    if (t === 'AMIANTE') return { bg: res.includes('absen') || res.includes('confor') ? '#f8fafc' : '#fef2f2', color: res.includes('absen') || res.includes('confor') ? '#475569' : '#991b1b', border: res.includes('absen') || res.includes('confor') ? '#e2e8f0' : '#fecaca', emoji: '🏗' };
+    if (t === 'PLOMB') return { bg: res.includes('absen') || res.includes('confor') ? '#f8fafc' : '#fef2f2', color: res.includes('absen') || res.includes('confor') ? '#475569' : '#991b1b', border: res.includes('absen') || res.includes('confor') ? '#e2e8f0' : '#fecaca', emoji: '🔩' };
+    if (t === 'TERMITES') return { bg: res.includes('absen') || res.includes('negat') ? '#f8fafc' : '#fef2f2', color: res.includes('absen') || res.includes('negat') ? '#475569' : '#991b1b', border: res.includes('absen') || res.includes('negat') ? '#e2e8f0' : '#fecaca', emoji: '🐛' };
+    if (t === 'ELECTRICITE') return { bg: res.includes('confor') ? '#f0fdf4' : '#fef2f2', color: res.includes('confor') ? '#15803d' : '#991b1b', border: res.includes('confor') ? '#bbf7d0' : '#fecaca', emoji: '🔌' };
+    if (t === 'GAZ') return { bg: res.includes('confor') ? '#f0fdf4' : '#fef2f2', color: res.includes('confor') ? '#15803d' : '#991b1b', border: res.includes('confor') ? '#bbf7d0' : '#fecaca', emoji: '🔥' };
+    if (t === 'AUDIT_ENERGETIQUE') return { bg: '#fff7ed', color: '#9a3412', border: '#fed7aa', emoji: '🔋' };
+    return { bg: '#f8fafc', color: '#475569', border: '#e2e8f0', emoji: '📄' };
+  };
+
+  // Alerte top (clauses critiques actives + DPE F/G)
+  const clausesActives = clausesCrit.filter((c: any) => c.actif_dans_compromis !== false);
+  const dpeAnnexe = diagAnnexes.find((d: any) => String(d.type || '').toUpperCase() === 'DPE');
+  const dpeAlerte = dpeAnnexe && /^[FG]/i.test(String(dpeAnnexe.resultat_synthese || ''));
+
+  // Notaires unique vs multiples
+  const notairesAvecRole = notaires.filter((n: any) => n.role && n.role !== 'non_precise' && n.role !== 'redacteur' && n.role !== 'participant');
+  const tousRolesPrecises = notaires.length >= 2 && notairesAvecRole.length === notaires.length;
+  const notaireVendeur = notaires.find((n: any) => n.role === 'vendeur');
+  const notaireAcheteur = notaires.find((n: any) => n.role === 'acheteur');
+
+  // Annexes copropriete checklist (count true)
+  const annexesCount = annexesCopro ? Object.values(annexesCopro).filter(v => v === true).length : 0;
+  const annexesTotal = annexesCopro ? Object.keys(annexesCopro).length : 0;
+
   return (
     <div>
-      <Header type="Compromis de Vente" titre={r.titre} sub={sub} />
-      <Resume text={r.resume} />
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 14 }}>
-        {r.prix_net_vendeur && <Kpi label="Prix net vendeur" value={`${Number(r.prix_net_vendeur).toLocaleString('fr-FR')} €`} />}
-        {r.honoraires_agence && <Kpi label="Honoraires agence" value={`${Number(r.honoraires_agence).toLocaleString('fr-FR')} €`} sub={`Charge ${r.honoraires_charge === 'acheteur' ? 'acheteur' : 'vendeur'}`} />}
-        {r.depot_garantie && <Kpi label="Dépôt de garantie" value={`${Number(r.depot_garantie).toLocaleString('fr-FR')} €`} />}
-        {r.prix_total && <Kpi label="Prix total acheteur" value={`${Number(r.prix_total).toLocaleString('fr-FR')} €`} sub="Hors frais notaire" />}
-      </div>
-      {r.bien && (
-        <Card>
-          <CardHeader label="DÉSIGNATION DU BIEN" color="#2a7d9c" />
-          {r.bien.type && <InfoRow label="Nature" value={r.bien.type} />}
-          {r.bien.lot_principal && <InfoRow label="Lot principal" value={r.bien.lot_principal} alt />}
-          {r.bien.annexes?.map((a: string, i: number) => <InfoRow key={i} label="Annexe" value={a} />)}
-          {r.bien.surface_carrez && <InfoRow label="Surface Carrez" value={`${r.bien.surface_carrez} m²`} alt />}
-          {r.bien.tantiemes && <InfoRow label="Tantièmes" value={r.bien.tantiemes} />}
-        </Card>
-      )}
-      {r.conditions_suspensives?.length > 0 && (
-        <Card>
-          <CardHeader label="CONDITIONS SUSPENSIVES" color="#d97706" />
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><TableHeader cols={[{ label: 'Condition' }, { label: 'Détail' }, { label: 'Date limite', align: 'center' }, { label: 'Statut', align: 'center' }]} /></thead>
-            <tbody>
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              {r.conditions_suspensives.map((c: any, i: number) => {
-                const sc = statutStyle(c.statut);
-                return (
-                  <tr key={i} style={{ borderBottom: `0.5px solid ${C.border}`, background: i % 2 === 0 ? C.bg : C.bgSecondary }}>
-                    <td style={{ padding: '11px 20px', fontSize: 14, color: C.text }}>{c.label}</td>
-                    <td style={{ padding: '11px 20px', fontSize: 15, color: C.textSec }}>{c.detail || '—'}</td>
-                    <td style={{ padding: '11px 20px', fontSize: 14, fontWeight: 500, color: '#dc2626', textAlign: 'center' }}>{formatDate(c.date_limite) || '—'}</td>
-                    <td style={{ padding: '11px 20px', textAlign: 'center' }}><span style={{ fontSize: 12, padding: '3px 10px', borderRadius: 100, background: sc.bg, color: sc.text, border: `0.5px solid ${sc.border}` }}>{sc.label}</span></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </Card>
-      )}
-      {r.financement && (r.financement.apport || r.financement.montant_pret) && (
-        <Card>
-          <CardHeader label="PLAN DE FINANCEMENT DÉCLARÉ" color={C.gray.dot} />
-          {r.financement.apport && <InfoRow label="Apport personnel" value={`${Number(r.financement.apport).toLocaleString('fr-FR')} €`} />}
-          {r.financement.montant_pret && <InfoRow label="Montant emprunté" value={`${Number(r.financement.montant_pret).toLocaleString('fr-FR')} €`} alt />}
-          {r.financement.etablissement && <InfoRow label="Établissement pressenti" value={r.financement.etablissement} />}
-        </Card>
-      )}
-      {r.dates_cles?.length > 0 && (
-        <div style={{ background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
-          <CardHeader label="DATES CLÉS À RETENIR" color={C.orange.dot} />
-          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          {r.dates_cles.map((d: any, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: i < r.dates_cles.length - 1 ? `0.5px solid ${C.orange.border}` : 'none', background: i % 2 === 0 ? C.orange.bg : '#fffbf5' }}>
-              <span style={{ fontSize: 14, color: C.text }}>{d.label}</span>
-              <span style={{ fontSize: 14, fontWeight: 600, color: d.important ? '#dc2626' : '#d97706' }}>{formatDate(d.date)}</span>
+      {/* HEADER PROFESSIONNEL */}
+      <div style={{ background: 'linear-gradient(135deg, #0f2d3d, #1a4a5e)', borderRadius: 16, padding: '20px 24px', marginBottom: 16, color: '#fff' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 11, background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 22 }}>✍️</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 10.5, fontWeight: 700, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>{typeLabel}</div>
+            <h2 style={{ fontSize: 17, fontWeight: 700, margin: '0 0 4px' }}>{r.titre || bien.adresse_complete || 'Compromis de vente'}</h2>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              {r.date_signature && <span>Signé le {formatDate(r.date_signature)}</span>}
+              {r.agence && <span>· {r.agence}</span>}
             </div>
-          ))}
+          </div>
+        </div>
+      </div>
+
+      {/* RESUME */}
+      {r.resume && <Resume text={r.resume} />}
+
+      {/* KPIs financiers */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 12 }}>
+        {prixNet != null && <Kpi label="Prix net vendeur" value={`${fmt(prixNet)} €`} />}
+        {honoraires != null && <Kpi label="Honoraires agence" value={`${fmt(honoraires)} €`} sub={honPct ? `${honPct}% · Charge ${honCharge || 'non précisé'}` : honCharge ? `Charge ${honCharge}` : undefined} />}
+        {fraisNotaire != null && <Kpi label="Frais notaire estimés" value={`~${fmt(fraisNotaire)} €`} sub={fraisNotairePct ? `~${fraisNotairePct}% · Estimation Verimo` : 'Estimation Verimo'} />}
+        {coutTotal != null && <Kpi label="Coût total acheteur" value={`~${fmt(coutTotal)} €`} sub="Estimation Verimo" color="#0c447c" />}
+      </div>
+
+      {/* ALERTES CRITIQUES EN HAUT */}
+      {(clausesActives.length > 0 || dpeAlerte) && (
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: '12px 14px', marginBottom: 14, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          <span style={{ fontSize: 18, flexShrink: 0, marginTop: 1 }}>⚠️</span>
+          <div style={{ flex: 1, fontSize: 12.5, color: '#991b1b', lineHeight: 1.55 }}>
+            <strong>Points d'attention détectés</strong>
+            <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+              {clausesActives.map((c: any, i: number) => (
+                <li key={i}>{c.label || c.type}{c.detail ? ` — ${c.detail}` : ''}</li>
+              ))}
+              {dpeAlerte && (
+                <li>DPE classe {String(dpeAnnexe.resultat_synthese).charAt(0).toUpperCase()} — interdiction de location {/^G/i.test(String(dpeAnnexe.resultat_synthese)) ? 'depuis le 1er janvier 2025' : 'au 1er janvier 2028'} (loi Climat)</li>
+              )}
+            </ul>
+          </div>
         </div>
       )}
-      {r.clauses_particulieres?.length > 0 && (
-        <Card>
-          <CardHeader label="CLAUSES PARTICULIÈRES" color={C.gray.dot} />
-          {r.clauses_particulieres.map((c: string, i: number) => (
-            <div key={i} style={{ padding: '12px 20px', fontSize: 14, color: C.text, borderBottom: i < r.clauses_particulieres.length - 1 ? `0.5px solid ${C.border}` : 'none', background: i % 2 === 0 ? C.bg : C.bgSecondary }}>{c}</div>
-          ))}
-        </Card>
-      )}
-      {r.servitudes?.length > 0 && (
-        <div style={{ background: C.orange.bg, border: `0.5px solid ${C.orange.border}`, borderRadius: 12, overflow: 'hidden', marginBottom: 14 }}>
-          <CardHeader label="SERVITUDES DÉTECTÉES" color={C.orange.dot} />
-          {r.servitudes.map((s: string, i: number) => (
-            <div key={i} style={{ padding: '12px 20px', fontSize: 14, color: C.text }}>{s}</div>
-          ))}
+
+      {/* SECTION : LE BIEN */}
+      {bien && (bien.adresse_complete || bien.type_bien_global || lotsCedes.length > 0) && (
+        <div style={{ background: '#fff', borderRadius: 14, border: '0.5px solid #edf2f7', overflow: 'hidden', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderBottom: '0.5px solid #edf2f7', background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)' }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: '#2a7d9c', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14 }}>🏢</div>
+            <span style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#0c447c' }}>Le bien</span>
+          </div>
+          <div style={{ padding: '14px 18px' }}>
+            {bien.adresse_complete && <InfoRow label="Adresse" value={bien.adresse_complete} />}
+            {bien.type_bien_global && <InfoRow label="Type" value={bien.type_bien_global} alt />}
+            {bien.nb_pieces && <InfoRow label="Nombre de pièces" value={String(bien.nb_pieces)} />}
+            {bien.etage != null && <InfoRow label="Étage" value={formatEtage(String(bien.etage)) || String(bien.etage)} alt />}
+            {bien.surface_carrez && <InfoRow label="Surface Carrez" value={`${bien.surface_carrez} m²`} />}
+            {bien.reference_cadastrale_principale && <InfoRow label="Référence cadastrale" value={bien.reference_cadastrale_principale} alt />}
+            {bien.usage_declare && bien.usage_declare !== 'non_precise' && (
+              <InfoRow label="Usage déclaré" value={bien.usage_declare === 'residence_principale_exclusive' ? 'Résidence principale exclusive (loi 2025-541)' : bien.usage_declare} />
+            )}
+            {bien.rcp_date_acte && (
+              <InfoRow label="RCP de référence" value={`Acte du ${formatDate(bien.rcp_date_acte)}${bien.rcp_nb_modificatifs ? ` · ${bien.rcp_nb_modificatifs} modificatif${bien.rcp_nb_modificatifs > 1 ? 's' : ''}` : ''}`} alt />
+            )}
+            {bien.origine_propriete?.date_acquisition_vendeur && (
+              <InfoRow label="Origine de propriété" value={`Acquis le ${formatDate(bien.origine_propriete.date_acquisition_vendeur)}${bien.origine_propriete.mode_acquisition && bien.origine_propriete.mode_acquisition !== 'non_precise' ? ` (${bien.origine_propriete.mode_acquisition})` : ''}`} />
+            )}
+          </div>
+          {/* Lots cédés détaillés */}
+          {lotsCedes.length > 0 && (
+            <div style={{ borderTop: '0.5px solid #edf2f7' }}>
+              <div style={{ padding: '10px 18px', background: '#fafbfc', fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Lots cédés ({lotsCedes.length})</div>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc' }}>
+                    <th style={{ padding: '9px 18px', fontSize: 10.5, fontWeight: 700, color: '#64748b', textAlign: 'left', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Type</th>
+                    <th style={{ padding: '9px 12px', fontSize: 10.5, fontWeight: 700, color: '#64748b', textAlign: 'center', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Lot n°</th>
+                    <th style={{ padding: '9px 12px', fontSize: 10.5, fontWeight: 700, color: '#64748b', textAlign: 'center', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Étage</th>
+                    <th style={{ padding: '9px 12px', fontSize: 10.5, fontWeight: 700, color: '#64748b', textAlign: 'center', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Tantièmes</th>
+                    <th style={{ padding: '9px 18px', fontSize: 10.5, fontWeight: 700, color: '#64748b', textAlign: 'right', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Surface</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lotsCedes.map((lot: any, i: number) => (
+                    <tr key={i} style={{ borderTop: '0.5px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
+                      <td style={{ padding: '10px 18px', fontSize: 13, color: '#0f172a', fontWeight: 500, textTransform: 'capitalize' }}>{lot.type || '—'}</td>
+                      <td style={{ padding: '10px 12px', fontSize: 13, color: '#0f172a', textAlign: 'center' }}>{lot.numero || '—'}</td>
+                      <td style={{ padding: '10px 12px', fontSize: 12.5, color: '#64748b', textAlign: 'center' }}>{lot.etage != null ? (formatEtage(String(lot.etage)) || lot.etage) : '—'}</td>
+                      <td style={{ padding: '10px 12px', fontSize: 12.5, color: '#0f172a', textAlign: 'center', fontFamily: 'monospace' }}>{lot.tantiemes || '—'}</td>
+                      <td style={{ padding: '10px 18px', fontSize: 12.5, color: '#0f172a', textAlign: 'right' }}>{lot.surface ? `${lot.surface} m²` : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
+
+      {/* SECTION : LES PARTIES */}
+      {(vendeurs.length > 0 || acheteurs.length > 0) && (
+        <div style={{ background: '#fff', borderRadius: 14, border: '0.5px solid #edf2f7', overflow: 'hidden', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderBottom: '0.5px solid #edf2f7', background: 'linear-gradient(135deg, #faf5ff, #f3e8ff)' }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: '#a855f7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14 }}>👥</div>
+            <span style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#6b21a8' }}>Les parties</span>
+          </div>
+          <div style={{ padding: '14px 18px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div style={{ padding: '12px 14px', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 10 }}>
+              <div style={{ fontSize: 10, color: '#a855f7', fontWeight: 700, letterSpacing: '0.06em', marginBottom: 8 }}>VENDEUR{vendeurs.length > 1 ? 'S' : ''}</div>
+              {vendeurs.length === 0 ? (
+                <div style={{ fontSize: 12, color: '#a855f7', fontStyle: 'italic' }}>Non précisé</div>
+              ) : vendeurs.map((v: any, i: number) => (
+                <div key={i} style={{ marginBottom: i < vendeurs.length - 1 ? 10 : 0, paddingBottom: i < vendeurs.length - 1 ? 10 : 0, borderBottom: i < vendeurs.length - 1 ? '0.5px solid #e9d5ff' : 'none' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#6b21a8', marginBottom: 3 }}>{v.nom_complet || '—'}</div>
+                  <div style={{ fontSize: 11, color: '#7e22ce', lineHeight: 1.55 }}>
+                    {v.situation_matrimoniale_citation && <div>{v.situation_matrimoniale_citation}</div>}
+                    {v.regime_matrimonial && !v.situation_matrimoniale_citation && <div>Régime : {v.regime_matrimonial}</div>}
+                    {v.nationalite && <div>Nationalité : {v.nationalite}</div>}
+                    {v.part_indivision && <div>Part : {v.part_indivision}</div>}
+                  </div>
+                </div>
+              ))}
+              {notaireVendeur && (
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '0.5px solid #e9d5ff', fontSize: 11, color: '#7e22ce' }}>
+                  <span style={{ fontWeight: 600 }}>Notaire :</span> Me {notaireVendeur.nom}{notaireVendeur.ville ? ` (${notaireVendeur.ville})` : ''}
+                </div>
+              )}
+            </div>
+            <div style={{ padding: '12px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10 }}>
+              <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 700, letterSpacing: '0.06em', marginBottom: 8 }}>ACHETEUR{acheteurs.length > 1 ? 'S' : ''}</div>
+              {acheteurs.length === 0 ? (
+                <div style={{ fontSize: 12, color: '#16a34a', fontStyle: 'italic' }}>Non précisé</div>
+              ) : acheteurs.map((a: any, i: number) => (
+                <div key={i} style={{ marginBottom: i < acheteurs.length - 1 ? 10 : 0, paddingBottom: i < acheteurs.length - 1 ? 10 : 0, borderBottom: i < acheteurs.length - 1 ? '0.5px solid #bbf7d0' : 'none' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#15803d', marginBottom: 3 }}>{a.nom_complet || '—'}</div>
+                  <div style={{ fontSize: 11, color: '#16a34a', lineHeight: 1.55 }}>
+                    {a.situation_matrimoniale_citation && <div>{a.situation_matrimoniale_citation}</div>}
+                    {a.mode_acquisition && <div>Mode d'acquisition : {a.mode_acquisition}</div>}
+                    {a.nationalite && <div>Nationalité : {a.nationalite}</div>}
+                  </div>
+                </div>
+              ))}
+              {notaireAcheteur && (
+                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '0.5px solid #bbf7d0', fontSize: 11, color: '#16a34a' }}>
+                  <span style={{ fontWeight: 600 }}>Notaire :</span> Me {notaireAcheteur.nom}{notaireAcheteur.ville ? ` (${notaireAcheteur.ville})` : ''}
+                </div>
+              )}
+            </div>
+          </div>
+          {/* Notaires affichés en bandeau si pas dans les cartes */}
+          {notaires.length > 0 && !tousRolesPrecises && (
+            <div style={{ borderTop: '0.5px solid #edf2f7', padding: '11px 18px', background: '#fafbfc', fontSize: 11.5, color: '#475569' }}>
+              <span style={{ fontWeight: 700, color: '#334155' }}>
+                {notaires.length === 1 ? 'Notaire de la vente :' : 'Notaires de l\'acte (rôles non précisés dans le compromis) :'}
+              </span>
+              {' '}
+              {notaires.map((n: any, i: number) => (
+                <span key={i}>
+                  {i > 0 && ' · '}Me {n.nom}{n.etude ? `, ${n.etude}` : ''}{n.ville ? ` (${n.ville})` : ''}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* SECTION : CONDITIONS FINANCIÈRES */}
+      {(prixNet || prixTotal || depotGarantie) && (
+        <div style={{ background: '#fff', borderRadius: 14, border: '0.5px solid #edf2f7', overflow: 'hidden', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderBottom: '0.5px solid #edf2f7', background: 'linear-gradient(135deg, #fffbeb, #fef3c7)' }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14 }}>💰</div>
+            <span style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#78350f' }}>Conditions financières</span>
+          </div>
+          <div style={{ padding: '14px 18px' }}>
+            {prixNet != null && <InfoRow label="Prix net vendeur" value={`${fmt(prixNet)} €`} />}
+            {finances.prix_mobilier != null && <InfoRow label="Prix du mobilier inclus" value={`${fmt(finances.prix_mobilier)} €`} alt />}
+            {honoraires != null && <InfoRow label={`Honoraires agence${honPct ? ` (${honPct}%)` : ''}`} value={`${fmt(honoraires)} € · Charge ${honCharge || 'non précisé'}`} />}
+            {prixTotal != null && <InfoRow label="Prix total acte" value={`${fmt(prixTotal)} €`} alt valueColor="#0c447c" />}
+            {depotGarantie != null && <InfoRow label={`Dépôt de garantie${depotGarantiePct ? ` (${depotGarantiePct}%)` : ''}`} value={`${fmt(depotGarantie)} €`} />}
+            {finances.depot_garantie_detenteur && finances.depot_garantie_detenteur !== 'non_precise' && <InfoRow label="Détenteur du séquestre" value={String(finances.depot_garantie_detenteur).replace(/_/g, ' ')} alt />}
+            {finances.prorata_taxe_fonciere?.mode && finances.prorata_taxe_fonciere.mode !== 'non_precise' && (
+              <InfoRow label="Prorata taxe foncière" value={finances.prorata_taxe_fonciere.mode === 'prorata_temporis' ? 'Au prorata temporis' : finances.prorata_taxe_fonciere.montant ? `${fmt(finances.prorata_taxe_fonciere.montant)} €` : 'Montant fixe'} />
+            )}
+            {clausePenalePct != null && <InfoRow label="Clause pénale" value={`${clausePenalePct}% du prix en cas de désistement injustifié`} alt valueColor="#dc2626" />}
+            {coutTotal != null && (
+              <div style={{ marginTop: 10, padding: '12px 16px', background: '#f0f7fb', border: '1px solid #c7dde8', borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: '#2a7d9c' }}>Coût total estimé acheteur</span>
+                <span style={{ fontSize: 16, fontWeight: 700, color: '#0c447c' }}>~{fmt(coutTotal)} €</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* SECTION : FINANCEMENT */}
+      {financement && (financement.apport != null || financement.montant_pret_max != null) && (
+        <div style={{ background: '#fff', borderRadius: 14, border: '0.5px solid #edf2f7', overflow: 'hidden', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderBottom: '0.5px solid #edf2f7', background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)' }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14 }}>🏦</div>
+            <span style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#064e3b' }}>Financement</span>
+          </div>
+          <div style={{ padding: '14px 18px' }}>
+            {financement.modalite && financement.modalite !== 'non_precise' && <InfoRow label="Modalité" value={financement.modalite === 'comptant' ? 'Comptant' : financement.modalite === 'pret' ? 'Avec prêt' : 'Mixte'} />}
+            {financement.apport != null && <InfoRow label="Apport personnel" value={`${fmt(financement.apport)} €`} alt />}
+            {financement.montant_pret_max != null && <InfoRow label="Montant emprunté maximum" value={`${fmt(financement.montant_pret_max)} €`} />}
+            {financement.duree_pret_max_mois != null && <InfoRow label="Durée maximum" value={`${Math.round(financement.duree_pret_max_mois / 12)} ans (${financement.duree_pret_max_mois} mois)`} alt />}
+            {financement.taux_pret_max_pct != null && <InfoRow label="Taux maximum" value={`${financement.taux_pret_max_pct} %`} />}
+            {financement.etablissement_pressenti && <InfoRow label="Établissement pressenti" value={financement.etablissement_pressenti} alt />}
+            {financement.delai_obtention_offre && <InfoRow label="Délai obtention offre" value={financement.delai_obtention_offre} />}
+          </div>
+        </div>
+      )}
+
+      {/* SECTION : CONDITIONS SUSPENSIVES + CALENDRIER */}
+      {(condSusp.length > 0 || calendrier.length > 0 || r.date_acte_prevue) && (
+        <div style={{ background: '#fff', borderRadius: 14, border: '0.5px solid #edf2f7', overflow: 'hidden', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderBottom: '0.5px solid #edf2f7', background: 'linear-gradient(135deg, #fef2f2, #fee2e2)' }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14 }}>📋</div>
+            <span style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#991b1b', flex: 1 }}>Conditions suspensives & calendrier</span>
+            {condSusp.length > 0 && <span style={{ fontSize: 10.5, fontWeight: 600, padding: '3px 9px', borderRadius: 100, background: '#fff', color: '#991b1b', border: '1px solid #fecaca' }}>{condSusp.length} condition{condSusp.length > 1 ? 's' : ''}</span>}
+          </div>
+          {condSusp.length > 0 && (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <tbody>
+                {condSusp.map((c: any, i: number) => {
+                  const sc = statutStyle(c.statut);
+                  return (
+                    <tr key={i} style={{ borderBottom: '0.5px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#fafbfc' }}>
+                      <td style={{ padding: '11px 18px', fontSize: 12.5, color: '#0f172a', fontWeight: 500 }}>
+                        {c.label || c.type || 'Condition'}
+                        {c.detail && <div style={{ fontSize: 11, color: '#64748b', fontWeight: 400, marginTop: 2 }}>{c.detail}</div>}
+                      </td>
+                      <td style={{ padding: '11px 18px', fontSize: 11.5, color: '#dc2626', textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap' }}>{formatDate(c.date_limite) || '—'}</td>
+                      <td style={{ padding: '11px 18px', textAlign: 'right' }}>
+                        <span style={{ fontSize: 10.5, padding: '3px 9px', borderRadius: 100, background: sc.bg, color: sc.text, border: `0.5px solid ${sc.border}`, fontWeight: 600 }}>{sc.label}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+          {(r.date_acte_prevue || r.delai_acte_mois) && (
+            <div style={{ background: '#fff7ed', borderTop: '1px solid #fed7aa', padding: '11px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 11.5, color: '#9a3412', fontWeight: 700 }}>🚩 Signature acte authentique</span>
+              <span style={{ fontSize: 12, color: '#9a3412', fontWeight: 700 }}>
+                {r.date_acte_prevue && formatDate(r.date_acte_prevue)}{r.delai_acte_mois ? ` · ${r.delai_acte_mois} mois` : ''}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* SECTION : DROITS DE PRÉEMPTION */}
+      {droitsPreemption.length > 0 && (
+        <div style={{ background: '#fff', borderRadius: 14, border: '0.5px solid #edf2f7', overflow: 'hidden', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderBottom: '0.5px solid #edf2f7', background: 'linear-gradient(135deg, #fff7ed, #ffedd5)' }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14 }}>🛡️</div>
+            <span style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#9a3412' }}>Droits de préemption</span>
+          </div>
+          <div style={{ padding: '14px 18px' }}>
+            {droitsPreemption.map((d: any, i: number) => {
+              const statutLabel = d.statut === 'purge' ? 'Purgé' : d.statut === 'en_cours' ? 'En cours' : d.statut === 'non_applicable' ? 'Non applicable' : '—';
+              const statutBg = d.statut === 'purge' ? '#f0fdf4' : d.statut === 'en_cours' ? '#fef3c7' : '#f8fafc';
+              const statutColor = d.statut === 'purge' ? '#15803d' : d.statut === 'en_cours' ? '#92400e' : '#64748b';
+              const statutBorder = d.statut === 'purge' ? '#bbf7d0' : d.statut === 'en_cours' ? '#fde68a' : '#e2e8f0';
+              const typeLabel = d.type === 'dpu' ? 'DPU (Droit de préemption urbain commune)' : d.type === 'safer' ? 'SAFER (zone rurale)' : d.type === 'locataire' ? 'Droit de préemption du locataire' : d.type === 'copropriete' ? 'Droit de préemption copropriétaires' : d.type;
+              return (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < droitsPreemption.length - 1 ? '0.5px solid #f1f5f9' : 'none' }}>
+                  <span style={{ fontSize: 13, color: '#0f172a' }}>{typeLabel}</span>
+                  <span style={{ fontSize: 11, padding: '3px 9px', borderRadius: 100, background: statutBg, color: statutColor, border: `0.5px solid ${statutBorder}`, fontWeight: 600 }}>{statutLabel}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* SECTION : DIAGNOSTICS ANNEXÉS */}
+      {diagAnnexes.length > 0 && (
+        <div style={{ background: '#fff', borderRadius: 14, border: '0.5px solid #edf2f7', overflow: 'hidden', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderBottom: '0.5px solid #edf2f7', background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)' }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14 }}>🔍</div>
+            <span style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#064e3b', flex: 1 }}>Diagnostics annexés</span>
+            <span style={{ fontSize: 10.5, fontWeight: 600, padding: '3px 9px', borderRadius: 100, background: '#fff', color: '#064e3b', border: '1px solid #a7f3d0' }}>{diagAnnexes.length} diagnostic{diagAnnexes.length > 1 ? 's' : ''}</span>
+          </div>
+          <div style={{ padding: '14px 18px' }}>
+            {diagAnnexes.map((d: any, i: number) => {
+              const s = diagStyle(d);
+              return (
+                <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 600, padding: '5px 11px', borderRadius: 100, background: s.bg, color: s.color, border: `1px solid ${s.border}`, margin: 3 }}>
+                  <span>{s.emoji}</span>
+                  <span>{d.label || d.type}{d.resultat_synthese ? ` ${d.resultat_synthese}` : ''}</span>
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* SECTION : ANNEXES COPROPRIÉTÉ L.721-2 (checklist) */}
+      {annexesCopro && annexesTotal > 0 && (
+        <div style={{ background: '#fff', borderRadius: 14, border: '0.5px solid #edf2f7', overflow: 'hidden', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderBottom: '0.5px solid #edf2f7', background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)' }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: '#2a7d9c', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14 }}>📎</div>
+            <span style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#0c447c', flex: 1 }}>Annexes copropriété (art. L.721-2 CCH)</span>
+            <span style={{ fontSize: 10.5, fontWeight: 600, padding: '3px 9px', borderRadius: 100, background: annexesCount === annexesTotal ? '#f0fdf4' : '#fef3c7', color: annexesCount === annexesTotal ? '#15803d' : '#92400e', border: `1px solid ${annexesCount === annexesTotal ? '#bbf7d0' : '#fde68a'}` }}>{annexesCount} / {annexesTotal}</span>
+          </div>
+          <div style={{ padding: '12px 18px' }}>
+            {[
+              { key: 'rcp_annexe', label: 'Règlement de copropriété + modificatifs' },
+              { key: 'pv_ag_3_dernieres_annees', label: 'PV des 3 dernières AG' },
+              { key: 'fiche_synthetique', label: 'Fiche synthétique de copropriété' },
+              { key: 'carnet_entretien', label: 'Carnet d\'entretien' },
+              { key: 'notice_information', label: 'Notice d\'information droits/obligations' },
+              { key: 'dtg_conclusions', label: 'Conclusions DTG (si réalisé)' },
+              { key: 'ppt', label: 'Plan pluriannuel de travaux (PPT)' },
+              { key: 'pre_etat_date', label: 'Pré-état daté' },
+            ].map((row, i) => {
+              const present = annexesCopro[row.key] === true;
+              return (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', fontSize: 12.5 }}>
+                  <span style={{ color: present ? '#16a34a' : '#cbd5e1', fontSize: 15, width: 18 }}>{present ? '✓' : '○'}</span>
+                  <span style={{ color: present ? '#0f172a' : '#94a3b8', textDecoration: present ? 'none' : 'none' }}>{row.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* SECTION : FINANCES COPRO SYNTHÈSE */}
+      {finCopro && (finCopro.budget_previsionnel_annuel || finCopro.quote_part_charges_lot_annuelle || finCopro.fonds_travaux_alur_global) && (
+        <div style={{ background: '#fff', borderRadius: 14, border: '0.5px solid #edf2f7', overflow: 'hidden', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderBottom: '0.5px solid #edf2f7', background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)' }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14 }}>📊</div>
+            <span style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#334155' }}>Finances copropriété (synthèse compromis)</span>
+          </div>
+          <div style={{ padding: '14px 18px' }}>
+            {finCopro.budget_previsionnel_annuel != null && <InfoRow label={`Budget prévisionnel annuel${finCopro.annee_budget ? ` (${finCopro.annee_budget})` : ''}`} value={`${fmt(finCopro.budget_previsionnel_annuel)} €`} />}
+            {finCopro.quote_part_charges_lot_annuelle != null && <InfoRow label="Quote-part charges du lot vendu" value={`${fmt(finCopro.quote_part_charges_lot_annuelle)} €/an`} alt />}
+            {finCopro.fonds_travaux_alur_global != null && <InfoRow label="Fonds travaux ALUR global" value={`${fmt(finCopro.fonds_travaux_alur_global)} €`} />}
+            {finCopro.fonds_travaux_alur_part_lot != null && <InfoRow label="Part fonds travaux attachée au lot" value={`${fmt(finCopro.fonds_travaux_alur_part_lot)} €`} alt />}
+            {finCopro.procedures_en_cours && <InfoRow label="Procédures en cours" value={finCopro.procedures_detail || 'Oui (détail non précisé)'} valueColor="#dc2626" />}
+          </div>
+        </div>
+      )}
+
+      {/* SECTION : SITUATION LOCATIVE */}
+      {sitLoc && sitLoc.occupe && sitLoc.occupe !== 'non_precise' && (
+        <div style={{ background: '#fff', borderRadius: 14, border: '0.5px solid #edf2f7', overflow: 'hidden', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderBottom: '0.5px solid #edf2f7', background: sitLoc.occupe === 'loue' ? 'linear-gradient(135deg, #fff7ed, #ffedd5)' : 'linear-gradient(135deg, #ecfdf5, #d1fae5)' }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: sitLoc.occupe === 'loue' ? '#ea580c' : '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14 }}>🏠</div>
+            <span style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: sitLoc.occupe === 'loue' ? '#9a3412' : '#064e3b' }}>Situation locative</span>
+          </div>
+          <div style={{ padding: '14px 18px' }}>
+            <InfoRow label="État du bien" value={sitLoc.occupe === 'libre' ? 'Libre de toute occupation' : sitLoc.occupe === 'loue' ? 'Loué (bail en cours)' : 'Occupation à titre gratuit'} valueColor={sitLoc.occupe === 'loue' ? '#dc2626' : undefined} />
+            {sitLoc.bien_libre_a && <InfoRow label="Bien libre à compter du" value={formatDate(sitLoc.bien_libre_a) || sitLoc.bien_libre_a} alt />}
+            {sitLoc.bail && (sitLoc.bail.type || sitLoc.bail.loyer_mensuel) && (
+              <>
+                {sitLoc.bail.type && <InfoRow label="Type de bail" value={sitLoc.bail.type} />}
+                {sitLoc.bail.date_debut && <InfoRow label="Début du bail" value={formatDate(sitLoc.bail.date_debut) || sitLoc.bail.date_debut} alt />}
+                {sitLoc.bail.duree && <InfoRow label="Durée" value={sitLoc.bail.duree} />}
+                {sitLoc.bail.loyer_mensuel != null && <InfoRow label="Loyer mensuel" value={`${fmt(sitLoc.bail.loyer_mensuel)} €`} alt />}
+                {sitLoc.bail.depot_garantie != null && <InfoRow label="Dépôt de garantie locataire" value={`${fmt(sitLoc.bail.depot_garantie)} €`} />}
+                {sitLoc.bail.dpe_bail && <InfoRow label="DPE du bail" value={sitLoc.bail.dpe_bail} alt />}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* SECTION : CLAUSES & PARTICULARITÉS */}
+      {(clausesCrit.length > 0 || safeArr(r.clauses_particulieres_autres).length > 0 || safeArr(r.clauses_particulieres).length > 0) && (
+        <div style={{ background: '#fff', borderRadius: 14, border: '0.5px solid #edf2f7', overflow: 'hidden', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderBottom: '0.5px solid #edf2f7', background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)' }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14 }}>📜</div>
+            <span style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#334155' }}>Clauses & particularités</span>
+          </div>
+          <div style={{ padding: '14px 18px' }}>
+            {clausesCrit.filter((c: any) => c.actif_dans_compromis !== false).map((c: any, i: number) => (
+              <div key={`crit-${i}`} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, padding: '10px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 9, marginBottom: 7, color: '#991b1b', fontSize: 12, lineHeight: 1.5 }}>
+                <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>⚠️</span>
+                <div><strong>{c.label || c.type}</strong>{c.detail ? ` — ${c.detail}` : ''}</div>
+              </div>
+            ))}
+            {safeArr(r.clauses_particulieres_autres).map((c: any, i: number) => (
+              <div key={`autre-${i}`} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, padding: '10px 12px', background: '#fafbfc', border: '1px solid #edf2f7', borderRadius: 9, marginBottom: 7, color: '#475569', fontSize: 12, lineHeight: 1.5 }}>
+                <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1, color: '#64748b' }}>ℹ️</span>
+                <div>{typeof c === 'string' ? c : (c.label || JSON.stringify(c))}</div>
+              </div>
+            ))}
+            {/* fallback ancien schéma clauses_particulieres */}
+            {safeArr(r.clauses_particulieres).map((c: any, i: number) => (
+              <div key={`old-${i}`} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, padding: '10px 12px', background: '#fafbfc', border: '1px solid #edf2f7', borderRadius: 9, marginBottom: 7, color: '#475569', fontSize: 12, lineHeight: 1.5 }}>
+                <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1, color: '#64748b' }}>ℹ️</span>
+                <div>{typeof c === 'string' ? c : (c.label || JSON.stringify(c))}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* SECTION : SERVITUDES */}
+      {servitudes.length > 0 && (
+        <div style={{ background: '#fff', borderRadius: 14, border: '0.5px solid #edf2f7', overflow: 'hidden', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderBottom: '0.5px solid #edf2f7', background: 'linear-gradient(135deg, #fff7ed, #ffedd5)' }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14 }}>🛤️</div>
+            <span style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#9a3412' }}>Servitudes</span>
+          </div>
+          <div style={{ padding: '14px 18px' }}>
+            {servitudes.map((s: any, i: number) => (
+              <div key={i} style={{ padding: '10px 0', borderBottom: i < servitudes.length - 1 ? '0.5px solid #f1f5f9' : 'none' }}>
+                <div style={{ fontSize: 12.5, color: '#0f172a', fontWeight: 600, marginBottom: 3 }}>
+                  {typeof s === 'string' ? s : (s.type ? `Servitude ${s.type === 'cour_commune' ? 'de cour commune' : `de ${s.type}`}` : 'Servitude')}
+                  {s.beneficiaire ? <span style={{ fontWeight: 400, color: '#64748b' }}> · Bénéficiaire : {s.beneficiaire}</span> : null}
+                </div>
+                {s.description && <div style={{ fontSize: 11.5, color: '#475569', lineHeight: 1.5 }}>{s.description}</div>}
+                {s.impact_acheteur && <div style={{ fontSize: 11, color: '#9a3412', marginTop: 4, fontStyle: 'italic' }}>Impact : {s.impact_acheteur}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* POINTS FORTS / VIGILANCE + AVIS VERIMO */}
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
       <AvisVerimo text={r.avis_verimo} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />
