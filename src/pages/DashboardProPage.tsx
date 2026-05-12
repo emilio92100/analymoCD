@@ -4971,7 +4971,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
         ← Retour aux dossiers
       </button>
 
-      {/* Header dossier */}
+      {/* Header dossier UNIFIÉ — infos + actions intégrées */}
       <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '22px 24px', marginBottom: 16 }}>
         <div className="dossier-header" style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
           <div className="dossier-icon-desktop" style={{ width: 52, height: 52, borderRadius: 12, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -5023,75 +5023,117 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
 
         {folder.internal_note && (
           <div style={{ marginTop: 14, padding: '11px 14px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fef3c7', fontSize: 12.5, color: '#78350f', fontStyle: 'italic' as const }}>
-            📝 {folder.internal_note}
+            <strong>Note interne :</strong> {folder.internal_note}
           </div>
         )}
-      </div>
 
-      {/* Actions principales — 4 boutons */}
-      <div className="dossier-actions-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
-        <ActionButton icon={UserCheck} label="Ajouter un vendeur"
-          onClick={() => { setEditingSeller(null); setShowSellerModal(true); }}
-          disabled={!!folder.archived_at}
-          disabledReason="Restaurez le dossier pour ajouter un vendeur" />
-        <ActionButton icon={UserPlus} label="Ajouter un acheteur potentiel"
-          onClick={() => { setEditingBuyer(null); setShowBuyerModal(true); }}
-          disabled={!!folder.archived_at}
-          disabledReason="Restaurez le dossier pour ajouter un acheteur" />
-        <button
-          onClick={() => { if (!folder.archived_at) navigate(`/dashboard/nouvelle-analyse?folder=${folder.id}`); }}
-          disabled={!!folder.archived_at}
-          title={folder.archived_at ? 'Restaurez le dossier pour lancer une analyse' : undefined}
-          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderRadius: 12,
-            background: folder.archived_at ? '#f8fafc' : '#f0f7fb',
-            border: folder.archived_at ? '1.5px dashed #e2e8f0' : '1.5px solid #bae3f5',
-            cursor: folder.archived_at ? 'not-allowed' : 'pointer',
-            textAlign: 'left' as const, transition: 'all 0.15s',
-            opacity: folder.archived_at ? 0.55 : 1 }}
-          onMouseOver={e => { if (!folder.archived_at) (e.currentTarget as HTMLElement).style.background = '#e0f0f8'; }}
-          onMouseOut={e => { if (!folder.archived_at) (e.currentTarget as HTMLElement).style.background = '#f0f7fb'; }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: folder.archived_at ? '#f1f5f9' : 'rgba(42,125,156,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Plus size={15} style={{ color: folder.archived_at ? '#94a3b8' : '#2a7d9c' }} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: folder.archived_at ? '#64748b' : '#2a7d9c' }}>Lancer une analyse</span>
-            {folder.archived_at && <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 1 }}>🔒 Dossier archivé</div>}
-          </div>
-        </button>
-        <button
-          onClick={() => {
-            if (folder.archived_at) return;
-            const completedAnalyses = folderAnalyses.filter(a => a.status === 'completed');
-            if (completedAnalyses.length === 0) {
-              setToast({ message: 'Aucune analyse terminée à envoyer. Lancez d\'abord une analyse.', type: 'error' });
-              return;
-            }
-            const buyersWithEmail = buyers.filter(b => b.email);
-            const sellersWithEmail = sellers.filter(s => s.email);
-            if (buyersWithEmail.length === 0 && sellersWithEmail.length === 0) {
-              setToast({ message: 'Aucun contact avec adresse email. Ajoutez un vendeur ou un acheteur potentiel avec un email.', type: 'error' });
-              return;
-            }
-            setShowSendReport(true);
-          }}
-          disabled={!!folder.archived_at}
-          title={folder.archived_at ? 'Restaurez le dossier pour envoyer une analyse' : undefined}
-          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderRadius: 12,
-            background: folder.archived_at ? '#f8fafc' : 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
-            border: folder.archived_at ? '1.5px dashed #e2e8f0' : '1.5px solid #86efac',
-            cursor: folder.archived_at ? 'not-allowed' : 'pointer',
-            textAlign: 'left' as const, transition: 'all 0.15s',
-            opacity: folder.archived_at ? 0.55 : 1 }}
-          onMouseOver={e => { if (!folder.archived_at) (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #dcfce7, #bbf7d0)'; }}
-          onMouseOut={e => { if (!folder.archived_at) (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #f0fdf4, #dcfce7)'; }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: folder.archived_at ? '#f1f5f9' : 'rgba(22,163,74,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Send size={15} style={{ color: folder.archived_at ? '#94a3b8' : '#16a34a' }} />
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: folder.archived_at ? '#64748b' : '#16a34a' }}>Envoyer une analyse</span>
-            {folder.archived_at && <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 1 }}>🔒 Dossier archivé</div>}
-          </div>
-        </button>
+        {/* Séparateur subtil pleine largeur */}
+        <div style={{ height: 1, background: '#f1f5f9', margin: '18px -24px 16px' }} />
+
+        {/* 4 actions cartouches colorées — INTÉGRÉES dans le header */}
+        <div className="dossier-actions-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+          {/* Ajouter un vendeur — violet */}
+          <button
+            onClick={() => { if (!folder.archived_at) { setEditingSeller(null); setShowSellerModal(true); } }}
+            disabled={!!folder.archived_at}
+            title={folder.archived_at ? 'Restaurez le dossier pour ajouter un vendeur' : undefined}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 10,
+              background: folder.archived_at ? '#f8fafc' : 'linear-gradient(135deg, #faf5ff, #f3e8ff)',
+              border: folder.archived_at ? '1.5px dashed #e2e8f0' : '1px solid #e9d5ff',
+              cursor: folder.archived_at ? 'not-allowed' : 'pointer',
+              textAlign: 'left' as const, transition: 'all 0.15s',
+              opacity: folder.archived_at ? 0.55 : 1, fontFamily: 'inherit' }}
+            onMouseOver={e => { if (!folder.archived_at) (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #f3e8ff, #e9d5ff)'; }}
+            onMouseOut={e => { if (!folder.archived_at) (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #faf5ff, #f3e8ff)'; }}>
+            <div style={{ width: 28, height: 28, borderRadius: 7, background: folder.archived_at ? '#f1f5f9' : '#a855f7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <UserCheck size={14} style={{ color: folder.archived_at ? '#94a3b8' : '#fff' }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: folder.archived_at ? '#64748b' : '#6b21a8' }}>Ajouter un vendeur</span>
+              {folder.archived_at && <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 1 }}>🔒 Dossier archivé</div>}
+            </div>
+          </button>
+
+          {/* Ajouter un acheteur — vert clair */}
+          <button
+            onClick={() => { if (!folder.archived_at) { setEditingBuyer(null); setShowBuyerModal(true); } }}
+            disabled={!!folder.archived_at}
+            title={folder.archived_at ? 'Restaurez le dossier pour ajouter un acheteur' : undefined}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 10,
+              background: folder.archived_at ? '#f8fafc' : 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
+              border: folder.archived_at ? '1.5px dashed #e2e8f0' : '1px solid #bbf7d0',
+              cursor: folder.archived_at ? 'not-allowed' : 'pointer',
+              textAlign: 'left' as const, transition: 'all 0.15s',
+              opacity: folder.archived_at ? 0.55 : 1, fontFamily: 'inherit' }}
+            onMouseOver={e => { if (!folder.archived_at) (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #dcfce7, #bbf7d0)'; }}
+            onMouseOut={e => { if (!folder.archived_at) (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #f0fdf4, #dcfce7)'; }}>
+            <div style={{ width: 28, height: 28, borderRadius: 7, background: folder.archived_at ? '#f1f5f9' : '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <UserPlus size={14} style={{ color: folder.archived_at ? '#94a3b8' : '#fff' }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: folder.archived_at ? '#64748b' : '#14532d' }}>Ajouter un acheteur</span>
+              {folder.archived_at && <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 1 }}>🔒 Dossier archivé</div>}
+            </div>
+          </button>
+
+          {/* Lancer une analyse — bleu (couleur brand Verimo) */}
+          <button
+            onClick={() => { if (!folder.archived_at) navigate(`/dashboard/nouvelle-analyse?folder=${folder.id}`); }}
+            disabled={!!folder.archived_at}
+            title={folder.archived_at ? 'Restaurez le dossier pour lancer une analyse' : undefined}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 10,
+              background: folder.archived_at ? '#f8fafc' : 'linear-gradient(135deg, #f0f7fb, #e8f4f8)',
+              border: folder.archived_at ? '1.5px dashed #e2e8f0' : '1px solid #c7dde8',
+              cursor: folder.archived_at ? 'not-allowed' : 'pointer',
+              textAlign: 'left' as const, transition: 'all 0.15s',
+              opacity: folder.archived_at ? 0.55 : 1, fontFamily: 'inherit' }}
+            onMouseOver={e => { if (!folder.archived_at) (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #e8f4f8, #d0e8f0)'; }}
+            onMouseOut={e => { if (!folder.archived_at) (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #f0f7fb, #e8f4f8)'; }}>
+            <div style={{ width: 28, height: 28, borderRadius: 7, background: folder.archived_at ? '#f1f5f9' : '#2a7d9c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Plus size={14} style={{ color: folder.archived_at ? '#94a3b8' : '#fff' }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: folder.archived_at ? '#64748b' : '#0c447c' }}>Lancer une analyse</span>
+              {folder.archived_at && <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 1 }}>🔒 Dossier archivé</div>}
+            </div>
+          </button>
+
+          {/* Envoyer une analyse — vert plus foncé */}
+          <button
+            onClick={() => {
+              if (folder.archived_at) return;
+              const completedAnalyses = folderAnalyses.filter(a => a.status === 'completed');
+              if (completedAnalyses.length === 0) {
+                setToast({ message: 'Aucune analyse terminée à envoyer. Lancez d\'abord une analyse.', type: 'error' });
+                return;
+              }
+              const buyersWithEmail = buyers.filter(b => b.email);
+              const sellersWithEmail = sellers.filter(s => s.email);
+              if (buyersWithEmail.length === 0 && sellersWithEmail.length === 0) {
+                setToast({ message: 'Aucun contact avec adresse email. Ajoutez un vendeur ou un acheteur potentiel avec un email.', type: 'error' });
+                return;
+              }
+              setShowSendReport(true);
+            }}
+            disabled={!!folder.archived_at}
+            title={folder.archived_at ? 'Restaurez le dossier pour envoyer une analyse' : undefined}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 10,
+              background: folder.archived_at ? '#f8fafc' : 'linear-gradient(135deg, #ecfdf5, #d1fae5)',
+              border: folder.archived_at ? '1.5px dashed #e2e8f0' : '1px solid #a7f3d0',
+              cursor: folder.archived_at ? 'not-allowed' : 'pointer',
+              textAlign: 'left' as const, transition: 'all 0.15s',
+              opacity: folder.archived_at ? 0.55 : 1, fontFamily: 'inherit' }}
+            onMouseOver={e => { if (!folder.archived_at) (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #d1fae5, #a7f3d0)'; }}
+            onMouseOut={e => { if (!folder.archived_at) (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #ecfdf5, #d1fae5)'; }}>
+            <div style={{ width: 28, height: 28, borderRadius: 7, background: folder.archived_at ? '#f1f5f9' : '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Send size={14} style={{ color: folder.archived_at ? '#94a3b8' : '#fff' }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: folder.archived_at ? '#64748b' : '#064e3b' }}>Envoyer une analyse</span>
+              {folder.archived_at && <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 1 }}>🔒 Dossier archivé</div>}
+            </div>
+          </button>
+        </div>
       </div>
 
       {/* Sections Vendeurs + Acheteurs en 2 colonnes */}
@@ -5206,10 +5248,12 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {completes.length > 0 && (
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <Search size={13} style={{ color: '#2a7d9c' }} />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>Analyses complètes</span>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '1px 7px', borderRadius: 100 }}>{completes.length}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, paddingBottom: 8, borderBottom: '0.5px solid #e8f4f8' }}>
+                    <div style={{ width: 24, height: 24, borderRadius: 7, background: '#2a7d9c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Search size={13} style={{ color: '#fff' }} />
+                    </div>
+                    <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0c447c' }}>Analyses complètes</span>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', background: '#2a7d9c', padding: '2px 8px', borderRadius: 100 }}>{completes.length}</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {completes.map(renderRow)}
@@ -5218,10 +5262,12 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
               )}
               {simples.length > 0 && (
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <FileText size={13} style={{ color: '#94a3b8' }} />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>Analyses simples</span>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', background: '#f1f5f9', padding: '1px 7px', borderRadius: 100 }}>{simples.length}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, paddingBottom: 8, borderBottom: '0.5px solid #f1f5f9' }}>
+                    <div style={{ width: 24, height: 24, borderRadius: 7, background: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <FileText size={13} style={{ color: '#fff' }} />
+                    </div>
+                    <span style={{ fontSize: 12.5, fontWeight: 700, color: '#2d4a56' }}>Analyses simples</span>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', background: '#64748b', padding: '2px 8px', borderRadius: 100 }}>{simples.length}</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {simples.map(renderRow)}
@@ -6149,36 +6195,6 @@ function TooltipInfo({ text }: { text: string }) {
         </>
       )}
     </span>
-  );
-}
-
-function ActionButton({ icon: Icon, label, onClick, comingSoon, disabled, disabledReason }: { icon: React.ElementType; label: string; onClick?: () => void; comingSoon?: boolean; disabled?: boolean; disabledReason?: string }) {
-  const isDisabled = comingSoon || disabled;
-  return (
-    <button
-      onClick={isDisabled ? undefined : onClick}
-      disabled={isDisabled}
-      title={disabled ? disabledReason : undefined}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderRadius: 12,
-        background: isDisabled ? '#f8fafc' : '#fff',
-        border: isDisabled ? '1.5px dashed #e2e8f0' : '1.5px solid #edf2f7',
-        cursor: isDisabled ? 'not-allowed' : 'pointer',
-        textAlign: 'left' as const,
-        transition: 'all 0.15s',
-        opacity: isDisabled ? 0.55 : 1,
-      }}
-      onMouseOver={e => { if (!isDisabled) { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.background = '#fafdfe'; } }}
-      onMouseOut={e => { if (!isDisabled) { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.background = '#fff'; } }}>
-      <div style={{ width: 32, height: 32, borderRadius: 8, background: isDisabled ? '#f1f5f9' : 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <Icon size={15} style={{ color: isDisabled ? '#94a3b8' : '#2a7d9c' }} />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: isDisabled ? '#64748b' : '#0f172a' }}>{label}</div>
-        {comingSoon && <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 1 }}>Bientôt disponible</div>}
-        {disabled && !comingSoon && <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 1 }}>🔒 Dossier archivé</div>}
-      </div>
-    </button>
   );
 }
 
