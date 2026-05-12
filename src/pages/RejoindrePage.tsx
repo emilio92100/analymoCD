@@ -296,13 +296,13 @@ export default function RejoindrePage() {
               Votre demande est bien arrivée
             </h1>
             <p style={{ fontSize: 15, color: '#64748b', lineHeight: 1.65, margin: '0 0 36px', maxWidth: 460, marginLeft: 'auto', marginRight: 'auto' }}>
-              Notre équipe vous recontacte sous <strong style={{ color: '#0f172a' }}>24h ouvrées</strong> pour un échange personnalisé. Un email de confirmation vient d'être envoyé à <strong style={{ color: '#2a7d9c' }}>{email}</strong>.
+              Notre équipe vous recontacte <strong style={{ color: '#0f172a' }}>rapidement</strong> pour un échange personnalisé. Un email de confirmation vient d'être envoyé à <strong style={{ color: '#2a7d9c' }}>{email}</strong>.
             </p>
 
             <div style={{ background: 'linear-gradient(180deg, #f8fafc 0%, #f0f7fb 100%)', borderRadius: 16, padding: '24px 28px', textAlign: 'left', marginBottom: 32, border: '1px solid rgba(42, 125, 156, 0.1)' }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>Les prochaines étapes</div>
               {[
-                { step: '1', label: 'Vérification de votre dossier', sub: 'Sous 24h ouvrées', icon: '🔍' },
+                { step: '1', label: 'Vérification de votre dossier', sub: 'Étape rapide', icon: '🔍' },
                 { step: '2', label: 'Appel découverte (15 min)', sub: 'Pour comprendre vos besoins et vous présenter Verimo Pro', icon: '📞' },
                 { step: '3', label: 'Accès à votre espace pro', sub: 'Votre compte est créé après notre échange', icon: '🎁' },
               ].map((s, i) => (
