@@ -756,7 +756,7 @@ function ResumeBlock({ resume }: { resume: string | ResumeStructured | null }) {
 /* ══════════════════════════════════
    ONGLET SYNTHÈSE
 ══════════════════════════════════ */
-function TabSynthese({ rapport }: { rapport: RapportData }) {
+function TabSynthese({ rapport, isShared }: { rapport: RapportData; isShared?: boolean }) {
   const docsIgnores = (rapport as Record<string, unknown>).documents_ignores as string[] | undefined;
   const avertissement = (rapport as Record<string, unknown>).avertissement_docs as string | undefined;
   const isComplete = rapport.type === 'complete';
@@ -1061,7 +1061,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
       })()}
 
       {/* 5. AVIS VERIMO */}
-      <AvisVerimoBlock avis={rapport.avis_verimo} isSimple={rapport.type !== 'complete'} />
+      <AvisVerimoBlock avis={rapport.avis_verimo} isSimple={rapport.type !== 'complete'} isShared={isShared} />
 
     </div>
   );
@@ -1071,7 +1071,7 @@ function TabSynthese({ rapport }: { rapport: RapportData }) {
    AVIS VERIMO BLOCK — nouveau format structuré (verdict + contexte + démarches)
    avec fallback retrocompat pour ancien format string
 ══════════════════════════════════ */
-function AvisVerimoBlock({ avis, isSimple }: { avis: string | AvisVerimoStructured | null; isSimple: boolean }) {
+function AvisVerimoBlock({ avis, isSimple, isShared }: { avis: string | AvisVerimoStructured | null; isSimple: boolean; isShared?: boolean }) {
   // Rétrocompat : ancien format string → affichage legacy (3 paragraphes fusionnés)
   if (typeof avis === 'string') {
     if (!avis.trim()) return null;
@@ -1100,7 +1100,7 @@ function AvisVerimoBlock({ avis, isSimple }: { avis: string | AvisVerimoStructur
             </p>
           ))}
         </div>
-        {isSimple && (
+        {isSimple && !isShared && (
           <div style={{ margin: '0 28px 24px', padding: '12px 14px', background: 'rgba(255,255,255,0.07)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', fontSize: 12, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6 }}>
             💡 Cette analyse porte sur un seul document. Pour un score /20 et un rapport complet du bien, lancez une <span style={{ color: '#5bb8d4', fontWeight: 600 }}>Analyse Complète</span>.
           </div>
@@ -1197,7 +1197,7 @@ function AvisVerimoBlock({ avis, isSimple }: { avis: string | AvisVerimoStructur
         Verimo analyse vos documents pour vous aider à décider. Cette lecture ne remplace pas l'avis d'un professionnel de l'immobilier.
       </div>
 
-      {isSimple && (
+      {isSimple && !isShared && (
         <div style={{ margin: '0 26px 22px', padding: '12px 14px', background: 'rgba(255,255,255,0.07)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', fontSize: 12, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6 }}>
           💡 Cette analyse porte sur un seul document. Pour un score /20 et un rapport complet du bien, lancez une <span style={{ color: '#5bb8d4', fontWeight: 600 }}>Analyse Complète</span>.
         </div>
@@ -4376,7 +4376,7 @@ export default function RapportPage() {
               <ChevronLeft size={15} /> Mes analyses
             </Link>
           </div>
-          <DocumentRenderer result={documentResult} />
+          <DocumentRenderer result={documentResult} isShared={isShared} />
         </div>
       </div>
     );
@@ -4476,7 +4476,7 @@ export default function RapportPage() {
 
         {/* Contenu onglets */}
         <div key={activeTab} className="rapport-tab-content">
-          {(activeTab === 'synthese' || !isComplete) && <SafeTabBoundary><TabSynthese rapport={rapport} /></SafeTabBoundary>}
+          {(activeTab === 'synthese' || !isComplete) && <SafeTabBoundary><TabSynthese rapport={rapport} isShared={isShared} /></SafeTabBoundary>}
           {activeTab === 'copropriete' && isComplete && hasCopro && <SafeTabBoundary><TabCopropriete rapport={rapport} /></SafeTabBoundary>}
           {activeTab === 'logement' && isComplete && <SafeTabBoundary><TabLogement rapport={rapport} onSwitchTab={setActiveTab} /></SafeTabBoundary>}
           {activeTab === 'procedures' && isComplete && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
