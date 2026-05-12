@@ -224,16 +224,25 @@ function HeroSection({ setActiveProfileIdx }: { setActiveProfileIdx: (i: number)
 
         <motion.div variants={up} initial="hidden" animate="show" custom={3}
           className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
-          <Link to="/contact-pro"
+          <Link to="/rejoindre"
             className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-base font-bold shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200"
             style={{ background: '#fff', color: '#0f2d3d' }}>
-            Demander une démo <ArrowRight size={16} />
+            Rejoindre Verimo Pro <ArrowRight size={16} />
           </Link>
           <a href="#profils"
             className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-2xl text-base font-semibold transition-all duration-200 hover:bg-white/[0.08]"
             style={{ color: '#fff', border: '1px solid rgba(255,255,255,0.18)' }}>
             Voir les solutions métier
           </a>
+        </motion.div>
+
+        <motion.div variants={up} initial="hidden" animate="show" custom={3.5}
+          className="flex justify-center mb-6 -mt-2">
+          <Link to="/contact-pro"
+            className="text-sm font-medium transition-colors"
+            style={{ color: 'rgba(255,255,255,0.55)', textDecoration: 'underline', textUnderlineOffset: 4 }}>
+            ou demander une démo (15 min)
+          </Link>
         </motion.div>
 
         <motion.p variants={up} initial="hidden" animate="show" custom={4}
@@ -329,10 +338,10 @@ function ProfilesSection({ activeIdx, setActiveIdx }: { activeIdx: number; setAc
                       </motion.div>
                     ))}
                   </div>
-                  <Link to={`/contact-pro?type=${active.id === 'investor' ? 'investisseur' : active.id === 'marchand' ? 'marchand' : active.id}`}
+                  <Link to={`/rejoindre?type=${active.id === 'investor' ? 'investisseur' : active.id === 'marchand' ? 'marchand' : active.id}`}
                     className="inline-flex self-start items-center gap-2 px-7 py-3.5 rounded-xl text-sm font-bold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
                     style={{ background: active.color, color: '#fff' }}>
-                    Être recontacté <ArrowRight size={15} />
+                    Rejoindre Verimo Pro <ArrowRight size={15} />
                   </Link>
                 </div>
                 {/* Droite */}
@@ -582,15 +591,24 @@ function CtaFinalSection() {
         </Reveal>
         <Reveal delay={3}>
           <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
-            <Link to="/contact-pro"
+            <Link to="/rejoindre"
               className="inline-flex items-center justify-center gap-2 px-9 py-4 rounded-2xl text-base font-bold shadow-xl hover:-translate-y-0.5 hover:shadow-2xl transition-all duration-200"
               style={{ background: '#fff', color: '#0f2d3d' }}>
-              Demander une démo <ArrowRight size={16} />
+              Rejoindre Verimo Pro <ArrowRight size={16} />
             </Link>
             <Link to="/exemple"
               className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-2xl text-base font-semibold transition-all duration-200 hover:bg-white/[0.08]"
               style={{ color: '#fff', border: '1px solid rgba(255,255,255,0.18)' }}>
               Voir un exemple de rapport
+            </Link>
+          </div>
+        </Reveal>
+        <Reveal delay={3.5}>
+          <div className="flex justify-center -mt-4 mb-6">
+            <Link to="/contact-pro"
+              className="text-sm font-medium transition-colors"
+              style={{ color: 'rgba(255,255,255,0.55)', textDecoration: 'underline', textUnderlineOffset: 4 }}>
+              ou demander une démo (15 min)
             </Link>
           </div>
         </Reveal>
