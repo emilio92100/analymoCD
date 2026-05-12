@@ -278,7 +278,7 @@ export default function RejoindrePage() {
               Votre demande est bien arrivée
             </h1>
             <p style={{ fontSize: 15, color: '#64748b', lineHeight: 1.65, margin: '0 0 36px', maxWidth: 460, marginLeft: 'auto', marginRight: 'auto' }}>
-              Notre équipe vous recontacte sous <strong style={{ color: '#0f172a' }}>24h ouvrées</strong> pour un échange personnalisé. Un email de confirmation vient d'être envoyé à <strong style={{ color: '#2a7d9c' }}>{email}</strong>.
+              Notre équipe vous recontacte sous <strong style={{ color: '#0f172a' }}>24h ouvrées</strong> pour un échange personnalisé à l'adresse <strong style={{ color: '#2a7d9c' }}>{email}</strong>.
             </p>
 
             <div style={{ background: 'linear-gradient(180deg, #f8fafc 0%, #f0f7fb 100%)', borderRadius: 16, padding: '24px 28px', textAlign: 'left', marginBottom: 32, border: '1px solid rgba(42, 125, 156, 0.1)' }}>
@@ -333,6 +333,11 @@ export default function RejoindrePage() {
 
       {/* CONTENU — padding top suffisant pour ne pas être masqué par navbar */}
       <div style={{ position: 'relative', zIndex: 10, padding: '120px 24px 50px', maxWidth: 880, margin: '0 auto' }}>
+        <style>{`
+          @media (max-width: 700px) {
+            .profil-grid { grid-template-columns: 1fr !important; }
+          }
+        `}</style>
 
         {/* HEADER — compacte */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
@@ -419,7 +424,7 @@ export default function RejoindrePage() {
                     <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>Choisissez votre activité pour adapter l'accompagnement</p>
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }} className="profil-grid">
                   {profileTypes.map(p => {
                     const Icon = p.icon;
                     const active = profileType === p.id;
@@ -449,6 +454,28 @@ export default function RejoindrePage() {
                       </button>
                     );
                   })}
+                  {/* 6e case : bouton Continuer intégré dans la grille */}
+                  <button type="button" onClick={() => setStep(2)} disabled={!canContinue1}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: 11,
+                      border: 'none',
+                      background: canContinue1 ? 'linear-gradient(135deg, #2a7d9c, #0c447c)' : '#e2e8f0',
+                      cursor: canContinue1 ? 'pointer' : 'not-allowed',
+                      fontFamily: 'inherit',
+                      transition: 'all 0.15s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      color: canContinue1 ? '#fff' : '#94a3b8',
+                      fontSize: 14,
+                      fontWeight: 700,
+                      boxShadow: canContinue1 ? '0 4px 16px rgba(42, 125, 156, 0.25)' : 'none',
+                      minHeight: 60,
+                    }}>
+                    {canContinue1 ? <>Continuer <ChevronRight size={16} /></> : <>Choisissez un profil</>}
+                  </button>
                 </div>
               </div>
             )}
@@ -664,33 +691,31 @@ export default function RejoindrePage() {
         </AnimatePresence>
         </motion.div>
 
-        {/* NAVIGATION ETAPES */}
+        {/* NAVIGATION ETAPES — uniquement à partir de l'étape 2 (étape 1 a son bouton intégré dans la grille) */}
+        {step > 1 && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 18 }}>
-          {step > 1 ? (
-            <button onClick={() => setStep(step - 1)}
-              style={{ padding: '12px 20px', borderRadius: 11, background: '#fff', color: '#64748b', fontSize: 13.5, fontWeight: 700, border: '1.5px solid #edf2f7', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <ChevronLeft size={15} /> Retour
-            </button>
-          ) : (
-            <div />
-          )}
+          <button onClick={() => setStep(step - 1)}
+            style={{ padding: '12px 20px', borderRadius: 11, background: '#fff', color: '#64748b', fontSize: 13.5, fontWeight: 700, border: '1.5px solid #edf2f7', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <ChevronLeft size={15} /> Retour
+          </button>
 
           {step < 4 ? (
-            <button onClick={() => setStep(step + 1)} disabled={step === 1 ? !canContinue1 : step === 2 ? !canContinue2 : false}
+            <button onClick={() => setStep(step + 1)} disabled={step === 2 ? !canContinue2 : false}
               style={{
                 padding: '12px 24px',
                 borderRadius: 11,
-                background: (step === 1 ? canContinue1 : step === 2 ? canContinue2 : true) ? '#2a7d9c' : '#cbd5e1',
+                background: (step === 2 ? canContinue2 : true) ? 'linear-gradient(135deg, #2a7d9c, #0c447c)' : '#cbd5e1',
                 color: '#fff',
                 fontSize: 13.5,
                 fontWeight: 700,
                 border: 'none',
-                cursor: (step === 1 ? canContinue1 : step === 2 ? canContinue2 : true) ? 'pointer' : 'not-allowed',
+                cursor: (step === 2 ? canContinue2 : true) ? 'pointer' : 'not-allowed',
                 fontFamily: 'inherit',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
                 transition: 'background 0.15s',
+                boxShadow: (step === 2 ? canContinue2 : true) ? '0 4px 16px rgba(42, 125, 156, 0.25)' : 'none',
               }}>
               Continuer <ChevronRight size={15} />
             </button>
@@ -710,11 +735,13 @@ export default function RejoindrePage() {
                 alignItems: 'center',
                 gap: 7,
                 transition: 'all 0.15s',
+                boxShadow: canSubmit && !sending ? '0 4px 16px rgba(42, 125, 156, 0.25)' : 'none',
               }}>
               {sending ? 'Envoi en cours...' : <>Envoyer ma demande <Send size={14} /></>}
             </button>
           )}
         </div>
+        )}
 
       </div>
     </div>
