@@ -57,8 +57,10 @@ export async function getOrCreateShareToken(id: string): Promise<string | null> 
 }
 
 /* ─── Lire un rapport via share_token (sans auth) ── */
-export async function fetchAnalyseByShareToken(token: string): Promise<AnalyseDB | null> {
-  // D'abord chercher dans report_shares (envois pro → client)
+export async function fetchAnalyseByShareToken(token: string): Promise<(AnalyseDB & { _ownerIsPro?: boolean }) | null> {
+  let analysis: AnalyseDB | null = null;
+
+  // D'abord chercher dans report_shares (envois pro → client via le modal "Envoyer une analyse")
   const { data: share } = await supabase
     .from('report_shares')
     .select('analysis_id')
@@ -73,23 +75,37 @@ export async function fetchAnalyseByShareToken(token: string): Promise<AnalyseDB
       .eq('share_token', token)
       .is('opened_at', null);
 
-    const { data: analysis } = await supabase
+    const { data } = await supabase
       .from('analyses')
       .select('*')
       .eq('id', share.analysis_id)
       .single();
-    return analysis || null;
+    analysis = data;
+  } else {
+    // Fallback : bouton "Partager" classique (utilisé par particulier ET pro)
+    const { data, error } = await supabase
+      .from('analyses')
+      .select('*')
+      .eq('share_token', token)
+      .single();
+    if (error) return null;
+    analysis = data;
   }
 
-  // Fallback : chercher dans analyses.share_token (ancien système)
-  const { data, error } = await supabase
-    .from('analyses')
-    .select('*')
-    .eq('share_token', token)
-    .single();
+  if (!analysis) return null;
 
-  if (error) return null;
-  return data;
+  // Détecter si le créateur de l'analyse est un pro (pour masquer le branding Verimo)
+  let ownerIsPro = false;
+  if (analysis.user_id) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', analysis.user_id)
+      .maybeSingle();
+    ownerIsPro = profile?.role === 'pro';
+  }
+
+  return { ...analysis, _ownerIsPro: ownerIsPro };
 }
 
 /* ─── Lire toutes les analyses de l'utilisateur ── */
