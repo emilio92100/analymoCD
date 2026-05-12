@@ -6,10 +6,10 @@ import { fetchAnalyseById, fetchAnalyseByShareToken, getOrCreateShareToken } fro
 import { lancerAnalyseEdge } from '../lib/analyse-client';
 import type { AnalyseProgress } from '../lib/analyse-client';
 import { supabase } from '../lib/supabase';
-import DocumentRenderer from './dashboard/DocumentRenderer';
+import DocumentRenderer, { RendererCompromis } from './dashboard/DocumentRenderer';
 import {
   ChevronLeft, Download, Building2, AlertTriangle, CheckCircle,
-  Shield, FileText, Gavel, Info, Star, Paperclip,
+  Shield, FileText, FileSignature, Gavel, Info, Star, Paperclip,
   RefreshCw, ChevronDown, Copy, Check,
   Home, TrendingDown, Upload, X, Clock,
 } from 'lucide-react';
@@ -752,6 +752,43 @@ function ResumeBlock({ resume }: { resume: string | ResumeStructured | null }) {
   );
 }
 
+
+/* ══════════════════════════════════
+   ONGLET COMPROMIS (analyse complete uniquement)
+   Affiche le compromis annexe via le RendererCompromis (memes blocs que l analyse simple)
+══════════════════════════════════ */
+function TabCompromis({ rapport, isShared, hideVerimoBranding }: { rapport: RapportData; isShared?: boolean; hideVerimoBranding?: boolean }) {
+  // Extraire l objet compromis structure depuis lot_achete.compromis
+  const lotAchete = (rapport as Record<string, unknown>).lot_achete as Record<string, unknown> | undefined;
+  const compromis = lotAchete?.compromis as Record<string, unknown> | undefined;
+  // Fallback ancien schema
+  const compromisLegacy = (rapport as Record<string, unknown>).compromis as Record<string, unknown> | undefined;
+  const compromisData = compromis && (compromis.present !== false) ? compromis : compromisLegacy;
+
+  if (!compromisData) {
+    return (
+      <div style={{ padding: '40px 20px', textAlign: 'center', color: '#94a3b8' }}>
+        <div style={{ fontSize: 32, marginBottom: 12 }}>📄</div>
+        <p style={{ fontSize: 14 }}>Aucun compromis ou promesse de vente détecté dans cette analyse.</p>
+      </div>
+    );
+  }
+
+  // Reconstituer une structure compatible avec RendererCompromis
+  // RendererCompromis attend les champs au niveau racine du document (titre, resume, bien, finances, etc.)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = {
+    titre: rapport.adresse || (compromisData.bien as Record<string, unknown>)?.adresse_complete || 'Compromis de vente',
+    resume: compromisData.resume || null,
+    ...compromisData,
+  };
+
+  return (
+    <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 24px' }}>
+      <RendererCompromis r={r} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />
+    </div>
+  );
+}
 
 /* ══════════════════════════════════
    ONGLET SYNTHÈSE
@@ -4201,7 +4238,7 @@ function buildRapport(data: Record<string, unknown>, dbData: { id: string; type:
 /* ══════════════════════════════════
    PAGE PRINCIPALE
 ══════════════════════════════════ */
-export type TabId = 'synthese' | 'copropriete' | 'logement' | 'procedures' | 'documents';
+export type TabId = 'synthese' | 'copropriete' | 'logement' | 'procedures' | 'compromis' | 'documents';
 
 /* ══════════════════════════════════
    COMPOSANT RÉUTILISABLE — pour ExemplePage
@@ -4416,12 +4453,23 @@ export default function RapportPage() {
     !hasDocType(['TAXE_FONCIERE']),
   ].filter(Boolean).length;
 
+  // Détection présence d'un compromis dans l'analyse complète
+  const lotAcheteObj = (rapport as Record<string, unknown>).lot_achete as Record<string, unknown> | undefined;
+  const compromisDataDetect = lotAcheteObj?.compromis as Record<string, unknown> | undefined;
+  const compromisLegacyDetect = (rapport as Record<string, unknown>).compromis as Record<string, unknown> | undefined;
+  // Compromis présent si l'objet existe et a au moins un champ rempli
+  const hasCompromis = !!(
+    (compromisDataDetect && compromisDataDetect.present !== false && (compromisDataDetect.date_signature || compromisDataDetect.vendeurs || compromisDataDetect.finances || compromisDataDetect.bien)) ||
+    (compromisLegacyDetect && (compromisLegacyDetect.date_signature || compromisLegacyDetect.vendeur || compromisLegacyDetect.prix_net_vendeur))
+  );
+
   // Onglets selon type de bien
   const tabs: { id: TabId; label: string; icon: React.ReactNode; dotColor: string; badge?: number }[] = [
     { id: 'synthese', label: 'Synthèse', icon: <Star size={14} />, dotColor: '#22c55e' },
     ...(hasCopro ? [{ id: 'copropriete' as TabId, label: 'Copropriété', icon: <Building2 size={14} />, dotColor: rapport.travaux_a_prevoir.length > 0 ? '#f97316' : '#22c55e' }] : []),
     { id: 'logement', label: logementLabel, icon: logementIcon, dotColor: rapport.diagnostics.some((d: Record<string, unknown>) => d.alerte && d.perimetre === 'lot_privatif') ? '#ef4444' : '#2a7d9c' },
     { id: 'procedures', label: 'Procédures', icon: <Gavel size={14} />, dotColor: rapport.procedures_en_cours ? '#ef4444' : '#22c55e' },
+    ...(hasCompromis ? [{ id: 'compromis' as TabId, label: 'Compromis', icon: <FileSignature size={14} />, dotColor: '#0f2d3d' }] : []),
     { id: 'documents', label: 'Documents', icon: <FileText size={14} />, dotColor: missingEssentielsCount > 0 ? '#f97316' : '#94a3b8', badge: missingEssentielsCount > 0 ? missingEssentielsCount : undefined },
   ];
 
@@ -4486,6 +4534,7 @@ export default function RapportPage() {
           {activeTab === 'copropriete' && isComplete && hasCopro && <SafeTabBoundary><TabCopropriete rapport={rapport} /></SafeTabBoundary>}
           {activeTab === 'logement' && isComplete && <SafeTabBoundary><TabLogement rapport={rapport} onSwitchTab={setActiveTab} /></SafeTabBoundary>}
           {activeTab === 'procedures' && isComplete && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
+          {activeTab === 'compromis' && isComplete && hasCompromis && <SafeTabBoundary><TabCompromis rapport={rapport} isShared={isShared} hideVerimoBranding={hideVerimoBranding} /></SafeTabBoundary>}
           {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} onComplement={() => setShowComplement(true)} /></SafeTabBoundary>}
         </div>
 
