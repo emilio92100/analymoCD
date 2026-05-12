@@ -235,6 +235,24 @@ export default function RejoindrePage() {
         profile_data: profileData,
         rgpd_consent: rgpd,
       });
+
+      // Envoi des emails de confirmation (prospect + notification interne)
+      // Non bloquant : si l'envoi mail échoue, on affiche quand même la confirmation
+      // car la demande est bien enregistrée dans contact_pro
+      try {
+        await supabase.functions.invoke('send-pro-request-confirmation', {
+          body: {
+            prenom, nom, email, telephone,
+            ville: ville || null,
+            profile_type: profileType,
+            profile_data: profileData,
+            message: message || null,
+          },
+        });
+      } catch (mailErr) {
+        console.error('Envoi email échoué (demande enregistrée quand même):', mailErr);
+      }
+
       setSent(true);
     } catch (err) {
       console.error('Erreur envoi', err);
@@ -278,7 +296,7 @@ export default function RejoindrePage() {
               Votre demande est bien arrivée
             </h1>
             <p style={{ fontSize: 15, color: '#64748b', lineHeight: 1.65, margin: '0 0 36px', maxWidth: 460, marginLeft: 'auto', marginRight: 'auto' }}>
-              Notre équipe vous recontacte sous <strong style={{ color: '#0f172a' }}>24h ouvrées</strong> pour un échange personnalisé à l'adresse <strong style={{ color: '#2a7d9c' }}>{email}</strong>.
+              Notre équipe vous recontacte sous <strong style={{ color: '#0f172a' }}>24h ouvrées</strong> pour un échange personnalisé. Un email de confirmation vient d'être envoyé à <strong style={{ color: '#2a7d9c' }}>{email}</strong>.
             </p>
 
             <div style={{ background: 'linear-gradient(180deg, #f8fafc 0%, #f0f7fb 100%)', borderRadius: 16, padding: '24px 28px', textAlign: 'left', marginBottom: 32, border: '1px solid rgba(42, 125, 156, 0.1)' }}>
