@@ -236,15 +236,6 @@ function HeroSection({ setActiveProfileIdx }: { setActiveProfileIdx: (i: number)
           </a>
         </motion.div>
 
-        <motion.div variants={up} initial="hidden" animate="show" custom={3.5}
-          className="flex justify-center mb-6 -mt-2">
-          <Link to="/contact-pro"
-            className="text-sm font-medium transition-colors"
-            style={{ color: 'rgba(255,255,255,0.55)', textDecoration: 'underline', textUnderlineOffset: 4 }}>
-            ou demander une démo (15 min)
-          </Link>
-        </motion.div>
-
         <motion.p variants={up} initial="hidden" animate="show" custom={4}
           className="text-sm text-white/30 font-medium">
           Sans engagement · Réponse sous 24h
@@ -600,15 +591,6 @@ function CtaFinalSection() {
               className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-2xl text-base font-semibold transition-all duration-200 hover:bg-white/[0.08]"
               style={{ color: '#fff', border: '1px solid rgba(255,255,255,0.18)' }}>
               Voir un exemple de rapport
-            </Link>
-          </div>
-        </Reveal>
-        <Reveal delay={3.5}>
-          <div className="flex justify-center -mt-4 mb-6">
-            <Link to="/contact-pro"
-              className="text-sm font-medium transition-colors"
-              style={{ color: 'rgba(255,255,255,0.55)', textDecoration: 'underline', textUnderlineOffset: 4 }}>
-              ou demander une démo (15 min)
             </Link>
           </div>
         </Reveal>
