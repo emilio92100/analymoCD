@@ -3790,6 +3790,7 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<AnalyseProgress | null>(null);
   const [done, setDone] = useState(false);
+  const [queued, setQueued] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const autoCloseRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -3856,6 +3857,7 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
     if (files.length === 0 || uploading) return;
     setUploading(true);
     setError(null);
+    setQueued(null);
     setProgress({ step: 'extracting', current: 0, total: files.length, percent: 5, message: 'Préparation...' });
 
     const result = await lancerAnalyseEdge({
@@ -3866,6 +3868,10 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
     if (result.success) {
       setDone(true);
       autoCloseRef.current = setTimeout(() => onSuccess(), 10_000);
+    } else if (result.queued) {
+      // 🆕 Surcharge Claude — mise en queue, l'analyse sera retentée automatiquement
+      // Le client sera prévenu par email dès que c'est prêt
+      setQueued(result.queuedMessage || '⏳ Votre dossier a bien été reçu. Notre service connaît un pic d\'activité — votre analyse sera prête sous quelques minutes. Vous pouvez fermer cette page en toute tranquillité, nous vous prévenons par email dès que c\'est terminé.');
     } else {
       setError(result.errorMessage || 'Une erreur est survenue. Réessayez.');
       setUploading(false);
@@ -3939,8 +3945,28 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
             </div>
           )}
 
+          {/* ══ État : Mise en queue (surcharge Claude) ══ */}
+          {queued && !done && (
+            <div style={{ textAlign: 'center', padding: '24px 0' }}>
+              <div style={{ width: 60, height: 60, borderRadius: '50%', background: '#fff7ed', border: '2px solid #fed7aa', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                <Clock size={26} color="#ea580c" />
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', marginBottom: 10 }}>Dossier en file d'attente</div>
+              <div style={{ fontSize: 14, color: '#475569', marginBottom: 22, lineHeight: 1.55, padding: '0 8px' }}>
+                {queued}
+              </div>
+              <div style={{ padding: '12px 16px', borderRadius: 10, background: '#f0f7fb', border: '1px solid #bae6fd', fontSize: 13, color: '#0c4a6e', marginBottom: 20, textAlign: 'left' as const, lineHeight: 1.5 }}>
+                💡 Vous pouvez fermer cette fenêtre, vous serez notifié(e) par email et dans votre dashboard dès que la mise à jour sera prête.
+              </div>
+              <button onClick={onClose}
+                style={{ padding: '12px 28px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 14.5, fontWeight: 700, cursor: 'pointer' }}>
+                J'ai compris, fermer
+              </button>
+            </div>
+          )}
+
           {/* ══ État : Upload en cours ══ */}
-          {uploading && !done && (
+          {uploading && !done && !queued && (
             <div style={{ textAlign: 'center', padding: '24px 0' }}>
               <div style={{ position: 'relative', width: 76, height: 76, margin: '0 auto 18px' }}>
                 <svg viewBox="0 0 80 80" style={{ transform: 'rotate(-90deg)' }}>
@@ -3961,7 +3987,7 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
           )}
 
           {/* ══ État : Sélection ══ */}
-          {!uploading && !done && (
+          {!uploading && !done && !queued && (
             <>
               {/* ── HAUT : Upload + bouton ── */}
               <div
