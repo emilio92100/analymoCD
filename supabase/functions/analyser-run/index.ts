@@ -585,7 +585,7 @@ function buildDocumentPrompt(p: string): string {
   parts.push('REGLES DDT :');
   parts.push('- lots_identifies : extraire TOUS les lots mentionnés dans le DDT (principal, cave, parking, grenier...) avec leur numéro de lot si disponible. Pour le champ etage, toujours écrire en texte lisible : "Rez-de-chaussée", "1er étage", "2ème étage", "1er sous-sol", "2ème sous-sol" etc. Ne jamais mettre juste un chiffre.');
   parts.push('- lots_vente (PRE_ETAT_DATE/ETAT_DATE) : même règle pour etage — toujours en texte lisible complet.');
-  parts.push('- carrez.pieces : hors_carrez=true pour les pièces non comptabilisées dans la surface Carrez (balcon, terrasse, loggia, sous 1m80). Ces surfaces ne s ajoutent pas à la surface totale.');
+  parts.push('- carrez.pieces : remplir UNIQUEMENT si le document liste explicitement les pieces avec leurs surfaces individuelles MESUREES (ex: "Sejour 24,5 m2 - Cuisine 8,2 m2"). Si le document ne donne qu une surface totale sans detail par piece (cas frequent des DPE ou Loi Boutin globale), laisser pieces: [] VIDE. NE JAMAIS inventer des pieces avec surface=0. hors_carrez=true pour les pieces non comptabilisees dans la surface Carrez (balcon, terrasse, loggia, sous 1m80).');
   parts.push('- carrez.annexes : lister séparément les surfaces annexes (balcon, terrasse, jardin, cave, parking) avec leur surface si mentionnée.');
   parts.push('- dpe.points_forts_isolation et points_faibles_isolation : extraire depuis le DDT les éléments d isolation évalués (ex: "Fenêtres double vitrage" en fort, "Murs non isolés" en faible). Maximum 4 par liste.');
   parts.push('- dpe.cout_annuel_min et cout_annuel_max : extraire la fourchette de coût annuel estimé si mentionnée dans le DPE.');
@@ -593,6 +593,22 @@ function buildDocumentPrompt(p: string): string {
   parts.push('');
   parts.push('REGLE DPE vigilances DDT : NE JAMAIS inclure DPE classe A B C D E dans points_vigilance. Seuls F et G sont des points de vigilance. DPE D = bonne performance energetique, ne pas le signaler negativement.');
   parts.push('REGLE travaux_preconises DDT : Ne remplir travaux_preconises QUE si un DPE est présent dans le document et que dpe.classe est non null. Si le document est uniquement un CREP plomb, amiante, termites, carrez, ERP ou tout autre diagnostic sans DPE, laisser travaux_preconises = [] vide. Les recommandations spécifiques à ces diagnostics vont dans le champ alerte du diagnostic concerné, pas dans travaux_preconises.');
+  parts.push('');
+  parts.push('REGLE ERP (Etat des Risques et Pollutions) — STRICTE :');
+  parts.push('- Le diagnostic ERP est TOUJOURS INFORMATIF, JAMAIS un point de vigilance.');
+  parts.push('- Ne JAMAIS inclure d elements issus de l ERP dans points_vigilance du DDT, ni dans rapport.points_vigilance de la synthese finale.');
+  parts.push('- Sont concernes : BASIAS, BASOL, ICPE, sismicite (toutes zones), potentiel radon (toutes categories), PPR (prescrit ou approuve, toutes natures : inondation, mouvement de terrain, technologique, miniere), zonage bruit, sinistres indemnises, secteur d information sur les sols (SIS), recul du trait de cote.');
+  parts.push('- Le diagnostic ERP correspondant doit avoir presence="informatif" et ses elements restent affiches dans le bloc ERP du rapport. L acheteur peut les consulter a titre informatif.');
+  parts.push('- Ton : factuel et non alarmiste. L ERP fournit du contexte reglementaire local, pas une alerte sur le bien lui-meme.');
+  parts.push('- Dans avis_verimo, si pertinent, mentionner les elements ERP UNIQUEMENT sur un ton informatif (ex: "Le bien est situe dans une zone de potentiel radon faible — a titre informatif."). Ne JAMAIS utiliser un ton alarmiste ou parler de "risque" pour des elements ERP standards.');
+  parts.push('');
+  parts.push('REGLE AVIS VERIMO — STRUCTURE :');
+  parts.push('- Rediger avis_verimo en 2 a 4 paragraphes courts, separes par DEUX retours a la ligne (\\n\\n).');
+  parts.push('- Paragraphe 1 : synthese factuelle du bien et constat principal de l analyse.');
+  parts.push('- Paragraphe 2 : points concrets a verifier ou demarches a engager (mesurage Carrez, electricien qualifie, syndic, AG copropriete, etc.).');
+  parts.push('- Paragraphe 3 (optionnel) : projection (revente future, mise en location, travaux a anticiper).');
+  parts.push('- Paragraphe 4 (optionnel) : conclusion neutre rappelant que cette analyse porte sur un seul document si c est le cas, SANS faire de promotion d autres services.');
+  parts.push('- Chaque paragraphe : 2 a 4 phrases max. Pas de pave monolithique.');
   parts.push('');
   parts.push('REGLES LOI CLIMAT ET RESILIENCE — DDT (profil ' + p + ') :');
   parts.push('- DPE G : logement INTERDIT A LA LOCATION depuis le 1er janvier 2025 (loi Climat et Resilience du 22 aout 2021).');
@@ -1079,6 +1095,7 @@ REGLES STATUT SYNDIC (multi-PV) — IMPORTANT : etudier TOUS les PV d AG fournis
   * Travaux deja realises (sauf si appel de fonds encore en cours)
   * Constats neutres sans impact financier (ex: "le syndic a change" sans tension avérée)
   * Frais normaux de transaction (fonds ALUR, honoraires syndic, fonds de roulement)
+  * Elements ERP (Etat des Risques et Pollutions) : BASIAS, BASOL, ICPE, sismicite, potentiel radon, PPR (prescrit ou approuve), zonage bruit, sinistres indemnises, SIS, recul du trait de cote. Ces elements sont par nature INFORMATIFS et restent dans le bloc ERP du rapport ou l acheteur peut les consulter. Ils ne remontent JAMAIS en synthese, meme si le bien y est expose.
   Avant d inclure un element dans rapport.points_vigilance, se poser la question : "Est-ce que cet element depasse le seuil financier OU represente un risque structurel/juridique/sanitaire serieux ?" Si non, ne pas l inclure — cela ne signifie pas qu on n en parle pas, juste qu on ne le remonte pas en synthese.
 - compromis : si un compromis ou une promesse de vente est fourni, extraire dans lot_achete.compromis : { vendeur, acheteur, notaire_vendeur, notaire_acheteur, agence, prix_net_vendeur, honoraires_agence, honoraires_charge, prix_total, depot_garantie, date_signature, date_acte, bien_libre_a, conditions_suspensives: [{label, detail, date_limite, statut}], clauses_particulieres: [] } INCLURE : travaux urgents chiffres / DPE F ou G uniquement (pas D ou E) / impayes vendeur / procedures judiciaires / gros travaux votes / travaux evoques sans vote depuis plusieurs AG. EXCLURE : DPE A/B/C/D / travaux charge vendeur / constats sans impact financier. Si aucun element ne justifie une negociation, applicable=false et elements=[].
 
