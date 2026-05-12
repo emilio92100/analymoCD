@@ -269,12 +269,13 @@ export default function RejoindrePage() {
       <div style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
 
         {/* FOND HERO SOMBRE */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 560, background: 'linear-gradient(170deg, #0a1f2d 0%, #0f2d3d 30%, #1a4a5e 65%, #2a7d9c 100%)', zIndex: 0 }}>
-          <div style={{ position: 'absolute', inset: 0, opacity: 0.4, backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.07) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
-          <div style={{ position: 'absolute', top: '-10%', left: '50%', width: 600, height: 600, borderRadius: '50%', transform: 'translateX(-50%)', background: 'radial-gradient(circle, rgba(34,197,94,0.12) 0%, transparent 65%)' }} />
-          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 120, background: 'linear-gradient(180deg, transparent 0%, #f5f9fb 100%)' }} />
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 620, background: 'linear-gradient(170deg, #0f2d3d 0%, #1a4a5e 35%, #2a7d9c 75%, #3a96b8 100%)', zIndex: 0 }}>
+          <div style={{ position: 'absolute', inset: 0, opacity: 0.35, backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.08) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+          <div style={{ position: 'absolute', top: '-10%', left: '50%', width: 600, height: 600, borderRadius: '50%', transform: 'translateX(-50%)', background: 'radial-gradient(circle, rgba(125,211,252,0.18) 0%, transparent 65%)' }} />
+          {/* Transition fluide allongée — démarre tôt et chevauche */}
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 320, background: 'linear-gradient(180deg, transparent 0%, rgba(245,249,251,0.5) 50%, #f5f9fb 100%)', pointerEvents: 'none' }} />
         </div>
-        <div style={{ position: 'absolute', top: 560, left: 0, right: 0, bottom: 0, background: '#f5f9fb', zIndex: 0 }} />
+        <div style={{ position: 'absolute', top: 600, left: 0, right: 0, bottom: 0, background: '#f5f9fb', zIndex: 0 }} />
 
         <div style={{ position: 'relative', zIndex: 10, padding: '120px 24px 60px', maxWidth: 680, margin: '0 auto' }}>
           <motion.div
@@ -335,19 +336,19 @@ export default function RejoindrePage() {
     <div style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
 
       {/* FOND HERO — dégradé équilibré, ni trop sombre ni trop clair */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 480, background: 'linear-gradient(170deg, #0f2d3d 0%, #1a4a5e 35%, #2a7d9c 75%, #3a96b8 100%)', zIndex: 0 }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 560, background: 'linear-gradient(170deg, #0f2d3d 0%, #1a4a5e 35%, #2a7d9c 75%, #3a96b8 100%)', zIndex: 0 }}>
         {/* Pattern de points subtil */}
         <div style={{ position: 'absolute', inset: 0, opacity: 0.35, backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.08) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
         {/* Halo central */}
         <div style={{ position: 'absolute', top: '-15%', left: '50%', width: 600, height: 600, borderRadius: '50%', transform: 'translateX(-50%)', background: 'radial-gradient(circle, rgba(125,211,252,0.18) 0%, transparent 65%)' }} />
         {/* Halo droite */}
         <div style={{ position: 'absolute', top: '20%', right: '-5%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 65%)' }} />
-        {/* Transition fluide vers le fond clair */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 100, background: 'linear-gradient(180deg, transparent 0%, #f5f9fb 100%)' }} />
+        {/* Transition fluide allongée vers le fond clair — démarre tôt et chevauche */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 280, background: 'linear-gradient(180deg, transparent 0%, rgba(245,249,251,0.5) 50%, #f5f9fb 100%)', pointerEvents: 'none' }} />
       </div>
 
-      {/* FOND CLAIR — bas de page */}
-      <div style={{ position: 'absolute', top: 480, left: 0, right: 0, bottom: 0, background: '#f5f9fb', zIndex: 0 }} />
+      {/* FOND CLAIR — chevauche légèrement le hero pour fondre */}
+      <div style={{ position: 'absolute', top: 540, left: 0, right: 0, bottom: 0, background: '#f5f9fb', zIndex: 0 }} />
 
       {/* CONTENU — padding top suffisant pour ne pas être masqué par navbar */}
       <div style={{ position: 'relative', zIndex: 10, padding: '120px 24px 50px', maxWidth: 880, margin: '0 auto' }}>
