@@ -255,49 +255,49 @@ export default function RejoindrePage() {
   return (
     <div style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
 
-      {/* FOND HERO SOMBRE — limité au haut de la page */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 560, background: 'linear-gradient(170deg, #0a1f2d 0%, #0f2d3d 30%, #1a4a5e 65%, #2a7d9c 100%)', zIndex: 0 }}>
+      {/* FOND HERO — dégradé plus lumineux */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 480, background: 'linear-gradient(170deg, #1a4a5e 0%, #2a7d9c 35%, #3a96b8 70%, #5bb8d4 100%)', zIndex: 0 }}>
         {/* Pattern de points subtil */}
-        <div style={{ position: 'absolute', inset: 0, opacity: 0.4, backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.07) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+        <div style={{ position: 'absolute', inset: 0, opacity: 0.35, backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.08) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
         {/* Halo central */}
-        <div style={{ position: 'absolute', top: '-10%', left: '50%', width: 600, height: 600, borderRadius: '50%', transform: 'translateX(-50%)', background: 'radial-gradient(circle, rgba(42,125,156,0.15) 0%, transparent 65%)' }} />
+        <div style={{ position: 'absolute', top: '-15%', left: '50%', width: 600, height: 600, borderRadius: '50%', transform: 'translateX(-50%)', background: 'radial-gradient(circle, rgba(125,211,252,0.18) 0%, transparent 65%)' }} />
         {/* Halo droite */}
-        <div style={{ position: 'absolute', top: '20%', right: '-5%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(125,211,252,0.08) 0%, transparent 65%)' }} />
+        <div style={{ position: 'absolute', top: '20%', right: '-5%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 65%)' }} />
         {/* Transition fluide vers le fond clair */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 120, background: 'linear-gradient(180deg, transparent 0%, #f5f9fb 100%)' }} />
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 100, background: 'linear-gradient(180deg, transparent 0%, #f5f9fb 100%)' }} />
       </div>
 
       {/* FOND CLAIR — bas de page */}
-      <div style={{ position: 'absolute', top: 560, left: 0, right: 0, bottom: 0, background: '#f5f9fb', zIndex: 0 }} />
+      <div style={{ position: 'absolute', top: 480, left: 0, right: 0, bottom: 0, background: '#f5f9fb', zIndex: 0 }} />
 
-      {/* CONTENU */}
-      <div style={{ position: 'relative', zIndex: 10, padding: '120px 20px 60px', maxWidth: 720, margin: '0 auto' }}>
+      {/* CONTENU — padding top reduit, hero compact */}
+      <div style={{ position: 'relative', zIndex: 10, padding: '80px 20px 50px', maxWidth: 720, margin: '0 auto' }}>
 
-        {/* HEADER — sur fond sombre */}
-        <div style={{ textAlign: 'center', marginBottom: 40 }}>
+        {/* HEADER — compacte */}
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 16px', borderRadius: 100, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 22, backdropFilter: 'blur(8px)' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 14px', borderRadius: 100, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.95)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16, backdropFilter: 'blur(8px)' }}
           >
-            <Sparkles size={13} style={{ color: '#7dd3fc' }} /> Offre Professionnelle
+            <Sparkles size={12} style={{ color: '#a8e3f5' }} /> Offre Professionnelle
           </motion.div>
 
           <motion.h1
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            style={{ fontSize: 'clamp(28px, 4.5vw, 44px)', fontWeight: 900, color: '#fff', margin: '0 0 14px', letterSpacing: '-0.025em', lineHeight: 1.1 }}
+            style={{ fontSize: 'clamp(26px, 3.8vw, 38px)', fontWeight: 900, color: '#fff', margin: '0 0 10px', letterSpacing: '-0.025em', lineHeight: 1.1 }}
           >
             Rejoindre{' '}
             <span style={{ position: 'relative', display: 'inline-block' }}>
-              <span style={{ color: '#7dd3fc', position: 'relative', zIndex: 1 }}>Verimo Pro</span>
+              <span style={{ color: '#a8e3f5', position: 'relative', zIndex: 1 }}>Verimo Pro</span>
               <motion.span
                 initial={{ scaleX: 0 }}
                 animate={{ scaleX: 1 }}
                 transition={{ delay: 0.8, duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
-                style={{ position: 'absolute', bottom: -2, left: 0, right: 0, height: 4, borderRadius: 100, background: 'rgba(125,211,252,0.35)', transformOrigin: 'left' }}
+                style={{ position: 'absolute', bottom: -2, left: 0, right: 0, height: 4, borderRadius: 100, background: 'rgba(168,227,245,0.45)', transformOrigin: 'left' }}
               />
             </span>
           </motion.h1>
@@ -306,9 +306,9 @@ export default function RejoindrePage() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)', margin: 0, maxWidth: 640, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.6, fontWeight: 500 }}
+            style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', margin: 0, lineHeight: 1.5, fontWeight: 500 }}
           >
-            Quelques étapes simples pour rejoindre la communauté des pros qui font confiance à Verimo.
+            Rejoignez les pros qui font confiance à Verimo.
           </motion.p>
         </div>
 
@@ -320,8 +320,8 @@ export default function RejoindrePage() {
           style={{ background: '#fff', borderRadius: 20, border: '1px solid rgba(15, 45, 61, 0.06)', overflow: 'hidden', marginBottom: 14, boxShadow: '0 24px 64px rgba(15, 45, 61, 0.12), 0 4px 16px rgba(15, 45, 61, 0.04)' }}
         >
           {/* Header de la carte avec progress bar intégrée */}
-          <div style={{ padding: '20px 32px 18px', borderBottom: '0.5px solid #edf2f7', background: 'linear-gradient(180deg, #fafbfc 0%, #fff 100%)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ padding: '14px 24px 12px', borderBottom: '0.5px solid #edf2f7', background: 'linear-gradient(180deg, #fafbfc 0%, #fff 100%)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 10.5, color: '#2a7d9c', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Étape {step} sur 4</span>
                 <span style={{ color: '#cbd5e1' }}>·</span>
@@ -331,7 +331,7 @@ export default function RejoindrePage() {
             </div>
             <div style={{ display: 'flex', gap: 5 }}>
               {[1, 2, 3, 4].map(s => (
-                <div key={s} style={{ flex: 1, height: 5, borderRadius: 100, background: s <= step ? 'linear-gradient(90deg, #2a7d9c, #7dd3fc)' : '#edf2f7', transition: 'background 0.3s' }} />
+                <div key={s} style={{ flex: 1, height: 4, borderRadius: 100, background: s <= step ? 'linear-gradient(90deg, #2a7d9c, #7dd3fc)' : '#edf2f7', transition: 'background 0.3s' }} />
               ))}
             </div>
           </div>
@@ -344,23 +344,20 @@ export default function RejoindrePage() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -30 }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
-              style={{ padding: '28px 32px' }}
+              style={{ padding: '22px 28px' }}
             >
             {/* ========== ETAPE 1 — PROFIL ========== */}
             {step === 1 && (
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 11, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Briefcase size={18} style={{ color: '#2a7d9c' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 16 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 9, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Briefcase size={16} style={{ color: '#2a7d9c' }} />
                   </div>
-                  <div>
-                    <div style={{ fontSize: 10.5, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 2 }}>Étape 1</div>
-                    <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', margin: 0 }}>Quel est votre profil ?</h2>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: '0 0 2px' }}>Quel est votre profil ?</h2>
+                    <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>Choisissez votre activité pour adapter l'accompagnement</p>
                   </div>
                 </div>
-                <p style={{ fontSize: 13.5, color: '#64748b', margin: '0 0 22px', lineHeight: 1.55 }}>
-                  Choisissez le profil qui correspond à votre activité. Nous adapterons notre accompagnement en conséquence.
-                </p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10 }}>
                   {profileTypes.map(p => {
                     const Icon = p.icon;
@@ -368,8 +365,8 @@ export default function RejoindrePage() {
                     return (
                       <button key={p.id} type="button" onClick={() => setProfileType(p.id)}
                         style={{
-                          padding: '16px 18px',
-                          borderRadius: 13,
+                          padding: '12px 14px',
+                          borderRadius: 11,
                           border: active ? `2px solid ${p.color}` : '1.5px solid #edf2f7',
                           background: active ? p.bg : '#fff',
                           cursor: 'pointer',
@@ -378,16 +375,16 @@ export default function RejoindrePage() {
                           transition: 'all 0.15s',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 13,
+                          gap: 11,
                         }}>
-                        <div style={{ width: 40, height: 40, borderRadius: 11, background: active ? p.color : p.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.15s' }}>
-                          <Icon size={18} style={{ color: active ? '#fff' : p.color }} />
+                        <div style={{ width: 34, height: 34, borderRadius: 9, background: active ? p.color : p.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.15s' }}>
+                          <Icon size={15} style={{ color: active ? '#fff' : p.color }} />
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: active ? p.color : '#0f172a', marginBottom: 2 }}>{p.label}</div>
-                          <div style={{ fontSize: 11.5, color: '#64748b' }}>{p.desc}</div>
+                          <div style={{ fontSize: 13.5, fontWeight: 700, color: active ? p.color : '#0f172a', marginBottom: 1 }}>{p.label}</div>
+                          <div style={{ fontSize: 11, color: '#64748b' }}>{p.desc}</div>
                         </div>
-                        {active && <CheckCircle size={18} style={{ color: p.color, flexShrink: 0 }} />}
+                        {active && <CheckCircle size={16} style={{ color: p.color, flexShrink: 0 }} />}
                       </button>
                     );
                   })}
@@ -398,19 +395,16 @@ export default function RejoindrePage() {
             {/* ========== ETAPE 2 — COORDONNEES ========== */}
             {step === 2 && (
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 11, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <User size={18} style={{ color: '#2a7d9c' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 16 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 9, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <User size={16} style={{ color: '#2a7d9c' }} />
                   </div>
-                  <div>
-                    <div style={{ fontSize: 10.5, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 2 }}>Étape 2</div>
-                    <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', margin: 0 }}>Vos coordonnées</h2>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: '0 0 2px' }}>Vos coordonnées</h2>
+                    <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>Pour vous recontacter rapidement</p>
                   </div>
                 </div>
-                <p style={{ fontSize: 13.5, color: '#64748b', margin: '0 0 22px', lineHeight: 1.55 }}>
-                  Quelques infos pour vous recontacter rapidement. Nous gardons vos données strictement confidentielles.
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                   <Field label="Prénom" required>
                     <input style={inputStyle} value={prenom} onChange={e => setPrenom(e.target.value)} placeholder="Alexandre" />
                   </Field>
@@ -446,18 +440,15 @@ export default function RejoindrePage() {
             {/* ========== ETAPE 3 — ACTIVITE ========== */}
             {step === 3 && (
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 11, background: activeProfile?.bg || '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {activeProfile && <activeProfile.icon size={18} style={{ color: activeProfile.color }} />}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 16 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 9, background: activeProfile?.bg || '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {activeProfile && <activeProfile.icon size={16} style={{ color: activeProfile.color }} />}
                   </div>
-                  <div>
-                    <div style={{ fontSize: 10.5, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 2 }}>Étape 3</div>
-                    <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', margin: 0 }}>Votre activité</h2>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: '0 0 2px' }}>Votre activité</h2>
+                    <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>Tous ces champs sont optionnels</p>
                   </div>
                 </div>
-                <p style={{ fontSize: 13.5, color: '#64748b', margin: '0 0 22px', lineHeight: 1.55 }}>
-                  Ces informations nous permettent d'adapter notre offre à votre activité. Tous ces champs sont optionnels.
-                </p>
 
                 {profileType === 'agent' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -556,20 +547,17 @@ export default function RejoindrePage() {
             {/* ========== ETAPE 4 — BESOINS ========== */}
             {step === 4 && (
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 11, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Target size={18} style={{ color: '#2a7d9c' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 14 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 9, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Target size={16} style={{ color: '#2a7d9c' }} />
                   </div>
-                  <div>
-                    <div style={{ fontSize: 10.5, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 2 }}>Étape 4 — Dernière étape</div>
-                    <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', margin: 0 }}>Vos besoins</h2>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: '0 0 2px' }}>Vos besoins <span style={{ fontSize: 11, color: '#2a7d9c', fontWeight: 600, marginLeft: 4 }}>· Dernière étape</span></h2>
+                    <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>Sélectionnez tout ce qui vous intéresse</p>
                   </div>
                 </div>
-                <p style={{ fontSize: 13.5, color: '#64748b', margin: '0 0 18px', lineHeight: 1.55 }}>
-                  Qu'est-ce qui vous intéresse le plus dans Verimo Pro ? Sélectionnez tout ce qui s'applique.
-                </p>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 22 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
                   {interetsList.map(item => {
                     const checked = interets.includes(item.id);
                     return (
