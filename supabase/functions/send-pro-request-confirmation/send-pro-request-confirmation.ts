@@ -51,7 +51,7 @@ function buildProspectConfirmationEmail(prenom: string): string {
 <body style="margin:0;padding:0;background:#f4f7f9;font-family:'Helvetica Neue',Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7f9;padding:20px 12px;">
     <tr><td align="center">
-      <table cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);width:100%;max-width:560px;">
+      <table cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);width:100%;max-width:640px;">
 
         <tr><td style="background:linear-gradient(135deg,#0a1f2d,#1a4a5e);padding:36px 24px 28px;text-align:center;">
           <img src="https://www.verimo.fr/logo-blanc.png" alt="Verimo" width="180" style="display:block;margin:0 auto 14px;max-width:180px;height:auto;" />
@@ -64,7 +64,7 @@ function buildProspectConfirmationEmail(prenom: string): string {
             Merci d'avoir choisi <strong style="color:#2a7d9c;">Verimo Pro</strong>. Votre demande nous est bien parvenue et nous l'étudions avec attention.
           </p>
           <p style="color:#374151;font-size:15px;line-height:1.7;margin:0 0 28px;text-align:center;">
-            Notre équipe va prendre contact avec vous <strong style="color:#0f2d3d;">sous 24h ouvrées</strong> pour un échange personnalisé adapté à votre activité.
+            Notre équipe va prendre contact avec vous <strong style="color:#0f2d3d;">dans les meilleurs délais</strong> pour un échange personnalisé adapté à votre activité.
           </p>
         </td></tr>
 
@@ -79,7 +79,7 @@ function buildProspectConfirmationEmail(prenom: string): string {
                 </td>
                 <td style="padding:0 0 12px 4px;">
                   <p style="color:#0f172a;font-size:14px;font-weight:700;margin:0 0 3px;">🔍 Vérification de votre dossier</p>
-                  <p style="color:#64748b;font-size:12.5px;margin:0;line-height:1.5;">Sous 24h ouvrées</p>
+                  <p style="color:#64748b;font-size:12.5px;margin:0;line-height:1.5;">Étape rapide</p>
                 </td>
               </tr>
               <tr>
@@ -198,7 +198,7 @@ function buildInternalNotificationEmail(data: Record<string, unknown>): string {
 <body style="margin:0;padding:0;background:#f4f7f9;font-family:'Helvetica Neue',Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7f9;padding:20px 12px;">
     <tr><td align="center">
-      <table cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);width:100%;max-width:600px;">
+      <table cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);width:100%;max-width:640px;">
 
         <tr><td style="background:linear-gradient(135deg,#0a1f2d,#1a4a5e);padding:24px 28px;">
           <p style="color:rgba(255,255,255,0.6);font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin:0 0 4px;">🔔 Nouvelle demande Verimo Pro</p>
