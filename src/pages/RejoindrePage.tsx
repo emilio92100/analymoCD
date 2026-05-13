@@ -272,7 +272,7 @@ export default function RejoindrePage() {
         <div style={{
           position: 'absolute',
           inset: 0,
-          background: 'linear-gradient(180deg, #0f2d3d 0%, #1a4a5e 12%, #2a7d9c 25%, #5da9c4 38%, #a3cfde 50%, #dceaf0 60%, #f5f9fb 70%, #f5f9fb 100%)',
+          background: 'linear-gradient(180deg, #061826 0%, #0a2336 10%, #0f2d3d 20%, #15405a 30%, #1f5878 42%, #3a7d9a 55%, #7eafc4 68%, #c5dce5 78%, #f5f9fb 88%, #f5f9fb 100%)',
           zIndex: 0,
         }}>
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 500, opacity: 0.3, backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.08) 1px, transparent 0)', backgroundSize: '32px 32px', maskImage: 'linear-gradient(180deg, #000 0%, #000 60%, transparent 100%)', WebkitMaskImage: 'linear-gradient(180deg, #000 0%, #000 60%, transparent 100%)' }} />
@@ -341,7 +341,7 @@ export default function RejoindrePage() {
       <div style={{
         position: 'absolute',
         inset: 0,
-        background: 'linear-gradient(180deg, #0f2d3d 0%, #1a4a5e 12%, #2a7d9c 25%, #5da9c4 38%, #a3cfde 50%, #dceaf0 60%, #f5f9fb 70%, #f5f9fb 100%)',
+        background: 'linear-gradient(180deg, #061826 0%, #0a2336 10%, #0f2d3d 20%, #15405a 30%, #1f5878 42%, #3a7d9a 55%, #7eafc4 68%, #c5dce5 78%, #f5f9fb 88%, #f5f9fb 100%)',
         zIndex: 0,
       }}>
         {/* Pattern de points — limité au haut, fondu progressif */}
