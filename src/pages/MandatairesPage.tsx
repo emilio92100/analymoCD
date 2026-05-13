@@ -797,6 +797,604 @@ function MomentSection({ num, tag, title, story, icon, mockup, reverse, accent }
 }
 
 // ════════════════════════════════════════════════════════════════════
+// MOMENT CLIENT — Section narrative plein écran avec timeline animée au scroll
+// ════════════════════════════════════════════════════════════════════
+function MomentClientSection() {
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ['start end', 'end start'],
+  });
+
+  // Ligne de progression qui se remplit au scroll
+  const lineHeight = useTransform(scrollYProgress, [0.15, 0.85], ['0%', '100%']);
+  const lineHeightSmooth = useSpring(lineHeight, { stiffness: 120, damping: 30 });
+
+  // Refs pour chaque étape pour détecter quand elles sont visibles
+  const step1Ref = useRef<HTMLDivElement>(null);
+  const step2Ref = useRef<HTMLDivElement>(null);
+  const step3Ref = useRef<HTMLDivElement>(null);
+
+  const step1InView = useInView(step1Ref, { once: false, margin: '-30% 0px -30% 0px' });
+  const step2InView = useInView(step2Ref, { once: false, margin: '-30% 0px -30% 0px' });
+  const step3InView = useInView(step3Ref, { once: false, margin: '-30% 0px -30% 0px' });
+
+  // Compteurs animés (étape 3)
+  const heuresEconomisees = useMotionValue(0);
+  const heuresDisplay = useSpring(heuresEconomisees, { stiffness: 80, damping: 20 });
+  const mandatsConclus = useMotionValue(0);
+  const mandatsDisplay = useSpring(mandatsConclus, { stiffness: 80, damping: 20 });
+  const imageMarque = useMotionValue(0);
+  const imageMarqueDisplay = useSpring(imageMarque, { stiffness: 80, damping: 20 });
+
+  const [heuresText, setHeuresText] = useState('0');
+  const [mandatsText, setMandatsText] = useState('0');
+  const [imageText, setImageText] = useState('0');
+
+  useEffect(() => {
+    const unsubH = heuresDisplay.on('change', (v) => setHeuresText(v.toFixed(1)));
+    const unsubM = mandatsDisplay.on('change', (v) => setMandatsText(Math.round(v).toString()));
+    const unsubI = imageMarqueDisplay.on('change', (v) => setImageText(Math.round(v).toString()));
+    return () => { unsubH(); unsubM(); unsubI(); };
+  }, [heuresDisplay, mandatsDisplay, imageMarqueDisplay]);
+
+  useEffect(() => {
+    if (step3InView) {
+      heuresEconomisees.set(4);
+      mandatsConclus.set(1);
+      imageMarque.set(100);
+    } else {
+      heuresEconomisees.set(0);
+      mandatsConclus.set(0);
+      imageMarque.set(0);
+    }
+  }, [step3InView, heuresEconomisees, mandatsConclus, imageMarque]);
+
+  return (
+    <section ref={sectionRef} style={{
+      position: 'relative' as const,
+      background: 'linear-gradient(180deg, #fafcfd 0%, #f0f7fb 50%, #fafcfd 100%)',
+      padding: '120px 24px 140px',
+      overflow: 'hidden',
+      minHeight: '100vh',
+    }}>
+      {/* Aurora subtile en arrière-plan qui suit le scroll */}
+      {!_lp && (
+        <>
+          <motion.div
+            style={{
+              position: 'absolute' as const,
+              top: useTransform(scrollYProgress, [0, 1], ['-10%', '20%']),
+              left: '5%',
+              width: 500,
+              height: 500,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(42,125,156,0.12), transparent 65%)',
+              pointerEvents: 'none' as const,
+              filter: 'blur(20px)',
+            }}
+          />
+          <motion.div
+            style={{
+              position: 'absolute' as const,
+              top: useTransform(scrollYProgress, [0, 1], ['50%', '20%']),
+              right: '5%',
+              width: 450,
+              height: 450,
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(125,211,252,0.14), transparent 65%)',
+              pointerEvents: 'none' as const,
+              filter: 'blur(20px)',
+            }}
+          />
+        </>
+      )}
+
+      <div style={{ maxWidth: 1180, margin: '0 auto', position: 'relative' as const }}>
+
+        {/* HEADER NARRATIF */}
+        <Reveal>
+          <div style={{ textAlign: 'center' as const, marginBottom: 80, maxWidth: 760, margin: '0 auto 80px' }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '7px 16px', borderRadius: 100,
+              background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.22)',
+              fontSize: 11.5, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 22,
+            }}>
+              <Clock size={13} /> Ce moment, vous le connaissez
+            </div>
+            <h2 style={{
+              fontSize: 'clamp(32px, 4.4vw, 54px)', fontWeight: 800, color: '#0f2d3d',
+              margin: '0 0 18px 0', lineHeight: 1.05, letterSpacing: '-0.03em',
+            }}>
+              Une visite.{' '}
+              <span style={{ color: '#0f2d3d' }}>Une question.</span>{' '}
+              <span style={{ position: 'relative' as const, display: 'inline-block', color: '#2a7d9c' }}>
+                Un retard.
+                <motion.span
+                  initial={{ scaleX: 0 }}
+                  whileInView={{ scaleX: 1 }}
+                  viewport={{ once: true, margin: '-100px' }}
+                  transition={{ duration: 1.4, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  style={{
+                    position: 'absolute' as const, bottom: -4, left: 0, right: 0,
+                    height: 5, background: 'rgba(42,125,156,0.3)',
+                    borderRadius: 99, transformOrigin: 'left', display: 'block',
+                  }}
+                />
+              </span>
+            </h2>
+            <p style={{
+              fontSize: 'clamp(16px, 1.4vw, 19px)', color: '#475569', lineHeight: 1.6,
+              maxWidth: 620, margin: '0 auto',
+            }}>
+              Vous l'avez vécu mille fois : le client motivé qui demande les documents, et tout s'arrête. Voilà comment Verimo change la suite de l'histoire.
+            </p>
+          </div>
+        </Reveal>
+
+        {/* TIMELINE NARRATIVE 3 ÉTAPES */}
+        <div style={{ position: 'relative' as const, paddingLeft: 'clamp(40px, 6vw, 80px)', maxWidth: 900, margin: '0 auto' }}>
+
+          {/* Ligne verticale de fond */}
+          <div style={{
+            position: 'absolute' as const,
+            left: 'clamp(15px, 2.3vw, 31px)',
+            top: 20,
+            bottom: 20,
+            width: 3,
+            background: 'rgba(148,163,184,0.18)',
+            borderRadius: 100,
+          }} />
+
+          {/* Ligne de progression qui se remplit au scroll */}
+          <motion.div
+            style={{
+              position: 'absolute' as const,
+              left: 'clamp(15px, 2.3vw, 31px)',
+              top: 20,
+              width: 3,
+              height: lineHeightSmooth,
+              background: 'linear-gradient(180deg, #cbd5e1 0%, #2a7d9c 40%, #16a34a 100%)',
+              borderRadius: 100,
+              boxShadow: '0 0 12px rgba(42,125,156,0.35)',
+            }}
+          />
+
+          {/* ÉTAPE 1 — Avant Verimo */}
+          <motion.div
+            ref={step1Ref}
+            initial={{ opacity: 0, x: -40 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: false, margin: '-15% 0px -15% 0px' }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            animate={{
+              opacity: step1InView ? 1 : 0.4,
+              scale: step1InView ? 1 : 0.97,
+            }}
+            style={{ position: 'relative' as const, paddingBottom: 64 }}
+          >
+            {/* Marker */}
+            <motion.div
+              animate={{
+                scale: step1InView ? [1, 1.08, 1] : 1,
+                boxShadow: step1InView ? '0 0 0 8px rgba(203,213,225,0.3)' : '0 0 0 0 rgba(203,213,225,0)',
+              }}
+              transition={{ duration: 1.5, repeat: step1InView ? Infinity : 0, ease: 'easeInOut' }}
+              style={{
+                position: 'absolute' as const,
+                left: 'clamp(-50px, -3.7vw, -55px)',
+                top: 8,
+                width: 56,
+                height: 56,
+                borderRadius: '50%',
+                background: '#fff',
+                border: '3px solid #cbd5e1',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 22,
+                zIndex: 2,
+              }}>
+              📞
+            </motion.div>
+
+            <div style={{
+              padding: 'clamp(24px, 3vw, 32px) clamp(24px, 3vw, 36px)',
+              background: '#fff',
+              borderRadius: 18,
+              border: '1px solid #edf2f7',
+              boxShadow: step1InView ? '0 12px 32px rgba(15,45,61,0.08)' : '0 4px 16px rgba(15,45,61,0.04)',
+              transition: 'box-shadow 0.4s ease',
+            }}>
+              <div style={{ fontSize: 11.5, fontWeight: 800, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 10 }}>
+                Étape 1 · Après la visite
+              </div>
+              <h3 style={{ fontSize: 'clamp(22px, 2.6vw, 28px)', fontWeight: 800, color: '#0f2d3d', margin: '0 0 16px', letterSpacing: '-0.015em', lineHeight: 1.15 }}>
+                Le client a bien aimé
+              </h3>
+              <div style={{
+                background: '#f8fafc',
+                borderLeft: '4px solid #cbd5e1',
+                padding: '18px 22px',
+                borderRadius: '0 10px 10px 0',
+                margin: '0 0 16px',
+              }}>
+                <p style={{
+                  fontSize: 'clamp(15px, 1.3vw, 17px)',
+                  color: '#475569',
+                  lineHeight: 1.65,
+                  margin: 0,
+                  fontStyle: 'italic',
+                  fontFamily: '"Lora", Georgia, serif',
+                }}>
+                  "Bonjour, j'ai beaucoup aimé l'appartement. Pourriez-vous m'envoyer les 3 derniers PV d'AG, le DTG et les diagnostics ?"
+                </p>
+              </div>
+              <p style={{ fontSize: 14, color: '#64748b', margin: 0, lineHeight: 1.55 }}>
+                Sans Verimo : compilation manuelle des documents, vérification, mise en page, envoi.
+                <strong style={{ color: '#dc2626', fontWeight: 700 }}> Comptez 2 à 4 heures par dossier.</strong>
+              </p>
+            </div>
+          </motion.div>
+
+          {/* ÉTAPE 2 — Avec Verimo */}
+          <motion.div
+            ref={step2Ref}
+            initial={{ opacity: 0, scale: 0.92 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: false, margin: '-15% 0px -15% 0px' }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            animate={{
+              opacity: step2InView ? 1 : 0.4,
+              scale: step2InView ? 1 : 0.97,
+            }}
+            style={{ position: 'relative' as const, paddingBottom: 64 }}
+          >
+            <motion.div
+              animate={{
+                scale: step2InView ? [1, 1.1, 1] : 1,
+                boxShadow: step2InView ? '0 0 0 10px rgba(42,125,156,0.25)' : '0 6px 20px rgba(42,125,156,0.35)',
+              }}
+              transition={{ duration: 1.5, repeat: step2InView ? Infinity : 0, ease: 'easeInOut' }}
+              style={{
+                position: 'absolute' as const,
+                left: 'clamp(-50px, -3.7vw, -55px)',
+                top: 8,
+                width: 56,
+                height: 56,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #2a7d9c, #0c447c)',
+                border: '3px solid #fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 22,
+                color: '#fff',
+                zIndex: 2,
+              }}>
+              <Zap size={26} />
+            </motion.div>
+
+            <div style={{
+              padding: 'clamp(24px, 3vw, 32px) clamp(24px, 3vw, 36px)',
+              background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)',
+              borderRadius: 18,
+              border: '1px solid #c7dde8',
+              boxShadow: step2InView ? '0 16px 48px rgba(42,125,156,0.12)' : '0 4px 16px rgba(42,125,156,0.04)',
+              transition: 'box-shadow 0.4s ease',
+            }}>
+              <div style={{ fontSize: 11.5, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 10 }}>
+                Étape 2 · Avec Verimo
+              </div>
+              <h3 style={{ fontSize: 'clamp(22px, 2.6vw, 28px)', fontWeight: 800, color: '#0f2d3d', margin: '0 0 20px', letterSpacing: '-0.015em', lineHeight: 1.15 }}>
+                3 clics. <span style={{ color: '#2a7d9c' }}>5 minutes.</span>
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, margin: '0 0 18px' }} className="moment-substep-grid">
+                {[
+                  { n: 1, title: 'Upload', desc: 'Glissez vos PDF dans Verimo', icon: '📥' },
+                  { n: 2, title: 'Analyse', desc: 'Verimo synthétise tous les docs', icon: '⚙️' },
+                  { n: 3, title: 'Envoi', desc: 'Lien rapport co-brandé', icon: '✉️' },
+                ].map((sub, i) => (
+                  <motion.div
+                    key={sub.n}
+                    initial={{ opacity: 0, y: 12 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: false, margin: '-15%' }}
+                    transition={{ duration: 0.5, delay: 0.2 + i * 0.12, ease: [0.22, 1, 0.36, 1] }}
+                    style={{
+                      background: '#fff',
+                      borderRadius: 13,
+                      padding: '16px 16px',
+                      border: '1px solid #d4e7ef',
+                      position: 'relative' as const,
+                    }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                      <div style={{ fontSize: 18 }}>{sub.icon}</div>
+                      <div style={{
+                        width: 24, height: 24, borderRadius: 7,
+                        background: 'linear-gradient(135deg, #2a7d9c, #0c447c)',
+                        color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 12, fontWeight: 800,
+                      }}>{sub.n}</div>
+                    </div>
+                    <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0f2d3d', marginBottom: 3 }}>{sub.title}</div>
+                    <div style={{ fontSize: 12.5, color: '#64748b', lineHeight: 1.45 }}>{sub.desc}</div>
+                  </motion.div>
+                ))}
+              </div>
+              <p style={{
+                fontSize: 14.5, color: '#0c447c', margin: 0, fontWeight: 600,
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <ChevronRight size={16} style={{ color: '#2a7d9c' }} />
+                Pendant ce temps, vous êtes déjà à la prochaine visite.
+              </p>
+            </div>
+          </motion.div>
+
+          {/* ÉTAPE 3 — Le client signe */}
+          <motion.div
+            ref={step3Ref}
+            initial={{ opacity: 0, x: 40 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: false, margin: '-15% 0px -15% 0px' }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            animate={{
+              opacity: step3InView ? 1 : 0.4,
+              scale: step3InView ? 1 : 0.97,
+            }}
+            style={{ position: 'relative' as const }}
+          >
+            <motion.div
+              animate={{
+                scale: step3InView ? [1, 1.1, 1] : 1,
+                boxShadow: step3InView ? '0 0 0 10px rgba(22,163,74,0.25)' : '0 6px 20px rgba(22,163,74,0.35)',
+              }}
+              transition={{ duration: 1.5, repeat: step3InView ? Infinity : 0, ease: 'easeInOut' }}
+              style={{
+                position: 'absolute' as const,
+                left: 'clamp(-50px, -3.7vw, -55px)',
+                top: 8,
+                width: 56,
+                height: 56,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                border: '3px solid #fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                zIndex: 2,
+              }}>
+              <Check size={28} strokeWidth={3} />
+            </motion.div>
+
+            <div style={{
+              padding: 'clamp(24px, 3vw, 32px) clamp(24px, 3vw, 36px)',
+              background: '#fff',
+              borderRadius: 18,
+              border: '1px solid #edf2f7',
+              boxShadow: step3InView ? '0 16px 48px rgba(22,163,74,0.10)' : '0 4px 16px rgba(15,45,61,0.04)',
+              transition: 'box-shadow 0.4s ease',
+            }}>
+              <div style={{ fontSize: 11.5, fontWeight: 800, color: '#16a34a', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 10 }}>
+                Étape 3 · Quelques heures plus tard
+              </div>
+              <h3 style={{ fontSize: 'clamp(22px, 2.6vw, 28px)', fontWeight: 800, color: '#0f2d3d', margin: '0 0 16px', letterSpacing: '-0.015em', lineHeight: 1.15 }}>
+                Le client signe.
+              </h3>
+              <p style={{
+                fontSize: 'clamp(15px, 1.3vw, 16.5px)', color: '#475569', lineHeight: 1.65, margin: '0 0 22px',
+              }}>
+                Pendant que vos concurrents préparent encore leur dossier, votre client a déjà reçu un rapport pro complet à votre nom. Il a confiance. <strong style={{ color: '#0f2d3d' }}>Il signe.</strong>
+              </p>
+              <div style={{
+                display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14,
+                padding: '20px 22px',
+                background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
+                borderRadius: 14,
+                border: '1px solid #bbf7d0',
+              }} className="moment-stats-grid">
+                <div>
+                  <div style={{ fontSize: 'clamp(24px, 2.6vw, 32px)', fontWeight: 800, color: '#15803d', letterSpacing: '-0.025em', lineHeight: 1, marginBottom: 5 }}>
+                    ~{heuresText}h
+                  </div>
+                  <div style={{ fontSize: 12, color: '#16a34a', fontWeight: 600, lineHeight: 1.3 }}>
+                    économisées<br />par dossier
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 'clamp(24px, 2.6vw, 32px)', fontWeight: 800, color: '#15803d', letterSpacing: '-0.025em', lineHeight: 1, marginBottom: 5 }}>
+                    +{mandatsText}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#16a34a', fontWeight: 600, lineHeight: 1.3 }}>
+                    mandat conclu<br />plus vite
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 'clamp(24px, 2.6vw, 32px)', fontWeight: 800, color: '#15803d', letterSpacing: '-0.025em', lineHeight: 1, marginBottom: 5 }}>
+                    {imageText}%
+                  </div>
+                  <div style={{ fontSize: 12, color: '#16a34a', fontWeight: 600, lineHeight: 1.3 }}>
+                    à votre image<br />et votre marque
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+        </div>
+      </div>
+
+      <style>{`
+        @media (max-width: 700px) {
+          .moment-substep-grid { grid-template-columns: 1fr !important; }
+          .moment-stats-grid { grid-template-columns: 1fr 1fr 1fr !important; gap: 10px !important; padding: 16px !important; }
+        }
+      `}</style>
+    </section>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════
+// SITUATIONS COUVERTES — 6 scénarios concrets en grille 3×2
+// ════════════════════════════════════════════════════════════════════
+function SituationsCouvertesSection() {
+  const situations = [
+    {
+      icon: '📞',
+      title: 'Le client demande les documents',
+      desc: 'Vous lui envoyez un rapport pro complet en 5 minutes, depuis votre dashboard.',
+      benefit: 'Réactivité maximale',
+      color: '#2a7d9c',
+      bg: '#f0f7fb',
+    },
+    {
+      icon: '🏠',
+      title: 'Vous allez en visite',
+      desc: 'Vous connaissez le bien parfaitement avant d\'entrer : DPE, charges, travaux, copro.',
+      benefit: 'Maîtrise du dossier',
+      color: '#7c3aed',
+      bg: '#f5f3ff',
+    },
+    {
+      icon: '⚠️',
+      title: 'Vous détectez un point bloquant',
+      desc: 'Procédure judiciaire, fonds travaux faibles, DPE F : repérés avant que ça ne plante la vente.',
+      benefit: 'Anticipation',
+      color: '#d97706',
+      bg: '#fffbeb',
+    },
+    {
+      icon: '💬',
+      title: 'Vous répondez en rendez-vous',
+      desc: 'Le client pose une question pointue sur les charges ? Vous avez la synthèse à portée de main.',
+      benefit: 'Crédibilité',
+      color: '#16a34a',
+      bg: '#f0fdf4',
+    },
+    {
+      icon: '🤝',
+      title: 'Vous rassurez un client hésitant',
+      desc: 'Pas un commercial qui parle : des faits chiffrés, sourcés, opposables. Verimo fait le travail.',
+      benefit: 'Confiance',
+      color: '#0f2d3d',
+      bg: '#f1f5f9',
+    },
+    {
+      icon: '📊',
+      title: 'Vous préparez une négociation',
+      desc: 'Arguments chiffrés issus du DTG, PV d\'AG, diagnostics : pour défendre ou négocier le prix.',
+      benefit: 'Arguments solides',
+      color: '#dc2626',
+      bg: '#fef2f2',
+    },
+  ];
+
+  return (
+    <section style={{
+      padding: '120px 24px',
+      background: '#fff',
+      position: 'relative' as const,
+      overflow: 'hidden',
+    }}>
+      <div style={{ maxWidth: 1180, margin: '0 auto' }}>
+        <Reveal>
+          <div style={{ textAlign: 'center' as const, marginBottom: 70, maxWidth: 720, margin: '0 auto 70px' }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '7px 16px', borderRadius: 100,
+              background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.22)',
+              fontSize: 11.5, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 22,
+            }}>
+              <Target size={13} /> Tous vos moments clés
+            </div>
+            <h2 style={{
+              fontSize: 'clamp(30px, 4vw, 48px)', fontWeight: 800, color: '#0f2d3d',
+              margin: '0 0 18px 0', lineHeight: 1.1, letterSpacing: '-0.025em',
+            }}>
+              6 situations où Verimo{' '}
+              <span style={{ color: '#2a7d9c' }}>fait la différence</span>
+            </h2>
+            <p style={{ fontSize: 'clamp(15px, 1.3vw, 18px)', color: '#475569', lineHeight: 1.6, margin: 0 }}>
+              Pas un outil de plus dans votre journée. Un atout dans chaque moment où ça compte.
+            </p>
+          </div>
+        </Reveal>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }} className="situations-grid">
+          {situations.map((s, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ duration: 0.6, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
+              whileHover={{ y: -6, transition: { duration: 0.2 } }}
+              style={{
+                background: '#fff',
+                borderRadius: 18,
+                padding: '28px 26px',
+                border: '1px solid #edf2f7',
+                boxShadow: '0 4px 20px rgba(15,45,61,0.04)',
+                position: 'relative' as const,
+                overflow: 'hidden',
+                cursor: 'default',
+              }}
+            >
+              {/* Accent coloré en haut */}
+              <div style={{
+                position: 'absolute' as const, top: 0, left: 0, right: 0, height: 3,
+                background: s.color,
+              }} />
+
+              {/* Icône */}
+              <div style={{
+                width: 56, height: 56, borderRadius: 14,
+                background: s.bg,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 28, marginBottom: 18,
+              }}>
+                {s.icon}
+              </div>
+
+              <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0f2d3d', margin: '0 0 10px', letterSpacing: '-0.01em', lineHeight: 1.25 }}>
+                {s.title}
+              </h3>
+
+              <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6, margin: '0 0 18px' }}>
+                {s.desc}
+              </p>
+
+              {/* Badge bénéfice */}
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '5px 12px', borderRadius: 100,
+                background: s.bg, color: s.color,
+                fontSize: 12, fontWeight: 700,
+              }}>
+                <CheckCircle2 size={13} /> {s.benefit}
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+
+      <style>{`
+        @media (max-width: 968px) {
+          .situations-grid { grid-template-columns: 1fr 1fr !important; }
+        }
+        @media (max-width: 600px) {
+          .situations-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+    </section>
+  );
+}
+
+
+// ════════════════════════════════════════════════════════════════════
 // PAGE PRINCIPALE
 // ════════════════════════════════════════════════════════════════════
 export default function MandatairesPage() {
@@ -1027,6 +1625,16 @@ export default function MandatairesPage() {
           <ChevronRight size={14} style={{ transform: 'rotate(90deg)' }} />
         </motion.div>
       </section>
+
+      {/* ═══════════════════════════════════════════════════════════
+          MOMENT CLIENT — Timeline narrative plein écran avec scroll progress
+      ═══════════════════════════════════════════════════════════ */}
+      <MomentClientSection />
+
+      {/* ═══════════════════════════════════════════════════════════
+          SITUATIONS COUVERTES — 6 scénarios concrets en grille
+      ═══════════════════════════════════════════════════════════ */}
+      <SituationsCouvertesSection />
 
       {/* ═══════════════════════════════════════════════════════════
           SOLUTION 3 ÉTAPES — refonte avec belle UX cards
