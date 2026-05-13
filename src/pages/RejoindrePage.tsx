@@ -30,11 +30,11 @@ const interetsList = [
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  padding: '12px 15px',
+  padding: '14px 16px',
   borderRadius: 11,
   border: '1.5px solid #edf2f7',
   background: '#fff',
-  fontSize: 14,
+  fontSize: 15,
   color: '#0f172a',
   boxSizing: 'border-box',
   fontFamily: 'inherit',
@@ -44,10 +44,10 @@ const inputStyle: React.CSSProperties = {
 
 const labelStyle: React.CSSProperties = {
   display: 'block',
-  fontSize: 12,
+  fontSize: 13.5,
   fontWeight: 700,
   color: '#334155',
-  marginBottom: 7,
+  marginBottom: 8,
   letterSpacing: '0.01em',
 };
 
@@ -407,18 +407,18 @@ export default function RejoindrePage() {
           style={{ background: '#fff', borderRadius: 20, border: '1px solid rgba(15, 45, 61, 0.06)', overflow: 'hidden', marginBottom: 14, boxShadow: '0 24px 64px rgba(15, 45, 61, 0.12), 0 4px 16px rgba(15, 45, 61, 0.04)' }}
         >
           {/* Header de la carte avec progress bar intégrée */}
-          <div style={{ padding: '14px 24px 12px', borderBottom: '0.5px solid #edf2f7', background: 'linear-gradient(180deg, #fafbfc 0%, #fff 100%)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ padding: '18px 32px 16px', borderBottom: '0.5px solid #edf2f7', background: 'linear-gradient(180deg, #fafbfc 0%, #fff 100%)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 10.5, color: '#2a7d9c', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Étape {step} sur 4</span>
+                <span style={{ fontSize: 12, color: '#2a7d9c', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Étape {step} sur 4</span>
                 <span style={{ color: '#cbd5e1' }}>·</span>
-                <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>{stepLabels[step - 1]}</span>
+                <span style={{ fontSize: 14, color: '#64748b', fontWeight: 600 }}>{stepLabels[step - 1]}</span>
               </div>
-              <span style={{ fontSize: 12, color: '#2a7d9c', fontWeight: 800 }}>{Math.round((step / 4) * 100)}%</span>
+              <span style={{ fontSize: 14, color: '#2a7d9c', fontWeight: 800 }}>{Math.round((step / 4) * 100)}%</span>
             </div>
-            <div style={{ display: 'flex', gap: 5 }}>
+            <div style={{ display: 'flex', gap: 6 }}>
               {[1, 2, 3, 4].map(s => (
-                <div key={s} style={{ flex: 1, height: 4, borderRadius: 100, background: s <= step ? 'linear-gradient(90deg, #2a7d9c, #7dd3fc)' : '#edf2f7', transition: 'background 0.3s' }} />
+                <div key={s} style={{ flex: 1, height: 6, borderRadius: 100, background: s <= step ? 'linear-gradient(90deg, #2a7d9c, #7dd3fc)' : '#edf2f7', transition: 'background 0.3s' }} />
               ))}
             </div>
           </div>
@@ -431,29 +431,29 @@ export default function RejoindrePage() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -30 }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
-              style={{ padding: '22px 28px' }}
+              style={{ padding: '28px 32px' }}
             >
             {/* ========== ETAPE 1 — PROFIL ========== */}
             {step === 1 && (
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 16 }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 9, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Briefcase size={16} style={{ color: '#2a7d9c' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 11, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Briefcase size={20} style={{ color: '#2a7d9c' }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: '0 0 2px' }}>Quel est votre profil ?</h2>
-                    <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>Choisissez votre activité pour adapter l'accompagnement</p>
+                    <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: '0 0 4px', letterSpacing: '-0.01em' }}>Quel est votre profil ?</h2>
+                    <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>Choisissez votre activité pour adapter l'accompagnement</p>
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }} className="profil-grid">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }} className="profil-grid">
                   {profileTypes.map(p => {
                     const Icon = p.icon;
                     const active = profileType === p.id;
                     return (
                       <button key={p.id} type="button" onClick={() => setProfileType(p.id)}
                         style={{
-                          padding: '12px 14px',
-                          borderRadius: 11,
+                          padding: '18px 20px',
+                          borderRadius: 13,
                           border: active ? `2px solid ${p.color}` : '1.5px solid #edf2f7',
                           background: active ? p.bg : '#fff',
                           cursor: 'pointer',
@@ -462,24 +462,24 @@ export default function RejoindrePage() {
                           transition: 'all 0.15s',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 11,
+                          gap: 14,
                         }}>
-                        <div style={{ width: 34, height: 34, borderRadius: 9, background: active ? p.color : p.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.15s' }}>
-                          <Icon size={15} style={{ color: active ? '#fff' : p.color }} />
+                        <div style={{ width: 46, height: 46, borderRadius: 11, background: active ? p.color : p.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.15s' }}>
+                          <Icon size={20} style={{ color: active ? '#fff' : p.color }} />
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13.5, fontWeight: 700, color: active ? p.color : '#0f172a', marginBottom: 1 }}>{p.label}</div>
-                          <div style={{ fontSize: 11, color: '#64748b' }}>{p.desc}</div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: active ? p.color : '#0f172a', marginBottom: 3 }}>{p.label}</div>
+                          <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.45 }}>{p.desc}</div>
                         </div>
-                        {active && <CheckCircle size={16} style={{ color: p.color, flexShrink: 0 }} />}
+                        {active && <CheckCircle size={20} style={{ color: p.color, flexShrink: 0 }} />}
                       </button>
                     );
                   })}
                   {/* 6e case : bouton Continuer intégré dans la grille */}
                   <button type="button" onClick={() => setStep(2)} disabled={!canContinue1}
                     style={{
-                      padding: '12px 14px',
-                      borderRadius: 11,
+                      padding: '18px 20px',
+                      borderRadius: 13,
                       border: 'none',
                       background: canContinue1 ? 'linear-gradient(135deg, #2a7d9c, #0c447c)' : '#e2e8f0',
                       cursor: canContinue1 ? 'pointer' : 'not-allowed',
@@ -488,14 +488,14 @@ export default function RejoindrePage() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: 8,
+                      gap: 10,
                       color: canContinue1 ? '#fff' : '#94a3b8',
-                      fontSize: 14,
+                      fontSize: 16,
                       fontWeight: 700,
-                      boxShadow: canContinue1 ? '0 4px 16px rgba(42, 125, 156, 0.25)' : 'none',
-                      minHeight: 60,
+                      boxShadow: canContinue1 ? '0 6px 20px rgba(42, 125, 156, 0.3)' : 'none',
+                      minHeight: 82,
                     }}>
-                    {canContinue1 ? <>Continuer <ChevronRight size={16} /></> : <>Choisissez un profil</>}
+                    {canContinue1 ? <>Continuer <ChevronRight size={20} /></> : <>Choisissez un profil</>}
                   </button>
                 </div>
               </div>
@@ -504,13 +504,13 @@ export default function RejoindrePage() {
             {/* ========== ETAPE 2 — COORDONNEES ========== */}
             {step === 2 && (
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 16 }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 9, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <User size={16} style={{ color: '#2a7d9c' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 11, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <User size={20} style={{ color: '#2a7d9c' }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: '0 0 2px' }}>Vos coordonnées</h2>
-                    <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>Pour vous recontacter rapidement</p>
+                    <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: '0 0 4px', letterSpacing: '-0.01em' }}>Vos coordonnées</h2>
+                    <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>Pour vous recontacter rapidement</p>
                   </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
@@ -549,13 +549,13 @@ export default function RejoindrePage() {
             {/* ========== ETAPE 3 — ACTIVITE ========== */}
             {step === 3 && (
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 16 }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 9, background: activeProfile?.bg || '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {activeProfile && <activeProfile.icon size={16} style={{ color: activeProfile.color }} />}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 11, background: activeProfile?.bg || '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {activeProfile && <activeProfile.icon size={20} style={{ color: activeProfile.color }} />}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: '0 0 2px' }}>Votre activité</h2>
-                    <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>Tous ces champs sont optionnels</p>
+                    <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: '0 0 4px', letterSpacing: '-0.01em' }}>Votre activité</h2>
+                    <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>Tous ces champs sont optionnels</p>
                   </div>
                 </div>
 
@@ -654,13 +654,13 @@ export default function RejoindrePage() {
             {/* ========== ETAPE 4 — BESOINS ========== */}
             {step === 4 && (
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 14 }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 9, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Target size={16} style={{ color: '#2a7d9c' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 11, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Target size={20} style={{ color: '#2a7d9c' }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: '0 0 2px' }}>Vos besoins <span style={{ fontSize: 11, color: '#2a7d9c', fontWeight: 600, marginLeft: 4 }}>· Dernière étape</span></h2>
-                    <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>Sélectionnez tout ce qui vous intéresse</p>
+                    <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: '0 0 4px', letterSpacing: '-0.01em' }}>Vos besoins <span style={{ fontSize: 13, color: '#2a7d9c', fontWeight: 600, marginLeft: 6 }}>· Dernière étape</span></h2>
+                    <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>Sélectionnez tout ce qui vous intéresse</p>
                   </div>
                 </div>
 
@@ -716,49 +716,49 @@ export default function RejoindrePage() {
         {step > 1 && (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 18 }}>
           <button onClick={() => setStep(step - 1)}
-            style={{ padding: '12px 20px', borderRadius: 11, background: '#fff', color: '#64748b', fontSize: 13.5, fontWeight: 700, border: '1.5px solid #edf2f7', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <ChevronLeft size={15} /> Retour
+            style={{ padding: '14px 24px', borderRadius: 12, background: '#fff', color: '#64748b', fontSize: 15, fontWeight: 700, border: '1.5px solid #edf2f7', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+            <ChevronLeft size={17} /> Retour
           </button>
 
           {step < 4 ? (
             <button onClick={() => setStep(step + 1)} disabled={step === 2 ? !canContinue2 : false}
               style={{
-                padding: '12px 24px',
-                borderRadius: 11,
+                padding: '14px 30px',
+                borderRadius: 12,
                 background: (step === 2 ? canContinue2 : true) ? 'linear-gradient(135deg, #2a7d9c, #0c447c)' : '#cbd5e1',
                 color: '#fff',
-                fontSize: 13.5,
+                fontSize: 15,
                 fontWeight: 700,
                 border: 'none',
                 cursor: (step === 2 ? canContinue2 : true) ? 'pointer' : 'not-allowed',
                 fontFamily: 'inherit',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 6,
+                gap: 7,
                 transition: 'background 0.15s',
-                boxShadow: (step === 2 ? canContinue2 : true) ? '0 4px 16px rgba(42, 125, 156, 0.25)' : 'none',
+                boxShadow: (step === 2 ? canContinue2 : true) ? '0 6px 20px rgba(42, 125, 156, 0.3)' : 'none',
               }}>
-              Continuer <ChevronRight size={15} />
+              Continuer <ChevronRight size={17} />
             </button>
           ) : (
             <button onClick={handleSubmit} disabled={!canSubmit || sending}
               style={{
-                padding: '12px 24px',
-                borderRadius: 11,
+                padding: '14px 30px',
+                borderRadius: 12,
                 background: canSubmit && !sending ? 'linear-gradient(135deg, #2a7d9c, #0c447c)' : '#cbd5e1',
                 color: '#fff',
-                fontSize: 13.5,
+                fontSize: 15,
                 fontWeight: 700,
                 border: 'none',
                 cursor: canSubmit && !sending ? 'pointer' : 'not-allowed',
                 fontFamily: 'inherit',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 7,
+                gap: 8,
                 transition: 'all 0.15s',
-                boxShadow: canSubmit && !sending ? '0 4px 16px rgba(42, 125, 156, 0.25)' : 'none',
+                boxShadow: canSubmit && !sending ? '0 6px 20px rgba(42, 125, 156, 0.3)' : 'none',
               }}>
-              {sending ? 'Envoi en cours...' : <>Envoyer ma demande <Send size={14} /></>}
+              {sending ? 'Envoi en cours...' : <>Envoyer ma demande <Send size={16} /></>}
             </button>
           )}
         </div>
