@@ -1962,8 +1962,8 @@ export default function MandatairesPage() {
                   </div>
                   <div style={{ borderTop: plan.popular ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(15,45,61,0.08)', paddingTop: 20 }}>
                     {[
-                      `${plan.completes} analyse${plan.completes > 1 ? 's' : ''} complète${plan.completes > 1 ? 's' : ''} / mois`,
                       `${plan.simples} analyses simples / mois`,
+                      `${plan.completes} analyse${plan.completes > 1 ? 's' : ''} complète${plan.completes > 1 ? 's' : ''} / mois`,
                       'Rapports partageables en 1 clic',
                       'Marque Verimo Pro',
                       'Achat à l\'unité possible',
