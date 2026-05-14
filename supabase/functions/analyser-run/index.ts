@@ -259,20 +259,34 @@ async function refundCredit(analyseId: string, supabaseAdmin: SupabaseClient): P
       return false;
     }
 
-    const col = creditType === 'document' ? 'credits_document' : 'credits_complete';
-    
-    // Récupérer le solde actuel
+    // 🆕 Vérifier si le user est pro pour utiliser refund_pro_credit (identique à analyser/index.ts)
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select(col)
+      .select('role, credits_document, credits_complete')
       .eq('id', analyse.user_id)
       .single();
-    
+
     if (!profile) {
       console.error('[analyser-run] Profil introuvable pour remboursement');
       return false;
     }
 
+    // 🆕 Branche PRO : appel RPC refund_pro_credit (rembourse abo / unitaires / grants)
+    if ((profile as Record<string, unknown>).role === 'pro') {
+      const { error: rpcErr } = await supabaseAdmin.rpc('refund_pro_credit', {
+        p_user_id: analyse.user_id,
+        p_credit_type: creditType,
+      });
+      if (rpcErr) {
+        console.error('[analyser-run] Erreur refund_pro_credit:', rpcErr.message);
+        return false;
+      }
+      console.log(`[analyser-run] ✅ Crédit pro ${creditType} remboursé pour user ${analyse.user_id} (analyse ${analyseId})`);
+      return true;
+    }
+
+    // Branche PARTICULIER : UPDATE classique sur profiles
+    const col = creditType === 'document' ? 'credits_document' : 'credits_complete';
     const current = (profile as Record<string, number>)[col] || 0;
     
     // Recréditer
@@ -364,6 +378,9 @@ async function handleAnalyseFailure(
     status: 'failed', 
     progress_message: finalMsg 
   }).eq('id', analyseId);
+
+  // 🆕 Notification cloche pour le user + mail particulier (cohérence avec succès)
+  await notifyAnalysisFailure(supabaseAdmin, analyseId);
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -490,6 +507,106 @@ ${opts.isPro ? '' : `<tr><td style="padding:0 28px 28px;">
 </td></tr>
 </table>
 </td></tr></table></body></html>`;
+}
+
+// 🆕 Template email d'échec (particulier uniquement — orange clair, ton rassurant)
+function buildFailureEmail(opts: {
+  prenom: string;
+  subject: string;
+  dashboardUrl: string;
+}): string {
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f4f7f9;font-family:'Helvetica Neue',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7f9;padding:20px 12px;">
+<tr><td align="center">
+<table cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);width:100%;max-width:560px;">
+<tr><td style="background:linear-gradient(135deg,#0a1f2d,#1a4a5e);padding:36px 24px 28px;text-align:center;">
+<img src="https://www.verimo.fr/logo-blanc.png" alt="Verimo" width="180" style="display:block;margin:0 auto 14px;max-width:180px;height:auto;" />
+<span style="display:inline-block;background:#fff7ed;color:#c2410c;font-size:11px;font-weight:800;padding:5px 16px;border-radius:100px;letter-spacing:0.1em;border:1px solid #fed7aa;">⚠ ANALYSE INTERROMPUE</span>
+</td></tr>
+<tr><td style="padding:32px 28px 8px;">
+<h2 style="color:#0f2d3d;font-size:22px;font-weight:800;margin:0 0 20px;text-align:center;">Bonjour ${opts.prenom},</h2>
+<p style="color:#374151;font-size:15px;line-height:1.8;margin:0 0 12px;">Votre analyse <strong style="color:#0f2d3d;">"${opts.subject}"</strong> n'a pas pu être finalisée en raison d'un incident technique temporaire.</p>
+<p style="color:#374151;font-size:15px;line-height:1.8;margin:0 0 12px;">Pas d'inquiétude : <strong style="color:#15803d;">votre crédit a été remboursé automatiquement</strong>, votre solde est intact.</p>
+<p style="color:#374151;font-size:15px;line-height:1.8;margin:0 0 24px;">Vous pouvez relancer votre analyse dès maintenant — l'incident est en général ponctuel.</p>
+</td></tr>
+<tr><td style="padding:0 28px 28px;text-align:center;">
+<a href="${opts.dashboardUrl}" style="display:inline-block;background:linear-gradient(135deg,#2a7d9c,#0f2d3d);color:#fff;font-size:16px;font-weight:700;padding:15px 44px;border-radius:14px;text-decoration:none;">🔄 Relancer mon analyse</a>
+</td></tr>
+<tr><td style="padding:0 28px 24px;">
+<p style="color:#94a3b8;font-size:13px;line-height:1.6;margin:0;text-align:center;">Le problème persiste ? Créez un ticket depuis votre espace via le bouton "Besoin d'aide".</p>
+</td></tr>
+<tr><td style="background:#f8fafc;padding:20px 28px;text-align:center;border-top:1px solid #f1f5f9;">
+<p style="color:#94a3b8;font-size:11px;margin:0;line-height:1.6;"><strong style="color:#64748b;">Verimo</strong> — Vos documents décryptés, votre décision éclairée.<br><a href="https://verimo.fr" style="color:#2a7d9c;text-decoration:none;">verimo.fr</a></p>
+</td></tr>
+</table>
+</td></tr></table></body></html>`;
+}
+
+// 🆕 Notif cloche (tout le monde) + mail (particulier seulement) en cas d'échec
+async function notifyAnalysisFailure(
+  supabaseAdmin: SupabaseClient,
+  analyseId: string,
+): Promise<void> {
+  try {
+    const { data: a } = await supabaseAdmin
+      .from('analyses')
+      .select('user_id, title, address')
+      .eq('id', analyseId)
+      .single();
+
+    if (!a?.user_id) return;
+
+    const subject = a.address || a.title || 'votre analyse';
+
+    // 1. Notification cloche (pas d'analysisId → non cliquable, car le rapport n'existe pas)
+    await insertNotification(
+      supabaseAdmin,
+      a.user_id,
+      'Analyse interrompue',
+      `${subject} — crédit remboursé, vous pouvez relancer`,
+      // pas d'analysisId : pas de rapport à afficher
+    );
+
+    // 2. Email Mailjet (uniquement particulier — cohérent avec Livraison 2)
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('email, full_name, role')
+      .eq('id', a.user_id)
+      .single();
+
+    if (!profile?.email) {
+      console.warn('[analyser-run] Email manquant — pas d\'envoi mail failure');
+      return;
+    }
+
+    const isPro = profile.role === 'pro';
+    if (isPro) {
+      console.log(`[analyser-run] ⚠️ Notif cloche d'échec envoyée (pro, pas de mail) pour ${analyseId}`);
+      return;
+    }
+
+    const prenom = profile.full_name?.split(' ')[0] || 'Bonjour';
+    const dashboardUrl = 'https://verimo.fr/dashboard/nouvelle-analyse';
+
+    const html = buildFailureEmail({
+      prenom,
+      subject,
+      dashboardUrl,
+    });
+
+    await sendMailjet(
+      profile.email,
+      profile.full_name || '',
+      '⚠️ Votre analyse Verimo n\'a pas pu être finalisée',
+      html,
+      isPro,
+    );
+    console.log(`[analyser-run] ⚠️ Email + notif d'échec envoyés pour ${analyseId}`);
+  } catch (err) {
+    console.error('[analyser-run] notifyAnalysisFailure error:', err);
+  }
 }
 
 async function notifyAnalysisReady(
