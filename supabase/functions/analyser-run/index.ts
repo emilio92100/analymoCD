@@ -377,15 +377,19 @@ async function insertNotification(
   userId: string,
   title: string,
   message: string,
+  analysisId?: string, // 🆕 Livraison 1 : ID de l'analyse pour rendre la notif cliquable
 ): Promise<void> {
   try {
-    await supabaseAdmin.from('user_notifications').insert({
+    const payload: Record<string, unknown> = {
       user_id: userId,
       title,
       message,
       read: false,
-    });
-    console.log(`[analyser-run] 🔔 Notif: ${title}`);
+    };
+    if (analysisId) payload.analysis_id = analysisId;
+
+    await supabaseAdmin.from('user_notifications').insert(payload);
+    console.log(`[analyser-run] 🔔 Notif: ${title}${analysisId ? ` (analysisId: ${analysisId})` : ''}`);
   } catch (err) {
     console.error('[analyser-run] Notif error:', err);
   }
@@ -501,6 +505,7 @@ async function notifyAnalysisReady(
       a.user_id,
       'Votre analyse est prête',
       `${subject} — consulter le rapport`,
+      analyseId, // 🆕 Livraison 1 : rend la notif cliquable vers /rapport?id=...
     );
 
     // 2. Email Mailjet
