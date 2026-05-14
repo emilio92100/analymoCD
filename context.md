@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet — 12 mai 2026
+# VERIMO — Contexte projet — 14 mai 2026
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -523,6 +523,27 @@ Lues par sidebar et NouvelleAnalyse via `get_pro_credits_balance(p_user_id)` qui
 
 ### Sessions récentes (mai 2026)
 
+- **Session 14 mai 2026 (nuit, ~3h)** ⭐ : **Plaquette PDF démarchage Pro V7 finalisée**
+  - Travail méthodologique : définition objectif du doc (accroche froide → réservation démo 15 min), cible (tous pros immo), ton (pro et institutionnel), angles (rapport structuré + maîtrise visite)
+  - 7 itérations PDF avant version finale propre : `Verimo Pro - Plaquette demarchage.pdf` (6 slides : Couverture → Situation → Avec Verimo → Avant la visite → Avant/Après → CTA)
+  - Mockups téléphones complets (Dynamic Island + barre statut + écran complet, plus de troncature)
+  - Notifications flottantes "Jinka-style" qui touchent les téléphones (Analyse terminée, 3h45 à prévoir, Reçu par votre client)
+  - Mockup MacBook avec dashboard Pro (sidebar Verimo dark + KPIs + tableau biens)
+  - Vrai QR code généré vers verimo.fr/rejoindre
+  - Dégradé `/rejoindre` reproduit (couverture + CTA)
+  - Logos Verimo transparents (RGBA) depuis repo, taille 50px sur fond clair, blanc sur fond sombre
+  - MandatairesPage.tsx : **inversion ordre features 3 packs Pro** → simples affichées en premier (15, 30) puis complètes (5, 10) — plus vendeur visuellement
+  - Liste docs à créer plus tard pour funnel pro : exemple rapport Verimo anonymisé, email templates démarchage, doc post-démo, argumentaire/objections
+- **Session 13 mai 2026 (~5h)** : **Page /rejoindre + sections MandatairesPage**
+  - Page `/rejoindre` multi-step 4 étapes pour prospects pros (validation email/téléphone, dégradé hero continu `#061826 → #f5f9fb`)
+  - Mailjet configuré, Edge Function `send-pro-request-confirmation` déployée, emails fonctionnels (CONFIRMÉ par Alex)
+  - ProPage.tsx : retrait "ou demander une démo (15 min)", CTA pointent vers /rejoindre
+  - MandatairesPage : 2 sections ajoutées (MomentClientSection avec timeline scroll, SituationsCouvertesSection grille 3×2)
+- **Session 12 mai 2026 (soir/nuit, ~5h)** : **Refonte Compromis + UI compte pro + audit système analyse**
+  - Refonte UI compte pro Dashboard : 2 sections différenciées (Infos perso bleu / Identité pro ambre verrouillée)
+  - Refonte massive analyse simple/complète COMPROMIS : schéma JSON enrichi, 30 règles métier prompt, refonte RendererCompromis en 10 sections UX
+  - Nouvel onglet "Compromis" dans rapport complet (TabLogement)
+  - Audit complet du système d'analyse Verimo (1578 lignes prompt, 14 types docs)
 - **Session 11-12 mai 2026 (soir/nuit, ~6h)** ⭐ : **Session marathon bannières + codes promo + UX + pricing pro**
   - Mail résiliation pro (stripe-webhook-pro V7)
   - Bannières dashboard refondues avec couleurs vives (info bleu, warning orange, success vert) + ciblage audience (all/pro/particulier/specific) + ProDashboardBanner créé
@@ -557,14 +578,21 @@ Lues par sidebar et NouvelleAnalyse via `get_pro_credits_balance(p_user_id)` qui
 
 ## 🎯 Prochaine session — Actions prioritaires
 
-1. **Annuler abos Stripe fantômes** (`cus_UUgPam3KYnmpzC` + `publicite92320@gmail.com`)
-2. **Test mail résiliation** sur `alexandre.rt25@gmail.com` via Stripe Dashboard
-3. **Régénérer service_role key** + recréer le cron Supabase
-4. **Test E2E complet du cycle pro** : souscription / upgrade / downgrade / unitaire / remboursement
-5. **Case à cocher CGV Pro obligatoire** avant paiement pro (cgv_pro_accepted_at + cgv_version)
-6. **Workflow validation compte pro** : formulaire avec SIRET + vérif annuaire-entreprises.data.gouv.fr
-7. **Soumettre les 47 URLs guides** Google Search Console
-8. **Réactiver le cron sync-stripe-payments** quand vieux paiements expirés
+### Côté funnel pro / démarchage (suite session 14 mai)
+1. **Pousser sur GitHub** : `MandatairesPage.tsx` (inversion simples/complètes), `App.tsx` (sans pitch-mandataires)
+2. **Créer un exemple de rapport Verimo anonymisé** en PDF — doc le plus puissant en conversion B2B
+3. **Rédiger 3 email templates** de démarchage : cold mail / follow-up sans réponse / post-démo
+4. **Argumentaire / objections-réponses** pour préparer les démos (RGPD, données client, résiliation, etc.)
+
+### Côté technique/produit (en attente)
+5. **Annuler abos Stripe fantômes** (`cus_UUgPam3KYnmpzC` + `publicite92320@gmail.com`)
+6. **Test mail résiliation** sur `alexandre.rt25@gmail.com` via Stripe Dashboard
+7. **Régénérer service_role key** + recréer le cron Supabase
+8. **Test E2E complet du cycle pro** : souscription / upgrade / downgrade / unitaire / remboursement
+9. **Case à cocher CGV Pro obligatoire** avant paiement pro (cgv_pro_accepted_at + cgv_version)
+10. **Workflow validation compte pro** : formulaire avec SIRET + vérif annuaire-entreprises.data.gouv.fr
+11. **Soumettre les 47 URLs guides** Google Search Console
+12. **Réactiver le cron sync-stripe-payments** quand vieux paiements expirés
 
 **Méthode** :
 1. Coller ce context.md en début de conversation
