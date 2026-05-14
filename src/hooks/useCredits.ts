@@ -29,19 +29,30 @@ export function useCredits() {
 
   useEffect(() => { fetchCredits(); }, [fetchCredits]);
 
+  // 🆕 Déduction atomique via fonction SQL (anti race condition multi-onglets)
   const deductCredit = async (type: 'document' | 'complete') => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
-    const field = type === 'document' ? 'credits_document' : 'credits_complete';
-    const current = type === 'document' ? credits.document : credits.complete;
-    if (current <= 0) return false;
-    const { error } = await supabase
-      .from('profiles')
-      .update({ [field]: current - 1 })
-      .eq('id', user.id);
-    if (error) return false;
-    setCredits(prev => ({ ...prev, [type]: current - 1 }));
-    return true;
+
+    // Appel RPC atomique : la fonction SQL fait SELECT + UPDATE en une transaction,
+    // avec condition stricte "credits > 0". Retourne true si débité, false sinon.
+    const { data, error } = await supabase.rpc('consume_particulier_credit', {
+      p_user_id: user.id,
+      p_credit_type: type,
+    });
+
+    if (error) {
+      console.error('[Verimo] consume_particulier_credit error:', error.message);
+      return false;
+    }
+
+    if (data === true) {
+      // Mise à jour du state local pour refléter le changement BDD
+      setCredits(prev => ({ ...prev, [type]: Math.max(0, (type === 'document' ? prev.document : prev.complete) - 1) }));
+      return true;
+    }
+
+    return false;
   };
 
   return { credits, loadingCredits, fetchCredits, deductCredit };
