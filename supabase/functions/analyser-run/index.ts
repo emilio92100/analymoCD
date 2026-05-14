@@ -473,6 +473,15 @@ function buildSuccessEmail(opts: {
 <tr><td style="padding:0 28px 28px;text-align:center;">
 <a href="${opts.reportUrl}" style="display:inline-block;background:linear-gradient(135deg,#2a7d9c,#0f2d3d);color:#fff;font-size:16px;font-weight:700;padding:15px 44px;border-radius:14px;text-decoration:none;">🔍 Consulter mon rapport</a>
 </td></tr>
+${opts.isPro ? '' : `<tr><td style="padding:0 28px 28px;">
+<table cellpadding="0" cellspacing="0" width="100%" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;">
+<tr><td style="padding:22px 24px;text-align:center;">
+<p style="color:#0f2d3d;font-size:14px;font-weight:700;margin:0 0 8px;">✨ Verimo vous a aidé ?</p>
+<p style="color:#64748b;font-size:13px;line-height:1.6;margin:0 0 16px;">Partagez Verimo à un proche qui s'apprête à acheter — il économisera des heures d'analyse et évitera peut-être un mauvais investissement.</p>
+<a href="https://verimo.fr" style="display:inline-block;background:#fff;color:#2a7d9c;font-size:13px;font-weight:700;padding:10px 24px;border-radius:10px;text-decoration:none;border:1.5px solid #2a7d9c;">Partager Verimo</a>
+</td></tr>
+</table>
+</td></tr>`}
 <tr><td style="padding:0 28px 24px;">
 <p style="color:#94a3b8;font-size:13px;line-height:1.6;margin:0;text-align:center;">Une question ? Créez un ticket depuis votre espace via le bouton "Besoin d'aide".</p>
 </td></tr>
@@ -521,6 +530,14 @@ async function notifyAnalysisReady(
     }
 
     const isPro = profile.role === 'pro';
+
+    // 🆕 Livraison 2 : Pas de mail pour les pros (volume potentiellement élevé, cloche suffit).
+    // Les pros sont notifiés uniquement via la cloche du dashboard.
+    if (isPro) {
+      console.log(`[analyser-run] ✅ Notif cloche envoyée (pro, pas de mail) pour ${analyseId}`);
+      return;
+    }
+
     const prenom = profile.full_name?.split(' ')[0] || 'Bonjour';
     const reportUrl = `https://verimo.fr/rapport?id=${analyseId}`;
 
@@ -1439,10 +1456,9 @@ async function runAnalyseWithData(
       await handleAnalyseFailure(supabaseAdmin, analyseId, 'save_error', 'Erreur lors de la sauvegarde du rapport. Votre crédit a été remboursé automatiquement. Contactez le support.', 'Erreur sauvegarde rapport');
     } else {
       console.log(`[analyser-run] ${analyseId} termin\u00e9e avec succ\u00e8s (mode: ${mode}).`);
-      // 🆕 v9 — Si l'analyse vient de la queue, notifier le client par email + cloche
-      if (fromRetry) {
-        await notifyAnalysisReady(supabaseAdmin, analyseId);
-      }
+      // 🆕 Livraison 2 : Notification cloche systématique en fin d'analyse réussie
+      // (Le mail est envoyé uniquement aux particuliers — voir notifyAnalysisReady)
+      await notifyAnalysisReady(supabaseAdmin, analyseId);
     }
   } catch (err) {
     console.error('[analyser-run] Erreur:', err);
@@ -1574,6 +1590,8 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
       await handleAnalyseFailure(supabaseAdmin, analyseId, 'save_error', 'Erreur lors de la sauvegarde du rapport. Votre crédit a été remboursé automatiquement. Contactez le support.', 'Erreur sauvegarde rapport');
     } else {
       console.log(`[analyser-run] ${analyseId} termin\u00e9e avec succ\u00e8s.`);
+      // 🆕 Livraison 2 : Notification cloche systématique en fin d'analyse réussie
+      await notifyAnalysisReady(supabaseAdmin, analyseId);
     }
   } catch (err) {
     console.error('[analyser-run] Erreur:', err);
