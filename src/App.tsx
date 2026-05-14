@@ -40,7 +40,6 @@ const MentionsLegalesPage = lazy(() => import('./pages/MentionsLegalesPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const ProPage = lazy(() => import('./pages/ProPage'));
 const MandatairesPage = lazy(() => import('./pages/MandatairesPage'));
-const PitchMandatairesPage = lazy(() => import('./pages/PitchMandatairesPage'));
 const ContactProPage = lazy(() => import('./pages/ContactProPage'));
 const RejoindrePage = lazy(() => import('./pages/RejoindrePage'));
 const DashboardProPage = lazy(() => import('./pages/DashboardProPage'));
@@ -295,7 +294,6 @@ export default function App() {
           <Route path="/mentions-legales" element={<PublicLayout><MentionsLegalesPage /></PublicLayout>} />
           <Route path="/pro" element={<PublicLayout><ProPage /></PublicLayout>} />
           <Route path="/pro/mandataires" element={<PublicLayout><MandatairesPage /></PublicLayout>} />
-          <Route path="/pitch-mandataires" element={<PitchMandatairesPage />} />
           <Route path="/contact-pro" element={<PublicLayout><ContactProPage /></PublicLayout>} />
           <Route path="/rejoindre" element={<PublicLayout><RejoindrePage /></PublicLayout>} />
           <Route path="/guides" element={<PublicLayout><GuidesPage /></PublicLayout>} />
