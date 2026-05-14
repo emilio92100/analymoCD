@@ -6615,7 +6615,7 @@ export default function DashboardProPage() {
         <TopbarPro onMenuClick={() => setMobileOpen(true)} title={title} mobileTitle={mobileTitle} proProfile={proProfile}
           unreadCount={unreadNotifCount} notifications={[
             ...notifications,
-            ...dbNotifications.map(n => ({ id: n.id, analysisId: '', title: n.title, message: n.message, createdAt: n.created_at, read: n.read })),
+            ...dbNotifications.map(n => ({ id: n.id, analysisId: n.analysis_id || '', title: n.title, message: n.message, createdAt: n.created_at, read: n.read })),
           ]} onMarkAllRead={markAllRead}
           onClickNotification={(id) => { window.location.href = `/rapport?id=${id}`; }} />
 
