@@ -423,7 +423,7 @@ export default function DashboardPage() {
   // ─── Notifications : rapports terminés + notifications BDD ────────────────────
   type PartNotification = { id: string; analysisId: string; title: string; createdAt: string; read: boolean };
   const [notifications, setNotifications] = useState<PartNotification[]>([]);
-  const [dbNotifications, setDbNotifications] = useState<Array<{ id: string; title: string; message: string | null; read: boolean; created_at: string }>>([]);
+  const [dbNotifications, setDbNotifications] = useState<Array<{ id: string; title: string; message: string | null; read: boolean; created_at: string; analysis_id: string | null }>>([]);
   const [notifToast, setNotifToast] = useState<string | null>(null);
   const prevAnalysesRef = useRef<{ id: string; status: string }[]>([]);
 
