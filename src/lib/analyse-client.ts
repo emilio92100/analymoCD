@@ -187,13 +187,14 @@ export async function lancerAnalyseEdge(params: {
       return { success: false, error: 'unknown', errorMessage: msg };
     }
 
-    // timeout — l'analyse a duré trop longtemps
+    // timeout — l'analyse a duré trop longtemps côté front, mais elle continue côté serveur
+    // On affiche un message rassurant : la cloche s'allumera quand le rapport sera prêt.
     return {
       success: false,
-      error: 'unknown',
-      errorMessage: files.length > 8
-        ? `L'analyse de ${files.length} documents a pris trop de temps. Réessayez avec 8 documents maximum pour de meilleurs résultats. Votre crédit a été remboursé.`
-        : 'L\'analyse a pris trop de temps. Votre crédit a été remboursé automatiquement. Réessayez dans quelques minutes.',
+      // 🆕 On considère ça comme un "queued" UX : pas d'erreur, juste prévenir que ça continue
+      queued: true,
+      queuedMessage: '⏳ Votre analyse prend plus de temps que prévu. Pas d\'inquiétude, elle continue en arrière-plan. Vous pouvez fermer cette page — nous vous prévenons dans votre cloche 🔔 dès qu\'elle est prête.',
+      analyseId,
     };
 
   } catch (err) {
@@ -278,7 +279,11 @@ export async function pollAnalyseStatus(params: {
         current: data.progress_current || 0,
         total: data.progress_total || 1,
         percent,
-        message: data.progress_message || 'Analyse en cours…',
+        // 🆕 Au-delà de 4 min sur la page de progression, on rassure le user :
+        // l'analyse continue en arrière-plan, il peut fermer la page si besoin.
+        message: (Date.now() - start > 240_000)
+          ? 'Votre analyse prend un peu plus de temps que d\'habitude. Tout est en ordre — vous pouvez fermer cette page si vous voulez, nous vous prévenons dans votre cloche 🔔 dès qu\'elle est prête.'
+          : (data.progress_message || 'Analyse en cours…'),
       });
     }
 
