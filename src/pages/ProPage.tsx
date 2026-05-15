@@ -170,8 +170,8 @@ function HeroSection({ setActiveProfileIdx }: { setActiveProfileIdx: (i: number)
 
   return (
     <section className="relative overflow-hidden px-5 sm:px-10 lg:px-20 pt-32 pb-20 md:pt-44 md:pb-28">
-      {/* Dégradé adouci - démarre moins sombre */}
-      <div className="absolute inset-0" style={{ background: 'linear-gradient(165deg, #143d54 0%, #1a5275 30%, #2a7d9c 65%, #3a9bc1 100%)' }} />
+      {/* Dégradé équilibré - ni trop foncé, ni trop clair */}
+      <div className="absolute inset-0" style={{ background: 'linear-gradient(165deg, #0d3045 0%, #134d6a 30%, #1f6d8e 65%, #2a7d9c 100%)' }} />
       <div className="absolute inset-0 pointer-events-none" style={{ opacity: 0.4 }}>
         <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.09) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
       </div>
@@ -207,23 +207,39 @@ function HeroSection({ setActiveProfileIdx }: { setActiveProfileIdx: (i: number)
         <motion.div variants={up} initial="hidden" animate="show" custom={2.5}
           className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 max-w-5xl mx-auto mb-12">
           {[
-            { emoji: '🏢', label: 'Agent / Mandataire', desc: 'Agence, indépendant, négociateur' },
-            { emoji: '📈', label: 'Investisseur', desc: 'Locatif, patrimoine, rendement' },
-            { emoji: '🔑', label: 'Marchand de bien', desc: 'Achat-revente, division, marge' },
-            { emoji: '⚖️', label: 'Notaire', desc: 'Étude, clerc, négociateur' },
-          ].map((p, i) => (
-            <motion.button
-              key={i}
-              animate={_lowPerf ? {} : { y: [0, -4, 0] }}
-              transition={_lowPerf ? {} : { duration: 4, repeat: Infinity, delay: i * 0.4, ease: 'easeInOut' }}
-              className="rounded-2xl px-4 py-5 md:py-6 text-center cursor-pointer transition-all duration-300 hover:scale-[1.04] hover:shadow-2xl group"
-              style={{ background: 'rgba(255,255,255,0.13)', border: '1px solid rgba(255,255,255,0.22)', backdropFilter: 'blur(10px)' }}
-              onClick={() => { setActiveProfileIdx(i); setTimeout(() => { document.getElementById('profils')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50); }}>
-              <span className="text-4xl md:text-5xl block mb-3 transition-transform duration-300 group-hover:scale-110">{p.emoji}</span>
-              <div className="text-sm md:text-[15px] font-bold text-white mb-1.5 leading-tight">{p.label}</div>
-              <div className="text-xs text-white/75 leading-snug">{p.desc}</div>
-            </motion.button>
-          ))}
+            { emoji: '🏢', label: 'Agent / Mandataire', desc: 'Agence, indépendant, négociateur', href: '/pro/mandataires' },
+            { emoji: '📈', label: 'Investisseur', desc: 'Locatif, patrimoine, rendement', href: null, profileIdx: 1 },
+            { emoji: '🔑', label: 'Marchand de bien', desc: 'Achat-revente, division, marge', href: null, profileIdx: 2 },
+            { emoji: '⚖️', label: 'Notaire', desc: 'Étude, clerc, négociateur', href: null, profileIdx: 3 },
+          ].map((p, i) => {
+            const commonClasses = "rounded-2xl px-4 py-5 md:py-6 text-center cursor-pointer transition-all duration-300 hover:scale-[1.04] hover:shadow-2xl group block";
+            const commonStyle = { background: 'rgba(255,255,255,0.13)', border: '1px solid rgba(255,255,255,0.22)', backdropFilter: 'blur(10px)' };
+            const inner = (
+              <>
+                <span className="text-4xl md:text-5xl block mb-3 transition-transform duration-300 group-hover:scale-110">{p.emoji}</span>
+                <div className="text-sm md:text-[15px] font-bold text-white mb-1.5 leading-tight">{p.label}</div>
+                <div className="text-xs text-white/75 leading-snug">{p.desc}</div>
+              </>
+            );
+            return (
+              <motion.div
+                key={i}
+                animate={_lowPerf ? {} : { y: [0, -4, 0] }}
+                transition={_lowPerf ? {} : { duration: 4, repeat: Infinity, delay: i * 0.4, ease: 'easeInOut' }}
+              >
+                {p.href ? (
+                  <Link to={p.href} className={commonClasses} style={commonStyle}>
+                    {inner}
+                  </Link>
+                ) : (
+                  <button className={commonClasses + ' w-full'} style={commonStyle}
+                    onClick={() => { setActiveProfileIdx(p.profileIdx!); setTimeout(() => { document.getElementById('profils')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50); }}>
+                    {inner}
+                  </button>
+                )}
+              </motion.div>
+            );
+          })}
         </motion.div>
 
         <motion.div variants={up} initial="hidden" animate="show" custom={3}
@@ -337,9 +353,9 @@ function ProfilesSection({ activeIdx, setActiveIdx }: { activeIdx: number; setAc
                   <div className="grid grid-cols-3 gap-3 mb-8">
                     {active.stats.map((s, i) => (
                       <motion.div key={i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.08 + 0.15 }}
-                        className="text-center rounded-2xl py-5 px-3 bg-white shadow-md" style={{ border: `1.5px solid ${active.color}22` }}>
-                        <div className="text-2xl md:text-3xl lg:text-4xl font-black mb-1" style={{ color: active.color }}>{s.value}</div>
-                        <div className="text-[11px] md:text-xs text-slate-600 font-bold uppercase tracking-wider">{s.label}</div>
+                        className="text-center rounded-2xl py-4 px-2 bg-white shadow-md" style={{ border: `1.5px solid ${active.color}22` }}>
+                        <div className="text-xl md:text-2xl lg:text-3xl font-black mb-1 whitespace-nowrap" style={{ color: active.color }}>{s.value}</div>
+                        <div className="text-[10px] md:text-[11px] text-slate-600 font-bold uppercase tracking-wide leading-tight">{s.label}</div>
                       </motion.div>
                     ))}
                   </div>
@@ -561,7 +577,7 @@ function CtaFinalSection() {
           </h2>
         </Reveal>
         <Reveal delay={2}>
-          <p className="text-lg text-white/45 leading-relaxed max-w-4xl mx-auto mb-10">
+          <p className="text-lg text-white/85 leading-relaxed max-w-4xl mx-auto mb-10 font-medium">
             Démo personnalisée, offre sur mesure, accompagnement dédié. Réponse garantie sous 24 heures.
           </p>
         </Reveal>
@@ -581,7 +597,7 @@ function CtaFinalSection() {
         </Reveal>
 
         <Reveal delay={4}>
-          <p className="text-sm text-white/55 mt-2">
+          <p className="text-sm text-white/80 mt-2">
             En souscrivant à Verimo Pro, vous acceptez nos{' '}
             <Link to="/cgv-pro" className="underline font-semibold hover:opacity-80 transition-opacity" style={{ color: '#7dd3fc' }}>
               CGV Pro
@@ -590,7 +606,7 @@ function CtaFinalSection() {
         </Reveal>
 
         <Reveal delay={5}>
-          <p className="text-sm text-white/50 mt-10">* Analyse simple : résultat en ~30 secondes (1 document PDF natif). Analyse complète : généralement prête en quelques minutes selon le nombre de documents.</p>
+          <p className="text-sm text-white/75 mt-10">* Analyse simple : résultat en ~30 secondes (1 document PDF natif). Analyse complète : généralement prête en quelques minutes selon le nombre de documents.</p>
         </Reveal>
       </div>
     </section>
