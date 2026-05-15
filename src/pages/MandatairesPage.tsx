@@ -854,7 +854,7 @@ function MomentClientSection() {
     <section ref={sectionRef} style={{
       position: 'relative' as const,
       background: 'linear-gradient(180deg, #fafcfd 0%, #f0f7fb 50%, #fafcfd 100%)',
-      padding: '120px 24px 140px',
+      padding: '80px 24px 100px',
       overflow: 'hidden',
       minHeight: '100vh',
     }}>
@@ -890,7 +890,7 @@ function MomentClientSection() {
         </>
       )}
 
-      <div style={{ maxWidth: 1180, margin: '0 auto', position: 'relative' as const }}>
+      <div style={{ maxWidth: 1320, margin: '0 auto', position: 'relative' as const }}>
 
         {/* HEADER NARRATIF */}
         <Reveal>
@@ -1294,12 +1294,12 @@ function SituationsCouvertesSection() {
 
   return (
     <section style={{
-      padding: '120px 24px',
+      padding: '80px 24px',
       background: '#fff',
       position: 'relative' as const,
       overflow: 'hidden',
     }}>
-      <div style={{ maxWidth: 1180, margin: '0 auto' }}>
+      <div style={{ maxWidth: 1320, margin: '0 auto' }}>
         <Reveal>
           <div style={{ textAlign: 'center' as const, marginBottom: 70, maxWidth: 720, margin: '0 auto 70px' }}>
             <div style={{
@@ -1399,8 +1399,8 @@ function SituationsCouvertesSection() {
 // ════════════════════════════════════════════════════════════════════
 export default function MandatairesPage() {
   useSEO({
-    title: 'Verimo Pro pour mandataires immobiliers — Analysez vos documents en 3 minutes',
-    description: 'Mandataires indépendants : analysez les documents de vos biens en quelques minutes. Envoyez à vos clients en 1 clic. Gagnez plus de mandats.',
+    title: 'Verimo Pro pour agents & mandataires immobiliers — Analysez vos documents en 3 minutes',
+    description: 'Agents immobiliers et mandataires : analysez les PV d\'AG, diagnostics et règlements de vos biens en quelques minutes. Envoyez à vos clients un rapport pro en 1 clic. Plus de mandats, plus de signatures.',
   });
 
   const heroRef = useRef<HTMLDivElement>(null);
@@ -1462,7 +1462,7 @@ export default function MandatairesPage() {
       <section ref={heroRef} style={{
         position: 'relative' as const,
         background: 'linear-gradient(165deg, #ffffff 0%, #f2f9fb 40%, #e6f3f7 100%)',
-        padding: '160px 24px 120px',
+        padding: '120px 24px 90px',
         overflow: 'hidden',
       }}>
         {/* Blobs animés */}
@@ -1496,10 +1496,10 @@ export default function MandatairesPage() {
         ))}
 
         <motion.div
-          style={{ y: heroY, opacity: heroOpacity, maxWidth: 1180, margin: '0 auto', position: 'relative' as const }}
+          style={{ y: heroY, opacity: heroOpacity, maxWidth: 1320, margin: '0 auto', position: 'relative' as const }}
         >
           {/* Texte hero centré au-dessus de la scène cinématique */}
-          <div style={{ textAlign: 'center' as const, marginBottom: 70, maxWidth: 880, marginLeft: 'auto', marginRight: 'auto' }}>
+          <div style={{ textAlign: 'center' as const, marginBottom: 60, maxWidth: 1000, marginLeft: 'auto', marginRight: 'auto' }}>
             <motion.div
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1510,7 +1510,7 @@ export default function MandatairesPage() {
                 background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.22)',
                 fontSize: 12, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.04em', marginBottom: 28,
               }}>
-              <Sparkles size={13} /> POUR MANDATAIRES INDÉPENDANTS
+              <Sparkles size={13} /> POUR AGENTS & MANDATAIRES IMMOBILIERS
             </motion.div>
 
             <motion.h1
@@ -1518,12 +1518,12 @@ export default function MandatairesPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.65, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
               style={{
-                fontSize: 'clamp(38px, 5vw, 64px)', fontWeight: 800, lineHeight: 1.05,
+                fontSize: 'clamp(34px, 4.8vw, 60px)', fontWeight: 800, lineHeight: 1.08,
                 color: '#0f2d3d', margin: '0 0 22px 0', letterSpacing: '-0.025em',
               }}>
-              Vos rapports immobiliers,{' '}
+              Soyez l'agent qui{' '}
               <span style={{ position: 'relative' as const, display: 'inline-block' }}>
-                <span style={{ color: '#2a7d9c' }}>en 1 clic.</span>
+                <span style={{ color: '#2a7d9c' }}>répond à tout</span>
                 <motion.span
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: 1 }}
@@ -1534,7 +1534,8 @@ export default function MandatairesPage() {
                     borderRadius: 99, transformOrigin: 'left', display: 'block',
                   }}
                 />
-              </span>
+              </span>,
+              <br />pas celui qui dit <span style={{ color: '#94a3b8', fontWeight: 600, fontStyle: 'italic' as const }}>« je vais me renseigner »</span>.
             </motion.h1>
 
             <motion.p
@@ -1543,9 +1544,9 @@ export default function MandatairesPage() {
               transition={{ duration: 0.5, delay: 0.25 }}
               style={{
                 fontSize: 'clamp(16px, 1.5vw, 19px)', lineHeight: 1.6, color: '#475569',
-                maxWidth: 640, margin: '0 auto 36px',
+                maxWidth: 720, margin: '0 auto 36px',
               }}>
-              Analysez les documents de vos biens en quelques minutes. Envoyez à vos clients un rapport pro en un seul clic, depuis votre dashboard. Gagnez du temps. Gagnez des mandats.
+              Analysez les documents de vos biens en quelques minutes. Envoyez à vos clients un rapport pro en un seul clic. Plus de signatures, plus de mandats, moins de doutes.
             </motion.p>
 
             <motion.div
@@ -1555,7 +1556,7 @@ export default function MandatairesPage() {
               style={{ display: 'flex', gap: 12, flexWrap: 'wrap' as const, justifyContent: 'center', marginBottom: 22 }}
             >
               <motion.a
-                href={CALENDLY_URL}
+                href="/rejoindre"
                 whileHover={{ y: -2, boxShadow: '0 14px 32px rgba(42,125,156,0.45)' }}
                 whileTap={{ scale: 0.98 }}
                 transition={{ duration: 0.15 }}
@@ -1566,7 +1567,7 @@ export default function MandatairesPage() {
                   textDecoration: 'none', fontSize: 14.5, fontWeight: 700,
                   boxShadow: '0 10px 26px rgba(42,125,156,0.32)',
                 }}>
-                <Calendar size={16} /> Réserver une démo
+                <Calendar size={16} /> Démarrer maintenant
               </motion.a>
               <motion.button
                 whileHover={{ y: -2 }}
@@ -1587,17 +1588,17 @@ export default function MandatairesPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.6 }}
-              style={{ display: 'flex', gap: 22, flexWrap: 'wrap' as const, justifyContent: 'center', fontSize: 12.5, color: '#64748b' }}
+              style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const, justifyContent: 'center' }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <ShieldCheck size={14} style={{ color: '#16a34a' }} /> Sans engagement
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Clock size={14} style={{ color: '#2a7d9c' }} /> Démo en 15 min
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Award size={14} style={{ color: '#7c3aed' }} /> 100% spécialisé immo
-              </div>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: 'rgba(22,163,74,0.1)', border: '1px solid rgba(22,163,74,0.25)', borderRadius: 100, fontSize: 12.5, fontWeight: 700, color: '#15803d' }}>
+                <ShieldCheck size={13} /> Sans engagement
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: 'rgba(42,125,156,0.1)', border: '1px solid rgba(42,125,156,0.25)', borderRadius: 100, fontSize: 12.5, fontWeight: 700, color: '#1d5e7a' }}>
+                <Clock size={13} /> Démo en 15 min
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.25)', borderRadius: 100, fontSize: 12.5, fontWeight: 700, color: '#6d28d9' }}>
+                <Award size={13} /> 100% immobilier
+              </span>
             </motion.div>
           </div>
 
@@ -1639,8 +1640,8 @@ export default function MandatairesPage() {
       {/* ═══════════════════════════════════════════════════════════
           SOLUTION 3 ÉTAPES — refonte avec belle UX cards
       ═══════════════════════════════════════════════════════════ */}
-      <section style={{ padding: '120px 24px', background: '#fff', position: 'relative' as const, overflow: 'hidden' }}>
-        <div style={{ maxWidth: 1180, margin: '0 auto' }}>
+      <section style={{ padding: '80px 24px', background: '#fff', position: 'relative' as const, overflow: 'hidden' }}>
+        <div style={{ maxWidth: 1320, margin: '0 auto' }}>
           <Reveal>
             <div style={{ textAlign: 'center' as const, marginBottom: 80, maxWidth: 720, margin: '0 auto 80px' }}>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.22)', fontSize: 11.5, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.06em', marginBottom: 20 }}>
@@ -1779,8 +1780,8 @@ export default function MandatairesPage() {
       {/* ═══════════════════════════════════════════════════════════
           3 MOMENTS DÉCISIFS — Storytelling pur, pas de stats
       ═══════════════════════════════════════════════════════════ */}
-      <section style={{ padding: '120px 24px 60px', background: 'linear-gradient(180deg, #fafcfd 0%, #f0f7fb 100%)', position: 'relative' as const, overflow: 'hidden' }}>
-        <div style={{ maxWidth: 1180, margin: '0 auto' }}>
+      <section style={{ padding: '80px 24px 40px', background: 'linear-gradient(180deg, #fafcfd 0%, #f0f7fb 100%)', position: 'relative' as const, overflow: 'hidden' }}>
+        <div style={{ maxWidth: 1320, margin: '0 auto' }}>
           <Reveal>
             <div style={{ textAlign: 'center' as const, marginBottom: 100, maxWidth: 760, margin: '0 auto 100px' }}>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.22)', fontSize: 11.5, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.06em', marginBottom: 20 }}>
@@ -1845,11 +1846,11 @@ export default function MandatairesPage() {
           APERÇU RAPPORT
       ═══════════════════════════════════════════════════════════ */}
       <section id="rapport-apercu" style={{
-        padding: '120px 24px',
+        padding: '80px 24px',
         background: '#fff',
         position: 'relative' as const, overflow: 'hidden',
       }}>
-        <div style={{ maxWidth: 1180, margin: '0 auto', position: 'relative' as const }}>
+        <div style={{ maxWidth: 1320, margin: '0 auto', position: 'relative' as const }}>
           <Reveal>
             <div style={{ textAlign: 'center' as const, marginBottom: 70 }}>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.22)', fontSize: 11.5, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.06em', marginBottom: 20 }}>
@@ -1907,8 +1908,8 @@ export default function MandatairesPage() {
       {/* ═══════════════════════════════════════════════════════════
           TARIFS + ROI
       ═══════════════════════════════════════════════════════════ */}
-      <section style={{ padding: '120px 24px', background: 'linear-gradient(165deg, #f0f7fb 0%, #e6f3f7 100%)', position: 'relative' as const, overflow: 'hidden' }}>
-        <div style={{ maxWidth: 1180, margin: '0 auto', position: 'relative' as const }}>
+      <section style={{ padding: '80px 24px', background: 'linear-gradient(165deg, #f0f7fb 0%, #e6f3f7 100%)', position: 'relative' as const, overflow: 'hidden' }}>
+        <div style={{ maxWidth: 1320, margin: '0 auto', position: 'relative' as const }}>
           <Reveal>
             <div style={{ textAlign: 'center' as const, marginBottom: 70 }}>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: '#fff', border: '1px solid rgba(42,125,156,0.22)', fontSize: 11.5, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.06em', marginBottom: 20 }}>
@@ -2024,9 +2025,76 @@ export default function MandatairesPage() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════
+          TYPES DE DOCUMENTS ANALYSÉS
+      ═══════════════════════════════════════════════════════════ */}
+      <section style={{ padding: '80px 24px', background: '#fff', position: 'relative' as const, overflow: 'hidden' }}>
+        <div style={{ maxWidth: 1320, margin: '0 auto' }}>
+          <Reveal>
+            <div style={{ textAlign: 'center' as const, marginBottom: 48 }}>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '7px 14px', borderRadius: 100,
+                background: 'rgba(42,125,156,0.08)', border: '1px solid rgba(42,125,156,0.22)',
+                fontSize: 12, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.06em', marginBottom: 20,
+              }}>
+                <FileText size={13} /> COUVERTURE COMPLÈTE
+              </div>
+              <h2 style={{ fontSize: 'clamp(28px, 3.8vw, 44px)', fontWeight: 800, lineHeight: 1.1, color: '#0f2d3d', margin: '0 0 14px', letterSpacing: '-0.02em' }}>
+                Tous vos documents,{' '}
+                <span style={{ color: '#2a7d9c' }}>analysés en quelques minutes</span>
+              </h2>
+              <p style={{ fontSize: 17, color: '#475569', maxWidth: 680, margin: '0 auto', lineHeight: 1.6 }}>
+                PV d'AG, diagnostics, règlement de copropriété, états datés — Verimo lit tout ce qui compose un dossier de vente.
+              </p>
+            </div>
+          </Reveal>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, maxWidth: 1100, margin: '0 auto' }}>
+            {[
+              { icon: '📋', label: 'PV d\'Assemblée Générale', color: '#2a7d9c', bg: '#f0f7fb' },
+              { icon: '📐', label: 'Règlement de copropriété', color: '#7c3aed', bg: '#f5f3ff' },
+              { icon: '⚡', label: 'Diagnostic DPE', color: '#16a34a', bg: '#f0fdf4' },
+              { icon: '🔬', label: 'Diagnostics techniques', color: '#d97706', bg: '#fffbeb' },
+              { icon: '💰', label: 'Appels de charges', color: '#dc2626', bg: '#fef2f2' },
+              { icon: '📄', label: 'État daté', color: '#0891b2', bg: '#ecfeff' },
+              { icon: '🔧', label: 'Carnet d\'entretien', color: '#9333ea', bg: '#faf5ff' },
+              { icon: '📊', label: 'DTG & plans pluriannuels', color: '#0f766e', bg: '#f0fdfa' },
+              { icon: '🗝️', label: 'Compromis de vente', color: '#be185d', bg: '#fdf2f8' },
+              { icon: '🏛️', label: 'PV historiques (5 ans)', color: '#1d4ed8', bg: '#eff6ff' },
+            ].map((doc, i) => (
+              <Reveal key={i} delay={i * 0.05}>
+                <div style={{
+                  padding: '18px 16px',
+                  background: doc.bg,
+                  border: `1.5px solid ${doc.color}22`,
+                  borderRadius: 14,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  transition: 'all 0.2s',
+                  cursor: 'default',
+                }}
+                onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = `0 8px 20px ${doc.color}22`; }}
+                onMouseOut={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}>
+                  <span style={{ fontSize: 24 }}>{doc.icon}</span>
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: '#0f2d3d', lineHeight: 1.25 }}>{doc.label}</span>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+
+          <Reveal delay={1}>
+            <p style={{ textAlign: 'center' as const, marginTop: 32, fontSize: 13, color: '#64748b', fontStyle: 'italic' as const }}>
+              Jusqu'à 15 documents par analyse complète. Vos fichiers sont supprimés automatiquement après traitement.
+            </p>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════
           CTA FINAL
       ═══════════════════════════════════════════════════════════ */}
-      <section style={{ padding: '120px 24px', background: 'linear-gradient(165deg, #ffffff 0%, #f2f9fb 40%, #e6f3f7 100%)', position: 'relative' as const, overflow: 'hidden' }}>
+      <section style={{ padding: '80px 24px', background: 'linear-gradient(165deg, #ffffff 0%, #f2f9fb 40%, #e6f3f7 100%)', position: 'relative' as const, overflow: 'hidden' }}>
         <motion.div
           animate={{ x: [0, 40, 0], y: [0, -30, 0] }}
           transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
