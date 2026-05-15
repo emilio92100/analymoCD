@@ -51,7 +51,7 @@ function AccentUnderline() {
 
 const profiles = [
   {
-    id: 'agent', icon: Building2, emoji: '🏢', label: 'Agent immobilier',
+    id: 'agent', icon: Building2, emoji: '🏢', label: 'Agent / Mandataire immobilier',
     tagline: 'Différenciez-vous. Rassurez vos acquéreurs.',
     headline: 'Un service premium qui vous différencie de la concurrence.',
     description: 'Intégrez Verimo à votre process de vente. Lorsqu\'un acquéreur est intéressé par un logement visité, partagez-lui un rapport complet sur le bien pour le rassurer et accélérer sa prise de décision. Résultat : moins de doutes, des signatures plus rapides, et des clients qui vous recommandent.',
@@ -61,7 +61,7 @@ const profiles = [
       { icon: Star, title: 'Bouche-à-oreille', text: 'Un service premium que vos clients recommandent autour d\'eux.' },
       { icon: BarChart3, title: 'Rapport co-brandable', text: 'Partagez le rapport Verimo avec votre identité visuelle.' },
     ],
-    stats: [{ value: '-40%', label: 'rétractations' }, { value: '30s*', label: 'par analyse' }, { value: '100%', label: 'objectif' }],
+    stats: [{ value: '~3 min*', label: 'par dossier' }, { value: '/20', label: 'score objectif' }, { value: 'RGPD', label: 'conforme' }],
     color: '#2a7d9c', lightBg: '#f0f7fb',
   },
   {
@@ -75,7 +75,7 @@ const profiles = [
       { icon: Clock, title: 'Gain de temps', text: 'Quelques minutes* au lieu de 2 heures par dossier. Multipliez vos acquisitions.' },
       { icon: Eye, title: 'Risques détectés', text: 'Procédures judiciaires, travaux lourds, DPE F/G — repérez ce que le vendeur ne dit pas.' },
     ],
-    stats: [{ value: '10x', label: 'plus rapide' }, { value: '/20', label: 'score objectif' }, { value: '∞', label: 'sans expiration' }],
+    stats: [{ value: '10x', label: 'plus rapide' }, { value: '/20', label: 'score objectif' }, { value: 'Multi', label: 'biens en parallèle' }],
     color: '#7c3aed', lightBg: '#f5f3ff',
   },
   {
@@ -103,7 +103,7 @@ const profiles = [
       { icon: Users, title: 'Un service en plus pour vos clients', text: 'Partagez un rapport visuel et compréhensible à vos clients, en complément de votre accompagnement.' },
       { icon: BadgeCheck, title: 'Conforme & sécurisé', text: 'Documents chiffrés, supprimés après traitement, hébergés en Europe. Aucune donnée conservée.' },
     ],
-    stats: [{ value: '-70%', label: 'temps de lecture' }, { value: '0', label: 'données conservées' }, { value: 'RGPD', label: 'conforme' }],
+    stats: [{ value: '~3 min*', label: 'par dossier' }, { value: '0', label: 'données conservées' }, { value: 'RGPD', label: 'conforme' }],
     color: '#0f2d3d', lightBg: '#f4f7f9',
   },
 ];
@@ -141,7 +141,6 @@ export default function ProPage() {
       <StatsRibbon />
       <ProfilesSection activeIdx={activeProfileIdx} setActiveIdx={setActiveProfileIdx} />
       <HowItWorksProSection />
-      <TestimonialsSection />
       <SecuritySection />
       <FaqProSection />
       <CtaFinalSection />
@@ -171,75 +170,90 @@ function HeroSection({ setActiveProfileIdx }: { setActiveProfileIdx: (i: number)
 
   return (
     <section className="relative overflow-hidden px-5 sm:px-10 lg:px-20 pt-32 pb-20 md:pt-44 md:pb-28">
-      <div className="absolute inset-0" style={{ background: 'linear-gradient(170deg, #0a1f2d 0%, #0f2d3d 30%, #1a4a5e 65%, #2a7d9c 100%)' }} />
+      {/* Dégradé adouci - démarre moins sombre */}
+      <div className="absolute inset-0" style={{ background: 'linear-gradient(165deg, #143d54 0%, #1a5275 30%, #2a7d9c 65%, #3a9bc1 100%)' }} />
       <div className="absolute inset-0 pointer-events-none" style={{ opacity: 0.4 }}>
-        <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.07) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+        <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.09) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
       </div>
-      <div className="absolute top-[-10%] left-[50%] w-[600px] h-[600px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(42,125,156,0.15) 0%, transparent 65%)', transform: 'translateX(-50%)' }} />
-      <div className="absolute bottom-[-15%] right-[-5%] w-[400px] h-[400px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(125,211,252,0.06) 0%, transparent 65%)' }} />
+      <div className="absolute top-[-10%] left-[50%] w-[600px] h-[600px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(125,211,252,0.22) 0%, transparent 65%)', transform: 'translateX(-50%)' }} />
+      <div className="absolute bottom-[-15%] right-[-5%] w-[400px] h-[400px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(125,211,252,0.1) 0%, transparent 65%)' }} />
 
       <div className="relative z-10 max-w-6xl mx-auto text-center">
         <motion.div variants={up} initial="hidden" animate="show" custom={0}
           className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full mb-8"
-          style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
-          <Sparkles size={14} style={{ color: '#7dd3fc' }} />
-          <span className="text-white/80 text-sm font-semibold tracking-wide">Offre Professionnelle</span>
+          style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)' }}>
+          <Sparkles size={14} style={{ color: '#bae6fd' }} />
+          <span className="text-white text-sm font-semibold tracking-wide">Offre Professionnelle</span>
         </motion.div>
 
         <motion.h1 variants={up} initial="hidden" animate="show" custom={1}
           className="text-[clamp(28px,5vw,56px)] font-black leading-[1.08] tracking-[-0.035em] text-white mb-7">
           L'analyse immobilière qui fait la différence{' '}
           <span className="relative inline-block whitespace-nowrap">
-            <span style={{ color: '#7dd3fc' }}>pour les pros.</span>
+            <span style={{ color: '#bae6fd' }}>pour les pros.</span>
             <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }}
               transition={{ delay: 1.0, duration: 1.6, ease: [0.22, 1, 0.36, 1] }}
               className="absolute -bottom-2 left-0 right-0 h-[3px] md:h-[4px] rounded-full origin-left block"
-              style={{ background: 'rgba(125,211,252,0.35)' }} />
+              style={{ background: 'rgba(186,230,253,0.55)' }} />
           </span>
         </motion.h1>
 
         <motion.p variants={up} initial="hidden" animate="show" custom={2}
-          className="text-base md:text-xl text-white/55 leading-relaxed max-w-5xl mx-auto mb-10">
+          className="text-base md:text-xl text-white/85 leading-relaxed max-w-5xl mx-auto mb-12 font-medium">
           Agents immobiliers, investisseurs, marchands de bien, notaires — intégrez un outil d'analyse documentaire intelligent à votre activité. Score /20, risques chiffrés, rapport en quelques minutes*.
         </motion.p>
 
-        {/* 3 profils en cartes */}
+        {/* 4 cartes profils — beaucoup plus visibles et avec flottement subtil */}
         <motion.div variants={up} initial="hidden" animate="show" custom={2.5}
-          className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 max-w-4xl mx-auto mb-10">
+          className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 max-w-5xl mx-auto mb-12">
           {[
-            { emoji: '🏢', label: 'Agents immobiliers', desc: 'Rassurez vos acquéreurs' },
-            { emoji: '📈', label: 'Investisseurs', desc: 'Comparez vos opportunités' },
-            { emoji: '🔑', label: 'Marchands de bien', desc: 'Sécurisez vos opérations' },
-            { emoji: '⚖️', label: 'Notaires', desc: 'Accélérez vos dossiers' },
+            { emoji: '🏢', label: 'Agent / Mandataire', desc: 'Agence, indépendant, négociateur' },
+            { emoji: '📈', label: 'Investisseur', desc: 'Locatif, patrimoine, rendement' },
+            { emoji: '🔑', label: 'Marchand de bien', desc: 'Achat-revente, division, marge' },
+            { emoji: '⚖️', label: 'Notaire', desc: 'Étude, clerc, négociateur' },
           ].map((p, i) => (
-            <button key={i} className="rounded-2xl px-5 py-4 text-center cursor-pointer transition-all duration-200 hover:scale-[1.03]"
-              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+            <motion.button
+              key={i}
+              animate={_lowPerf ? {} : { y: [0, -4, 0] }}
+              transition={_lowPerf ? {} : { duration: 4, repeat: Infinity, delay: i * 0.4, ease: 'easeInOut' }}
+              className="rounded-2xl px-4 py-5 md:py-6 text-center cursor-pointer transition-all duration-300 hover:scale-[1.04] hover:shadow-2xl group"
+              style={{ background: 'rgba(255,255,255,0.13)', border: '1px solid rgba(255,255,255,0.22)', backdropFilter: 'blur(10px)' }}
               onClick={() => { setActiveProfileIdx(i); setTimeout(() => { document.getElementById('profils')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50); }}>
-              <span className="text-2xl block mb-2">{p.emoji}</span>
-              <div className="text-sm font-bold text-white mb-1">{p.label}</div>
-              <div className="text-xs text-white/40">{p.desc}</div>
-            </button>
+              <span className="text-4xl md:text-5xl block mb-3 transition-transform duration-300 group-hover:scale-110">{p.emoji}</span>
+              <div className="text-sm md:text-[15px] font-bold text-white mb-1.5 leading-tight">{p.label}</div>
+              <div className="text-xs text-white/75 leading-snug">{p.desc}</div>
+            </motion.button>
           ))}
         </motion.div>
 
         <motion.div variants={up} initial="hidden" animate="show" custom={3}
-          className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
+          className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
           <Link to="/rejoindre"
-            className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-base font-bold shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all duration-200"
+            className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-base font-bold shadow-xl hover:-translate-y-0.5 hover:shadow-2xl transition-all duration-200"
             style={{ background: '#fff', color: '#0f2d3d' }}>
             Rejoindre Verimo Pro <ArrowRight size={16} />
           </Link>
           <a href="#profils"
-            className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-2xl text-base font-semibold transition-all duration-200 hover:bg-white/[0.08]"
-            style={{ color: '#fff', border: '1px solid rgba(255,255,255,0.18)' }}>
+            className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-2xl text-base font-semibold transition-all duration-200 hover:bg-white/[0.12]"
+            style={{ color: '#fff', border: '1.5px solid rgba(255,255,255,0.35)' }}>
             Voir les solutions métier
           </a>
         </motion.div>
 
-        <motion.p variants={up} initial="hidden" animate="show" custom={4}
-          className="text-sm text-white/30 font-medium">
-          Sans engagement · Réponse sous 24h
-        </motion.p>
+        {/* Pills "Sans engagement" et "Réponse sous 24h" - mis en avant */}
+        <motion.div variants={up} initial="hidden" animate="show" custom={4}
+          className="flex flex-wrap items-center justify-center gap-2.5">
+          <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white"
+            style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', backdropFilter: 'blur(8px)' }}>
+            <BadgeCheck size={14} style={{ color: '#bae6fd' }} />
+            Sans engagement
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white"
+            style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', backdropFilter: 'blur(8px)' }}>
+            <Clock size={14} style={{ color: '#bae6fd' }} />
+            Réponse sous 24h
+          </span>
+        </motion.div>
       </div>
     </section>
   );
@@ -323,17 +337,26 @@ function ProfilesSection({ activeIdx, setActiveIdx }: { activeIdx: number; setAc
                   <div className="grid grid-cols-3 gap-3 mb-8">
                     {active.stats.map((s, i) => (
                       <motion.div key={i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.08 + 0.15 }}
-                        className="text-center rounded-2xl py-4 px-3 bg-white shadow-sm" style={{ border: `1px solid ${active.color}12` }}>
-                        <div className="text-xl md:text-2xl font-black mb-0.5" style={{ color: active.color }}>{s.value}</div>
-                        <div className="text-[10px] text-slate-400 font-semibold">{s.label}</div>
+                        className="text-center rounded-2xl py-5 px-3 bg-white shadow-md" style={{ border: `1.5px solid ${active.color}22` }}>
+                        <div className="text-2xl md:text-3xl lg:text-4xl font-black mb-1" style={{ color: active.color }}>{s.value}</div>
+                        <div className="text-[11px] md:text-xs text-slate-600 font-bold uppercase tracking-wider">{s.label}</div>
                       </motion.div>
                     ))}
                   </div>
-                  <Link to={`/rejoindre?type=${active.id === 'investor' ? 'investisseur' : active.id === 'marchand' ? 'marchand' : active.id}`}
-                    className="inline-flex self-start items-center gap-2 px-7 py-3.5 rounded-xl text-sm font-bold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
-                    style={{ background: active.color, color: '#fff' }}>
-                    Rejoindre Verimo Pro <ArrowRight size={15} />
-                  </Link>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Link to={`/rejoindre?type=${active.id === 'investor' ? 'investisseur' : active.id === 'marchand' ? 'marchand' : active.id}`}
+                      className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-sm font-bold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+                      style={{ background: active.color, color: '#fff' }}>
+                      Rejoindre Verimo Pro <ArrowRight size={15} />
+                    </Link>
+                    {active.id === 'agent' && (
+                      <Link to="/pro/mandataires"
+                        className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-sm font-bold transition-all duration-200 hover:-translate-y-0.5"
+                        style={{ background: '#fff', color: active.color, border: `1.5px solid ${active.color}` }}>
+                        En savoir plus <ArrowRight size={15} />
+                      </Link>
+                    )}
+                  </div>
                 </div>
                 {/* Droite */}
                 <div className="p-8 md:p-10 lg:p-12 bg-white flex flex-col justify-center">
@@ -408,45 +431,7 @@ function HowItWorksProSection() {
 }
 
 
-/* ═══ TÉMOIGNAGES ════════════════════════════════════════════ */
-function TestimonialsSection() {
-  const testimonials = [
-    { quote: 'Verimo a changé notre façon de préparer les dossiers acquéreurs. On gagne un temps fou et nos clients sont rassurés dès la première visite.', name: 'Sophie M.', role: 'Directrice d\'agence', city: 'Lyon', type: '🏢 Agent' },
-    { quote: 'J\'analyse 8 à 10 biens par mois. Avant, je passais 2h par dossier. Avec Verimo, c\'est 30 secondes et je ne rate rien.', name: 'Thomas R.', role: 'Investisseur', city: 'Paris', type: '📈 Investisseur' },
-    { quote: 'Sur mes opérations de division, Verimo m\'a évité deux mauvaises surprises : une interdiction de diviser dans le RCP et des travaux votés non réalisés. Indispensable pour sécuriser mes marges.', name: 'Karim B.', role: 'Marchand de bien', city: 'Marseille', type: '🔑 Marchand' },
-    { quote: 'Un excellent complément à notre analyse. Le rapport synthétise les PV d\'AG de manière remarquable. Mes clercs adorent.', name: 'Maître L.', role: 'Notaire associé', city: 'Bordeaux', type: '⚖️ Notaire' },
-  ];
-  return (
-    <section className="py-20 md:py-28 px-4 md:px-6 bg-white">
-      <div className="max-w-6xl mx-auto">
-        <Reveal className="text-center mb-14">
-          <p className="text-[#2a7d9c] text-xs font-bold uppercase tracking-[0.22em] mb-4">Témoignages</p>
-          <h2 className="text-[clamp(26px,4vw,44px)] font-black tracking-[-0.03em] leading-[1.1] text-[#0f172a]">
-            Ils font confiance à{' '}<span className="relative inline-block"><span className="text-[#2a7d9c]">Verimo.</span><AccentUnderline /></span>
-          </h2>
-        </Reveal>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {testimonials.map((t, i) => (
-            <Reveal key={i} delay={i}>
-              <div className="relative bg-[#f8fafc] rounded-2xl p-7 border border-slate-100 h-full flex flex-col">
-                <div className="inline-flex self-start items-center px-3 py-1 rounded-full bg-white border border-slate-100 text-xs font-semibold text-slate-500 mb-5">{t.type}</div>
-                <p className="text-[15px] text-[#0f172a] leading-relaxed flex-1 mb-6">« {t.quote} »</p>
-                <div className="flex items-center gap-3 pt-5" style={{ borderTop: '1px solid #f1f5f9' }}>
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' }}>{t.name.charAt(0)}</div>
-                  <div>
-                    <div className="text-sm font-bold text-[#0f172a]">{t.name}</div>
-                    <div className="text-xs text-slate-400">{t.role} · {t.city}</div>
-                  </div>
-                </div>
-                <div className="flex gap-0.5 mt-4">{[...Array(5)].map((_, j) => (<Star key={j} size={12} fill="#f0a500" stroke="#f0a500" />))}</div>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
+/* ═══ TÉMOIGNAGES (retirés — pas de vrais clients pros encore) ═══ */
 
 
 /* ═══ SÉCURITÉ ═══════════════════════════════════════════════ */
