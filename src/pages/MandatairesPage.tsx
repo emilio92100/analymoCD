@@ -1023,11 +1023,9 @@ export default function MandatairesPage() {
         </div>
       </section>
 
-      <section style={{ position: 'relative' as const, padding: '100px 24px', background: 'linear-gradient(165deg, #1d5e7a 0%, #2a7d9c 50%, #1d5e7a 100%)', overflow: 'hidden' }}>
+      <section style={{ position: 'relative' as const, padding: '100px 24px', background: 'linear-gradient(170deg, #0a1f2d 0%, #0f2d3d 35%, #1a4a5e 70%, #2a7d9c 100%)', overflow: 'hidden' }}>
         {/* Léger fondu en haut pour adoucir l'entrée depuis le clair */}
-        <div style={{ position: 'absolute' as const, top: 0, left: 0, right: 0, height: 60, background: 'linear-gradient(180deg, rgba(238,243,246,0.18) 0%, transparent 100%)', pointerEvents: 'none' as const }} />
-        {/* Halo intérieur pour la richesse visuelle */}
-        <div style={{ position: 'absolute' as const, inset: 0, background: 'radial-gradient(ellipse at center, rgba(125,211,252,0.18) 0%, transparent 60%)', pointerEvents: 'none' as const }} />
+        <div style={{ position: 'absolute' as const, top: 0, left: 0, right: 0, height: 60, background: 'linear-gradient(180deg, rgba(238,243,246,0.12) 0%, transparent 100%)', pointerEvents: 'none' as const }} />
         <Confetti items={[
           { top: '15%', left: '8%', size: 8, color: VERIMO_CONFETTI_COLORS.orange, shape: 'circle' },
           { top: '28%', right: '10%', size: 10, color: VERIMO_CONFETTI_COLORS.green, shape: 'square', delay: 0.5 },
@@ -1044,7 +1042,17 @@ export default function MandatairesPage() {
               <Eye size={12} /> PRÊT À PASSER À L'ACTION ?
             </div>
             <h2 style={{ fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 800, lineHeight: 1.1, color: '#fff', margin: '0 0 14px', letterSpacing: '-0.02em' }}>
-              Devenez l'agent qu'on recommande.
+              Devenez l'agent qu'on{' '}
+              <span style={{ position: 'relative' as const, display: 'inline-block', whiteSpace: 'nowrap' as const }}>
+                <span style={{ color: '#7dd3fc', position: 'relative' as const, zIndex: 1 }}>recommande</span>
+                <motion.span
+                  initial={{ scaleX: 0 }}
+                  whileInView={{ scaleX: 1 }}
+                  viewport={{ once: true, margin: '-80px' }}
+                  transition={{ duration: 2.5, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  style={{ position: 'absolute' as const, bottom: -2, left: 0, right: 0, height: 5, background: 'rgba(125,211,252,0.4)', borderRadius: 99, transformOrigin: 'left', display: 'block' }}
+                />
+              </span>.
             </h2>
             <p style={{ fontSize: 'clamp(15px, 1.3vw, 17px)', color: 'rgba(255,255,255,0.85)', margin: '0 auto 28px', lineHeight: 1.6 }}>
               Démo personnalisée. Offre sur mesure. Réponse garantie sous 24 heures.
