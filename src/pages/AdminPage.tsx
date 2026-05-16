@@ -4657,6 +4657,7 @@ type ProClient = {
   pro_siret?: string; pro_company_address?: string; pro_postal_code?: string;
   pro_notes_admin?: string; pro_created_at?: string; pro_recommended_plan?: string;
   pro_onboarding_done?: boolean; credits_document?: number; credits_complete?: number;
+  cgv_pro_accepted_at?: string | null; cgv_pro_version?: string | null;
   suspended?: boolean; created_at: string;
 };
 type ProInvitation = { id: string; profile_id: string; email: string; token: string; sent_at?: string; accepted_at?: string; created_at: string };
@@ -5048,6 +5049,59 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                       : '⏳ Invitation créée, mail non encore envoyé'}
                 </div>
               </div>
+            )}
+          </div>
+
+          {/* CGV Pro — Trace du consentement */}
+          <div style={{
+            background: '#fff',
+            borderRadius: 16,
+            border: '1.5px solid #edf2f7',
+            padding: '14px 20px',
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            flexWrap: 'wrap' as const,
+          }}>
+            {selected.cgv_pro_accepted_at ? (
+              <>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  background: '#f0fdf4', border: '1px solid #bbf7d0',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                  <CheckCircle size={18} color="#16a34a" />
+                </div>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 2 }}>
+                    CGV Pro acceptées
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
+                    Version <span style={{ color: '#16a34a' }}>{selected.cgv_pro_version || '—'}</span>
+                    {' · '}
+                    <span style={{ color: '#475569', fontWeight: 500 }}>{fmtDateTime(selected.cgv_pro_accepted_at)}</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  background: '#fffbeb', border: '1px solid #fde68a',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                  <AlertTriangle size={18} color="#d97706" />
+                </div>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 2 }}>
+                    CGV Pro non acceptées
+                  </div>
+                  <div style={{ fontSize: 13, color: '#92400e', fontWeight: 500 }}>
+                    Le client devra accepter les CGV avant son prochain paiement.
+                  </div>
+                </div>
+              </>
             )}
           </div>
 
