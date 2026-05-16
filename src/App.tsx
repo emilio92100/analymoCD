@@ -295,7 +295,7 @@ export default function App() {
           <Route path="/pro" element={<PublicLayout><ProPage /></PublicLayout>} />
           <Route path="/pro/mandataires" element={<PublicLayout><MandatairesPage /></PublicLayout>} />
           <Route path="/contact-pro" element={<PublicLayout><ContactProPage /></PublicLayout>} />
-          <Route path="/rejoindre" element={<PublicLayout><RejoindrePage /></PublicLayout>} />
+          <Route path="/pro/rejoindre" element={<PublicLayout><RejoindrePage /></PublicLayout>} />
           <Route path="/guides" element={<PublicLayout><GuidesPage /></PublicLayout>} />
           <Route path="/guides/:slug" element={<PublicLayout><GuideArticlePage /></PublicLayout>} />
           <Route path="/connexion" element={<LoginPage />} />
