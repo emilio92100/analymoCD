@@ -3011,7 +3011,28 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
 
             return (
               <>
-                <SectionTitle emoji="🔨" text="Pour améliorer votre note DPE" tooltip="Recommandations de travaux issues du DPE pour améliorer la performance énergétique du logement." />
+                {/* Titre dynamique : "Pour passer de X à Y" si évolution dispo, sinon générique */}
+                {(() => {
+                  const evo = recos?.evolution_etiquette;
+                  const cDepart = evo?.actuelle?.classe;
+                  const cArrivee = evo?.apres_pack_1_et_2?.classe || evo?.apres_pack_1?.classe;
+                  if (hasPacks && cDepart && cArrivee && cDepart !== cArrivee) {
+                    return (
+                      <SectionTitle
+                        emoji="🎯"
+                        text={`Pour passer de ${cDepart} à ${cArrivee}`}
+                        tooltip="Recommandations de travaux issues du DPE pour améliorer la performance énergétique du logement."
+                      />
+                    );
+                  }
+                  return (
+                    <SectionTitle
+                      emoji="🔨"
+                      text="Pour améliorer votre note DPE"
+                      tooltip="Recommandations de travaux issues du DPE pour améliorer la performance énergétique du logement."
+                    />
+                  );
+                })()}
 
                 {hasPacks ? (
                   <>
@@ -3043,49 +3064,65 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
                       );
                     })()}
 
-                    {/* Pack 1 + Pack 2 */}
-                    {[
-                      { key: 'pack_1' as const, pack: recos!.pack_1, label: 'Pack 1 — Travaux essentiels', accent: '#2a7d9c', badgeBg: '#e0f2fe', badgeColor: '#0369a1', sub: 'Travaux prioritaires à engager en premier' },
-                      { key: 'pack_2' as const, pack: recos!.pack_2, label: 'Pack 2 — Travaux à envisager', accent: '#64748b', badgeBg: '#f1f5f9', badgeColor: '#475569', sub: 'Pour atteindre une performance optimale' },
-                    ].map(({ key, pack, label, accent, badgeBg, badgeColor, sub }) => {
-                      if (!pack || !pack.travaux || pack.travaux.length === 0) return null;
-                      const cout = fmtEuros(pack.cout_min, pack.cout_max);
-                      return (
-                        <div key={key} style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, padding: '14px 16px', marginBottom: 12 }}>
-                          {/* En-tête du pack */}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid #f1f5f9' }}>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <span style={{ display: 'inline-block', background: badgeBg, color: badgeColor, padding: '3px 9px', borderRadius: 6, fontSize: 11, fontWeight: 800, letterSpacing: '0.02em', marginBottom: 5 }}>{label}</span>
-                              <div style={{ fontSize: 12.5, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>{sub}</div>
-                            </div>
-                            {cout && (
-                              <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
-                                <div style={{ fontSize: 16, fontWeight: 800, color: accent }}>{cout}</div>
-                                <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Estimation</div>
-                              </div>
-                            )}
-                          </div>
+                    {/* Pack 1 + Pack 2 — sous-titres dynamiques selon le gain de classe */}
+                    {(() => {
+                      const evo = recos!.evolution_etiquette;
+                      const cActuelle = evo?.actuelle?.classe;
+                      const cApresP1 = evo?.apres_pack_1?.classe;
+                      const cApresP1P2 = evo?.apres_pack_1_et_2?.classe;
 
-                          {/* Liste des travaux */}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {pack.travaux.map((t, i) => (
-                              <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                                <div style={{ fontSize: 18, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>{POSTE_ICONS[t.poste ?? 'autre'] ?? '🔧'}</div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 2, textTransform: 'capitalize' as const }}>{(t.poste ?? 'autre').replace('_', ' ')}</div>
-                                  <div style={{ fontSize: 12.5, color: 'var(--color-text-secondary)', lineHeight: 1.55 }}>{t.description ?? '—'}</div>
-                                  {t.performance_cible && <div style={{ fontSize: 11.5, color: '#475569', marginTop: 3, fontStyle: 'italic' as const }}>Performance cible : {t.performance_cible}</div>}
-                                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-                                    {t.decision_copropriete && <span style={{ display: 'inline-block', background: '#fef3c7', color: '#92400e', padding: '2px 8px', borderRadius: 4, fontSize: 10.5, fontWeight: 600 }}>Décision copropriété</span>}
-                                    {t.autorisation_urbanisme && <span style={{ display: 'inline-block', background: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: 4, fontSize: 10.5, fontWeight: 600 }}>Autorisation d'urbanisme</span>}
+                      const subPack1 = cActuelle && cApresP1 && cActuelle !== cApresP1
+                        ? `Pour passer de ${cActuelle} à ${cApresP1}`
+                        : 'Travaux prioritaires à engager en premier';
+                      const subPack2 = cApresP1 && cApresP1P2 && cApresP1 !== cApresP1P2
+                        ? `Pour passer de ${cApresP1} à ${cApresP1P2}`
+                        : cActuelle && cApresP1P2 && cActuelle !== cApresP1P2
+                          ? `Pour passer de ${cActuelle} à ${cApresP1P2}`
+                          : 'Pour atteindre une performance optimale';
+
+                      return [
+                        { key: 'pack_1' as const, pack: recos!.pack_1, label: 'Pack 1 — Travaux essentiels', accent: '#2a7d9c', badgeBg: '#e0f2fe', badgeColor: '#0369a1', sub: subPack1 },
+                        { key: 'pack_2' as const, pack: recos!.pack_2, label: 'Pack 2 — Travaux à envisager', accent: '#64748b', badgeBg: '#f1f5f9', badgeColor: '#475569', sub: subPack2 },
+                      ].map(({ key, pack, label, accent, badgeBg, badgeColor, sub }) => {
+                        if (!pack || !pack.travaux || pack.travaux.length === 0) return null;
+                        const cout = fmtEuros(pack.cout_min, pack.cout_max);
+                        return (
+                          <div key={key} style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, padding: '14px 16px', marginBottom: 12 }}>
+                            {/* En-tête du pack */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid #f1f5f9' }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <span style={{ display: 'inline-block', background: badgeBg, color: badgeColor, padding: '3px 9px', borderRadius: 6, fontSize: 11, fontWeight: 800, letterSpacing: '0.02em', marginBottom: 5 }}>{label}</span>
+                                <div style={{ fontSize: 12.5, color: 'var(--color-text-secondary)', lineHeight: 1.5, fontWeight: 600 }}>{sub}</div>
+                              </div>
+                              {cout && (
+                                <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
+                                  <div style={{ fontSize: 10, color: 'var(--color-text-secondary)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, marginBottom: 2 }}>Montant estimé</div>
+                                  <div style={{ fontSize: 17, fontWeight: 800, color: accent }}>{cout}</div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Liste des travaux */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                              {pack.travaux.map((t, i) => (
+                                <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                                  <div style={{ fontSize: 18, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>{POSTE_ICONS[t.poste ?? 'autre'] ?? '🔧'}</div>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 2, textTransform: 'capitalize' as const }}>{(t.poste ?? 'autre').replace('_', ' ')}</div>
+                                    <div style={{ fontSize: 12.5, color: 'var(--color-text-secondary)', lineHeight: 1.55 }}>{t.description ?? '—'}</div>
+                                    {t.performance_cible && <div style={{ fontSize: 11.5, color: '#475569', marginTop: 3, fontStyle: 'italic' as const }}>Performance cible : {t.performance_cible}</div>}
+                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                                      {t.decision_copropriete && <span style={{ display: 'inline-block', background: '#fef3c7', color: '#92400e', padding: '2px 8px', borderRadius: 4, fontSize: 10.5, fontWeight: 600 }}>Décision copropriété</span>}
+                                      {t.autorisation_urbanisme && <span style={{ display: 'inline-block', background: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: 4, fontSize: 10.5, fontWeight: 600 }}>Autorisation d'urbanisme</span>}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
-                          </div>
+                              ))}
+                            </div>
                         </div>
                       );
-                    })}
+                    });
+                    })()}
 
                     {/* Footer informatif */}
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 12px', background: '#eff6ff', border: '1px solid #dbeafe', borderRadius: 10, marginTop: 4 }}>
