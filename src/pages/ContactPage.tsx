@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Clock, MapPin, Send, CheckCircle, Crown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useSEO } from '../hooks/useSEO';
+import { VerimoConfetti, VERIMO_CONFETTI_COLORS } from '../components/VerimoConfetti';
 
 const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
 const isLowPerf = () => isIOS() || (typeof window !== 'undefined' && window.innerWidth <= 768);
@@ -37,7 +38,26 @@ export default function ContactPage() {
   return (
     <main style={{ background: '#f8fafc', fontFamily: "'DM Sans', system-ui, sans-serif", paddingTop: 70 }}>
       {/* Hero */}
-      <section style={{ padding: '56px 28px 48px', background: 'linear-gradient(150deg,#eef7fb 0%,#e4f2f8 50%,#f8fafc 100%)', textAlign: 'center' }}>
+      <section style={{ padding: '56px 28px 48px', background: 'linear-gradient(150deg,#eef7fb 0%,#e4f2f8 50%,#f8fafc 100%)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+        {/* Confettis — desktop (5) + mobile allégé (3) */}
+        <div className="confetti-desktop" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+          <VerimoConfetti items={[
+            { top: '20%', left: '7%', size: 10, color: VERIMO_CONFETTI_COLORS.blue, shape: 'circle' },
+            { top: '30%', right: '8%', size: 12, color: VERIMO_CONFETTI_COLORS.green, shape: 'square', delay: 0.5 },
+            { top: '60%', left: '5%', size: 8, color: VERIMO_CONFETTI_COLORS.orange, shape: 'circle', delay: 1 },
+            { bottom: '20%', right: '10%', size: 10, color: VERIMO_CONFETTI_COLORS.red, shape: 'circle', delay: 0.8 },
+            { bottom: '30%', left: '12%', size: 12, color: VERIMO_CONFETTI_COLORS.green, shape: 'circle', delay: 1.3 },
+          ]} />
+        </div>
+        <div className="confetti-mobile" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+          <VerimoConfetti items={[
+            { top: '15%', left: '4%', size: 6, color: VERIMO_CONFETTI_COLORS.blue, shape: 'circle' },
+            { top: '50%', right: '4%', size: 7, color: VERIMO_CONFETTI_COLORS.green, shape: 'square', delay: 0.6 },
+            { bottom: '15%', left: '5%', size: 6, color: VERIMO_CONFETTI_COLORS.orange, shape: 'circle', delay: 1.1 },
+          ]} />
+        </div>
+
+        <div style={{ position: 'relative', zIndex: 2 }}>
         <motion.h1 initial={{ opacity: 0, y: isLowPerf() ? 6 : 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: isLowPerf() ? 0.18 : 0.4 }} style={{ fontSize: 'clamp(28px,4.5vw,50px)', fontWeight: 900, color: '#0f2d3d', marginBottom: 14, letterSpacing: '-0.025em' }}>
           On est là{' '}
           <span style={{ position: 'relative', display: 'inline-block', color: '#2a7d9c' }}>
@@ -49,6 +69,7 @@ export default function ContactPage() {
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: isLowPerf() ? 0.06 : 0.2 }} style={{ fontSize: 'clamp(15px, 2.2vw, 17px)', color: '#6b8a96', maxWidth: 700, margin: '0 auto', lineHeight: 1.6, padding: '0 8px' }}>
           Une question, une demande pro, ou simplement envie d'en savoir plus — écrivez-nous.
         </motion.p>
+        </div>
       </section>
 
       {/* Content */}
@@ -166,7 +187,7 @@ export default function ContactPage() {
           </AnimatePresence>
         </div>
       </section>
-      <style>{`@media(max-width:767px){.contact-g{grid-template-columns:1fr!important}}`}</style>
+      <style>{`@media(max-width:767px){.contact-g{grid-template-columns:1fr!important}} @media (max-width: 1023px) { .confetti-desktop { display: none !important; } } @media (min-width: 1024px) { .confetti-mobile { display: none !important; } }`}</style>
     </main>
   );
 }
