@@ -414,7 +414,7 @@ export default function MandatairesPage() {
               transition={{ duration: 0.5, delay: 0.4 }}
               style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const, justifyContent: 'center', marginBottom: 18 }}>
               <motion.a
-                href="/rejoindre"
+                href="/pro/rejoindre"
                 whileHover={{ y: -2, boxShadow: '0 14px 32px rgba(42,125,156,0.4)' }}
                 whileTap={{ scale: 0.98 }}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '13px 24px', borderRadius: 12, background: 'linear-gradient(135deg, #2a7d9c, #1d5e7a)', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 700, boxShadow: '0 10px 26px rgba(42,125,156,0.3)' }}>
@@ -659,7 +659,7 @@ export default function MandatairesPage() {
               Démo personnalisée. Offre sur mesure. Réponse garantie sous 24 heures.
             </p>
             <motion.a
-              href="/rejoindre"
+              href="/pro/rejoindre"
               whileHover={{ y: -2, boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}
               whileTap={{ scale: 0.98 }}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '15px 30px', borderRadius: 14, background: '#fff', color: '#0f2d3d', textDecoration: 'none', fontSize: 15, fontWeight: 800, boxShadow: '0 12px 30px rgba(0,0,0,0.25)' }}>
