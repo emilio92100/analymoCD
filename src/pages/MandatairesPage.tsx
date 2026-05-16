@@ -584,7 +584,7 @@ export default function MandatairesPage() {
           .cta-final h2, .cta-final p { white-space: nowrap; }
         }
       `}</style>
-      <section style={{ position: 'relative' as const, background: 'linear-gradient(165deg, #ffffff 0%, #f5f9fc 40%, #e8f3f8 70%, #f4f7fa 100%)', padding: '120px 24px 80px', overflow: 'hidden' }}>
+      <section style={{ position: 'relative' as const, background: 'linear-gradient(165deg, #ffffff 0%, #f5f9fc 40%, #e8f3f8 70%, #fafbfd 100%)', padding: '120px 24px 80px', overflow: 'hidden' }}>
         <div style={{ position: 'absolute' as const, top: '15%', left: '15%', width: 350, height: 350, borderRadius: '50%', background: 'radial-gradient(circle, rgba(125,211,252,0.22), transparent 65%)', pointerEvents: 'none' as const }} />
         <div style={{ position: 'absolute' as const, top: '25%', right: '12%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(186,230,253,0.28), transparent 65%)', pointerEvents: 'none' as const }} />
 
@@ -710,7 +710,7 @@ export default function MandatairesPage() {
         </div>
       </section>
 
-      <section style={{ padding: '60px 24px', background: 'linear-gradient(180deg, #f4f7fa 0%, #fff 100%)' }}>
+      <section style={{ padding: '60px 24px', background: '#fafbfd' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div className="stats-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
             {[
@@ -730,7 +730,7 @@ export default function MandatairesPage() {
         </div>
       </section>
 
-      <section style={{ padding: '80px 24px', background: 'linear-gradient(180deg, #fff 0%, #fafbfd 100%)' }}>
+      <section style={{ padding: '80px 24px', background: '#fafbfd' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div className="scenario-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 50, alignItems: 'center' }}>
             <Reveal>
@@ -774,7 +774,7 @@ export default function MandatairesPage() {
         </div>
       </section>
 
-      <section style={{ padding: '80px 24px', background: 'linear-gradient(180deg, #fafbfd 0%, #fff 100%)' }}>
+      <section style={{ padding: '80px 24px', background: '#fafbfd' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div className="scenario-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 50, alignItems: 'center' }}>
             <Reveal>
@@ -816,7 +816,7 @@ export default function MandatairesPage() {
         </div>
       </section>
 
-      <section style={{ padding: '80px 24px', background: 'linear-gradient(180deg, #fff 0%, #fafbfd 100%)' }}>
+      <section style={{ padding: '80px 24px', background: '#fafbfd' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div className="scenario-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 50, alignItems: 'center' }}>
             <Reveal>
@@ -864,7 +864,7 @@ export default function MandatairesPage() {
           Les 2 mockups (popup envoi côté pro + email reçu côté client) sont
           empilés verticalement dans la colonne visuelle pour montrer la séquence.
           ════════════════════════════════════════════ */}
-      <section style={{ padding: '80px 24px 40px', background: 'linear-gradient(180deg, #fafbfd 0%, #f4f7fa 100%)' }}>
+      <section style={{ padding: '80px 24px 40px', background: '#fafbfd' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div className="scenario-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 50, alignItems: 'center' }}>
             <Reveal>
@@ -930,7 +930,7 @@ export default function MandatairesPage() {
         </div>
       </section>
 
-      <section style={{ padding: '60px 24px 80px', background: 'linear-gradient(180deg, #f4f7fa 0%, #e8eef3 100%)' }}>
+      <section style={{ padding: '60px 24px 100px', background: 'linear-gradient(180deg, #fafbfd 0%, #fafbfd 60%, #eef3f6 100%)' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <Reveal>
             <div style={{ textAlign: 'center' as const, marginBottom: 36 }}>
@@ -1025,11 +1025,11 @@ export default function MandatairesPage() {
         </div>
       </section>
 
-      <section style={{ position: 'relative' as const, padding: '100px 24px', background: '#0a1f2d', overflow: 'hidden' }}>
-        {/* Halo qui adoucit le haut depuis le clair */}
-        <div style={{ position: 'absolute' as const, top: -1, left: 0, right: 0, height: 120, background: 'linear-gradient(180deg, rgba(232,238,243,1) 0%, rgba(232,238,243,0) 100%)', pointerEvents: 'none' as const, opacity: 0.04 }} />
-        {/* Dégradé interne sombre pour la richesse visuelle */}
-        <div style={{ position: 'absolute' as const, inset: 0, background: 'radial-gradient(ellipse at center, #1a4a5e 0%, #0a1f2d 70%)', pointerEvents: 'none' as const }} />
+      <section style={{ position: 'relative' as const, padding: '100px 24px', background: 'linear-gradient(165deg, #1d5e7a 0%, #2a7d9c 50%, #1d5e7a 100%)', overflow: 'hidden' }}>
+        {/* Léger fondu en haut pour adoucir l'entrée depuis le clair */}
+        <div style={{ position: 'absolute' as const, top: 0, left: 0, right: 0, height: 60, background: 'linear-gradient(180deg, rgba(238,243,246,0.18) 0%, transparent 100%)', pointerEvents: 'none' as const }} />
+        {/* Halo intérieur pour la richesse visuelle */}
+        <div style={{ position: 'absolute' as const, inset: 0, background: 'radial-gradient(ellipse at center, rgba(125,211,252,0.18) 0%, transparent 60%)', pointerEvents: 'none' as const }} />
         <Confetti items={[
           { top: '15%', left: '8%', size: 8, color: VERIMO_CONFETTI_COLORS.orange, shape: 'circle' },
           { top: '28%', right: '10%', size: 10, color: VERIMO_CONFETTI_COLORS.green, shape: 'square', delay: 0.5 },
