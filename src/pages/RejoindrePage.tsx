@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Building2, TrendingUp, Key, Scale, HelpCircle,
   User, Briefcase, Target, CheckCircle, ChevronLeft, ChevronRight,
   Mail, Phone, MapPin, Sparkles, Send,
+  Hash, Users, BarChart3, Loader2, AlertCircle,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -92,26 +93,30 @@ function PillSelect({ value, onChange, options }: { value: string; onChange: (v:
   );
 }
 
-/* Grid de pilules — pour listes longues (8+ options comme reseaux) */
-function GridSelect({ value, onChange, options, columns = 3 }: { value: string; onChange: (v: string) => void; options: string[]; columns?: number }) {
+/* Variante responsive de GridSelect — desktop 4 cols, mobile 2 cols (via classe reseaux-grid) */
+function GridSelectResponsive({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: 6 }}>
+    <div className="reseaux-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
       {options.map(o => {
         const active = value === o;
         return (
           <button key={o} type="button" onClick={() => onChange(active ? '' : o)}
             style={{
-              padding: '9px 12px',
+              padding: '10px 8px',
               borderRadius: 9,
               border: active ? '1.5px solid #2a7d9c' : '1.5px solid #edf2f7',
               background: active ? '#f0f7fb' : '#fff',
               color: active ? '#0c447c' : '#475569',
-              fontSize: 12,
+              fontSize: 11.5,
               fontWeight: active ? 700 : 500,
               fontFamily: 'inherit',
               cursor: 'pointer',
               transition: 'all 0.15s',
               textAlign: 'center',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              minHeight: 36,
             }}>
             {o}
           </button>
@@ -131,6 +136,193 @@ function isValidPhone(v: string): boolean {
   // Exactement 10 chiffres (espaces et tirets autorisés mais ignorés)
   const digits = v.replace(/\D/g, '');
   return digits.length === 10;
+}
+
+/* Bloc de section pour structurer visuellement l'étape 3 (Activité) */
+function SectionBlock({ icon, title, subtitle, children }: { icon: React.ReactNode; title: string; subtitle?: string; children: React.ReactNode }) {
+  return (
+    <div className="section-block" style={{
+      padding: '18px 20px',
+      borderRadius: 14,
+      background: '#fafbfc',
+      border: '1px solid #edf2f7',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+        <div style={{ width: 30, height: 30, borderRadius: 9, background: '#fff', border: '1px solid #e0eaf0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          {icon}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="section-block-title" style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.01em', lineHeight: 1.2 }}>{title}</div>
+          {subtitle && <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{subtitle}</div>}
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────
+   SiretLookup — Champ SIRET avec auto-vérif via API gouv
+   ─────────────────────────────────────────
+   Dès que 14 chiffres sont saisis → appel à recherche-entreprises.api.gouv.fr
+   Affiche une carte verte avec les infos officielles (nom, adresse, activité).
+   Si pas trouvé → message neutre, l'utilisateur peut continuer quand même.
+   API gratuite, sans clé, publique. */
+type SiretInfo = {
+  nom: string;
+  adresse: string;
+  activite: string;
+  active: boolean;
+};
+
+function SiretLookup({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  const [info, setInfo] = useState<SiretInfo | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Format affiché : "123 456 789 00012"
+  const formatSiret = (raw: string) => {
+    const digits = raw.replace(/\D/g, '').slice(0, 14);
+    return digits
+      .replace(/^(\d{3})/, '$1 ')
+      .replace(/^(\d{3}) (\d{3})/, '$1 $2 ')
+      .replace(/^(\d{3}) (\d{3}) (\d{3})/, '$1 $2 $3 ')
+      .trim();
+  };
+
+  const handleChange = (raw: string) => {
+    const formatted = formatSiret(raw);
+    onChange(formatted);
+
+    const digits = formatted.replace(/\D/g, '');
+
+    // Annule l'appel précédent si l'utilisateur retape
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+
+    // Reset l'état si on n'a pas encore les 14 chiffres
+    if (digits.length < 14) {
+      setInfo(null);
+      setNotFound(false);
+      setLoading(false);
+      return;
+    }
+
+    // 14 chiffres → on lance la recherche
+    setLoading(true);
+    setNotFound(false);
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+
+    fetch(`https://recherche-entreprises.api.gouv.fr/search?q=${digits}&page=1&per_page=1`, { signal: ctrl.signal })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => {
+        const result = data?.results?.[0];
+        if (!result) {
+          setInfo(null);
+          setNotFound(true);
+          setLoading(false);
+          return;
+        }
+        // Trouver l'établissement qui matche le SIRET (siège ou matching)
+        const matching = result.matching_etablissements?.find((e: any) => e.siret === digits) || result.siege;
+        setInfo({
+          nom: result.nom_complet || result.nom_raison_sociale || '',
+          adresse: matching?.adresse || result.siege?.adresse || '',
+          activite: result.activite_principale || matching?.activite_principale || '',
+          active: matching?.etat_administratif === 'A' || result.siege?.etat_administratif === 'A',
+        });
+        setNotFound(false);
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (err?.name === 'AbortError') return;
+        setInfo(null);
+        setNotFound(true);
+        setLoading(false);
+      });
+  };
+
+  return (
+    <div>
+      <div style={{ position: 'relative' }}>
+        <Hash size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+        <input
+          style={{ ...inputStyle, paddingLeft: 38, paddingRight: loading ? 42 : 16 }}
+          value={value}
+          onChange={e => handleChange(e.target.value)}
+          placeholder={placeholder || '123 456 789 00012'}
+          inputMode="numeric"
+          maxLength={17}
+        />
+        {loading && (
+          <Loader2 size={16} style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: '#2a7d9c', animation: 'spin 1s linear infinite' }} />
+        )}
+      </div>
+      <style>{`@keyframes spin { from { transform: translateY(-50%) rotate(0deg); } to { transform: translateY(-50%) rotate(360deg); } }`}</style>
+
+      {/* Carte résultat — entreprise trouvée */}
+      {info && (
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+          style={{
+            marginTop: 8,
+            padding: '12px 14px',
+            borderRadius: 10,
+            background: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            display: 'flex',
+            gap: 10,
+            alignItems: 'flex-start',
+          }}
+        >
+          <CheckCircle size={18} style={{ color: '#16a34a', flexShrink: 0, marginTop: 1 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a', marginBottom: 2 }}>
+              {info.nom}
+            </div>
+            {info.adresse && (
+              <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.45 }}>
+                {info.adresse}
+              </div>
+            )}
+            {info.activite && (
+              <div style={{ fontSize: 11, color: '#64748b', marginTop: 4, fontStyle: 'italic' }}>
+                {info.activite}
+                {!info.active && <span style={{ color: '#dc2626', fontWeight: 600, marginLeft: 6 }}>· Fermée</span>}
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Pas trouvé */}
+      {notFound && !loading && (
+        <div style={{
+          marginTop: 8,
+          padding: '10px 12px',
+          borderRadius: 10,
+          background: '#fffbeb',
+          border: '1px solid #fde68a',
+          display: 'flex',
+          gap: 8,
+          alignItems: 'center',
+        }}>
+          <AlertCircle size={15} style={{ color: '#d97706', flexShrink: 0 }} />
+          <div style={{ fontSize: 12, color: '#92400e' }}>
+            SIRET non trouvé dans l'annuaire officiel. Vous pouvez quand même envoyer votre demande.
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function RejoindrePage() {
@@ -357,6 +549,20 @@ export default function RejoindrePage() {
         <style>{`
           @media (max-width: 700px) {
             .profil-grid { grid-template-columns: 1fr !important; }
+            .form-content { padding: 22px 18px !important; }
+            .form-header { padding: 14px 18px 12px !important; }
+            .step2-row { grid-template-columns: 1fr !important; }
+            .step3-row { grid-template-columns: 1fr !important; }
+            .reseaux-grid { grid-template-columns: repeat(2, 1fr) !important; }
+            .step-h2 { font-size: 19px !important; }
+            .step-subtitle { font-size: 13px !important; }
+            .step-icon-wrap { width: 38px !important; height: 38px !important; }
+            .interets-grid { grid-template-columns: 1fr !important; }
+            .nav-row { padding: 0 !important; }
+            .nav-btn-back { padding: 12px 18px !important; font-size: 14px !important; }
+            .nav-btn-next { padding: 12px 22px !important; font-size: 14px !important; }
+            .section-block { padding: 14px !important; }
+            .section-block-title { font-size: 14px !important; }
           }
         `}</style>
 
@@ -407,7 +613,7 @@ export default function RejoindrePage() {
           style={{ background: '#fff', borderRadius: 20, border: '1px solid rgba(15, 45, 61, 0.06)', overflow: 'hidden', marginBottom: 14, boxShadow: '0 24px 64px rgba(15, 45, 61, 0.12), 0 4px 16px rgba(15, 45, 61, 0.04)' }}
         >
           {/* Header de la carte avec progress bar intégrée */}
-          <div style={{ padding: '18px 32px 16px', borderBottom: '0.5px solid #edf2f7', background: 'linear-gradient(180deg, #fafbfc 0%, #fff 100%)' }}>
+          <div className="form-header" style={{ padding: '18px 32px 16px', borderBottom: '0.5px solid #edf2f7', background: 'linear-gradient(180deg, #fafbfc 0%, #fff 100%)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 12, color: '#2a7d9c', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Étape {step} sur 4</span>
@@ -431,18 +637,19 @@ export default function RejoindrePage() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -30 }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="form-content"
               style={{ padding: '28px 32px' }}
             >
             {/* ========== ETAPE 1 — PROFIL ========== */}
             {step === 1 && (
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 11, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div className="step-icon-wrap" style={{ width: 44, height: 44, borderRadius: 11, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <Briefcase size={20} style={{ color: '#2a7d9c' }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: '0 0 4px', letterSpacing: '-0.01em' }}>Quel est votre profil ?</h2>
-                    <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>Choisissez votre activité pour adapter l'accompagnement</p>
+                    <h2 className="step-h2" style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: '0 0 4px', letterSpacing: '-0.01em' }}>Quel est votre profil ?</h2>
+                    <p className="step-subtitle" style={{ fontSize: 14, color: '#64748b', margin: 0 }}>Choisissez votre activité pour adapter l'accompagnement</p>
                   </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }} className="profil-grid">
@@ -505,31 +712,31 @@ export default function RejoindrePage() {
             {step === 2 && (
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 11, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div className="step-icon-wrap" style={{ width: 44, height: 44, borderRadius: 11, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <User size={20} style={{ color: '#2a7d9c' }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: '0 0 4px', letterSpacing: '-0.01em' }}>Vos coordonnées</h2>
-                    <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>Pour vous recontacter rapidement</p>
+                    <h2 className="step-h2" style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: '0 0 4px', letterSpacing: '-0.01em' }}>Vos coordonnées</h2>
+                    <p className="step-subtitle" style={{ fontSize: 14, color: '#64748b', margin: 0 }}>Pour vous recontacter rapidement</p>
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                <div className="step2-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                   <Field label="Prénom" required>
-                    <input style={inputStyle} value={prenom} onChange={e => setPrenom(e.target.value)} placeholder="Alexandre" />
+                    <input style={inputStyle} value={prenom} onChange={e => setPrenom(e.target.value)} placeholder="Votre prénom" />
                   </Field>
                   <Field label="Nom" required>
-                    <input style={inputStyle} value={nom} onChange={e => setNom(e.target.value)} placeholder="Dupont" />
+                    <input style={inputStyle} value={nom} onChange={e => setNom(e.target.value)} placeholder="Votre nom" />
                   </Field>
                 </div>
                 <div style={{ marginBottom: 14 }}>
                   <Field label="Email professionnel" required helper={email && !isValidEmail(email) ? "Format d'email invalide" : undefined}>
                     <div style={{ position: 'relative' }}>
                       <Mail size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: email && !isValidEmail(email) ? '#ef4444' : '#94a3b8', pointerEvents: 'none' }} />
-                      <input style={{ ...inputStyle, paddingLeft: 38, borderColor: email && !isValidEmail(email) ? '#fecaca' : '#edf2f7' }} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="alexandre@agence.fr" />
+                      <input style={{ ...inputStyle, paddingLeft: 38, borderColor: email && !isValidEmail(email) ? '#fecaca' : '#edf2f7' }} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="vous@exemple.fr" />
                     </div>
                   </Field>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: 14 }}>
+                <div className="step2-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: 14 }}>
                   <Field label="Téléphone" required helper={telephone && !isValidPhone(telephone) ? `${telephone.replace(/\D/g, '').length}/10 chiffres` : undefined}>
                     <div style={{ position: 'relative' }}>
                       <Phone size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: telephone && !isValidPhone(telephone) ? '#ef4444' : '#94a3b8', pointerEvents: 'none' }} />
@@ -539,7 +746,7 @@ export default function RejoindrePage() {
                   <Field label="Ville / Région">
                     <div style={{ position: 'relative' }}>
                       <MapPin size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
-                      <input style={{ ...inputStyle, paddingLeft: 38 }} value={ville} onChange={e => setVille(e.target.value)} placeholder="Boulogne-Billancourt" />
+                      <input style={{ ...inputStyle, paddingLeft: 38 }} value={ville} onChange={e => setVille(e.target.value)} placeholder="Votre ville" />
                     </div>
                   </Field>
                 </div>
@@ -550,102 +757,176 @@ export default function RejoindrePage() {
             {step === 3 && (
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 11, background: activeProfile?.bg || '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div className="step-icon-wrap" style={{ width: 44, height: 44, borderRadius: 11, background: activeProfile?.bg || '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     {activeProfile && <activeProfile.icon size={20} style={{ color: activeProfile.color }} />}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: '0 0 4px', letterSpacing: '-0.01em' }}>Votre activité</h2>
-                    <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>Tous ces champs sont optionnels</p>
+                    <h2 className="step-h2" style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: '0 0 4px', letterSpacing: '-0.01em' }}>Votre activité</h2>
+                    <p className="step-subtitle" style={{ fontSize: 14, color: '#64748b', margin: 0 }}>Tous ces champs sont optionnels</p>
                   </div>
                 </div>
 
                 {profileType === 'agent' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                      <Field label="Nom de votre agence" helper="Laissez vide si vous êtes indépendant">
-                        <input style={inputStyle} value={nomAgence} onChange={e => setNomAgence(e.target.value)} placeholder="Emilio Immo" />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {/* Bloc 1 — Identité professionnelle */}
+                    <SectionBlock
+                      icon={<Building2 size={15} style={{ color: '#2a7d9c' }} />}
+                      title="Identité professionnelle"
+                      subtitle="Votre agence et vos identifiants"
+                    >
+                      <div className="step3-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                        <Field label="Nom de votre agence" helper="Laissez vide si vous êtes indépendant">
+                          <input style={inputStyle} value={nomAgence} onChange={e => setNomAgence(e.target.value)} placeholder="Nom de votre agence" />
+                        </Field>
+                        <Field label="N° RSAC" helper="Si vous en avez un">
+                          <input style={inputStyle} value={rsac} onChange={e => setRsac(e.target.value)} placeholder="123 456 789" />
+                        </Field>
+                      </div>
+                      <Field label="SIRET" helper="Optionnel — accélère la validation de votre compte">
+                        <SiretLookup value={siret} onChange={setSiret} />
                       </Field>
-                      <Field label="N° RSAC" helper="Si vous en avez un">
-                        <input style={inputStyle} value={rsac} onChange={e => setRsac(e.target.value)} placeholder="123 456 789" />
+                    </SectionBlock>
+
+                    {/* Bloc 2 — Réseau et structure */}
+                    <SectionBlock
+                      icon={<Users size={15} style={{ color: '#2a7d9c' }} />}
+                      title="Réseau et structure"
+                      subtitle="Votre rattachement et la taille de votre équipe"
+                    >
+                      <Field label="Réseau d'appartenance">
+                        <GridSelectResponsive value={reseau} onChange={setReseau} options={reseaux} />
                       </Field>
-                    </div>
-                    <Field label="Réseau d'appartenance">
-                      <GridSelect value={reseau} onChange={setReseau} options={reseaux} columns={4} />
-                    </Field>
-                    <Field label="Taille de la structure">
-                      <PillSelect value={tailleAgence} onChange={setTailleAgence} options={taillesAgence} />
-                    </Field>
-                    <Field label="Volume de dossiers traités par mois">
-                      <PillSelect value={volume} onChange={setVolume} options={volumes} />
-                    </Field>
+                      <Field label="Taille de la structure">
+                        <PillSelect value={tailleAgence} onChange={setTailleAgence} options={taillesAgence} />
+                      </Field>
+                    </SectionBlock>
+
+                    {/* Bloc 3 — Activité */}
+                    <SectionBlock
+                      icon={<BarChart3 size={15} style={{ color: '#2a7d9c' }} />}
+                      title="Volume d'activité"
+                      subtitle="Combien de dossiers traitez-vous en moyenne"
+                    >
+                      <Field label="Volume de dossiers traités par mois">
+                        <PillSelect value={volume} onChange={setVolume} options={volumes} />
+                      </Field>
+                    </SectionBlock>
                   </div>
                 )}
 
                 {profileType === 'investisseur' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <SectionBlock
+                      icon={<Building2 size={15} style={{ color: '#7c3aed' }} />}
+                      title="Identité de votre société"
+                      subtitle="Si vous investissez en SCI ou en société"
+                    >
                       <Field label="Nom de votre société" helper="Si vous investissez en SCI ou en société">
-                        <input style={inputStyle} value={nomSociete} onChange={e => setNomSociete(e.target.value)} placeholder="SCI Patrimoine 75" />
+                        <input style={inputStyle} value={nomSociete} onChange={e => setNomSociete(e.target.value)} placeholder="Nom de votre société" />
                       </Field>
-                      <Field label="SIRET" helper="Si société">
-                        <input style={inputStyle} value={siret} onChange={e => setSiret(e.target.value)} placeholder="123 456 789 00012" />
+                      <Field label="SIRET" helper="Optionnel — accélère la validation de votre compte">
+                        <SiretLookup value={siret} onChange={setSiret} />
                       </Field>
-                    </div>
-                    <Field label="Type de biens visés">
-                      <input style={inputStyle} value={typeBien} onChange={e => setTypeBien(e.target.value)} placeholder="Appartement T2-T3 Paris" />
-                    </Field>
-                    <Field label="Volume d'acquisitions par an">
-                      <PillSelect value={volume} onChange={setVolume} options={volumes.map(v => v.replace('/ mois', '/ an'))} />
-                    </Field>
+                    </SectionBlock>
+
+                    <SectionBlock
+                      icon={<Target size={15} style={{ color: '#7c3aed' }} />}
+                      title="Stratégie d'investissement"
+                      subtitle="Vos cibles et votre rythme"
+                    >
+                      <Field label="Type de biens visés">
+                        <input style={inputStyle} value={typeBien} onChange={e => setTypeBien(e.target.value)} placeholder="Ex : appartement T2-T3 en région parisienne" />
+                      </Field>
+                      <Field label="Volume d'acquisitions par an">
+                        <PillSelect value={volume} onChange={setVolume} options={volumes.map(v => v.replace('/ mois', '/ an'))} />
+                      </Field>
+                    </SectionBlock>
                   </div>
                 )}
 
                 {profileType === 'marchand' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <SectionBlock
+                      icon={<Building2 size={15} style={{ color: '#d97706' }} />}
+                      title="Identité de votre société"
+                      subtitle="Vos coordonnées professionnelles"
+                    >
                       <Field label="Nom de votre société">
-                        <input style={inputStyle} value={nomSocieteMarchand} onChange={e => setNomSocieteMarchand(e.target.value)} placeholder="Marchand Immo Paris SAS" />
+                        <input style={inputStyle} value={nomSocieteMarchand} onChange={e => setNomSocieteMarchand(e.target.value)} placeholder="Nom de votre société" />
                       </Field>
-                      <Field label="SIRET">
-                        <input style={inputStyle} value={siretMarchand} onChange={e => setSiretMarchand(e.target.value)} placeholder="123 456 789 00012" />
+                      <Field label="SIRET" helper="Optionnel — accélère la validation de votre compte">
+                        <SiretLookup value={siretMarchand} onChange={setSiretMarchand} />
                       </Field>
-                    </div>
-                    <Field label="Zone géographique d'activité">
-                      <input style={inputStyle} value={zoneMarchand} onChange={e => setZoneMarchand(e.target.value)} placeholder="Île-de-France" />
-                    </Field>
-                    <Field label="Volume d'opérations par an">
-                      <PillSelect value={volume} onChange={setVolume} options={volumes.map(v => v.replace('/ mois', '/ an'))} />
-                    </Field>
+                    </SectionBlock>
+
+                    <SectionBlock
+                      icon={<MapPin size={15} style={{ color: '#d97706' }} />}
+                      title="Zone et volume"
+                      subtitle="Où et combien d'opérations menez-vous"
+                    >
+                      <Field label="Zone géographique d'activité">
+                        <input style={inputStyle} value={zoneMarchand} onChange={e => setZoneMarchand(e.target.value)} placeholder="Ex : Île-de-France" />
+                      </Field>
+                      <Field label="Volume d'opérations par an">
+                        <PillSelect value={volume} onChange={setVolume} options={volumes.map(v => v.replace('/ mois', '/ an'))} />
+                      </Field>
+                    </SectionBlock>
                   </div>
                 )}
 
                 {profileType === 'notaire' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                    <Field label="Nom de l'étude">
-                      <input style={inputStyle} value={nomEtude} onChange={e => setNomEtude(e.target.value)} placeholder="Étude Notariale Dupont & Associés" />
-                    </Field>
-                    <Field label="Votre fonction">
-                      <PillSelect value={fonction} onChange={setFonction} options={['Notaire', 'Notaire assistant', 'Clerc de notaire', 'Collaborateur', 'Autre']} />
-                    </Field>
-                    <Field label="Volume de transactions par mois">
-                      <PillSelect value={volume} onChange={setVolume} options={volumes} />
-                    </Field>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <SectionBlock
+                      icon={<Scale size={15} style={{ color: '#0f2d3d' }} />}
+                      title="Votre étude"
+                      subtitle="Identité et rattachement"
+                    >
+                      <Field label="Nom de l'étude">
+                        <input style={inputStyle} value={nomEtude} onChange={e => setNomEtude(e.target.value)} placeholder="Nom de votre étude" />
+                      </Field>
+                      <Field label="Votre fonction">
+                        <PillSelect value={fonction} onChange={setFonction} options={['Notaire', 'Notaire assistant', 'Clerc de notaire', 'Collaborateur', 'Autre']} />
+                      </Field>
+                    </SectionBlock>
+
+                    <SectionBlock
+                      icon={<BarChart3 size={15} style={{ color: '#0f2d3d' }} />}
+                      title="Volume d'activité"
+                      subtitle="Combien de transactions traitez-vous"
+                    >
+                      <Field label="Volume de transactions par mois">
+                        <PillSelect value={volume} onChange={setVolume} options={volumes} />
+                      </Field>
+                    </SectionBlock>
                   </div>
                 )}
 
                 {profileType === 'autre' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                      <Field label="Votre profession">
-                        <input style={inputStyle} value={profession} onChange={e => setProfession(e.target.value)} placeholder="Courtier, chasseur, expert..." />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <SectionBlock
+                      icon={<Briefcase size={15} style={{ color: '#64748b' }} />}
+                      title="Votre activité"
+                      subtitle="Décrivez votre profession et votre structure"
+                    >
+                      <div className="step3-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                        <Field label="Votre profession">
+                          <input style={inputStyle} value={profession} onChange={e => setProfession(e.target.value)} placeholder="Courtier, chasseur, expert..." />
+                        </Field>
+                        <Field label="Nom de votre structure">
+                          <input style={inputStyle} value={nomStructure} onChange={e => setNomStructure(e.target.value)} placeholder="Votre société ou activité" />
+                        </Field>
+                      </div>
+                    </SectionBlock>
+
+                    <SectionBlock
+                      icon={<BarChart3 size={15} style={{ color: '#64748b' }} />}
+                      title="Volume d'activité"
+                      subtitle="Combien de dossiers traitez-vous"
+                    >
+                      <Field label="Volume estimé par mois">
+                        <PillSelect value={volume} onChange={setVolume} options={volumes} />
                       </Field>
-                      <Field label="Nom de votre structure">
-                        <input style={inputStyle} value={nomStructure} onChange={e => setNomStructure(e.target.value)} placeholder="Votre société ou activité" />
-                      </Field>
-                    </div>
-                    <Field label="Volume estimé par mois">
-                      <PillSelect value={volume} onChange={setVolume} options={volumes} />
-                    </Field>
+                    </SectionBlock>
                   </div>
                 )}
               </div>
@@ -655,16 +936,16 @@ export default function RejoindrePage() {
             {step === 4 && (
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 11, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div className="step-icon-wrap" style={{ width: 44, height: 44, borderRadius: 11, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <Target size={20} style={{ color: '#2a7d9c' }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: '0 0 4px', letterSpacing: '-0.01em' }}>Vos besoins <span style={{ fontSize: 13, color: '#2a7d9c', fontWeight: 600, marginLeft: 6 }}>· Dernière étape</span></h2>
-                    <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>Sélectionnez tout ce qui vous intéresse</p>
+                    <h2 className="step-h2" style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: '0 0 4px', letterSpacing: '-0.01em' }}>Vos besoins <span style={{ fontSize: 13, color: '#2a7d9c', fontWeight: 600, marginLeft: 6 }}>· Dernière étape</span></h2>
+                    <p className="step-subtitle" style={{ fontSize: 14, color: '#64748b', margin: 0 }}>Sélectionnez tout ce qui vous intéresse</p>
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+                <div className="interets-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
                   {interetsList.map(item => {
                     const checked = interets.includes(item.id);
                     return (
@@ -714,14 +995,16 @@ export default function RejoindrePage() {
 
         {/* NAVIGATION ETAPES — uniquement à partir de l'étape 2 (étape 1 a son bouton intégré dans la grille) */}
         {step > 1 && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+        <div className="nav-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 18 }}>
           <button onClick={() => setStep(step - 1)}
+            className="nav-btn-back"
             style={{ padding: '14px 24px', borderRadius: 12, background: '#fff', color: '#64748b', fontSize: 15, fontWeight: 700, border: '1.5px solid #edf2f7', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
             <ChevronLeft size={17} /> Retour
           </button>
 
           {step < 4 ? (
             <button onClick={() => setStep(step + 1)} disabled={step === 2 ? !canContinue2 : false}
+              className="nav-btn-next"
               style={{
                 padding: '14px 30px',
                 borderRadius: 12,
@@ -742,6 +1025,7 @@ export default function RejoindrePage() {
             </button>
           ) : (
             <button onClick={handleSubmit} disabled={!canSubmit || sending}
+              className="nav-btn-next"
               style={{
                 padding: '14px 30px',
                 borderRadius: 12,
