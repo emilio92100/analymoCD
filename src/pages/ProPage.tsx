@@ -244,7 +244,7 @@ function HeroSection({ setActiveProfileIdx }: { setActiveProfileIdx: (i: number)
 
         <motion.div variants={up} initial="hidden" animate="show" custom={3}
           className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
-          <Link to="/rejoindre"
+          <Link to="/pro/rejoindre"
             className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl text-base font-bold shadow-xl hover:-translate-y-0.5 hover:shadow-2xl transition-all duration-200"
             style={{ background: '#fff', color: '#0f2d3d' }}>
             Rejoindre Verimo Pro <ArrowRight size={16} />
@@ -360,7 +360,7 @@ function ProfilesSection({ activeIdx, setActiveIdx }: { activeIdx: number; setAc
                     ))}
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3">
-                    <Link to={`/rejoindre?type=${active.id === 'investor' ? 'investisseur' : active.id === 'marchand' ? 'marchand' : active.id}`}
+                    <Link to={`/pro/rejoindre?type=${active.id === 'investor' ? 'investisseur' : active.id === 'marchand' ? 'marchand' : active.id}`}
                       className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-sm font-bold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
                       style={{ background: active.color, color: '#fff' }}>
                       Rejoindre Verimo Pro <ArrowRight size={15} />
@@ -583,7 +583,7 @@ function CtaFinalSection() {
         </Reveal>
         <Reveal delay={3}>
           <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
-            <Link to="/rejoindre"
+            <Link to="/pro/rejoindre"
               className="inline-flex items-center justify-center gap-2 px-9 py-4 rounded-2xl text-base font-bold shadow-xl hover:-translate-y-0.5 hover:shadow-2xl transition-all duration-200"
               style={{ background: '#fff', color: '#0f2d3d' }}>
               Rejoindre Verimo Pro <ArrowRight size={16} />
