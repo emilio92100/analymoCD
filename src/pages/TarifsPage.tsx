@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { ArrowRight, Check, X, Shield, Zap, FileText, Crown, Mail, GitCompare, ChevronDown } from 'lucide-react';
 import { useSEO } from '../hooks/useSEO';
+import { VerimoConfetti, VERIMO_CONFETTI_COLORS } from '../components/VerimoConfetti';
 
 const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
 const isLowPerf = () => isIOS() || (typeof window !== 'undefined' && window.innerWidth <= 768);
@@ -194,6 +195,25 @@ export default function TarifsPage() {
         <div style={{ position: 'absolute', top: -60, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.04) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: -30, left: '10%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.03) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(180deg, transparent 0%, #f4f7f9 100%)', pointerEvents: 'none', zIndex: 2 }} />
+
+        {/* Confettis — desktop (6) + mobile allégé (3) */}
+        <div className="confetti-desktop" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+          <VerimoConfetti items={[
+            { top: '18%', left: '6%', size: 10, color: VERIMO_CONFETTI_COLORS.blue, shape: 'circle' },
+            { top: '28%', right: '8%', size: 12, color: VERIMO_CONFETTI_COLORS.green, shape: 'square', delay: 0.5 },
+            { top: '60%', left: '5%', size: 8, color: VERIMO_CONFETTI_COLORS.orange, shape: 'circle', delay: 1 },
+            { top: '72%', right: '7%', size: 10, color: VERIMO_CONFETTI_COLORS.blue, shape: 'square', delay: 1.3 },
+            { bottom: '20%', left: '10%', size: 8, color: VERIMO_CONFETTI_COLORS.red, shape: 'circle', delay: 0.8 },
+            { bottom: '30%', right: '12%', size: 12, color: VERIMO_CONFETTI_COLORS.green, shape: 'circle', delay: 1.5 },
+          ]} />
+        </div>
+        <div className="confetti-mobile" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+          <VerimoConfetti items={[
+            { top: '12%', left: '4%', size: 6, color: VERIMO_CONFETTI_COLORS.blue, shape: 'circle' },
+            { top: '50%', right: '4%', size: 7, color: VERIMO_CONFETTI_COLORS.green, shape: 'square', delay: 0.6 },
+            { bottom: '15%', left: '5%', size: 6, color: VERIMO_CONFETTI_COLORS.orange, shape: 'circle', delay: 1.1 },
+          ]} />
+        </div>
 
         <div style={{ position: 'relative', zIndex: 1 }}>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
@@ -527,6 +547,8 @@ export default function TarifsPage() {
         @media (max-width: 520px) { .plans-grid { grid-template-columns: 1fr !important; } }
         @media (max-width: 640px) { .table-desktop { display: none !important; } .table-mobile { display: flex !important; } }
         @media (min-width: 641px) { .table-mobile { display: none !important; } .table-desktop { display: block !important; } }
+        @media (max-width: 1023px) { .confetti-desktop { display: none !important; } }
+        @media (min-width: 1024px) { .confetti-mobile { display: none !important; } }
       `}</style>
     </main>
   );
