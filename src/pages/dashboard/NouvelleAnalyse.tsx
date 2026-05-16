@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, ShieldCheck, Upload, CheckCircle, AlertTriangle, ChevronLeft, Sparkles, ArrowRight, Lock, Download, Home, Building2, HelpCircle } from 'lucide-react';
+import { FileText, ShieldCheck, Upload, CheckCircle, AlertTriangle, ChevronLeft, Sparkles, ArrowRight, Lock, Download, Home, Building2, HelpCircle, RefreshCw } from 'lucide-react';
 import { lancerAnalyseEdge, type AnalyseProgress } from '../../lib/analyse-client';
 import DocumentRenderer from './DocumentRenderer';
 import { createAnalyse, markAnalyseFailed, type TypeBien } from '../../lib/analyses';
@@ -204,7 +204,7 @@ export default function NouvelleAnalyse() {
   const [analyseStartTime, setAnalyseStartTime] = useState<number | null>(null);
 
   const plans = {
-    document: { label: "Analyse d'un document", price: '4,90€', max: 1, desc: "Un seul fichier PDF — PV d'AG, règlement, diagnostic, DPE, appel de charges, état daté, compromis…", creditsKey: 'document' as keyof Credits },
+    document: { label: "Analyse d'un document", price: '4,90€', max: 1, desc: "Un seul fichier PDF — PV d'AG, règlement, diagnostic, appel de charges.", creditsKey: 'document' as keyof Credits },
     complete: { label: "Analyse complète d'un logement", price: '19,90€', max: 15, desc: 'Tous les documents du bien — score /20, risques, recommandation Verimo.', creditsKey: 'complete' as keyof Credits },
   };
   const plan = type ? plans[type] : null;
@@ -664,7 +664,7 @@ export default function NouvelleAnalyse() {
         }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 16, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
 
       {/* Bandeau dossier sélectionné (pros uniquement) */}
-      {userRole === 'pro' && selectedFolder && <FolderBanner folder={selectedFolder} />}
+      {userRole === 'pro' && selectedFolder && <FolderBanner folder={selectedFolder} analysisType={type === 'complete' ? 'complete' : 'simple'} onChange={() => setStep('folder_select')} />}
 
       <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 8 }}>Quel type de bien analysez-vous ?</h1>
       <p style={{ fontSize: 14, color: '#64748b', marginBottom: 28, lineHeight: 1.6 }}>Verimo adapte son analyse aux spécificités de votre bien — une copropriété et une maison n'ont pas les mêmes risques.</p>
@@ -744,7 +744,7 @@ export default function NouvelleAnalyse() {
       <button onClick={() => { setStep('type_bien'); setProfil(null); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 16, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
 
       {/* Bandeau dossier sélectionné (pros uniquement) */}
-      {userRole === 'pro' && selectedFolder && <FolderBanner folder={selectedFolder} />}
+      {userRole === 'pro' && selectedFolder && <FolderBanner folder={selectedFolder} analysisType={type === 'complete' ? 'complete' : 'simple'} onChange={() => setStep('folder_select')} />}
 
       <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 8 }}>Ce bien, c'est pour vous ?</h1>
       <p style={{ fontSize: 14, color: '#64748b', marginBottom: 32, lineHeight: 1.6 }}>Votre profil d'achat influence la notation du bien — notamment sur le DPE et les charges.</p>
@@ -787,7 +787,7 @@ export default function NouvelleAnalyse() {
       <button onClick={() => { setStep('profil'); resetUpload(); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 16, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
 
       {/* Bandeau dossier sélectionné (pros uniquement) */}
-      {userRole === 'pro' && selectedFolder && <FolderBanner folder={selectedFolder} />}
+      {userRole === 'pro' && selectedFolder && <FolderBanner folder={selectedFolder} analysisType={type === 'complete' ? 'complete' : 'simple'} onChange={() => setStep('folder_select')} />}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24, padding: '16px 18px', background: '#fff', borderRadius: 14, border: '1px solid #edf2f7' }}>
         <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -1202,28 +1202,71 @@ export default function NouvelleAnalyse() {
    COMPOSANT : Bandeau "Pour le dossier ..."
    (affiché à toutes les étapes après sélection)
 ══════════════════════════════════════════ */
-function FolderBanner({ folder }: { folder: { id: string; name: string; property_address?: string | null; property_city?: string | null } }) {
+function FolderBanner({ folder, analysisType, onChange }: { folder: { id: string; name: string; property_address?: string | null; property_city?: string | null }; analysisType?: 'simple' | 'complete'; onChange?: () => void }) {
   const subtitle = [folder.property_address, folder.property_city].filter(Boolean).join(', ');
+  const typeLabel = analysisType === 'complete' ? 'complète' : 'simple';
   return (
     <motion.div
       initial={{ opacity: 0, y: -6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
+      transition={{ duration: 0.22, ease: 'easeOut' }}
       style={{
-        display: 'flex', alignItems: 'center', gap: 12,
-        padding: '11px 16px',
-        marginBottom: 18,
-        borderRadius: 12,
-        background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)',
-        border: '1px solid #d0e8f0',
+        position: 'relative',
+        padding: '18px 20px',
+        marginBottom: 20,
+        borderRadius: 16,
+        background: 'linear-gradient(135deg, #ffffff 0%, #f0f7fb 100%)',
+        border: '1.5px solid #c7dde8',
+        boxShadow: '0 2px 12px rgba(42,125,156,0.06)',
       }}>
-      <div style={{ width: 32, height: 32, borderRadius: 9, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(42,125,156,0.12)' }}>
-        <Building2 size={15} style={{ color: '#2a7d9c' }} />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.04em', textTransform: 'uppercase' as const }}>Analyse pour le dossier</div>
-        <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f2d3d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{folder.name}</div>
-        {subtitle && <div style={{ fontSize: 11.5, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{subtitle}</div>}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+        {/* Icône */}
+        <div style={{
+          width: 46, height: 46, borderRadius: 12,
+          background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+          boxShadow: '0 4px 12px rgba(42,125,156,0.25)',
+        }}>
+          <Building2 size={20} style={{ color: '#fff' }} />
+        </div>
+
+        {/* Texte */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.08em', textTransform: 'uppercase' as const, background: '#fff', padding: '3px 8px', borderRadius: 6, border: '1px solid #d0e8f0' }}>
+              Analyse {typeLabel}
+            </span>
+            <span style={{ fontSize: 11.5, color: '#64748b', fontWeight: 500 }}>
+              sera ajoutée au dossier
+            </span>
+          </div>
+          <div style={{ fontSize: 15.5, fontWeight: 800, color: '#0f2d3d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, marginBottom: subtitle ? 2 : 0 }}>
+            {folder.name}
+          </div>
+          {subtitle && (
+            <div style={{ fontSize: 12, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, display: 'flex', alignItems: 'center', gap: 5 }}>
+              📍 {subtitle}
+            </div>
+          )}
+        </div>
+
+        {/* Bouton Changer */}
+        {onChange && (
+          <button onClick={onChange}
+            style={{
+              padding: '7px 12px', borderRadius: 9,
+              background: '#fff', border: '1.5px solid #d0e8f0',
+              color: '#2a7d9c', fontSize: 11.5, fontWeight: 700,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+              fontFamily: 'inherit', flexShrink: 0,
+              transition: 'all 0.15s',
+            }}
+            onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.background = '#f0f7fb'; el.style.borderColor = '#2a7d9c'; }}
+            onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.background = '#fff'; el.style.borderColor = '#d0e8f0'; }}>
+            <RefreshCw size={11} /> Changer
+          </button>
+        )}
       </div>
     </motion.div>
   );
@@ -1258,96 +1301,141 @@ function FolderSelectStep({ folders, loading, type, onBack, onSelect, onCreate, 
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <button onClick={onBack} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 24, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
+      <button onClick={onBack} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 20, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
 
-      <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 8 }}>
-        Pour quel dossier ?
+      {/* Badge contextuel */}
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 11px', borderRadius: 100, background: '#f0f7fb', border: '1px solid #d0e8f0', marginBottom: 14 }}>
+        <Building2 size={11} style={{ color: '#2a7d9c' }} />
+        <span style={{ fontSize: 11, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.04em', textTransform: 'uppercase' as const }}>
+          Analyse {type === 'complete' ? 'complète' : 'simple'} · Étape 1
+        </span>
+      </div>
+
+      <h1 style={{ fontSize: 'clamp(22px,3vw,28px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 10 }}>
+        Pour quel bien lancez-vous cette analyse ?
       </h1>
-      <p style={{ fontSize: 14, color: '#64748b', marginBottom: 24, lineHeight: 1.6 }}>
-        Choisissez le dossier dans lequel cette analyse {type === 'complete' ? 'complète' : 'simple'} sera classée. Vous pourrez la retrouver à tout moment dans la fiche du dossier.
+      <p style={{ fontSize: 14, color: '#64748b', marginBottom: 28, lineHeight: 1.6, maxWidth: 720 }}>
+        Sélectionnez un dossier existant pour y ajouter cette analyse, ou créez-en un nouveau pour un bien que vous n'avez pas encore enregistré.
       </p>
 
-      {/* Bouton créer un nouveau dossier */}
-      <button onClick={onCreate}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 12, width: '100%',
-          padding: '16px 20px', marginBottom: 18,
-          borderRadius: 14,
-          background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)',
-          border: '1.5px dashed #2a7d9c',
-          cursor: 'pointer', textAlign: 'left' as const,
-          transition: 'all 0.15s',
-        }}
-        onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'linear-gradient(135deg, #e8f4f8, #d0e8f0)'; el.style.transform = 'translateY(-1px)'; }}
-        onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'linear-gradient(135deg, #f0f7fb, #e8f4f8)'; el.style.transform = 'translateY(0)'; }}>
-        <div style={{ width: 38, height: 38, borderRadius: 10, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(42,125,156,0.15)' }}>
-          <Sparkles size={17} style={{ color: '#2a7d9c' }} />
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: '#0f2d3d', marginBottom: 2 }}>+ Créer un nouveau dossier</div>
-          <div style={{ fontSize: 12, color: '#64748b' }}>Pour un nouveau bien — vous reprendrez cette analyse juste après</div>
-        </div>
-        <ArrowRight size={16} style={{ color: '#2a7d9c', flexShrink: 0 }} />
-      </button>
+      {/* État vide : aucun dossier */}
+      {!loading && folders.length === 0 && (
+        <>
+          <button onClick={onCreate}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+              padding: '20px 22px',
+              borderRadius: 16,
+              background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)',
+              border: '2px dashed #2a7d9c',
+              cursor: 'pointer', textAlign: 'left' as const,
+              transition: 'all 0.18s',
+            }}
+            onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'translateY(-2px)'; el.style.boxShadow = '0 8px 24px rgba(42,125,156,0.12)'; }}
+            onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'translateY(0)'; el.style.boxShadow = 'none'; }}>
+            <div style={{ width: 46, height: 46, borderRadius: 12, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 8px rgba(42,125,156,0.15)' }}>
+              <Sparkles size={20} style={{ color: '#2a7d9c' }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#0f2d3d', marginBottom: 3 }}>Créer votre premier dossier</div>
+              <div style={{ fontSize: 12.5, color: '#64748b', lineHeight: 1.5 }}>Renseignez quelques infos sur le bien — vous reprendrez cette analyse juste après.</div>
+            </div>
+            <ArrowRight size={18} style={{ color: '#2a7d9c', flexShrink: 0 }} />
+          </button>
+          <div style={{ padding: '14px 18px', marginTop: 14, borderRadius: 12, background: '#fffbeb', border: '1px solid #fde68a', fontSize: 12.5, color: '#92400e', lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <HelpCircle size={15} style={{ color: '#d97706', flexShrink: 0 }} />
+            Les dossiers vous permettent de regrouper toutes les analyses d'un même bien au même endroit.
+          </div>
+        </>
+      )}
 
-      {/* Recherche + dossiers existants */}
+      {/* Cas normal : il existe des dossiers */}
       {folders.length > 0 && (
         <>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 10 }}>
-            Ou choisissez un dossier existant
+          {/* Section : dossiers existants en PREMIER */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: '#0f172a', letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>
+              Vos dossiers ({folders.length})
+            </div>
+            {folders.length > 4 && (
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>Filtrez ci-dessous</span>
+            )}
           </div>
           {folders.length > 4 && (
             <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Rechercher un dossier..."
-              style={{ width: '100%', padding: '9px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const, marginBottom: 12, background: '#fff', fontFamily: 'inherit' }} />
+              placeholder="Rechercher un dossier par nom, adresse ou ville…"
+              style={{ width: '100%', padding: '11px 16px', borderRadius: 11, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const, marginBottom: 14, background: '#fff', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
+              onFocus={e => (e.currentTarget as HTMLInputElement).style.borderColor = '#2a7d9c'}
+              onBlur={e => (e.currentTarget as HTMLInputElement).style.borderColor = '#edf2f7'} />
           )}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
             {filtered.map(f => (
               <button key={f.id} onClick={() => onSelect(f)}
                 style={{
-                  padding: '14px 16px', borderRadius: 12,
+                  padding: '16px 18px', borderRadius: 14,
                   background: '#fff', border: '1.5px solid #edf2f7',
                   cursor: 'pointer', textAlign: 'left' as const,
-                  transition: 'all 0.15s',
-                  display: 'flex', alignItems: 'center', gap: 12,
+                  transition: 'all 0.18s',
+                  display: 'flex', alignItems: 'center', gap: 13,
+                  fontFamily: 'inherit',
                 }}
-                onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.boxShadow = '0 4px 14px rgba(42,125,156,0.1)'; el.style.transform = 'translateY(-1px)'; }}
+                onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.boxShadow = '0 6px 18px rgba(42,125,156,0.12)'; el.style.transform = 'translateY(-2px)'; }}
                 onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.boxShadow = 'none'; el.style.transform = 'translateY(0)'; }}>
-                <div style={{ width: 34, height: 34, borderRadius: 9, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Building2 size={15} style={{ color: '#2a7d9c' }} />
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Building2 size={17} style={{ color: '#2a7d9c' }} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{f.name}</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, marginBottom: 2 }}>{f.name}</div>
                   {(f.property_address || f.property_city) && (
-                    <div style={{ fontSize: 11.5, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
-                      {[f.property_address, f.property_city].filter(Boolean).join(', ')}
+                    <div style={{ fontSize: 12, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      📍 {[f.property_address, f.property_city].filter(Boolean).join(', ')}
                     </div>
                   )}
                 </div>
+                <ArrowRight size={15} style={{ color: '#cbd5e1', flexShrink: 0 }} />
               </button>
             ))}
           </div>
           {filtered.length === 0 && search && (
-            <div style={{ padding: 24, textAlign: 'center' as const, fontSize: 13, color: '#94a3b8', background: '#f8fafc', borderRadius: 12, border: '1px dashed #e2e8f0' }}>
+            <div style={{ padding: 28, textAlign: 'center' as const, fontSize: 13, color: '#94a3b8', background: '#f8fafc', borderRadius: 12, border: '1px dashed #e2e8f0' }}>
               Aucun dossier ne correspond à « {search} ».
             </div>
           )}
+
+          {/* Séparateur visuel */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '32px 0 18px' }}>
+            <div style={{ flex: 1, height: 1, background: '#edf2f7' }} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>Ou</span>
+            <div style={{ flex: 1, height: 1, background: '#edf2f7' }} />
+          </div>
+
+          {/* Bouton créer en SECOND, en mode plus discret */}
+          <button onClick={onCreate}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+              padding: '15px 18px',
+              borderRadius: 13,
+              background: '#fff',
+              border: '1.5px dashed #cbd5e1',
+              cursor: 'pointer', textAlign: 'left' as const,
+              transition: 'all 0.18s',
+            }}
+            onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.background = '#f0f7fb'; }}
+            onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#cbd5e1'; el.style.background = '#fff'; }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Sparkles size={16} style={{ color: '#2a7d9c' }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 800, color: '#0f2d3d', marginBottom: 1 }}>Nouveau bien à analyser ?</div>
+              <div style={{ fontSize: 11.5, color: '#64748b' }}>Créez un dossier — l'analyse reprendra automatiquement</div>
+            </div>
+            <ArrowRight size={15} style={{ color: '#94a3b8', flexShrink: 0 }} />
+          </button>
         </>
       )}
 
-      {/* État vide : aucun dossier encore créé */}
-      {!loading && folders.length === 0 && (
-        <div style={{ padding: 32, textAlign: 'center' as const, background: '#fff', borderRadius: 14, border: '1px solid #edf2f7' }}>
-          <div style={{ width: 44, height: 44, borderRadius: 11, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
-            <Building2 size={20} style={{ color: '#2a7d9c' }} />
-          </div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Vous n'avez pas encore de dossier</div>
-          <div style={{ fontSize: 12.5, color: '#64748b', lineHeight: 1.6 }}>Cliquez ci-dessus pour en créer un. Cela ne prendra que quelques secondes.</div>
-        </div>
-      )}
-
       {loading && (
-        <div style={{ padding: 24, textAlign: 'center' as const, fontSize: 13, color: '#94a3b8' }}>Chargement de vos dossiers…</div>
+        <div style={{ padding: 32, textAlign: 'center' as const, fontSize: 13, color: '#94a3b8' }}>Chargement de vos dossiers…</div>
       )}
 
       {/* Modale de création de dossier inline */}
