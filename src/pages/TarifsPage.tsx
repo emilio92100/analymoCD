@@ -474,7 +474,7 @@ export default function TarifsPage() {
                 <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>Agents immobiliers, investisseurs, marchands de bien, notaires — tarif dédié.</div>
               </div>
             </div>
-            <Link to="/rejoindre" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 10, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' as const }}>
+            <Link to="/pro/rejoindre" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 10, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' as const }}>
               <Mail size={12} /> Rejoindre Verimo Pro
             </Link>
           </div>
