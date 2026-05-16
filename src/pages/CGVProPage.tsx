@@ -60,14 +60,14 @@ export default function CGVProPage() {
 
   // ─── Données réelles depuis le code Verimo ───
   const PLANS = [
-    { id: 'decouverte', name: 'Découverte', priceHt: '19,90', priceTtc: '23,88', completes: 1, simples: 3, tagline: 'Pour démarrer' },
-    { id: 'starter', name: 'Starter', priceHt: '49,90', priceTtc: '59,88', completes: 5, simples: 15, tagline: 'Pour un usage régulier', popular: true },
-    { id: 'power', name: 'Power', priceHt: '89,90', priceTtc: '107,88', completes: 10, simples: 30, tagline: 'Pour un usage soutenu' },
+    { id: 'decouverte', name: 'Découverte', priceHt: '19,90', priceTtc: '23,88', simples: 3, completes: 1, tagline: 'Pour démarrer' },
+    { id: 'starter', name: 'Starter', priceHt: '49,90', priceTtc: '59,88', simples: 15, completes: 5, tagline: 'Pour un usage régulier', popular: true },
+    { id: 'power', name: 'Power', priceHt: '89,90', priceTtc: '107,88', simples: 30, completes: 10, tagline: 'Pour un usage soutenu' },
   ];
 
   const UNITS_PRO = [
-    { label: "Analyse complète d'un bien", priceHt: '9,90', priceTtc: '11,88' },
     { label: "Analyse simple d'un document", priceHt: '2,90', priceTtc: '3,48' },
+    { label: "Analyse complète d'un bien", priceHt: '9,90', priceTtc: '11,88' },
   ];
 
   const UNITS_PARTICULIER = [
@@ -185,8 +185,8 @@ export default function CGVProPage() {
                 ['Verimo', 'Le service édité par VERIMO APP, accessible sur verimo.fr. Responsable : Alexandre ROGELET.'],
                 ['Pro / Client Pro', 'Toute personne morale ou physique exerçant une activité professionnelle dans l\'immobilier et ayant souscrit à un abonnement Verimo Pro.'],
                 ['Abonnement', 'Forfait mensuel permettant l\'accès au service avec un volume de crédits inclus.'],
-                ['Crédit complet', 'Permet de lancer une analyse complète d\'un bien (jusqu\'à 15 documents).'],
                 ['Crédit simple', 'Permet de lancer une analyse simple d\'un document immobilier (1 PDF).'],
+                ['Crédit complet', 'Permet de lancer une analyse complète d\'un bien (jusqu\'à 15 documents).'],
                 ['Achat unitaire', 'Achat ponctuel de crédits supplémentaires en dehors du forfait mensuel, réservé aux abonnés Pro.'],
                 ['Cycle de facturation', 'Période d\'un mois calendaire entre deux dates de prélèvement.'],
               ]} />
@@ -242,8 +242,8 @@ export default function CGVProPage() {
               <SubTitle>5.1 — Attribution des crédits</SubTitle>
               <p>Les crédits inclus dans l'abonnement sont attribués au début de chaque cycle de facturation. Ils se composent de deux types distincts :</p>
               <ul style={{ paddingLeft: 22, lineHeight: 2 }}>
-                <li><strong>Crédits complets</strong> : pour analyser un bien (jusqu'à 15 documents simultanés)</li>
                 <li><strong>Crédits simples</strong> : pour analyser un document immobilier (1 PDF)</li>
+                <li><strong>Crédits complets</strong> : pour analyser un bien (jusqu'à 15 documents simultanés)</li>
               </ul>
               <p>Les deux types de crédits sont indépendants et ne sont pas convertibles entre eux.</p>
 
@@ -252,12 +252,12 @@ export default function CGVProPage() {
                 Les crédits non consommés en fin de cycle sont automatiquement reportés sur le cycle suivant, dans la limite d'un cumul maximal de <strong>2 mois consécutifs (plafond 2×)</strong>.
               </Callout>
 
-              <p>Exemple concret avec un abonnement Starter (5 complets / 15 simples par mois) :</p>
+              <p>Exemple concret avec un abonnement Starter (15 simples / 5 complets par mois) :</p>
               <Table headers={['Cycle', 'Crédits utilisés', 'Crédits reportés', 'Solde cumulé']} rows={[
-                ['Mois 1', '0', '5 complets / 15 simples', '5 / 15'],
-                ['Mois 2', '0', '5 complets / 15 simples', '10 / 30 (plafond atteint)'],
-                ['Mois 3', '0', 'Plafond 2× — pas de cumul supplémentaire', '10 / 30 (inchangé)'],
-                ['Mois 4', '3 complets / 5 simples', 'Cumul reprend', '12 / 40'],
+                ['Mois 1', '0', '15 simples / 5 complets', '15 / 5'],
+                ['Mois 2', '0', '15 simples / 5 complets', '30 / 10 (plafond atteint)'],
+                ['Mois 3', '0', 'Plafond 2× — pas de cumul supplémentaire', '30 / 10 (inchangé)'],
+                ['Mois 4', '5 simples / 3 complets', 'Cumul reprend', '40 / 12'],
               ]} />
 
               <SubTitle>5.3 — Ordre de consommation</SubTitle>
@@ -269,8 +269,8 @@ export default function CGVProPage() {
               <p>Cette logique permet de profiter pleinement du forfait avant d'entamer les crédits unitaires.</p>
 
               <SubTitle>5.4 — Crédits achetés à l'unité</SubTitle>
-              <p>Les crédits achetés à l'unité <strong>n'ont pas de date d'expiration tant que l'abonnement reste actif</strong>. Ils restent disponibles indépendamment du cycle de facturation.</p>
-              <p>En cas de résiliation de l'abonnement, les crédits unitaires restants sont conservés jusqu'à la fin du cycle en cours, puis perdus.</p>
+              <p>Les crédits achetés à l'unité (analyse simple à 2,90 € HT, analyse complète à 9,90 € HT) <strong>n'ont pas de date d'expiration</strong>. Ils restent disponibles tant que le compte Pro est actif, <strong>indépendamment du statut de l'abonnement</strong> (en cours, résilié, suspendu).</p>
+              <p>En cas de fermeture définitive du compte, les crédits unitaires non utilisés sont perdus, sans remboursement possible.</p>
             </Section>
 
             {/* ─── Section 6 : Upgrade / Downgrade ─── */}
@@ -278,9 +278,10 @@ export default function CGVProPage() {
               <SubTitle>6.1 — Upgrade (passage à un plan supérieur)</SubTitle>
               <p>L'upgrade vers un plan supérieur (ex : Découverte → Starter, Starter → Power) est <strong>immédiat</strong>. Il prend effet dès la validation du paiement :</p>
               <ul style={{ paddingLeft: 22, lineHeight: 2 }}>
-                <li>Le Pro est facturé immédiatement de la différence au prorata du temps restant dans le cycle</li>
-                <li>Les crédits supplémentaires du nouveau plan sont ajoutés et cumulés aux crédits déjà disponibles</li>
-                <li>Le cycle de facturation est recalibré sur la nouvelle date d'upgrade</li>
+                <li>Le Pro est facturé immédiatement du <strong>plein tarif du nouveau plan</strong></li>
+                <li>Un <strong>nouveau cycle de facturation démarre</strong> à la date de l'upgrade (la date de prélèvement mensuel est donc décalée en conséquence)</li>
+                <li>Les crédits du nouveau plan sont <strong>cumulés</strong> avec les crédits restants du plan précédent</li>
+                <li>Aucun prorata n'est appliqué sur le plan précédent : la fraction non consommée du cycle en cours n'est ni remboursée ni reportée</li>
               </ul>
 
               <SubTitle>6.2 — Downgrade (passage à un plan inférieur)</SubTitle>
@@ -548,8 +549,8 @@ function PlansTable({ plans, accent, dark, light }: { plans: any[]; accent: stri
           </div>
           <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 12 }}>({p.priceTtc}€ TTC)</div>
           <div style={{ paddingTop: 12, borderTop: `1px solid ${p.popular ? 'rgba(255,255,255,0.2)' : '#e2e8f0'}`, fontSize: 13, lineHeight: 1.8 }}>
-            <div>✓ <strong>{p.completes}</strong> analyse{p.completes > 1 ? 's' : ''} complète{p.completes > 1 ? 's' : ''}</div>
             <div>✓ <strong>{p.simples}</strong> analyse{p.simples > 1 ? 's' : ''} simple{p.simples > 1 ? 's' : ''}</div>
+            <div>✓ <strong>{p.completes}</strong> analyse{p.completes > 1 ? 's' : ''} complète{p.completes > 1 ? 's' : ''}</div>
             <div>✓ Cumul jusqu'à 2 mois</div>
           </div>
         </div>
