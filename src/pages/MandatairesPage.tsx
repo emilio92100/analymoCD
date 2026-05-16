@@ -582,6 +582,7 @@ export default function MandatairesPage() {
         /* ── Desktop (≥ 901px) — titres et descriptions de CTA sur une seule ligne ── */
         @media (min-width: 901px) {
           .cta-final h2, .cta-final p { white-space: nowrap; }
+          .steps-tagline { white-space: nowrap; }
         }
       `}</style>
       <section style={{ position: 'relative' as const, background: 'linear-gradient(165deg, #ffffff 0%, #f5f9fc 40%, #e8f3f8 70%, #fafbfd 100%)', padding: '120px 24px 80px', overflow: 'hidden' }}>
@@ -932,14 +933,17 @@ export default function MandatairesPage() {
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <Reveal>
             <div style={{ textAlign: 'center' as const, marginBottom: 36 }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 16px', background: 'rgba(42,125,156,0.1)', border: '1px solid rgba(42,125,156,0.22)', color: '#2a7d9c', fontSize: 12, fontWeight: 800, borderRadius: 100, marginBottom: 18, letterSpacing: '0.08em' }}>
-                <Zap size={13} /> 3 ÉTAPES · ~5 MIN
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, padding: '12px 24px', background: 'linear-gradient(135deg, #2a7d9c, #1d5e7a)', color: '#fff', borderRadius: 100, boxShadow: '0 8px 24px rgba(42,125,156,0.3)', marginBottom: 22 }}>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Zap size={14} strokeWidth={2.5} />
+                </div>
+                <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: '0.04em' }}>3 ÉTAPES · ~5 MIN</span>
               </div>
               <h2 style={{ fontSize: 'clamp(30px, 3.6vw, 44px)', fontWeight: 900, lineHeight: 1.1, margin: '0 0 12px', color: '#0f2d3d', letterSpacing: '-0.025em' }}>
                 C'est tout simple.
               </h2>
-              <p style={{ fontSize: 'clamp(15px, 1.2vw, 17px)', color: '#64748b', margin: 0, maxWidth: 560, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.55 }}>
-                De vos PDF au rapport envoyé à votre client, en moins de temps qu'un café.
+              <p className="steps-tagline" style={{ fontSize: 'clamp(15px, 1.2vw, 17px)', color: '#64748b', margin: 0, maxWidth: 720, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.55 }}>
+                Aussi simple que ces 3 étapes. Aussi rapide qu'un café.
               </p>
             </div>
           </Reveal>
