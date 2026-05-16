@@ -520,38 +520,64 @@ export default function MandatairesPage() {
       <style>{`
         /* ── Tablette & mobile (< 900px) ── */
         @media (max-width: 900px) {
-          .hero-split { grid-template-columns: 1fr !important; gap: 24px !important; text-align: center; }
+          .hero-split { grid-template-columns: 1fr !important; gap: 16px !important; text-align: center; }
           .hero-text { text-align: center; }
           .hero-text p, .hero-text h1 { margin-left: auto !important; margin-right: auto !important; }
-          /* Force CENTRAGE des 2 groupes du bas (CTA + pills) */
           .hero-text > div:nth-of-type(2),
           .hero-text > div:nth-of-type(3) {
             justify-content: center !important;
           }
-          .hero-phones { height: 380px !important; }
-          /* Scénarios : sur mobile, on veut TEXTE → VISUEL (peu importe l'ordre du markup) */
-          .scenario-grid { grid-template-columns: 1fr !important; gap: 20px !important; }
-          /* La colonne contenant .scenario-visual passe en order 2 (en bas) */
+          /* Téléphones Hero : très réduits sur mobile */
+          .hero-phones { height: 300px !important; transform: scale(0.65); transform-origin: center top; }
+
+          /* Scénarios : texte d'abord, téléphone en bas */
+          .scenario-grid { grid-template-columns: 1fr !important; gap: 18px !important; }
           .scenario-grid > div:has(.scenario-visual) { order: 2; }
-          /* La colonne texte (sans .scenario-visual) passe en order 1 (en haut) */
           .scenario-grid > div:not(:has(.scenario-visual)) { order: 1; }
-          .scenario-visual { height: auto !important; min-height: 380px; max-height: 540px; padding: 16px !important; }
-          .scenario-visual.scenario-2 { min-height: 360px; }
-          .scenario-visual.scenario-3 { min-height: 360px; }
-          .scenario-envoi { min-height: 560px !important; max-height: 700px !important; }
+          .scenario-visual { height: auto !important; min-height: 320px; max-height: 480px; padding: 16px !important; }
+          .scenario-visual.scenario-2 { min-height: 300px; }
+          .scenario-visual.scenario-3 { min-height: 300px; }
+
+          /* SCÉNARIO ENVOI : on casse l'absolute pour stack vertical mobile */
+          .scenario-envoi {
+            min-height: 0 !important;
+            max-height: none !important;
+            height: auto !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 16px !important;
+            padding: 20px 14px !important;
+          }
+          .scenario-envoi > .scenario-mockup {
+            position: static !important;
+            width: 100% !important;
+            max-width: 320px !important;
+            margin: 0 auto !important;
+            transform: none !important;
+          }
+          .scenario-envoi > .scenario-mockup .scenario-mockup-label {
+            position: static !important;
+            text-align: center !important;
+            margin-bottom: 8px !important;
+            display: block !important;
+          }
+
           .cta-final h2 { font-size: clamp(26px, 7vw, 36px) !important; }
           .steps-row { grid-template-columns: 1fr !important; gap: 14px !important; }
           .step-arrow { display: none !important; }
+
+          /* Stats : grille 2×2 sur mobile au lieu de 1×4 */
+          .stats-row { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
+          .stats-card { padding: 16px 12px !important; }
+          .stats-card .stats-val { font-size: 22px !important; }
+          .stats-card .stats-lbl { font-size: 11px !important; }
         }
         /* ── Mobile pur (< 640px) — réglages plus serrés ── */
         @media (max-width: 640px) {
-          .hero-phones { height: 340px !important; transform: scale(0.72); transform-origin: center top; }
-          /* Téléphones de scénario : redimensionnés et centrés */
-          .scenario-visual { padding: 14px !important; }
-          .scenario-visual > div[style*="transform: rotate"] { transform: scale(0.82) !important; }
-          /* Hauteurs réduites mobile pur */
-          .scenario-visual { min-height: 340px !important; max-height: 480px !important; }
-          .scenario-envoi { min-height: 480px !important; max-height: 620px !important; }
+          .hero-phones { height: 240px !important; transform: scale(0.55); transform-origin: center top; }
+          .scenario-visual { padding: 12px !important; min-height: 280px !important; max-height: 440px !important; }
+          .scenario-visual > div[style*="transform: rotate"] { transform: scale(0.78) !important; }
+          .scenario-envoi > .scenario-mockup { max-width: 280px !important; }
         }
         /* ── Desktop (≥ 901px) — titres et descriptions de CTA sur une seule ligne ── */
         @media (min-width: 901px) {
@@ -686,7 +712,7 @@ export default function MandatairesPage() {
 
       <section style={{ padding: '60px 24px', background: 'linear-gradient(180deg, #f4f7fa 0%, #fff 100%)' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+          <div className="stats-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
             {[
               { val: '~3 min', lbl: 'par dossier', grad: 'linear-gradient(135deg, #2a7d9c, #7dd3fc)' },
               { val: '24h/24', lbl: 'analyse à tout moment', grad: 'linear-gradient(135deg, #ec4899, #fbbf24)' },
@@ -694,9 +720,9 @@ export default function MandatairesPage() {
               { val: '100%', lbl: 'à votre image', grad: 'linear-gradient(135deg, #7c3aed, #a78bfa)' },
             ].map((s, i) => (
               <Reveal key={i} delay={i * 0.05}>
-                <div style={{ background: '#fff', padding: '24px 18px', borderRadius: 16, border: '1px solid #e2e8f0', textAlign: 'center' as const, boxShadow: '0 4px 12px rgba(15,45,61,0.04)' }}>
-                  <div style={{ fontSize: 32, fontWeight: 800, lineHeight: 1, background: s.grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{s.val}</div>
-                  <div style={{ fontSize: 12, color: '#64748b', fontWeight: 700, marginTop: 8, letterSpacing: '0.02em' }}>{s.lbl}</div>
+                <div className="stats-card" style={{ background: '#fff', padding: '24px 18px', borderRadius: 16, border: '1px solid #e2e8f0', textAlign: 'center' as const, boxShadow: '0 4px 12px rgba(15,45,61,0.04)' }}>
+                  <div className="stats-val" style={{ fontSize: 32, fontWeight: 800, lineHeight: 1, background: s.grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>{s.val}</div>
+                  <div className="stats-lbl" style={{ fontSize: 12, color: '#64748b', fontWeight: 700, marginTop: 8, letterSpacing: '0.02em' }}>{s.lbl}</div>
                 </div>
               </Reveal>
             ))}
@@ -838,7 +864,7 @@ export default function MandatairesPage() {
           Les 2 mockups (popup envoi côté pro + email reçu côté client) sont
           empilés verticalement dans la colonne visuelle pour montrer la séquence.
           ════════════════════════════════════════════ */}
-      <section style={{ padding: '80px 24px', background: 'linear-gradient(180deg, #fafbfd 0%, #f4f7fa 100%)' }}>
+      <section style={{ padding: '80px 24px 40px', background: 'linear-gradient(180deg, #fafbfd 0%, #f4f7fa 100%)' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div className="scenario-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 50, alignItems: 'center' }}>
             <Reveal>
@@ -877,22 +903,24 @@ export default function MandatairesPage() {
 
                 {/* Mockup 1 — Popup envoi (en haut, légèrement décalé à gauche) */}
                 <motion.div
+                  className="scenario-mockup scenario-mockup-1"
                   animate={_lp ? {} : { y: [0, -4, 0] }}
                   transition={_lp ? {} : { duration: 5, repeat: Infinity, ease: 'easeInOut' }}
                   style={{ position: 'absolute' as const, top: '4%', left: '4%', width: '64%', zIndex: 2, transform: 'rotate(-3deg)' }}>
                   <div style={{ position: 'relative' as const }}>
-                    <div style={{ position: 'absolute' as const, top: -22, left: 0, fontSize: 10, fontWeight: 800, color: '#7c3aed', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>① Vous envoyez</div>
+                    <div className="scenario-mockup-label" style={{ position: 'absolute' as const, top: -22, left: 0, fontSize: 10, fontWeight: 800, color: '#7c3aed', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>① Vous envoyez</div>
                     <MockupSendPopup />
                   </div>
                 </motion.div>
 
                 {/* Mockup 2 — Email reçu (en bas à droite, légèrement décalé) */}
                 <motion.div
+                  className="scenario-mockup scenario-mockup-2"
                   animate={_lp ? {} : { y: [0, 4, 0] }}
                   transition={_lp ? {} : { duration: 6, repeat: Infinity, delay: 0.7, ease: 'easeInOut' }}
                   style={{ position: 'absolute' as const, bottom: '4%', right: '4%', width: '64%', zIndex: 3, transform: 'rotate(3deg)' }}>
                   <div style={{ position: 'relative' as const }}>
-                    <div style={{ position: 'absolute' as const, top: -22, right: 0, fontSize: 10, fontWeight: 800, color: '#0e7490', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>② Il reçoit</div>
+                    <div className="scenario-mockup-label" style={{ position: 'absolute' as const, top: -22, right: 0, fontSize: 10, fontWeight: 800, color: '#0e7490', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>② Il reçoit</div>
                     <MockupClientEmail />
                   </div>
                 </motion.div>
@@ -902,10 +930,10 @@ export default function MandatairesPage() {
         </div>
       </section>
 
-      <section style={{ padding: '80px 24px', background: 'linear-gradient(180deg, #f4f7fa 0%, #e8eef3 100%)' }}>
+      <section style={{ padding: '60px 24px 80px', background: 'linear-gradient(180deg, #f4f7fa 0%, #e8eef3 100%)' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <Reveal>
-            <div style={{ textAlign: 'center' as const, marginBottom: 50 }}>
+            <div style={{ textAlign: 'center' as const, marginBottom: 36 }}>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 16px', background: 'rgba(42,125,156,0.1)', border: '1px solid rgba(42,125,156,0.22)', color: '#2a7d9c', fontSize: 12, fontWeight: 800, borderRadius: 100, marginBottom: 18, letterSpacing: '0.08em' }}>
                 <Zap size={13} /> 3 ÉTAPES · ~5 MIN
               </div>
@@ -918,37 +946,37 @@ export default function MandatairesPage() {
             </div>
           </Reveal>
 
-          <div className="steps-row" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr auto 1fr', gap: 14, alignItems: 'stretch' }}>
+          <div className="steps-row" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr auto 1fr', gap: 16, alignItems: 'stretch' }}>
             {[
               {
                 n: '1',
                 icon: Upload,
-                title: 'Glissez vos PDF',
-                sub: 'dans votre espace',
-                desc: 'Drag & drop direct. PV d\'AG, diagnostics, règlement... jusqu\'à 15 documents en même temps.',
-                gradFrom: '#fce7f3', gradTo: '#fbcfe8',
-                iconBg: '#ec4899', iconColor: '#fff',
                 accent: '#be185d',
+                accentBg: 'rgba(190,24,93,0.1)',
+                title: 'Glissez vos PDF',
+                subtitle: 'dans votre espace',
+                desc: 'Drag & drop direct. PV d\'AG, diagnostics, règlement... jusqu\'à 15 documents en même temps.',
+                gradFrom: '#fce7f3',
               },
               {
                 n: '2',
                 icon: FileSearch,
-                title: 'Rapport en ~3 min',
-                sub: 'lecture immédiate',
-                desc: 'Score /20, risques chiffrés, synthèse claire. Tout est analysé et hiérarchisé pour vous.',
-                gradFrom: '#dbeafe', gradTo: '#bfdbfe',
-                iconBg: '#2a7d9c', iconColor: '#fff',
                 accent: '#1e40af',
+                accentBg: 'rgba(30,64,175,0.1)',
+                title: 'Rapport en ~3 min',
+                subtitle: 'lecture immédiate',
+                desc: 'Score /20, risques chiffrés, synthèse claire. Tout est analysé et hiérarchisé pour vous.',
+                gradFrom: '#dbeafe',
               },
               {
                 n: '3',
                 icon: Send,
-                title: 'Partagez en 1 clic',
-                sub: 'directement par mail',
-                desc: 'Lien sécurisé envoyé en un clic depuis votre espace. Votre client le reçoit directement dans son mail.',
-                gradFrom: '#d1fae5', gradTo: '#a7f3d0',
-                iconBg: '#10b981', iconColor: '#fff',
                 accent: '#047857',
+                accentBg: 'rgba(4,120,87,0.1)',
+                title: 'Partagez en 1 clic',
+                subtitle: 'directement par mail',
+                desc: 'Lien sécurisé envoyé depuis votre espace. Votre client le reçoit directement dans son mail.',
+                gradFrom: '#d1fae5',
               },
             ].map((s, i) => {
               const Icon = s.icon;
@@ -958,25 +986,36 @@ export default function MandatairesPage() {
                     <motion.div
                       whileHover={_lp ? {} : { y: -4, boxShadow: '0 18px 40px rgba(15,45,61,0.12)' }}
                       transition={{ duration: 0.25 }}
-                      style={{ background: '#fff', padding: '26px 22px', borderRadius: 20, border: '1px solid #e2e8f0', height: '100%', boxShadow: '0 6px 18px rgba(15,45,61,0.06)', position: 'relative' as const, overflow: 'hidden' }}>
-                      {/* Halo de couleur en haut */}
-                      <div style={{ position: 'absolute' as const, top: 0, left: 0, right: 0, height: 80, background: `linear-gradient(180deg, ${s.gradFrom}, transparent)`, opacity: 0.7, pointerEvents: 'none' as const }} />
+                      style={{ background: '#fff', padding: '28px 24px', borderRadius: 20, border: '1px solid #e2e8f0', height: '100%', boxShadow: '0 6px 18px rgba(15,45,61,0.06)', position: 'relative' as const, overflow: 'hidden' }}>
+                      {/* Halo en haut */}
+                      <div style={{ position: 'absolute' as const, top: 0, left: 0, right: 0, height: 80, background: `linear-gradient(180deg, ${s.gradFrom}, transparent)`, opacity: 0.6, pointerEvents: 'none' as const }} />
                       <div style={{ position: 'relative' as const }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                          <div style={{ width: 44, height: 44, borderRadius: 12, background: s.iconBg, color: s.iconColor, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 8px 18px ${s.iconBg}40` }}>
+                        {/* Mini-badge "ÉTAPE X" (style identique aux scénarios) */}
+                        <div style={{ fontSize: 12, fontWeight: 800, color: s.accent, letterSpacing: '0.12em', textTransform: 'uppercase' as const, marginBottom: 10 }}>ÉTAPE {s.n}</div>
+
+                        {/* Titre principal — gros, style scénarios */}
+                        <h3 style={{ fontSize: 'clamp(24px, 2.6vw, 30px)', fontWeight: 900, lineHeight: 1.05, margin: '0 0 8px', color: '#0f2d3d', letterSpacing: '-0.025em' }}>
+                          {s.title}
+                        </h3>
+
+                        {/* Sous-titre — style scénarios */}
+                        <div style={{ fontSize: 'clamp(15px, 1.4vw, 17px)', fontWeight: 700, lineHeight: 1.25, color: s.accent, margin: '0 0 14px', letterSpacing: '-0.01em' }}>
+                          {s.subtitle}
+                        </div>
+
+                        {/* Icône + description */}
+                        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                          <div style={{ width: 40, height: 40, borderRadius: 11, background: s.accentBg, color: s.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             <Icon size={20} strokeWidth={2.2} />
                           </div>
-                          <div style={{ fontSize: 11, fontWeight: 800, color: s.accent, letterSpacing: '0.12em', textTransform: 'uppercase' as const }}>ÉTAPE {s.n}</div>
+                          <div style={{ flex: 1, fontSize: 14, color: '#475569', lineHeight: 1.55, paddingTop: 4 }}>{s.desc}</div>
                         </div>
-                        <div style={{ fontSize: 19, fontWeight: 800, color: '#0f2d3d', marginBottom: 2, letterSpacing: '-0.01em' }}>{s.title}</div>
-                        <div style={{ fontSize: 13, color: s.accent, fontWeight: 700, marginBottom: 12 }}>{s.sub}</div>
-                        <div style={{ fontSize: 14, color: '#475569', lineHeight: 1.55 }}>{s.desc}</div>
                       </div>
                     </motion.div>
                   </Reveal>
                   {i < 2 && (
-                    <div className="step-arrow" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 6px' }}>
-                      <ArrowRight size={22} style={{ color: '#cbd5e1' }} />
+                    <div className="step-arrow" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px' }}>
+                      <ArrowRight size={24} style={{ color: '#cbd5e1' }} />
                     </div>
                   )}
                 </React.Fragment>
@@ -986,7 +1025,11 @@ export default function MandatairesPage() {
         </div>
       </section>
 
-      <section style={{ position: 'relative' as const, padding: '80px 24px', background: 'linear-gradient(180deg, #e8eef3 0%, #1a4a5e 8%, #0f2d3d 30%, #0a1f2d 60%, #0f2d3d 100%)', overflow: 'hidden' }}>
+      <section style={{ position: 'relative' as const, padding: '100px 24px', background: '#0a1f2d', overflow: 'hidden' }}>
+        {/* Halo qui adoucit le haut depuis le clair */}
+        <div style={{ position: 'absolute' as const, top: -1, left: 0, right: 0, height: 120, background: 'linear-gradient(180deg, rgba(232,238,243,1) 0%, rgba(232,238,243,0) 100%)', pointerEvents: 'none' as const, opacity: 0.04 }} />
+        {/* Dégradé interne sombre pour la richesse visuelle */}
+        <div style={{ position: 'absolute' as const, inset: 0, background: 'radial-gradient(ellipse at center, #1a4a5e 0%, #0a1f2d 70%)', pointerEvents: 'none' as const }} />
         <Confetti items={[
           { top: '15%', left: '8%', size: 8, color: VERIMO_CONFETTI_COLORS.orange, shape: 'circle' },
           { top: '28%', right: '10%', size: 10, color: VERIMO_CONFETTI_COLORS.green, shape: 'square', delay: 0.5 },
