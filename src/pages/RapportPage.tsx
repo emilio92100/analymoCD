@@ -2962,36 +2962,162 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
             );
           })()}
 
-          {/* Travaux préconisés DPE */}
+          {/* Travaux préconisés DPE — nouveau format (packs + évolution étiquette) */}
           {(() => {
+            type EtiquetteProj = { classe?: string | null; kwh_m2?: number | null; ges_kg_m2?: number | null };
+            type TravailDpe = { poste?: string; description?: string; performance_cible?: string | null; decision_copropriete?: boolean; autorisation_urbanisme?: boolean };
+            type PackDpe = { cout_min?: number | null; cout_max?: number | null; travaux?: TravailDpe[] };
+            type DpeRecos = {
+              present?: boolean;
+              format?: 'standard' | 'ancien' | 'aucune';
+              version_methode?: string;
+              evolution_etiquette?: { actuelle?: EtiquetteProj; apres_pack_1?: EtiquetteProj; apres_pack_1_et_2?: EtiquetteProj };
+              pack_1?: PackDpe;
+              pack_2?: PackDpe;
+            };
+            const recos = (rapport as Record<string, unknown>).dpe_recommandations as DpeRecos | null;
+            const hasPacks = recos?.present && recos?.format === 'standard' && ((recos.pack_1?.travaux?.length ?? 0) > 0 || (recos.pack_2?.travaux?.length ?? 0) > 0);
+
+            // Fallback legacy : si pas de recos structurées mais travaux_preconises présent
             const dpeObj = dpe as Record<string, unknown>;
-            const travaux = dpeObj?.travaux_preconises as Array<Record<string, unknown>> | null;
-            if (!travaux || travaux.length === 0) return null;
+            const travauxLegacy = dpeObj?.travaux_preconises as Array<Record<string, unknown>> | null;
+            const hasLegacy = !hasPacks && travauxLegacy && travauxLegacy.length > 0;
+
+            if (!hasPacks && !hasLegacy) return null;
+
+            // POSTE_ICONS pour les travaux
+            const POSTE_ICONS: Record<string, string> = {
+              mur: '🧱', toiture: '🏠', plancher_bas: '⬇️', fenetres: '🪟', porte: '🚪',
+              chauffage: '🔥', eau_chaude: '💧', ventilation: '💨', autre: '🔧',
+            };
+
+            const fmtEuros = (min?: number | null, max?: number | null): string => {
+              if (min && max) return `${min.toLocaleString('fr-FR')} – ${max.toLocaleString('fr-FR')} €`;
+              if (min) return `${min.toLocaleString('fr-FR')} €`;
+              if (max) return `${max.toLocaleString('fr-FR')} €`;
+              return '';
+            };
+
+            const renderEtiquette = (e?: EtiquetteProj, label?: string) => {
+              if (!e?.classe) return null;
+              const c = String(e.classe).toUpperCase();
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: '50%', background: DPE_COLORS[c] || '#94a3b8', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700 }}>{c}</div>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', textAlign: 'center', lineHeight: 1.3 }}>{label}</div>
+                </div>
+              );
+            };
+
             return (
               <>
-                <SectionTitle emoji="🔨" text="Travaux préconisés pour améliorer le DPE" />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {travaux.map((t, i) => {
-                    const tr = t as Record<string, unknown>;
-                    const tLabel = String(tr.label ?? '');
-                    const tPriorite = String(tr.priorite ?? '');
-                    const tMin = tr.cout_min != null ? Number(tr.cout_min) : null;
-                    const tMax = tr.cout_max != null ? Number(tr.cout_max) : null;
-                    return (
-                      <div key={i} style={{ background: 'var(--color-background-secondary)', borderRadius: 10, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                        <div>
-                          <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{tLabel}</div>
-                          {tPriorite && <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 2 }}>{tPriorite === 'prioritaire' ? '🔴 Prioritaire' : '🟡 Recommandé'}</div>}
+                <SectionTitle emoji="🔨" text="Pour améliorer votre note DPE" tooltip="Recommandations de travaux issues du DPE pour améliorer la performance énergétique du logement." />
+
+                {hasPacks ? (
+                  <>
+                    {/* Évolution projetée de l'étiquette */}
+                    {(() => {
+                      const evo = recos!.evolution_etiquette;
+                      if (!evo) return null;
+                      const hasEvo = evo.actuelle?.classe || evo.apres_pack_1?.classe || evo.apres_pack_1_et_2?.classe;
+                      if (!hasEvo) return null;
+                      return (
+                        <div style={{ background: 'var(--color-background-secondary)', borderRadius: 12, padding: '16px 18px', marginBottom: 14 }}>
+                          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 600, marginBottom: 12 }}>Évolution projetée de l'étiquette</div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', gap: 8, flexWrap: 'wrap' }}>
+                            {renderEtiquette(evo.actuelle, 'Aujourd\'hui')}
+                            {evo.apres_pack_1?.classe && (
+                              <>
+                                <span style={{ fontSize: 18, color: '#cbd5e1' }}>→</span>
+                                {renderEtiquette(evo.apres_pack_1, 'Après pack 1')}
+                              </>
+                            )}
+                            {evo.apres_pack_1_et_2?.classe && (
+                              <>
+                                <span style={{ fontSize: 18, color: '#cbd5e1' }}>→</span>
+                                {renderEtiquette(evo.apres_pack_1_et_2, 'Après pack 1 + 2')}
+                              </>
+                            )}
+                          </div>
                         </div>
-                        {(tMin || tMax) && (
-                          <span style={{ fontSize: 13, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>
-                            {tMin && tMax ? `${tMin.toLocaleString('fr-FR')} – ${tMax.toLocaleString('fr-FR')} €` : `${(tMin ?? tMax)!.toLocaleString('fr-FR')} €`}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })()}
+
+                    {/* Pack 1 + Pack 2 */}
+                    {[
+                      { key: 'pack_1' as const, pack: recos!.pack_1, label: 'Pack 1 — Travaux essentiels', accent: '#2a7d9c', badgeBg: '#e0f2fe', badgeColor: '#0369a1', sub: 'Travaux prioritaires à engager en premier' },
+                      { key: 'pack_2' as const, pack: recos!.pack_2, label: 'Pack 2 — Travaux à envisager', accent: '#64748b', badgeBg: '#f1f5f9', badgeColor: '#475569', sub: 'Pour atteindre une performance optimale' },
+                    ].map(({ key, pack, label, accent, badgeBg, badgeColor, sub }) => {
+                      if (!pack || !pack.travaux || pack.travaux.length === 0) return null;
+                      const cout = fmtEuros(pack.cout_min, pack.cout_max);
+                      return (
+                        <div key={key} style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 14, padding: '14px 16px', marginBottom: 12 }}>
+                          {/* En-tête du pack */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid #f1f5f9' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <span style={{ display: 'inline-block', background: badgeBg, color: badgeColor, padding: '3px 9px', borderRadius: 6, fontSize: 11, fontWeight: 800, letterSpacing: '0.02em', marginBottom: 5 }}>{label}</span>
+                              <div style={{ fontSize: 12.5, color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>{sub}</div>
+                            </div>
+                            {cout && (
+                              <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
+                                <div style={{ fontSize: 16, fontWeight: 800, color: accent }}>{cout}</div>
+                                <div style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Estimation</div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Liste des travaux */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {pack.travaux.map((t, i) => (
+                              <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                                <div style={{ fontSize: 18, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>{POSTE_ICONS[t.poste ?? 'autre'] ?? '🔧'}</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 2, textTransform: 'capitalize' as const }}>{(t.poste ?? 'autre').replace('_', ' ')}</div>
+                                  <div style={{ fontSize: 12.5, color: 'var(--color-text-secondary)', lineHeight: 1.55 }}>{t.description ?? '—'}</div>
+                                  {t.performance_cible && <div style={{ fontSize: 11.5, color: '#475569', marginTop: 3, fontStyle: 'italic' as const }}>Performance cible : {t.performance_cible}</div>}
+                                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                                    {t.decision_copropriete && <span style={{ display: 'inline-block', background: '#fef3c7', color: '#92400e', padding: '2px 8px', borderRadius: 4, fontSize: 10.5, fontWeight: 600 }}>Décision copropriété</span>}
+                                    {t.autorisation_urbanisme && <span style={{ display: 'inline-block', background: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: 4, fontSize: 10.5, fontWeight: 600 }}>Autorisation d'urbanisme</span>}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Footer informatif */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 12px', background: '#eff6ff', border: '1px solid #dbeafe', borderRadius: 10, marginTop: 4 }}>
+                      <span style={{ fontSize: 14, flexShrink: 0 }}>ℹ️</span>
+                      <span style={{ fontSize: 11.5, color: '#1e40af', lineHeight: 1.55 }}>Estimations issues du DPE — à valider avec un professionnel. Des aides existent (MaPrimeRénov', éco-PTZ).</span>
+                    </div>
+                  </>
+                ) : (
+                  // Fallback legacy : ancien format de travaux_preconises (liste plate)
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {travauxLegacy!.map((t, i) => {
+                      const tr = t as Record<string, unknown>;
+                      const tLabel = String(tr.label ?? '');
+                      const tPriorite = String(tr.priorite ?? '');
+                      const tMin = tr.cout_min != null ? Number(tr.cout_min) : null;
+                      const tMax = tr.cout_max != null ? Number(tr.cout_max) : null;
+                      return (
+                        <div key={i} style={{ background: 'var(--color-background-secondary)', borderRadius: 10, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{tLabel}</div>
+                            {tPriorite && <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 2 }}>{tPriorite === 'prioritaire' ? '🔴 Prioritaire' : '🟡 Recommandé'}</div>}
+                          </div>
+                          {(tMin || tMax) && (
+                            <span style={{ fontSize: 13, fontWeight: 500, color: '#d97706', flexShrink: 0 }}>
+                              {tMin && tMax ? `${tMin.toLocaleString('fr-FR')} – ${tMax.toLocaleString('fr-FR')} €` : `${(tMin ?? tMax)!.toLocaleString('fr-FR')} €`}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </>
             );
           })()}
