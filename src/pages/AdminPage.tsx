@@ -3121,7 +3121,7 @@ function ClientSupportSection({ userId, isPro = false, showToast }: { userId: st
           {resolvedTickets.length > 0 && (
             <div>
               <button onClick={() => setResolvedShown(s => !s)}
-                style={{ width: '100%', padding: '10px 22px', background: '#f8fafc', borderTop: openTickets.length > 0 ? 'none' : '1px solid #f1f5f9', borderBottom: resolvedShown ? '1px solid #f1f5f9' : 'none', border: 'none', borderTop: openTickets.length > 0 ? 'none' : '1px solid #f1f5f9', fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'inherit' }}>
+                style={{ width: '100%', padding: '10px 22px', background: '#f8fafc', border: 'none', borderTop: openTickets.length > 0 ? 'none' : '1px solid #f1f5f9', borderBottom: resolvedShown ? '1px solid #f1f5f9' : 'none', fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'inherit' }}>
                 <span>Historique ({resolvedTickets.length})</span>
                 <motion.div animate={{ rotate: resolvedShown ? 180 : 0 }} transition={{ duration: 0.2 }}>
                   <ChevronDown size={12} style={{ color: '#94a3b8' }} />
