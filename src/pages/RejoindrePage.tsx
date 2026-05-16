@@ -167,7 +167,9 @@ function SectionBlock({ icon, title, subtitle, children }: { icon: React.ReactNo
    SiretLookup — Champ SIRET avec auto-vérif via API gouv
    ─────────────────────────────────────────
    Dès que 14 chiffres sont saisis → appel à recherche-entreprises.api.gouv.fr
-   Affiche une carte verte avec les infos officielles (nom, adresse, activité).
+   1. Recherche → carte GRISE "Société trouvée" avec bouton "Valider"
+   2. Clic Valider → carte VERTE "Informations confirmées"
+   3. Si SIRET modifié après validation → repasse en gris (re-validation possible)
    Si pas trouvé → message neutre, l'utilisateur peut continuer quand même.
    API gratuite, sans clé, publique. */
 type SiretInfo = {
@@ -179,6 +181,7 @@ type SiretInfo = {
 
 function SiretLookup({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   const [info, setInfo] = useState<SiretInfo | null>(null);
+  const [validated, setValidated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -197,13 +200,16 @@ function SiretLookup({ value, onChange, placeholder }: { value: string; onChange
     const formatted = formatSiret(raw);
     onChange(formatted);
 
-    const digits = formatted.replace(/\D/g, '');
-
     // Annule l'appel précédent si l'utilisateur retape
     if (abortRef.current) {
       abortRef.current.abort();
       abortRef.current = null;
     }
+
+    // Toute modif → on dé-valide (sécurité : le user doit re-confirmer)
+    setValidated(false);
+
+    const digits = formatted.replace(/\D/g, '');
 
     // Reset l'état si on n'a pas encore les 14 chiffres
     if (digits.length < 14) {
@@ -266,7 +272,7 @@ function SiretLookup({ value, onChange, placeholder }: { value: string; onChange
       </div>
       <style>{`@keyframes spin { from { transform: translateY(-50%) rotate(0deg); } to { transform: translateY(-50%) rotate(360deg); } }`}</style>
 
-      {/* Carte résultat — entreprise trouvée */}
+      {/* Carte résultat — Société trouvée */}
       {info && (
         <motion.div
           initial={{ opacity: 0, y: -4 }}
@@ -276,30 +282,63 @@ function SiretLookup({ value, onChange, placeholder }: { value: string; onChange
             marginTop: 8,
             padding: '12px 14px',
             borderRadius: 10,
-            background: '#f0fdf4',
-            border: '1px solid #bbf7d0',
-            display: 'flex',
-            gap: 10,
-            alignItems: 'flex-start',
+            background: validated ? '#f0fdf4' : '#f8fafc',
+            border: `1px solid ${validated ? '#bbf7d0' : '#e2e8f0'}`,
+            transition: 'background 0.25s, border-color 0.25s',
           }}
         >
-          <CheckCircle size={18} style={{ color: '#16a34a', flexShrink: 0, marginTop: 1 }} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a', marginBottom: 2 }}>
-              {info.nom}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            <CheckCircle size={18} style={{ color: validated ? '#16a34a' : '#94a3b8', flexShrink: 0, marginTop: 1, transition: 'color 0.25s' }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: validated ? '#16a34a' : '#94a3b8', letterSpacing: '0.06em', textTransform: 'uppercase' as const, marginBottom: 4, transition: 'color 0.25s' }}>
+                {validated ? '✓ Informations confirmées' : 'Société trouvée'}
+              </div>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a', marginBottom: 2 }}>
+                {info.nom}
+              </div>
+              {info.adresse && (
+                <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.45 }}>
+                  {info.adresse}
+                </div>
+              )}
+              {info.activite && (
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 4, fontStyle: 'italic' }}>
+                  {info.activite}
+                  {!info.active && <span style={{ color: '#dc2626', fontWeight: 600, marginLeft: 6 }}>· Fermée</span>}
+                </div>
+              )}
             </div>
-            {info.adresse && (
-              <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.45 }}>
-                {info.adresse}
-              </div>
-            )}
-            {info.activite && (
-              <div style={{ fontSize: 11, color: '#64748b', marginTop: 4, fontStyle: 'italic' }}>
-                {info.activite}
-                {!info.active && <span style={{ color: '#dc2626', fontWeight: 600, marginLeft: 6 }}>· Fermée</span>}
-              </div>
-            )}
           </div>
+
+          {/* Bouton Valider (uniquement si pas encore validé) */}
+          {!validated && (
+            <button
+              type="button"
+              onClick={() => setValidated(true)}
+              style={{
+                marginTop: 10,
+                width: '100%',
+                padding: '9px 14px',
+                borderRadius: 9,
+                background: '#fff',
+                border: '1.5px solid #2a7d9c',
+                color: '#0c447c',
+                fontSize: 12.5,
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#f0f7fb'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
+            >
+              <CheckCircle size={14} /> Valider la société
+            </button>
+          )}
         </motion.div>
       )}
 
