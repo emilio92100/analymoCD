@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { ArrowRight, ChevronDown, TrendingDown, TrendingUp, AlertTriangle, Shield, Check, Info } from 'lucide-react';
 import { useSEO } from '../hooks/useSEO';
+import { VerimoConfetti, VERIMO_CONFETTI_COLORS } from '../components/VerimoConfetti';
 
 const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
 const isLowPerf = () => isIOS() || (typeof window !== 'undefined' && window.innerWidth <= 768);
@@ -398,6 +399,25 @@ export default function MethodePage() {
         <div style={{ position: 'absolute', top: -60, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.04) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: -30, left: '10%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.03) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(180deg, transparent 0%, #ffffff 100%)', pointerEvents: 'none', zIndex: 2 }} />
+
+        {/* Confettis — desktop (6) + mobile allégé (3) */}
+        <div className="confetti-desktop" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+          <VerimoConfetti items={[
+            { top: '20%', left: '7%', size: 10, color: VERIMO_CONFETTI_COLORS.blue, shape: 'circle' },
+            { top: '32%', right: '9%', size: 12, color: VERIMO_CONFETTI_COLORS.green, shape: 'square', delay: 0.5 },
+            { top: '58%', left: '5%', size: 8, color: VERIMO_CONFETTI_COLORS.orange, shape: 'circle', delay: 1 },
+            { top: '68%', right: '6%', size: 10, color: VERIMO_CONFETTI_COLORS.blue, shape: 'square', delay: 1.3 },
+            { bottom: '22%', left: '10%', size: 8, color: VERIMO_CONFETTI_COLORS.red, shape: 'circle', delay: 0.8 },
+            { bottom: '34%', right: '11%', size: 12, color: VERIMO_CONFETTI_COLORS.green, shape: 'circle', delay: 1.5 },
+          ]} />
+        </div>
+        <div className="confetti-mobile" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+          <VerimoConfetti items={[
+            { top: '15%', left: '4%', size: 6, color: VERIMO_CONFETTI_COLORS.blue, shape: 'circle' },
+            { top: '50%', right: '4%', size: 7, color: VERIMO_CONFETTI_COLORS.green, shape: 'square', delay: 0.6 },
+            { bottom: '15%', left: '5%', size: 6, color: VERIMO_CONFETTI_COLORS.orange, shape: 'circle', delay: 1.1 },
+          ]} />
+        </div>
         <div style={{ maxWidth: 760, margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <motion.p initial={{ opacity: 0, y: isLowPerf() ? 4 : 10 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: isLowPerf() ? 0.18 : 0.4 }}
@@ -845,6 +865,8 @@ export default function MethodePage() {
           .cat-grid { grid-template-columns: 1fr !important; }
           .extracts-grid { grid-template-columns: 1fr !important; }
         }
+        @media (max-width: 1023px) { .confetti-desktop { display: none !important; } }
+        @media (min-width: 1024px) { .confetti-mobile { display: none !important; } }
       `}</style>
     </main>
   );
