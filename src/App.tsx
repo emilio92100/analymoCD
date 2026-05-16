@@ -293,7 +293,7 @@ export default function App() {
           <Route path="/cgv-pro" element={<PublicLayout><CGVProPage /></PublicLayout>} />
           <Route path="/mentions-legales" element={<PublicLayout><MentionsLegalesPage /></PublicLayout>} />
           <Route path="/pro" element={<PublicLayout><ProPage /></PublicLayout>} />
-          <Route path="/pro/mandataires" element={<PublicLayout><MandatairesPage /></PublicLayout>} />
+          <Route path="/pro/agents-mandataires" element={<PublicLayout><MandatairesPage /></PublicLayout>} />
           <Route path="/contact-pro" element={<PublicLayout><ContactProPage /></PublicLayout>} />
           <Route path="/pro/rejoindre" element={<PublicLayout><RejoindrePage /></PublicLayout>} />
           <Route path="/guides" element={<PublicLayout><GuidesPage /></PublicLayout>} />
