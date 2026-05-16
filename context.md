@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet — 16 mai 2026
+# VERIMO — Contexte projet — 17 mai 2026
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -114,7 +114,7 @@ TVA Tax Rate ID : txr_1TUAxVBesXB76oWESXBnGdIZ
 | Nom | Rôle | Version |
 |-----|------|---------|
 | `analyser` | Lance une analyse — gère la queue Anthropic 503 | v8 |
-| `analyser-run` | Worker qui traite l'analyse en background | **v10** |
+| `analyser-run` | Worker qui traite l'analyse en background | **v11** (17 mai — feature DPE travaux préconisés) |
 | `analyser-retry` | Cron pg_cron 5 min — retraite les analyses queued (12 retries max) | — |
 | `comparer` | Compare 2 ou 3 rapports | — |
 | `admin-user-management` | Actions admin (create, invite, delete, reset password) | — |
@@ -338,6 +338,87 @@ const VERIMO_CONFETTI_COLORS = {
 
 ---
 
+## 🆕 Session 17 mai 2026 ⭐ — Feature DPE Travaux préconisés (analyse simple + complète)
+
+### Objectif
+Extraire et afficher proprement les recommandations de travaux issues du DPE (méthode 3CL-DPE 2021) : 2 packs (essentiels + à envisager) avec montants estimés et évolution projetée de l'étiquette DPE après travaux.
+
+### Architecture décisionnelle
+- **JSONB unique** : pas de SQL/migration. Le résultat d'analyse est déjà stocké dans une colonne JSONB → on enrichit le JSON existant avec un nouveau sous-objet, pas de nouvelle table ni colonne nécessaire. Cette règle s'applique pour toutes futures features d'enrichissement d'analyse.
+- **Couvre 2 cas** : DPE seul uploadé (analyse simple) ET DDT complet contenant un DPE (analyse complète)
+- **Affichage** : particulier ET pro (même composant)
+
+### Modifications
+
+#### 1. Edge function `analyser-run/index.ts` (v10 → v11, 1767 → 1780 lignes)
+
+⚠️ **Déploiement manuel sur Supabase Dashboard requis**
+
+- **Schéma DDT enrichi** (ligne 722) : ajout dans `dpe` de `version_methode` (3CL_2021/3CL_2012/factures/inconnue) + sous-objet `recommandations` contenant :
+  - `format` : "standard" | "ancien" | "aucune"
+  - `evolution_etiquette` : 3 étiquettes projetées (actuelle, apres_pack_1, apres_pack_1_et_2) avec classe + kwh_m2 + ges_kg_m2
+  - `pack_1` (essentiels) et `pack_2` (à envisager), chacun avec cout_min/cout_max + travaux[] où chaque travail a : poste (mur/toiture/plancher_bas/fenetres/porte/chauffage/eau_chaude/ventilation/autre), description, performance_cible, decision_copropriete (bool), autorisation_urbanisme (bool)
+- **10 règles d'extraction ajoutées** (lignes 733-742) :
+  - Règle DPE seul uploadé → le classer comme DDT
+  - Règle DDT complet → extraire normalement
+  - Détection version méthode
+  - Détection format (standard si 3CL_2021 avec packs, ancien si 3CL_2012, aucune si A/B sans recos)
+  - Extraction détaillée pack_1 (label, montants, travaux avec posture + description + performance_cible + décision copro + urbanisme)
+  - Extraction pack_2 (idem)
+  - Extraction evolution_etiquette (page 6 du DPE)
+  - Si format="ancien" → fallback sur travaux_preconises legacy
+  - Si format="aucune" → packs vides
+  - Ne JAMAIS inventer un montant ou une étiquette projetée
+- **Schéma synthèse finale enrichi** (ligne 1390) : ajout au niveau racine de `dpe_recommandations` (recopie depuis le DDT)
+- **Règle synthèse** (ligne 1159) : "si DDT contient un DPE avec sa section Recommandations, recopier vers rapport.dpe_recommandations"
+
+#### 2. `RapportPage.tsx` (4734 → 4896 lignes) — Analyse COMPLÈTE
+
+Localisation : composant `TabLogement` (function ligne 2546) → accordéon "Performance énergétique" → nouveau bloc juste après le coût énergétique annuel.
+
+Nouveau bloc remplace l'ancienne sous-section "Travaux préconisés" legacy :
+- Titre dynamique : **🎯 "Pour passer de X à Y"** (si évolution disponible) ou **🔨 "Pour améliorer votre note DPE"** (fallback)
+- Bandeau "Évolution projetée de l'étiquette" : 3 cercles colorés (D → C → A) avec flèches →, utilise `DPE_COLORS` existant
+- Card Pack 1 — fond blanc, badge bleu `#2a7d9c`, sous-titre dynamique en gras ("Pour passer de E à C")
+- Card Pack 2 — badge gris `#64748b`, sous-titre dynamique
+- Label **"MONTANT ESTIMÉ"** (uppercase 10px, fontWeight 700, letterSpacing 0.05em) au-dessus du chiffre 17px à droite
+- Liste travaux avec emoji par poste (🧱 mur, 🏠 toiture, ⬇️ plancher_bas, 🪟 fenetres, 🚪 porte, 🔥 chauffage, 💧 eau_chaude, 💨 ventilation, 🔧 autre)
+- Description + performance cible en italique
+- Badges contextuels : "Décision copropriété" (orange `#fef3c7`/`#92400e`) et "Autorisation d'urbanisme" (bleu `#dbeafe`/`#1e40af`)
+- Footer info bleu ℹ️ "Estimations issues du DPE — à valider avec un professionnel. Des aides existent (MaPrimeRénov', éco-PTZ)."
+- **Fallback legacy** : si pas de `dpe_recommandations` au nouveau format mais `travaux_preconises` rempli → ancien affichage simple (puces 🔴 Prioritaire / 🟡 Recommandé)
+
+#### 3. `DocumentRenderer.tsx` (3175 → 3325 lignes) — Analyse SIMPLE ⚠️ Découverte importante
+
+**L'analyse simple n'utilise PAS `TabLogement`** mais a son propre rendu dans `DocumentRenderer.tsx` → `RendererDDT` (ligne 455).
+
+Avant : ancien bloc "TRAVAUX RECOMMANDÉS PAR LE DPE" (gradient orange, puces 🔴/🟡) — non touché par la modif TabLogement.
+
+Après : remplacé par le **même nouveau bloc complet** que TabLogement, accessible via `r.dpe.recommandations` (depuis le DDT direct) au lieu de `rapport.dpe_recommandations`. Header coloré gardé (gradient orange `#d97706→#b45309`) mais avec titre dynamique injecté (🎯/🔨 + texte). POSTE_ICONS recréé localement. Fallback legacy gardé identique à l'original.
+
+### Fichiers livrés
+- `supabase/functions/analyser-run/index.ts` (1780 lignes) — edge function, déploiement manuel
+- `src/pages/RapportPage.tsx` (4896 lignes) — push GitHub, Vercel auto-déploie
+- `src/pages/dashboard/DocumentRenderer.tsx` (3325 lignes) — push GitHub, Vercel auto-déploie
+
+0 erreur TypeScript validée (`npx tsc --noEmit` complet).
+
+### Cas gérés
+- **DPE 3CL-DPE 2021** (récent) → format="standard" → bloc complet avec packs et évolution
+- **DPE seul uploadé** → classé comme DDT, recommandations extraites
+- **DDT complet avec DPE inclus** → recommandations remontées au niveau racine via `dpe_recommandations`
+- **DPE ancien format (3CL_2012)** → format="ancien" → fallback `travaux_preconises` legacy
+- **DPE classe A/B sans recos** → format="aucune" → bloc non affiché
+- **Pas de DPE** → bloc non affiché
+
+### Status déploiement
+✅ Fichiers pushés sur GitHub par Alex (commit `7a42280`)
+✅ Edge function `analyser-run` redéployée manuellement sur Supabase Dashboard
+⏳ Test en attente : 1 analyse simple sur DPE Bouyges + 1 analyse complète sur diagnostics Benoist-Lucy pour validation rendu final
+
+---
+
+
 ## 🔮 Feature Compte Agence multi-utilisateurs (PRÉVUE PLUS TARD)
 
 ⚠️ **À développer quand 2-3 vraies agences clientes seront acquises** — pas avant. Estimation : **5-15 jours de dev** selon scope.
@@ -523,6 +604,11 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 ### Sessions récentes (mai 2026)
 
+- **Session 17 mai 2026 ⭐ : Feature DPE Travaux préconisés** (détail section dédiée plus haut)
+  - Extraction et affichage des 2 packs de travaux DPE (essentiels + à envisager) + évolution étiquette projetée
+  - 3 fichiers modifiés : `analyser-run/index.ts` (v10→v11), `RapportPage.tsx` (TabLogement), `DocumentRenderer.tsx` (RendererDDT)
+  - Découverte clé : l'analyse simple utilise `DocumentRenderer.tsx`, pas `TabLogement` — il fallait modifier les 2 endroits
+  - Architecture sans SQL : enrichissement du JSONB existant uniquement
 - **Session 16 mai 2026 (~6h)** ⭐ : **CGV Pro popup + refonte /pro/rejoindre + refonte profonde MandatairesPage**
   - SQL `profiles.cgv_pro_accepted_at` + `cgv_pro_version` + index
   - Popup CGV Pro obligatoire avant 1er paiement pro (3 actions interceptées : subscribe, buyUnit, openUpgradeFlow). Bloc admin affichage ✅ vert ou ⚠️ orange sur fiche client
@@ -567,9 +653,10 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 ## 🎯 Prochaine session — Actions prioritaires
 
 ### Côté push immédiat (en attente d'Alex)
-1. **Push MandatairesPage.tsx v6** (1066 lignes) sur GitHub + test visuel desktop ET mobile
-2. **Test popup CGV Pro** sur compte test pro (1er paiement → popup → coche → paiement passe → 2e paiement plus de popup, badge admin OK)
-3. **Tester URLs renommées** : `/pro/rejoindre` et `/pro/agents-mandataires` fonctionnent partout
+1. **Tester feature DPE Travaux préconisés** : 1 analyse simple sur DPE Bouyges + 1 analyse complète sur diagnostics Benoist-Lucy. Vérifier rendu : titre dynamique 🎯 "Pour passer de X à Y", évolution étiquette (3 cercles), cards Pack 1 + Pack 2 avec sous-titres "Pour passer de X à Y", label "MONTANT ESTIMÉ", emojis par poste, badges copro/urbanisme, footer aides
+2. **Push MandatairesPage.tsx v6** (1066 lignes) sur GitHub + test visuel desktop ET mobile
+3. **Test popup CGV Pro** sur compte test pro (1er paiement → popup → coche → paiement passe → 2e paiement plus de popup, badge admin OK)
+4. **Tester URLs renommées** : `/pro/rejoindre` et `/pro/agents-mandataires` fonctionnent partout
 
 ### Côté technique/produit (en attente)
 4. **Annuler abos Stripe fantômes** (`cus_UUgPam3KYnmpzC` + `publicite92320@gmail.com`)
