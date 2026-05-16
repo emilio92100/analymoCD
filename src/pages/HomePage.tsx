@@ -184,13 +184,13 @@ export default function HomePage() {
 /* ═══ HERO ═══════════════════════════════════════════════ */
 function HeroSection() {
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden px-5 sm:px-10 lg:px-20 pt-16 pb-12" style={{ background: 'linear-gradient(165deg, #ffffff 0%, #f2f9fb 40%, #e6f3f7 100%)' }}>
+    <section className="relative min-h-screen flex items-center overflow-hidden px-5 sm:px-10 lg:px-20 pt-16 pb-12" style={{ background: 'linear-gradient(165deg, #ecf4f7 0%, #d8eaef 45%, #c4e0e8 100%)' }}>
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute" style={{ top: -60, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.04) 0%, transparent 70%)' }} />
         <div className="absolute" style={{ bottom: -30, left: '10%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.03) 0%, transparent 70%)' }} />
       </div>
 
-      {/* Confettis discrets autour de la zone hero — desktop seulement (mobile = visuel chargé) */}
+      {/* Confettis — desktop (6) + mobile allégé (4 plus petits, plus écartés) */}
       <div className="absolute inset-0 pointer-events-none hidden lg:block">
         <Confetti items={[
           { top: '18%', left: '6%', size: 10, color: VERIMO_CONFETTI_COLORS.blue, shape: 'circle' },
@@ -199,6 +199,14 @@ function HeroSection() {
           { top: '70%', right: '6%', size: 10, color: VERIMO_CONFETTI_COLORS.blue, shape: 'square', delay: 1.3 },
           { bottom: '20%', left: '10%', size: 8, color: VERIMO_CONFETTI_COLORS.red, shape: 'circle', delay: 0.8 },
           { bottom: '32%', right: '12%', size: 12, color: VERIMO_CONFETTI_COLORS.green, shape: 'circle', delay: 1.5 },
+        ]} />
+      </div>
+      <div className="absolute inset-0 pointer-events-none lg:hidden">
+        <Confetti items={[
+          { top: '12%', left: '4%', size: 6, color: VERIMO_CONFETTI_COLORS.blue, shape: 'circle' },
+          { top: '20%', right: '5%', size: 7, color: VERIMO_CONFETTI_COLORS.green, shape: 'square', delay: 0.6 },
+          { bottom: '25%', left: '5%', size: 6, color: VERIMO_CONFETTI_COLORS.orange, shape: 'circle', delay: 1.1 },
+          { bottom: '15%', right: '4%', size: 7, color: VERIMO_CONFETTI_COLORS.red, shape: 'circle', delay: 0.4 },
         ]} />
       </div>
 
@@ -924,13 +932,20 @@ function SecuriteSection() {
 
   return (
     <section className="relative overflow-hidden py-12 md:py-20 px-4 md:px-6 bg-white">
-      {/* Confettis discrets — desktop seulement */}
+      {/* Confettis — desktop (4) + mobile allégé (3) */}
       <div className="absolute inset-0 pointer-events-none hidden lg:block">
         <Confetti items={[
           { top: '20%', left: '7%', size: 10, color: VERIMO_CONFETTI_COLORS.blue, shape: 'circle' },
           { top: '35%', right: '8%', size: 8, color: VERIMO_CONFETTI_COLORS.green, shape: 'circle', delay: 0.5 },
           { bottom: '22%', left: '5%', size: 12, color: VERIMO_CONFETTI_COLORS.orange, shape: 'square', delay: 1 },
           { bottom: '35%', right: '6%', size: 10, color: VERIMO_CONFETTI_COLORS.red, shape: 'circle', delay: 1.3 },
+        ]} />
+      </div>
+      <div className="absolute inset-0 pointer-events-none lg:hidden">
+        <Confetti items={[
+          { top: '15%', left: '4%', size: 6, color: VERIMO_CONFETTI_COLORS.blue, shape: 'circle' },
+          { top: '50%', right: '4%', size: 7, color: VERIMO_CONFETTI_COLORS.green, shape: 'square', delay: 0.6 },
+          { bottom: '15%', left: '5%', size: 6, color: VERIMO_CONFETTI_COLORS.orange, shape: 'circle', delay: 1.1 },
         ]} />
       </div>
       <div className="relative z-10 max-w-6xl mx-auto">
@@ -1447,7 +1462,7 @@ function ScoreSection() {
   ];
   return (
     <section className="relative overflow-hidden py-12 md:py-20 px-4 md:px-6 bg-[#f4f7f9]">
-      {/* Confettis discrets — desktop seulement */}
+      {/* Confettis — desktop (6) + mobile allégé (3) */}
       <div className="absolute inset-0 pointer-events-none hidden lg:block">
         <Confetti items={[
           { top: '12%', left: '5%', size: 10, color: VERIMO_CONFETTI_COLORS.green, shape: 'circle' },
@@ -1456,6 +1471,13 @@ function ScoreSection() {
           { top: '60%', right: '4%', size: 10, color: VERIMO_CONFETTI_COLORS.green, shape: 'square', delay: 0.4 },
           { bottom: '15%', left: '8%', size: 8, color: VERIMO_CONFETTI_COLORS.red, shape: 'circle', delay: 1.4 },
           { bottom: '25%', right: '10%', size: 12, color: VERIMO_CONFETTI_COLORS.blue, shape: 'circle', delay: 0.9 },
+        ]} />
+      </div>
+      <div className="absolute inset-0 pointer-events-none lg:hidden">
+        <Confetti items={[
+          { top: '8%', left: '4%', size: 6, color: VERIMO_CONFETTI_COLORS.green, shape: 'circle' },
+          { top: '50%', right: '4%', size: 7, color: VERIMO_CONFETTI_COLORS.blue, shape: 'square', delay: 0.7 },
+          { bottom: '12%', left: '5%', size: 6, color: VERIMO_CONFETTI_COLORS.orange, shape: 'circle', delay: 1.2 },
         ]} />
       </div>
       <div className="relative z-10 max-w-5xl mx-auto">
