@@ -185,7 +185,7 @@ export default function TarifsPage() {
       {/* ── HERO ── */}
       <section style={{
         background: 'linear-gradient(165deg, #ffffff 0%, #f2f9fb 40%, #e6f3f7 100%)',
-        padding: 'clamp(44px,7vw,80px) 20px clamp(36px,5vw,56px)',
+        padding: 'clamp(44px,7vw,80px) 20px clamp(20px,3vw,32px)',
         textAlign: 'center',
         position: 'relative',
         overflow: 'hidden',
@@ -226,14 +226,14 @@ export default function TarifsPage() {
         </motion.div>
 
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.22 }}
-          style={{ marginTop: 14, fontSize: 12, color: '#94a3b8', textAlign: 'center', fontStyle: 'italic' }}>
+          style={{ marginTop: 14, fontSize: 12, color: '#64748b', textAlign: 'center', fontStyle: 'italic' }}>
           * Moyenne observée sur une analyse simple. Jusqu'à quelques minutes pour une analyse complète.
         </motion.p>
         </div>
       </section>
 
       {/* ── CARTES ── */}
-      <section style={{ padding: 'clamp(32px,5vw,52px) 20px 0', maxWidth: 1100, margin: '0 auto' }}>
+      <section style={{ padding: 'clamp(16px,2.5vw,28px) 20px 0', maxWidth: 1100, margin: '0 auto' }}>
         <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, alignItems: 'stretch' }}>
           {plans.map((plan, i) => (
             <motion.div key={plan.id}
