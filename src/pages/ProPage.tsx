@@ -207,7 +207,7 @@ function HeroSection({ setActiveProfileIdx }: { setActiveProfileIdx: (i: number)
         <motion.div variants={up} initial="hidden" animate="show" custom={2.5}
           className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 max-w-5xl mx-auto mb-12">
           {[
-            { emoji: '🏢', label: 'Agent / Mandataire', desc: 'Agence, indépendant, négociateur', href: '/pro/mandataires' },
+            { emoji: '🏢', label: 'Agent / Mandataire', desc: 'Agence, indépendant, négociateur', href: '/pro/agents-mandataires' },
             { emoji: '📈', label: 'Investisseur', desc: 'Locatif, patrimoine, rendement', href: null, profileIdx: 1 },
             { emoji: '🔑', label: 'Marchand de bien', desc: 'Achat-revente, division, marge', href: null, profileIdx: 2 },
             { emoji: '⚖️', label: 'Notaire', desc: 'Étude, clerc, négociateur', href: null, profileIdx: 3 },
@@ -366,7 +366,7 @@ function ProfilesSection({ activeIdx, setActiveIdx }: { activeIdx: number; setAc
                       Rejoindre Verimo Pro <ArrowRight size={15} />
                     </Link>
                     {active.id === 'agent' && (
-                      <Link to="/pro/mandataires"
+                      <Link to="/pro/agents-mandataires"
                         className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl text-sm font-bold transition-all duration-200 hover:-translate-y-0.5"
                         style={{ background: '#fff', color: active.color, border: `1.5px solid ${active.color}` }}>
                         En savoir plus <ArrowRight size={15} />
