@@ -21,6 +21,9 @@ import Compare from './dashboard/Compare';
 import Support from './dashboard/Support';
 import Aide from './dashboard/Aide';
 
+// Popup consentement CGV Pro (1er paiement)
+import CgvProConsentDialog from '../components/CgvProConsentDialog';
+
 /* ══════════════════════════════════════════
    TYPES
 ══════════════════════════════════════════ */
@@ -44,6 +47,8 @@ type ProProfile = {
   pro_onboarding_done?: boolean;
   credits_document?: number;
   credits_complete?: number;
+  cgv_pro_accepted_at?: string | null;
+  cgv_pro_version?: string | null;
 };
 
 type ProSubscription = {
@@ -2514,6 +2519,44 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
   const [loading, setLoading] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
+  // ─── CGV Pro : consentement avant le 1er paiement ───
+  // Si cgv_pro_accepted_at est rempli en BDD → on saute la popup à vie pour ce user.
+  // Sinon → on intercepte les 3 actions de paiement (subscribe, upgrade, buy_unit)
+  // pour afficher la popup AVANT l'appel checkout Stripe.
+  const [cgvDialog, setCgvDialog] = useState<{
+    open: boolean;
+    actionLabel: string;
+    onAccept: () => void;
+  }>({ open: false, actionLabel: '', onAccept: () => {} });
+
+  // ⚡ Tracking local : une fois accepté en cours de session, on évite de relire la BDD.
+  // proProfile est cached, l'UPDATE BDD se reflète au prochain reload.
+  const [cgvAcceptedLocal, setCgvAcceptedLocal] = useState(!!proProfile?.cgv_pro_accepted_at);
+  useEffect(() => {
+    setCgvAcceptedLocal(!!proProfile?.cgv_pro_accepted_at);
+  }, [proProfile?.cgv_pro_accepted_at]);
+
+  /**
+   * Garde-fou CGV Pro : si le pro n'a pas encore accepté, ouvre la popup et
+   * exécute `paymentAction` UNIQUEMENT après acceptation. Sinon exécute direct.
+   */
+  function requireCgvThen(actionLabel: string, paymentAction: () => void) {
+    if (cgvAcceptedLocal) {
+      paymentAction();
+      return;
+    }
+    setCgvDialog({
+      open: true,
+      actionLabel,
+      onAccept: () => {
+        setCgvAcceptedLocal(true);
+        setCgvDialog((d) => ({ ...d, open: false }));
+        // Petit délai pour que l'animation de fermeture passe avant la redirection Stripe
+        setTimeout(() => paymentAction(), 150);
+      },
+    });
+  }
+
   // Plan recommandé par l'admin
   const PLAN_INFO_MAP: Record<string, { name: string; price: string; completes: number; simples: number }> = {
     decouverte: { name: 'Découverte', price: '19,90', completes: 1, simples: 3 },
@@ -2683,7 +2726,7 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
   } | null>(null);
 
   // Ouvrir le popup d'upgrade : appelle preview_upgrade pour obtenir le récap
-  async function openUpgradeFlow(targetPlan: string) {
+  async function _openUpgradeFlowInternal(targetPlan: string) {
     setUpgradeTargetPlan(targetPlan);
     setUpgradeError('');
     setUpgradeFlow('preview');
@@ -2707,6 +2750,17 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
       setUpgradeErrorContext('generic');
       setUpgradeFlow('error');
     }
+  }
+
+  // ⚡ Wrapper : intercepte pour vérifier le consentement CGV Pro.
+  // Couvre le cas des comptes pros antérieurs à la mise en place de la popup
+  // (ils n'ont pas de cgv_pro_accepted_at → on les fait accepter avant l'upgrade).
+  function openUpgradeFlow(targetPlan: string) {
+    const planInfo = PLAN_INFO_MAP[targetPlan];
+    const label = planInfo
+      ? `Changement de plan vers ${planInfo.name} — ${planInfo.price} € HT/mois`
+      : `Changement de plan vers ${targetPlan}`;
+    requireCgvThen(label, () => { _openUpgradeFlowInternal(targetPlan); });
   }
 
   // Confirmer l'upgrade : appelle l'edge function et gère 3D Secure inline si besoin
@@ -2866,7 +2920,7 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
     }
   }, []);
 
-  async function handleSubscribe(planId: string) {
+  async function _handleSubscribeInternal(planId: string) {
     setLoading(`subscribe:${planId}`);
     setErrorMsg('');
     try {
@@ -2898,7 +2952,16 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
     }
   }
 
-  async function handleBuyUnit(unitType: 'complete' | 'document', quantity: number = 1) {
+  // ⚡ Wrapper : intercepte pour vérifier le consentement CGV Pro avant le 1er paiement
+  function handleSubscribe(planId: string) {
+    const planInfo = PLAN_INFO_MAP[planId];
+    const label = planInfo
+      ? `Souscription au plan ${planInfo.name} — ${planInfo.price} € HT/mois`
+      : `Souscription au plan ${planId}`;
+    requireCgvThen(label, () => { _handleSubscribeInternal(planId); });
+  }
+
+  async function _handleBuyUnitInternal(unitType: 'complete' | 'document', quantity: number = 1) {
     setLoading(`unit:${unitType}`);
     setErrorMsg('');
     try {
@@ -2932,6 +2995,16 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
       setErrorMsg(e.message || 'Une erreur est survenue');
       setLoading(null);
     }
+  }
+
+  // ⚡ Wrapper : intercepte pour vérifier le consentement CGV Pro avant le 1er paiement
+  function handleBuyUnit(unitType: 'complete' | 'document', quantity: number = 1) {
+    const typeLabel = unitType === 'complete' ? 'Analyse complète' : 'Analyse simple';
+    const unitPrice = unitType === 'complete' ? '9,90 €' : '2,90 €';
+    const label = quantity > 1
+      ? `Achat unitaire — ${quantity} × ${typeLabel} (${unitPrice} HT/unité)`
+      : `Achat unitaire — 1 ${typeLabel} (${unitPrice} HT)`;
+    requireCgvThen(label, () => { _handleBuyUnitInternal(unitType, quantity); });
   }
 
   // ── Cancel flow ──
@@ -4100,6 +4173,15 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ─── Popup consentement CGV Pro (1er paiement uniquement) ─── */}
+      <CgvProConsentDialog
+        isOpen={cgvDialog.open}
+        userId={proProfile?.id || ''}
+        actionLabel={cgvDialog.actionLabel}
+        onAccept={cgvDialog.onAccept}
+        onCancel={() => setCgvDialog((d) => ({ ...d, open: false }))}
+      />
 
     </div>
   );
