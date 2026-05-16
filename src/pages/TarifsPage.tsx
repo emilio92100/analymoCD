@@ -219,11 +219,16 @@ export default function TarifsPage() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.18 }}
           style={{ display: 'flex', justifyContent: 'center', gap: 24, flexWrap: 'wrap' }}>
           {[{ I: Shield, l: 'Paiement sécurisé' }, { I: Zap, l: 'Résultats en 30s*' }, { I: FileText, l: 'PDF inclus' }, { I: Crown, l: 'Crédits sans expiration' }].map(({ I, l }) => (
-            <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#94a3b8', fontWeight: 500 }}>
+            <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#475569', fontWeight: 600 }}>
               <I size={14} style={{ color: '#2a7d9c', flexShrink: 0 }} /> {l}
             </div>
           ))}
         </motion.div>
+
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.22 }}
+          style={{ marginTop: 14, fontSize: 12, color: '#94a3b8', textAlign: 'center', fontStyle: 'italic' }}>
+          * Moyenne observée sur une analyse simple. Jusqu'à quelques minutes pour une analyse complète.
+        </motion.p>
         </div>
       </section>
 
