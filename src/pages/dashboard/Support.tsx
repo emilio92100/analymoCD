@@ -91,7 +91,11 @@ export default function Support() {
   if (loading) return <DashboardLoader message="Chargement du support…" />;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.28, ease: 'easeOut' }}
+      style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <style>{`@media (max-width: 640px) { .support-mobile-only { display: flex !important; } } @media (min-width: 641px) { .support-mobile-only { display: none !important; } }`}</style>
 
       {/* Welcome banner */}
@@ -263,7 +267,7 @@ export default function Support() {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
 
@@ -440,15 +444,14 @@ function ChatView({ ticketId, onBack }: { ticketId: string; onBack: () => void }
 
   const fmtTime = (d: string) => new Date(d).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
-  if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60 }}>
-      <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid #edf2f7', borderTopColor: '#2a7d9c', animation: 'spin 0.9s linear infinite' }} />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-  );
+  if (loading) return <DashboardLoader message="Chargement de la conversation…" />;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 140px)' }}>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.28, ease: 'easeOut' }}
+      style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 140px)' }}>
       {/* Header ticket */}
       <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '16px 20px', marginBottom: 16, flexShrink: 0 }}>
         <style>{`@media (max-width: 640px) { .chat-header-title { order: 3; width: 100%; marginTop: 10px; } .chat-header-row { flex-wrap: wrap; } }`}</style>
@@ -568,7 +571,7 @@ function ChatView({ ticketId, onBack }: { ticketId: string; onBack: () => void }
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }
 
