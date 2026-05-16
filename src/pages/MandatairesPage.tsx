@@ -12,6 +12,21 @@ const isMobile = () => typeof window !== 'undefined' && window.innerWidth <= 768
 const isLowPerf = () => isIOS() || isMobile();
 const _lp = isLowPerf();
 
+/**
+ * Palette confettis Verimo : référence aux couleurs du score
+ * - Vert : score haut / "bien sain" (≥15/20)
+ * - Orange : vigilance (10-14/20)
+ * - Rouge : alerte (< 10/20)
+ * - Bleu Verimo : signature de marque
+ * À réutiliser sur HomePage et autres pages pour cohérence visuelle.
+ */
+const VERIMO_CONFETTI_COLORS = {
+  green: '#10b981',   // score haut
+  orange: '#f97316',  // vigilance
+  red: '#ef4444',     // alerte
+  blue: '#2a7d9c',    // bleu Verimo
+};
+
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: _lp ? 6 : 24 },
   show: (i: number = 0) => ({
@@ -355,119 +370,144 @@ export default function MandatairesPage() {
 
   return (
     <div style={{ background: '#fff', color: '#0f172a', overflow: 'hidden', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-
+      <style>{`
+        @media (max-width: 900px) {
+          .hero-split { grid-template-columns: 1fr !important; gap: 30px !important; text-align: center; }
+          .hero-text { text-align: center; }
+          .hero-text p, .hero-text h1 { margin-left: auto !important; margin-right: auto !important; }
+          .hero-text > div:last-child { justify-content: center; }
+          .hero-phones { height: 480px !important; transform: scale(0.85); }
+          .scenario-grid { grid-template-columns: 1fr !important; gap: 30px !important; }
+          .scenario-visual { height: 420px !important; }
+          .scenario-visual.scenario-2 { height: 380px !important; }
+          .scenario-visual.scenario-3 { height: 380px !important; }
+          .cta-final h2 { font-size: clamp(28px, 8vw, 36px) !important; }
+        }
+        @media (min-width: 901px) {
+          .cta-final h2, .cta-final p { white-space: nowrap; }
+        }
+      `}</style>
       <section style={{ position: 'relative' as const, background: 'linear-gradient(165deg, #ffffff 0%, #f5f9fc 50%, #e8f3f8 100%)', padding: '120px 24px 80px', overflow: 'hidden' }}>
         <div style={{ position: 'absolute' as const, top: '15%', left: '15%', width: 350, height: 350, borderRadius: '50%', background: 'radial-gradient(circle, rgba(125,211,252,0.22), transparent 65%)', pointerEvents: 'none' as const }} />
         <div style={{ position: 'absolute' as const, top: '25%', right: '12%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(186,230,253,0.28), transparent 65%)', pointerEvents: 'none' as const }} />
 
         <Confetti items={[
-          { top: '14%', left: '6%', size: 12, color: '#2a7d9c', shape: 'circle' },
-          { top: '20%', left: '88%', size: 14, color: '#fbbf24', shape: 'square', delay: 0.5 },
-          { top: '42%', left: '4%', size: 8, color: '#ec4899', shape: 'circle', delay: 1 },
-          { top: '58%', left: '92%', size: 10, color: '#10b981', shape: 'square', delay: 1.5 },
-          { top: '75%', left: '8%', size: 14, color: '#7dd3fc', shape: 'square', delay: 0.8 },
-          { top: '82%', left: '86%', size: 10, color: '#f97316', shape: 'circle', delay: 1.2 },
+          { top: '14%', left: '6%', size: 12, color: VERIMO_CONFETTI_COLORS.blue, shape: 'circle' },
+          { top: '20%', left: '88%', size: 14, color: VERIMO_CONFETTI_COLORS.orange, shape: 'square', delay: 0.5 },
+          { top: '42%', left: '4%', size: 8, color: VERIMO_CONFETTI_COLORS.red, shape: 'circle', delay: 1 },
+          { top: '58%', left: '92%', size: 10, color: VERIMO_CONFETTI_COLORS.green, shape: 'square', delay: 1.5 },
+          { top: '75%', left: '8%', size: 14, color: VERIMO_CONFETTI_COLORS.blue, shape: 'square', delay: 0.8 },
+          { top: '82%', left: '86%', size: 10, color: VERIMO_CONFETTI_COLORS.orange, shape: 'circle', delay: 1.2 },
+          { top: '32%', left: '50%', size: 9, color: VERIMO_CONFETTI_COLORS.green, shape: 'circle', delay: 0.3 },
+          { top: '65%', left: '46%', size: 11, color: VERIMO_CONFETTI_COLORS.red, shape: 'square', delay: 1.8 },
         ]} />
 
         <div style={{ maxWidth: 1200, margin: '0 auto', position: 'relative' as const, zIndex: 2 }}>
-          <div style={{ textAlign: 'center' as const, marginBottom: 50 }}>
+          <div className="hero-split" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60, alignItems: 'center' }}>
+
+            {/* ── COLONNE GAUCHE : texte + CTA ── */}
+            <div className="hero-text">
+              <motion.div
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 16px', borderRadius: 100, background: 'rgba(42,125,156,0.1)', border: '1px solid rgba(42,125,156,0.22)', fontSize: 12, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.04em', marginBottom: 24 }}>
+                <Sparkles size={13} /> POUR AGENTS & MANDATAIRES IMMOBILIERS
+              </motion.div>
+
+              <motion.h1
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.65, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+                style={{ fontSize: 'clamp(32px, 4vw, 54px)', fontWeight: 800, lineHeight: 1.08, color: '#0f2d3d', margin: '0 0 18px', letterSpacing: '-0.025em' }}>
+                Soyez l'agent qui{' '}
+                <span style={{ position: 'relative' as const, display: 'inline-block', whiteSpace: 'nowrap' as const }}>
+                  <span style={{ color: '#2a7d9c' }}>répond à tout</span>
+                  <motion.span
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    transition={{ duration: 2.5, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                    style={{ position: 'absolute' as const, bottom: -2, left: 0, right: 0, height: 5, background: 'rgba(42,125,156,0.3)', borderRadius: 99, transformOrigin: 'left', display: 'block' }}
+                  />
+                </span>.
+                <br />
+                <span style={{ color: '#475569', fontWeight: 600, fontSize: '0.72em' }}>
+                  Pas celui qui dit <em style={{ color: '#94a3b8' }}>« je vais me renseigner »</em>.
+                </span>
+              </motion.h1>
+
+              <motion.p
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.25 }}
+                style={{ fontSize: 'clamp(15px, 1.2vw, 17px)', lineHeight: 1.6, color: '#475569', margin: '0 0 28px', maxWidth: 540 }}>
+                Analysez les documents de vos biens en quelques minutes. Envoyez à vos clients un rapport pro en un seul clic. <strong style={{ color: '#0f2d3d' }}>Plus de signatures. Moins de doutes.</strong>
+              </motion.p>
+
+              <motion.div
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+                style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const, marginBottom: 22 }}>
+                <motion.a
+                  href="/pro/rejoindre"
+                  whileHover={{ y: -2, boxShadow: '0 14px 32px rgba(42,125,156,0.4)' }}
+                  whileTap={{ scale: 0.98 }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '13px 24px', borderRadius: 12, background: 'linear-gradient(135deg, #2a7d9c, #1d5e7a)', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 700, boxShadow: '0 10px 26px rgba(42,125,156,0.3)' }}>
+                  Démarrer maintenant <ArrowRight size={15} />
+                </motion.a>
+                <motion.a
+                  href="/exemple"
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '13px 22px', borderRadius: 12, background: '#fff', color: '#2a7d9c', border: '1.5px solid #d0e8f0', textDecoration: 'none', fontSize: 14, fontWeight: 700 }}>
+                  Voir un rapport exemple
+                </motion.a>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.6 }}
+                style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: 'rgba(22,163,74,0.1)', border: '1px solid rgba(22,163,74,0.25)', borderRadius: 100, fontSize: 12, fontWeight: 700, color: '#15803d' }}>
+                  <ShieldCheck size={12} /> Sans engagement
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: 'rgba(42,125,156,0.1)', border: '1px solid rgba(42,125,156,0.25)', borderRadius: 100, fontSize: 12, fontWeight: 700, color: '#1d5e7a' }}>
+                  <Clock size={12} /> Démo en 15 min
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.25)', borderRadius: 100, fontSize: 12, fontWeight: 700, color: '#6d28d9' }}>
+                  <Award size={12} /> 100% immobilier
+                </span>
+              </motion.div>
+            </div>
+
+            {/* ── COLONNE DROITE : téléphones ── */}
             <motion.div
-              initial={{ opacity: 0, y: 14 }}
+              className="hero-phones"
+              initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 16px', borderRadius: 100, background: 'rgba(42,125,156,0.1)', border: '1px solid rgba(42,125,156,0.22)', fontSize: 12, fontWeight: 700, color: '#2a7d9c', letterSpacing: '0.04em', marginBottom: 24 }}>
-              <Sparkles size={13} /> POUR AGENTS & MANDATAIRES IMMOBILIERS
+              transition={{ duration: 0.9, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              style={{ position: 'relative' as const, height: 600, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <motion.div
+                animate={_lp ? {} : { y: [0, -8, 0] }}
+                transition={_lp ? {} : { duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+                style={{ position: 'absolute' as const, left: '0%', top: '5%', zIndex: 2 }}>
+                <PhoneFrame rotate={-8} scale={0.92}>
+                  <PhoneContentRapport />
+                </PhoneFrame>
+              </motion.div>
+              <motion.div
+                animate={_lp ? {} : { y: [0, 8, 0] }}
+                transition={_lp ? {} : { duration: 6, repeat: Infinity, delay: 0.5, ease: 'easeInOut' }}
+                style={{ position: 'absolute' as const, right: '0%', top: '18%', zIndex: 3 }}>
+                <PhoneFrame rotate={8} scale={0.92}>
+                  <PhoneContentDashboard />
+                </PhoneFrame>
+              </motion.div>
             </motion.div>
 
-            <motion.h1
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.65, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-              style={{ fontSize: 'clamp(30px, 4.2vw, 54px)', fontWeight: 800, lineHeight: 1.12, color: '#0f2d3d', margin: '0 auto 20px', letterSpacing: '-0.025em', maxWidth: 900 }}>
-              Soyez l'agent qui{' '}
-              <span style={{ position: 'relative' as const, display: 'inline-block', whiteSpace: 'nowrap' as const }}>
-                <span style={{ color: '#2a7d9c' }}>répond à tout</span>
-                <motion.span
-                  initial={{ scaleX: 0 }}
-                  animate={{ scaleX: 1 }}
-                  transition={{ duration: 2.5, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                  style={{ position: 'absolute' as const, bottom: -2, left: 0, right: 0, height: 5, background: 'rgba(42,125,156,0.3)', borderRadius: 99, transformOrigin: 'left', display: 'block' }}
-                />
-              </span>.
-              <br />
-              <span style={{ color: '#475569', fontWeight: 600, fontSize: '0.78em' }}>
-                Pas celui qui dit <em style={{ color: '#94a3b8' }}>« je vais me renseigner »</em>.
-              </span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.25 }}
-              style={{ fontSize: 'clamp(15px, 1.3vw, 17px)', lineHeight: 1.6, color: '#475569', maxWidth: 640, margin: '0 auto 30px' }}>
-              Analysez les documents de vos biens en quelques minutes. Envoyez à vos clients un rapport pro en un seul clic. <strong style={{ color: '#0f2d3d' }}>Plus de signatures. Moins de doutes.</strong>
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
-              style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const, justifyContent: 'center', marginBottom: 18 }}>
-              <motion.a
-                href="/pro/rejoindre"
-                whileHover={{ y: -2, boxShadow: '0 14px 32px rgba(42,125,156,0.4)' }}
-                whileTap={{ scale: 0.98 }}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '13px 24px', borderRadius: 12, background: 'linear-gradient(135deg, #2a7d9c, #1d5e7a)', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 700, boxShadow: '0 10px 26px rgba(42,125,156,0.3)' }}>
-                Démarrer maintenant <ArrowRight size={15} />
-              </motion.a>
-              <motion.a
-                href="/exemple"
-                whileHover={{ y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '13px 22px', borderRadius: 12, background: '#fff', color: '#2a7d9c', border: '1.5px solid #d0e8f0', textDecoration: 'none', fontSize: 14, fontWeight: 700 }}>
-                Voir un rapport exemple
-              </motion.a>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.6 }}
-              style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const, justifyContent: 'center' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: 'rgba(22,163,74,0.1)', border: '1px solid rgba(22,163,74,0.25)', borderRadius: 100, fontSize: 12, fontWeight: 700, color: '#15803d' }}>
-                <ShieldCheck size={12} /> Sans engagement
-              </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: 'rgba(42,125,156,0.1)', border: '1px solid rgba(42,125,156,0.25)', borderRadius: 100, fontSize: 12, fontWeight: 700, color: '#1d5e7a' }}>
-                <Clock size={12} /> Démo en 15 min
-              </span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.25)', borderRadius: 100, fontSize: 12, fontWeight: 700, color: '#6d28d9' }}>
-                <Award size={12} /> 100% immobilier
-              </span>
-            </motion.div>
           </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            style={{ position: 'relative' as const, maxWidth: 800, margin: '0 auto', height: 580, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <motion.div
-              animate={_lp ? {} : { y: [0, -8, 0] }}
-              transition={_lp ? {} : { duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-              style={{ position: 'absolute' as const, left: '15%', top: '5%', zIndex: 2 }}>
-              <PhoneFrame rotate={-8} scale={0.95}>
-                <PhoneContentRapport />
-              </PhoneFrame>
-            </motion.div>
-            <motion.div
-              animate={_lp ? {} : { y: [0, 8, 0] }}
-              transition={_lp ? {} : { duration: 6, repeat: Infinity, delay: 0.5, ease: 'easeInOut' }}
-              style={{ position: 'absolute' as const, right: '15%', top: '15%', zIndex: 3 }}>
-              <PhoneFrame rotate={8}>
-                <PhoneContentDashboard />
-              </PhoneFrame>
-            </motion.div>
-          </motion.div>
         </div>
       </section>
 
@@ -493,14 +533,14 @@ export default function MandatairesPage() {
 
       <section style={{ padding: '80px 24px', background: '#fff' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 50, alignItems: 'center' }}>
+          <div className="scenario-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 50, alignItems: 'center' }}>
             <Reveal>
-              <div style={{ position: 'relative' as const, height: 580, background: 'linear-gradient(135deg, #fef3c7, #fce7f3)', borderRadius: 24, padding: 20, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div className="scenario-visual" style={{ position: 'relative' as const, height: 580, background: 'linear-gradient(135deg, #fef3c7, #fce7f3)', borderRadius: 24, padding: 20, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Confetti items={[
-                  { top: '10%', left: '10%', size: 12, color: '#f97316', shape: 'circle' },
-                  { top: '20%', right: '12%', size: 14, color: '#ec4899', shape: 'square', delay: 0.5 },
-                  { bottom: '15%', left: '12%', size: 10, color: '#fbbf24', shape: 'circle', delay: 1 },
-                  { bottom: '25%', right: '15%', size: 12, color: '#a855f7', shape: 'square', delay: 1.5 },
+                  { top: '10%', left: '10%', size: 12, color: VERIMO_CONFETTI_COLORS.orange, shape: 'circle' },
+                  { top: '20%', right: '12%', size: 14, color: VERIMO_CONFETTI_COLORS.red, shape: 'square', delay: 0.5 },
+                  { bottom: '15%', left: '12%', size: 10, color: VERIMO_CONFETTI_COLORS.green, shape: 'circle', delay: 1 },
+                  { bottom: '25%', right: '15%', size: 12, color: VERIMO_CONFETTI_COLORS.blue, shape: 'square', delay: 1.5 },
                 ]} />
                 <PhoneFrame rotate={-3}>
                   <PhoneContentSMS />
@@ -509,10 +549,13 @@ export default function MandatairesPage() {
             </Reveal>
             <Reveal delay={0.2}>
               <div style={{ padding: '0 8px' }}>
-                <div style={{ display: 'inline-block', padding: '5px 12px', background: '#fce7f3', color: '#be185d', fontSize: 11, fontWeight: 700, borderRadius: 8, marginBottom: 16, letterSpacing: '0.03em' }}>SCÉNARIO 1 · POST-VISITE</div>
-                <h2 style={{ fontSize: 'clamp(24px, 2.6vw, 36px)', fontWeight: 800, lineHeight: 1.15, margin: '0 0 16px', color: '#0f2d3d', letterSpacing: '-0.02em' }}>
-                  L'acheteur a aimé.<br />Il veut creuser.
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#be185d', letterSpacing: '0.12em', textTransform: 'uppercase' as const, marginBottom: 10 }}>SCÉNARIO 1</div>
+                <h2 style={{ fontSize: 'clamp(34px, 4.2vw, 52px)', fontWeight: 900, lineHeight: 1.05, margin: '0 0 12px', color: '#0f2d3d', letterSpacing: '-0.03em' }}>
+                  Post-visite acheteur
                 </h2>
+                <div style={{ fontSize: 'clamp(20px, 2vw, 26px)', fontWeight: 700, lineHeight: 1.25, color: '#475569', margin: '0 0 20px', letterSpacing: '-0.01em' }}>
+                  L'acheteur a aimé. Il veut creuser.
+                </div>
                 <p style={{ fontSize: 16, lineHeight: 1.65, color: '#475569', margin: '0 0 20px' }}>
                   Plus besoin de promettre <em>« je vous envoie ça quand j'aurai le temps »</em>. Vous lancez Verimo en sortant de la visite, et <strong style={{ color: '#0f2d3d' }}>5 minutes plus tard</strong> votre client reçoit un rapport complet qui répond à toutes ses questions.
                 </p>
@@ -534,13 +577,16 @@ export default function MandatairesPage() {
 
       <section style={{ padding: '80px 24px', background: '#fafbfd' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 50, alignItems: 'center' }}>
+          <div className="scenario-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 50, alignItems: 'center' }}>
             <Reveal>
               <div style={{ padding: '0 8px' }}>
-                <div style={{ display: 'inline-block', padding: '5px 12px', background: '#dbeafe', color: '#1e40af', fontSize: 11, fontWeight: 700, borderRadius: 8, marginBottom: 16, letterSpacing: '0.03em' }}>SCÉNARIO 2 · PRISE DE MANDAT</div>
-                <h2 style={{ fontSize: 'clamp(24px, 2.6vw, 36px)', fontWeight: 800, lineHeight: 1.15, margin: '0 0 16px', color: '#0f2d3d', letterSpacing: '-0.02em' }}>
-                  Devant le vendeur,<br />vous changez de stature.
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#1e40af', letterSpacing: '0.12em', textTransform: 'uppercase' as const, marginBottom: 10 }}>SCÉNARIO 2</div>
+                <h2 style={{ fontSize: 'clamp(34px, 4.2vw, 52px)', fontWeight: 900, lineHeight: 1.05, margin: '0 0 12px', color: '#0f2d3d', letterSpacing: '-0.03em' }}>
+                  Prise de mandat
                 </h2>
+                <div style={{ fontSize: 'clamp(20px, 2vw, 26px)', fontWeight: 700, lineHeight: 1.25, color: '#475569', margin: '0 0 20px', letterSpacing: '-0.01em' }}>
+                  Devant le vendeur, vous inspirez confiance.
+                </div>
                 <p style={{ fontSize: 16, lineHeight: 1.65, color: '#475569', margin: '0 0 20px' }}>
                   Vous arrivez avec un rapport complet sur son bien. Vous montrez votre sérieux. Et si le rapport révèle des points faibles (gros travaux votés, copro fragile)... c'est <strong style={{ color: '#0f2d3d' }}>votre argument chiffré pour négocier le prix</strong>.
                 </p>
@@ -557,12 +603,12 @@ export default function MandatairesPage() {
               </div>
             </Reveal>
             <Reveal delay={0.2}>
-              <div style={{ position: 'relative' as const, height: 460, background: 'linear-gradient(135deg, #dbeafe, #e0e7ff)', borderRadius: 24, padding: 24, overflow: 'hidden' }}>
+              <div className="scenario-visual scenario-2" style={{ position: 'relative' as const, height: 460, background: 'linear-gradient(135deg, #dbeafe, #e0e7ff)', borderRadius: 24, padding: 24, overflow: 'hidden' }}>
                 <Confetti items={[
-                  { top: '12%', right: '10%', size: 10, color: '#3b82f6', shape: 'circle' },
-                  { top: '32%', left: '8%', size: 12, color: '#7c3aed', shape: 'square', delay: 0.5 },
-                  { bottom: '18%', right: '14%', size: 8, color: '#06b6d4', shape: 'circle', delay: 1 },
-                  { bottom: '30%', left: '15%', size: 14, color: '#8b5cf6', shape: 'square', delay: 1.2 },
+                  { top: '12%', right: '10%', size: 10, color: VERIMO_CONFETTI_COLORS.blue, shape: 'circle' },
+                  { top: '32%', left: '8%', size: 12, color: VERIMO_CONFETTI_COLORS.green, shape: 'square', delay: 0.5 },
+                  { bottom: '18%', right: '14%', size: 8, color: VERIMO_CONFETTI_COLORS.orange, shape: 'circle', delay: 1 },
+                  { bottom: '30%', left: '15%', size: 14, color: VERIMO_CONFETTI_COLORS.red, shape: 'square', delay: 1.2 },
                 ]} />
                 <FloatingReport />
               </div>
@@ -573,24 +619,27 @@ export default function MandatairesPage() {
 
       <section style={{ padding: '80px 24px', background: '#fff' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 50, alignItems: 'center' }}>
+          <div className="scenario-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 50, alignItems: 'center' }}>
             <Reveal>
-              <div style={{ position: 'relative' as const, height: 460, background: 'linear-gradient(135deg, #ecfdf5, #ccfbf1)', borderRadius: 24, padding: 20, overflow: 'hidden' }}>
+              <div className="scenario-visual scenario-3" style={{ position: 'relative' as const, height: 460, background: 'linear-gradient(135deg, #ecfdf5, #ccfbf1)', borderRadius: 24, padding: 20, overflow: 'hidden' }}>
                 <Confetti items={[
-                  { top: '10%', left: '12%', size: 10, color: '#10b981', shape: 'circle' },
-                  { top: '25%', right: '8%', size: 12, color: '#06b6d4', shape: 'square', delay: 0.5 },
-                  { bottom: '15%', left: '10%', size: 8, color: '#14b8a6', shape: 'circle', delay: 1 },
-                  { bottom: '25%', right: '12%', size: 14, color: '#22d3ee', shape: 'square', delay: 1.3 },
+                  { top: '10%', left: '12%', size: 10, color: VERIMO_CONFETTI_COLORS.green, shape: 'circle' },
+                  { top: '25%', right: '8%', size: 12, color: VERIMO_CONFETTI_COLORS.blue, shape: 'square', delay: 0.5 },
+                  { bottom: '15%', left: '10%', size: 8, color: VERIMO_CONFETTI_COLORS.orange, shape: 'circle', delay: 1 },
+                  { bottom: '25%', right: '12%', size: 14, color: VERIMO_CONFETTI_COLORS.red, shape: 'square', delay: 1.3 },
                 ]} />
                 <StackedTabs />
               </div>
             </Reveal>
             <Reveal delay={0.2}>
               <div style={{ padding: '0 8px' }}>
-                <div style={{ display: 'inline-block', padding: '5px 12px', background: '#d1fae5', color: '#047857', fontSize: 11, fontWeight: 700, borderRadius: 8, marginBottom: 16, letterSpacing: '0.03em' }}>SCÉNARIO 3 · PENDANT LA VISITE</div>
-                <h2 style={{ fontSize: 'clamp(24px, 2.6vw, 36px)', fontWeight: 800, lineHeight: 1.15, margin: '0 0 16px', color: '#0f2d3d', letterSpacing: '-0.02em' }}>
-                  Vous répondez à tout,<br />sans hésiter.
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#047857', letterSpacing: '0.12em', textTransform: 'uppercase' as const, marginBottom: 10 }}>SCÉNARIO 3</div>
+                <h2 style={{ fontSize: 'clamp(34px, 4.2vw, 52px)', fontWeight: 900, lineHeight: 1.05, margin: '0 0 12px', color: '#0f2d3d', letterSpacing: '-0.03em' }}>
+                  Pendant la visite
                 </h2>
+                <div style={{ fontSize: 'clamp(20px, 2vw, 26px)', fontWeight: 700, lineHeight: 1.25, color: '#475569', margin: '0 0 20px', letterSpacing: '-0.01em' }}>
+                  Vous répondez à tout, sans hésiter.
+                </div>
                 <p style={{ fontSize: 16, lineHeight: 1.65, color: '#475569', margin: '0 0 20px' }}>
                   <em>« Combien le ravalement ? »</em>, <em>« Le DPE est de quelle année ? »</em>, <em>« Y a-t-il des impayés ? »</em>. Vous avez tout lu en amont grâce à Verimo. Vous répondez avec aisance — <strong style={{ color: '#0f2d3d' }}>l'acheteur sent que vous maîtrisez votre dossier</strong>.
                 </p>
@@ -640,22 +689,24 @@ export default function MandatairesPage() {
 
       <section style={{ position: 'relative' as const, padding: '80px 24px', background: 'linear-gradient(165deg, #0a1f2d 0%, #0f2d3d 30%, #1a4a5e 65%, #2a7d9c 100%)', overflow: 'hidden' }}>
         <Confetti items={[
-          { top: '15%', left: '8%', size: 8, color: '#fbbf24', shape: 'circle' },
-          { top: '28%', right: '10%', size: 10, color: '#ec4899', shape: 'square', delay: 0.5 },
-          { bottom: '20%', left: '12%', size: 6, color: '#7dd3fc', shape: 'circle', delay: 1 },
-          { bottom: '30%', right: '14%', size: 12, color: '#a78bfa', shape: 'square', delay: 1.5 },
+          { top: '15%', left: '8%', size: 8, color: VERIMO_CONFETTI_COLORS.orange, shape: 'circle' },
+          { top: '28%', right: '10%', size: 10, color: VERIMO_CONFETTI_COLORS.green, shape: 'square', delay: 0.5 },
+          { bottom: '20%', left: '12%', size: 6, color: VERIMO_CONFETTI_COLORS.red, shape: 'circle', delay: 1 },
+          { bottom: '30%', right: '14%', size: 12, color: VERIMO_CONFETTI_COLORS.blue, shape: 'square', delay: 1.5 },
+          { top: '60%', left: '20%', size: 9, color: VERIMO_CONFETTI_COLORS.green, shape: 'circle', delay: 0.8 },
+          { top: '45%', right: '22%', size: 8, color: VERIMO_CONFETTI_COLORS.orange, shape: 'square', delay: 1.8 },
         ]} />
         <div style={{ position: 'absolute' as const, top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(125,211,252,0.12), transparent 65%)', pointerEvents: 'none' as const }} />
 
-        <div style={{ maxWidth: 700, margin: '0 auto', textAlign: 'center' as const, position: 'relative' as const }}>
+        <div className="cta-final" style={{ maxWidth: 900, margin: '0 auto', textAlign: 'center' as const, position: 'relative' as const }}>
           <Reveal>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 100, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.22)', fontSize: 11, fontWeight: 700, color: '#fff', letterSpacing: '0.06em', marginBottom: 20 }}>
               <Eye size={12} /> PRÊT À PASSER À L'ACTION ?
             </div>
-            <h2 style={{ fontSize: 'clamp(26px, 3.2vw, 40px)', fontWeight: 800, lineHeight: 1.15, color: '#fff', margin: '0 0 14px', letterSpacing: '-0.02em' }}>
-              Devenez l'agent<br />qu'on recommande.
+            <h2 style={{ fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 800, lineHeight: 1.1, color: '#fff', margin: '0 0 14px', letterSpacing: '-0.02em' }}>
+              Devenez l'agent qu'on recommande.
             </h2>
-            <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.85)', margin: '0 auto 28px', maxWidth: 480, lineHeight: 1.6 }}>
+            <p style={{ fontSize: 'clamp(15px, 1.3vw, 17px)', color: 'rgba(255,255,255,0.85)', margin: '0 auto 28px', lineHeight: 1.6 }}>
               Démo personnalisée. Offre sur mesure. Réponse garantie sous 24 heures.
             </p>
             <motion.a
