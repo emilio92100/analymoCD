@@ -672,48 +672,199 @@ function RendererDDT({ r, isShared, hideVerimoBranding }: { r: any; isShared?: b
         </div>
       )}
 
-      {/* Travaux préconisés — uniquement si DPE présent */}
-      {r.travaux_preconises?.length > 0 && r.dpe?.classe && (
-        <div style={{ background: '#fff', border: '1px solid #fed7aa', borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
-          <div style={{ padding: '12px 16px', background: 'linear-gradient(135deg, #d97706, #b45309)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 18 }}>🏗️</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#fff', letterSpacing: '0.04em' }}>TRAVAUX RECOMMANDÉS PAR LE DPE</span>
-          </div>
-          {r.travaux_preconises.map((t: any, i: number) => {
-            const emoji = t.label?.toLowerCase().includes('isolation') ? '🧱'
-              : t.label?.toLowerCase().includes('chaudi') || t.label?.toLowerCase().includes('chaleur') ? '🔥'
-              : t.label?.toLowerCase().includes('fenêtre') || t.label?.toLowerCase().includes('vitrage') ? '🪟'
-              : t.label?.toLowerCase().includes('ventil') || t.label?.toLowerCase().includes('vmc') ? '💨'
-              : t.label?.toLowerCase().includes('panneaux') || t.label?.toLowerCase().includes('solaire') ? '☀️'
-              : '🔧';
-            return (
-              <div key={i} style={{ padding: '12px 14px', borderBottom: i < r.travaux_preconises.length - 1 ? `0.5px solid #fed7aa` : 'none', background: i % 2 === 0 ? '#fff' : '#fffbeb' }}>
-                {/* Ligne 1 — emoji + label */}
-                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 6 }}>
-                  <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{emoji}</span>
-                  <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5, flex: 1 }}>{t.label}</div>
-                </div>
-                {/* Ligne 2 — priorité + prix */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 24 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: t.priorite === 'prioritaire' ? '#dc2626' : '#d97706' }}>
-                    {t.priorite === 'prioritaire' ? '🔴 Prioritaire' : '🟡 Recommandé'}
-                  </span>
-                  {(t.cout_min || t.cout_max) && (
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#92400e', whiteSpace: 'nowrap' as const }}>
-                      {t.cout_min && t.cout_max ? `${Number(t.cout_min).toLocaleString('fr-FR')} – ${Number(t.cout_max).toLocaleString('fr-FR')} €` : `${Number(t.cout_min || t.cout_max).toLocaleString('fr-FR')} €`}
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-          {r.gain_energetique && (
-            <div style={{ padding: '12px 14px', background: '#f0f9ff', borderTop: `0.5px solid #bae6fd`, fontSize: 13, color: '#0369a1', lineHeight: 1.6 }}>
-              💡 {r.gain_energetique}
+      {/* Travaux préconisés DPE — nouveau format (packs + évolution étiquette) */}
+      {(() => {
+        if (!r.dpe?.classe) return null;
+
+        const recos = r.dpe?.recommandations;
+        const hasPacks = recos?.format === 'standard' && ((recos.pack_1?.travaux?.length ?? 0) > 0 || (recos.pack_2?.travaux?.length ?? 0) > 0);
+        const travauxLegacy = r.travaux_preconises as Array<Record<string, unknown>> | null;
+        const hasLegacy = !hasPacks && travauxLegacy && travauxLegacy.length > 0;
+
+        if (!hasPacks && !hasLegacy) return null;
+
+        // Icônes par poste
+        const POSTE_ICONS: Record<string, string> = {
+          mur: '🧱', toiture: '🏠', plancher_bas: '⬇️', fenetres: '🪟', porte: '🚪',
+          chauffage: '🔥', eau_chaude: '💧', ventilation: '💨', autre: '🔧',
+        };
+
+        const fmtEuros = (min?: number | null, max?: number | null): string => {
+          if (min && max) return `${Number(min).toLocaleString('fr-FR')} – ${Number(max).toLocaleString('fr-FR')} €`;
+          if (min) return `${Number(min).toLocaleString('fr-FR')} €`;
+          if (max) return `${Number(max).toLocaleString('fr-FR')} €`;
+          return '';
+        };
+
+        // Titre dynamique : "Pour passer de X à Y" si évolution dispo
+        let titreTexte = 'Pour améliorer votre note DPE';
+        let titreEmoji = '🔨';
+        if (hasPacks && recos?.evolution_etiquette) {
+          const evo = recos.evolution_etiquette;
+          const cDepart = evo?.actuelle?.classe;
+          const cArrivee = evo?.apres_pack_1_et_2?.classe || evo?.apres_pack_1?.classe;
+          if (cDepart && cArrivee && cDepart !== cArrivee) {
+            titreTexte = `Pour passer de ${cDepart} à ${cArrivee}`;
+            titreEmoji = '🎯';
+          }
+        }
+
+        return (
+          <div style={{ background: '#fff', border: '1px solid #fed7aa', borderRadius: 14, overflow: 'hidden', marginBottom: 14 }}>
+            {/* Header dynamique */}
+            <div style={{ padding: '12px 16px', background: 'linear-gradient(135deg, #d97706, #b45309)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 18 }}>{titreEmoji}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#fff', letterSpacing: '0.04em', textTransform: 'uppercase' as const }}>{titreTexte}</span>
             </div>
-          )}
-        </div>
-      )}
+
+            <div style={{ padding: 14 }}>
+              {hasPacks ? (
+                <>
+                  {/* Évolution projetée de l'étiquette */}
+                  {(() => {
+                    const evo = recos.evolution_etiquette;
+                    if (!evo) return null;
+                    const hasEvo = evo.actuelle?.classe || evo.apres_pack_1?.classe || evo.apres_pack_1_et_2?.classe;
+                    if (!hasEvo) return null;
+
+                    const renderEt = (e: { classe?: string }, label: string) => {
+                      if (!e?.classe) return null;
+                      const c = String(e.classe).toUpperCase();
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+                          <div style={{ width: 42, height: 42, borderRadius: '50%', background: DPE_COLORS[c] || '#94a3b8', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700 }}>{c}</div>
+                          <div style={{ fontSize: 10.5, color: '#64748b', textAlign: 'center' as const, lineHeight: 1.3 }}>{label}</div>
+                        </div>
+                      );
+                    };
+
+                    return (
+                      <div style={{ background: '#f8fafc', borderRadius: 10, padding: '14px 16px', marginBottom: 14 }}>
+                        <div style={{ fontSize: 11.5, color: '#64748b', fontWeight: 700, marginBottom: 12, letterSpacing: '0.03em', textTransform: 'uppercase' as const }}>Évolution projetée de l'étiquette</div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', gap: 8, flexWrap: 'wrap' as const }}>
+                          {renderEt(evo.actuelle, 'Aujourd\'hui')}
+                          {evo.apres_pack_1?.classe && (<>
+                            <span style={{ fontSize: 18, color: '#cbd5e1' }}>→</span>
+                            {renderEt(evo.apres_pack_1, 'Après pack 1')}
+                          </>)}
+                          {evo.apres_pack_1_et_2?.classe && (<>
+                            <span style={{ fontSize: 18, color: '#cbd5e1' }}>→</span>
+                            {renderEt(evo.apres_pack_1_et_2, 'Après pack 1 + 2')}
+                          </>)}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Packs 1 et 2 */}
+                  {(() => {
+                    const evo = recos.evolution_etiquette;
+                    const cActuelle = evo?.actuelle?.classe;
+                    const cApresP1 = evo?.apres_pack_1?.classe;
+                    const cApresP1P2 = evo?.apres_pack_1_et_2?.classe;
+
+                    const subPack1 = cActuelle && cApresP1 && cActuelle !== cApresP1
+                      ? `Pour passer de ${cActuelle} à ${cApresP1}`
+                      : 'Travaux prioritaires à engager en premier';
+                    const subPack2 = cApresP1 && cApresP1P2 && cApresP1 !== cApresP1P2
+                      ? `Pour passer de ${cApresP1} à ${cApresP1P2}`
+                      : cActuelle && cApresP1P2 && cActuelle !== cApresP1P2
+                        ? `Pour passer de ${cActuelle} à ${cApresP1P2}`
+                        : 'Pour atteindre une performance optimale';
+
+                    return [
+                      { key: 'pack_1' as const, pack: recos.pack_1, label: 'Pack 1 — Travaux essentiels', accent: '#2a7d9c', badgeBg: '#e0f2fe', badgeColor: '#0369a1', sub: subPack1 },
+                      { key: 'pack_2' as const, pack: recos.pack_2, label: 'Pack 2 — Travaux à envisager', accent: '#64748b', badgeBg: '#f1f5f9', badgeColor: '#475569', sub: subPack2 },
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    ].map(({ key, pack, label, accent, badgeBg, badgeColor, sub }: any) => {
+                      if (!pack || !pack.travaux || pack.travaux.length === 0) return null;
+                      const cout = fmtEuros(pack.cout_min, pack.cout_max);
+                      return (
+                        <div key={key} style={{ background: '#fff', border: '1px solid #edf2f7', borderRadius: 12, padding: '14px 16px', marginBottom: 10 }}>
+                          {/* En-tête du pack */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid #f1f5f9' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <span style={{ display: 'inline-block', background: badgeBg, color: badgeColor, padding: '3px 9px', borderRadius: 6, fontSize: 11, fontWeight: 800, letterSpacing: '0.02em', marginBottom: 5 }}>{label}</span>
+                              <div style={{ fontSize: 12.5, color: '#64748b', lineHeight: 1.5, fontWeight: 600 }}>{sub}</div>
+                            </div>
+                            {cout && (
+                              <div style={{ textAlign: 'right' as const, flexShrink: 0 }}>
+                                <div style={{ fontSize: 10, color: '#64748b', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' as const, marginBottom: 2 }}>Montant estimé</div>
+                                <div style={{ fontSize: 17, fontWeight: 800, color: accent }}>{cout}</div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Liste des travaux */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                            {pack.travaux.map((t: any, i: number) => (
+                              <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                                <div style={{ fontSize: 18, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>{POSTE_ICONS[t.poste ?? 'autre'] ?? '🔧'}</div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: 13.5, fontWeight: 700, color: C.text, marginBottom: 2, textTransform: 'capitalize' as const }}>{(t.poste ?? 'autre').replace('_', ' ')}</div>
+                                  <div style={{ fontSize: 12.5, color: '#64748b', lineHeight: 1.55 }}>{t.description ?? '—'}</div>
+                                  {t.performance_cible && <div style={{ fontSize: 11.5, color: '#475569', marginTop: 3, fontStyle: 'italic' as const }}>Performance cible : {t.performance_cible}</div>}
+                                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginTop: 6 }}>
+                                    {t.decision_copropriete && <span style={{ display: 'inline-block', background: '#fef3c7', color: '#92400e', padding: '2px 8px', borderRadius: 4, fontSize: 10.5, fontWeight: 600 }}>Décision copropriété</span>}
+                                    {t.autorisation_urbanisme && <span style={{ display: 'inline-block', background: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: 4, fontSize: 10.5, fontWeight: 600 }}>Autorisation d'urbanisme</span>}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+
+                  {/* Footer info */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 12px', background: '#eff6ff', border: '1px solid #dbeafe', borderRadius: 10, marginTop: 4 }}>
+                    <span style={{ fontSize: 14, flexShrink: 0 }}>ℹ️</span>
+                    <span style={{ fontSize: 11.5, color: '#1e40af', lineHeight: 1.55 }}>Estimations issues du DPE — à valider avec un professionnel. Des aides existent (MaPrimeRénov', éco-PTZ).</span>
+                  </div>
+                </>
+              ) : (
+                // Fallback legacy : ancien format de travaux_preconises (liste plate)
+                <>
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {travauxLegacy!.map((t: any, i: number) => {
+                    const emoji = t.label?.toLowerCase().includes('isolation') ? '🧱'
+                      : t.label?.toLowerCase().includes('chaudi') || t.label?.toLowerCase().includes('chaleur') ? '🔥'
+                      : t.label?.toLowerCase().includes('fenêtre') || t.label?.toLowerCase().includes('vitrage') ? '🪟'
+                      : t.label?.toLowerCase().includes('ventil') || t.label?.toLowerCase().includes('vmc') ? '💨'
+                      : t.label?.toLowerCase().includes('panneaux') || t.label?.toLowerCase().includes('solaire') ? '☀️'
+                      : '🔧';
+                    return (
+                      <div key={i} style={{ padding: '12px 14px', borderBottom: i < travauxLegacy!.length - 1 ? `0.5px solid #fed7aa` : 'none', background: i % 2 === 0 ? '#fff' : '#fffbeb' }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 6 }}>
+                          <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{emoji}</span>
+                          <div style={{ fontSize: 13, color: C.text, lineHeight: 1.5, flex: 1 }}>{t.label}</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 24 }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: t.priorite === 'prioritaire' ? '#dc2626' : '#d97706' }}>
+                            {t.priorite === 'prioritaire' ? '🔴 Prioritaire' : '🟡 Recommandé'}
+                          </span>
+                          {(t.cout_min || t.cout_max) && (
+                            <span style={{ fontSize: 13, fontWeight: 700, color: '#92400e', whiteSpace: 'nowrap' as const }}>
+                              {t.cout_min && t.cout_max ? `${Number(t.cout_min).toLocaleString('fr-FR')} – ${Number(t.cout_max).toLocaleString('fr-FR')} €` : `${Number(t.cout_min || t.cout_max).toLocaleString('fr-FR')} €`}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {r.gain_energetique && (
+                    <div style={{ padding: '12px 14px', background: '#f0f9ff', borderTop: `0.5px solid #bae6fd`, fontSize: 13, color: '#0369a1', lineHeight: 1.6, marginTop: 8 }}>
+                      💡 {r.gain_energetique}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       <SeparateurSynthese />
       <PointsFortsVigilances forts={r.points_forts} vigilances={r.points_vigilance} />
