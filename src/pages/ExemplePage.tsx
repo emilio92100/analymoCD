@@ -253,7 +253,7 @@ const MOCK_PVAG_SIMPLE = {
 /* ═══════════════════════════════════════════════════════════════
    TOGGLE PILL SEGMENTÉ — Option A
 ═══════════════════════════════════════════════════════════════ */
-function SegmentedToggle({ mode, onChange }: { mode: 'complete' | 'simple'; onChange: (m: 'complete' | 'simple') => void }) {
+function SegmentedToggle({ mode, onChange }: { mode: 'complete' | 'simple' | null; onChange: (m: 'complete' | 'simple') => void }) {
   // Ordre : simple en premier, complète en second (par défaut)
   const options = [
     { id: 'simple' as const, icon: FileText, label: 'Analyse simple', price: 'Un document' },
@@ -691,8 +691,16 @@ export default function ExemplePage() {
 
   const [searchParams] = useSearchParams();
   const paramMode = searchParams.get('mode');
-  const initial: 'complete' | 'simple' = paramMode === 'complete' ? 'complete' : 'simple';
-  const [mode, setMode] = useState<'complete' | 'simple'>(initial);
+
+  // Détection mobile (≤ 768px) — sur mobile, par défaut AUCUN rapport affiché → l'utilisateur doit choisir
+  const isMobileInitial = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
+
+  // État initial du mode :
+  // - Si ?mode=complete dans l'URL → 'complete'
+  // - Sinon sur mobile → null (l'utilisateur doit cliquer)
+  // - Sinon sur desktop → 'simple' (comportement par défaut historique)
+  const initial: 'complete' | 'simple' | null = paramMode === 'complete' ? 'complete' : paramMode === 'simple' ? 'simple' : (isMobileInitial ? null : 'simple');
+  const [mode, setMode] = useState<'complete' | 'simple' | null>(initial);
   const [showDemoPopup, setShowDemoPopup] = useState(false);
 
   const rapportComplet = useMemo(() => {
@@ -727,7 +735,23 @@ export default function ExemplePage() {
     if (mode === 'complete') {
       return <RapportViewExemple rapport={rapportComplet} defaultTab="synthese" onComplement={() => setShowDemoPopup(true)} />;
     }
-    return <DocumentRenderer result={docSimpleResult as unknown as Record<string, unknown>} />;
+    if (mode === 'simple') {
+      return <DocumentRenderer result={docSimpleResult as unknown as Record<string, unknown>} />;
+    }
+    // mode === null : aucun choix fait (cas mobile par défaut) — placeholder qui invite à choisir
+    return (
+      <div style={{
+        padding: '40px 20px',
+        textAlign: 'center' as const,
+        color: '#64748b',
+        fontSize: 14,
+        lineHeight: 1.6,
+      }}>
+        <div style={{ fontSize: 28, marginBottom: 10 }}>👆</div>
+        <div style={{ fontWeight: 700, color: '#0f2d3d', fontSize: 16, marginBottom: 6 }}>Choisissez un type d'analyse</div>
+        <div>Cliquez sur <strong style={{ color: '#2a7d9c' }}>Analyse simple</strong> ou <strong style={{ color: '#2a7d9c' }}>Analyse complète</strong> ci-dessus pour découvrir le rendu Verimo.</div>
+      </div>
+    );
   };
 
   return (
