@@ -2827,6 +2827,322 @@ function StatsTab() {
   );
 }
 /* ══════════════════════════════════════════
+   CLIENT SUPPORT SECTION
+   Composant réutilisable affiché sur la fiche
+   d'un user (particulier) ou d'un client pro.
+   Affiche tickets ouverts (dépliés) + résolus (repliés)
+   avec conversation inline + réponse + résolution.
+   Polling 12s pour synchro temps réel.
+══════════════════════════════════════════ */
+function ClientSupportSection({ userId, isPro = false, showToast }: { userId: string; isPro?: boolean; showToast: (m: string) => void }) {
+  type Ticket = { id: string; subject: string; status: 'open' | 'resolved'; created_at: string; updated_at: string; resolved_at: string | null; unread_by_admin: boolean };
+  type Msg = { id: string; ticket_id: string; sender_type: 'user' | 'admin'; sender_name?: string | null; message: string; created_at: string };
+
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [messagesByTicket, setMessagesByTicket] = useState<Record<string, Msg[]>>({});
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [reply, setReply] = useState<Record<string, string>>({});
+  const [sending, setSending] = useState<string | null>(null);
+  const [resolvedShown, setResolvedShown] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const loadTickets = useCallback(async () => {
+    const { data } = await supabase
+      .from('support_tickets')
+      .select('id, subject, status, created_at, updated_at, resolved_at, unread_by_admin')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false });
+    const list = (data || []) as Ticket[];
+    setTickets(list);
+
+    // Ouvre automatiquement tous les tickets "open" la première fois
+    setExpanded(prev => {
+      if (prev.size > 0) return prev;
+      const next = new Set<string>();
+      list.filter(t => t.status === 'open').forEach(t => next.add(t.id));
+      return next;
+    });
+
+    setLoading(false);
+  }, [userId]);
+
+  const loadMessages = useCallback(async (ticketId: string, markRead = false) => {
+    const { data } = await supabase
+      .from('support_messages')
+      .select('*')
+      .eq('ticket_id', ticketId)
+      .order('created_at', { ascending: true });
+    setMessagesByTicket(prev => ({ ...prev, [ticketId]: (data || []) as Msg[] }));
+    if (markRead) {
+      await supabase.from('support_tickets').update({ unread_by_admin: false }).eq('id', ticketId);
+    }
+  }, []);
+
+  // Chargement initial + polling 12s pour les tickets ouverts visibles
+  useEffect(() => { loadTickets(); }, [loadTickets]);
+  useEffect(() => {
+    const i = setInterval(() => {
+      loadTickets();
+      expanded.forEach(tid => {
+        const t = tickets.find(x => x.id === tid);
+        if (t && t.status === 'open') loadMessages(tid);
+      });
+    }, 12000);
+    return () => clearInterval(i);
+  }, [loadTickets, loadMessages, expanded, tickets]);
+
+  const toggleExpand = async (ticketId: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(ticketId)) {
+        next.delete(ticketId);
+      } else {
+        next.add(ticketId);
+      }
+      return next;
+    });
+    if (!messagesByTicket[ticketId]) {
+      await loadMessages(ticketId, true);
+    } else {
+      // Marquer comme lu si jamais
+      const t = tickets.find(x => x.id === ticketId);
+      if (t?.unread_by_admin) {
+        await supabase.from('support_tickets').update({ unread_by_admin: false }).eq('id', ticketId);
+        loadTickets();
+      }
+    }
+  };
+
+  const handleReply = async (ticketId: string) => {
+    const txt = (reply[ticketId] || '').trim();
+    if (!txt) return;
+    setSending(ticketId);
+    await supabase.from('support_messages').insert({
+      ticket_id: ticketId,
+      sender_type: 'admin',
+      message: txt,
+      sender_name: 'Verimo',
+    });
+    await supabase.from('support_tickets').update({ unread_by_user: true, unread_by_admin: false, updated_at: new Date().toISOString() }).eq('id', ticketId);
+    setReply(prev => ({ ...prev, [ticketId]: '' }));
+    await loadMessages(ticketId);
+    await loadTickets();
+    setSending(null);
+    showToast('Réponse envoyée');
+  };
+
+  const handleResolve = async (ticketId: string) => {
+    await supabase.from('support_tickets').update({ status: 'resolved', resolved_at: new Date().toISOString(), unread_by_user: true }).eq('id', ticketId);
+    await supabase.from('support_messages').insert({
+      ticket_id: ticketId,
+      sender_type: 'admin',
+      message: '✅ Ce ticket a été marqué comme résolu. Si vous avez d\'autres questions, n\'hésitez pas à ouvrir un nouveau ticket.',
+      sender_name: 'Verimo',
+    });
+    await loadMessages(ticketId);
+    await loadTickets();
+    showToast('Ticket résolu');
+  };
+
+  const handleReopen = async (ticketId: string) => {
+    await supabase.from('support_tickets').update({ status: 'open', resolved_at: null, unread_by_admin: false }).eq('id', ticketId);
+    await loadTickets();
+    showToast('Ticket rouvert');
+  };
+
+  const openTickets = tickets.filter(t => t.status === 'open');
+  const resolvedTickets = tickets.filter(t => t.status === 'resolved');
+
+  const renderTicket = (t: Ticket, isResolved: boolean) => {
+    const isExpanded = expanded.has(t.id);
+    const msgs = messagesByTicket[t.id] || [];
+    const accentColor = isResolved ? '#16a34a' : '#2a7d9c';
+    const accentBg = isResolved ? '#f0fdf4' : '#f0f7fb';
+    return (
+      <div key={t.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+        {/* Ligne ticket */}
+        <button onClick={() => toggleExpand(t.id)}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 22px', border: 'none', background: t.unread_by_admin ? '#fffbeb' : 'transparent', cursor: 'pointer', textAlign: 'left' as const, fontFamily: 'inherit', transition: 'background 0.15s' }}
+          onMouseOver={e => { if (!t.unread_by_admin) (e.currentTarget as HTMLElement).style.background = '#fafbfc'; }}
+          onMouseOut={e => { if (!t.unread_by_admin) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
+          <div style={{ width: 28, height: 28, borderRadius: 7, background: accentBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            {isResolved ? <CheckCircle size={13} style={{ color: accentColor }} /> : <MessageSquare size={13} style={{ color: accentColor }} />}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
+              {t.subject}
+              {t.unread_by_admin && <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} />}
+            </div>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+              {isResolved && t.resolved_at ? `Résolu ${fmtDate(t.resolved_at)}` : `Ouvert ${fmtRelative(t.created_at)}`} · MAJ {fmtRelative(t.updated_at)}
+            </div>
+          </div>
+          <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 9px', borderRadius: 6, background: accentBg, color: accentColor }}>
+            {isResolved ? 'Résolu' : 'En cours'}
+          </span>
+          <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
+            <ChevronDown size={14} style={{ color: '#94a3b8' }} />
+          </motion.div>
+        </button>
+
+        {/* Conversation */}
+        <AnimatePresence initial={false}>
+          {isExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.22 }}
+              style={{ overflow: 'hidden' }}>
+              <div style={{ padding: '14px 22px 18px', background: '#fafbfc', borderTop: '1px solid #f1f5f9' }}>
+                {/* Messages */}
+                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8, maxHeight: 360, overflowY: 'auto' as const, marginBottom: isResolved ? 0 : 12, padding: '4px 2px' }}>
+                  {msgs.length === 0 ? (
+                    <div style={{ padding: '14px', textAlign: 'center' as const, color: '#94a3b8', fontSize: 12 }}>Chargement…</div>
+                  ) : msgs.map(m => {
+                    const isAdmin = m.sender_type === 'admin';
+                    return (
+                      <div key={m.id} style={{ display: 'flex', justifyContent: isAdmin ? 'flex-end' : 'flex-start' }}>
+                        <div style={{
+                          maxWidth: '78%',
+                          padding: '8px 12px',
+                          borderRadius: 12,
+                          background: isAdmin ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#fff',
+                          border: isAdmin ? 'none' : '1px solid #edf2f7',
+                          color: isAdmin ? '#fff' : '#0f172a',
+                          fontSize: 13,
+                          lineHeight: 1.5,
+                          whiteSpace: 'pre-wrap' as const,
+                          wordBreak: 'break-word' as const,
+                        }}>
+                          {m.message}
+                          <div style={{ fontSize: 10, opacity: 0.75, marginTop: 4, fontWeight: 500 }}>
+                            {isAdmin ? (m.sender_name || 'Verimo') : 'Client'} · {fmtRelative(m.created_at)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Zone de réponse ou actions */}
+                {!isResolved ? (
+                  <div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                      <textarea
+                        value={reply[t.id] || ''}
+                        onChange={e => setReply(prev => ({ ...prev, [t.id]: e.target.value }))}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                            e.preventDefault();
+                            handleReply(t.id);
+                          }
+                        }}
+                        placeholder="Tapez votre réponse… (⌘+Entrée pour envoyer)"
+                        rows={2}
+                        style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 13, fontFamily: 'inherit', outline: 'none', resize: 'vertical' as const, lineHeight: 1.5 }}
+                      />
+                      <button
+                        onClick={() => handleReply(t.id)}
+                        disabled={!reply[t.id]?.trim() || sending === t.id}
+                        style={{
+                          padding: '10px 14px',
+                          borderRadius: 10,
+                          background: !reply[t.id]?.trim() ? '#cbd5e1' : 'linear-gradient(135deg, #2a7d9c, #0f2d3d)',
+                          color: '#fff',
+                          border: 'none',
+                          cursor: !reply[t.id]?.trim() ? 'not-allowed' : 'pointer',
+                          fontSize: 13,
+                          fontWeight: 700,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          opacity: sending === t.id ? 0.6 : 1,
+                          fontFamily: 'inherit',
+                        }}>
+                        <Send size={13} />
+                        {sending === t.id ? 'Envoi…' : 'Envoyer'}
+                      </button>
+                    </div>
+                    <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+                      <button onClick={() => handleResolve(t.id)}
+                        style={{ padding: '6px 12px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'inherit' }}>
+                        <CheckCircle size={12} /> Marquer résolu
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+                    <button onClick={() => handleReopen(t.id)}
+                      style={{ padding: '6px 12px', borderRadius: 8, background: '#f0f7fb', border: '1px solid #bae3f5', color: '#2a7d9c', fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontFamily: 'inherit' }}>
+                      <RefreshCw size={12} /> Rouvrir le ticket
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
+      <div style={{ padding: '18px 22px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <LifeBuoy size={16} style={{ color: '#d97706' }} />
+        <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Tickets support</div>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '2px 8px', borderRadius: 6 }}>
+          {openTickets.length} ouvert{openTickets.length > 1 ? 's' : ''}
+        </span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: 6 }}>
+          {resolvedTickets.length} résolu{resolvedTickets.length > 1 ? 's' : ''}
+        </span>
+        {isPro && <span style={{ fontSize: 10, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '2px 7px', borderRadius: 6, marginLeft: 'auto' }}>PRO</span>}
+      </div>
+
+      {loading ? (
+        <div style={{ padding: '32px', textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Chargement…</div>
+      ) : tickets.length === 0 ? (
+        <div style={{ padding: '32px', textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Aucun ticket pour ce client</div>
+      ) : (
+        <>
+          {/* TICKETS OUVERTS */}
+          {openTickets.length > 0 && (
+            <div>
+              <div style={{ padding: '8px 22px', background: '#f8fafc', borderBottom: '1px solid #f1f5f9', fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>
+                En cours
+              </div>
+              {openTickets.map(t => renderTicket(t, false))}
+            </div>
+          )}
+
+          {/* TICKETS RÉSOLUS — repliés par défaut */}
+          {resolvedTickets.length > 0 && (
+            <div>
+              <button onClick={() => setResolvedShown(s => !s)}
+                style={{ width: '100%', padding: '10px 22px', background: '#f8fafc', borderTop: openTickets.length > 0 ? 'none' : '1px solid #f1f5f9', borderBottom: resolvedShown ? '1px solid #f1f5f9' : 'none', border: 'none', borderTop: openTickets.length > 0 ? 'none' : '1px solid #f1f5f9', fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: 'inherit' }}>
+                <span>Historique ({resolvedTickets.length})</span>
+                <motion.div animate={{ rotate: resolvedShown ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                  <ChevronDown size={12} style={{ color: '#94a3b8' }} />
+                </motion.div>
+              </button>
+              <AnimatePresence initial={false}>
+                {resolvedShown && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
+                    {resolvedTickets.map(t => renderTicket(t, true))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════
    USERS TAB
 ══════════════════════════════════════════ */
 function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHandled, onOpenAnalysis, onOpenProClient }: {
@@ -2847,7 +3163,6 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [userAnalyses, setUserAnalyses] = useState<AdminAnalyse[]>([]);
   const [userPayments, setUserPayments] = useState<AdminPayment[]>([]);
-  const [userTickets, setUserTickets] = useState<Array<{ id: string; subject: string; status: string; created_at: string; updated_at: string }>>([]);
   const [form, setForm] = useState({ email: '', password: '', name: '', credits_doc: 0, credits_complete: 0, credit_type: 'complete' as 'complete' | 'simple', credit_quantity: 1, credit_reason: '' });
   const [feedback, setFeedback] = useState('');
   const [sending, setSending] = useState(false);
@@ -2874,15 +3189,12 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
     }
     setDetailUser(user);
     setProCreditsBalance(null);
-    setUserTickets([]);
-    const [{ data: analyses }, { data: payments }, { data: grants }, { data: tickets }] = await Promise.all([
+    const [{ data: analyses }, { data: payments }, { data: grants }] = await Promise.all([
       supabase.from('analyses').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('payments').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       supabase.from('credit_grants').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-      supabase.from('support_tickets').select('id, subject, status, created_at, updated_at').eq('user_id', user.id).order('created_at', { ascending: false }),
     ]);
     setUserAnalyses(analyses || []);
-    setUserTickets(tickets || []);
 
     // Fusionner payments + credit_grants dans un seul historique
     const grantPayments = (grants || []).map((g: Record<string, unknown>) => ({
@@ -3272,31 +3584,8 @@ function UsersTab({ onConfirm, showToast, logAction, focusUserId, onFocusUserHan
               })}
             </div>
 
-            {/* Historique des tickets support */}
-            <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
-              <div style={{ padding: '18px 22px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <LifeBuoy size={16} style={{ color: '#d97706' }} />
-                <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Tickets support</div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f1f5f9', padding: '2px 8px', borderRadius: 6 }}>{userTickets.length}</span>
-              </div>
-              {userTickets.length === 0 ? (
-                <div style={{ padding: '32px', textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Aucun ticket</div>
-              ) : userTickets.map((t, i) => (
-                <div key={t.id}
-                  style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 22px', borderBottom: i < userTickets.length - 1 ? '1px solid #f8fafc' : 'none' }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 7, background: t.status === 'open' ? '#f0f7fb' : '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {t.status === 'open' ? <MessageSquare size={12} style={{ color: '#2a7d9c' }} /> : <CheckCircle size={12} style={{ color: '#16a34a' }} />}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{t.subject}</div>
-                    <div style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDateTime(t.created_at)}</div>
-                  </div>
-                  <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, background: t.status === 'open' ? '#f0f7fb' : '#f0fdf4', color: t.status === 'open' ? '#2a7d9c' : '#16a34a' }}>
-                    {t.status === 'open' ? 'En cours' : 'Résolu'}
-                  </span>
-                </div>
-              ))}
-            </div>
+            {/* Historique des tickets support — composant interactif avec conversation inline */}
+            <ClientSupportSection userId={detailUser.id} isPro={false} showToast={showToast} />
           </div>
         </div>
 
@@ -3726,19 +4015,39 @@ function AnalysesTab({ onOpenUser, focusAnalysisId, onFocusAnalysisHandled }: {
         </div>
       </div>
 
-      {/* Filtres en tabs */}
+      {/* Filtres en tabs — animés */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' as const }}>
         {([
           { id: 'all', label: 'Toutes', count: counts.all, color: '#64748b' },
           { id: 'completed', label: '✓ Complétées', count: counts.completed, color: '#16a34a' },
           { id: 'processing', label: '⟳ En cours', count: counts.processing, color: '#2a7d9c' },
           { id: 'failed', label: '✗ Échouées', count: counts.failed, color: '#dc2626' },
-        ] as const).map(f => (
-          <button key={f.id} onClick={() => setFilter(f.id)}
-            style={{ padding: '8px 14px', borderRadius: 10, border: `1.5px solid ${filter === f.id ? f.color : '#edf2f7'}`, background: filter === f.id ? `${f.color}12` : '#fff', color: filter === f.id ? f.color : '#64748b', fontSize: 12, fontWeight: filter === f.id ? 700 : 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-            {f.label} <span style={{ padding: '1px 6px', borderRadius: 6, background: filter === f.id ? f.color : '#f1f5f9', color: filter === f.id ? '#fff' : '#94a3b8', fontSize: 11, fontWeight: 700 }}>{f.count}</span>
-          </button>
-        ))}
+        ] as const).map(f => {
+          const active = filter === f.id;
+          return (
+            <motion.button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              whileTap={{ scale: 0.95 }}
+              animate={{
+                borderColor: active ? f.color : '#edf2f7',
+                backgroundColor: active ? `${f.color}12` : '#ffffff',
+                color: active ? f.color : '#64748b',
+              }}
+              transition={{ duration: 0.18 }}
+              style={{ padding: '8px 14px', borderRadius: 10, borderWidth: 1.5, borderStyle: 'solid', fontSize: 12, fontWeight: active ? 700 : 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}>
+              {f.label}
+              <motion.span
+                key={`${f.id}-${f.count}`}
+                initial={{ scale: 0.7, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.18 }}
+                style={{ padding: '1px 6px', borderRadius: 6, background: active ? f.color : '#f1f5f9', color: active ? '#fff' : '#94a3b8', fontSize: 11, fontWeight: 700 }}>
+                {f.count}
+              </motion.span>
+            </motion.button>
+          );
+        })}
       </div>
 
       <div style={{ position: 'relative', marginBottom: 16 }}>
@@ -3751,28 +4060,63 @@ function AnalysesTab({ onOpenUser, focusAnalysisId, onFocusAnalysisHandled }: {
         <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1.2fr 90px 75px 110px 100px', borderBottom: '1.5px solid #edf2f7', padding: '10px 18px', background: '#f8fafc' }}>
           {['Adresse / Titre', 'Client', 'Type', 'Score', 'Statut', 'Date'].map(h => <div key={h} style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.07em', textTransform: 'uppercase' as const }}>{h}</div>)}
         </div>
-        {loading ? <div style={{ padding: '40px', textAlign: 'center' as const, color: '#94a3b8' }}>Chargement...</div>
-          : filtered.length === 0 ? <div style={{ padding: '40px', textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Aucune analyse ne correspond à votre recherche</div>
-          : filtered.map((a, i) => (
-            <button key={a.id} onClick={() => setDetail(a)}
-              style={{ width: '100%', display: 'grid', gridTemplateColumns: '1.4fr 1.2fr 90px 75px 110px 100px', padding: '12px 18px', borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc', alignItems: 'center', border: 'none', borderRadius: 0, cursor: 'pointer', textAlign: 'left' as const, transition: 'background 0.15s', fontFamily: 'inherit' }}
-              onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#f0f7fb'}
-              onMouseOut={e => (e.currentTarget as HTMLElement).style.background = i % 2 === 0 ? '#fff' : '#fafbfc'}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{a.address || a.adresse_bien || a.title || 'Sans titre'}</div>
-              <div style={{ fontSize: 12, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
-                {a.userEmail || <span style={{ color: '#e2e8f0', fontStyle: 'italic' as const }}>Client supprimé</span>}
-              </div>
-              <Badge color={PLAN_COLORS[a.type] || '#64748b'} bg={`${PLAN_COLORS[a.type] || '#64748b'}12`}>{PLAN_LABELS[a.type] || a.type}</Badge>
-              <div>{a.score != null ? <span style={{ fontSize: 13, fontWeight: 900, color: getScoreColor(a.score), background: getScoreBg(a.score), padding: '3px 9px', borderRadius: 8 }}>{a.score}/20</span> : <span style={{ color: '#e2e8f0' }}>—</span>}</div>
-              <div>{
-                a.status === 'completed' ? <Badge color="#16a34a" bg="#f0fdf4">✓ Complétée</Badge>
-                : a.status === 'queued' ? <Badge color="#d97706" bg="#fffbeb">⏳ En queue</Badge>
-                : (a.status === 'processing' || a.status === 'pending') ? <Badge color="#2a7d9c" bg="#f0f7fb">⟳ En cours</Badge>
-                : <Badge color="#dc2626" bg="#fef2f2">✗ Échouée</Badge>
-              }</div>
-              <div style={{ fontSize: 12, color: '#94a3b8' }}>{fmtDate(a.created_at)}</div>
-            </button>
-          ))}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={filter}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.18 }}>
+            {loading ? <div style={{ padding: '40px', textAlign: 'center' as const, color: '#94a3b8' }}>Chargement...</div>
+              : filtered.length === 0 ? <div style={{ padding: '40px', textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Aucune analyse ne correspond à votre recherche</div>
+              : filtered.map((a, i) => {
+                const isFailed = a.status === 'failed' || a.status === 'error';
+                return (
+                <button key={a.id} onClick={() => setDetail(a)}
+                  style={{ width: '100%', display: 'grid', gridTemplateColumns: '1.4fr 1.2fr 90px 75px 110px 100px', padding: isFailed && a.progress_message ? '12px 18px 8px' : '12px 18px', borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none', background: i % 2 === 0 ? '#fff' : '#fafbfc', alignItems: 'start', border: 'none', borderRadius: 0, cursor: 'pointer', textAlign: 'left' as const, transition: 'background 0.15s', fontFamily: 'inherit' }}
+                  onMouseOver={e => (e.currentTarget as HTMLElement).style.background = '#f0f7fb'}
+                  onMouseOut={e => (e.currentTarget as HTMLElement).style.background = i % 2 === 0 ? '#fff' : '#fafbfc'}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, paddingTop: 4 }}>{a.address || a.adresse_bien || a.title || 'Sans titre'}</div>
+                  <div style={{ fontSize: 12, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, paddingTop: 5 }}>
+                    {a.userEmail || <span style={{ color: '#e2e8f0', fontStyle: 'italic' as const }}>Client supprimé</span>}
+                  </div>
+                  <div style={{ paddingTop: 2 }}>
+                    <Badge color={PLAN_COLORS[a.type] || '#64748b'} bg={`${PLAN_COLORS[a.type] || '#64748b'}12`}>{PLAN_LABELS[a.type] || a.type}</Badge>
+                  </div>
+                  <div style={{ paddingTop: 2 }}>{a.score != null ? <span style={{ fontSize: 13, fontWeight: 900, color: getScoreColor(a.score), background: getScoreBg(a.score), padding: '3px 9px', borderRadius: 8 }}>{a.score}/20</span> : <span style={{ color: '#e2e8f0' }}>—</span>}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4 }}>
+                    {
+                      a.status === 'completed' ? <Badge color="#16a34a" bg="#f0fdf4">✓ Complétée</Badge>
+                      : a.status === 'queued' ? <Badge color="#d97706" bg="#fffbeb">⏳ En queue</Badge>
+                      : (a.status === 'processing' || a.status === 'pending') ? <Badge color="#2a7d9c" bg="#f0f7fb">⟳ En cours</Badge>
+                      : <Badge color="#dc2626" bg="#fef2f2">✗ Échouée</Badge>
+                    }
+                    {isFailed && a.progress_message && (
+                      <div
+                        title={a.progress_message}
+                        style={{
+                          fontSize: 10.5,
+                          color: '#b91c1c',
+                          lineHeight: 1.35,
+                          maxWidth: 240,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical' as const,
+                          fontStyle: 'italic' as const,
+                          paddingLeft: 2,
+                        }}>
+                        {a.progress_message}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#94a3b8', paddingTop: 4 }}>{fmtDate(a.created_at)}</div>
+                </button>
+                );
+              })}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -5103,6 +5447,11 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 </div>
               </>
             )}
+          </div>
+
+          {/* Tickets support — composant interactif */}
+          <div style={{ marginBottom: 16 }}>
+            <ClientSupportSection userId={selected.id} isPro={true} showToast={showToast} />
           </div>
 
           {/* Informations personnelles */}
