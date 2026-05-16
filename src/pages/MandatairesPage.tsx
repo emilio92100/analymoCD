@@ -595,8 +595,6 @@ export default function MandatairesPage() {
           { top: '58%', left: '92%', size: 10, color: VERIMO_CONFETTI_COLORS.green, shape: 'square', delay: 1.5 },
           { top: '75%', left: '8%', size: 14, color: VERIMO_CONFETTI_COLORS.blue, shape: 'square', delay: 0.8 },
           { top: '82%', left: '86%', size: 10, color: VERIMO_CONFETTI_COLORS.orange, shape: 'circle', delay: 1.2 },
-          { top: '32%', left: '50%', size: 9, color: VERIMO_CONFETTI_COLORS.green, shape: 'circle', delay: 0.3 },
-          { top: '65%', left: '46%', size: 11, color: VERIMO_CONFETTI_COLORS.red, shape: 'square', delay: 1.8 },
         ]} />
 
         <div style={{ maxWidth: 1200, margin: '0 auto', position: 'relative' as const, zIndex: 2 }}>
