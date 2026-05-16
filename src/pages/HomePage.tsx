@@ -68,6 +68,41 @@ function Reveal({ children, delay = 0, className = "" }: { children: React.React
   );
 }
 
+/* ─── Confettis Verimo (palette signature, partagée avec MandatairesPage) ─── */
+const VERIMO_CONFETTI_COLORS = {
+  green: '#10b981',   // score haut
+  orange: '#f97316',  // vigilance
+  red: '#ef4444',     // alerte
+  blue: '#2a7d9c',    // bleu Verimo
+};
+
+type ConfettiItem = { top?: string; bottom?: string; left?: string; right?: string; size: number; color: string; shape: 'circle' | 'square'; delay?: number };
+
+function Confetti({ items }: { items: ConfettiItem[] }) {
+  return (
+    <>
+      {items.map((c, i) => (
+        <motion.div
+          key={i}
+          animate={_lowPerf ? {} : { y: [0, -8, 0], rotate: c.shape === 'square' ? [45, 90, 45] : [0, 360, 0] }}
+          transition={_lowPerf ? {} : { duration: 4 + i * 0.3, repeat: Infinity, delay: c.delay || 0, ease: 'easeInOut' }}
+          style={{
+            position: 'absolute' as const,
+            top: c.top, bottom: c.bottom, left: c.left, right: c.right,
+            width: c.size, height: c.size,
+            background: c.color,
+            borderRadius: c.shape === 'circle' ? '50%' : '2px',
+            transform: c.shape === 'square' ? 'rotate(45deg)' : undefined,
+            opacity: 0.6,
+            pointerEvents: 'none' as const,
+            zIndex: 1,
+          }}
+        />
+      ))}
+    </>
+  );
+}
+
 function SectionTitle({ label, title, accent, sub }: { label: string; title: string; accent: string; sub?: string }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -153,6 +188,18 @@ function HeroSection() {
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute" style={{ top: -60, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.04) 0%, transparent 70%)' }} />
         <div className="absolute" style={{ bottom: -30, left: '10%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.03) 0%, transparent 70%)' }} />
+      </div>
+
+      {/* Confettis discrets autour de la zone hero — desktop seulement (mobile = visuel chargé) */}
+      <div className="absolute inset-0 pointer-events-none hidden lg:block">
+        <Confetti items={[
+          { top: '18%', left: '6%', size: 10, color: VERIMO_CONFETTI_COLORS.blue, shape: 'circle' },
+          { top: '28%', right: '8%', size: 12, color: VERIMO_CONFETTI_COLORS.green, shape: 'square', delay: 0.5 },
+          { top: '55%', left: '4%', size: 8, color: VERIMO_CONFETTI_COLORS.orange, shape: 'circle', delay: 1 },
+          { top: '70%', right: '6%', size: 10, color: VERIMO_CONFETTI_COLORS.blue, shape: 'square', delay: 1.3 },
+          { bottom: '20%', left: '10%', size: 8, color: VERIMO_CONFETTI_COLORS.red, shape: 'circle', delay: 0.8 },
+          { bottom: '32%', right: '12%', size: 12, color: VERIMO_CONFETTI_COLORS.green, shape: 'circle', delay: 1.5 },
+        ]} />
       </div>
 
       <div className="relative z-10 max-w-6xl mx-auto w-full">
@@ -876,8 +923,17 @@ function SecuriteSection() {
   ];
 
   return (
-    <section className="py-12 md:py-20 px-4 md:px-6 bg-white">
-      <div className="max-w-6xl mx-auto">
+    <section className="relative overflow-hidden py-12 md:py-20 px-4 md:px-6 bg-white">
+      {/* Confettis discrets — desktop seulement */}
+      <div className="absolute inset-0 pointer-events-none hidden lg:block">
+        <Confetti items={[
+          { top: '20%', left: '7%', size: 10, color: VERIMO_CONFETTI_COLORS.blue, shape: 'circle' },
+          { top: '35%', right: '8%', size: 8, color: VERIMO_CONFETTI_COLORS.green, shape: 'circle', delay: 0.5 },
+          { bottom: '22%', left: '5%', size: 12, color: VERIMO_CONFETTI_COLORS.orange, shape: 'square', delay: 1 },
+          { bottom: '35%', right: '6%', size: 10, color: VERIMO_CONFETTI_COLORS.red, shape: 'circle', delay: 1.3 },
+        ]} />
+      </div>
+      <div className="relative z-10 max-w-6xl mx-auto">
         <SectionTitle
           label="Sécurité & Confidentialité"
           title="Vos documents,"
@@ -1390,8 +1446,19 @@ function ScoreSection() {
     { emoji: '🏢', label: 'Diagnostics communs', pts: 3 },
   ];
   return (
-    <section className="py-12 md:py-20 px-4 md:px-6 bg-[#f4f7f9]">
-      <div className="max-w-5xl mx-auto">
+    <section className="relative overflow-hidden py-12 md:py-20 px-4 md:px-6 bg-[#f4f7f9]">
+      {/* Confettis discrets — desktop seulement */}
+      <div className="absolute inset-0 pointer-events-none hidden lg:block">
+        <Confetti items={[
+          { top: '12%', left: '5%', size: 10, color: VERIMO_CONFETTI_COLORS.green, shape: 'circle' },
+          { top: '22%', right: '6%', size: 12, color: VERIMO_CONFETTI_COLORS.blue, shape: 'square', delay: 0.6 },
+          { top: '48%', left: '3%', size: 8, color: VERIMO_CONFETTI_COLORS.orange, shape: 'circle', delay: 1.1 },
+          { top: '60%', right: '4%', size: 10, color: VERIMO_CONFETTI_COLORS.green, shape: 'square', delay: 0.4 },
+          { bottom: '15%', left: '8%', size: 8, color: VERIMO_CONFETTI_COLORS.red, shape: 'circle', delay: 1.4 },
+          { bottom: '25%', right: '10%', size: 12, color: VERIMO_CONFETTI_COLORS.blue, shape: 'circle', delay: 0.9 },
+        ]} />
+      </div>
+      <div className="relative z-10 max-w-5xl mx-auto">
         <SectionTitle label="Notre méthode" title="Un score objectif" accent="sur 20 points." sub="Chaque bien reçoit une note calculée à partir de 5 catégories analysées dans vos documents. Une méthode claire que vous pouvez vérifier à chaque étape." />
 
         <div className="grid md:grid-cols-2 gap-6 md:gap-8 items-stretch">
