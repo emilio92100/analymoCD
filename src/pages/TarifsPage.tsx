@@ -97,16 +97,6 @@ const tableRows = [
   { label: 'Économie vs achats séparés', tip: 'Réduction par rapport à l\'achat de chaque analyse individuellement', vals: ['—', '—', '−10€', '−20€'], type: 'text' },
 ];
 
-const faqs = [
-  { q: 'Les crédits expirent-ils ?', a: 'Non, jamais. Vos crédits sont valables indéfiniment. Achetez-les aujourd\'hui, utilisez-les dans 6 mois — aucune contrainte de temps.' },
-  { q: 'Quels documents puis-je analyser ?', a: 'Tous les documents liés à un bien immobilier en copropriété : PV d\'assemblée générale, règlement de copropriété, diagnostics (DPE, amiante, électricité, gaz, termites…), appels de charges, état daté, et plus encore. Seuls les fichiers PDF sont acceptés.' },
-  { q: 'Quelle est la différence entre l\'analyse simple et complète ?', a: 'L\'analyse simple décrypte un seul document et vous donne les points clés. L\'analyse complète croise jusqu\'à 15 documents d\'un même bien pour calculer un score /20, détecter les risques et vous donner une recommandation d\'achat personnalisée.' },
-  { q: 'Puis-je compléter mon dossier après l\'analyse ?', a: 'Oui ! Avec l\'analyse complète, vous avez 7 jours pour ajouter des documents oubliés. Votre rapport sera recalculé gratuitement avec les nouvelles informations.' },
-  { q: 'Comment fonctionne la comparaison de biens ?', a: 'Dès que votre compte contient au minimum 2 analyses complètes — via un Pack ou des achats séparés — l\'outil de comparaison s\'active automatiquement. Vous sélectionnez les biens à comparer et Verimo affiche un rapport côte à côte.' },
-  { q: 'Mes documents sont-ils sécurisés ?', a: 'Vos fichiers sont chiffrés et supprimés automatiquement de nos serveurs après traitement. Aucune donnée n\'est conservée — conforme au RGPD.' },
-  { q: 'Puis-je me faire rembourser ?', a: 'En cas de problème technique empêchant la génération de votre rapport, contactez-nous sous 48h. Nous étudions chaque demande individuellement.' },
-];
-
 /* ══════════════════════════════════════════
    COMPOSANTS
 ══════════════════════════════════════════ */
@@ -186,7 +176,6 @@ export default function TarifsPage() {
     canonical: '/tarifs',
   });
 
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [openAccordion, setOpenAccordion] = useState<number | null>(null);
   const [hoveredTip, setHoveredTip] = useState<number | null>(null);
 
@@ -481,101 +470,50 @@ export default function TarifsPage() {
         </Reveal>
       </section>
 
-      {/* ── FAQ ── */}
+      {/* ── INFO DÉLAIS — bien visible ── */}
       <section style={{ padding: '0 20px clamp(48px,6vw,80px)', maxWidth: 900, margin: '0 auto' }}>
         <Reveal>
-          <h2 style={{ fontSize: 'clamp(24px,3vw,34px)', fontWeight: 900, color: '#0f172a', marginBottom: 24, letterSpacing: '-0.02em' }}>
-            Questions fréquentes
-          </h2>
-        </Reveal>
-        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
-          {faqs.map((faq, i) => (
-            <Reveal key={i} delay={i * 0.03}>
-              <div style={{ borderRadius: 14, border: `1.5px solid ${openFaq === i ? '#2a7d9c' : '#edf2f7'}`, overflow: 'hidden', background: '#fff', transition: 'border-color 0.18s', boxShadow: openFaq === i ? '0 4px 16px rgba(42,125,156,0.08)' : 'none' }}>
-                <button onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '18px 24px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' as const }}>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', lineHeight: 1.4 }}>{faq.q}</span>
-                  <ChevronDown size={18} color={openFaq === i ? '#2a7d9c' : '#cbd5e1'} style={{ flexShrink: 0, transform: openFaq === i ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-                </button>
-                <AnimatePresence>
-                  {openFaq === i && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: 'hidden' }}>
-                      <p style={{ fontSize: 15, color: '#64748b', lineHeight: 1.75, margin: 0, padding: '0 24px 18px', borderTop: '1px solid #f0f5f9' }}>{faq.a}</p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+          <div style={{
+            background: 'linear-gradient(135deg, #ffffff 0%, #f0f7fb 100%)',
+            borderRadius: 18,
+            border: '1.5px solid #d0e8f0',
+            padding: 'clamp(24px,3vw,32px)',
+            boxShadow: '0 4px 20px rgba(42,125,156,0.06)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 8px rgba(42,125,156,0.2)' }}>
+                <Zap size={17} style={{ color: '#fff' }} />
               </div>
-            </Reveal>
-          ))}
-        </div>
-      </section>
-
-      {/* ── FORMULAIRE CONTACT ── */}
-      <section style={{ padding: '0 20px clamp(48px,6vw,80px)', maxWidth: 680, margin: '0 auto' }}>
-        <Reveal>
-          <div style={{ background: '#fff', borderRadius: 20, border: '1.5px solid #edf2f7', padding: 'clamp(28px,4vw,40px)', boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
-            <div style={{ textAlign: 'center' as const, marginBottom: 28 }}>
-              <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-                <Mail size={24} color="#2a7d9c" />
-              </div>
-              <h3 style={{ fontSize: 'clamp(20px,2.5vw,26px)', fontWeight: 900, color: '#0f172a', marginBottom: 6, letterSpacing: '-0.02em' }}>Une question ?</h3>
-              <p style={{ fontSize: 15, color: '#64748b', lineHeight: 1.6 }}>Remplissez le formulaire, nous vous répondons sous 24h.</p>
+              <h3 style={{ fontSize: 'clamp(18px,2.4vw,22px)', fontWeight: 900, color: '#0f2d3d', margin: 0, letterSpacing: '-0.01em' }}>
+                Combien de temps pour recevoir mon rapport ?
+              </h3>
             </div>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              const form = e.currentTarget;
-              const data = new FormData(form);
-              const name = data.get('name') as string;
-              const email = data.get('email') as string;
-              const message = data.get('message') as string;
-              if (!name || !email || !message) return;
-              try {
-                const { supabase } = await import('../lib/supabase');
-                await supabase.from('contact_messages').insert({ name, email, message, source: 'tarifs' });
-                form.reset();
-                alert('Message envoyé ! Nous vous répondons sous 24h.');
-              } catch {
-                alert('Erreur lors de l\'envoi. Réessayez ou contactez hello@verimo.fr');
-              }
-            }} style={{ display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 6 }}>Prénom</label>
-                  <input name="name" required placeholder="Votre prénom"
-                    style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: 14, color: '#0f172a', outline: 'none', background: '#fafcfe', transition: 'border-color 0.15s', boxSizing: 'border-box' as const }}
-                    onFocus={e => (e.currentTarget as HTMLElement).style.borderColor = '#2a7d9c'}
-                    onBlur={e => (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0'} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
+              <div style={{ padding: '18px 20px', background: '#fff', borderRadius: 14, border: '1px solid #edf2f7' }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8 }}>
+                  Analyse simple
                 </div>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 6 }}>Email</label>
-                  <input name="email" type="email" required placeholder="votre@email.com"
-                    style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: 14, color: '#0f172a', outline: 'none', background: '#fafcfe', transition: 'border-color 0.15s', boxSizing: 'border-box' as const }}
-                    onFocus={e => (e.currentTarget as HTMLElement).style.borderColor = '#2a7d9c'}
-                    onBlur={e => (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0'} />
+                <div style={{ fontSize: 'clamp(20px,2.5vw,26px)', fontWeight: 900, color: '#0f172a', marginBottom: 6, letterSpacing: '-0.01em' }}>
+                  ~30 secondes
+                </div>
+                <div style={{ fontSize: 14, color: '#475569', lineHeight: 1.6 }}>
+                  Résultat quasi instantané pour 1 document PDF natif.
                 </div>
               </div>
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 700, color: '#374151', display: 'block', marginBottom: 6 }}>Votre question</label>
-                <textarea name="message" required rows={4} placeholder="Décrivez votre question ou demande…"
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: 14, color: '#0f172a', outline: 'none', background: '#fafcfe', resize: 'vertical' as const, fontFamily: 'inherit', transition: 'border-color 0.15s', boxSizing: 'border-box' as const }}
-                  onFocus={e => (e.currentTarget as HTMLElement).style.borderColor = '#2a7d9c'}
-                  onBlur={e => (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0'} />
+              <div style={{ padding: '18px 20px', background: '#fff', borderRadius: 14, border: '1px solid #edf2f7' }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#2a7d9c', letterSpacing: '0.08em', textTransform: 'uppercase' as const, marginBottom: 8 }}>
+                  Analyse complète
+                </div>
+                <div style={{ fontSize: 'clamp(20px,2.5vw,26px)', fontWeight: 900, color: '#0f172a', marginBottom: 6, letterSpacing: '-0.01em' }}>
+                  Quelques minutes
+                </div>
+                <div style={{ fontSize: 14, color: '#475569', lineHeight: 1.6 }}>
+                  Selon le nombre de documents soumis (jusqu'à 15).
+                </div>
               </div>
-              <button type="submit"
-                style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer', boxShadow: '0 4px 16px rgba(15,45,61,0.2)', transition: 'all 0.15s' }}
-                onMouseOver={e => { (e.currentTarget as HTMLElement).style.filter = 'brightness(1.1)'; }}
-                onMouseOut={e => { (e.currentTarget as HTMLElement).style.filter = 'brightness(1)'; }}>
-                Envoyer mon message
-              </button>
-            </form>
+            </div>
           </div>
         </Reveal>
-      </section>
-
-      <section style={{ padding: '0 20px 24px', textAlign: 'center' as const }}>
-        <p style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic' }}>
-          * Analyse simple : résultat en ~30 secondes (1 document PDF natif). Analyse complète : généralement prête en quelques minutes selon le nombre de documents.
-        </p>
       </section>
 
       <style>{`
