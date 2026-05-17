@@ -438,7 +438,7 @@ function PhoneMockup() {
 
       {/* Badge sécurité */}
       <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 1.2 }}
-        style={{ animation: "floatA 4.5s ease-in-out 1.2s infinite", position: 'absolute', left: -130, top: '18%', zIndex: 30 }}
+        style={{ animation: _lowPerf ? undefined : "floatA 4.5s ease-in-out 1.2s infinite", position: 'absolute', left: -130, top: '18%', zIndex: 30 }}
         className="hidden sm:flex bg-white rounded-2xl px-4 py-3 shadow-xl border border-slate-100 items-center gap-3 min-w-[148px]">
         <div className="w-9 h-9 rounded-xl bg-[#2a7d9c]/8 flex items-center justify-center shrink-0">
           <ShieldCheck size={17} className="text-[#2a7d9c]" />
@@ -451,7 +451,7 @@ function PhoneMockup() {
 
       {/* Badge score */}
       <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 2.0 }}
-        style={{ animation: "floatB 5s ease-in-out 2s infinite", position: 'absolute', right: -130, bottom: '26%', zIndex: 30 }}
+        style={{ animation: _lowPerf ? undefined : "floatB 5s ease-in-out 2s infinite", position: 'absolute', right: -130, bottom: '26%', zIndex: 30 }}
         className="hidden sm:flex bg-white rounded-2xl px-4 py-3 shadow-xl border border-slate-100 items-center gap-3 min-w-[148px]">
         <div className="w-9 h-9 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
           <TrendingUp size={17} className="text-green-500" />
@@ -464,7 +464,7 @@ function PhoneMockup() {
 
       {/* Badge docs */}
       <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 2.8 }}
-        style={{ animation: "floatC 3.5s ease-in-out 2.8s infinite", position: 'absolute', right: -120, top: '8%', zIndex: 30 }}
+        style={{ animation: _lowPerf ? undefined : "floatC 3.5s ease-in-out 2.8s infinite", position: 'absolute', right: -120, top: '8%', zIndex: 30 }}
         className="hidden sm:flex bg-white rounded-xl px-3.5 py-2.5 shadow-lg border border-slate-100 items-center gap-2">
         <FileText size={14} className="text-[#2a7d9c] shrink-0" />
         <span className="text-xs font-semibold text-[#0f172a]">3 docs chargés ✓</span>
