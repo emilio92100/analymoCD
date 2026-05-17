@@ -8,6 +8,12 @@ import { buildRapportExemple, RapportViewExemple } from './RapportPage';
 import DocumentRenderer from './dashboard/DocumentRenderer';
 import { useSEO } from '../hooks/useSEO';
 
+// Détection iOS Safari + mobile — animations allégées
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const isIOS = () => typeof window !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+const isLowPerf = () => isIOS() || (typeof window !== 'undefined' && window.innerWidth <= 768);
+const _lowPerf = isLowPerf();
+
 /* ═══════════════════════════════════════════════════════════════
    DONNÉES MOCKÉES — ANALYSE COMPLÈTE — Lyon 6e, 14,8/20
    Structure 100% conforme au schéma attendu par buildRapport()
@@ -312,7 +318,7 @@ function SegmentedToggle({ mode, onChange }: { mode: 'complete' | 'simple' | nul
                     boxShadow: '0 6px 20px rgba(42,125,156,0.35)',
                     zIndex: -1,
                   }}
-                  transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                  transition={_lowPerf ? { duration: 0.2 } : { type: 'spring', stiffness: 380, damping: 32 }}
                 />
               )}
 
@@ -765,9 +771,9 @@ export default function ExemplePage() {
         <div style={{ position: 'absolute', top: -60, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.04) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: -30, left: '10%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.03) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <motion.h1
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: _lowPerf ? 6 : 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.08, duration: 0.45 }}
+          transition={{ delay: _lowPerf ? 0.04 : 0.08, duration: _lowPerf ? 0.22 : 0.45 }}
           style={{ fontSize: 'clamp(26px,4.5vw,52px)', fontWeight: 900, color: '#0f2d3d', marginBottom: 14, letterSpacing: '-0.025em', lineHeight: 1.1 }}
         >
           Voici ce que Verimo{' '}
@@ -776,7 +782,7 @@ export default function ExemplePage() {
             <motion.span
               initial={{ scaleX: 0 }}
               animate={{ scaleX: 1 }}
-              transition={{ duration: 2, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: _lowPerf ? 0.6 : 2, delay: _lowPerf ? 0.15 : 0.3, ease: [0.22, 1, 0.36, 1] }}
               style={{ position: 'absolute', bottom: -4, left: 0, right: 0, height: 4, background: 'rgba(42,125,156,0.25)', borderRadius: 99, transformOrigin: 'left', display: 'block' }}
             />
           </span>
@@ -784,7 +790,7 @@ export default function ExemplePage() {
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.18 }}
+          transition={{ delay: _lowPerf ? 0.08 : 0.18, duration: _lowPerf ? 0.2 : 0.4 }}
           style={{ fontSize: 16, color: '#6b8a96', maxWidth: 920, margin: '0 auto 12px', lineHeight: 1.7 }}
         >
           Un exemple de rapport réel. Choisissez le mode pour voir le rendu complet ou le décryptage d'un document seul.
@@ -793,7 +799,7 @@ export default function ExemplePage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.32 }}
+          transition={{ delay: _lowPerf ? 0.14 : 0.32, duration: _lowPerf ? 0.2 : 0.4 }}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -822,10 +828,10 @@ export default function ExemplePage() {
         <AnimatePresence mode="wait">
           <motion.div
             key={mode}
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: _lowPerf ? 4 : 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.35 }}
+            exit={{ opacity: 0, y: _lowPerf ? -4 : -8 }}
+            transition={{ duration: _lowPerf ? 0.2 : 0.35 }}
             className="exemple-rapport-card"
             style={{
               maxWidth: 1200,
