@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useSEO } from '../hooks/useSEO';
+import { supabase } from '../lib/supabase';
 import { Building2, FileText, CreditCard, RefreshCw, X, Repeat, Shield, Mail, ChevronRight, CheckCircle, AlertTriangle } from 'lucide-react';
 
 // Sections du sommaire (utilisées pour le scroll spy + rendu)
@@ -27,6 +28,36 @@ export default function CGVProPage() {
     description: "Conditions générales de vente Verimo Pro : abonnements, achats unitaires, résiliation, données et obligations.",
     canonical: '/cgv-pro',
   });
+
+  // ─── Protection : page réservée aux pros connectés ───
+  // Le contenu (tarifs) ne doit jamais être visible publiquement.
+  // Si non connecté ou non pro → redirection vers /connexion.
+  const navigate = useNavigate();
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (cancelled) return;
+      if (!user) {
+        navigate('/connexion', { replace: true });
+        return;
+      }
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+      if (cancelled) return;
+      if (profile?.role !== 'pro') {
+        navigate('/connexion', { replace: true });
+        return;
+      }
+      setAuthChecked(true);
+    })();
+    return () => { cancelled = true; };
+  }, [navigate]);
 
   // ─── Scroll spy : track la section visible pour le sommaire ───
   const [activeSection, setActiveSection] = useState<string>('objet');
@@ -66,16 +97,21 @@ export default function CGVProPage() {
   ];
 
   const UNITS_PRO = [
-    { label: "Analyse simple d'un document", priceHt: '2,90', priceTtc: '3,48' },
     { label: "Analyse complète d'un bien", priceHt: '9,90', priceTtc: '11,88' },
+    { label: "Analyse simple d'un document", priceHt: '2,90', priceTtc: '3,48' },
   ];
 
   const UNITS_PARTICULIER = [
-    { label: 'Analyse simple', price: '4,90' },
     { label: 'Analyse complète', price: '19,90' },
+    { label: 'Analyse simple', price: '4,90' },
     { label: 'Pack 2 biens', price: '29,90' },
     { label: 'Pack 3 biens', price: '39,90' },
   ];
+
+  // ─── Tant que l'auth n'est pas vérifiée, on n'affiche rien (évite le flash des tarifs) ───
+  if (!authChecked) {
+    return <main style={{ background: '#f8fafc', minHeight: '100vh' }} />;
+  }
 
   return (
     <main style={{ background: '#f8fafc', fontFamily: "'DM Sans', system-ui, sans-serif", paddingTop: 80, minHeight: '100vh' }}>
@@ -185,8 +221,8 @@ export default function CGVProPage() {
                 ['Verimo', 'Le service édité par VERIMO APP, accessible sur verimo.fr. Responsable : Alexandre ROGELET.'],
                 ['Pro / Client Pro', 'Toute personne morale ou physique exerçant une activité professionnelle dans l\'immobilier et ayant souscrit à un abonnement Verimo Pro.'],
                 ['Abonnement', 'Forfait mensuel permettant l\'accès au service avec un volume de crédits inclus.'],
-                ['Crédit simple', 'Permet de lancer une analyse simple d\'un document immobilier (1 PDF).'],
                 ['Crédit complet', 'Permet de lancer une analyse complète d\'un bien (jusqu\'à 15 documents).'],
+                ['Crédit simple', 'Permet de lancer une analyse simple d\'un document immobilier (1 PDF).'],
                 ['Achat unitaire', 'Achat ponctuel de crédits supplémentaires en dehors du forfait mensuel, réservé aux abonnés Pro.'],
                 ['Cycle de facturation', 'Période d\'un mois calendaire entre deux dates de prélèvement.'],
               ]} />
