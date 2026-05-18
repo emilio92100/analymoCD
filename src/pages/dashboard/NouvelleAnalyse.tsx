@@ -128,6 +128,14 @@ export default function NouvelleAnalyse() {
   const [foldersLoading, setFoldersLoading] = useState(false);
   const [showCreateFolderInline, setShowCreateFolderInline] = useState(false);
 
+  // ─── Animation d'entrée pour chaque étape (fondu + slide doux) ───
+  // Utilisé pour fluidifier les transitions avant/retour entre les étapes du flow.
+  const stepAnim = {
+    initial: { opacity: 0, y: 16 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
+  };
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -505,7 +513,7 @@ export default function NouvelleAnalyse() {
     const showParticulierPrices = isParticulier;
 
     return (
-    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <motion.div key="step-choice" {...stepAnim} style={{ maxWidth: 1100, margin: '0 auto' }}>
       <Link to="/dashboard" style={{ fontSize: 14, color: '#2a7d9c', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 24, fontWeight: 700, padding: '8px 16px', borderRadius: 10, background: '#f0f7fb', border: '1px solid #d0e8f0', transition: 'all 0.15s' }}><ChevronLeft size={15} /> Retour</Link>
       <h1 style={{ fontSize: 'clamp(22px,3vw,28px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 6 }}>Que souhaitez-vous analyser ?</h1>
       <p style={{ fontSize: 14, color: '#64748b', marginBottom: 32 }}>Choisissez le mode d'analyse adapté à votre besoin.</p>
@@ -626,36 +634,38 @@ export default function NouvelleAnalyse() {
           </div>
         </button>
       </div>
-    </div>
+    </motion.div>
     );
   }
 
 
   /* ── CHOIX DOSSIER (pros uniquement) */
   if (step === 'folder_select' && type) return (
-    <FolderSelectStep
-      folders={proFolders}
-      loading={foldersLoading}
-      type={type}
-      onBack={() => { setStep('choice'); setSelectedFolder(null); }}
-      onSelect={(folder) => { setSelectedFolder(folder); setStep('type_bien'); }}
-      onCreate={() => setShowCreateFolderInline(true)}
-      showCreateModal={showCreateFolderInline}
-      onCreateClose={() => setShowCreateFolderInline(false)}
-      onCreated={(folder) => {
-        // Le dossier vient d'être créé : on l'ajoute à la liste, on le sélectionne, on passe à l'étape suivante
-        setProFolders(prev => [folder, ...prev]);
-        setSelectedFolder(folder);
-        setShowCreateFolderInline(false);
-        setStep('type_bien');
-      }}
-    />
+    <motion.div key="step-folder-select" {...stepAnim}>
+      <FolderSelectStep
+        folders={proFolders}
+        loading={foldersLoading}
+        type={type}
+        onBack={() => { setStep('choice'); setSelectedFolder(null); }}
+        onSelect={(folder) => { setSelectedFolder(folder); setStep('type_bien'); }}
+        onCreate={() => setShowCreateFolderInline(true)}
+        showCreateModal={showCreateFolderInline}
+        onCreateClose={() => setShowCreateFolderInline(false)}
+        onCreated={(folder) => {
+          // Le dossier vient d'être créé : on l'ajoute à la liste, on le sélectionne, on passe à l'étape suivante
+          setProFolders(prev => [folder, ...prev]);
+          setSelectedFolder(folder);
+          setShowCreateFolderInline(false);
+          setStep('type_bien');
+        }}
+      />
+    </motion.div>
   );
 
 
   /* ── TYPE DE BIEN (nouvelle étape — session 4) */
   if (step === 'type_bien' && type) return (
-    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <motion.div key="step-type-bien" {...stepAnim} style={{ maxWidth: 1100, margin: '0 auto' }}>
       <button onClick={() => {
           // Pro : retour vers folder_select. Particulier : retour vers choice.
           if (userRole === 'pro') { setStep('folder_select'); }
@@ -734,13 +744,13 @@ export default function NouvelleAnalyse() {
       <p style={{ fontSize: 11, color: '#cbd5e1', marginTop: 20, textAlign: 'center', lineHeight: 1.5 }}>
         Ce choix adapte la présentation du rapport et les règles d'analyse appliquées à votre bien.
       </p>
-    </div>
+    </motion.div>
   );
 
 
   /* ── PROFIL */
   if (step === 'profil' && type) return (
-    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <motion.div key="step-profil" {...stepAnim} style={{ maxWidth: 1100, margin: '0 auto' }}>
       <button onClick={() => { setStep('type_bien'); setProfil(null); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 16, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
 
       {/* Bandeau dossier sélectionné (pros uniquement) */}
@@ -777,13 +787,13 @@ export default function NouvelleAnalyse() {
         </button>
       </div>
       <p style={{ fontSize: 11, color: '#cbd5e1', marginTop: 20, textAlign: 'center' }}>Ce choix influence uniquement la notation — votre analyse reste complète dans tous les cas.</p>
-    </div>
+    </motion.div>
   );
 
   /* ── UPLOAD */
   /* ── UPLOAD */
   if (step === 'upload' && plan) return (
-    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <motion.div key="step-upload" {...stepAnim} style={{ maxWidth: 1100, margin: '0 auto' }}>
       <button onClick={() => { setStep('profil'); resetUpload(); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 16, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
 
       {/* Bandeau dossier sélectionné (pros uniquement) */}
@@ -881,7 +891,7 @@ export default function NouvelleAnalyse() {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 
   /* ── LOADING ── */
