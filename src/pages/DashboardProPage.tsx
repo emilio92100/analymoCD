@@ -254,7 +254,7 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
       {/* Logo + PRO badge — centré et gros */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 18px 0', flexShrink: 0, position: 'relative' }}>
         <Link to="/" onClick={onClose} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <img src="/logo.png" alt="Verimo" style={{ height: 100, width: 'auto', display: 'block', marginBottom: -20 }} />
+          <img src="/logo.png" alt="Verimo" style={{ height: 70, width: 'auto', display: 'block', marginBottom: -10 }} />
           <span style={{ background: `linear-gradient(135deg, #0f2d3d, ${ACCENT})`, color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 14px', borderRadius: 100, letterSpacing: '0.08em' }}>ACCÈS PRO</span>
         </Link>
         {onClose && <button onClick={onClose} style={{ position: 'absolute', right: 14, top: 14, background: 'none', border: 'none', cursor: 'pointer', color: MUTED, padding: 4 }}><X size={18} /></button>}
@@ -495,9 +495,6 @@ Cette logique vous permet de profiter pleinement de votre forfait mensuel avant 
             {gIdx > 0 && (
               <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, #cbd5e1 20%, #cbd5e1 80%, transparent)', margin: '8px 12px' }} />
             )}
-            <div style={{ padding: '6px 14px 4px', fontSize: 9, color: MUTED, textTransform: 'uppercase' as const, letterSpacing: '0.12em', fontWeight: 700 }}>
-              {group.title}
-            </div>
             {group.items.map(item => {
               const Icon = item.icon;
               const active = location.pathname === item.to || (item.to === '/dashboard/dossiers' && location.pathname.startsWith('/dashboard/dossier'));
