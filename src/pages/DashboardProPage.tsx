@@ -10,7 +10,7 @@ import {
   MapPin, Trash2, AlertTriangle, FileText, Pencil,
   UserPlus, UserCheck, Folder, Lightbulb, MessageSquare,
   LayoutGrid, LayoutList, ArrowUpDown, Info, Calendar,
-  Shield, Lock,
+  Shield, Lock, ExternalLink,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getStripe } from '../lib/stripe-client';
@@ -4141,6 +4141,60 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
       )}
       </>);
       })()}
+
+      {/* ═══ SECTION 6 : Documents légaux ═══ */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden', marginBottom: 28 }}>
+        <div style={{ padding: '18px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Shield size={16} style={{ color: '#2a7d9c' }} />
+          <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>Documents légaux</h3>
+        </div>
+        <div style={{ padding: '18px 24px' }}>
+          <a
+            href="/cgv-pro"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 14,
+              padding: '14px 16px',
+              borderRadius: 12,
+              border: '1.5px solid #e2e8f0',
+              background: '#fafbfc',
+              textDecoration: 'none',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#f0f7fb';
+              e.currentTarget.style.borderColor = '#7dd3fc';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#fafbfc';
+              e.currentTarget.style.borderColor = '#e2e8f0';
+            }}
+          >
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <FileText size={18} style={{ color: '#2a7d9c' }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
+                Conditions Générales de Vente Pro
+                <ExternalLink size={13} style={{ color: '#94a3b8' }} />
+              </div>
+              {proProfile?.cgv_pro_accepted_at ? (
+                <div style={{ fontSize: 12, color: '#16a34a', marginTop: 3, fontWeight: 600 }}>
+                  ✓ Acceptées{proProfile.cgv_pro_version ? ` (version ${proProfile.cgv_pro_version})` : ''} le {fmtDate(proProfile.cgv_pro_accepted_at)}
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 3 }}>
+                  Consultable à tout moment
+                </div>
+              )}
+            </div>
+            <ChevronRight size={18} style={{ color: '#94a3b8', flexShrink: 0 }} />
+          </a>
+        </div>
+      </div>
 
       {/* Popup succès code promo */}
       <AnimatePresence>
