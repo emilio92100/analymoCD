@@ -882,17 +882,17 @@ function ProblemSolutionSection() {
           {items.map((item, i) => (
             <Reveal key={i} delay={i}>
               <div className={`bg-white rounded-2xl p-5 md:p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow duration-300 grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-7 items-center`}>
-                {/* Visuel */}
-                <div className={`${item.reverse ? 'md:order-2' : 'md:order-1'}`}>
-                  <ProblemVisual kind={item.visual} />
-                </div>
-                {/* Texte */}
-                <div className={`${item.reverse ? 'md:order-1' : 'md:order-2'}`}>
+                {/* Texte — sur mobile : ordre 1 (en haut), sur desktop : positionné selon reverse */}
+                <div className={`order-1 ${item.reverse ? 'md:order-1' : 'md:order-2'}`}>
                   <span className="inline-block text-[13px] md:text-sm font-bold px-3.5 py-1.5 rounded-lg mb-3" style={{ color: item.tagColor, background: item.tagBg }}>
                     {item.tag}
                   </span>
                   <h3 className="text-base md:text-xl font-bold text-[#0f2d3d] mb-2 leading-snug">{item.title}</h3>
                   <p className="text-sm text-slate-500 leading-relaxed">{item.text}</p>
+                </div>
+                {/* Visuel — sur mobile : ordre 2 (en bas), sur desktop : positionné selon reverse */}
+                <div className={`order-2 ${item.reverse ? 'md:order-2' : 'md:order-1'}`}>
+                  <ProblemVisual kind={item.visual} />
                 </div>
               </div>
             </Reveal>
@@ -1742,10 +1742,10 @@ function FaqSection() {
 
   return (
     <section className="py-12 md:py-20 px-4 md:px-6 bg-white">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <SectionTitle label="Questions fréquentes" title="Vos questions," accent="nos réponses." />
 
-        <div className="flex flex-col gap-2.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 md:gap-3 items-start">
           {faqs.map((faq, i) => (
             <Reveal key={i} delay={i * 0.04}>
               <div className={`rounded-2xl border bg-white overflow-hidden transition-all duration-200 ${open === i ? 'border-[#2a7d9c]/40 shadow-md' : 'border-slate-100 shadow-sm'}`}>
@@ -1779,10 +1779,20 @@ function FaqSection() {
           ))}
         </div>
 
-        <Reveal className="text-center mt-10">
-          <p className="text-sm text-slate-400 mb-4">Vous avez une autre question ?</p>
+        {/* CTA principal — Lancer mon analyse */}
+        <Reveal className="text-center mt-12 md:mt-14">
+          <Link to="/nouvelle-analyse"
+            className="inline-flex items-center gap-2 px-7 py-3.5 md:px-8 md:py-4 rounded-xl text-white text-sm md:text-base font-bold transition-all duration-200 hover:-translate-y-0.5"
+            style={{ background: 'linear-gradient(135deg, #2a7d9c, #1a5e78)', boxShadow: '0 10px 28px rgba(42,125,156,0.35)' }}>
+            <ShieldCheck size={18} /> Lancer mon analyse <ArrowRight size={16} />
+          </Link>
+        </Reveal>
+
+        {/* Lien secondaire — Contact */}
+        <Reveal className="text-center mt-6">
+          <p className="text-sm text-slate-400 mb-3">Vous avez une autre question ?</p>
           <Link to="/contact"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-slate-200 text-[#0f172a] text-sm font-semibold hover:border-[#2a7d9c]/40 hover:bg-[#f0f8fc] transition-all duration-200">
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-slate-200 text-[#0f172a] text-sm font-semibold hover:border-[#2a7d9c]/40 hover:bg-[#f0f8fc] transition-all duration-200">
             Contactez-nous <ArrowRight size={15} />
           </Link>
         </Reveal>
