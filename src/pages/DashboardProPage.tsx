@@ -10,7 +10,7 @@ import {
   MapPin, Trash2, AlertTriangle, FileText, Pencil,
   UserPlus, UserCheck, Folder, Lightbulb, MessageSquare,
   LayoutGrid, LayoutList, ArrowUpDown, Info, Calendar,
-  Shield, Lock, ExternalLink,
+  Shield, Lock, ExternalLink, Archive,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getStripe } from '../lib/stripe-client';
@@ -1066,32 +1066,64 @@ function MesDossiersPro() {
 
       {/* Toolbar : filters + search + sort + view toggle */}
       {folders.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 18 }}>
-          {/* 🆕 Toggle Actifs / Archivés */}
-          <div style={{ display: 'flex', background: '#f8fafc', borderRadius: 10, padding: 4, border: '1px solid #edf2f7', width: 'fit-content' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 24, marginBottom: 18 }}>
+          {/* Toggle Actifs / Archivés — style aéré, bleu pour actifs, ambre pour archivés */}
+          <div style={{
+            display: 'inline-flex',
+            background: '#fff',
+            borderRadius: 12,
+            padding: 5,
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 2px 6px rgba(15,45,61,0.05)',
+            gap: 4,
+            width: 'fit-content',
+          }}>
             <button onClick={() => setArchiveView('active')}
-              style={{ padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700,
-                background: archiveView === 'active' ? '#fff' : 'transparent',
-                color: archiveView === 'active' ? '#0f172a' : '#94a3b8',
-                boxShadow: archiveView === 'active' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                display: 'flex', alignItems: 'center', gap: 6 }}>
-              📂 Actifs
-              <span style={{ fontSize: 10.5, fontWeight: 700, color: archiveView === 'active' ? '#2a7d9c' : '#cbd5e1', background: archiveView === 'active' ? '#dbeef5' : 'transparent', padding: '1px 7px', borderRadius: 100 }}>
+              style={{
+                padding: '10px 20px', borderRadius: 9, border: 'none', cursor: 'pointer',
+                fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: archiveView === 'active' ? 'linear-gradient(135deg, #0f2d3d, #2a7d9c)' : 'transparent',
+                color: archiveView === 'active' ? '#fff' : '#94a3b8',
+                boxShadow: archiveView === 'active' ? '0 2px 8px rgba(42,125,156,0.25)' : 'none',
+                transition: 'all 0.18s',
+              }}>
+              <FolderOpen size={16} style={{ color: archiveView === 'active' ? '#7dd3fc' : '#94a3b8' }} />
+              Actifs
+              <span style={{
+                fontSize: 11, fontWeight: 800,
+                color: archiveView === 'active' ? '#0f2d3d' : '#94a3b8',
+                background: archiveView === 'active' ? '#7dd3fc' : '#f1f5f9',
+                padding: '2px 8px', borderRadius: 100, minWidth: 18, textAlign: 'center' as const,
+              }}>
                 {folders.filter(f => !f.archived_at).length}
               </span>
             </button>
             <button onClick={() => setArchiveView('archived')}
-              style={{ padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700,
-                background: archiveView === 'archived' ? '#fff' : 'transparent',
-                color: archiveView === 'archived' ? '#0f172a' : '#94a3b8',
-                boxShadow: archiveView === 'archived' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                display: 'flex', alignItems: 'center', gap: 6 }}>
-              📦 Archivés
-              <span style={{ fontSize: 10.5, fontWeight: 700, color: archiveView === 'archived' ? '#d97706' : '#cbd5e1', background: archiveView === 'archived' ? '#fef3c7' : 'transparent', padding: '1px 7px', borderRadius: 100 }}>
+              style={{
+                padding: '10px 20px', borderRadius: 9, border: 'none', cursor: 'pointer',
+                fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: archiveView === 'archived' ? 'linear-gradient(135deg, #9a3412, #d97706)' : 'transparent',
+                color: archiveView === 'archived' ? '#fff' : '#94a3b8',
+                boxShadow: archiveView === 'archived' ? '0 2px 8px rgba(217,119,6,0.25)' : 'none',
+                transition: 'all 0.18s',
+              }}>
+              <Archive size={16} style={{ color: archiveView === 'archived' ? '#fde68a' : '#94a3b8' }} />
+              Archivés
+              <span style={{
+                fontSize: 11, fontWeight: 800,
+                color: archiveView === 'archived' ? '#9a3412' : '#94a3b8',
+                background: archiveView === 'archived' ? '#fde68a' : '#f1f5f9',
+                padding: '2px 8px', borderRadius: 100, minWidth: 18, textAlign: 'center' as const,
+              }}>
                 {folders.filter(f => !!f.archived_at).length}
               </span>
             </button>
           </div>
+
+          {/* Séparateur visuel entre toggle et filtres pills */}
+          <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, #e2e8f0 20%, #e2e8f0 80%, transparent)', margin: '4px 0' }} />
 
           {/* Row 1 : filters pills */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
@@ -1164,10 +1196,10 @@ function MesDossiersPro() {
         <AnimatePresence mode="wait">
           <motion.div
             key={archiveView}
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 14 }}>
             {filtered.map((f, i) => (
               <motion.div
@@ -1188,10 +1220,10 @@ function MesDossiersPro() {
         <AnimatePresence mode="wait">
           <motion.div
             key={archiveView}
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
             {filtered.map((f, i) => (
               <motion.div
