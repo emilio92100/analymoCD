@@ -1244,16 +1244,35 @@ function MesDossiersPro() {
 function FolderCard({ folder, onClick, onDelete, onArchiveToggle }: { folder: ProFolder; onClick: () => void; onDelete: () => void; onArchiveToggle: () => void }) {
   const hasAddress = folder.property_address || folder.property_city;
   const isArchived = !!folder.archived_at;
-  const stats = [
-    { label: folder.analyses_count === 1 ? 'analyse' : 'analyses', value: folder.analyses_count || 0, color: '#2a7d9c' },
-    { label: folder.sellers_count === 1 ? 'vendeur' : 'vendeurs', value: folder.sellers_count || 0, color: '#7c3aed' },
-    { label: folder.buyers_count === 1 ? 'acheteur' : 'acheteurs', value: folder.buyers_count || 0, color: '#16a34a' },
-  ];
+  const analysesCount = folder.analyses_count || 0;
+  const sellersCount = folder.sellers_count || 0;
+  const buyersCount = folder.buyers_count || 0;
+
   return (
     <div onClick={onClick}
-      style={{ background: isArchived ? '#fafafa' : '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: 18, cursor: 'pointer', transition: 'all 0.2s', position: 'relative', opacity: isArchived ? 0.85 : 1 }}
-      onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.boxShadow = '0 8px 24px rgba(42,125,156,0.08)'; el.style.transform = 'translateY(-2px)'; }}
-      onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.boxShadow = 'none'; el.style.transform = 'translateY(0)'; }}>
+      style={{
+        background: '#fff',
+        borderRadius: 14,
+        border: '1px solid #edf2f7',
+        overflow: 'hidden',
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+        position: 'relative',
+        opacity: isArchived ? 0.78 : 1,
+        boxShadow: '0 2px 8px rgba(15, 45, 61, 0.04)',
+      }}
+      onMouseOver={e => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.borderColor = '#2a7d9c';
+        el.style.boxShadow = '0 8px 24px rgba(42,125,156,0.12)';
+        el.style.transform = 'translateY(-2px)';
+      }}
+      onMouseOut={e => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.borderColor = '#edf2f7';
+        el.style.boxShadow = '0 2px 8px rgba(15, 45, 61, 0.04)';
+        el.style.transform = 'translateY(0)';
+      }}>
 
       {/* Boutons d'action (apparaissent au hover) */}
       <div style={{ position: 'absolute' as const, top: 10, right: 10, display: 'flex', gap: 6, opacity: 0, transition: 'opacity 0.15s', zIndex: 2 }} className="folder-actions-btns">
@@ -1262,7 +1281,7 @@ function FolderCard({ folder, onClick, onDelete, onArchiveToggle }: { folder: Pr
           <span style={{ fontSize: 12 }}>{isArchived ? '📂' : '📦'}</span>
         </button>
         <button onClick={e => { e.stopPropagation(); onDelete(); }} title="Supprimer ce dossier"
-          style={{ width: 28, height: 28, borderRadius: 7, background: '#fef2f2', border: '1px solid #fee2e2', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(255,255,255,0.95)', border: '1px solid #fee2e2', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Trash2 size={13} style={{ color: '#dc2626' }} />
         </button>
       </div>
@@ -1271,25 +1290,36 @@ function FolderCard({ folder, onClick, onDelete, onArchiveToggle }: { folder: Pr
         div:hover > .folder-actions-btns { opacity: 1 !important; }
       `}</style>
 
-      {/* Badge archivé — dans le flux, au-dessus du titre */}
-      {isArchived && (
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 800, color: '#7c2d12', background: '#fed7aa', padding: '3px 8px', borderRadius: 6, letterSpacing: '0.04em', marginBottom: 10 }}>
-          <span style={{ fontSize: 11 }}>📦</span> ARCHIVÉ
+      {/* Header bleu dégradé : icône + nom + adresse */}
+      <div style={{
+        background: isArchived ? 'linear-gradient(135deg, #475569 0%, #64748b 100%)' : 'linear-gradient(135deg, #0f2d3d 0%, #2a7d9c 100%)',
+        padding: '14px 18px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        paddingRight: 80, // espace pour les boutons d'action
+      }}>
+        <div style={{
+          width: 38, height: 38, borderRadius: 10,
+          background: 'rgba(255,255,255,0.15)',
+          border: '1px solid rgba(255,255,255,0.2)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          <Folder size={18} style={{ color: '#7dd3fc' }} />
         </div>
-      )}
-
-      {/* Icône + Nom */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
-        <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <Folder size={18} style={{ color: '#2a7d9c' }} />
-        </div>
-        <div style={{ flex: 1, minWidth: 0, paddingRight: 70 }}>
-          <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a', margin: 0, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {isArchived && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9.5, fontWeight: 800, color: '#fff', background: 'rgba(255,255,255,0.18)', padding: '2px 7px', borderRadius: 6, letterSpacing: '0.04em', marginBottom: 4 }}>
+              📦 ARCHIVÉ
+            </div>
+          )}
+          <div style={{ fontSize: 14.5, fontWeight: 800, color: '#fff', lineHeight: 1.25, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
             {folder.name}
-          </h3>
+          </div>
           {hasAddress && (
-            <div style={{ fontSize: 11.5, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
-              <MapPin size={11} style={{ flexShrink: 0, color: '#94a3b8' }} />
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.75)', display: 'flex', alignItems: 'center', gap: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+              <MapPin size={11} style={{ flexShrink: 0 }} />
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {[folder.property_address, folder.property_city].filter(Boolean).join(', ')}
               </span>
@@ -1298,19 +1328,26 @@ function FolderCard({ folder, onClick, onDelete, onArchiveToggle }: { folder: Pr
         </div>
       </div>
 
-      {/* Stats */}
-      <div style={{ display: 'flex', gap: 16, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
-        {stats.map((s, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-            <span style={{ fontSize: 16, fontWeight: 800, color: s.value > 0 ? s.color : '#94a3b8' }}>{s.value}</span>
-            <span style={{ fontSize: 11, color: '#64748b' }}>{s.label}</span>
+      {/* Corps : 3 métriques + date */}
+      <div style={{ padding: '14px 18px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
+          <div style={{ background: '#f8fafc', borderRadius: 8, padding: '8px 6px', textAlign: 'center' as const }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: analysesCount > 0 ? '#2a7d9c' : '#cbd5e1', lineHeight: 1 }}>{analysesCount}</div>
+            <div style={{ fontSize: 10, color: '#64748b', marginTop: 3 }}>{analysesCount === 1 ? 'analyse' : 'analyses'}</div>
           </div>
-        ))}
-      </div>
-
-      {/* Date de dernière modif */}
-      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 10 }}>
-        Modifié le {fmtDate(folder.updated_at)}
+          <div style={{ background: '#f8fafc', borderRadius: 8, padding: '8px 6px', textAlign: 'center' as const }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: sellersCount > 0 ? '#7c3aed' : '#cbd5e1', lineHeight: 1 }}>{sellersCount}</div>
+            <div style={{ fontSize: 10, color: '#64748b', marginTop: 3 }}>{sellersCount === 1 ? 'vendeur' : 'vendeurs'}</div>
+          </div>
+          <div style={{ background: '#f8fafc', borderRadius: 8, padding: '8px 6px', textAlign: 'center' as const }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: buyersCount > 0 ? '#16a34a' : '#cbd5e1', lineHeight: 1 }}>{buyersCount}</div>
+            <div style={{ fontSize: 10, color: '#64748b', marginTop: 3 }}>{buyersCount === 1 ? 'acheteur' : 'acheteurs'}</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10.5, color: '#94a3b8' }}>
+          <Clock size={11} style={{ flexShrink: 0 }} />
+          <span>Modifié le {fmtDate(folder.updated_at)}</span>
+        </div>
       </div>
     </div>
   );
@@ -5143,22 +5180,47 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
   }
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+      style={{ maxWidth: 1100, margin: '0 auto' }}>
       <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f0f7fb', border: '1px solid #d0e8f0', borderRadius: 10, cursor: 'pointer', color: '#2a7d9c', fontSize: 14, fontWeight: 700, marginBottom: 16, padding: '8px 16px' }}>
         ← Retour aux dossiers
       </button>
 
-      {/* Header dossier UNIFIÉ — infos + actions intégrées */}
-      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '22px 24px', marginBottom: 16 }}>
-        <div className="dossier-header" style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-          <div className="dossier-icon-desktop" style={{ width: 52, height: 52, borderRadius: 12, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Folder size={24} style={{ color: '#2a7d9c' }} />
+      {/* Header dossier UNIFIÉ — bandeau bleu dégradé + actions intégrées */}
+      <div style={{
+        background: 'linear-gradient(135deg, #0f2d3d 0%, #2a7d9c 100%)',
+        borderRadius: 16,
+        padding: '24px 26px',
+        marginBottom: 16,
+        position: 'relative',
+        overflow: 'hidden',
+        boxShadow: '0 6px 20px rgba(15, 45, 61, 0.12)',
+      }}>
+        {/* Cercles décoratifs subtils */}
+        <div style={{ position: 'absolute', right: -40, top: -40, width: 180, height: 180, borderRadius: '50%', background: 'rgba(125, 211, 252, 0.08)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', right: 60, bottom: -50, width: 120, height: 120, borderRadius: '50%', background: 'rgba(125, 211, 252, 0.05)', pointerEvents: 'none' }} />
+
+        <div className="dossier-header" style={{ display: 'flex', alignItems: 'flex-start', gap: 16, position: 'relative', zIndex: 1 }}>
+          <div className="dossier-icon-desktop" style={{
+            width: 56, height: 56, borderRadius: 14,
+            background: 'rgba(255,255,255,0.12)',
+            border: '1px solid rgba(255,255,255,0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <Folder size={26} style={{ color: '#7dd3fc' }} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', margin: 0, marginBottom: 4 }}>{folder.name}</h2>
+            <div style={{ fontSize: 10.5, fontWeight: 600, color: '#7dd3fc', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginBottom: 5 }}>
+              Dossier en cours
+            </div>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: '#fff', margin: 0, marginBottom: 6, lineHeight: 1.25 }}>{folder.name}</h2>
             {(folder.property_address || folder.property_city) && (
-              <div style={{ fontSize: 13, color: '#64748b', display: 'flex', alignItems: 'center', gap: 5 }}>
-                <MapPin size={13} style={{ color: '#94a3b8', flexShrink: 0 }} />
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.78)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <MapPin size={13} style={{ flexShrink: 0 }} />
                 <span>{[folder.property_address, folder.property_postal_code, folder.property_city].filter(Boolean).join(', ')}</span>
               </div>
             )}
@@ -5168,10 +5230,12 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
               className="dossier-archive-btn"
               title={folder.archived_at ? 'Restaurer ce dossier' : 'Archiver ce dossier (vente conclue, abandonné, etc.)'}
               style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10,
-                background: folder.archived_at ? '#f0fdf4' : '#fff7ed',
-                border: `1.5px solid ${folder.archived_at ? '#bbf7d0' : '#fed7aa'}`,
-                color: folder.archived_at ? '#15803d' : '#9a3412',
-                cursor: 'pointer', fontSize: 12.5, fontWeight: 700, flexShrink: 0, transition: 'all 0.15s' }}>
+                background: 'rgba(255,255,255,0.12)',
+                border: '1px solid rgba(255,255,255,0.22)',
+                color: '#fff',
+                cursor: 'pointer', fontSize: 12.5, fontWeight: 700, flexShrink: 0, transition: 'all 0.15s' }}
+              onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.2)'; }}
+              onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.12)'; }}>
               <span style={{ fontSize: 13 }}>{folder.archived_at ? '📂' : '📦'}</span>
               {folder.archived_at ? 'Restaurer' : 'Archiver'}
             </button>
@@ -5180,34 +5244,37 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
               disabled={!!folder.archived_at}
               title={folder.archived_at ? 'Restaurez le dossier pour le modifier' : 'Modifier les infos du dossier'}
               className="dossier-edit-btn"
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, background: '#fff', border: '1.5px solid #edf2f7', color: '#475569',
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10,
+                background: 'rgba(255,255,255,0.12)',
+                border: '1px solid rgba(255,255,255,0.22)',
+                color: '#fff',
                 cursor: folder.archived_at ? 'not-allowed' : 'pointer',
                 opacity: folder.archived_at ? 0.5 : 1,
                 fontSize: 12.5, fontWeight: 700, flexShrink: 0, transition: 'all 0.15s' }}
-              onMouseOver={e => { if (!folder.archived_at) { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.color = '#2a7d9c'; } }}
-              onMouseOut={e => { if (!folder.archived_at) { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.color = '#475569'; } }}>
+              onMouseOver={e => { if (!folder.archived_at) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.2)'; }}
+              onMouseOut={e => { if (!folder.archived_at) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.12)'; }}>
               <Pencil size={12} /> Modifier
             </button>
           </div>
         </div>
 
         {folder.archived_at && (
-          <div style={{ marginTop: 14, padding: '11px 14px', borderRadius: 10, background: '#fff7ed', border: '1px solid #fed7aa', fontSize: 12.5, color: '#9a3412', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ marginTop: 14, padding: '11px 14px', borderRadius: 10, background: 'rgba(255, 247, 237, 0.95)', border: '1px solid #fed7aa', fontSize: 12.5, color: '#9a3412', display: 'flex', alignItems: 'center', gap: 8, position: 'relative', zIndex: 1 }}>
             <span style={{ fontSize: 14 }}>📦</span>
             <span><strong>Dossier archivé</strong> le {new Date(folder.archived_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}. Cliquez sur "Restaurer" pour le réactiver et débloquer toutes les actions.</span>
           </div>
         )}
 
         {folder.internal_note && (
-          <div style={{ marginTop: 14, padding: '11px 14px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fef3c7', fontSize: 12.5, color: '#78350f', fontStyle: 'italic' as const }}>
+          <div style={{ marginTop: 14, padding: '11px 14px', borderRadius: 10, background: 'rgba(255, 251, 235, 0.95)', border: '1px solid #fef3c7', fontSize: 12.5, color: '#78350f', fontStyle: 'italic' as const, position: 'relative', zIndex: 1 }}>
             <strong>Note interne :</strong> {folder.internal_note}
           </div>
         )}
+      </div>
 
-        {/* Séparateur subtil pleine largeur */}
-        <div style={{ height: 1, background: '#f1f5f9', margin: '18px -24px 16px' }} />
-
-        {/* 4 actions cartouches colorées — INTÉGRÉES dans le header */}
+      {/* Bloc d'actions séparé — fond blanc */}
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '18px 22px', marginBottom: 16 }}>
+        {/* 4 actions cartouches colorées */}
         <div className="dossier-actions-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
           {/* Ajouter un vendeur — violet */}
           <button
@@ -5337,7 +5404,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: folderAnalyses.length > 0 ? 14 : 6 }}>
           <h3 style={{ fontSize: 14.5, fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
             <FileText size={15} style={{ color: '#94a3b8' }} />
-            Analyses effectuées
+            Analyses effectuées dans ce dossier
             {folderAnalyses.length > 0 && (
               <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '2px 8px', borderRadius: 100 }}>{folderAnalyses.length}</span>
             )}
@@ -5629,7 +5696,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }
 
