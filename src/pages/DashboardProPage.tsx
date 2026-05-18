@@ -196,6 +196,18 @@ const proNavGroups: { title: string; items: typeof proNavItems }[] = [
   },
 ];
 
+// Couleurs d'icônes nav (badge + icône) — une couleur thématique par item.
+// Permet une lecture visuelle rapide tout en gardant le fond clair de la sidebar.
+const ICON_COLORS: Record<string, { bgFrom: string; bgTo: string; color: string }> = {
+  '/dashboard':            { bgFrom: '#dbeafe', bgTo: '#bfdbfe', color: '#1e6783' }, // bleu
+  '/dashboard/dossiers':   { bgFrom: '#fef3c7', bgTo: '#fde68a', color: '#a16207' }, // ambre
+  '/dashboard/compare':    { bgFrom: '#ede9fe', bgTo: '#ddd6fe', color: '#6b21a8' }, // violet
+  '/dashboard/abonnement': { bgFrom: '#d1fae5', bgTo: '#a7f3d0', color: '#047857' }, // vert
+  '/dashboard/compte':     { bgFrom: '#fce7f3', bgTo: '#fbcfe8', color: '#9f1239' }, // rose
+  '/dashboard/aide':       { bgFrom: '#ffedd5', bgTo: '#fed7aa', color: '#9a3412' }, // orange
+  '/dashboard/support':    { bgFrom: '#cffafe', bgTo: '#a5f3fc', color: '#155e75' }, // cyan
+};
+
 /* ══════════════════════════════════════════
    SIDEBAR PRO
 ══════════════════════════════════════════ */
@@ -254,7 +266,7 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
       {/* Logo + PRO badge — centré et gros */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 18px 0', flexShrink: 0, position: 'relative' }}>
         <Link to="/" onClick={onClose} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <img src="/logo.png" alt="Verimo" style={{ height: 70, width: 'auto', display: 'block', marginBottom: -10 }} />
+          <img src="/logo.png" alt="Verimo" style={{ height: 55, width: 'auto', display: 'block', marginBottom: -5 }} />
           <span style={{ background: `linear-gradient(135deg, #0f2d3d, ${ACCENT})`, color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 14px', borderRadius: 100, letterSpacing: '0.08em' }}>ACCÈS PRO</span>
         </Link>
         {onClose && <button onClick={onClose} style={{ position: 'absolute', right: 14, top: 14, background: 'none', border: 'none', cursor: 'pointer', color: MUTED, padding: 4 }}><X size={18} /></button>}
@@ -498,16 +510,24 @@ Cette logique vous permet de profiter pleinement de votre forfait mensuel avant 
             {group.items.map(item => {
               const Icon = item.icon;
               const active = location.pathname === item.to || (item.to === '/dashboard/dossiers' && location.pathname.startsWith('/dashboard/dossier'));
+              const iconColor = ICON_COLORS[item.to] || { bgFrom: '#e2e8f0', bgTo: '#cbd5e1', color: '#475569' };
               return (
                 <Link key={item.to} to={item.to} onClick={onClose}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 12, padding: '9px 12px', textDecoration: 'none',
+                    display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', textDecoration: 'none',
                     fontSize: 14, fontWeight: active ? 700 : 500, color: active ? TEXT_ACTIVE : TEXT,
                     background: active ? 'rgba(255,255,255,0.9)' : 'transparent', transition: 'all 0.15s',
                     borderLeft: active ? `3px solid ${ACCENT}` : '3px solid transparent', borderRadius: 0,
                     boxShadow: active ? '0 1px 3px rgba(15,45,61,0.06)' : 'none',
                   }}>
-                  <Icon size={18} style={{ color: active ? ACCENT : MUTED, flexShrink: 0 }} />
+                  <div style={{
+                    width: 30, height: 30, borderRadius: 8,
+                    background: `linear-gradient(135deg, ${iconColor.bgFrom}, ${iconColor.bgTo})`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    <Icon size={16} style={{ color: iconColor.color }} />
+                  </div>
                   {item.label}
                   {item.to === '/dashboard/support' && (unreadTickets || 0) > 0 && (
                     <span style={{ minWidth: 18, height: 18, borderRadius: 100, background: '#f59e0b', color: '#fff', fontSize: 10, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', flexShrink: 0, marginLeft: 4 }}>{unreadTickets}</span>
