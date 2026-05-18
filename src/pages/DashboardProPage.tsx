@@ -214,12 +214,12 @@ const ICON_COLORS: Record<string, { bgFrom: string; bgTo: string; color: string 
 function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsLoading }: { subscription: ProSubscription | null; proCredits: ProCredits | null; onClose?: () => void; unreadTickets?: number; creditsLoading?: boolean }) {
   const location = useLocation();
 
-  // ─── Palette claire (variante C : vagues diagonales) ───
-  const BG = 'linear-gradient(180deg, #f0f7fb 0%, #f8fafc 100%)';
-  const ACCENT = '#2a7d9c';
-  const TEXT = '#475569';
-  const TEXT_ACTIVE = '#0f2d3d';
-  const MUTED = '#94a3b8';
+  // ─── Palette sombre Verimo ───
+  const BG = '#16475a';
+  const ACCENT = '#7dd3fc';
+  const TEXT = 'rgba(255,255,255,0.75)';
+  const TEXT_ACTIVE = '#ffffff';
+  const MUTED = 'rgba(255,255,255,0.45)';
 
   const creditsComplete = proCredits?.total_complete ?? 0;
   const creditsSimple = proCredits?.total_document ?? 0;
@@ -230,27 +230,16 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
   const Skeleton = ({ width = 24, height = 14 }: { width?: number; height?: number }) => (
     <span style={{
       display: 'inline-block', width, height, borderRadius: 4,
-      background: 'linear-gradient(90deg, rgba(15,45,61,0.06), rgba(15,45,61,0.12), rgba(15,45,61,0.06))',
+      background: 'linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.18), rgba(255,255,255,0.08))',
       backgroundSize: '200% 100%', animation: 'sidebar-skeleton 1.4s ease-in-out infinite',
       verticalAlign: 'middle',
     }} />
   );
 
   return (
-    <aside style={{ width: 260, minHeight: '100vh', height: '100%', background: BG, display: 'flex', flexDirection: 'column', borderRight: '1px solid #e2e8f0', position: 'relative', overflow: 'hidden' }}>
-      {/* Fond décoratif : vagues diagonales subtiles + halo */}
-      <svg
-        aria-hidden="true"
-        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', opacity: 0.5, zIndex: 0 }}
-        preserveAspectRatio="none"
-        viewBox="0 0 260 1000">
-        <path d="M 0 180 Q 130 160 260 200 L 260 230 Q 130 215 0 232 Z" fill="rgba(125,211,252,0.15)"/>
-        <path d="M 0 420 Q 130 400 260 440 L 260 462 Q 130 450 0 467 Z" fill="rgba(125,211,252,0.10)"/>
-        <path d="M 0 660 Q 130 640 260 680 L 260 702 Q 130 690 0 707 Z" fill="rgba(125,211,252,0.12)"/>
-        <path d="M 0 880 Q 130 860 260 900 L 260 922 Q 130 910 0 927 Z" fill="rgba(125,211,252,0.10)"/>
-      </svg>
-      <div style={{ position: 'absolute', top: -120, right: -100, width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle, rgba(125,211,252,0.20), transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
-      <div style={{ position: 'absolute', bottom: -100, left: -80, width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(42,125,156,0.10), transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
+    <aside style={{ width: 260, minHeight: '100vh', height: '100%', background: BG, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+      {/* Halo bleu très subtil en haut (signature) */}
+      <div style={{ position: 'absolute', top: -120, right: -100, width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle, rgba(125,211,252,0.10), transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
 
       {/* Wrapper du contenu au-dessus du fond décoratif */}
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
@@ -266,10 +255,10 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
       {/* Logo + PRO badge — centré et gros */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 18px 0', flexShrink: 0, position: 'relative' }}>
         <Link to="/" onClick={onClose} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <img src="/logo.png" alt="Verimo" style={{ height: 55, width: 'auto', display: 'block', marginBottom: -5 }} />
-          <span style={{ background: `linear-gradient(135deg, #0f2d3d, ${ACCENT})`, color: '#fff', fontSize: 10, fontWeight: 800, padding: '3px 14px', borderRadius: 100, letterSpacing: '0.08em' }}>ACCÈS PRO</span>
+          <img src="/logo-blanc.png" alt="Verimo" style={{ height: 80, width: 'auto', display: 'block', marginBottom: -15 }} />
+          <span style={{ background: `linear-gradient(135deg, ${ACCENT}, #38bdf8)`, color: '#0a1f2d', fontSize: 10, fontWeight: 800, padding: '3px 14px', borderRadius: 100, letterSpacing: '0.08em' }}>ACCÈS PRO</span>
         </Link>
-        {onClose && <button onClick={onClose} style={{ position: 'absolute', right: 14, top: 14, background: 'none', border: 'none', cursor: 'pointer', color: MUTED, padding: 4 }}><X size={18} /></button>}
+        {onClose && <button onClick={onClose} style={{ position: 'absolute', right: 14, top: 14, background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: 4 }}><X size={18} /></button>}
       </div>
 
       {/* CTA Nouvelle analyse */}
@@ -284,7 +273,7 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
       <div style={{ margin: '0 14px 8px' }}>
         {creditsLoading && !subscription ? (
           // ── État 5 : Skeleton pendant le chargement ──
-          <div style={{ padding: '12px 14px', borderRadius: 11, background: 'rgba(255,255,255,0.7)', border: '1px solid #e2e8f0' }}>
+          <div style={{ padding: '12px 14px', borderRadius: 11, background: 'linear-gradient(135deg, rgba(22,163,74,0.4), rgba(21,128,61,0.4))', border: '1px solid rgba(134,239,172,0.25)' }}>
             <Skeleton width={75} height={16} />
             <div style={{ marginTop: 8 }}><Skeleton width={120} height={18} /></div>
             <div style={{ marginTop: 5 }}><Skeleton width={140} height={11} /></div>
@@ -445,12 +434,12 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
             );
           })()
         ) : (
-          // ── État 4 : Aucun abonnement — adapté fond clair ──
+          // ── État 4 : Aucun abonnement — BLEU POINTILLÉ ──
           <Link to="/dashboard/abonnement" onClick={onClose}
             style={{
               display: 'block', padding: '12px 14px', borderRadius: 11,
-              background: 'rgba(255,255,255,0.7)',
-              border: '1.5px dashed #7dd3fc',
+              background: 'linear-gradient(135deg, rgba(125,211,252,0.12), rgba(125,211,252,0.05))',
+              border: '1.5px dashed rgba(125,211,252,0.4)',
               textDecoration: 'none', textAlign: 'center',
             }}>
             <div style={{ fontSize: 9.5, fontWeight: 700, color: MUTED, letterSpacing: '0.12em', marginBottom: 3 }}>AUCUN ABONNEMENT</div>
@@ -460,9 +449,9 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
       </div>
 
       {/* ─── Crédits restants (avec skeletons pendant chargement) ─── */}
-      <div style={{ margin: '0 14px 6px', padding: '9px 11px', borderRadius: 9, background: 'rgba(255,255,255,0.8)', border: '1px solid #e2e8f0' }}>
+      <div style={{ margin: '0 14px 6px', padding: '9px 11px', borderRadius: 9, background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.15)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: ACCENT, letterSpacing: '0.1em' }}>CRÉDITS RESTANTS</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.85)', letterSpacing: '0.1em' }}>CRÉDITS RESTANTS</span>
           <InfoTooltip text={`Comment fonctionnent vos crédits ?
 
 Lorsque vous lancez une analyse, les crédits de votre abonnement sont utilisés en priorité. Vos crédits achetés à l'unité prennent ensuite le relais une fois les crédits abonnement épuisés.
@@ -474,16 +463,16 @@ Cette logique vous permet de profiter pleinement de votre forfait mensuel avant 
             { label: 'Analyse simple', value: creditsSimple, unit: unitSimple },
             { label: 'Analyse complète', value: creditsComplete, unit: unitComplete },
           ].map(c => (
-            <div key={c.label} style={{ padding: '8px 10px', borderRadius: 7, background: '#f0f7fb', display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'center' }}>
+            <div key={c.label} style={{ padding: '8px 10px', borderRadius: 7, background: 'rgba(255,255,255,0.10)', display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'center' }}>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 12, color: '#0f2d3d', fontWeight: 600, marginBottom: 3 }}>{c.label}</div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.95)', fontWeight: 600, marginBottom: 3 }}>{c.label}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" style={{ flexShrink: 0, opacity: 0.7 }}>
-                    <path d="M1.5 1.5 L1.5 5 Q1.5 7 3.5 7 L7.5 7 M5 4.5 L7.5 7 L5 9.5" stroke="#64748b" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" transform="translate(0, -1.5)"/>
+                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" style={{ flexShrink: 0, opacity: 0.95 }}>
+                    <path d="M1.5 1.5 L1.5 5 Q1.5 7 3.5 7 L7.5 7 M5 4.5 L7.5 7 L5 9.5" stroke="rgba(255,255,255,0.95)" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" transform="translate(0, -1.5)"/>
                   </svg>
                   {creditsLoading
                     ? <Skeleton width={100} height={10} />
-                    : <span style={{ fontSize: 10.5, color: '#64748b', fontWeight: 500 }}>
+                    : <span style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.92)', fontWeight: 500 }}>
                         dont {c.unit} achat{c.unit > 1 ? 's' : ''} unitaire{c.unit > 1 ? 's' : ''}
                       </span>
                   }
@@ -491,8 +480,8 @@ Cette logique vous permet de profiter pleinement de votre forfait mensuel avant 
               </div>
               {creditsLoading
                 ? <Skeleton width={44} height={30} />
-                : <div style={{ width: 44, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 7, background: c.value > 0 ? '#fff' : '#f1f5f9', border: c.value > 0 ? '1px solid #c7dde8' : '1px solid #e2e8f0', flexShrink: 0 }}>
-                    <span style={{ fontSize: 15, fontWeight: 900, color: c.value > 0 ? ACCENT : MUTED, lineHeight: 1 }}>{c.value}</span>
+                : <div style={{ width: 44, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 7, background: c.value > 0 ? 'rgba(125,211,250,0.15)' : 'rgba(255,255,255,0.06)', flexShrink: 0 }}>
+                    <span style={{ fontSize: 15, fontWeight: 900, color: c.value > 0 ? ACCENT : 'rgba(255,255,255,0.4)', lineHeight: 1 }}>{c.value}</span>
                   </div>
               }
             </div>
@@ -505,7 +494,7 @@ Cette logique vous permet de profiter pleinement de votre forfait mensuel avant 
         {proNavGroups.map((group, gIdx) => (
           <div key={group.title}>
             {gIdx > 0 && (
-              <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, #cbd5e1 20%, #cbd5e1 80%, transparent)', margin: '8px 12px' }} />
+              <div style={{ height: 1, background: 'rgba(255,255,255,0.10)', margin: '8px 12px' }} />
             )}
             {group.items.map(item => {
               const Icon = item.icon;
@@ -516,9 +505,8 @@ Cette logique vous permet de profiter pleinement de votre forfait mensuel avant 
                   style={{
                     display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', textDecoration: 'none',
                     fontSize: 14, fontWeight: active ? 700 : 500, color: active ? TEXT_ACTIVE : TEXT,
-                    background: active ? 'rgba(255,255,255,0.9)' : 'transparent', transition: 'all 0.15s',
+                    background: active ? 'rgba(255,255,255,0.12)' : 'transparent', transition: 'all 0.15s',
                     borderLeft: active ? `3px solid ${ACCENT}` : '3px solid transparent', borderRadius: 0,
-                    boxShadow: active ? '0 1px 3px rgba(15,45,61,0.06)' : 'none',
                   }}>
                   <div style={{
                     width: 30, height: 30, borderRadius: 8,
