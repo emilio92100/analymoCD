@@ -840,7 +840,7 @@ function ProblemSolutionSection() {
       tag: "Décrypter",
       tagColor: '#2a7d9c',
       tagBg: 'rgba(42,125,156,0.1)',
-      title: "Vous n'avez pas le temps de lire 200 pages",
+      title: "Vous n'avez pas le temps de tout lire — ou de tout comprendre",
       text: "PV d'AG, règlement, diagnostics, DPE… Verimo lit tout pour vous et vous livre un rapport clair en 30 secondes.",
       visual: 'decrypt' as const,
       reverse: false,
@@ -888,7 +888,7 @@ function ProblemSolutionSection() {
                 </div>
                 {/* Texte */}
                 <div className={`${item.reverse ? 'md:order-1' : 'md:order-2'}`}>
-                  <span className="inline-block text-[11px] font-bold px-2.5 py-1 rounded-md mb-2.5" style={{ color: item.tagColor, background: item.tagBg }}>
+                  <span className="inline-block text-[13px] md:text-sm font-bold px-3.5 py-1.5 rounded-lg mb-3" style={{ color: item.tagColor, background: item.tagBg }}>
                     {item.tag}
                   </span>
                   <h3 className="text-base md:text-xl font-bold text-[#0f2d3d] mb-2 leading-snug">{item.title}</h3>
@@ -910,7 +910,7 @@ function ProblemVisual({ kind }: { kind: 'decrypt' | 'secure' | 'negotiate' }) {
     return (
       <div className="relative h-[160px] md:h-[180px] rounded-xl overflow-hidden" style={{ background: 'linear-gradient(135deg, #f0f9ff, #dbeafe)' }}>
         {/* Document 1 (incliné gauche) */}
-        <div className="absolute" style={{ left: '12%', top: '15%', width: 100, height: 130, background: '#fff', borderRadius: 8, padding: 10, boxShadow: '0 6px 18px rgba(0,0,0,0.10)', transform: 'rotate(-5deg)' }}>
+        <div className="absolute" style={{ left: '24%', top: '12%', width: 100, height: 130, background: '#fff', borderRadius: 8, padding: 10, boxShadow: '0 6px 18px rgba(0,0,0,0.10)', transform: 'rotate(-5deg)' }}>
           <div style={{ height: 3, background: '#94a3b8', borderRadius: 1, marginBottom: 5 }} />
           <div style={{ height: 3, background: '#fde047', borderRadius: 1, marginBottom: 5 }} />
           <div style={{ height: 3, background: '#94a3b8', borderRadius: 1, marginBottom: 5, width: '80%' }} />
@@ -919,8 +919,8 @@ function ProblemVisual({ kind }: { kind: 'decrypt' | 'secure' | 'negotiate' }) {
           <div style={{ height: 3, background: '#94a3b8', borderRadius: 1, marginBottom: 5 }} />
           <div style={{ height: 3, background: '#94a3b8', borderRadius: 1, width: '60%' }} />
         </div>
-        {/* Document 2 (incliné droite) */}
-        <div className="absolute" style={{ right: '14%', bottom: '8%', width: 100, height: 130, background: '#fff', borderRadius: 8, padding: 10, boxShadow: '0 6px 18px rgba(0,0,0,0.12)', transform: 'rotate(7deg)' }}>
+        {/* Document 2 (incliné droite, plus rapproché) */}
+        <div className="absolute" style={{ left: '52%', top: '24%', width: 100, height: 130, background: '#fff', borderRadius: 8, padding: 10, boxShadow: '0 6px 18px rgba(0,0,0,0.12)', transform: 'rotate(7deg)' }}>
           <div style={{ height: 3, background: '#94a3b8', borderRadius: 1, marginBottom: 5 }} />
           <div style={{ height: 3, background: '#fde047', borderRadius: 1, marginBottom: 5 }} />
           <div style={{ height: 3, background: '#94a3b8', borderRadius: 1, marginBottom: 5, width: '85%' }} />
@@ -991,17 +991,20 @@ function WhatWeAnalyzeSection() {
           sub="Verimo passe au crible chaque catégorie clé d'un dossier immobilier pour vous livrer une vision complète et structurée."
         />
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-5 pt-6 md:pt-7">
           {categories.map((c, i) => (
             <Reveal key={i} delay={i * 0.06}>
-              <div className="relative bg-[#f4f9fb] rounded-2xl p-4 md:p-5 border border-slate-100 hover:-translate-y-1 hover:shadow-md transition-all duration-300 h-full">
+              <div className="relative bg-[#f4f9fb] rounded-2xl px-4 pt-7 pb-5 md:px-5 md:pt-8 md:pb-6 border border-slate-100 hover:-translate-y-1 hover:shadow-md transition-all duration-300 h-full text-center">
+                {/* Icône ronde qui dépasse en haut */}
+                <div className="absolute left-1/2 -translate-x-1/2 -top-6 md:-top-7 w-12 h-12 md:w-14 md:h-14 rounded-full bg-white border border-slate-200 flex items-center justify-center text-2xl md:text-[28px] shadow-md">
+                  {c.emoji}
+                </div>
                 {c.nouveau && (
                   <span className="absolute top-2.5 right-2.5 text-[9px] font-bold uppercase tracking-wider text-white px-2 py-0.5 rounded-full" style={{ background: '#16a34a' }}>
                     Nouveau
                   </span>
                 )}
-                <div className="text-2xl md:text-[28px] mb-2 md:mb-3">{c.emoji}</div>
-                <p className="text-sm md:text-base font-bold text-[#0f2d3d] mb-1 md:mb-1.5 leading-snug">{c.title}</p>
+                <p className="text-sm md:text-base font-bold text-[#0f2d3d] mb-1.5 md:mb-2 leading-snug">{c.title}</p>
                 <p className="text-[11px] md:text-xs text-slate-500 leading-relaxed">{c.text}</p>
               </div>
             </Reveal>
@@ -1011,7 +1014,7 @@ function WhatWeAnalyzeSection() {
         <Reveal delay={categories.length * 0.06}>
           <div className="mt-4 md:mt-6 text-center bg-[#f4f9fb] rounded-xl px-4 py-3 md:px-6 md:py-3.5 border border-slate-100">
             <p className="text-xs md:text-sm text-slate-500 leading-relaxed">
-              + <span className="font-semibold text-[#2a7d9c]">Compromis de vente</span> analysé (prix, dates, conditions suspensives, clauses) — Verimo lit <span className="font-semibold text-[#2a7d9c]">20+ types de documents</span>
+              + <span className="font-semibold text-[#2a7d9c]">Compromis de vente</span> analysé (prix, dates, conditions suspensives, clauses) — Verimo lit <span className="font-semibold text-[#2a7d9c]">+ de 30 documents</span> liés à un achat immobilier
             </p>
           </div>
         </Reveal>
@@ -1547,8 +1550,7 @@ function AvisSection() {
           {avisDouble.map((a, i) => (
             <div
               key={i}
-              className="bg-white rounded-2xl border border-slate-100 p-5 md:p-6 shadow-sm flex flex-col gap-3 md:gap-4 shrink-0"
-              style={{ width: 300 }}
+              className="avis-card bg-white rounded-2xl border border-slate-100 p-5 md:p-6 shadow-sm flex flex-col gap-3 md:gap-4 shrink-0"
             >
               {/* Étoiles */}
               <div className="flex gap-0.5">
@@ -1557,7 +1559,7 @@ function AvisSection() {
                 ))}
               </div>
               {/* Texte */}
-              <p className="text-sm text-slate-600 leading-relaxed flex-1">"{a.texte}"</p>
+              <p className="text-sm md:text-[15px] text-slate-600 leading-relaxed flex-1">"{a.texte}"</p>
               {/* Auteur */}
               <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
                 <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0"
@@ -1575,6 +1577,8 @@ function AvisSection() {
       </div>
 
       <style>{`
+        .avis-card { width: 280px; }
+        @media (min-width: 768px) { .avis-card { width: 380px; } }
         .avis-marquee {
           animation: avis-scroll 45s linear infinite;
         }
