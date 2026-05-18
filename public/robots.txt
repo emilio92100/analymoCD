@@ -11,5 +11,6 @@ Disallow: /start
 Disallow: /connexion
 Disallow: /inscription
 Disallow: /mot-de-passe-oublie
+Disallow: /cgv-pro
 
 Sitemap: https://www.verimo.fr/sitemap.xml
