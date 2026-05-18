@@ -1731,12 +1731,7 @@ function FaqSection() {
     {
       q: "Comment fonctionne la comparaison de biens ?",
       emoji: "⚖️",
-      a: "La comparaison se débloque automatiquement dès que votre compte contient au minimum 2 analyses complètes — que vous les ayez achetées via un Pack ou séparément. Dans votre tableau de bord, l'onglet 'Comparer mes biens' s'active et vous pouvez sélectionner les biens à comparer côte à côte. Le Pack 3 biens permet en plus un classement automatique des 3 biens.",
-    },
-    {
-      q: "Mes crédits ont-ils une date d'expiration ?",
-      emoji: "♾️",
-      a: "Non, jamais. Vos crédits sont valables indéfiniment. Vous pouvez acheter un Pack aujourd'hui et l'utiliser dans 6 mois — ils vous attendent. Il n'y a aucune pression temporelle.",
+      a: "C'est une fonctionnalité dédiée, pensée pour vous aider à trancher entre plusieurs biens. Verimo génère une vue côte à côte avec un classement, une synthèse des points forts et faibles de chaque bien, et un récap des écarts importants (charges, travaux, DPE, copropriété…). Vous voyez d'un coup d'œil lequel est le plus sain — et pourquoi. La comparaison se débloque dès que vous avez 2 analyses complètes dans votre espace (via un Pack ou séparément). Le Pack 3 biens permet en plus un classement automatique des 3 biens.",
     },
   ];
 
@@ -1745,37 +1740,45 @@ function FaqSection() {
       <div className="max-w-5xl mx-auto">
         <SectionTitle label="Questions fréquentes" title="Vos questions," accent="nos réponses." />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 md:gap-3 items-start">
-          {faqs.map((faq, i) => (
-            <Reveal key={i} delay={i * 0.04}>
-              <div className={`rounded-2xl border bg-white overflow-hidden transition-all duration-200 ${open === i ? 'border-[#2a7d9c]/40 shadow-md' : 'border-slate-100 shadow-sm'}`}>
-                <button
-                  onClick={() => setOpen(open === i ? null : i)}
-                  className="w-full flex items-center gap-4 px-5 md:px-6 py-4 md:py-5 text-left">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-base transition-colors"
-                    style={{ background: open === i ? 'rgba(42,125,156,0.1)' : '#f8fafc', border: open === i ? '1px solid rgba(42,125,156,0.2)' : '1px solid #edf2f7' }}>
-                    {faq.emoji}
-                  </div>
-                  <span className="text-sm md:text-base font-bold text-[#0f172a] flex-1">{faq.q}</span>
-                  <motion.div animate={{ rotate: open === i ? 180 : 0 }} transition={{ duration: 0.2 }} className="shrink-0">
-                    <ChevronDown size={18} className={open === i ? 'text-[#2a7d9c]' : 'text-slate-300'} />
-                  </motion.div>
-                </button>
-                <AnimatePresence>
-                  {open === i && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.25 }}>
-                      <div className="px-5 md:px-6 pb-5 pt-1 text-sm md:text-base text-slate-500 leading-relaxed border-t border-slate-50 pl-[72px]">
-                        {faq.a}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </Reveal>
+        {/* 2 colonnes indépendantes sur PC : chaque colonne empile ses FAQs sans s'aligner avec l'autre */}
+        <div className="flex flex-col md:flex-row gap-2.5 md:gap-3">
+          {[0, 1].map((col) => (
+            <div key={col} className="flex flex-col gap-2.5 md:gap-3 flex-1">
+              {faqs.filter((_, i) => i % 2 === col).map((faq) => {
+                const i = faqs.indexOf(faq);
+                return (
+                  <Reveal key={i} delay={i * 0.04}>
+                    <div className={`rounded-2xl border bg-white overflow-hidden transition-all duration-200 ${open === i ? 'border-[#2a7d9c]/40 shadow-md' : 'border-slate-100 shadow-sm'}`}>
+                      <button
+                        onClick={() => setOpen(open === i ? null : i)}
+                        className="w-full flex items-center gap-4 px-5 md:px-6 py-4 md:py-5 text-left">
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-base transition-colors"
+                          style={{ background: open === i ? 'rgba(42,125,156,0.1)' : '#f8fafc', border: open === i ? '1px solid rgba(42,125,156,0.2)' : '1px solid #edf2f7' }}>
+                          {faq.emoji}
+                        </div>
+                        <span className="text-sm md:text-base font-bold text-[#0f172a] flex-1">{faq.q}</span>
+                        <motion.div animate={{ rotate: open === i ? 180 : 0 }} transition={{ duration: 0.2 }} className="shrink-0">
+                          <ChevronDown size={18} className={open === i ? 'text-[#2a7d9c]' : 'text-slate-300'} />
+                        </motion.div>
+                      </button>
+                      <AnimatePresence>
+                        {open === i && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.25 }}>
+                            <div className="px-5 md:px-6 pb-5 pt-1 text-sm md:text-base text-slate-500 leading-relaxed border-t border-slate-50 pl-[72px]">
+                              {faq.a}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </Reveal>
+                );
+              })}
+            </div>
           ))}
         </div>
 
