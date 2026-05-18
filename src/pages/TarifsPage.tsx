@@ -19,7 +19,7 @@ const allFeatures = [
   { label: 'Pistes de négociation', tip: 'Arguments concrets pour négocier le prix, affichés si le score est inférieur à 17/20', simple: false, complete: true, pack2: true, pack3: true },
   { label: 'Rapport PDF téléchargeable', tip: 'Téléchargez votre rapport complet au format PDF', simple: false, complete: true, pack2: true, pack3: true },
   { label: 'Compléter sous 7 jours', tip: 'Ajoutez des documents oubliés dans les 7 jours — le rapport est recalculé gratuitement', simple: false, complete: true, pack2: true, pack3: true },
-  { label: 'Comparaison de biens', tip: 'Comparez vos analyses côte à côte pour choisir le meilleur bien', simple: false, complete: false, pack2: true, pack3: true },
+  { label: 'Comparaison de biens', tip: 'Une vue côte à côte avec classement, points forts/faibles de chaque bien et écarts clés (charges, travaux, DPE…) — pour trancher d\'un coup d\'œil', simple: false, complete: false, pack2: true, pack3: true },
 ];
 
 const plans = [
@@ -94,7 +94,7 @@ const tableRows = [
   { label: 'Pistes de négociation', tip: 'Arguments pour négocier le prix, affichés si le score est inférieur à 17/20', vals: [false, true, true, true], type: 'bool' },
   { label: 'Compléter le dossier (7j)', tip: 'Ajoutez des documents oubliés dans les 7 jours — rapport recalculé gratuitement', vals: [false, true, true, true], type: 'bool' },
   { label: 'Rapport PDF téléchargeable', tip: 'Téléchargez votre rapport complet au format PDF', vals: [false, true, true, true], type: 'bool' },
-  { label: 'Comparaison de biens', tip: 'Comparez vos analyses côte à côte pour choisir le meilleur bien', vals: [false, false, true, true], type: 'bool' },
+  { label: 'Comparaison de biens', tip: 'Une vue côte à côte avec classement, points forts/faibles de chaque bien et écarts clés (charges, travaux, DPE…) — pour trancher d\'un coup d\'œil', vals: [false, false, true, true], type: 'bool' },
   { label: 'Économie vs achats séparés', tip: 'Réduction par rapport à l\'achat de chaque analyse individuellement', vals: ['—', '—', '−10€', '−20€'], type: 'text' },
 ];
 
