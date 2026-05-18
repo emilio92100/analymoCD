@@ -172,6 +172,7 @@ export default function HomePage() {
       <HeroSection />
       <HowItWorksSection />
       <ProblemSolutionSection />
+      <WhatWeAnalyzeSection />
       <ScoreSection />
       <ForWhoSection />
       <AvisSection />
@@ -836,36 +837,31 @@ function PhaseResultMini() {
 function ProblemSolutionSection() {
   const items = [
     {
-      emoji: '📄',
-      title: "Des documents difficiles à déchiffrer",
-      text: "PV d'AG, diagnostics, règlement de copropriété… Ces documents contiennent des informations cruciales, mais leur lecture demande du temps et de l'expérience. Verimo les décrypte pour vous.",
-      tag: "Lisibilité",
+      tag: "Décrypter",
       tagColor: '#2a7d9c',
       tagBg: 'rgba(42,125,156,0.1)',
+      title: "Vous n'avez pas le temps de lire 200 pages",
+      text: "PV d'AG, règlement, diagnostics, DPE… Verimo lit tout pour vous et vous livre un rapport clair en 30 secondes.",
+      visual: 'decrypt' as const,
+      reverse: false,
     },
     {
-      emoji: '🔧',
-      title: "Des travaux déjà votés, pas toujours visibles",
-      text: "Toiture, ravalement, ascenseur… Des travaux votés en assemblée générale avant votre arrivée. Verimo les détecte et vous indique ce que ça représente pour votre budget.",
-      tag: "Travaux",
+      tag: "Sécuriser",
       tagColor: '#d97706',
       tagBg: 'rgba(217,119,6,0.1)',
+      title: "Ne signez pas en aveugle",
+      text: "Travaux évoqués non votés, impayés copro, DPE invalide… Verimo détecte ce qui peut vous coûter cher avant signature.",
+      visual: 'secure' as const,
+      reverse: true,
     },
     {
-      emoji: '💶',
-      title: "Des charges à bien anticiper",
-      text: "Charges mensuelles, fonds de travaux, impayés éventuels… Ces chiffres ont un impact direct sur votre budget. Verimo les ressort clairement pour que vous n'ayez pas de surprise.",
-      tag: "Budget",
-      tagColor: '#dc2626',
-      tagBg: 'rgba(220,38,38,0.1)',
-    },
-    {
-      emoji: '✅',
-      title: "Une décision prise en toute sérénité",
-      text: "Avec Verimo, vous recevez un rapport clair sur le bien qui vous intéresse. Vous savez exactement ce que vous achetez — et vous pouvez décider ou négocier en confiance.",
-      tag: "Sérénité",
+      tag: "Négocier",
       tagColor: '#16a34a',
       tagBg: 'rgba(22,163,74,0.1)',
+      title: "Achetez au juste prix",
+      text: "Arguments chiffrés, risques quantifiés, rapport partageable avec votre notaire — vous négociez en connaissance de cause.",
+      visual: 'negotiate' as const,
+      reverse: false,
     },
   ];
 
@@ -882,22 +878,143 @@ function ProblemSolutionSection() {
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
+        <div className="flex flex-col gap-4 md:gap-5">
           {items.map((item, i) => (
             <Reveal key={i} delay={i}>
-              <div className="bg-white rounded-2xl p-6 md:p-7 border border-slate-100 shadow-sm hover:-translate-y-1 hover:shadow-md transition-all duration-300 h-full">
-                <div className="flex items-start justify-between mb-4">
-                  <span className="text-2xl">{item.emoji}</span>
-                  <span className="text-[11px] font-bold px-3 py-1 rounded-full" style={{ color: item.tagColor, background: item.tagBg }}>
+              <div className={`bg-white rounded-2xl p-5 md:p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow duration-300 grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-7 items-center`}>
+                {/* Visuel */}
+                <div className={`${item.reverse ? 'md:order-2' : 'md:order-1'}`}>
+                  <ProblemVisual kind={item.visual} />
+                </div>
+                {/* Texte */}
+                <div className={`${item.reverse ? 'md:order-1' : 'md:order-2'}`}>
+                  <span className="inline-block text-[11px] font-bold px-2.5 py-1 rounded-md mb-2.5" style={{ color: item.tagColor, background: item.tagBg }}>
                     {item.tag}
                   </span>
+                  <h3 className="text-base md:text-xl font-bold text-[#0f2d3d] mb-2 leading-snug">{item.title}</h3>
+                  <p className="text-sm text-slate-500 leading-relaxed">{item.text}</p>
                 </div>
-                <h3 className="text-sm md:text-base font-bold text-[#0f2d3d] mb-2 leading-snug">{item.title}</h3>
-                <p className="text-sm text-slate-500 leading-relaxed">{item.text}</p>
               </div>
             </Reveal>
           ))}
         </div>
+
+      </div>
+    </section>
+  );
+}
+
+/* ─── Visuels illustratifs pour ProblemSolution ─── */
+function ProblemVisual({ kind }: { kind: 'decrypt' | 'secure' | 'negotiate' }) {
+  if (kind === 'decrypt') {
+    return (
+      <div className="relative h-[160px] md:h-[180px] rounded-xl overflow-hidden" style={{ background: 'linear-gradient(135deg, #f0f9ff, #dbeafe)' }}>
+        {/* Document 1 (incliné gauche) */}
+        <div className="absolute" style={{ left: '12%', top: '15%', width: 100, height: 130, background: '#fff', borderRadius: 8, padding: 10, boxShadow: '0 6px 18px rgba(0,0,0,0.10)', transform: 'rotate(-5deg)' }}>
+          <div style={{ height: 3, background: '#94a3b8', borderRadius: 1, marginBottom: 5 }} />
+          <div style={{ height: 3, background: '#fde047', borderRadius: 1, marginBottom: 5 }} />
+          <div style={{ height: 3, background: '#94a3b8', borderRadius: 1, marginBottom: 5, width: '80%' }} />
+          <div style={{ height: 3, background: '#94a3b8', borderRadius: 1, marginBottom: 5 }} />
+          <div style={{ height: 3, background: '#fde047', borderRadius: 1, marginBottom: 5, width: '70%' }} />
+          <div style={{ height: 3, background: '#94a3b8', borderRadius: 1, marginBottom: 5 }} />
+          <div style={{ height: 3, background: '#94a3b8', borderRadius: 1, width: '60%' }} />
+        </div>
+        {/* Document 2 (incliné droite) */}
+        <div className="absolute" style={{ right: '14%', bottom: '8%', width: 100, height: 130, background: '#fff', borderRadius: 8, padding: 10, boxShadow: '0 6px 18px rgba(0,0,0,0.12)', transform: 'rotate(7deg)' }}>
+          <div style={{ height: 3, background: '#94a3b8', borderRadius: 1, marginBottom: 5 }} />
+          <div style={{ height: 3, background: '#fde047', borderRadius: 1, marginBottom: 5 }} />
+          <div style={{ height: 3, background: '#94a3b8', borderRadius: 1, marginBottom: 5, width: '85%' }} />
+          <div style={{ height: 18, background: '#ecfdf5', borderRadius: 4, marginTop: 12, display: 'flex', alignItems: 'center', padding: '0 7px' }}>
+            <span style={{ fontSize: 9, color: '#16a34a', fontWeight: 600 }}>✓ Décrypté</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (kind === 'secure') {
+    return (
+      <div className="h-[160px] md:h-[180px] rounded-xl flex flex-col gap-2 justify-center" style={{ background: 'linear-gradient(135deg, #fef7ed, #fef3c7)', padding: 18 }}>
+        <div style={{ background: '#fff', padding: '9px 12px', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 9, boxShadow: '0 2px 6px rgba(0,0,0,0.04)' }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#dc2626', flexShrink: 0 }} />
+          <span style={{ fontSize: 12, color: '#0f2d3d' }}>Ravalement évoqué, non voté</span>
+        </div>
+        <div style={{ background: '#fff', padding: '9px 12px', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 9, boxShadow: '0 2px 6px rgba(0,0,0,0.04)' }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#d97706', flexShrink: 0 }} />
+          <span style={{ fontSize: 12, color: '#0f2d3d' }}>Impayés copro · 12% du budget</span>
+        </div>
+        <div style={{ background: '#fff', padding: '9px 12px', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 9, boxShadow: '0 2px 6px rgba(0,0,0,0.04)' }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#dc2626', flexShrink: 0 }} />
+          <span style={{ fontSize: 12, color: '#0f2d3d' }}>DPE 2019 · invalide</span>
+        </div>
+      </div>
+    );
+  }
+  // negotiate
+  return (
+    <div className="h-[160px] md:h-[180px] rounded-xl flex justify-center items-center" style={{ background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)', padding: 18 }}>
+      <div style={{ background: '#fff', padding: '16px 22px', borderRadius: 14, boxShadow: '0 8px 22px rgba(0,0,0,0.08)', textAlign: 'center' as const, minWidth: 170 }}>
+        <p style={{ fontSize: 9, color: '#64748b', margin: '0 0 5px', letterSpacing: '0.08em', fontWeight: 700 }}>SCORE VERIMO</p>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 3, marginBottom: 10 }}>
+          <span style={{ fontSize: 36, fontWeight: 800, color: '#16a34a' }}>14</span>
+          <span style={{ fontSize: 14, color: '#64748b' }}>/20</span>
+        </div>
+        <div style={{ height: 4, background: '#e5e7eb', borderRadius: 2, overflow: 'hidden', marginBottom: 10 }}>
+          <div style={{ height: '100%', width: '70%', background: 'linear-gradient(90deg, #16a34a, #22c55e)' }} />
+        </div>
+        <div style={{ padding: '4px 10px', background: '#ecfdf5', borderRadius: 6, display: 'inline-block' }}>
+          <span style={{ fontSize: 10, color: '#16a34a', fontWeight: 700 }}>✓ -5 000 € négociés</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══ CE QUE VERIMO ANALYSE ══════════════════════════════ */
+function WhatWeAnalyzeSection() {
+  const categories = [
+    { emoji: '🏢', title: 'Copropriété', text: "PV d'AG · Règlement · Carnet d'entretien · Modificatifs RCP" },
+    { emoji: '🏠', title: 'Logement', text: "Surface Carrez · Règles d'usage · Identité du lot" },
+    { emoji: '💶', title: 'Finances', text: "État daté · Pré-état daté · Appels de charges · Taxe foncière" },
+    { emoji: '⚖️', title: 'Procédures', text: "Litiges · Contentieux copro · Procédures en cours" },
+    { emoji: '🔨', title: 'Travaux', text: "Votés AG · Fonds ALUR · Travaux à charge vendeur" },
+    { emoji: '🏷️', title: 'Performance énergétique', text: "DPE + recommandations de travaux pour améliorer votre note", nouveau: true },
+  ];
+
+  return (
+    <section className="py-12 md:py-20 px-4 md:px-6 bg-white">
+      <div className="max-w-6xl mx-auto">
+
+        <SectionTitle
+          label="Ce que Verimo analyse"
+          title="Toutes les dimensions du bien,"
+          accent="en un seul rapport."
+          sub="Verimo passe au crible chaque catégorie clé d'un dossier immobilier pour vous livrer une vision complète et structurée."
+        />
+
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+          {categories.map((c, i) => (
+            <Reveal key={i} delay={i * 0.06}>
+              <div className="relative bg-[#f4f9fb] rounded-2xl p-4 md:p-5 border border-slate-100 hover:-translate-y-1 hover:shadow-md transition-all duration-300 h-full">
+                {c.nouveau && (
+                  <span className="absolute top-2.5 right-2.5 text-[9px] font-bold uppercase tracking-wider text-white px-2 py-0.5 rounded-full" style={{ background: '#16a34a' }}>
+                    Nouveau
+                  </span>
+                )}
+                <div className="text-2xl md:text-[28px] mb-2 md:mb-3">{c.emoji}</div>
+                <p className="text-sm md:text-base font-bold text-[#0f2d3d] mb-1 md:mb-1.5 leading-snug">{c.title}</p>
+                <p className="text-[11px] md:text-xs text-slate-500 leading-relaxed">{c.text}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+
+        <Reveal delay={categories.length * 0.06}>
+          <div className="mt-4 md:mt-6 text-center bg-[#f4f9fb] rounded-xl px-4 py-3 md:px-6 md:py-3.5 border border-slate-100">
+            <p className="text-xs md:text-sm text-slate-500 leading-relaxed">
+              + <span className="font-semibold text-[#2a7d9c]">Compromis de vente</span> analysé (prix, dates, conditions suspensives, clauses) — Verimo lit <span className="font-semibold text-[#2a7d9c]">20+ types de documents</span>
+            </p>
+          </div>
+        </Reveal>
 
       </div>
     </section>
@@ -1087,9 +1204,9 @@ function ForWhoSection() {
 
         {/* ─── Sous-titre (responsive : pas de nowrap sur mobile) ─── */}
         <Reveal>
-          <div className="text-center mb-10 md:mb-14 max-w-4xl mx-auto px-2">
+          <div className="text-center mb-10 md:mb-14 max-w-5xl mx-auto px-2">
             <p className="text-sm md:text-lg text-slate-500 leading-relaxed">
-              Que ce soit votre premier achat ou votre dixième, les documents restent les mêmes — et les risques aussi.
+              Que ce soit votre premier achat ou votre dixième, les documents restent les mêmes <span className="md:whitespace-nowrap">— et les risques aussi.</span>
             </p>
             <p className="text-sm md:text-lg font-semibold text-[#0f172a] leading-relaxed mt-1">
               Verimo les analyse pour que vous décidiez en confiance.
@@ -1409,38 +1526,72 @@ function AvisSection() {
     },
   ];
 
+  // Duplication des cards pour la boucle infinie continue
+  const avisDouble = [...avis, ...avis];
+
   return (
-    <section className="py-12 md:py-20 px-4 md:px-6 bg-[#f4f7f9]">
-      <div className="max-w-6xl mx-auto">
+    <section className="py-12 md:py-20 px-0 bg-[#f4f7f9] overflow-hidden">
+      <div className="max-w-6xl mx-auto px-4 md:px-6">
         <SectionTitle label="Ils ont utilisé Verimo" title="Ce qu'ils en" accent="pensent." />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {avis.map((a, i) => (
-            <Reveal key={i} delay={i * 0.08}>
-              <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm flex flex-col gap-4 h-full">
-                {/* Étoiles */}
-                <div className="flex gap-1">
-                  {Array.from({ length: a.note }).map((_, j) => (
-                    <span key={j} className="text-amber-400 text-base">★</span>
-                  ))}
+      </div>
+
+      {/* Marquee défilant — desktop : ralentit au survol */}
+      <div
+        className="relative w-full"
+        style={{
+          maskImage: 'linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent)',
+          WebkitMaskImage: 'linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent)',
+        }}
+      >
+        <div className="avis-marquee flex gap-4 md:gap-5" style={{ width: 'max-content' }}>
+          {avisDouble.map((a, i) => (
+            <div
+              key={i}
+              className="bg-white rounded-2xl border border-slate-100 p-5 md:p-6 shadow-sm flex flex-col gap-3 md:gap-4 shrink-0"
+              style={{ width: 300 }}
+            >
+              {/* Étoiles */}
+              <div className="flex gap-0.5">
+                {Array.from({ length: a.note }).map((_, j) => (
+                  <span key={j} className="text-amber-400 text-base">★</span>
+                ))}
+              </div>
+              {/* Texte */}
+              <p className="text-sm text-slate-600 leading-relaxed flex-1">"{a.texte}"</p>
+              {/* Auteur */}
+              <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-black text-sm shrink-0"
+                  style={{ background: a.color }}>
+                  {a.initiale}
                 </div>
-                {/* Texte */}
-                <p className="text-sm md:text-base text-slate-600 leading-relaxed flex-1">"{a.texte}"</p>
-                {/* Auteur */}
-                <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-base shrink-0"
-                    style={{ background: a.color }}>
-                    {a.initiale}
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-[#0f172a]">{a.nom} <span className="text-slate-400 font-normal">· {a.ville}</span></div>
-                    <div className="text-xs text-slate-400 mt-0.5">{a.profil}</div>
-                  </div>
+                <div className="min-w-0">
+                  <div className="text-xs md:text-sm font-bold text-[#0f172a] truncate">{a.nom} <span className="text-slate-400 font-normal">· {a.ville}</span></div>
+                  <div className="text-[11px] text-slate-400 mt-0.5 truncate">{a.profil}</div>
                 </div>
               </div>
-            </Reveal>
+            </div>
           ))}
         </div>
       </div>
+
+      <style>{`
+        .avis-marquee {
+          animation: avis-scroll 45s linear infinite;
+        }
+        .avis-marquee:hover {
+          animation-play-state: paused;
+        }
+        @keyframes avis-scroll {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        @media (max-width: 768px) {
+          .avis-marquee { animation-duration: 35s; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .avis-marquee { animation: none; }
+        }
+      `}</style>
     </section>
   );
 }
