@@ -84,17 +84,17 @@ export default function Support() {
   };
   const resolvedTickets = tickets.filter(t => t.status === 'resolved');
 
-  if (view === 'new') return <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: 'easeOut' }}><NewTicketView onBack={() => { loadTickets(); setView('list'); }} onCreated={(id) => { loadTickets(); setSelectedTicketId(id); setView('chat'); }} /></motion.div>;
-  if (view === 'chat' && selectedTicketId) return <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: 'easeOut' }}><ChatView ticketId={selectedTicketId} onBack={() => { setView('list'); loadTickets(); }} /></motion.div>;
-  if (view === 'suggestion') return <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22, ease: 'easeOut' }}><SuggestionView onBack={() => setView('list')} /></motion.div>;
+  if (view === 'new') return <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}><NewTicketView onBack={() => { loadTickets(); setView('list'); }} onCreated={(id) => { loadTickets(); setSelectedTicketId(id); setView('chat'); }} /></motion.div>;
+  if (view === 'chat' && selectedTicketId) return <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}><ChatView ticketId={selectedTicketId} onBack={() => { setView('list'); loadTickets(); }} /></motion.div>;
+  if (view === 'suggestion') return <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}><SuggestionView onBack={() => setView('list')} /></motion.div>;
 
   if (loading) return <DashboardLoader message="Chargement du support…" />;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.28, ease: 'easeOut' }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
       style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <style>{`@media (max-width: 640px) { .support-mobile-only { display: flex !important; } } @media (min-width: 641px) { .support-mobile-only { display: none !important; } }`}</style>
 
