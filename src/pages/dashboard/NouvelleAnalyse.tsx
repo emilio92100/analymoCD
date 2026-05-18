@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, ShieldCheck, Upload, CheckCircle, AlertTriangle, ChevronLeft, Sparkles, ArrowRight, Lock, Download, Home, Building2, HelpCircle, RefreshCw } from 'lucide-react';
+import { FileText, ShieldCheck, Upload, CheckCircle, AlertTriangle, ChevronLeft, Sparkles, ArrowRight, Lock, Download, Home, Building2, HelpCircle, RefreshCw, Search } from 'lucide-react';
 import { lancerAnalyseEdge, type AnalyseProgress } from '../../lib/analyse-client';
 import DocumentRenderer from './DocumentRenderer';
 import { createAnalyse, markAnalyseFailed, type TypeBien } from '../../lib/analyses';
@@ -1289,15 +1289,24 @@ function FolderSelectStep({ folders, loading, type, onBack, onSelect, onCreate, 
   onCreated: (folder: FolderLite) => void;
 }) {
   const [search, setSearch] = useState('');
-  const filtered = folders.filter(f => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (
-      f.name.toLowerCase().includes(q) ||
-      (f.property_address || '').toLowerCase().includes(q) ||
-      (f.property_city || '').toLowerCase().includes(q)
-    );
-  });
+  const [sortMode, setSortMode] = useState<'recent' | 'alpha'>('recent');
+  const filtered = folders
+    .filter(f => {
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return (
+        f.name.toLowerCase().includes(q) ||
+        (f.property_address || '').toLowerCase().includes(q) ||
+        (f.property_city || '').toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      if (sortMode === 'alpha') {
+        return a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' });
+      }
+      // 'recent' : on garde l'ordre serveur (déjà trié par updated_at desc)
+      return 0;
+    });
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
@@ -1311,12 +1320,32 @@ function FolderSelectStep({ folders, loading, type, onBack, onSelect, onCreate, 
         </span>
       </div>
 
-      <h1 style={{ fontSize: 'clamp(22px,3vw,28px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 10 }}>
-        Pour quel bien lancez-vous cette analyse ?
-      </h1>
-      <p style={{ fontSize: 14, color: '#64748b', marginBottom: 28, lineHeight: 1.6, maxWidth: 720 }}>
-        Sélectionnez un dossier existant pour y ajouter cette analyse, ou créez-en un nouveau pour un bien que vous n'avez pas encore enregistré.
-      </p>
+      {/* Bandeau dégradé bleu pro — titre et description */}
+      <div style={{
+        background: 'linear-gradient(135deg, #0f2d3d 0%, #2a7d9c 100%)',
+        borderRadius: 16,
+        padding: '24px 26px',
+        marginBottom: 28,
+        position: 'relative',
+        overflow: 'hidden',
+        boxShadow: '0 6px 20px rgba(15, 45, 61, 0.15)',
+      }}>
+        {/* Cercles décoratifs subtils */}
+        <div style={{ position: 'absolute', right: -40, top: -40, width: 180, height: 180, borderRadius: '50%', background: 'rgba(125, 211, 252, 0.10)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', right: 60, bottom: -50, width: 120, height: 120, borderRadius: '50%', background: 'rgba(125, 211, 252, 0.06)', pointerEvents: 'none' }} />
+
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 600, color: '#7dd3fc', textTransform: 'uppercase' as const, letterSpacing: '0.1em', marginBottom: 8 }}>
+            Nouvelle analyse
+          </div>
+          <h1 style={{ fontSize: 'clamp(20px,2.5vw,24px)', fontWeight: 800, color: '#fff', margin: 0, marginBottom: 8, lineHeight: 1.3, letterSpacing: '-0.01em' }}>
+            Pour quel bien lancez-vous cette analyse ?
+          </h1>
+          <p style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.85)', margin: 0, lineHeight: 1.55, maxWidth: 720 }}>
+            Sélectionnez un dossier existant pour y ajouter cette analyse, ou créez-en un nouveau pour un bien que vous n'avez pas encore enregistré.
+          </p>
+        </div>
+      </div>
 
       {/* État vide : aucun dossier */}
       {!loading && folders.length === 0 && (
@@ -1352,22 +1381,47 @@ function FolderSelectStep({ folders, loading, type, onBack, onSelect, onCreate, 
       {/* Cas normal : il existe des dossiers */}
       {folders.length > 0 && (
         <>
-          {/* Section : dossiers existants en PREMIER */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          {/* Header section : titre + tri (si applicable) */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, gap: 12, flexWrap: 'wrap' as const }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: '#0f172a', letterSpacing: '0.06em', textTransform: 'uppercase' as const }}>
-              Vos dossiers ({folders.length})
+              Vos dossiers existants ({folders.length})
             </div>
-            {folders.length > 4 && (
-              <span style={{ fontSize: 11, color: '#94a3b8' }}>Filtrez ci-dessous</span>
+            {folders.length > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#fff', borderRadius: 100, padding: 3, border: '1px solid #e2e8f0' }}>
+                <button onClick={() => setSortMode('recent')}
+                  style={{
+                    padding: '5px 12px', borderRadius: 100, border: 'none', cursor: 'pointer',
+                    background: sortMode === 'recent' ? '#0f2d3d' : 'transparent',
+                    color: sortMode === 'recent' ? '#fff' : '#64748b',
+                    fontSize: 11.5, fontWeight: 700, transition: 'all 0.15s', fontFamily: 'inherit',
+                  }}>
+                  Récents
+                </button>
+                <button onClick={() => setSortMode('alpha')}
+                  style={{
+                    padding: '5px 12px', borderRadius: 100, border: 'none', cursor: 'pointer',
+                    background: sortMode === 'alpha' ? '#0f2d3d' : 'transparent',
+                    color: sortMode === 'alpha' ? '#fff' : '#64748b',
+                    fontSize: 11.5, fontWeight: 700, transition: 'all 0.15s', fontFamily: 'inherit',
+                  }}>
+                  A → Z
+                </button>
+              </div>
             )}
           </div>
-          {folders.length > 4 && (
-            <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Rechercher un dossier par nom, adresse ou ville…"
-              style={{ width: '100%', padding: '11px 16px', borderRadius: 11, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const, marginBottom: 14, background: '#fff', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
-              onFocus={e => (e.currentTarget as HTMLInputElement).style.borderColor = '#2a7d9c'}
-              onBlur={e => (e.currentTarget as HTMLInputElement).style.borderColor = '#edf2f7'} />
+
+          {/* Barre de recherche : seuil abaissé à 3 dossiers */}
+          {folders.length > 3 && (
+            <div style={{ position: 'relative', marginBottom: 14 }}>
+              <Search size={14} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+              <input value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Rechercher un dossier par nom, adresse ou ville…"
+                style={{ width: '100%', padding: '11px 16px 11px 38px', borderRadius: 11, border: '1.5px solid #e2e8f0', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const, background: '#fff', fontFamily: 'inherit', transition: 'border-color 0.15s' }}
+                onFocus={e => (e.currentTarget as HTMLInputElement).style.borderColor = '#2a7d9c'}
+                onBlur={e => (e.currentTarget as HTMLInputElement).style.borderColor = '#e2e8f0'} />
+            </div>
           )}
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
             {filtered.map(f => (
               <button key={f.id} onClick={() => onSelect(f)}
@@ -1378,9 +1432,10 @@ function FolderSelectStep({ folders, loading, type, onBack, onSelect, onCreate, 
                   transition: 'all 0.18s',
                   display: 'flex', alignItems: 'center', gap: 13,
                   fontFamily: 'inherit',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
                 }}
                 onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.boxShadow = '0 6px 18px rgba(42,125,156,0.12)'; el.style.transform = 'translateY(-2px)'; }}
-                onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.boxShadow = 'none'; el.style.transform = 'translateY(0)'; }}>
+                onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.boxShadow = '0 1px 3px rgba(0,0,0,0.03)'; el.style.transform = 'translateY(0)'; }}>
                 <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <Building2 size={17} style={{ color: '#2a7d9c' }} />
                 </div>
@@ -1402,34 +1457,35 @@ function FolderSelectStep({ folders, loading, type, onBack, onSelect, onCreate, 
             </div>
           )}
 
-          {/* Séparateur visuel */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '32px 0 18px' }}>
-            <div style={{ flex: 1, height: 1, background: '#edf2f7' }} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>Ou</span>
-            <div style={{ flex: 1, height: 1, background: '#edf2f7' }} />
+          {/* Séparateur "OU" en pilule centrée — bien visible */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '28px 0 20px' }}>
+            <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+            <span style={{ background: '#fff', color: '#94a3b8', fontSize: 11, fontWeight: 800, letterSpacing: '0.12em', padding: '5px 16px', borderRadius: 100, border: '1px solid #e2e8f0' }}>OU</span>
+            <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
           </div>
 
-          {/* Bouton créer en SECOND, en mode plus discret */}
+          {/* Bouton créer — mis en valeur avec fond bleu doux */}
           <button onClick={onCreate}
             style={{
-              display: 'flex', alignItems: 'center', gap: 12, width: '100%',
-              padding: '15px 18px',
-              borderRadius: 13,
-              background: '#fff',
-              border: '1.5px dashed #cbd5e1',
+              display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+              padding: '16px 18px',
+              borderRadius: 14,
+              background: 'linear-gradient(135deg, rgba(125,211,252,0.08), rgba(42,125,156,0.04))',
+              border: '1.5px dashed #7dd3fc',
               cursor: 'pointer', textAlign: 'left' as const,
               transition: 'all 0.18s',
+              fontFamily: 'inherit',
             }}
-            onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.background = '#f0f7fb'; }}
-            onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#cbd5e1'; el.style.background = '#fff'; }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Sparkles size={16} style={{ color: '#2a7d9c' }} />
+            onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#2a7d9c'; el.style.background = 'linear-gradient(135deg, rgba(125,211,252,0.15), rgba(42,125,156,0.08))'; el.style.transform = 'translateY(-2px)'; el.style.boxShadow = '0 6px 18px rgba(42,125,156,0.10)'; }}
+            onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#7dd3fc'; el.style.background = 'linear-gradient(135deg, rgba(125,211,252,0.08), rgba(42,125,156,0.04))'; el.style.transform = 'translateY(0)'; el.style.boxShadow = 'none'; }}>
+            <div style={{ width: 44, height: 44, borderRadius: 11, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(42,125,156,0.12)' }}>
+              <Sparkles size={20} style={{ color: '#2a7d9c' }} />
             </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13.5, fontWeight: 800, color: '#0f2d3d', marginBottom: 1 }}>Nouveau bien à analyser ?</div>
-              <div style={{ fontSize: 11.5, color: '#64748b' }}>Créez un dossier — l'analyse reprendra automatiquement</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14.5, fontWeight: 800, color: '#0f2d3d', marginBottom: 3 }}>Nouveau bien à analyser ?</div>
+              <div style={{ fontSize: 12, color: '#475569' }}>Créez un dossier — l'analyse reprendra automatiquement</div>
             </div>
-            <ArrowRight size={15} style={{ color: '#94a3b8', flexShrink: 0 }} />
+            <ArrowRight size={18} style={{ color: '#2a7d9c', flexShrink: 0 }} />
           </button>
         </>
       )}
