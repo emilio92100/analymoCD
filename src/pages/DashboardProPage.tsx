@@ -340,7 +340,7 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 18px 0', flexShrink: 0, position: 'relative' }}>
         <Link to="/" onClick={onClose} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <img src={isDark ? '/logo-blanc.png' : '/logo.png'} alt="Verimo" style={{ height: isDark ? 85 : 55, width: 'auto', display: 'block', marginBottom: isDark ? -32 : -5, marginTop: isDark ? -10 : 0 }} />
-          <span style={{ background: isDark ? `linear-gradient(135deg, ${ACCENT}, #38bdf8)` : `linear-gradient(135deg, #0f2d3d, #2a7d9c)`, color: isDark ? '#0a1f2d' : '#fff', fontSize: 10, fontWeight: 800, padding: '3px 14px', borderRadius: 100, letterSpacing: '0.08em' }}>ACCÈS PRO</span>
+          <span style={{ background: isDark ? `linear-gradient(135deg, ${ACCENT}, #38bdf8)` : `linear-gradient(135deg, #0f2d3d, #2a7d9c)`, color: isDark ? '#0a1f2d' : '#fff', fontSize: 10, fontWeight: 800, padding: '3px 14px', borderRadius: 100, letterSpacing: '0.08em', marginTop: isDark ? 6 : 0 }}>ACCÈS PRO</span>
         </Link>
         {onClose && <button onClick={onClose} style={{ position: 'absolute', right: 14, top: 14, background: 'none', border: 'none', cursor: 'pointer', color: MUTED, padding: 4 }}><X size={18} /></button>}
       </div>
