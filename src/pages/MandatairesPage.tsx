@@ -911,7 +911,7 @@ export default function MandatairesPage() {
                     viewport={{ once: true, margin: '-60px' }}
                     transition={{ duration: 0.45, delay: 0.6 }}
                     style={{ alignSelf: 'flex-end', maxWidth: '85%', background: 'linear-gradient(135deg, #2a7d9c, #1d5e7a)', padding: '11px 14px', borderRadius: '14px 14px 4px 14px', boxShadow: '0 4px 12px rgba(42,125,156,0.25)', fontSize: 13, lineHeight: 1.45, color: '#fff' }}>
-                    Rapport en main : <strong>17/20</strong>, aucun défaut chiffré. Votre offre n'est pas alignée — voici pourquoi.
+                    Rapport en main : <strong>17/20</strong>, DPE C, aucun travaux voté. Je transmets l'offre mais on a de quoi en rediscuter.
                   </motion.div>
 
                 </div>
@@ -922,16 +922,16 @@ export default function MandatairesPage() {
               <div style={{ padding: '0 8px' }}>
                 <div style={{ fontSize: 13, fontWeight: 800, color: '#b45309', letterSpacing: '0.12em', textTransform: 'uppercase' as const, marginBottom: 10 }}>SCÉNARIO 4</div>
                 <h2 style={{ fontSize: 'clamp(34px, 4.2vw, 52px)', fontWeight: 900, lineHeight: 1.05, margin: '0 0 12px', color: '#0f2d3d', letterSpacing: '-0.03em' }}>
-                  En négociation, vous tenez votre ligne.
+                  Le rapport vous aide à négocier.
                 </h2>
                 <div style={{ fontSize: 'clamp(20px, 2vw, 26px)', fontWeight: 700, lineHeight: 1.25, color: '#475569', margin: '0 0 20px', letterSpacing: '-0.01em' }}>
-                  Le rapport Verimo, votre argument chiffré.
+                  Des chiffres concrets pour discuter le prix.
                 </div>
                 <p style={{ fontSize: 16, lineHeight: 1.65, color: '#475569', margin: '0 0 20px' }}>
-                  Un acheteur baisse le prix sans raison précise ? Vous ouvrez le rapport et <strong style={{ color: '#0f2d3d' }}>vous répondez avec des faits</strong> — score, DPE, travaux votés, état de la copro. La discussion change de terrain.
+                  Quand une offre tombe ou qu'un acheteur veut négocier, vous avez <strong style={{ color: '#0f2d3d' }}>tous les éléments en main</strong> : score global, DPE, travaux votés, charges, état de la copro. À vous de jouer — défendre le prix si le bien est sain, accompagner une baisse justifiée si le dossier le mérite.
                 </p>
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                  {['Vous arrêtez de négocier au feeling', 'Le vendeur comprend votre position', 'Vous gagnez en crédibilité auprès des deux parties'].map((b, i) => (
+                  {['Des arguments concrets, pas des impressions', 'Une discussion plus saine avec le vendeur', 'Plus de transactions qui aboutissent'].map((b, i) => (
                     <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', fontSize: 15, color: '#0f2d3d' }}>
                       <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(180,83,9,0.15)', color: '#b45309', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <Check size={13} strokeWidth={3} />
