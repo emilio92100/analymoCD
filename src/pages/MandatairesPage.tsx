@@ -5,7 +5,6 @@ import {
   Sparkles, ArrowRight, Check, ShieldCheck, Clock, Award,
   FileText, Eye, Star, Zap,
   Upload, Send, FileSearch, MailCheck,
-  Scale, TrendingDown,
 } from 'lucide-react';
 import { useSEO } from '../hooks/useSEO';
 
