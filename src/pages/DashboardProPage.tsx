@@ -4777,7 +4777,7 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
                 <div style={{ marginBottom: 16 }}>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Décrivez les modifications souhaitées</label>
                   <textarea value={modifMessage} onChange={e => setModifMessage(e.target.value)} rows={4}
-                    placeholder="Ex : Je souhaite modifier mon nom commercial de 'RT Conseils' à 'RT Immobilier Conseils' suite à un changement de raison sociale..."
+                    placeholder="Ex : Je souhaite modifier mon adresse postale suite à un déménagement de mon agence..."
                     style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', background: '#f8fafc', fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.6 }} />
                 </div>
 
