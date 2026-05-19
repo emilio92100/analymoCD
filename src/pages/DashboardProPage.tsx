@@ -4609,17 +4609,25 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
         <div style={{ padding: '18px 22px 20px' }}>
           {/* Bandeau info doux pour demande de modification (seulement si verrouillé) */}
           {isLocked && (
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px', background: '#fafbfc', border: '0.5px solid #edf2f7', borderRadius: 10, marginBottom: 18 }}>
-              <Info size={16} style={{ color: '#94a3b8', flexShrink: 0, marginTop: 1 }} />
-              <div style={{ flex: 1, fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>
-                Ces informations sont vérifiées et ne sont plus modifiables directement. Pour les corriger, faites une demande à notre équipe.
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px', background: '#fafbfc', border: '0.5px solid #edf2f7', borderRadius: 10, marginBottom: 18, flexWrap: 'wrap' as const }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flex: '1 1 280px', minWidth: 0 }}>
+                <Info size={16} style={{ color: '#94a3b8', flexShrink: 0, marginTop: 1 }} />
+                <div style={{ flex: 1, fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>
+                  Ces informations sont vérifiées et ne sont plus modifiables directement. Pour les corriger, faites une demande à notre équipe.
+                </div>
               </div>
               <button onClick={() => { setModifMessage(''); setModifSent(false); setShowModifRequest(true); }}
-                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 13px', borderRadius: 8, background: '#fff', border: '1px solid #c7dde8', color: '#2a7d9c', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const, flexShrink: 0, transition: 'all 0.15s' }}
+                className="modif-request-btn"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '7px 13px', borderRadius: 8, background: '#fff', border: '1px solid #c7dde8', color: '#2a7d9c', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const, flexShrink: 0, transition: 'all 0.15s' }}
                 onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.background = '#f0f7fb'; el.style.borderColor = '#2a7d9c'; }}
                 onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.background = '#fff'; el.style.borderColor = '#c7dde8'; }}>
                 <Pencil size={12} /> Demander une modification
               </button>
+              <style>{`
+                @media (max-width: 640px) {
+                  .modif-request-btn { flex: 0 0 100% !important; margin-top: 4px; }
+                }
+              `}</style>
             </div>
           )}
           {!isLocked && (
@@ -4717,12 +4725,41 @@ function ComptePro({ proProfile, onUpdate }: { proProfile: ProProfile; onUpdate:
             </div>
 
             {modifSent ? (
-              <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
-                <h4 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>Demande envoyée</h4>
-                <p style={{ fontSize: 13, color: '#64748b', lineHeight: 1.6 }}>Notre équipe reviendra vers vous sous 24 heures.</p>
-                <button onClick={() => setShowModifRequest(false)} style={{ marginTop: 16, padding: '10px 24px', borderRadius: 10, background: '#0f172a', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Fermer</button>
-              </div>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                style={{ textAlign: 'center', padding: '24px 8px 8px' }}>
+                {/* Cercle avec coche animé */}
+                <motion.div
+                  initial={{ scale: 0, rotate: -45 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ delay: 0.15, duration: 0.5, type: 'spring', stiffness: 200, damping: 14 }}
+                  style={{
+                    width: 72, height: 72, borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    margin: '0 auto 18px',
+                    boxShadow: '0 10px 30px rgba(34,197,94,0.25)',
+                  }}>
+                  <CheckCircle size={36} style={{ color: '#fff' }} strokeWidth={2.5} />
+                </motion.div>
+
+                <h4 style={{ fontSize: 19, fontWeight: 800, color: '#0f172a', marginBottom: 8, letterSpacing: '-0.01em' }}>
+                  Demande envoyée
+                </h4>
+                <p style={{ fontSize: 13.5, color: '#64748b', lineHeight: 1.65, maxWidth: 360, margin: '0 auto 6px' }}>
+                  Votre demande a bien été transmise à l'équipe Verimo.
+                </p>
+                <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.6, maxWidth: 360, margin: '0 auto 24px' }}>
+                  Vous serez notifié via la cloche 🔔 dès que vos informations seront mises à jour.
+                </p>
+
+                <button onClick={() => setShowModifRequest(false)}
+                  style={{ padding: '11px 28px', borderRadius: 11, background: 'linear-gradient(135deg, #0f2d3d, #2a7d9c)', border: 'none', color: '#fff', fontSize: 13.5, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(15,45,61,0.18)' }}>
+                  Fermer
+                </button>
+              </motion.div>
             ) : (
               <>
                 <div style={{ padding: '12px 14px', borderRadius: 10, background: '#f0f7fb', border: '1px solid #d0e8f0', marginBottom: 16 }}>
@@ -6592,17 +6629,38 @@ function ModalDeleteBuyer({ buyer, onClose, onConfirm }: {
 ══════════════════════════════════════════ */
 function TooltipInfo({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLSpanElement | null>(null);
+  const [pos, setPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+
+  // Recalcule la position quand on ouvre — position fixed + z-index élevé pour passer au-dessus de tous les blocs
+  useEffect(() => {
+    if (open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const popoverWidth = 240;
+      const margin = 8;
+      // Par défaut : en dessous, aligné à gauche du trigger
+      let top = rect.bottom + margin;
+      let left = rect.left;
+      // Empêcher de sortir à droite
+      if (left + popoverWidth > window.innerWidth - 16) {
+        left = window.innerWidth - popoverWidth - 16;
+      }
+      // Empêcher de sortir à gauche
+      if (left < 16) left = 16;
+      setPos({ top, left });
+    }
+  }, [open]);
+
   return (
-    <span style={{ position: 'relative', display: 'inline-flex' }}>
+    <span ref={triggerRef} style={{ position: 'relative', display: 'inline-flex' }}>
       <span
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(!open); }}
         style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: '#f0f7fb', border: '1px solid #d0e8f0', color: '#2a7d9c', fontSize: 10, fontWeight: 800, cursor: 'pointer', flexShrink: 0, userSelect: 'none' }}>?</span>
       {open && (
         <>
-          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 998 }} />
-          <div style={{ position: 'absolute', top: 22, left: 0, zIndex: 999, background: '#0f2d3d', color: '#fff', fontSize: 12, lineHeight: 1.5, padding: '10px 14px', borderRadius: 10, width: 240, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
+          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 99998 }} />
+          <div style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 99999, background: '#0f2d3d', color: '#fff', fontSize: 12, lineHeight: 1.5, padding: '10px 14px', borderRadius: 10, width: 240, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
             {text}
-            <div style={{ position: 'absolute', top: -5, left: 8, transform: 'rotate(45deg)', width: 10, height: 10, background: '#0f2d3d' }} />
           </div>
         </>
       )}
