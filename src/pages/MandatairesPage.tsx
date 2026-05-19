@@ -867,6 +867,31 @@ export default function MandatairesPage() {
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div className="scenario-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 50, alignItems: 'center' }}>
             <Reveal>
+              <div style={{ padding: '0 8px' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#b45309', letterSpacing: '0.12em', textTransform: 'uppercase' as const, marginBottom: 10 }}>SCÉNARIO 4</div>
+                <h2 style={{ fontSize: 'clamp(34px, 4.2vw, 52px)', fontWeight: 900, lineHeight: 1.05, margin: '0 0 12px', color: '#0f2d3d', letterSpacing: '-0.03em' }}>
+                  Le rapport vous aide à négocier.
+                </h2>
+                <div style={{ fontSize: 'clamp(20px, 2vw, 26px)', fontWeight: 700, lineHeight: 1.25, color: '#475569', margin: '0 0 20px', letterSpacing: '-0.01em' }}>
+                  Vous savez quoi dire, et pourquoi.
+                </div>
+                <p style={{ fontSize: 16, lineHeight: 1.65, color: '#475569', margin: '0 0 20px' }}>
+                  Un acheteur fait une offre plus basse ? Vous avez déjà <strong style={{ color: '#0f2d3d' }}>la note du bien et tous les points clés sous les yeux</strong>. Si le bien est noté haut, vous expliquez calmement pourquoi le prix tient. S'il y a des points faibles, vous savez sur quoi appuyer pour faire bouger le vendeur.
+                </p>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {['Vous parlez avec des chiffres, pas des suppositions', 'Vos clients vous écoutent et vous font confiance', 'Plus de ventes qui vont au bout'].map((b, i) => (
+                    <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', fontSize: 15, color: '#0f2d3d' }}>
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(180,83,9,0.15)', color: '#b45309', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Check size={13} strokeWidth={3} />
+                      </div>
+                      {b}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Reveal>
+
+            <Reveal delay={0.2}>
               <div className="scenario-visual scenario-4" style={{ position: 'relative' as const, height: 460, background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', borderRadius: 24, padding: 24, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Confetti items={[
                   { top: '12%', left: '10%', size: 10, color: VERIMO_CONFETTI_COLORS.orange, shape: 'circle' },
@@ -917,31 +942,6 @@ export default function MandatairesPage() {
                 </div>
               </div>
             </Reveal>
-
-            <Reveal delay={0.2}>
-              <div style={{ padding: '0 8px' }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: '#b45309', letterSpacing: '0.12em', textTransform: 'uppercase' as const, marginBottom: 10 }}>SCÉNARIO 4</div>
-                <h2 style={{ fontSize: 'clamp(34px, 4.2vw, 52px)', fontWeight: 900, lineHeight: 1.05, margin: '0 0 12px', color: '#0f2d3d', letterSpacing: '-0.03em' }}>
-                  Le rapport vous aide à négocier.
-                </h2>
-                <div style={{ fontSize: 'clamp(20px, 2vw, 26px)', fontWeight: 700, lineHeight: 1.25, color: '#475569', margin: '0 0 20px', letterSpacing: '-0.01em' }}>
-                  Des chiffres concrets pour discuter le prix.
-                </div>
-                <p style={{ fontSize: 16, lineHeight: 1.65, color: '#475569', margin: '0 0 20px' }}>
-                  Quand une offre tombe ou qu'un acheteur veut négocier, vous avez <strong style={{ color: '#0f2d3d' }}>tous les éléments en main</strong> : score global, DPE, travaux votés, charges, état de la copro. À vous de jouer — défendre le prix si le bien est sain, accompagner une baisse justifiée si le dossier le mérite.
-                </p>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                  {['Des arguments concrets, pas des impressions', 'Une discussion plus saine avec le vendeur', 'Plus de transactions qui aboutissent'].map((b, i) => (
-                    <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', fontSize: 15, color: '#0f2d3d' }}>
-                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(180,83,9,0.15)', color: '#b45309', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Check size={13} strokeWidth={3} />
-                      </div>
-                      {b}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </Reveal>
           </div>
         </div>
       </section>
@@ -956,31 +956,6 @@ export default function MandatairesPage() {
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
           <div className="scenario-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 50, alignItems: 'center' }}>
             <Reveal>
-              <div style={{ padding: '0 8px' }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: '#7c3aed', letterSpacing: '0.12em', textTransform: 'uppercase' as const, marginBottom: 10 }}>SCÉNARIO BONUS</div>
-                <h2 style={{ fontSize: 'clamp(34px, 4.2vw, 52px)', fontWeight: 900, lineHeight: 1.05, margin: '0 0 12px', color: '#0f2d3d', letterSpacing: '-0.03em' }}>
-                  L'envoi en 1 clic
-                </h2>
-                <div style={{ fontSize: 'clamp(20px, 2vw, 26px)', fontWeight: 700, lineHeight: 1.25, color: '#475569', margin: '0 0 20px', letterSpacing: '-0.01em' }}>
-                  Vous envoyez. Il reçoit. À votre image.
-                </div>
-                <p style={{ fontSize: 16, lineHeight: 1.65, color: '#475569', margin: '0 0 20px' }}>
-                  En 30 secondes, votre client reçoit un email <strong style={{ color: '#0f2d3d' }}>à votre image</strong> avec le rapport complet. Modèle pré-rempli, modifiable à volonté. <strong style={{ color: '#0f2d3d' }}>Aucun compte à créer côté client.</strong>
-                </p>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                  {['Mail personnalisable selon votre style', 'Aucun compte requis côté client', 'Votre signature, à votre image'].map((b, i) => (
-                    <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', fontSize: 15, color: '#0f2d3d' }}>
-                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(124,58,237,0.15)', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Check size={13} strokeWidth={3} />
-                      </div>
-                      {b}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </Reveal>
-
-            <Reveal delay={0.2}>
               <div className="scenario-visual scenario-envoi" style={{ position: 'relative' as const, height: 620, background: 'linear-gradient(135deg, #faf5ff, #ede9fe)', borderRadius: 24, padding: 24, overflow: 'hidden' }}>
                 <Confetti items={[
                   { top: '10%', left: '8%', size: 8, color: VERIMO_CONFETTI_COLORS.blue, shape: 'circle' },
@@ -1012,6 +987,31 @@ export default function MandatairesPage() {
                     <MockupClientEmail />
                   </div>
                 </motion.div>
+              </div>
+            </Reveal>
+
+            <Reveal delay={0.2}>
+              <div style={{ padding: '0 8px' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#7c3aed', letterSpacing: '0.12em', textTransform: 'uppercase' as const, marginBottom: 10 }}>SCÉNARIO BONUS</div>
+                <h2 style={{ fontSize: 'clamp(34px, 4.2vw, 52px)', fontWeight: 900, lineHeight: 1.05, margin: '0 0 12px', color: '#0f2d3d', letterSpacing: '-0.03em' }}>
+                  L'envoi en 1 clic
+                </h2>
+                <div style={{ fontSize: 'clamp(20px, 2vw, 26px)', fontWeight: 700, lineHeight: 1.25, color: '#475569', margin: '0 0 20px', letterSpacing: '-0.01em' }}>
+                  Vous envoyez. Il reçoit. À votre image.
+                </div>
+                <p style={{ fontSize: 16, lineHeight: 1.65, color: '#475569', margin: '0 0 20px' }}>
+                  En 30 secondes, votre client reçoit un email <strong style={{ color: '#0f2d3d' }}>à votre image</strong> avec le rapport complet. Modèle pré-rempli, modifiable à volonté. <strong style={{ color: '#0f2d3d' }}>Aucun compte à créer côté client.</strong>
+                </p>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {['Mail personnalisable selon votre style', 'Aucun compte requis côté client', 'Votre signature, à votre image'].map((b, i) => (
+                    <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', fontSize: 15, color: '#0f2d3d' }}>
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(124,58,237,0.15)', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Check size={13} strokeWidth={3} />
+                      </div>
+                      {b}
+                    </li>
+                  ))}
+                </ul>
               </div>
             </Reveal>
           </div>
