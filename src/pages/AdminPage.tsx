@@ -8,7 +8,7 @@ import {
   Trash2, RefreshCw, Eye, EyeOff, ArrowRight,
   LogOut, Send, UserPlus, CheckCircle, Download, Tag,
   Bell, ChevronLeft, ChevronRight, Plus, Copy, Briefcase, Euro, ExternalLink,
-  Clock, User, Building2, LifeBuoy, Lightbulb, MessageSquare, ChevronDown,
+  Clock, User, Building2, LifeBuoy, Lightbulb, MessageSquare, ChevronDown, Pencil,
 } from 'lucide-react';
 
 
@@ -585,7 +585,7 @@ export default function AdminPage() {
               {activeTab === 'users' && <UsersTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} focusUserId={focusUserId} onFocusUserHandled={() => setFocusUserId(null)} onOpenAnalysis={(id) => { setFocusAnalysisId(id); setActiveTab('analyses'); }} onOpenProClient={(userId) => { setFocusProClientId(userId); setActiveTab('clients'); }} />}
               {activeTab === 'analyses' && <AnalysesTab onOpenUser={(id) => { setFocusUserId(id); setActiveTab('users'); }} focusAnalysisId={focusAnalysisId} onFocusAnalysisHandled={() => setFocusAnalysisId(null)} />}
               {activeTab === 'payments' && <PaymentsTab onOpenUser={(id) => { setFocusUserId(id); setActiveTab('users'); }} showToast={showToast} />}
-              {activeTab === 'messages' && <MessagesTab onConfirm={setConfirm} showToast={showToast} onReadChange={setUnreadCount} />}
+              {activeTab === 'messages' && <MessagesTab onConfirm={setConfirm} showToast={showToast} onReadChange={setUnreadCount} onGoToUser={(userId) => { setFocusUserId(userId); setActiveTab('users'); }} onGoToProClient={(userId) => { setFocusProClientId(userId); setActiveTab('clients'); }} />}
               {activeTab === 'demandes_pro' && <DemandesProTab onConfirm={setConfirm} showToast={showToast} onReadChange={setProUnreadCount} onCreatePro={(d) => { setCreateProFromDemande(d); setActiveTab('clients'); }} />}
               {activeTab === 'clients' && <ClientsProTab showToast={showToast} logAction={logAction} prefillDemande={createProFromDemande} onPrefillHandled={() => setCreateProFromDemande(null)} focusClientId={focusProClientId} onFocusClientHandled={() => setFocusProClientId(null)} />}
               {activeTab === 'promos' && <PromosTab onConfirm={setConfirm} showToast={showToast} logAction={logAction} />}
@@ -4360,18 +4360,40 @@ function AnalysisDetailView({ analysis, onBack, onOpenUser, onReload }: {
 /* ══════════════════════════════════════════
    MESSAGES TAB
 ══════════════════════════════════════════ */
-function MessagesTab({ onConfirm, showToast, onReadChange }: { onConfirm: (a: ConfirmAction) => void; showToast: (m: string) => void; onReadChange: (n: number) => void }) {
+function MessagesTab({ onConfirm, showToast, onReadChange, onGoToUser, onGoToProClient }: { onConfirm: (a: ConfirmAction) => void; showToast: (m: string) => void; onReadChange: (n: number) => void; onGoToUser?: (userId: string) => void; onGoToProClient?: (userId: string) => void }) {
   const [messages, setMessages] = useState<ContactMessage[]>([]);
   const [selected, setSelected] = useState<ContactMessage | null>(null);
-  const [filter, setFilter] = useState<'all' | 'unread'>('unread');
+  // Filtres : 'all' (tous), 'general' (contact site), 'pro_modif' (demande modif pro), 'resolved' (lus)
+  const [filter, setFilter] = useState<'all' | 'general' | 'pro_modif' | 'resolved'>('all');
   const [loading, setLoading] = useState(true);
+  // Map email -> { id, role } pour pouvoir naviguer vers la fiche client au clic
+  const [profilesByEmail, setProfilesByEmail] = useState<Map<string, { id: string; role: string }>>(new Map());
+
+  // ─── Détecte le type d'un message à partir de son contenu ───
+  // Une demande de modif pro commence par "[PRO — ..." dans le body.
+  const detectType = (msg: ContactMessage): 'general' | 'pro_modif' => {
+    if (msg.message && msg.message.trim().startsWith('[PRO —')) return 'pro_modif';
+    if (msg.subject && msg.subject.toLowerCase().includes('identité professionnelle')) return 'pro_modif';
+    return 'general';
+  };
 
   const loadMessages = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase.from('contact_messages').select('*').order('created_at', { ascending: false });
-    setMessages(data || []);
-    const unread = (data || []).filter(m => !m.read).length;
+    const msgs = data || [];
+    setMessages(msgs);
+    const unread = msgs.filter(m => !m.read).length;
     onReadChange(unread);
+
+    // Récupère les profils correspondants aux emails des messages (pour navigation vers fiche)
+    const emails = Array.from(new Set(msgs.map(m => (m.email || '').toLowerCase().trim()).filter(Boolean)));
+    if (emails.length > 0) {
+      const { data: profiles } = await supabase.from('profiles').select('id, email, role').in('email', emails);
+      const map = new Map<string, { id: string; role: string }>();
+      (profiles || []).forEach(p => { if (p.email) map.set(p.email.toLowerCase(), { id: p.id, role: p.role || 'particulier' }); });
+      setProfilesByEmail(map);
+    }
+
     setLoading(false);
   }, [onReadChange]);
 
@@ -4392,75 +4414,237 @@ function MessagesTab({ onConfirm, showToast, onReadChange }: { onConfirm: (a: Co
     showToast('Tous les messages marqués comme lus');
   };
 
-  const filtered = filter === 'unread' ? messages.filter(m => !m.read) : messages;
-  const unreadCount = messages.filter(m => !m.read).length;
+  // Compteurs par catégorie (calculés une fois pour les pills de filtres)
+  const counts = useMemo(() => {
+    const c = { all: 0, general: 0, pro_modif: 0, resolved: 0 };
+    messages.forEach(m => {
+      const t = detectType(m);
+      if (m.read) c.resolved++;
+      else {
+        c.all++;
+        if (t === 'general') c.general++;
+        else c.pro_modif++;
+      }
+    });
+    return c;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
+
+  // Application du filtre actif
+  const filtered = useMemo(() => {
+    return messages.filter(m => {
+      const t = detectType(m);
+      if (filter === 'all') return !m.read;
+      if (filter === 'resolved') return m.read;
+      if (filter === 'general') return !m.read && t === 'general';
+      if (filter === 'pro_modif') return !m.read && t === 'pro_modif';
+      return true;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, filter]);
+
+  // Initiales pour avatar (2 lettres max)
+  const getInitials = (name: string) => {
+    if (!name) return '?';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  // Couleur d'avatar dérivée du nom (stable, sympa)
+  const getAvatarColor = (name: string) => {
+    const colors = [
+      { from: '#dbeafe', to: '#bfdbfe', text: '#1e40af' },
+      { from: '#fef3c7', to: '#fde68a', text: '#a16207' },
+      { from: '#ede9fe', to: '#ddd6fe', text: '#6b21a8' },
+      { from: '#d1fae5', to: '#a7f3d0', text: '#047857' },
+      { from: '#fce7f3', to: '#fbcfe8', text: '#9f1239' },
+      { from: '#cffafe', to: '#a5f3fc', text: '#0e7490' },
+      { from: '#ffedd5', to: '#fed7aa', text: '#c2410c' },
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) & 0xffffffff;
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  // Aperçu du message sans le préfixe [PRO — ...] pour la liste
+  const cleanPreview = (msg: ContactMessage) => {
+    let text = msg.message || '';
+    // Si demande pro, on saute la partie [PRO ...] jusqu'au "--- Modifications demandées ---"
+    const modifIdx = text.indexOf('--- Modifications demandées ---');
+    if (modifIdx >= 0) text = text.substring(modifIdx + '--- Modifications demandées ---'.length).trim();
+    return text.replace(/\n+/g, ' ').slice(0, 120);
+  };
+
+  // Navigation vers fiche client (si l'email du message correspond à un compte)
+  const linkedProfile = selected ? profilesByEmail.get((selected.email || '').toLowerCase().trim()) : null;
+  const goToClient = () => {
+    if (!linkedProfile) return;
+    if (linkedProfile.role === 'pro' && onGoToProClient) onGoToProClient(linkedProfile.id);
+    else if (onGoToUser) onGoToUser(linkedProfile.id);
+  };
+
+  // Définition des pills de filtre (avec labels et compteurs)
+  const filterPills: { key: typeof filter; label: string; count: number; color: string }[] = [
+    { key: 'all',        label: 'Tous (non lus)',      count: counts.all,        color: '#2a7d9c' },
+    { key: 'general',    label: 'Contact général',     count: counts.general,    color: '#1e40af' },
+    { key: 'pro_modif',  label: 'Demandes modif pro',  count: counts.pro_modif,  color: '#a16207' },
+    { key: 'resolved',   label: 'Résolus',             count: counts.resolved,   color: '#047857' },
+  ];
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap' as const, gap: 12 }}>
+      {/* En-tête */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap' as const, gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Messages</h1>
-          <p style={{ fontSize: 13, color: '#94a3b8' }}>{unreadCount} non lu{unreadCount > 1 ? 's' : ''} · {messages.length} total</p>
+          <p style={{ fontSize: 13, color: '#94a3b8' }}>{counts.all} non lu{counts.all > 1 ? 's' : ''} · {messages.length} au total</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {unreadCount > 0 && (
-            <button onClick={markAllRead}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, background: '#f0fdf4', border: '1.5px solid #d1fae5', color: '#16a34a', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
-              <CheckCircle size={13} /> Tout marquer lu
-            </button>
-          )}
-          {(['unread', 'all'] as const).map(f => (
-            <button key={f} onClick={() => setFilter(f)}
-              style={{ padding: '8px 14px', borderRadius: 10, border: `1.5px solid ${filter === f ? '#2a7d9c' : '#edf2f7'}`, background: filter === f ? '#f0f7fb' : '#fff', color: filter === f ? '#2a7d9c' : '#64748b', fontSize: 12, fontWeight: filter === f ? 700 : 500, cursor: 'pointer', transition: 'all 0.2s' }}>
-              {f === 'unread' ? `Non lus (${unreadCount})` : 'Tous'}
-            </button>
-          ))}
-        </div>
+        {counts.all > 0 && (
+          <button onClick={markAllRead}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 10, background: '#f0fdf4', border: '1.5px solid #d1fae5', color: '#16a34a', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
+            <CheckCircle size={13} /> Tout marquer lu
+          </button>
+        )}
       </div>
 
+      {/* Pills de filtre */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' as const }}>
+        {filterPills.map(p => {
+          const active = filter === p.key;
+          return (
+            <button key={p.key} onClick={() => setFilter(p.key)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 7, padding: '8px 14px', borderRadius: 100,
+                border: active ? `1.5px solid ${p.color}` : '1.5px solid #edf2f7',
+                background: active ? `${p.color}12` : '#fff',
+                color: active ? p.color : '#64748b',
+                fontSize: 12.5, fontWeight: active ? 700 : 600, cursor: 'pointer', transition: 'all 0.15s',
+              }}>
+              {p.label}
+              <span style={{ fontSize: 11, fontWeight: 800, color: active ? p.color : '#94a3b8', background: active ? '#fff' : '#f1f5f9', padding: '1px 8px', borderRadius: 100, minWidth: 18, textAlign: 'center' as const }}>{p.count}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Grille principale : liste + détail */}
       <div className="admin-messages-grid" style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 1fr' : '1fr', gap: 16 }}>
         <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
           {loading ? <div style={{ padding: '40px', textAlign: 'center' as const, color: '#94a3b8' }}>Chargement...</div>
             : filtered.length === 0 ? (
               <div style={{ padding: '52px 32px', textAlign: 'center' as const, color: '#94a3b8' }}>
                 <Mail size={36} style={{ color: '#e2e8f0', margin: '0 auto 14px', display: 'block' }} />
-                <div style={{ fontSize: 14, fontWeight: 600 }}>Aucun message {filter === 'unread' ? 'non lu' : ''}</div>
-              </div>
-            ) : filtered.map((msg, i) => (
-              <div key={msg.id} onClick={() => { setSelected(msg); if (!msg.read) markRead(msg); }}
-                style={{ padding: '14px 18px', borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none', cursor: 'pointer', background: selected?.id === msg.id ? '#f0f7fb' : msg.read ? '#fff' : '#fffef0', transition: 'background 0.15s' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {!msg.read && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#f0a500', flexShrink: 0 }} />}
-                    <span style={{ fontSize: 13, fontWeight: msg.read ? 600 : 800, color: '#0f172a' }}>{msg.name}</span>
-                  </div>
-                  <span style={{ fontSize: 11, color: '#94a3b8' }}>{fmtDate(msg.created_at)}</span>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>
+                  {filter === 'resolved' ? 'Aucun message résolu' : filter === 'pro_modif' ? 'Aucune demande de modif pro' : filter === 'general' ? 'Aucun message de contact général' : 'Aucun message non lu'}
                 </div>
-                <div style={{ fontSize: 12, color: '#2a7d9c' }}>{msg.email}</div>
-                {msg.subject && <div style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{msg.subject}</div>}
-                <div style={{ fontSize: 12, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{msg.message}</div>
               </div>
-            ))}
+            ) : filtered.map((msg, i) => {
+              const type = detectType(msg);
+              const avatar = getAvatarColor(msg.name || '?');
+              const isLinked = profilesByEmail.has((msg.email || '').toLowerCase().trim());
+              return (
+                <div key={msg.id} onClick={() => { setSelected(msg); if (!msg.read) markRead(msg); }}
+                  style={{ padding: '14px 18px', borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none', cursor: 'pointer', background: selected?.id === msg.id ? '#f0f7fb' : msg.read ? '#fff' : '#fffef0', transition: 'background 0.15s', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+
+                  {/* Avatar avec initiales */}
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: `linear-gradient(135deg, ${avatar.from}, ${avatar.to})`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, position: 'relative' as const }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: avatar.text }}>{getInitials(msg.name || '?')}</span>
+                    {!msg.read && <div style={{ position: 'absolute' as const, top: -3, right: -3, width: 11, height: 11, borderRadius: '50%', background: '#f0a500', border: '2px solid #fff' }} />}
+                  </div>
+
+                  {/* Corps */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3, gap: 8 }}>
+                      <span style={{ fontSize: 13.5, fontWeight: msg.read ? 600 : 800, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{msg.name}</span>
+                      <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{fmtDate(msg.created_at)}</span>
+                    </div>
+                    {/* Badge de type */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' as const }}>
+                      {type === 'pro_modif' ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 100, background: '#fef3c7', color: '#a16207', fontSize: 10, fontWeight: 700, letterSpacing: '0.02em' }}>
+                          <Pencil size={9} /> Demande modif pro
+                        </span>
+                      ) : (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 100, background: '#dbeafe', color: '#1e40af', fontSize: 10, fontWeight: 700, letterSpacing: '0.02em' }}>
+                          <Mail size={9} /> Contact général
+                        </span>
+                      )}
+                      {isLinked && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 7px', borderRadius: 100, background: '#d1fae5', color: '#047857', fontSize: 10, fontWeight: 700 }}>
+                          <CheckCircle size={9} /> Compte lié
+                        </span>
+                      )}
+                    </div>
+                    {/* Aperçu */}
+                    <div style={{ fontSize: 11.5, color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, marginBottom: 2 }}>{msg.email}</div>
+                    <div style={{ fontSize: 12, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, lineHeight: 1.4 }}>{cleanPreview(msg)}</div>
+                  </div>
+                </div>
+              );
+            })}
         </div>
 
+        {/* Panneau de détail */}
         {selected && (
           <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}
             style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '24px', height: 'fit-content' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 18 }}>
-              <div>
-                <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>{selected.name}</div>
-                <a href={`mailto:${selected.email}`} style={{ fontSize: 13, color: '#2a7d9c', textDecoration: 'none', fontWeight: 600 }}>{selected.email}</a>
+
+            {/* En-tête détail */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 18, gap: 12 }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', minWidth: 0 }}>
+                {(() => {
+                  const av = getAvatarColor(selected.name || '?');
+                  return (
+                    <div style={{ width: 46, height: 46, borderRadius: 12, background: `linear-gradient(135deg, ${av.from}, ${av.to})`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <span style={{ fontSize: 15, fontWeight: 800, color: av.text }}>{getInitials(selected.name || '?')}</span>
+                    </div>
+                  );
+                })()}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>{selected.name}</div>
+                  <a href={`mailto:${selected.email}`} style={{ fontSize: 13, color: '#2a7d9c', textDecoration: 'none', fontWeight: 600 }}>{selected.email}</a>
+                </div>
               </div>
-              <button onClick={() => setSelected(null)} style={{ background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 8, cursor: 'pointer', color: '#94a3b8', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={15} /></button>
+              <button onClick={() => setSelected(null)} style={{ background: '#f8fafc', border: '1px solid #edf2f7', borderRadius: 8, cursor: 'pointer', color: '#94a3b8', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><X size={15} /></button>
             </div>
+
+            {/* Badge type */}
+            <div style={{ marginBottom: 14 }}>
+              {detectType(selected) === 'pro_modif' ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 100, background: '#fef3c7', color: '#a16207', fontSize: 11, fontWeight: 700 }}>
+                  <Pencil size={11} /> Demande de modification pro
+                </span>
+              ) : (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 100, background: '#dbeafe', color: '#1e40af', fontSize: 11, fontWeight: 700 }}>
+                  <Mail size={11} /> Contact général
+                </span>
+              )}
+            </div>
+
+            {/* Sujet */}
             {selected.subject && <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 14, padding: '9px 12px', background: '#f8fafc', borderRadius: 9 }}>Sujet : {selected.subject}</div>}
+
+            {/* Corps du message */}
             <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.8, marginBottom: 16, whiteSpace: 'pre-wrap' as const }}>{selected.message}</div>
+
+            {/* Date */}
             <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 20 }}>{fmtDateTime(selected.created_at)}</div>
-            <div style={{ display: 'flex', gap: 8 }}>
+
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
               <a href={`mailto:${selected.email}?subject=Re: ${selected.subject || 'Votre message Verimo'}`}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 18px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
                 <Send size={13} /> Répondre
               </a>
+              {linkedProfile && (
+                <button onClick={goToClient}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: '#fff', border: '1.5px solid #c7dde8', color: '#2a7d9c', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
+                  onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.background = '#f0f7fb'; el.style.borderColor = '#2a7d9c'; }}
+                  onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.background = '#fff'; el.style.borderColor = '#c7dde8'; }}>
+                  <User size={13} /> Voir la fiche {linkedProfile.role === 'pro' ? 'pro' : 'client'}
+                </button>
+              )}
               <button onClick={() => onConfirm({ title: 'Supprimer le message', message: `Supprimer le message de ${selected.name} ?`, confirmLabel: 'Supprimer', variant: 'danger', onConfirm: async () => { await supabase.from('contact_messages').delete().eq('id', selected.id); setSelected(null); loadMessages(); showToast('Message supprimé'); } })}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
                 <Trash2 size={13} /> Supprimer
@@ -5569,7 +5753,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                       await supabase.from('user_notifications').insert({
                         user_id: selected.id,
                         title: 'Informations professionnelles mises à jour',
-                        message: 'Suite à votre demande, et après vérification des éléments, vos informations professionnelles ont été mises à jour avec succès. ✅',
+                        message: 'Suite à votre demande et après vérifications, vos informations professionnelles ont été mises à jour ✓',
                       });
                       showToast('Identité mise à jour — notification envoyée');
                     } else {
