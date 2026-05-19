@@ -254,6 +254,38 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
     }} />
   );
 
+  // ─── Bouton toggle clair/sombre — réutilisé en mobile (haut) ou desktop (bas) ───
+  const themeToggle = (
+    <button
+      onClick={() => setSidebarTheme(isDark ? 'light' : 'dark')}
+      title={isDark ? 'Passer en mode clair' : 'Passer en mode sombre'}
+      aria-label={isDark ? 'Passer en mode clair' : 'Passer en mode sombre'}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+        padding: '8px 12px', borderRadius: 9, cursor: 'pointer',
+        background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,45,61,0.04)',
+        border: isDark ? '1px solid rgba(255,255,255,0.12)' : '1px solid #e2e8f0',
+        color: isDark ? 'rgba(255,255,255,0.85)' : '#475569',
+        fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
+        transition: 'all 0.15s',
+      }}
+      onMouseOver={e => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.background = isDark ? 'rgba(255,255,255,0.14)' : 'rgba(15,45,61,0.08)';
+      }}
+      onMouseOut={e => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.background = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,45,61,0.04)';
+      }}>
+      {isDark ? <Sun size={14} style={{ color: '#fbbf24' }} /> : <Moon size={14} style={{ color: '#2a7d9c' }} />}
+      {isDark ? 'Mode clair' : 'Mode sombre'}
+    </button>
+  );
+
+  // On affiche le toggle en haut (entre ACCÈS PRO et CTA) sur mobile (quand `onClose` existe),
+  // sinon en bas (après la nav) sur desktop.
+  const isMobile = !!onClose;
+
   return (
     <aside style={{ width: 260, minHeight: '100vh', height: '100%', background: BG, display: 'flex', flexDirection: 'column', borderRight: isDark ? 'none' : '1px solid #e2e8f0', position: 'relative', overflow: 'hidden' }}>
       {/* Halo bleu subtil en haut (signature) — opacité ajustée selon le mode */}
@@ -273,11 +305,18 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
       {/* Logo + PRO badge — centré et gros */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 18px 0', flexShrink: 0, position: 'relative' }}>
         <Link to="/" onClick={onClose} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <img src={isDark ? '/logo-blanc.png' : '/logo.png'} alt="Verimo" style={{ height: 55, width: 'auto', display: 'block', marginBottom: -5 }} />
+          <img src={isDark ? '/logo-blanc.png' : '/logo.png'} alt="Verimo" style={{ height: isDark ? 85 : 55, width: 'auto', display: 'block', marginBottom: isDark ? -18 : -5 }} />
           <span style={{ background: isDark ? `linear-gradient(135deg, ${ACCENT}, #38bdf8)` : `linear-gradient(135deg, #0f2d3d, #2a7d9c)`, color: isDark ? '#0a1f2d' : '#fff', fontSize: 10, fontWeight: 800, padding: '3px 14px', borderRadius: 100, letterSpacing: '0.08em' }}>ACCÈS PRO</span>
         </Link>
         {onClose && <button onClick={onClose} style={{ position: 'absolute', right: 14, top: 14, background: 'none', border: 'none', cursor: 'pointer', color: MUTED, padding: 4 }}><X size={18} /></button>}
       </div>
+
+      {/* Toggle clair/sombre — affiché en HAUT sur mobile uniquement (entre logo et CTA) */}
+      {isMobile && (
+        <div style={{ padding: '12px 14px 0' }}>
+          {themeToggle}
+        </div>
+      )}
 
       {/* CTA Nouvelle analyse */}
       <div style={{ padding: '10px 14px 8px' }}>
@@ -552,33 +591,12 @@ Cette logique vous permet de profiter pleinement de votre forfait mensuel avant 
         ))}
       </nav>
 
-      {/* Bouton toggle clair/sombre en bas de la sidebar */}
-      <div style={{ padding: '8px 14px 14px', flexShrink: 0 }}>
-        <button
-          onClick={() => setSidebarTheme(isDark ? 'light' : 'dark')}
-          title={isDark ? 'Passer en mode clair' : 'Passer en mode sombre'}
-          aria-label={isDark ? 'Passer en mode clair' : 'Passer en mode sombre'}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-            padding: '8px 12px', borderRadius: 9, cursor: 'pointer',
-            background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,45,61,0.04)',
-            border: isDark ? '1px solid rgba(255,255,255,0.12)' : '1px solid #e2e8f0',
-            color: isDark ? 'rgba(255,255,255,0.85)' : '#475569',
-            fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
-            transition: 'all 0.15s',
-          }}
-          onMouseOver={e => {
-            const el = e.currentTarget as HTMLElement;
-            el.style.background = isDark ? 'rgba(255,255,255,0.14)' : 'rgba(15,45,61,0.08)';
-          }}
-          onMouseOut={e => {
-            const el = e.currentTarget as HTMLElement;
-            el.style.background = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,45,61,0.04)';
-          }}>
-          {isDark ? <Sun size={14} style={{ color: '#fbbf24' }} /> : <Moon size={14} style={{ color: '#2a7d9c' }} />}
-          {isDark ? 'Mode clair' : 'Mode sombre'}
-        </button>
-      </div>
+      {/* Toggle clair/sombre — affiché en BAS sur desktop uniquement */}
+      {!isMobile && (
+        <div style={{ padding: '8px 14px 14px', flexShrink: 0 }}>
+          {themeToggle}
+        </div>
+      )}
 
       </div>
     </aside>
