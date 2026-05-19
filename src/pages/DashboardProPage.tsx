@@ -224,9 +224,17 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
     } catch { return 'light'; }
   });
   const isDark = sidebarTheme === 'dark';
+  const [themeAnimating, setThemeAnimating] = useState(false);
   useEffect(() => {
     try { localStorage.setItem('verimo_sidebar_theme', sidebarTheme); } catch {}
   }, [sidebarTheme]);
+
+  // Toggle qui déclenche aussi l'animation de voile (700ms)
+  const toggleTheme = () => {
+    setThemeAnimating(true);
+    setSidebarTheme(isDark ? 'light' : 'dark');
+    setTimeout(() => setThemeAnimating(false), 720);
+  };
 
   // ─── Palette dynamique selon le mode ───
   const BG = isDark
@@ -257,7 +265,8 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
   // ─── Bouton toggle clair/sombre — réutilisé en mobile (haut) ou desktop (bas) ───
   const themeToggle = (
     <button
-      onClick={() => setSidebarTheme(isDark ? 'light' : 'dark')}
+      data-theme-toggle
+      onClick={toggleTheme}
       title={isDark ? 'Passer en mode clair' : 'Passer en mode sombre'}
       aria-label={isDark ? 'Passer en mode clair' : 'Passer en mode sombre'}
       style={{
@@ -267,7 +276,6 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
         border: isDark ? '1px solid rgba(255,255,255,0.12)' : '1px solid #e2e8f0',
         color: isDark ? 'rgba(255,255,255,0.85)' : '#475569',
         fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
-        transition: 'all 0.15s',
       }}
       onMouseOver={e => {
         const el = e.currentTarget as HTMLElement;
@@ -287,18 +295,57 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
   const isMobile = !!onClose;
 
   return (
-    <aside style={{ width: 260, minHeight: '100vh', height: '100%', background: BG, display: 'flex', flexDirection: 'column', borderRight: isDark ? 'none' : '1px solid #e2e8f0', position: 'relative', overflow: 'hidden' }}>
+    <aside data-sidebar-pro data-theme-mode={isDark ? 'dark' : 'light'} style={{ width: 260, minHeight: '100vh', height: '100%', background: BG, display: 'flex', flexDirection: 'column', borderRight: isDark ? 'none' : '1px solid #e2e8f0', position: 'relative', overflow: 'hidden' }}>
+      {/* Voile de transition jour/nuit qui balaye la sidebar */}
+      {themeAnimating && (
+        <div data-theme-sweep style={{
+          position: 'absolute', inset: 0,
+          background: isDark
+            ? 'linear-gradient(180deg, rgba(22,71,90,0.6), rgba(22,71,90,0))'
+            : 'linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0))',
+          pointerEvents: 'none', zIndex: 5,
+        }} />
+      )}
       {/* Halo bleu subtil en haut (signature) — opacité ajustée selon le mode */}
       <div style={{ position: 'absolute', top: -120, right: -100, width: 320, height: 320, borderRadius: '50%', background: isDark ? 'radial-gradient(circle, rgba(125,211,252,0.10), transparent 70%)' : 'radial-gradient(circle, rgba(125,211,252,0.18), transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
 
       {/* Wrapper du contenu au-dessus du fond décoratif */}
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 
-      {/* Animation skeleton */}
+      {/* Animation skeleton + transition fluide jour/nuit */}
       <style>{`
         @keyframes sidebar-skeleton {
           0% { background-position: 200% 0; }
           100% { background-position: -200% 0; }
+        }
+        /* Transition fluide entre mode clair et sombre — applique sur tous les éléments de la sidebar pro */
+        aside[data-sidebar-pro] {
+          transition: background 600ms cubic-bezier(0.4, 0, 0.2, 1), border-color 600ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        aside[data-sidebar-pro] * {
+          transition:
+            background-color 600ms cubic-bezier(0.4, 0, 0.2, 1),
+            background 600ms cubic-bezier(0.4, 0, 0.2, 1),
+            border-color 600ms cubic-bezier(0.4, 0, 0.2, 1),
+            color 600ms cubic-bezier(0.4, 0, 0.2, 1),
+            box-shadow 600ms cubic-bezier(0.4, 0, 0.2, 1),
+            opacity 600ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* Le bouton toggle lui-même : petite rotation pour effet "lune/soleil qui tourne" */
+        aside[data-sidebar-pro] [data-theme-toggle] svg {
+          transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1), color 600ms ease;
+        }
+        aside[data-sidebar-pro][data-theme-mode="dark"] [data-theme-toggle] svg {
+          transform: rotate(360deg);
+        }
+        /* Voile de transition jour/nuit qui balaye la sidebar */
+        @keyframes verimo-theme-sweep {
+          0% { opacity: 0; transform: translateY(-100%); }
+          40% { opacity: 0.4; }
+          100% { opacity: 0; transform: translateY(100%); }
+        }
+        aside[data-sidebar-pro] [data-theme-sweep] {
+          animation: verimo-theme-sweep 700ms ease-out;
         }
       `}</style>
 
@@ -506,7 +553,7 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
       </div>
 
       {/* ─── Crédits restants (avec skeletons pendant chargement) ─── */}
-      <div style={{ margin: '0 14px 6px', padding: '9px 11px', borderRadius: 9, background: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.8)', border: isDark ? '1px solid rgba(255,255,255,0.15)' : '1px solid #e2e8f0' }}>
+      <div style={{ margin: '0 14px 6px', padding: '9px 11px', borderRadius: 9, background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.8)', border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #e2e8f0' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: isDark ? 'rgba(255,255,255,0.85)' : ACCENT, letterSpacing: '0.1em' }}>CRÉDITS RESTANTS</span>
           <InfoTooltip text={`Comment fonctionnent vos crédits ?
@@ -520,16 +567,16 @@ Cette logique vous permet de profiter pleinement de votre forfait mensuel avant 
             { label: 'Analyse simple', value: creditsSimple, unit: unitSimple },
             { label: 'Analyse complète', value: creditsComplete, unit: unitComplete },
           ].map(c => (
-            <div key={c.label} style={{ padding: '8px 10px', borderRadius: 7, background: isDark ? 'rgba(255,255,255,0.10)' : '#f0f7fb', display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'center' }}>
+            <div key={c.label} style={{ padding: '8px 10px', borderRadius: 7, background: isDark ? 'rgba(255,255,255,0.04)' : '#f0f7fb', display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'center' }}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 12, color: isDark ? 'rgba(255,255,255,0.95)' : '#0f2d3d', fontWeight: 600, marginBottom: 3 }}>{c.label}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" style={{ flexShrink: 0, opacity: isDark ? 0.95 : 0.7 }}>
-                    <path d="M1.5 1.5 L1.5 5 Q1.5 7 3.5 7 L7.5 7 M5 4.5 L7.5 7 L5 9.5" stroke={isDark ? 'rgba(255,255,255,0.95)' : '#64748b'} strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" transform="translate(0, -1.5)"/>
+                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" style={{ flexShrink: 0, opacity: isDark ? 0.6 : 0.7 }}>
+                    <path d="M1.5 1.5 L1.5 5 Q1.5 7 3.5 7 L7.5 7 M5 4.5 L7.5 7 L5 9.5" stroke={isDark ? 'rgba(255,255,255,0.7)' : '#64748b'} strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" transform="translate(0, -1.5)"/>
                   </svg>
                   {creditsLoading
                     ? <Skeleton width={100} height={10} />
-                    : <span style={{ fontSize: 10.5, color: isDark ? 'rgba(255,255,255,0.92)' : '#64748b', fontWeight: 500 }}>
+                    : <span style={{ fontSize: 10.5, color: isDark ? 'rgba(255,255,255,0.7)' : '#64748b', fontWeight: 500 }}>
                         dont {c.unit} achat{c.unit > 1 ? 's' : ''} unitaire{c.unit > 1 ? 's' : ''}
                       </span>
                   }
@@ -539,9 +586,11 @@ Cette logique vous permet de profiter pleinement de votre forfait mensuel avant 
                 ? <Skeleton width={44} height={30} />
                 : <div style={{ width: 44, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 7,
                     background: isDark
-                      ? (c.value > 0 ? 'rgba(125,211,250,0.15)' : 'rgba(255,255,255,0.06)')
+                      ? (c.value > 0 ? 'rgba(125,211,250,0.10)' : 'rgba(255,255,255,0.04)')
                       : (c.value > 0 ? '#fff' : '#f1f5f9'),
-                    border: isDark ? 'none' : (c.value > 0 ? '1px solid #c7dde8' : '1px solid #e2e8f0'),
+                    border: isDark
+                      ? (c.value > 0 ? '1px solid rgba(125,211,250,0.25)' : '1px solid rgba(255,255,255,0.08)')
+                      : (c.value > 0 ? '1px solid #c7dde8' : '1px solid #e2e8f0'),
                     flexShrink: 0 }}>
                     <span style={{ fontSize: 15, fontWeight: 900, color: c.value > 0 ? ACCENT : MUTED, lineHeight: 1 }}>{c.value}</span>
                   </div>
