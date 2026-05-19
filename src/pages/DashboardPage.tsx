@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Plus, FileText, GitCompare, User, LifeBuoy,
   LogOut, Menu, X, ChevronDown, Bell, Shield, CreditCard,
-  CheckCircle, BookOpen, Send, MessageSquare,
+  CheckCircle, BookOpen, Send, MessageSquare, Sun, Moon,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useCredits } from '../hooks/useCredits';
@@ -38,6 +38,18 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
   const { credits } = useCredits();
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // ─── Mode clair/sombre — partagé avec le pro (même clé localStorage) ───
+  const [sidebarTheme, setSidebarTheme] = useState<'light' | 'dark'>(() => {
+    try {
+      const stored = localStorage.getItem('verimo_sidebar_theme');
+      return stored === 'dark' ? 'dark' : 'light';
+    } catch { return 'light'; }
+  });
+  const isDark = sidebarTheme === 'dark';
+  useEffect(() => {
+    try { localStorage.setItem('verimo_sidebar_theme', sidebarTheme); } catch {}
+  }, [sidebarTheme]);
+
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
@@ -46,22 +58,71 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
     });
   }, []);
 
-  const SB_BG = '#0e3a4a';
-  const SB_ACTIVE_BG = 'rgba(255,255,255,0.1)';
-  const SB_ACCENT = '#5dbfe0';
-  const SB_TEXT = 'rgba(255,255,255,0.75)';
-  const SB_TEXT_ACTIVE = '#ffffff';
-  const SB_MUTED = 'rgba(255,255,255,0.45)';
+  // ─── Palette dynamique selon le mode ───
+  const SB_BG = isDark ? '#0e3a4a' : 'linear-gradient(180deg, #f0f7fb 0%, #f8fafc 100%)';
+  const SB_ACTIVE_BG = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.9)';
+  const SB_ACCENT = isDark ? '#5dbfe0' : '#2a7d9c';
+  const SB_TEXT = isDark ? 'rgba(255,255,255,0.75)' : '#475569';
+  const SB_TEXT_ACTIVE = isDark ? '#ffffff' : '#0f2d3d';
+  const SB_MUTED = isDark ? 'rgba(255,255,255,0.45)' : '#94a3b8';
+
+  // Couleurs icônes — badges pastel cohérents avec le pro (style O1)
+  const ICON_COLORS: { [key: string]: { bgFrom: string; bgTo: string; color: string } } = {
+    '/dashboard':              { bgFrom: '#dbeafe', bgTo: '#bfdbfe', color: '#1e6783' },
+    '/dashboard/analyses':     { bgFrom: '#fef3c7', bgTo: '#fde68a', color: '#a16207' },
+    '/dashboard/compare':      { bgFrom: '#ede9fe', bgTo: '#ddd6fe', color: '#6b21a8' },
+    '/dashboard/tarifs':       { bgFrom: '#d1fae5', bgTo: '#a7f3d0', color: '#047857' },
+    '/dashboard/compte':       { bgFrom: '#fce7f3', bgTo: '#fbcfe8', color: '#9f1239' },
+    '/dashboard/aide':         { bgFrom: '#ffedd5', bgTo: '#fed7aa', color: '#c2410c' },
+    '/dashboard/support':      { bgFrom: '#cffafe', bgTo: '#a5f3fc', color: '#0e7490' },
+  };
+
+  // ─── Bouton toggle clair/sombre — réutilisé en mobile (haut) ou desktop (bas) ───
+  const themeToggle = (
+    <button
+      onClick={() => setSidebarTheme(isDark ? 'light' : 'dark')}
+      title={isDark ? 'Passer en mode clair' : 'Passer en mode sombre'}
+      aria-label={isDark ? 'Passer en mode clair' : 'Passer en mode sombre'}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+        padding: '8px 12px', borderRadius: 9, cursor: 'pointer',
+        background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,45,61,0.04)',
+        border: isDark ? '1px solid rgba(255,255,255,0.12)' : '1px solid #e2e8f0',
+        color: isDark ? 'rgba(255,255,255,0.85)' : '#475569',
+        fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
+        transition: 'all 0.15s',
+      }}
+      onMouseOver={e => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.background = isDark ? 'rgba(255,255,255,0.14)' : 'rgba(15,45,61,0.08)';
+      }}
+      onMouseOut={e => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.background = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,45,61,0.04)';
+      }}>
+      {isDark ? <Sun size={14} style={{ color: '#fbbf24' }} /> : <Moon size={14} style={{ color: '#2a7d9c' }} />}
+      {isDark ? 'Mode clair' : 'Mode sombre'}
+    </button>
+  );
+
+  const isMobile = !!onClose;
 
   return (
-    <aside style={{ width:260, minHeight:'100vh', height:'100%', background:SB_BG, display:'flex', flexDirection:'column' }}>
+    <aside style={{ width:260, minHeight:'100vh', height:'100%', background:SB_BG, display:'flex', flexDirection:'column', borderRight: isDark ? 'none' : '1px solid #e2e8f0' }}>
       {/* Logo — centré et plus gros */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'12px 18px 6px', flexShrink:0, position:'relative' }}>
         <Link to="/" onClick={onClose} style={{ textDecoration:'none' }}>
-          <img src="/logo-blanc.png" alt="Verimo" style={{ height: 100, width: 'auto', display: 'block', marginBottom: -20 }} />
+          <img src={isDark ? '/logo-blanc.png' : '/logo.png'} alt="Verimo" style={{ height: isDark ? 100 : 70, width: 'auto', display: 'block', marginBottom: isDark ? -20 : -8 }} />
         </Link>
-        {onClose && <button onClick={onClose} style={{ position:'absolute', right:14, top:14, background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.4)', padding:4 }}><X size={18}/></button>}
+        {onClose && <button onClick={onClose} style={{ position:'absolute', right:14, top:14, background:'none', border:'none', cursor:'pointer', color: SB_MUTED, padding:4 }}><X size={18}/></button>}
       </div>
+
+      {/* Toggle clair/sombre — affiché en HAUT sur mobile uniquement (entre logo et CTA) */}
+      {isMobile && (
+        <div style={{ padding: '6px 14px 0' }}>
+          {themeToggle}
+        </div>
+      )}
 
       {/* CTA Nouvelle analyse */}
       <div style={{ padding:'6px 14px 8px' }}>
@@ -73,19 +134,19 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
         </Link>
       </div>
 
-      {/* Crédits — Option B : bordure teal, textes bien visibles */}
-      <div style={{ margin:'0 14px 6px', padding:'12px', borderRadius:10, background:'rgba(93,191,224,0.08)', border:'1.5px solid rgba(93,191,224,0.2)' }}>
-        <div style={{ fontSize:11, fontWeight:700, color:'#5dbfe0', letterSpacing:'0.08em', marginBottom:8 }}>CRÉDITS RESTANTS</div>
+      {/* Crédits — adapté au mode */}
+      <div style={{ margin:'0 14px 6px', padding:'12px', borderRadius:10, background: isDark ? 'rgba(93,191,224,0.08)' : 'rgba(255,255,255,0.8)', border: isDark ? '1.5px solid rgba(93,191,224,0.2)' : '1px solid #e2e8f0' }}>
+        <div style={{ fontSize:11, fontWeight:700, color: isDark ? '#5dbfe0' : SB_ACCENT, letterSpacing:'0.08em', marginBottom:8 }}>CRÉDITS RESTANTS</div>
         <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
-          {[{ label:'Analyse simple', value:credits.document, color:SB_ACCENT }, { label:'Analyse complète', value:credits.complete, color:'#7dd3fc' }].map(c=>(
-            <div key={c.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', borderRadius:8, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.06)' }}>
-              <span style={{ fontSize:12, color:'#fff', fontWeight:600 }}>{c.label}</span>
-              <span style={{ fontSize:15, fontWeight:800, color:c.value>0?c.color:'rgba(255,255,255,0.2)' }}>{c.value}</span>
+          {[{ label:'Analyse simple', value:credits.document, color:SB_ACCENT }, { label:'Analyse complète', value:credits.complete, color: isDark ? '#7dd3fc' : '#2a7d9c' }].map(c=>(
+            <div key={c.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 10px', borderRadius:8, background: isDark ? 'rgba(255,255,255,0.06)' : '#f0f7fb', border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e2e8f0' }}>
+              <span style={{ fontSize:12, color: isDark ? '#fff' : '#0f2d3d', fontWeight:600 }}>{c.label}</span>
+              <span style={{ fontSize:15, fontWeight:800, color: c.value>0 ? c.color : (isDark ? 'rgba(255,255,255,0.2)' : '#cbd5e1') }}>{c.value}</span>
             </div>
           ))}
         </div>
-        <Link to="/dashboard/tarifs" onClick={onClose} style={{ display:'block', marginTop:8, padding:'6px', borderRadius:7, background:'rgba(93,191,224,0.1)', textAlign:'center', textDecoration:'none' }}>
-          <span style={{ fontSize:11, fontWeight:700, color:'#5dbfe0' }}>{credits.document===0&&credits.complete===0?'+ Acheter une analyse':'+ Recharger'}</span>
+        <Link to="/dashboard/tarifs" onClick={onClose} style={{ display:'block', marginTop:8, padding:'6px', borderRadius:7, background: isDark ? 'rgba(93,191,224,0.1)' : 'rgba(42,125,156,0.08)', textAlign:'center', textDecoration:'none' }}>
+          <span style={{ fontSize:11, fontWeight:700, color: isDark ? '#5dbfe0' : SB_ACCENT }}>{credits.document===0&&credits.complete===0?'+ Acheter une analyse':'+ Recharger'}</span>
         </Link>
       </div>
 
@@ -95,18 +156,27 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
         {navItems.map(item => {
           const Icon = item.icon;
           const active = location.pathname === item.to;
+          const iconColor = ICON_COLORS[item.to] || { bgFrom: '#e2e8f0', bgTo: '#cbd5e1', color: '#475569' };
           return (
             <Link key={item.to} to={item.to} onClick={onClose}
               style={{
-                display:'flex', alignItems:'center', gap:12, padding:'10px 12px', textDecoration:'none',
-                fontSize:14, fontWeight:active?700:500, color:active?SB_TEXT_ACTIVE:SB_TEXT,
-                background:active?SB_ACTIVE_BG:'transparent', transition:'all 0.15s',
-                borderLeft:active?`3px solid ${SB_ACCENT}`:'3px solid transparent',
-                borderRadius:0,
+                display:'flex', alignItems:'center', gap:10, padding:'7px 12px', textDecoration:'none',
+                fontSize: 13, fontWeight:active?700:500, color:active?SB_TEXT_ACTIVE:SB_TEXT,
+                background: active ? SB_ACTIVE_BG : 'transparent', transition:'all 0.15s',
+                borderLeft: active ? `3px solid ${SB_ACCENT}` : '3px solid transparent',
+                borderRadius: 0,
+                boxShadow: active && !isDark ? '0 1px 3px rgba(15,45,61,0.06)' : 'none',
               }}
-              onMouseOver={e=>{ if(!active)(e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.05)'; }}
+              onMouseOver={e=>{ if(!active)(e.currentTarget as HTMLElement).style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(15,45,61,0.04)'; }}
               onMouseOut={e=>{ if(!active)(e.currentTarget as HTMLElement).style.background='transparent'; }}>
-              <Icon size={18} style={{ color:active?SB_ACCENT:SB_TEXT, flexShrink:0 }}/>
+              <div style={{
+                width: 26, height: 26, borderRadius: 7,
+                background: `linear-gradient(135deg, ${iconColor.bgFrom}, ${iconColor.bgTo})`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <Icon size={14} style={{ color: iconColor.color }}/>
+              </div>
               {item.label}
               {item.to === '/dashboard/support' && (unreadTickets || 0) > 0 && (
                 <span style={{ minWidth: 18, height: 18, borderRadius: 100, background: '#f59e0b', color: '#fff', fontSize: 10, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', flexShrink: 0, marginLeft: 4 }}>{unreadTickets}</span>
@@ -115,8 +185,16 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
           );
         })}
       </nav>
+
+      {/* Toggle clair/sombre — affiché en BAS sur desktop uniquement */}
+      {!isMobile && (
+        <div style={{ padding: '8px 14px 14px', flexShrink: 0 }}>
+          {themeToggle}
+        </div>
+      )}
+
       {isAdmin && (
-        <div style={{ padding: '10px 14px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ padding: '10px 14px', borderTop: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e2e8f0' }}>
           <Link to="/admin" onClick={onClose}
             style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, background: 'linear-gradient(135deg, #0f2d3d, #1a4a60)', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 700, justifyContent: 'center' }}>
             <Shield size={15} /> Espace Admin
