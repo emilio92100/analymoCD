@@ -503,18 +503,18 @@ Cette logique vous permet de profiter pleinement de votre forfait mensuel avant 
               return (
                 <Link key={item.to} to={item.to} onClick={onClose}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', textDecoration: 'none',
-                    fontSize: 14, fontWeight: active ? 700 : 500, color: active ? TEXT_ACTIVE : TEXT,
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', textDecoration: 'none',
+                    fontSize: 13, fontWeight: active ? 700 : 500, color: active ? TEXT_ACTIVE : TEXT,
                     background: active ? 'rgba(255,255,255,0.12)' : 'transparent', transition: 'all 0.15s',
                     borderLeft: active ? `3px solid ${ACCENT}` : '3px solid transparent', borderRadius: 0,
                   }}>
                   <div style={{
-                    width: 30, height: 30, borderRadius: 8,
+                    width: 26, height: 26, borderRadius: 7,
                     background: `linear-gradient(135deg, ${iconColor.bgFrom}, ${iconColor.bgTo})`,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     flexShrink: 0,
                   }}>
-                    <Icon size={16} style={{ color: iconColor.color }} />
+                    <Icon size={14} style={{ color: iconColor.color }} />
                   </div>
                   {item.label}
                   {item.to === '/dashboard/support' && (unreadTickets || 0) > 0 && (
