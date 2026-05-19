@@ -5,6 +5,7 @@ import {
   Sparkles, ArrowRight, Check, ShieldCheck, Clock, Award,
   FileText, Eye, Star, Zap,
   Upload, Send, FileSearch, MailCheck,
+  Scale, TrendingDown,
 } from 'lucide-react';
 import { useSEO } from '../hooks/useSEO';
 
@@ -929,6 +930,156 @@ export default function MandatairesPage() {
         </div>
       </section>
 
+      {/* ════════════════════════════════════════════
+          SCÉNARIO 4 — Négociation
+          Le rapport Verimo comme arme à double tranchant :
+          - Score moyen/rouge → objectiver une baisse côté acheteur
+          - Score vert → défendre le prix côté vendeur
+          Teinte ambre pour se distinguer des autres scénarios.
+          ════════════════════════════════════════════ */}
+      <section style={{ padding: '40px 24px 80px', background: '#fafbfd' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+          <div className="scenario-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 50, alignItems: 'center' }}>
+            <Reveal>
+              <div style={{ padding: '0 8px' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#b45309', letterSpacing: '0.12em', textTransform: 'uppercase' as const, marginBottom: 10 }}>SCÉNARIO 4</div>
+                <h2 style={{ fontSize: 'clamp(34px, 4.2vw, 52px)', fontWeight: 900, lineHeight: 1.05, margin: '0 0 12px', color: '#0f2d3d', letterSpacing: '-0.03em' }}>
+                  Une offre tombe ? Vous tenez votre ligne.
+                </h2>
+                <div style={{ fontSize: 'clamp(20px, 2vw, 26px)', fontWeight: 700, lineHeight: 1.25, color: '#475569', margin: '0 0 20px', letterSpacing: '-0.01em' }}>
+                  Le rapport, votre meilleur allié au moment de négocier.
+                </div>
+                <p style={{ fontSize: 16, lineHeight: 1.65, color: '#475569', margin: '0 0 18px' }}>
+                  Un acheteur propose <strong style={{ color: '#0f2d3d' }}>−25 000 €</strong> ? Plus besoin d'argumenter au feeling. Vous ouvrez le rapport Verimo et vous laissez parler les chiffres — dans <strong style={{ color: '#0f2d3d' }}>les deux sens</strong>.
+                </p>
+
+                {/* Cas A : score faible → on objective la baisse */}
+                <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, padding: '14px 16px', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(234,88,12,0.15)', color: '#c2410c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <TrendingDown size={14} strokeWidth={2.5} />
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: '#9a3412', letterSpacing: '0.04em', textTransform: 'uppercase' as const }}>Si le score est moyen ou bas</div>
+                  </div>
+                  <div style={{ fontSize: 14.5, lineHeight: 1.5, color: '#334155' }}>
+                    DPE F, ravalement voté à 18 k€, charges en hausse : <strong style={{ color: '#0f2d3d' }}>la baisse est objectivement justifiée</strong>. Vous obtenez l'accord vendeur en montrant ce qui était déjà chiffré — et le deal passe au lieu de capoter.
+                  </div>
+                </div>
+
+                {/* Cas B : score vert → on défend le prix */}
+                <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 12, padding: '14px 16px', marginBottom: 18 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(16,185,129,0.18)', color: '#047857', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <ShieldCheck size={14} strokeWidth={2.5} />
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: '#065f46', letterSpacing: '0.04em', textTransform: 'uppercase' as const }}>Si le score est dans le vert</div>
+                  </div>
+                  <div style={{ fontSize: 14.5, lineHeight: 1.5, color: '#334155' }}>
+                    17/20, aucun travaux voté, copro saine, DPE C : <strong style={{ color: '#0f2d3d' }}>vous défendez le prix avec des faits</strong>. L'acheteur ne peut plus dire « le bien a des défauts » — le rapport prouve le contraire, noir sur blanc.
+                  </div>
+                </div>
+
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {['Vous arrêtez de négocier au feeling', 'Le vendeur comprend pourquoi vous bougez (ou pas)', 'Vous gagnez en crédibilité des deux côtés'].map((b, i) => (
+                    <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', fontSize: 15, color: '#0f2d3d' }}>
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(180,83,9,0.15)', color: '#b45309', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Check size={13} strokeWidth={3} />
+                      </div>
+                      {b}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Reveal>
+
+            <Reveal delay={0.2}>
+              <div className="scenario-visual" style={{ position: 'relative' as const, height: 580, background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', borderRadius: 24, padding: 24, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Confetti items={[
+                  { top: '10%', left: '10%', size: 10, color: VERIMO_CONFETTI_COLORS.orange, shape: 'circle' },
+                  { top: '22%', right: '10%', size: 12, color: VERIMO_CONFETTI_COLORS.green, shape: 'square', delay: 0.5 },
+                  { bottom: '18%', left: '12%', size: 8, color: VERIMO_CONFETTI_COLORS.blue, shape: 'circle', delay: 1 },
+                  { bottom: '28%', right: '14%', size: 11, color: VERIMO_CONFETTI_COLORS.red, shape: 'square', delay: 1.3 },
+                ]} />
+
+                {/* Mockup : conversation SMS agent ↔ acheteur, avec carte rapport Verimo intercalée */}
+                <div style={{ width: '100%', maxWidth: 360, display: 'flex', flexDirection: 'column' as const, gap: 10, position: 'relative' as const, zIndex: 2 }}>
+
+                  {/* Header style messagerie */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#fff', borderRadius: 14, boxShadow: '0 4px 12px rgba(15,45,61,0.06)' }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #cbd5e1, #94a3b8)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 800 }}>JM</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 800, color: '#0f172a' }}>Jean-Marc (acheteur)</div>
+                      <div style={{ fontSize: 10.5, color: '#64748b' }}>Offre en cours</div>
+                    </div>
+                    <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>10:14</div>
+                  </div>
+
+                  {/* Bulle acheteur — offre à la baisse */}
+                  <div style={{ alignSelf: 'flex-start', maxWidth: '78%', background: '#fff', padding: '10px 13px', borderRadius: '14px 14px 14px 4px', boxShadow: '0 3px 10px rgba(15,45,61,0.06)', fontSize: 13, lineHeight: 1.45, color: '#1f2937' }}>
+                    Bonjour, je fais une offre à <strong>465 000 €</strong>. Le DPE me semble moyen et il y a sûrement des travaux à prévoir.
+                  </div>
+
+                  {/* Carte extrait rapport Verimo */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: '-60px' }}
+                    transition={{ duration: 0.5, delay: 0.3 }}
+                    style={{ alignSelf: 'center', width: '100%', background: 'linear-gradient(135deg, #ffffff, #fafbfd)', borderRadius: 14, padding: '12px 14px', border: '1px solid #e2e8f0', boxShadow: '0 6px 16px rgba(15,45,61,0.08)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, paddingBottom: 8, borderBottom: '1px dashed #e2e8f0' }}>
+                      <div style={{ width: 22, height: 22, borderRadius: 6, background: 'linear-gradient(135deg, #2a7d9c, #1d5e7a)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Scale size={12} color="#fff" strokeWidth={2.5} />
+                      </div>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: '#0f172a', letterSpacing: '0.04em' }}>EXTRAIT RAPPORT VERIMO</div>
+                      <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, padding: '2px 7px', background: 'rgba(16,185,129,0.12)', borderRadius: 100, fontSize: 10.5, fontWeight: 800, color: '#047857' }}>
+                        <Star size={9} fill="#10b981" stroke="#10b981" /> 17/20
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: '#334155' }}>
+                        <span>DPE</span><strong style={{ color: '#047857' }}>C — bon classement</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: '#334155' }}>
+                        <span>Travaux votés</span><strong style={{ color: '#047857' }}>Aucun</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: '#334155' }}>
+                        <span>Impayés copro</span><strong style={{ color: '#047857' }}>0 € — sain</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: '#334155' }}>
+                        <span>Évolution charges</span><strong style={{ color: '#047857' }}>+1,8 %/an</strong>
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  {/* Bulle agent — réponse argumentée */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: '-60px' }}
+                    transition={{ duration: 0.5, delay: 0.6 }}
+                    style={{ alignSelf: 'flex-end', maxWidth: '82%', background: 'linear-gradient(135deg, #2a7d9c, #1d5e7a)', padding: '10px 13px', borderRadius: '14px 14px 4px 14px', boxShadow: '0 4px 12px rgba(42,125,156,0.25)', fontSize: 13, lineHeight: 1.45, color: '#fff' }}>
+                    Le rapport Verimo donne <strong>17/20</strong> à ce bien. DPE C, aucun travaux voté, copro saine. La baisse n'est <strong>pas alignée</strong> avec la qualité du dossier — je transmets, mais je vous conseille de reformuler.
+                  </motion.div>
+
+                  {/* Indicateur "en train d'écrire" côté acheteur */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    viewport={{ once: true, margin: '-60px' }}
+                    transition={{ duration: 0.4, delay: 1.1 }}
+                    style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px', background: '#fff', borderRadius: 12, boxShadow: '0 2px 8px rgba(15,45,61,0.05)' }}>
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#94a3b8' }} />
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#94a3b8' }} />
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#94a3b8' }} />
+                  </motion.div>
+
+                </div>
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
       <section style={{ padding: '60px 24px 100px', background: 'linear-gradient(180deg, #fafbfd 0%, #fafbfd 60%, #eef3f6 100%)' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <Reveal>
@@ -1059,7 +1210,7 @@ export default function MandatairesPage() {
               </span>.
             </h2>
             <p style={{ fontSize: 'clamp(15px, 1.3vw, 17px)', color: 'rgba(255,255,255,0.85)', margin: '0 auto 28px', lineHeight: 1.6 }}>
-              Démo personnalisée. Offre sur mesure. Réponse garantie sous 24 heures.
+              Démo personnalisée. Offre sur mesure. Échange direct avec un humain, pas un formulaire.
             </p>
             <motion.a
               href="/pro/rejoindre"
