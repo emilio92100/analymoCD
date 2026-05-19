@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet — 17 mai 2026
+# VERIMO — Contexte projet — 19 mai 2026
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -419,6 +419,97 @@ Après : remplacé par le **même nouveau bloc complet** que TabLogement, access
 ---
 
 
+## 🆕 Session 19 mai 2026 ⭐ — Sidebar clair/sombre + refonte Admin Messages + framework priorisation
+
+### 1. Système toggle clair/sombre sidebar (pro + particulier)
+
+**But** : laisser au client le choix du mode visuel de sa sidebar (et seulement la sidebar, pas le reste du dashboard).
+
+**Implémentation** :
+- Persistance via **`localStorage`**, clé partagée `verimo_sidebar_theme`, défaut : `'light'`.
+- Toggle visible : **bouton soleil/lune** en bas de la sidebar sur desktop, en haut sur mobile (entre logo et CTA "Nouvelle analyse").
+- Détection mobile via la prop `onClose` (présente uniquement sur le drawer mobile, `undefined` sur desktop).
+- **Transition CSS 600ms** entre les deux modes pour fluidité (interpolation des couleurs, rotation 360° de l'icône soleil/lune).
+- Logos : `/logo.png` (mode clair) et `/logo-blanc.png` (mode sombre).
+- ⚠️ Le PNG `logo-blanc.png` a une **marge transparente intégrée** dans le fichier → nécessite `marginTop` / `marginBottom` négatifs pour bien coller au badge ACCÈS PRO. Solution propre à terme : recadrer le PNG.
+
+**Fichiers modifiés** :
+- `DashboardProPage.tsx` (sidebar pro)
+- `DashboardPage.tsx` (sidebar particulier)
+
+### 2. Tooltips "?" fix z-index
+
+**Bug** : les tooltips `TooltipInfo` et `TooltipInfoParticulier` (page Mon compte) étaient en `position: absolute` + `z-index: 999` → mangés par les blocs en dessous.
+
+**Fix** : passage à `position: fixed` + `z-index: 99999` + recalcul dynamique de la position via `getBoundingClientRect`. Appliqué côté pro et particulier pour cohérence.
+
+**Fichiers modifiés** :
+- `DashboardProPage.tsx` (composant `TooltipInfo` ~ligne 6593)
+- `dashboard/Compte.tsx` (composant `TooltipInfoParticulier`)
+
+### 3. Refonte Admin Messages
+
+**Objectif** : mieux trier et présenter les messages reçus dans l'onglet Messages côté admin.
+
+**Modifs principales** dans `AdminPage.tsx`, composant `MessagesTab` :
+- **Détection automatique du type** via préfixe `[PRO —` au début du message ou mention "identité professionnelle" dans le sujet → "Demande modif pro", sinon → "Contact général". **Pas de modif BDD nécessaire.**
+- **4 pills de filtre** avec compteurs :
+  - Tous (non lus)
+  - Contact général
+  - Demandes modif pro
+  - Résolus (= messages lus)
+- **Avatar avec initiales colorées** (couleur stable dérivée du nom du contact via un hash simple).
+- **Pastille orange** en haut à droite de l'avatar si le message n'est pas lu.
+- **Badge de type** visible sur chaque carte (Demande modif pro / Contact général).
+- **Badge "Compte lié" (vert)** si l'email du message correspond à un user dans `profiles`.
+- **Aperçu nettoyé** : pour les demandes pro, on saute le préfixe `[PRO — ...]` et on affiche directement la partie utile après `--- Modifications demandées ---`.
+- **Bouton "Voir la fiche pro"** ou **"Voir la fiche client"** dans le panneau de détail si l'email est lié à un compte → navigation auto vers l'onglet Clients Pro ou Utilisateurs via `setFocusProClientId` / `setFocusUserId` + `setActiveTab`.
+
+### 4. Notif modif identité pro — nouveau texte
+
+**Avant** : `"Suite à votre demande, et après vérification des éléments, vos informations professionnelles ont été mises à jour avec succès. ✅"`
+**Après** : `"Suite à votre demande et après vérifications, vos informations professionnelles ont été mises à jour ✓"` (plus sobre, sans "avec succès").
+
+Localisée dans `AdminPage.tsx` (~ligne 5756), déclenchée par la case à cocher `notifyProOnSave` lors de l'enregistrement d'une modif d'identité pro côté admin.
+
+### 5. Cartographie des tables d'entrée admin (référence importante)
+
+Pour savoir où vont les messages selon leur source :
+
+| Table | Sources d'insertion | Onglet admin |
+|---|---|---|
+| **`contact_messages`** | 1. Formulaire `ContactPage.tsx` (site public, anonyme) — 2. `DashboardProPage.tsx` (demande de modif identité pro depuis le dashboard) | **Messages** |
+| **`contact_pro`** | 1. `ContactProPage.tsx` (formulaire pro site `/contact-pro`) — 2. `RejoindrePage.tsx` (formulaire `/pro/rejoindre` qui envoie aussi un email auto via edge function `send-pro-request-confirmation`) | **Demandes Pro** |
+| **`support_tickets`** + `support_messages` | Tickets ouverts par particuliers ET pros depuis leur dashboard (Support.tsx) | **Besoin d'aide** |
+| **`pro_suggestions`** | Suggestions envoyées par les pros depuis leur dashboard | **Suggestions** |
+
+⚠️ **Chaque table a son propre onglet admin séparé** — aucune source n'est mélangée.
+
+### 6. Polish UX divers (livré)
+
+- Toggle Actifs/Archivés (Mes dossiers pro) refait : style aéré, dégradé bleu pour Actifs, dégradé ambre pour Archivés (cohérent avec le code couleur d'archivage existant).
+- Animations transitions 350ms entre étapes du flow Nouvelle analyse (au lieu d'apparitions brutales).
+- Bandeau T3 (dégradé bleu pro) sur étape "FolderSelectStep" pro.
+- Vue liste des dossiers sur mobile : masquage des colonnes `X analyses · X vendeur · date` qui tronquaient l'adresse.
+- Confirmation de demande de modif pro refaite : cercle vert animé en spring + texte sobre sans promesse "24h".
+- Bandeau "Verrouillé" responsive mobile : texte sur toute la largeur + bouton centré en dessous au lieu d'être collé à droite.
+
+### 7. Framework de priorisation Verimo (référence pour les prochaines sessions)
+
+Pour distinguer une **vraie avancée** d'un simple polish UX, 4 catégories à privilégier :
+
+| # | Catégorie | Description | Exemples Verimo |
+|---|---|---|---|
+| **1** | **Feature business** | Change ce que le produit fait | Détection d'anomalies dans un PV d'AG, API publique, alertes email nouveau diagnostic, génération PDF custom avec logo, comparaison automatique à des annonces concurrentes |
+| **2** | **Fix bug bloquant prod** | Empêche les vrais clients d'utiliser | Analyse qui plante sur un gros PDF, paiement Stripe sans crédit ajouté, login en erreur 500, envoi de rapport qui échoue silencieusement |
+| **3** | **Changement modèle économique** | Impact direct sur les revenus | 1er client pro réel signé, refonte tarifs après retour de 5 pros, offre annuelle -20%, offre Agence multi-users, paiement à l'unité sans abonnement |
+| **4** | **Intégration externe** | Connecter Verimo à un service tiers | API DVF gouv (comparer prix aux dernières ventes), API ADEME (vérifier authenticité DPE), Stripe Connect (commission agences), Calendly, Mailchimp/Brevo, Mistral (réduire coûts API) |
+
+⚠️ **Le polish UX/UI seul ne rentre dans aucune de ces catégories.** C'est utile pour la perception du produit mais ne change ni ce qu'il *fait* ni *combien* il rapporte. À utiliser pour décider quoi attaquer en début de session.
+
+---
+
+
 ## 🔮 Feature Compte Agence multi-utilisateurs (PRÉVUE PLUS TARD)
 
 ⚠️ **À développer quand 2-3 vraies agences clientes seront acquises** — pas avant. Estimation : **5-15 jours de dev** selon scope.
@@ -604,6 +695,13 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 ### Sessions récentes (mai 2026)
 
+- **Session 19 mai 2026 ⭐ : Sidebar clair/sombre + refonte Admin Messages + framework priorisation** (détail section dédiée plus haut)
+  - Système toggle clair/sombre sidebar pro + particulier (localStorage `verimo_sidebar_theme`, défaut clair, bouton soleil/lune)
+  - Fix tooltips "?" (position fixed + z-index 99999) côté pro et particulier
+  - Refonte visuelle onglet Messages admin (4 filtres : Tous / Contact général / Demandes modif pro / Résolus, détection auto via préfixe `[PRO —`, avatars colorés, bouton "Voir la fiche client")
+  - Texte notif modif identité pro simplifié
+  - Polish UX divers : Toggle Actifs/Archivés (Mes dossiers pro), animations transitions Nouvelle analyse, bandeau T3, vue liste dossiers mobile, confirmation demande modif refaite
+  - Framework de priorisation 4 catégories ajouté (feature business / fix bug bloquant / changement modèle éco / intégration externe) — pour décider quoi attaquer en début de session
 - **Session 17 mai 2026 ⭐ : Feature DPE Travaux préconisés** (détail section dédiée plus haut)
   - Extraction et affichage des 2 packs de travaux DPE (essentiels + à envisager) + évolution étiquette projetée
   - 3 fichiers modifiés : `analyser-run/index.ts` (v10→v11), `RapportPage.tsx` (TabLogement), `DocumentRenderer.tsx` (RendererDDT)
