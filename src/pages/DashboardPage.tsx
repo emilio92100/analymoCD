@@ -46,17 +46,12 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
     } catch { return 'light'; }
   });
   const isDark = sidebarTheme === 'dark';
-  const [themeAnimating, setThemeAnimating] = useState(false);
   useEffect(() => {
     try { localStorage.setItem('verimo_sidebar_theme', sidebarTheme); } catch {}
   }, [sidebarTheme]);
 
-  // Toggle qui déclenche aussi l'animation de voile (700ms)
-  const toggleTheme = () => {
-    setThemeAnimating(true);
-    setSidebarTheme(isDark ? 'light' : 'dark');
-    setTimeout(() => setThemeAnimating(false), 720);
-  };
+  // Toggle clair/sombre — la transition fluide est gérée par le CSS sur tous les éléments
+  const toggleTheme = () => setSidebarTheme(isDark ? 'light' : 'dark');
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -67,7 +62,10 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
   }, []);
 
   // ─── Palette dynamique selon le mode ───
-  const SB_BG = isDark ? '#0e3a4a' : 'linear-gradient(180deg, #f0f7fb 0%, #f8fafc 100%)';
+  // Dégradés dans les 2 modes pour permettre une interpolation CSS fluide.
+  const SB_BG = isDark
+    ? 'linear-gradient(180deg, #0e3a4a 0%, #0e3a4a 100%)'
+    : 'linear-gradient(180deg, #f0f7fb 0%, #f8fafc 100%)';
   const SB_ACTIVE_BG = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.9)';
   const SB_ACCENT = isDark ? '#5dbfe0' : '#2a7d9c';
   const SB_TEXT = isDark ? 'rgba(255,255,255,0.75)' : '#475569';
@@ -147,20 +145,11 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
         }
       `}</style>
 
-      {/* Voile de transition jour/nuit qui balaye la sidebar */}
-      {themeAnimating && (
-        <div data-theme-sweep style={{
-          position: 'absolute', inset: 0,
-          background: isDark
-            ? 'linear-gradient(180deg, rgba(14,58,74,0.6), rgba(14,58,74,0))'
-            : 'linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0))',
-          pointerEvents: 'none', zIndex: 5,
-        }} />
-      )}
+      {/* Voile de transition jour/nuit retiré — la transition CSS suffit */}
       {/* Logo — centré et plus gros */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'12px 18px 6px', flexShrink:0, position:'relative' }}>
         <Link to="/" onClick={onClose} style={{ textDecoration:'none' }}>
-          <img src={isDark ? '/logo-blanc.png' : '/logo.png'} alt="Verimo" style={{ height: isDark ? 100 : 70, width: 'auto', display: 'block', marginBottom: isDark ? -20 : -8 }} />
+          <img src={isDark ? '/logo-blanc.png' : '/logo.png'} alt="Verimo" style={{ height: isDark ? 100 : 70, width: 'auto', display: 'block', marginBottom: isDark ? -35 : -8, marginTop: isDark ? -12 : 0 }} />
         </Link>
         {onClose && <button onClick={onClose} style={{ position:'absolute', right:14, top:14, background:'none', border:'none', cursor:'pointer', color: SB_MUTED, padding:4 }}><X size={18}/></button>}
       </div>
