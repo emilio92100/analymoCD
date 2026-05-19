@@ -1,20 +1,41 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import DashboardLoader from '../../components/DashboardLoader';
 
 function TooltipInfoParticulier({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLSpanElement | null>(null);
+  const [pos, setPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+
+  // Recalcule la position quand on ouvre — position fixed + z-index élevé pour passer au-dessus de tous les blocs
+  useEffect(() => {
+    if (open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const popoverWidth = 240;
+      const margin = 8;
+      // Par défaut : en dessous, centré sur le trigger
+      let top = rect.bottom + margin;
+      let left = rect.left + rect.width / 2 - popoverWidth / 2;
+      // Empêcher de sortir à droite
+      if (left + popoverWidth > window.innerWidth - 16) {
+        left = window.innerWidth - popoverWidth - 16;
+      }
+      // Empêcher de sortir à gauche
+      if (left < 16) left = 16;
+      setPos({ top, left });
+    }
+  }, [open]);
+
   return (
-    <span style={{ position: 'relative', display: 'inline-flex' }}>
+    <span ref={triggerRef} style={{ position: 'relative', display: 'inline-flex' }}>
       <span
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(!open); }}
         style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, borderRadius: '50%', background: '#f0f7fb', border: '1px solid #d0e8f0', color: '#2a7d9c', fontSize: 10, fontWeight: 800, cursor: 'pointer', flexShrink: 0, userSelect: 'none' }}>?</span>
       {open && (
         <>
-          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 998 }} />
-          <div style={{ position: 'absolute', top: 22, left: '50%', transform: 'translateX(-50%)', zIndex: 999, background: '#0f2d3d', color: '#fff', fontSize: 12, lineHeight: 1.5, padding: '10px 14px', borderRadius: 10, width: 240, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
+          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 99998 }} />
+          <div style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 99999, background: '#0f2d3d', color: '#fff', fontSize: 12, lineHeight: 1.5, padding: '10px 14px', borderRadius: 10, width: 240, boxShadow: '0 8px 24px rgba(0,0,0,0.2)' }}>
             {text}
-            <div style={{ position: 'absolute', top: -5, left: '50%', transform: 'translateX(-50%) rotate(45deg)', width: 10, height: 10, background: '#0f2d3d' }} />
           </div>
         </>
       )}
