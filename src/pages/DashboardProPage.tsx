@@ -224,21 +224,18 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
     } catch { return 'light'; }
   });
   const isDark = sidebarTheme === 'dark';
-  const [themeAnimating, setThemeAnimating] = useState(false);
   useEffect(() => {
     try { localStorage.setItem('verimo_sidebar_theme', sidebarTheme); } catch {}
   }, [sidebarTheme]);
 
-  // Toggle qui déclenche aussi l'animation de voile (700ms)
-  const toggleTheme = () => {
-    setThemeAnimating(true);
-    setSidebarTheme(isDark ? 'light' : 'dark');
-    setTimeout(() => setThemeAnimating(false), 720);
-  };
+  // Toggle clair/sombre — la transition fluide est gérée par le CSS sur tous les éléments
+  const toggleTheme = () => setSidebarTheme(isDark ? 'light' : 'dark');
 
   // ─── Palette dynamique selon le mode ───
+  // Note : on utilise des dégradés dans les 2 modes pour que CSS puisse interpoler
+  // les couleurs en douceur entre clair et sombre (sinon il y a un saut brutal).
   const BG = isDark
-    ? '#16475a'
+    ? 'linear-gradient(180deg, #16475a 0%, #16475a 100%)'
     : 'linear-gradient(180deg, #f0f7fb 0%, #f8fafc 100%)';
   const ACCENT = isDark ? '#7dd3fc' : '#2a7d9c';
   const TEXT = isDark ? 'rgba(255,255,255,0.75)' : '#475569';
@@ -296,16 +293,6 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
 
   return (
     <aside data-sidebar-pro data-theme-mode={isDark ? 'dark' : 'light'} style={{ width: 260, minHeight: '100vh', height: '100%', background: BG, display: 'flex', flexDirection: 'column', borderRight: isDark ? 'none' : '1px solid #e2e8f0', position: 'relative', overflow: 'hidden' }}>
-      {/* Voile de transition jour/nuit qui balaye la sidebar */}
-      {themeAnimating && (
-        <div data-theme-sweep style={{
-          position: 'absolute', inset: 0,
-          background: isDark
-            ? 'linear-gradient(180deg, rgba(22,71,90,0.6), rgba(22,71,90,0))'
-            : 'linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0))',
-          pointerEvents: 'none', zIndex: 5,
-        }} />
-      )}
       {/* Halo bleu subtil en haut (signature) — opacité ajustée selon le mode */}
       <div style={{ position: 'absolute', top: -120, right: -100, width: 320, height: 320, borderRadius: '50%', background: isDark ? 'radial-gradient(circle, rgba(125,211,252,0.10), transparent 70%)' : 'radial-gradient(circle, rgba(125,211,252,0.18), transparent 70%)', pointerEvents: 'none', zIndex: 0 }} />
 
@@ -352,7 +339,7 @@ function SidebarPro({ subscription, proCredits, onClose, unreadTickets, creditsL
       {/* Logo + PRO badge — centré et gros */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 18px 0', flexShrink: 0, position: 'relative' }}>
         <Link to="/" onClick={onClose} style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <img src={isDark ? '/logo-blanc.png' : '/logo.png'} alt="Verimo" style={{ height: isDark ? 85 : 55, width: 'auto', display: 'block', marginBottom: isDark ? -18 : -5 }} />
+          <img src={isDark ? '/logo-blanc.png' : '/logo.png'} alt="Verimo" style={{ height: isDark ? 85 : 55, width: 'auto', display: 'block', marginBottom: isDark ? -32 : -5, marginTop: isDark ? -10 : 0 }} />
           <span style={{ background: isDark ? `linear-gradient(135deg, ${ACCENT}, #38bdf8)` : `linear-gradient(135deg, #0f2d3d, #2a7d9c)`, color: isDark ? '#0a1f2d' : '#fff', fontSize: 10, fontWeight: 800, padding: '3px 14px', borderRadius: 100, letterSpacing: '0.08em' }}>ACCÈS PRO</span>
         </Link>
         {onClose && <button onClick={onClose} style={{ position: 'absolute', right: 14, top: 14, background: 'none', border: 'none', cursor: 'pointer', color: MUTED, padding: 4 }}><X size={18} /></button>}
