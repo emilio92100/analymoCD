@@ -46,9 +46,17 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
     } catch { return 'light'; }
   });
   const isDark = sidebarTheme === 'dark';
+  const [themeAnimating, setThemeAnimating] = useState(false);
   useEffect(() => {
     try { localStorage.setItem('verimo_sidebar_theme', sidebarTheme); } catch {}
   }, [sidebarTheme]);
+
+  // Toggle qui déclenche aussi l'animation de voile (700ms)
+  const toggleTheme = () => {
+    setThemeAnimating(true);
+    setSidebarTheme(isDark ? 'light' : 'dark');
+    setTimeout(() => setThemeAnimating(false), 720);
+  };
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -80,7 +88,8 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
   // ─── Bouton toggle clair/sombre — réutilisé en mobile (haut) ou desktop (bas) ───
   const themeToggle = (
     <button
-      onClick={() => setSidebarTheme(isDark ? 'light' : 'dark')}
+      data-theme-toggle
+      onClick={toggleTheme}
       title={isDark ? 'Passer en mode clair' : 'Passer en mode sombre'}
       aria-label={isDark ? 'Passer en mode clair' : 'Passer en mode sombre'}
       style={{
@@ -90,7 +99,6 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
         border: isDark ? '1px solid rgba(255,255,255,0.12)' : '1px solid #e2e8f0',
         color: isDark ? 'rgba(255,255,255,0.85)' : '#475569',
         fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
-        transition: 'all 0.15s',
       }}
       onMouseOver={e => {
         const el = e.currentTarget as HTMLElement;
@@ -108,7 +116,47 @@ function Sidebar({ onClose, unreadTickets }: { onClose?: () => void; unreadTicke
   const isMobile = !!onClose;
 
   return (
-    <aside style={{ width:260, minHeight:'100vh', height:'100%', background:SB_BG, display:'flex', flexDirection:'column', borderRight: isDark ? 'none' : '1px solid #e2e8f0' }}>
+    <aside data-sidebar-particulier data-theme-mode={isDark ? 'dark' : 'light'} style={{ width:260, minHeight:'100vh', height:'100%', background:SB_BG, display:'flex', flexDirection:'column', borderRight: isDark ? 'none' : '1px solid #e2e8f0', position: 'relative', overflow: 'hidden' }}>
+      {/* Transition fluide jour/nuit — CSS global pour cette sidebar */}
+      <style>{`
+        aside[data-sidebar-particulier] {
+          transition: background 600ms cubic-bezier(0.4, 0, 0.2, 1), border-color 600ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        aside[data-sidebar-particulier] * {
+          transition:
+            background-color 600ms cubic-bezier(0.4, 0, 0.2, 1),
+            background 600ms cubic-bezier(0.4, 0, 0.2, 1),
+            border-color 600ms cubic-bezier(0.4, 0, 0.2, 1),
+            color 600ms cubic-bezier(0.4, 0, 0.2, 1),
+            box-shadow 600ms cubic-bezier(0.4, 0, 0.2, 1),
+            opacity 600ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        aside[data-sidebar-particulier] [data-theme-toggle] svg {
+          transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1), color 600ms ease;
+        }
+        aside[data-sidebar-particulier][data-theme-mode="dark"] [data-theme-toggle] svg {
+          transform: rotate(360deg);
+        }
+        @keyframes verimo-theme-sweep-part {
+          0% { opacity: 0; transform: translateY(-100%); }
+          40% { opacity: 0.4; }
+          100% { opacity: 0; transform: translateY(100%); }
+        }
+        aside[data-sidebar-particulier] [data-theme-sweep] {
+          animation: verimo-theme-sweep-part 700ms ease-out;
+        }
+      `}</style>
+
+      {/* Voile de transition jour/nuit qui balaye la sidebar */}
+      {themeAnimating && (
+        <div data-theme-sweep style={{
+          position: 'absolute', inset: 0,
+          background: isDark
+            ? 'linear-gradient(180deg, rgba(14,58,74,0.6), rgba(14,58,74,0))'
+            : 'linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0))',
+          pointerEvents: 'none', zIndex: 5,
+        }} />
+      )}
       {/* Logo — centré et plus gros */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'12px 18px 6px', flexShrink:0, position:'relative' }}>
         <Link to="/" onClick={onClose} style={{ textDecoration:'none' }}>
