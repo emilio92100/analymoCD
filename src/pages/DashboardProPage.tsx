@@ -1321,6 +1321,11 @@ function MesDossiersPro() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+            <style>{`
+              @media (max-width: 640px) {
+                .dossier-row-stats { display: none !important; }
+              }
+            `}</style>
             {filtered.map((f, i) => (
               <motion.div
                 key={f.id}
@@ -1348,7 +1353,7 @@ function MesDossiersPro() {
                     </div>
                   )}
                 </div>
-                <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexShrink: 0 }}>
+                <div className="dossier-row-stats" style={{ display: 'flex', gap: 14, alignItems: 'center', flexShrink: 0 }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: (f.analyses_count || 0) > 0 ? '#2a7d9c' : '#94a3b8' }}>{f.analyses_count || 0} analyse{(f.analyses_count || 0) > 1 ? 's' : ''}</span>
                   <span style={{ fontSize: 12, color: '#94a3b8' }}>{f.sellers_count || 0} vendeur{(f.sellers_count || 0) > 1 ? 's' : ''}</span>
                   <span style={{ fontSize: 11, color: '#cbd5e1' }}>{fmtDate(f.updated_at)}</span>
