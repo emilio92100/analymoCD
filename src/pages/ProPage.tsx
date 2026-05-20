@@ -578,7 +578,7 @@ function CtaFinalSection() {
         </Reveal>
         <Reveal delay={2}>
           <p className="text-lg text-white/85 leading-relaxed max-w-4xl mx-auto mb-10 font-medium">
-            Démo personnalisée, offre sur mesure, accompagnement dédié. Réponse garantie sous 24 heures.
+            Démo personnalisée, offre sur mesure, accompagnement dédié.
           </p>
         </Reveal>
         <Reveal delay={3}>
