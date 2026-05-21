@@ -2601,7 +2601,9 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
   const dpeGes = resultatStr?.match(/([\d,.]+)\s*kg/i)?.[1] ?? null;
   const dpeBad = dpeClasse && ['F', 'G'].includes(dpeClasse);
   const dpeGood = dpeClasse && ['A', 'B', 'C'].includes(dpeClasse);
-  const hasDiagAlert = autresDiags.some((d: Record<string, unknown>) => d.alerte);
+  // 🆕 ERP est traité comme "Informatif" dans DiagRow (pas comme une alerte rouge),
+  // donc on l'exclut aussi du badge global "Points d'attention" pour cohérence
+  const hasDiagAlert = autresDiags.some((d: Record<string, unknown>) => d.alerte && d.type !== 'ERP');
 
   const DPE_COLORS: Record<string, string> = { A: '#16a34a', B: '#22c55e', C: '#84cc16', D: '#eab308', E: '#f97316', F: '#ef4444', G: '#991b1b' };
   const DPE_CLASSES = ['A','B','C','D','E','F','G'];
@@ -3201,19 +3203,20 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
             return (
               <>
                 <SectionTitle emoji="📐" text="Surface Carrez" tooltip="La loi Carrez impose la mesure officielle de la surface privative. Si la surface réelle est inférieure de plus de 5% à celle du compromis, vous pouvez demander une réduction du prix proportionnelle." />
-                <div style={{ background: 'var(--color-background-secondary)', borderRadius: 10, overflow: 'hidden' }}>
+                <div style={{ background: 'var(--color-background-secondary)', borderRadius: 10, overflow: 'hidden', border: '0.5px solid var(--color-border-tertiary)' }}>
                   {surface && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: pieces ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
-                      <span style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Surface totale Carrez</span>
-                      <span style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)' }}>{surface} m²</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', borderBottom: pieces && pieces.length > 0 ? '0.5px solid var(--color-border-tertiary)' : 'none', background: 'var(--color-background-primary)' }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-primary)' }}>Surface totale Carrez</span>
+                      <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-text-primary)' }}>{surface} m²</span>
                     </div>
                   )}
                   {pieces && pieces.length > 0 && (
-                    <div style={{ padding: '12px 16px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
                       {pieces.map((p, i) => (
-                        <span key={i} style={{ fontSize: 12, padding: '3px 10px', borderRadius: 20, background: 'var(--color-background-primary)', border: '0.5px solid var(--color-border-tertiary)', color: 'var(--color-text-secondary)' }}>
-                          {p.piece} — {p.surface} m²
-                        </span>
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', borderBottom: i < pieces.length - 1 ? '0.5px solid var(--color-border-tertiary)' : 'none' }}>
+                          <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{p.piece}</span>
+                          <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{p.surface} m²</span>
+                        </div>
                       ))}
                     </div>
                   )}
