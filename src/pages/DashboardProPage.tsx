@@ -5038,10 +5038,10 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, backdropFilter: 'blur(3px)' }}>
       <motion.div initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }}
-        style={{ background: '#fff', borderRadius: 24, width: '100%', maxWidth: 580, boxShadow: '0 32px 80px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto', overflow: 'hidden' }}>
+        style={{ background: '#fff', borderRadius: 24, width: '100%', maxWidth: 580, boxShadow: '0 32px 80px rgba(0,0,0,0.2)', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-        {/* Header */}
-        <div style={{ padding: '24px 28px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        {/* Header — fixe en haut */}
+        <div style={{ padding: '24px 28px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div>
             <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', margin: 0 }}>📧 Envoyer une analyse</h3>
             <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
@@ -5061,7 +5061,8 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}><X size={20} style={{ color: '#94a3b8' }} /></button>
         </div>
 
-        <div style={{ padding: '24px 28px 28px' }}>
+        {/* Body — zone scrollable */}
+        <div style={{ padding: '24px 28px 20px', flex: 1, overflowY: 'auto', minHeight: 0 }}>
           <AnimatePresence mode="wait">
             {/* ÉTAPE 1 : Sélection acheteurs */}
             {step === 1 && (
@@ -5097,15 +5098,6 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
                     })}
                   </div>
                 )}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
-                  <button onClick={() => { if (selectedRecipientIds.size > 0) setStep(2); }}
-                    disabled={selectedRecipientIds.size === 0}
-                    style={{ padding: '12px 28px', borderRadius: 12, border: 'none',
-                      background: selectedRecipientIds.size > 0 ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#e5e7eb',
-                      color: '#fff', fontSize: 14, fontWeight: 700, cursor: selectedRecipientIds.size > 0 ? 'pointer' : 'default' }}>
-                    Suivant →
-                  </button>
-                </div>
               </motion.div>
             )}
 
@@ -5137,19 +5129,6 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
                     );
                   })}
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20 }}>
-                  <button onClick={() => setStep(1)}
-                    style={{ padding: '12px 20px', borderRadius: 12, border: '1.5px solid #edf2f7', background: '#fff', color: '#64748b', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                    ← Retour
-                  </button>
-                  <button onClick={() => { if (selectedAnalysisIds.size > 0) setStep(3); }}
-                    disabled={selectedAnalysisIds.size === 0}
-                    style={{ padding: '12px 28px', borderRadius: 12, border: 'none',
-                      background: selectedAnalysisIds.size > 0 ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#e5e7eb',
-                      color: '#fff', fontSize: 14, fontWeight: 700, cursor: selectedAnalysisIds.size > 0 ? 'pointer' : 'default' }}>
-                    Suivant →
-                  </button>
-                </div>
               </motion.div>
             )}
 
@@ -5168,30 +5147,35 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
                   </div>
                 )}
 
-                {/* 🆕 Sélecteur de template */}
+                {/* 🆕 Sélecteur de template — design en 3 cards horizontales */}
                 <div style={{ marginBottom: 14 }}>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 6, display: 'block' }}>Type de message</label>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8, display: 'block' }}>Type de message</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                     {([
-                      { id: 'rapport_seul' as const, label: '📄 Rapport seul' },
-                      { id: 'rapport_docs_acheteur' as const, label: '🛒 Rapport + docs (acheteur)' },
-                      { id: 'rapport_docs_vendeur' as const, label: '🏷️ Rapport + docs (vendeur)' },
-                    ]).map(t => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => setMessageTemplate(t.id)}
-                        style={{
-                          padding: '8px 14px', borderRadius: 10, fontSize: 12, fontWeight: 700,
-                          cursor: 'pointer', transition: 'all 0.15s',
-                          background: messageTemplate === t.id ? '#2a7d9c' : '#fff',
-                          color: messageTemplate === t.id ? '#fff' : '#64748b',
-                          border: `1.5px solid ${messageTemplate === t.id ? '#2a7d9c' : '#e2e8f0'}`,
-                        }}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
+                      { id: 'rapport_seul' as const, icon: '📄', label: 'Rapport', sub: 'seul' },
+                      { id: 'rapport_docs_acheteur' as const, icon: '🛒', label: 'Rapport + docs', sub: 'acheteur' },
+                      { id: 'rapport_docs_vendeur' as const, icon: '🏷️', label: 'Rapport + docs', sub: 'vendeur' },
+                    ]).map(t => {
+                      const active = messageTemplate === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setMessageTemplate(t.id)}
+                          style={{
+                            padding: '10px 8px', borderRadius: 12, cursor: 'pointer', transition: 'all 0.15s',
+                            background: active ? 'linear-gradient(135deg, #f0f7fb, #e0ecf2)' : '#fff',
+                            border: `1.5px solid ${active ? '#2a7d9c' : '#e2e8f0'}`,
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                            boxShadow: active ? '0 4px 12px rgba(42,125,156,0.15)' : 'none',
+                          }}
+                        >
+                          <span style={{ fontSize: 20, lineHeight: 1 }}>{t.icon}</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: active ? '#0f2d3d' : '#475569', lineHeight: 1.2 }}>{t.label}</span>
+                          <span style={{ fontSize: 10, fontWeight: 500, color: active ? '#2a7d9c' : '#94a3b8', lineHeight: 1.2 }}>{t.sub}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -5255,19 +5239,6 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
                 </div>
 
                 {error && <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 13, color: '#dc2626' }}>{error}</div>}
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 20 }}>
-                  <button onClick={() => setStep(2)}
-                    style={{ padding: '12px 20px', borderRadius: 12, border: '1.5px solid #edf2f7', background: '#fff', color: '#64748b', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                    ← Retour
-                  </button>
-                  <button onClick={handleSend}
-                    style={{ padding: '13px 32px', borderRadius: 14, border: 'none',
-                      background: 'linear-gradient(135deg, #16a34a, #15803d)',
-                      color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer', boxShadow: '0 8px 24px rgba(22,163,74,0.25)' }}>
-                    📧 Envoyer{attachments.length > 0 ? ` (+ ${attachments.length} PJ)` : ''}
-                  </button>
-                </div>
               </motion.div>
             )}
 
@@ -5297,6 +5268,47 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
             )}
           </AnimatePresence>
         </div>
+
+        {/* 🆕 Footer sticky — boutons toujours visibles, peu importe le scroll du body */}
+        {!sending && !sendDone && (
+          <div style={{ flexShrink: 0, padding: '14px 28px 20px', borderTop: '1px solid #f1f5f9', background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            {/* Bouton Retour (étapes 2 et 3) ou rien (étape 1) */}
+            {step > 1 ? (
+              <button onClick={() => setStep((step - 1) as 1 | 2 | 3)}
+                style={{ padding: '12px 20px', borderRadius: 12, border: '1.5px solid #edf2f7', background: '#fff', color: '#64748b', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                ← Retour
+              </button>
+            ) : <div />}
+
+            {/* Bouton de droite : Suivant (étapes 1-2) ou Envoyer (étape 3) */}
+            {step === 1 && (
+              <button onClick={() => { if (selectedRecipientIds.size > 0) setStep(2); }}
+                disabled={selectedRecipientIds.size === 0}
+                style={{ padding: '12px 28px', borderRadius: 12, border: 'none',
+                  background: selectedRecipientIds.size > 0 ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#e5e7eb',
+                  color: '#fff', fontSize: 14, fontWeight: 700, cursor: selectedRecipientIds.size > 0 ? 'pointer' : 'default' }}>
+                Suivant →
+              </button>
+            )}
+            {step === 2 && (
+              <button onClick={() => { if (selectedAnalysisIds.size > 0) setStep(3); }}
+                disabled={selectedAnalysisIds.size === 0}
+                style={{ padding: '12px 28px', borderRadius: 12, border: 'none',
+                  background: selectedAnalysisIds.size > 0 ? 'linear-gradient(135deg, #2a7d9c, #0f2d3d)' : '#e5e7eb',
+                  color: '#fff', fontSize: 14, fontWeight: 700, cursor: selectedAnalysisIds.size > 0 ? 'pointer' : 'default' }}>
+                Suivant →
+              </button>
+            )}
+            {step === 3 && (
+              <button onClick={handleSend}
+                style={{ padding: '13px 32px', borderRadius: 14, border: 'none',
+                  background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                  color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer', boxShadow: '0 8px 24px rgba(22,163,74,0.25)' }}>
+                📧 Envoyer{attachments.length > 0 ? ` (+ ${attachments.length} PJ)` : ''}
+              </button>
+            )}
+          </div>
+        )}
       </motion.div>
     </div>
   );
