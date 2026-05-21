@@ -3192,7 +3192,9 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
 
           {/* Surface Carrez */}
           {(() => {
-            const carrez = autresDiags.find((d: Record<string, unknown>) => d.type === 'CARREZ') as Record<string, unknown> | undefined;
+            // 🆕 Fix : on cherche CARREZ dans diagsPriv (qui contient tous les diags privatifs)
+            // car autresDiags exclut explicitement CARREZ (ligne 2590)
+            const carrez = diagsPriv.find((d: Record<string, unknown>) => d.type === 'CARREZ') as Record<string, unknown> | undefined;
             if (!carrez) return null;
             const pieces = carrez.pieces_detail as Array<{ piece: string; surface: number }> | null;
             const surface = safeStr(carrez.resultat)?.match(/([\d,.]+)\s*m²/i)?.[1];
