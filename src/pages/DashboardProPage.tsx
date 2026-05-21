@@ -6544,7 +6544,7 @@ function SectionAcheteurs({ buyers, onAdd, onEdit, onDelete, disabled }: {
           <UserPlus size={15} style={{ color: '#94a3b8' }} />
           Acheteur{buyers.length > 1 ? 's' : ''} potentiel{buyers.length > 1 ? 's' : ''}
           {buyers.length > 0 && (
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '2px 8px', borderRadius: 100 }}>{buyers.length}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#ea580c', background: '#fff7ed', padding: '2px 8px', borderRadius: 100 }}>{buyers.length}</span>
           )}
         </h3>
         {buyers.length > 0 && (
@@ -6552,9 +6552,9 @@ function SectionAcheteurs({ buyers, onAdd, onEdit, onDelete, disabled }: {
             disabled={disabled}
             title={disabled ? 'Restaurez le dossier pour ajouter un acheteur' : undefined}
             style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8,
-              background: disabled ? '#f8fafc' : '#f0fdf4',
-              border: `1px ${disabled ? 'dashed #e2e8f0' : 'solid #bbf7d0'}`,
-              color: disabled ? '#94a3b8' : '#16a34a',
+              background: disabled ? '#f8fafc' : '#fff7ed',
+              border: `1px ${disabled ? 'dashed #e2e8f0' : 'solid #fed7aa'}`,
+              color: disabled ? '#94a3b8' : '#ea580c',
               cursor: disabled ? 'not-allowed' : 'pointer',
               fontSize: 12, fontWeight: 700, opacity: disabled ? 0.6 : 1 }}>
             <Plus size={12} /> Ajouter
@@ -6569,7 +6569,7 @@ function SectionAcheteurs({ buyers, onAdd, onEdit, onDelete, disabled }: {
           </p>
           {!disabled && (
             <button onClick={onAdd}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, background: '#f0fdf4', border: '1px dashed #86efac', color: '#16a34a', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, background: '#fff7ed', border: '1px dashed #fdba74', color: '#ea580c', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
               <Plus size={12} /> Ajouter
             </button>
           )}
@@ -6597,8 +6597,8 @@ function BuyerCard({ buyer, onEdit, onDelete, disabled }: { buyer: ProFolderBuye
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
       style={{ padding: '12px 14px', borderRadius: 11, background: 'linear-gradient(135deg, #fafafa, #f8fafc)', border: '1px solid #f1f5f9', position: 'relative' as const, overflow: 'hidden', opacity: disabled ? 0.65 : 1 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <UserPlus size={16} style={{ color: '#16a34a' }} />
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #fff7ed, #ffedd5)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <UserPlus size={16} style={{ color: '#ea580c' }} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const, marginBottom: 3 }}>
