@@ -5878,8 +5878,14 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
                     </div>
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
-                      {a.address || a.title}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1, minWidth: 0 }}>
+                        {a.address || a.title}
+                      </div>
+                      {/* 🆕 Score affiché à côté du titre pour meilleure lisibilité */}
+                      {isCompleted && score !== null && (
+                        <span style={{ fontSize: 13, fontWeight: 800, color: getScoreColor(score), whiteSpace: 'nowrap' as const, flexShrink: 0 }}>{score}/20</span>
+                      )}
                     </div>
                     <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span>{fmtDate(a.created_at)}</span>
@@ -5909,14 +5915,9 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
                     </span>
                   )}
                   {isCompleted && (
-                    <div className="folder-analysis-cta" style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'flex-end', gap: 2, flexShrink: 0 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' as const }}>
-                        Voir le rapport <ChevronRight size={13} />
-                      </span>
-                      {score !== null && (
-                        <span style={{ fontSize: 13, fontWeight: 800, color: getScoreColor(score), whiteSpace: 'nowrap' as const }}>{score}/20</span>
-                      )}
-                    </div>
+                    <span className="folder-analysis-cta" style={{ fontSize: 12, fontWeight: 700, color: '#2a7d9c', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' as const, flexShrink: 0 }}>
+                      Voir le rapport <ChevronRight size={13} />
+                    </span>
                   )}
                 </div>
               );
