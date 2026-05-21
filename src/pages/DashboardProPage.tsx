@@ -5364,8 +5364,10 @@ function BuyerGroupCollapsible({ email, items, folderAnalyses, fmtDate }: { emai
     if (t === 'rapport_docs_vendeur') return { label: '🏷️ Rapport + docs vendeur', color: '#92400e', bg: '#fef3c7' };
     return { label: '📄 Rapport seul', color: '#475569', bg: '#f1f5f9' };
   };
-  // Total des PJ envoyées (somme sur tous les rapports du groupe — la même PJ peut être envoyée avec plusieurs rapports)
-  const totalAttachments = items.reduce((acc, it) => acc + (it.attachments_count || 0), 0);
+  // Nombre réel de pièces jointes dans le mail envoyé. Les PJ sont attachées une fois au mail,
+  // pas une fois par rapport — donc on prend le max (qui correspond au nombre réel) et non la somme
+  // (qui multiplierait si plusieurs rapports envoyés ensemble).
+  const totalAttachments = items.length > 0 ? Math.max(...items.map(it => it.attachments_count || 0)) : 0;
 
   return (
     <div ref={ref} style={{ padding: '14px 18px', borderRadius: 14, background: expanded ? '#f4f7f9' : '#f8fafc', border: `1px solid ${expanded ? '#d0e8f0' : '#edf2f7'}`, transition: 'all 0.2s' }}>
