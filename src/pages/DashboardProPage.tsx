@@ -4889,17 +4889,17 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
     // 🆕 Template 2 — Rapport + documents bruts pour un ACHETEUR
     if (messageTemplate === 'rapport_docs_acheteur') {
       const intro = nbRapports === 1
-        ? `je vous transmets le rapport d'analyse concernant le bien situé ${address}, ainsi que les documents originaux qui ont servi à cette analyse.`
-        : `je vous transmets ${nbRapports} rapports d'analyse concernant le bien situé ${address}, ainsi que les documents originaux qui ont servi à ces analyses.`;
-      return `Bonjour,\n\nDans le cadre de votre projet d'acquisition, ${intro}\n\nLe rapport synthétise les points essentiels à connaître avant de vous engager. Les pièces jointes vous permettent d'approfondir certains aspects si vous le souhaitez.\n\nN'hésitez pas à me contacter pour échanger sur ces éléments.${signature}`;
+        ? `je vous transmets le rapport d'analyse Verimo concernant le bien situé ${address}.`
+        : `je vous transmets ${nbRapports} rapports d'analyse Verimo concernant le bien situé ${address}.`;
+      return `Bonjour,\n\nDans le cadre de votre projet d'acquisition, ${intro}\n\nVous trouverez également en pièces jointes les documents bruts du bien pour vous permettre d'aller plus en détail si vous le souhaitez.\n\nN'hésitez pas à me contacter pour échanger sur ces éléments.${signature}`;
     }
 
     // 🆕 Template 3 — Rapport + documents bruts pour un VENDEUR
     if (messageTemplate === 'rapport_docs_vendeur') {
       const intro = nbRapports === 1
-        ? `je vous transmets le rapport d'analyse Verimo de votre bien situé ${address}, ainsi que les documents originaux qui ont servi à cette analyse.`
-        : `je vous transmets ${nbRapports} rapports d'analyse concernant votre bien situé ${address}, ainsi que les documents originaux qui ont servi à ces analyses.`;
-      return `Bonjour,\n\nDans le cadre de la mise en vente de votre bien, ${intro}\n\nCette analyse nous servira de base pour valoriser votre bien et anticiper les questions des futurs acquéreurs. Je reste à votre disposition pour en discuter.${signature}`;
+        ? `je vous transmets le rapport d'analyse Verimo de votre bien situé ${address}.`
+        : `je vous transmets ${nbRapports} rapports d'analyse Verimo concernant votre bien situé ${address}.`;
+      return `Bonjour,\n\nDans le cadre de la mise en vente de votre bien, ${intro}\n\nVous trouverez également en pièces jointes les documents bruts pour compléter cette analyse.\n\nCe rapport nous servira de base pour valoriser votre bien et anticiper les questions des futurs acquéreurs. Je reste à votre disposition pour en discuter.${signature}`;
     }
 
     // Template 1 (par défaut) — Rapport seul
@@ -5157,9 +5157,16 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
             {step === 3 && !sending && !sendDone && (
               <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
                 <p style={{ fontSize: 14, color: '#64748b', margin: '0 0 4px' }}>✉️ Prévisualisez et personnalisez votre message :</p>
-                <p style={{ fontSize: 11, color: '#94a3b8', margin: '0 0 16px' }}>
+                <p style={{ fontSize: 11, color: '#94a3b8', margin: '0 0 12px' }}>
                   → {selectedRecipientIds.size} destinataire{selectedRecipientIds.size > 1 ? 's' : ''} · {selectedAnalysisIds.size} analyse{selectedAnalysisIds.size > 1 ? 's' : ''}
                 </p>
+
+                {/* 🆕 Mini-bannière logo manquant (compacte, pas envahissante) */}
+                {!proProfile.pro_logo_url && (
+                  <div style={{ marginBottom: 12, padding: '6px 12px', borderRadius: 8, background: '#fffbeb', border: '1px solid #fef3c7', fontSize: 11, color: '#78350f', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    💡 <span>Ajoutez votre logo dans <strong>Mon compte</strong> pour le faire apparaître dans vos envois.</span>
+                  </div>
+                )}
 
                 {/* 🆕 Sélecteur de template */}
                 <div style={{ marginBottom: 14 }}>
@@ -5246,12 +5253,6 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
                     </p>
                   )}
                 </div>
-
-                {!proProfile.pro_logo_url && (
-                  <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fef3c7', fontSize: 12, color: '#78350f' }}>
-                    💡 Pour afficher votre logo dans les rapports envoyés, ajoutez-le dans <strong>Mon compte</strong>.
-                  </div>
-                )}
 
                 {error && <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 13, color: '#dc2626' }}>{error}</div>}
 
