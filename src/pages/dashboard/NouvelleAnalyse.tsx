@@ -772,17 +772,18 @@ export default function NouvelleAnalyse() {
             <ArrowRight size={18} style={{ color: '#2a7d9c', marginLeft: 'auto', flexShrink: 0 }} />
           </div>
         </button>
-        <button onClick={() => { setProfil('invest'); setStep('upload'); }}
-          style={{ padding: '24px 28px', borderRadius: 18, border: '2px solid #edf2f7', background: '#fff', cursor: 'pointer', textAlign: 'left', transition: 'all 0.18s', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
-          onMouseOver={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#f0a500'; el.style.boxShadow = '0 8px 28px rgba(240,165,0,0.12)'; el.style.transform = 'translateY(-2px)'; }}
-          onMouseOut={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = '#edf2f7'; el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'; el.style.transform = 'translateY(0)'; }}>
+        <button onClick={() => {}} disabled
+          title="Cette option sera disponible prochainement"
+          style={{ padding: '24px 28px', borderRadius: 18, border: '2px dashed #e2e8f0', background: '#f8fafc', cursor: 'not-allowed', textAlign: 'left', transition: 'all 0.18s', position: 'relative', opacity: 0.7 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(240,165,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 24 }}>📈</div>
-            <div>
-              <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Investissement locatif</div>
-              <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>Vous cherchez un rendement — rentabilité et risques locatifs sont prioritaires.</div>
+            <div style={{ width: 52, height: 52, borderRadius: 14, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 24, filter: 'grayscale(1)' }}>📈</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 17, fontWeight: 800, color: '#64748b' }}>Investissement locatif</span>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: '#92400e', background: '#fef3c7', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: 100, letterSpacing: '0.04em' }}>EN COURS DE DÉVELOPPEMENT</span>
+              </div>
+              <div style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.5 }}>Rentabilité, contraintes locatives, fiscalité — disponible prochainement.</div>
             </div>
-            <ArrowRight size={18} style={{ color: '#f0a500', marginLeft: 'auto', flexShrink: 0 }} />
           </div>
         </button>
       </div>
