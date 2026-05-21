@@ -1123,6 +1123,104 @@ function TabSynthese({ rapport, isShared, hideVerimoBranding }: { rapport: Rappo
       {/* 5. AVIS VERIMO */}
       <AvisVerimoBlock avis={rapport.avis_verimo} isSimple={rapport.type !== 'complete'} isShared={isShared} hideVerimoBranding={hideVerimoBranding} />
 
+      {/* 🆕 6. BLOC DOCS ESSENTIELS MAISON HORS COPRO (uniquement analyse simple) */}
+      {!isComplete && rapport.type_bien === 'maison' && (
+        <DocsMaisonSimpleBlock rapport={rapport} />
+      )}
+
+    </div>
+  );
+}
+
+/* ══════════════════════════════════
+   BLOC DOCS ESSENTIELS MAISON (analyse simple)
+   Affiche les 4 essentiels en cards + CTA "Passez en complète"
+══════════════════════════════════ */
+function DocsMaisonSimpleBlock({ rapport }: { rapport: RapportData }) {
+  const docsAnalyses = (rapport as Record<string, unknown>).documents_analyses as Array<Record<string, unknown>> || [];
+  const docsAnalysesTypes = docsAnalyses.map(d => safeStr(d.type));
+  const hasDoc = (types: string[]) => types.some(t => docsAnalysesTypes.includes(t));
+
+  // Détection classe DPE pour audit conditionnel
+  const dpeDiag = (rapport.diagnostics || []).find((d: Record<string, unknown>) => safeStr(d.type) === 'DPE');
+  const dpeClasse = dpeDiag ? safeStr(dpeDiag.resultat).match(/Classe\s+([A-G])\b/i)?.[1]?.toUpperCase() : null;
+  const dpeMauvais = dpeClasse ? ['E', 'F', 'G'].includes(dpeClasse) : false;
+
+  const docsEssentiels = [
+    {
+      label: 'DDT — Dossier de Diagnostic Technique',
+      present: hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']),
+      tooltip: 'Réunit les diagnostics obligatoires : DPE, ERP, amiante (avant 1997), plomb (avant 1949), électricité et gaz (installations > 15 ans), termites (zones à risque).',
+      icon: '🗂',
+      sub: 'DPE, ERP, amiante, plomb, électricité, gaz, termites',
+    },
+    {
+      label: 'Audit énergétique réglementaire',
+      present: hasDoc(['AUDIT_ENERGETIQUE']) || (!dpeMauvais && !!dpeClasse),
+      tooltip: `Obligatoire pour la vente de maisons individuelles classées E, F ou G (loi Climat & Résilience). ${dpeClasse ? `DPE détecté en classe ${dpeClasse}${dpeMauvais ? ' → audit obligatoire.' : ' → audit non requis.'}` : 'Sera requis si le DPE est classé E, F ou G.'}`,
+      icon: '⚡',
+      sub: dpeClasse ? (dpeMauvais ? `Obligatoire (DPE classe ${dpeClasse})` : `Non requis (DPE classe ${dpeClasse})`) : 'Si DPE classé E, F ou G',
+    },
+    {
+      label: 'Diagnostic assainissement',
+      present: hasDoc(['ASSAINISSEMENT']),
+      tooltip: 'Obligatoire si la maison dispose d\'un assainissement non collectif (fosse septique, micro-station…) — diagnostic SPANC de moins de 3 ans. Aussi exigé dans certaines communes pour le tout-à-l\'égout.',
+      icon: '🚰',
+      sub: 'SPANC (si fosse septique) ou contrôle communal',
+    },
+    {
+      label: 'Taxe foncière',
+      present: hasDoc(['TAXE_FONCIERE']),
+      tooltip: 'Permet d\'estimer la charge fiscale annuelle. Utile pour le budget de l\'acheteur et la négociation du prix.',
+      icon: '🏛',
+      sub: 'Dernier avis d\'imposition',
+    },
+  ];
+
+  const manquants = docsEssentiels.filter(d => !d.present);
+  const fournis = docsEssentiels.filter(d => d.present);
+
+  return (
+    <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
+      <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9' }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 3 }}>
+          📂 Documents essentiels pour une analyse complète
+        </div>
+        <div style={{ fontSize: 13, color: '#64748b' }}>
+          {manquants.length === 0
+            ? 'Tous les documents essentiels d\'une maison sont présents.'
+            : `${fournis.length} document${fournis.length > 1 ? 's' : ''} sur ${docsEssentiels.length} fourni${fournis.length > 1 ? 's' : ''} — voici ce qui manquerait pour passer en analyse complète.`}
+        </div>
+      </div>
+
+      <div style={{ padding: '18px 20px' }}>
+        <div className="docs-maison-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10 }}>
+          {docsEssentiels.map((doc, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', borderRadius: 12,
+              background: doc.present ? 'linear-gradient(135deg, #f0fdf4, #f7fee7)' : 'linear-gradient(135deg, #eff6ff, #f0f7ff)',
+              border: `1px solid ${doc.present ? '#bbf7d0' : '#bfdbfe'}`,
+              position: 'relative' as const,
+            }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: '#fff', border: `1px solid ${doc.present ? '#bbf7d0' : '#bfdbfe'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                {doc.icon}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: doc.present ? '#14532d' : '#1e3a8a', lineHeight: 1.3 }}>{doc.label}</span>
+                  {doc.tooltip && <TooltipBtn text={doc.tooltip} />}
+                </div>
+                {doc.sub && (
+                  <div style={{ fontSize: 11.5, color: doc.present ? '#166534' : '#475569', lineHeight: 1.4 }}>{doc.sub}</div>
+                )}
+              </div>
+              <div style={{ position: 'absolute' as const, top: 10, right: 10, width: 16, height: 16, borderRadius: '50%', background: doc.present ? '#16a34a' : '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {doc.present ? <CheckCircle size={11} color="#fff" /> : <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#fff' }} />}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
