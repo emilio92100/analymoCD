@@ -756,8 +756,8 @@ export default function NouvelleAnalyse() {
       {/* Bandeau dossier sélectionné (pros uniquement) */}
       {userRole === 'pro' && selectedFolder && <FolderBanner folder={selectedFolder} analysisType={type === 'complete' ? 'complete' : 'simple'} onChange={() => setStep('folder_select')} />}
 
-      <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 8 }}>Ce bien, c'est pour vous ?</h1>
-      <p style={{ fontSize: 14, color: '#64748b', marginBottom: 32, lineHeight: 1.6 }}>Votre profil d'achat influence la notation du bien — notamment sur le DPE et les charges.</p>
+      <h1 style={{ fontSize: 'clamp(20px,3vw,26px)', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.025em', marginBottom: 8 }}>{userRole === 'pro' ? 'Quel est l\'objectif de ce bien ?' : 'Ce bien, c\'est pour vous ?'}</h1>
+      <p style={{ fontSize: 14, color: '#64748b', marginBottom: 32, lineHeight: 1.6 }}>{userRole === 'pro' ? 'L\'usage prévu influence la notation — notamment sur le DPE et les charges.' : 'Votre profil d\'achat influence la notation du bien — notamment sur le DPE et les charges.'}</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <button onClick={() => { setProfil('rp'); setStep('upload'); }}
           style={{ padding: '24px 28px', borderRadius: 18, border: '2px solid #edf2f7', background: '#fff', cursor: 'pointer', textAlign: 'left', transition: 'all 0.18s', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
@@ -767,7 +767,7 @@ export default function NouvelleAnalyse() {
             <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(42,125,156,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 24 }}>🏠</div>
             <div>
               <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Résidence principale</div>
-              <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>Vous allez y vivre — confort, charges et DPE comptent davantage.</div>
+              <div style={{ fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>{userRole === 'pro' ? 'Pour un client vendeur ou un acheteur qui souhaite y habiter — confort, charges et DPE sont prioritaires.' : 'Vous allez y vivre — confort, charges et DPE comptent davantage.'}</div>
             </div>
             <ArrowRight size={18} style={{ color: '#2a7d9c', marginLeft: 'auto', flexShrink: 0 }} />
           </div>
