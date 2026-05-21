@@ -1055,6 +1055,11 @@ function TabSynthese({ rapport, isShared, hideVerimoBranding }: { rapport: Rappo
 
       {/* 4. PISTES DE NÉGOCIATION */}
       {(() => {
+        // 🆕 Règle métier : la négo est un bénéfice exclusif du particulier acheteur qui paie son analyse.
+        // Un rapport généré par un pro (consulté dans son dashboard ou partagé à acheteur/vendeur) ne doit
+        // jamais afficher la négo — pour ne pas "donner le bâton pour se faire battre" au pro vis-à-vis
+        // de ses clients (acheteur ou vendeur).
+        if (hideVerimoBranding) return null;
         if (!rapport.negociation?.applicable) return null;
         if (!rapport.negociation.elements?.length) return null;
         if (rapport.score >= 17) return null; // Pas de négo sur un bien irréprochable
