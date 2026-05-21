@@ -431,10 +431,38 @@ Deno.serve(async (req) => {
 
     /* ── Envoyer plusieurs rapports groupés (pro ou admin) ── */
     if (action === 'send_report_batch') {
-      const { analysis_ids, recipient_name, recipient_firstname, recipient_email, message } = body
+      const { analysis_ids, recipient_name, recipient_firstname, recipient_email, message, attachments } = body
 
       if (!analysis_ids || !Array.isArray(analysis_ids) || analysis_ids.length === 0) {
         return new Response(JSON.stringify({ error: 'Aucune analyse sélectionnée' }), { status: 400, headers: corsHeaders })
+      }
+
+      // 🆕 Validation des pièces jointes (optionnelles)
+      // Format attendu : [{ filename: string, contentType: string, base64Content: string }]
+      // Limite Mailjet : 15 MB pour l'ensemble du message. On se garde une marge de sécurité à 13 MB
+      // pour le HTML du mail + overhead réseau. Tout dépassement est refusé proprement ici.
+      const SAFE_LIMIT_BYTES = 13 * 1024 * 1024
+      let attachmentsPayload: Array<{ ContentType: string; Filename: string; Base64Content: string }> = []
+      if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+        let totalBytes = 0
+        for (const att of attachments) {
+          if (!att?.filename || !att?.base64Content || !att?.contentType) {
+            return new Response(JSON.stringify({ error: 'Pièce jointe invalide (champs manquants)' }), { status: 400, headers: corsHeaders })
+          }
+          // Taille réelle du payload base64 (chaque caractère = 1 octet dans le body HTTP)
+          totalBytes += att.base64Content.length
+        }
+        if (totalBytes > SAFE_LIMIT_BYTES) {
+          const totalMb = (totalBytes / 1024 / 1024).toFixed(1)
+          return new Response(JSON.stringify({
+            error: `Taille totale des pièces jointes (${totalMb} MB) trop importante. La limite est de 13 MB. Sélectionnez moins de fichiers ou des fichiers plus légers.`
+          }), { status: 413, headers: corsHeaders })
+        }
+        attachmentsPayload = attachments.map((att: { filename: string; contentType: string; base64Content: string }) => ({
+          ContentType: att.contentType,
+          Filename: att.filename,
+          Base64Content: att.base64Content,
+        }))
       }
 
       const { data: analysesData } = await adminClient.from('analyses').select('*').in('id', analysis_ids)
@@ -485,13 +513,21 @@ Deno.serve(async (req) => {
 
       const MJ_API_KEY = Deno.env.get('MJ_API_KEY') ?? ''
       const MJ_SECRET_KEY = Deno.env.get('MJ_SECRET_KEY') ?? ''
+      // 🆕 Construction du payload Mailjet avec pièces jointes optionnelles
+      const mjMessage: Record<string, unknown> = {
+        From: { Email: 'pro@verimo.fr', Name: fromName },
+        ReplyTo: { Email: replyTo, Name: senderName },
+        To: [{ Email: recipient_email, Name: `${recipient_firstname || ''} ${recipient_name}`.trim() }],
+        Subject: subject,
+        HTMLPart: html,
+      }
+      if (attachmentsPayload.length > 0) {
+        mjMessage.Attachments = attachmentsPayload
+      }
       const mailRes = await fetch('https://api.mailjet.com/v3.1/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Basic ' + btoa(`${MJ_API_KEY}:${MJ_SECRET_KEY}`) },
-        body: JSON.stringify({ Messages: [{ From: { Email: 'pro@verimo.fr', Name: fromName }, ReplyTo: { Email: replyTo, Name: senderName },
-          To: [{ Email: recipient_email, Name: `${recipient_firstname || ''} ${recipient_name}`.trim() }],
-          Subject: subject,
-          HTMLPart: html }] })
+        body: JSON.stringify({ Messages: [mjMessage] })
       })
 
       if (!mailRes.ok) {
@@ -499,7 +535,7 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: 'Erreur envoi: ' + JSON.stringify(errData) }), { status: 500, headers: corsHeaders })
       }
 
-      return new Response(JSON.stringify({ success: true, reports_sent: reports.length }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      return new Response(JSON.stringify({ success: true, reports_sent: reports.length, attachments_sent: attachmentsPayload.length }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
     /* ══ Actions ADMIN UNIQUEMENT ═══════════════════════ */
