@@ -671,7 +671,7 @@ export default function NouvelleAnalyse() {
           if (userRole === 'pro') { setStep('folder_select'); }
           else { setStep('choice'); }
           setTypeBienDeclare(null);
-        }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 16, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
+        }} style={{ fontSize: 13, color: '#2a7d9c', background: '#f0f7fb', border: '1px solid #d0e8f0', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 20, fontWeight: 700, padding: '8px 14px', borderRadius: 10, transition: 'all 0.15s' }} onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#e0f0f7'; (e.currentTarget as HTMLElement).style.borderColor = '#2a7d9c'; }} onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = '#f0f7fb'; (e.currentTarget as HTMLElement).style.borderColor = '#d0e8f0'; }}><ChevronLeft size={14} /> Retour</button>
 
       {/* Bandeau dossier sélectionné (pros uniquement) */}
       {userRole === 'pro' && selectedFolder && <FolderBanner folder={selectedFolder} analysisType={type === 'complete' ? 'complete' : 'simple'} onChange={() => setStep('folder_select')} />}
@@ -751,7 +751,7 @@ export default function NouvelleAnalyse() {
   /* ── PROFIL */
   if (step === 'profil' && type) return (
     <motion.div key="step-profil" {...stepAnim} style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <button onClick={() => { setStep('type_bien'); setProfil(null); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 16, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
+      <button onClick={() => { setStep('type_bien'); setProfil(null); }} style={{ fontSize: 13, color: '#2a7d9c', background: '#f0f7fb', border: '1px solid #d0e8f0', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 20, fontWeight: 700, padding: '8px 14px', borderRadius: 10, transition: 'all 0.15s' }} onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#e0f0f7'; (e.currentTarget as HTMLElement).style.borderColor = '#2a7d9c'; }} onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = '#f0f7fb'; (e.currentTarget as HTMLElement).style.borderColor = '#d0e8f0'; }}><ChevronLeft size={14} /> Retour</button>
 
       {/* Bandeau dossier sélectionné (pros uniquement) */}
       {userRole === 'pro' && selectedFolder && <FolderBanner folder={selectedFolder} analysisType={type === 'complete' ? 'complete' : 'simple'} onChange={() => setStep('folder_select')} />}
@@ -795,7 +795,7 @@ export default function NouvelleAnalyse() {
   /* ── UPLOAD */
   if (step === 'upload' && plan) return (
     <motion.div key="step-upload" {...stepAnim} style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <button onClick={() => { setStep('profil'); resetUpload(); }} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 16, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
+      <button onClick={() => { setStep('profil'); resetUpload(); }} style={{ fontSize: 13, color: '#2a7d9c', background: '#f0f7fb', border: '1px solid #d0e8f0', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 20, fontWeight: 700, padding: '8px 14px', borderRadius: 10, transition: 'all 0.15s' }} onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#e0f0f7'; (e.currentTarget as HTMLElement).style.borderColor = '#2a7d9c'; }} onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = '#f0f7fb'; (e.currentTarget as HTMLElement).style.borderColor = '#d0e8f0'; }}><ChevronLeft size={14} /> Retour</button>
 
       {/* Bandeau dossier sélectionné (pros uniquement) */}
       {userRole === 'pro' && selectedFolder && <FolderBanner folder={selectedFolder} analysisType={type === 'complete' ? 'complete' : 'simple'} onChange={() => setStep('folder_select')} />}
@@ -1321,7 +1321,7 @@ function FolderSelectStep({ folders, loading, type, onBack, onSelect, onCreate, 
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <button onClick={onBack} style={{ fontSize: 13, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 20, fontWeight: 600 }}><ChevronLeft size={14} /> Retour</button>
+      <button onClick={onBack} style={{ fontSize: 13, color: '#2a7d9c', background: '#f0f7fb', border: '1px solid #d0e8f0', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 20, fontWeight: 700, padding: '8px 14px', borderRadius: 10, transition: 'all 0.15s' }} onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#e0f0f7'; (e.currentTarget as HTMLElement).style.borderColor = '#2a7d9c'; }} onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = '#f0f7fb'; (e.currentTarget as HTMLElement).style.borderColor = '#d0e8f0'; }}><ChevronLeft size={14} /> Retour</button>
 
       {/* Badge contextuel */}
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 11px', borderRadius: 100, background: '#f0f7fb', border: '1px solid #d0e8f0', marginBottom: 14 }}>
