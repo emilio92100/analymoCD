@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { fetchAnalyses, type AnalyseDB } from '../lib/analyses';
 
 export type AnalyseType = 'document' | 'complete';
-export type AnalyseStatus = 'completed' | 'processing' | 'error';
+export type AnalyseStatus = 'completed' | 'processing' | 'error' | 'pending' | 'files_ready' | 'queued' | 'failed';
 
 export type Analyse = {
   id: string;
