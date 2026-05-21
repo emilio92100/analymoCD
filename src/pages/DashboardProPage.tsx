@@ -5018,6 +5018,8 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
             message: message.replace(/^Bonjour,/, `Bonjour ${recipient.first_name || recipient.last_name},`),
             // 🆕 Pièces jointes (peut être tableau vide si pas de PDFs joints)
             attachments: attachmentsPayload,
+            // 🆕 Type de template utilisé pour l'historique
+            template_type: messageTemplate,
           }),
         });
         const data = await res.json();
@@ -5341,7 +5343,7 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
   );
 }
 
-function BuyerGroupCollapsible({ email, items, folderAnalyses, fmtDate }: { email: string; items: { id: string; recipient_name: string; recipient_email: string; analysis_id: string; sent_at: string; opened_at?: string | null }[]; folderAnalyses: { id: string; address?: string; title?: string; type?: string }[]; fmtDate: (d: string) => string }) {
+function BuyerGroupCollapsible({ email, items, folderAnalyses, fmtDate }: { email: string; items: { id: string; recipient_name: string; recipient_email: string; analysis_id: string; sent_at: string; opened_at?: string | null; attachments_count?: number | null; attachment_filenames?: string[] | null; template_type?: string | null }[]; folderAnalyses: { id: string; address?: string; title?: string; type?: string }[]; fmtDate: (d: string) => string }) {
   const [expanded, setExpanded] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const handleToggle = () => {
@@ -5355,6 +5357,16 @@ function BuyerGroupCollapsible({ email, items, folderAnalyses, fmtDate }: { emai
       setExpanded(true);
     }
   };
+
+  // 🆕 Helpers pour afficher proprement le template + nombre de PJ
+  const templateLabel = (t: string | null | undefined): { label: string; color: string; bg: string } => {
+    if (t === 'rapport_docs_acheteur') return { label: '🛒 Rapport + docs acheteur', color: '#1e40af', bg: '#dbeafe' };
+    if (t === 'rapport_docs_vendeur') return { label: '🏷️ Rapport + docs vendeur', color: '#92400e', bg: '#fef3c7' };
+    return { label: '📄 Rapport seul', color: '#475569', bg: '#f1f5f9' };
+  };
+  // Total des PJ envoyées (somme sur tous les rapports du groupe — la même PJ peut être envoyée avec plusieurs rapports)
+  const totalAttachments = items.reduce((acc, it) => acc + (it.attachments_count || 0), 0);
+
   return (
     <div ref={ref} style={{ padding: '14px 18px', borderRadius: 14, background: expanded ? '#f4f7f9' : '#f8fafc', border: `1px solid ${expanded ? '#d0e8f0' : '#edf2f7'}`, transition: 'all 0.2s' }}>
       <button onClick={handleToggle} style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0, fontFamily: 'inherit' }}>
@@ -5365,6 +5377,12 @@ function BuyerGroupCollapsible({ email, items, folderAnalyses, fmtDate }: { emai
           <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>✉️ {items[0].recipient_name}</div>
           <div style={{ fontSize: 12, color: '#94a3b8' }}>{email} · {fmtDate(items[0].sent_at)}</div>
         </div>
+        {/* 🆕 Badge "📎 N PJ" si pièces jointes présentes */}
+        {totalAttachments > 0 && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#2a7d9c', background: '#f0f7fb', padding: '3px 10px', borderRadius: 100, border: '1px solid #d0e8f0', marginRight: 6 }}>
+            <Paperclip size={11} /> {totalAttachments} PJ
+          </span>
+        )}
         <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#fff', padding: '2px 8px', borderRadius: 100, border: '1px solid #edf2f7', marginRight: 8 }}>{items.length} rapport{items.length > 1 ? 's' : ''}</span>
         <ChevronDown size={14} style={{ color: '#94a3b8', transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.25s ease', flexShrink: 0 }} />
       </button>
@@ -5380,16 +5398,35 @@ function BuyerGroupCollapsible({ email, items, folderAnalyses, fmtDate }: { emai
               {items.map(item => {
                 const analysis = folderAnalyses.find(a => a.id === item.analysis_id);
                 const docName = analysis ? (analysis.address || analysis.title || 'Analyse').split(' — ')[0] : 'Analyse';
+                const tpl = templateLabel(item.template_type);
+                const hasAttachments = (item.attachments_count || 0) > 0;
                 return (
-                  <div key={item.id} className="rapport-envoi-item" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10, background: '#fff', border: '1px solid #edf2f7', flexWrap: 'wrap' }}>
-                    <FileText size={14} style={{ color: '#94a3b8', flexShrink: 0 }} />
-                    <span className="rapport-envoi-name" style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, minWidth: 0 }}>{docName}</span>
-                    <div className="rapport-envoi-meta" style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                      <span style={{ fontSize: 11, color: '#94a3b8' }}>{analysis?.type === 'complete' ? 'Complète' : 'Simple'}</span>
-                      {item.opened_at ? (
-                        <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 10px', borderRadius: 100, border: '1px solid #bbf7d0' }}>✓ Ouvert le {fmtDate(item.opened_at!)}</span>
-                      ) : (
-                        <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f8fafc', padding: '3px 10px', borderRadius: 100, border: '1px solid #e2e8f0' }}>En attente</span>
+                  <div key={item.id} className="rapport-envoi-item" style={{ display: 'flex', flexDirection: 'column' as const, gap: 8, padding: '10px 12px', borderRadius: 10, background: '#fff', border: '1px solid #edf2f7' }}>
+                    {/* Ligne principale : nom doc + type + statut ouverture */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
+                      <FileText size={14} style={{ color: '#94a3b8', flexShrink: 0 }} />
+                      <span className="rapport-envoi-name" style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, minWidth: 0 }}>{docName}</span>
+                      <div className="rapport-envoi-meta" style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <span style={{ fontSize: 11, color: '#94a3b8' }}>{analysis?.type === 'complete' ? 'Complète' : 'Simple'}</span>
+                        {item.opened_at ? (
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', background: '#f0fdf4', padding: '3px 10px', borderRadius: 100, border: '1px solid #bbf7d0' }}>✓ Ouvert le {fmtDate(item.opened_at!)}</span>
+                        ) : (
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', background: '#f8fafc', padding: '3px 10px', borderRadius: 100, border: '1px solid #e2e8f0' }}>En attente</span>
+                        )}
+                      </div>
+                    </div>
+                    {/* 🆕 Ligne secondaire : type de message + pièces jointes */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' as const, paddingLeft: 22 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: tpl.color, background: tpl.bg, padding: '3px 8px', borderRadius: 6 }}>
+                        {tpl.label}
+                      </span>
+                      {hasAttachments && item.attachment_filenames && item.attachment_filenames.length > 0 && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#64748b' }}>
+                          <Paperclip size={10} />
+                          <span title={item.attachment_filenames.join(', ')}>
+                            {item.attachments_count} pièce{(item.attachments_count || 0) > 1 ? 's' : ''} jointe{(item.attachments_count || 0) > 1 ? 's' : ''}
+                          </span>
+                        </span>
                       )}
                     </div>
                   </div>
@@ -5420,7 +5457,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [showSendReport, setShowSendReport] = useState(false);
-  const [sendHistory, setSendHistory] = useState<{ id: string; recipient_name: string; recipient_email: string; sent_at: string; opened_at?: string; analysis_id: string }[]>([]);
+  const [sendHistory, setSendHistory] = useState<{ id: string; recipient_name: string; recipient_email: string; sent_at: string; opened_at?: string; analysis_id: string; attachments_count?: number | null; attachment_filenames?: string[] | null; template_type?: string | null }[]>([]);
   const [errorPopup, setErrorPopup] = useState<{ message: string } | null>(null);
   const navigate = useNavigate();
 
@@ -5502,7 +5539,8 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
     if (analysisIds.length === 0) { setSendHistory([]); return; }
     const { data } = await supabase
       .from('report_shares')
-      .select('id, recipient_name, recipient_email, sent_at, opened_at, analysis_id')
+      // 🆕 Inclure les métadonnées des pièces jointes et le template utilisé
+      .select('id, recipient_name, recipient_email, sent_at, opened_at, analysis_id, attachments_count, attachment_filenames, template_type')
       .in('analysis_id', analysisIds)
       .order('sent_at', { ascending: false });
     setSendHistory(data || []);
