@@ -431,7 +431,7 @@ Deno.serve(async (req) => {
 
     /* ── Envoyer plusieurs rapports groupés (pro ou admin) ── */
     if (action === 'send_report_batch') {
-      const { analysis_ids, recipient_name, recipient_firstname, recipient_email, message, attachments } = body
+      const { analysis_ids, recipient_name, recipient_firstname, recipient_email, message, attachments, template_type } = body
 
       if (!analysis_ids || !Array.isArray(analysis_ids) || analysis_ids.length === 0) {
         return new Response(JSON.stringify({ error: 'Aucune analyse sélectionnée' }), { status: 400, headers: corsHeaders })
@@ -490,11 +490,17 @@ Deno.serve(async (req) => {
         : `${senderName.split(' ')[0]} vous a partagé ${analysesData.length} rapports`
 
       const reports: { title: string; shareUrl: string }[] = []
+      // 🆕 Préparer les métadonnées des pièces jointes pour l'historique
+      const attachmentFilenames = attachmentsPayload.map(a => a.Filename)
       for (const analysis of analysesData) {
         const shareToken = generateToken()
         await adminClient.from('report_shares').insert({
           analysis_id: analysis.id, sender_id: senderId, recipient_name,
           recipient_firstname: recipient_firstname || null, recipient_email, message, share_token: shareToken,
+          // 🆕 Nouvelles colonnes pour traçabilité complète des envois
+          attachments_count: attachmentsPayload.length,
+          attachment_filenames: attachmentFilenames.length > 0 ? attachmentFilenames : null,
+          template_type: template_type || 'rapport_seul',
         })
         reports.push({
           title: analysis.address || analysis.title || 'Analyse',
