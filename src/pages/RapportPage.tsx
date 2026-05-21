@@ -900,9 +900,24 @@ function TabSynthese({ rapport, isShared, hideVerimoBranding }: { rapport: Rappo
                 const isFauxZero =
                   (key === 'diags_privatifs' && isZero && diagsPrivatifsPresent) ||
                   (key === 'diags_communs' && isZero && diagsCommunsPresent);
+                // 🆕 Zero "mérité" : la note 0 vient de pénalités cumulées sur des données réellement présentes
+                // (pas un manque de documents — il faut consulter l'onglet correspondant pour comprendre)
+                const hasProcedureData = (rapport.procedures || []).length > 0;
+                const hasTravauxData = (rapport.travaux_votes || []).length > 0 || (rapport.travaux_realises || []).length > 0 || (rapport.travaux_a_prevoir || []).length > 0;
+                const hasFinancesData = (rapport.finances && Object.values(rapport.finances).some(v => v !== null && v !== undefined && v !== ''));
+                const isZeroMerite =
+                  (key === 'procedures' && isZero && hasProcedureData) ||
+                  (key === 'travaux' && isZero && hasTravauxData) ||
+                  (key === 'finances' && isZero && hasFinancesData);
                 const pct = Math.round((c.note / c.note_max) * 100);
                 const color = isFauxZero ? '#64748b' : (isZero ? '#94a3b8' : getCatColor(pct));
                 const bg = isFauxZero ? '#f1f5f9' : (isZero ? '#f8fafc' : getCatBg(pct));
+                // 🆕 Tooltip dédié par cas
+                const tooltipParCategorie: Record<string, string> = {
+                  procedures: "Cette note est faible en raison du nombre et de la gravité des procédures détectées dans vos documents. Consultez l'onglet « Procédures » pour le détail.",
+                  travaux: "Cette note est faible en raison de l'ampleur ou de la nature des travaux détectés dans vos documents. Consultez l'onglet « Travaux » pour le détail.",
+                  finances: "Cette note est faible en raison des éléments financiers détectés (fonds travaux insuffisant, impayés, charges élevées, etc.). Consultez l'onglet « Finances » pour le détail.",
+                };
                 return (
                   <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ width: 34, height: 34, borderRadius: 8, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>{catIcons[key] || '📊'}</div>
@@ -913,7 +928,10 @@ function TabSynthese({ rapport, isShared, hideVerimoBranding }: { rapport: Rappo
                           {isFauxZero && (
                             <TooltipBtn text="Les diagnostics ont bien été détectés dans vos documents. La note n'a pas été calculée automatiquement — consultez le détail dans l'onglet Logement." />
                           )}
-                          {isZero && !isFauxZero && (
+                          {isZeroMerite && (
+                            <TooltipBtn text={tooltipParCategorie[key] || ''} />
+                          )}
+                          {isZero && !isFauxZero && !isZeroMerite && (
                             <TooltipBtn text="Cette note est nulle car aucun document pertinent n'a été détecté. Complétez votre dossier dans les 7 jours pour améliorer votre score." />
                           )}
                         </div>
