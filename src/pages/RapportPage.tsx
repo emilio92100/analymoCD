@@ -3785,6 +3785,13 @@ function TabDocuments({ rapport, onComplement }: { rapport: RapportData; onCompl
   const isCopro = rapport.type_bien === 'appartement' || rapport.type_bien === 'maison_copro';
   const anneeNum = rapport.annee_construction ? parseInt(rapport.annee_construction) : null;
 
+  // 🆕 Détection classe DPE pour conditionner l'audit énergétique
+  const dpeDiag = (rapport.diagnostics || []).find((d: Record<string, unknown>) => safeStr(d.type) === 'DPE');
+  const dpeClasse = dpeDiag ? safeStr(dpeDiag.resultat).match(/Classe\s+([A-G])\b/i)?.[1]?.toUpperCase() : null;
+  const dpeMauvais = dpeClasse ? ['E', 'F', 'G'].includes(dpeClasse) : false;
+  const auditRequis = dpeMauvais; // Audit obligatoire si E, F ou G
+  // Si pas de DPE encore, on liste l'audit comme "potentiellement requis selon DPE"
+
   // Deadline 7 jours
   const deadlineStr = rapport.regeneration_deadline;
   const deadline = deadlineStr ? new Date(deadlineStr) : null;
@@ -3797,26 +3804,59 @@ function TabDocuments({ rapport, onComplement }: { rapport: RapportData; onCompl
 
   // Docs essentiels
   const docsEssentiels = isCopro ? [
-    { label: '3 derniers PV d\'Assemblée Générale', present: hasDoc(['PV_AG']), tooltip: null },
-    { label: 'Règlement de copropriété', present: hasDoc(['REGLEMENT_COPRO']), tooltip: 'Document fondamental qui régit la copropriété. Le modificatif seul ne suffit pas — il complète le règlement original mais ne le remplace pas.' },
-    { label: 'Carnet d\'entretien de l\'immeuble', present: hasDoc(['CARNET_ENTRETIEN']), tooltip: 'Document tenu par le syndic qui retrace l\'historique des travaux réalisés, les contrats d\'entretien en cours et les diagnostics effectués sur l\'immeuble.' },
-    { label: 'Diagnostics privatifs (DDT)', present: hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']), tooltip: `Selon l'année de construction de l'immeuble${anneeNum ? ` (${anneeNum})` : ''}, certains diagnostics peuvent ne pas être obligatoires.` },
-    { label: 'Appel de charges / Appel de fonds', present: hasDoc(['APPEL_CHARGES']), tooltip: null },
+    { label: '3 derniers PV d\'Assemblée Générale', present: hasDoc(['PV_AG']), tooltip: null, icon: '📋', sub: null as string | null },
+    { label: 'Règlement de copropriété', present: hasDoc(['REGLEMENT_COPRO']), tooltip: 'Document fondamental qui régit la copropriété. Le modificatif seul ne suffit pas — il complète le règlement original mais ne le remplace pas.', icon: '📜', sub: null },
+    { label: 'Carnet d\'entretien de l\'immeuble', present: hasDoc(['CARNET_ENTRETIEN']), tooltip: 'Document tenu par le syndic qui retrace l\'historique des travaux réalisés, les contrats d\'entretien en cours et les diagnostics effectués sur l\'immeuble.', icon: '📓', sub: null },
+    { label: 'Diagnostics privatifs (DDT)', present: hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']), tooltip: `Selon l'année de construction de l'immeuble${anneeNum ? ` (${anneeNum})` : ''}, certains diagnostics peuvent ne pas être obligatoires.`, icon: '🗂', sub: null },
+    { label: 'Appel de charges / Appel de fonds', present: hasDoc(['APPEL_CHARGES']), tooltip: null, icon: '💶', sub: null },
   ] : [
-    { label: 'DDT complet (Dossier Diagnostic Technique)', present: hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']), tooltip: 'DPE, électricité, gaz, amiante, plomb, termites…' },
-    { label: 'Taxe foncière', present: hasDoc(['TAXE_FONCIERE']), tooltip: null },
+    {
+      label: 'DDT — Dossier de Diagnostic Technique',
+      present: hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']),
+      tooltip: `Réunit les diagnostics obligatoires : DPE, ERP, amiante (avant 1997), plomb (avant 1949), électricité et gaz (installations > 15 ans), termites (zones à risque). ${anneeNum ? `Selon l'année (${anneeNum}), certains peuvent ne pas être requis.` : 'Verimo détecte automatiquement les diagnostics requis selon l\'année de construction.'}`,
+      icon: '🗂',
+      sub: 'DPE, ERP, amiante, plomb, électricité, gaz, termites',
+    },
+    {
+      label: 'Audit énergétique réglementaire',
+      present: hasDoc(['AUDIT_ENERGETIQUE']) || (!dpeMauvais && !!dpeClasse), // Présent si uploadé OU non requis (DPE bon)
+      tooltip: `Obligatoire pour la vente de maisons individuelles classées E, F ou G (loi Climat & Résilience). Propose deux scénarios de travaux pour atteindre une meilleure performance. ${dpeClasse ? `DPE détecté en classe ${dpeClasse}${dpeMauvais ? ' → audit obligatoire.' : ' → audit non requis.'}` : 'Sera requis si le DPE est classé E, F ou G.'}`,
+      icon: '⚡',
+      sub: dpeClasse ? (dpeMauvais ? `Obligatoire (DPE classe ${dpeClasse})` : `Non requis (DPE classe ${dpeClasse})`) : 'Si DPE classé E, F ou G',
+    },
+    {
+      label: 'Diagnostic assainissement',
+      present: hasDoc(['ASSAINISSEMENT']),
+      tooltip: 'Obligatoire dans deux cas : (1) si la maison dispose d\'un assainissement non collectif (fosse septique, micro-station…) — diagnostic SPANC de moins de 3 ans ; (2) si la commune impose par arrêté municipal un contrôle du raccordement au tout-à-l\'égout (fréquent en Île-de-France et grandes métropoles). À vérifier auprès de la mairie.',
+      icon: '🚰',
+      sub: 'SPANC (si fosse septique) ou contrôle communal',
+    },
+    {
+      label: 'Taxe foncière',
+      present: hasDoc(['TAXE_FONCIERE']),
+      tooltip: 'Permet d\'estimer la charge fiscale annuelle. Utile pour le budget de l\'acheteur et la négociation du prix.',
+      icon: '🏛',
+      sub: 'Dernier avis d\'imposition',
+    },
   ];
 
   // Docs secondaires
   // Le modificatif RCP n'est listé en secondaire QUE si le RCP est présent (sinon il est implicitement remplacé par "RCP manquant" en essentiel)
   const docsSecondaires = isCopro ? [
-    ...(hasDoc(['REGLEMENT_COPRO']) ? [{ label: 'Modificatif(s) au règlement de copropriété', present: hasDoc(['MODIFICATIF_RCP']), tooltip: 'Modifications apportées au règlement de copropriété d\'origine. Permet de connaître les évolutions de la copropriété.' }] : []),
-    { label: 'Diagnostics parties communes', present: hasDoc(['DIAGNOSTIC_PARTIES_COMMUNES']), tooltip: 'Amiante, plomb et risques environnementaux sur les parties communes de l\'immeuble.' },
-    { label: 'DTG — Diagnostic Technique Global', present: false, tooltip: 'Bilan complet de l\'état de l\'immeuble réalisé par un expert. Obligatoire pour les copropriétés de plus de 200 lots ou de plus de 15 ans. Permet d\'anticiper les grands travaux.' },
-    { label: 'PPT — Plan Pluriannuel de Travaux', present: false, tooltip: 'Planning des travaux prévus sur 10 ans établi à partir du DTG. Permet d\'anticiper les charges futures liées aux travaux obligatoires.' },
-    { label: 'Pré-état daté', present: hasDoc(['PRE_ETAT_DATE']), tooltip: 'Document fourni par le syndic avant la vente qui récapitule les sommes dues par le vendeur à la copropriété, les procédures en cours et les charges à venir.' },
-    { label: 'Tout autre document lié à votre futur logement', present: false, tooltip: null },
-  ] : [];
+    ...(hasDoc(['REGLEMENT_COPRO']) ? [{ label: 'Modificatif(s) au règlement de copropriété', present: hasDoc(['MODIFICATIF_RCP']), tooltip: 'Modifications apportées au règlement de copropriété d\'origine. Permet de connaître les évolutions de la copropriété.', icon: '📜', sub: null as string | null }] : []),
+    { label: 'Diagnostics parties communes', present: hasDoc(['DIAGNOSTIC_PARTIES_COMMUNES']), tooltip: 'Amiante, plomb et risques environnementaux sur les parties communes de l\'immeuble.', icon: '🏗', sub: null },
+    { label: 'DTG — Diagnostic Technique Global', present: false, tooltip: 'Bilan complet de l\'état de l\'immeuble réalisé par un expert. Obligatoire pour les copropriétés de plus de 200 lots ou de plus de 15 ans. Permet d\'anticiper les grands travaux.', icon: '📊', sub: null },
+    { label: 'PPT — Plan Pluriannuel de Travaux', present: false, tooltip: 'Planning des travaux prévus sur 10 ans établi à partir du DTG. Permet d\'anticiper les charges futures liées aux travaux obligatoires.', icon: '📋', sub: null },
+    { label: 'Pré-état daté', present: hasDoc(['PRE_ETAT_DATE']), tooltip: 'Document fourni par le syndic avant la vente qui récapitule les sommes dues par le vendeur à la copropriété, les procédures en cours et les charges à venir.', icon: '📋', sub: null },
+    { label: 'Tout autre document lié à votre futur logement', present: false, tooltip: null, icon: '📄', sub: null },
+  ] : [
+    { label: 'Plan cadastral', present: false, tooltip: 'Extrait du plan cadastral indiquant les limites de la parcelle, sa surface et son numéro. Disponible gratuitement sur cadastre.gouv.fr.', icon: '🗺', sub: 'Limites et surface de la parcelle' },
+    { label: 'Factures de travaux et garanties décennales', present: false, tooltip: 'Si des travaux importants ont été réalisés (toiture, isolation, extension…), les factures et attestations décennales valorisent le bien et rassurent l\'acheteur sur la qualité d\'exécution.', icon: '🔨', sub: 'Si rénovation récente' },
+    { label: 'Permis de construire / Déclarations de travaux', present: false, tooltip: 'Pour toute extension, surélévation, véranda, piscine, garage ou changement de destination — confirme la régularité de la construction. Indispensable pour éviter un risque de démolition imposée par la mairie.', icon: '📐', sub: 'Extension, véranda, piscine, garage…' },
+    { label: 'Surface habitable mesurée', present: false, tooltip: 'La loi Carrez ne s\'applique pas aux maisons individuelles, mais une mesure précise de la surface habitable protège contre les litiges si l\'acheteur découvre un écart après l\'achat.', icon: '📏', sub: 'Mesure précise (loi Boutin)' },
+    { label: 'Diagnostic mérule', present: false, tooltip: 'Obligatoire uniquement dans certaines zones à risque délimitées par arrêté préfectoral (Bretagne, Normandie, Nord, Pays de la Loire…). À vérifier auprès de la préfecture.', icon: '🍄', sub: 'Zones à risque (arrêté préfectoral)' },
+    { label: 'Tout autre document lié au bien', present: false, tooltip: null, icon: '📄', sub: null },
+  ];
 
   const docsEssentielManquants = docsEssentiels.filter(d => !d.present);
   const docsSecondairesManquants = docsSecondaires.filter(d => !d.present);
@@ -3903,27 +3943,69 @@ function TabDocuments({ rapport, onComplement }: { rapport: RapportData; onCompl
             {docsEssentielManquants.length > 0 && (
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 12 }}>ESSENTIELS</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {docsEssentielManquants.map((doc, i) => (
-                    <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 99, background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 14, color: '#1e40af', fontWeight: 500 }}>
-                      {doc.label}
-                      {doc.tooltip && <TooltipBtn text={doc.tooltip} />}
-                    </div>
-                  ))}
-                </div>
+                {isCopro ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {docsEssentielManquants.map((doc, i) => (
+                      <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 99, background: '#eff6ff', border: '1px solid #bfdbfe', fontSize: 14, color: '#1e40af', fontWeight: 500 }}>
+                        {doc.label}
+                        {doc.tooltip && <TooltipBtn text={doc.tooltip} />}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="docs-maison-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10 }}>
+                    {docsEssentielManquants.map((doc, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', borderRadius: 12, background: 'linear-gradient(135deg, #eff6ff, #f0f7ff)', border: '1px solid #bfdbfe' }}>
+                        <div style={{ width: 38, height: 38, borderRadius: 10, background: '#fff', border: '1px solid #bfdbfe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                          {(doc as { icon?: string }).icon || '📄'}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: (doc as { sub?: string }).sub ? 3 : 0 }}>
+                            <span style={{ fontSize: 13.5, fontWeight: 700, color: '#1e3a8a', lineHeight: 1.3 }}>{doc.label}</span>
+                            {doc.tooltip && <TooltipBtn text={doc.tooltip} />}
+                          </div>
+                          {(doc as { sub?: string }).sub && (
+                            <div style={{ fontSize: 11.5, color: '#475569', lineHeight: 1.4 }}>{(doc as { sub: string }).sub}</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             {docsSecondairesManquants.length > 0 && (
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', marginBottom: 12 }}>SECONDAIRES</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {docsSecondairesManquants.map((doc, i) => (
-                    <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 99, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: 13, color: '#475569', fontWeight: 500 }}>
-                      {doc.label}
-                      {doc.tooltip && <TooltipBtn text={doc.tooltip} />}
-                    </div>
-                  ))}
-                </div>
+                {isCopro ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {docsSecondairesManquants.map((doc, i) => (
+                      <div key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 99, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: 13, color: '#475569', fontWeight: 500 }}>
+                        {doc.label}
+                        {doc.tooltip && <TooltipBtn text={doc.tooltip} />}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="docs-maison-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10 }}>
+                    {docsSecondairesManquants.map((doc, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', borderRadius: 12, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                        <div style={{ width: 38, height: 38, borderRadius: 10, background: '#fff', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                          {(doc as { icon?: string }).icon || '📄'}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: (doc as { sub?: string }).sub ? 3 : 0 }}>
+                            <span style={{ fontSize: 13.5, fontWeight: 700, color: '#334155', lineHeight: 1.3 }}>{doc.label}</span>
+                            {doc.tooltip && <TooltipBtn text={doc.tooltip} />}
+                          </div>
+                          {(doc as { sub?: string }).sub && (
+                            <div style={{ fontSize: 11.5, color: '#64748b', lineHeight: 1.4 }}>{(doc as { sub: string }).sub}</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -4048,6 +4130,11 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
   const anneeNum = rapport.annee_construction ? parseInt(safeStr(rapport.annee_construction)) : null;
 
   // Identiques à TabDocuments
+  // 🆕 Détection classe DPE pour audit conditionnel
+  const dpeDiagModal = ((rapport.diagnostics as Array<Record<string, unknown>>) || []).find(d => safeStr(d.type) === 'DPE');
+  const dpeClasseModal = dpeDiagModal ? safeStr(dpeDiagModal.resultat).match(/Classe\s+([A-G])\b/i)?.[1]?.toUpperCase() : null;
+  const dpeMauvaisModal = dpeClasseModal ? ['E', 'F', 'G'].includes(dpeClasseModal) : false;
+
   const docsEssentielsManquants = isCopro ? [
     !hasDoc(['PV_AG']) ? { emoji: '📋', label: '3 derniers PV d\'Assemblée Générale', tooltip: null } : null,
     !hasDoc(['REGLEMENT_COPRO']) ? { emoji: '📜', label: 'Règlement de copropriété', tooltip: 'Document fondamental qui régit la copropriété. Le modificatif seul ne suffit pas — il complète le règlement original mais ne le remplace pas.' } : null,
@@ -4055,8 +4142,11 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
     !hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']) ? { emoji: '🗂', label: `Diagnostics privatifs (DDT)`, tooltip: `Selon l'année de construction${anneeNum ? ` (${anneeNum})` : ''}, certains diagnostics peuvent ne pas être obligatoires.` } : null,
     !hasDoc(['APPEL_CHARGES']) ? { emoji: '💶', label: 'Appel de charges / Appel de fonds', tooltip: null } : null,
   ].filter(Boolean) as { emoji: string; label: string; tooltip: string | null }[] : [
-    !hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']) ? { emoji: '🗂', label: 'DDT complet (Dossier Diagnostic Technique)', tooltip: 'DPE, électricité, gaz, amiante, plomb, termites…' } : null,
-    !hasDoc(['TAXE_FONCIERE']) ? { emoji: '🏛', label: 'Taxe foncière', tooltip: null } : null,
+    !hasDoc(['DDT', 'DPE', 'DIAGNOSTIC']) ? { emoji: '🗂', label: 'DDT — Dossier de Diagnostic Technique', tooltip: 'Réunit les diagnostics obligatoires : DPE, ERP, amiante (avant 1997), plomb (avant 1949), électricité et gaz (installations > 15 ans), termites (zones à risque).' } : null,
+    // Audit énergétique : seulement listé si DPE inconnu OU DPE en E/F/G
+    (!hasDoc(['AUDIT_ENERGETIQUE']) && (dpeMauvaisModal || !dpeClasseModal)) ? { emoji: '⚡', label: 'Audit énergétique réglementaire', tooltip: dpeClasseModal ? `Obligatoire (DPE classe ${dpeClasseModal}). Loi Climat & Résilience : audit énergétique requis pour les maisons classées E, F ou G.` : 'Obligatoire pour la vente de maisons classées E, F ou G.' } : null,
+    !hasDoc(['ASSAINISSEMENT']) ? { emoji: '🚰', label: 'Diagnostic assainissement', tooltip: 'Obligatoire si la maison dispose d\'un assainissement non collectif (fosse septique). Aussi exigé dans certaines communes pour le tout-à-l\'égout.' } : null,
+    !hasDoc(['TAXE_FONCIERE']) ? { emoji: '🏛', label: 'Taxe foncière', tooltip: 'Dernier avis d\'imposition pour estimer la charge fiscale annuelle.' } : null,
   ].filter(Boolean) as { emoji: string; label: string; tooltip: string | null }[];
 
   // Le modificatif RCP n'est listé en secondaire QUE si le RCP est présent
@@ -4066,7 +4156,13 @@ function ComplementModal({ analyseId, profil, rapport, onClose, onSuccess }: {
     { emoji: '📊', label: 'DTG — Diagnostic Technique Global', tooltip: 'Bilan complet de l\'état de l\'immeuble. Permet d\'anticiper les grands travaux.' },
     { emoji: '📋', label: 'PPT — Plan Pluriannuel de Travaux', tooltip: 'Planning des travaux prévus sur 10 ans.' },
     !hasDoc(['PRE_ETAT_DATE']) ? { emoji: '📋', label: 'Pré-état daté', tooltip: 'Récapitule les sommes dues, les procédures en cours et les charges à venir.' } : null,
-  ].filter(Boolean) as { emoji: string; label: string; tooltip: string | null }[] : [];
+  ].filter(Boolean) as { emoji: string; label: string; tooltip: string | null }[] : [
+    { emoji: '🗺', label: 'Plan cadastral', tooltip: 'Limites et surface de la parcelle. Disponible gratuitement sur cadastre.gouv.fr.' },
+    { emoji: '🔨', label: 'Factures de travaux et garanties décennales', tooltip: 'Si rénovation récente : valorisent le bien et rassurent sur la qualité d\'exécution.' },
+    { emoji: '📐', label: 'Permis de construire / Déclarations de travaux', tooltip: 'Pour toute extension, véranda, piscine, garage… Confirme la régularité de la construction.' },
+    { emoji: '📏', label: 'Surface habitable mesurée (loi Boutin)', tooltip: 'La loi Carrez ne s\'applique pas aux maisons. Une mesure précise protège contre les litiges.' },
+    { emoji: '🍄', label: 'Diagnostic mérule', tooltip: 'Obligatoire dans certaines zones à risque délimitées par arrêté préfectoral.' },
+  ];
 
   const hasManquants = docsEssentielsManquants.length > 0 || docsSecondairesManquants.length > 0;
 
