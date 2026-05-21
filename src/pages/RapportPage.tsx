@@ -4453,7 +4453,7 @@ export function RapportViewExemple({ rapport, defaultTab = 'synthese', onComplem
     { id: 'synthese', label: 'Synthèse', icon: <Star size={14} />, dotColor: '#22c55e' },
     ...(hasCopro ? [{ id: 'copropriete' as TabId, label: 'Copropriété', icon: <Building2 size={14} />, dotColor: rapport.travaux_a_prevoir.length > 0 ? '#f97316' : '#22c55e' }] : []),
     { id: 'logement', label: logementLabel, icon: logementIcon, dotColor: rapport.diagnostics.some((d: Record<string, unknown>) => d.alerte && d.perimetre === 'lot_privatif') ? '#ef4444' : '#2a7d9c' },
-    { id: 'procedures', label: 'Procédures', icon: <Gavel size={14} />, dotColor: rapport.procedures_en_cours ? '#ef4444' : '#22c55e' },
+    ...(hasCopro ? [{ id: 'procedures' as TabId, label: 'Procédures', icon: <Gavel size={14} />, dotColor: rapport.procedures_en_cours ? '#ef4444' : '#22c55e' }] : []),
     { id: 'documents', label: 'Documents', icon: <FileText size={14} />, dotColor: '#94a3b8' },
   ];
 
@@ -4489,7 +4489,7 @@ export function RapportViewExemple({ rapport, defaultTab = 'synthese', onComplem
           {(activeTab === 'synthese' || !isComplete) && <SafeTabBoundary><TabSynthese rapport={rapport} /></SafeTabBoundary>}
           {activeTab === 'copropriete' && isComplete && hasCopro && <SafeTabBoundary><TabCopropriete rapport={rapport} /></SafeTabBoundary>}
           {activeTab === 'logement' && isComplete && <SafeTabBoundary><TabLogement rapport={rapport} onSwitchTab={setActiveTab} /></SafeTabBoundary>}
-          {activeTab === 'procedures' && isComplete && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
+          {activeTab === 'procedures' && isComplete && hasCopro && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
           {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} onComplement={onComplement} /></SafeTabBoundary>}
         </div>
       </div>
@@ -4659,7 +4659,7 @@ export default function RapportPage() {
     { id: 'synthese', label: 'Synthèse', icon: <Star size={14} />, dotColor: '#22c55e' },
     ...(hasCopro ? [{ id: 'copropriete' as TabId, label: 'Copropriété', icon: <Building2 size={14} />, dotColor: rapport.travaux_a_prevoir.length > 0 ? '#f97316' : '#22c55e' }] : []),
     { id: 'logement', label: logementLabel, icon: logementIcon, dotColor: rapport.diagnostics.some((d: Record<string, unknown>) => d.alerte && d.perimetre === 'lot_privatif') ? '#ef4444' : '#2a7d9c' },
-    { id: 'procedures', label: 'Procédures', icon: <Gavel size={14} />, dotColor: rapport.procedures_en_cours ? '#ef4444' : '#22c55e' },
+    ...(hasCopro ? [{ id: 'procedures' as TabId, label: 'Procédures', icon: <Gavel size={14} />, dotColor: rapport.procedures_en_cours ? '#ef4444' : '#22c55e' }] : []),
     ...(hasCompromis ? [{ id: 'compromis' as TabId, label: 'Compromis', icon: <FileSignature size={14} />, dotColor: '#0f2d3d' }] : []),
     { id: 'documents', label: 'Documents', icon: <FileText size={14} />, dotColor: missingEssentielsCount > 0 ? '#f97316' : '#94a3b8', badge: missingEssentielsCount > 0 ? missingEssentielsCount : undefined },
   ];
@@ -4724,7 +4724,7 @@ export default function RapportPage() {
           {(activeTab === 'synthese' || !isComplete) && <SafeTabBoundary><TabSynthese rapport={rapport} isShared={isShared} hideVerimoBranding={hideVerimoBranding} /></SafeTabBoundary>}
           {activeTab === 'copropriete' && isComplete && hasCopro && <SafeTabBoundary><TabCopropriete rapport={rapport} /></SafeTabBoundary>}
           {activeTab === 'logement' && isComplete && <SafeTabBoundary><TabLogement rapport={rapport} onSwitchTab={setActiveTab} /></SafeTabBoundary>}
-          {activeTab === 'procedures' && isComplete && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
+          {activeTab === 'procedures' && isComplete && hasCopro && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
           {activeTab === 'compromis' && isComplete && hasCompromis && <SafeTabBoundary><TabCompromis rapport={rapport} isShared={isShared} hideVerimoBranding={hideVerimoBranding} /></SafeTabBoundary>}
           {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} onComplement={() => setShowComplement(true)} /></SafeTabBoundary>}
         </div>
