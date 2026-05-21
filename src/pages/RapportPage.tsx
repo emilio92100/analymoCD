@@ -3887,8 +3887,6 @@ function TabDocuments({ rapport, onComplement }: { rapport: RapportData; onCompl
   const dpeDiag = (rapport.diagnostics || []).find((d: Record<string, unknown>) => safeStr(d.type) === 'DPE');
   const dpeClasse = dpeDiag ? safeStr(dpeDiag.resultat).match(/Classe\s+([A-G])\b/i)?.[1]?.toUpperCase() : null;
   const dpeMauvais = dpeClasse ? ['E', 'F', 'G'].includes(dpeClasse) : false;
-  const auditRequis = dpeMauvais; // Audit obligatoire si E, F ou G
-  // Si pas de DPE encore, on liste l'audit comme "potentiellement requis selon DPE"
 
   // Deadline 7 jours
   const deadlineStr = rapport.regeneration_deadline;
