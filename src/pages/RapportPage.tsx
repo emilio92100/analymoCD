@@ -3417,7 +3417,7 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
         {/* Impayés lot */}
         {!hasPed && lot?.impayes_detectes && (
           <div style={{ padding: '12px 16px', background: '#fef2f2', borderRadius: 10, border: '0.5px solid #fecaca', fontSize: 14, color: '#991b1b', lineHeight: 1.6 }}>
-            ⚠️ <strong>Impayés détectés sur ce lot :</strong> {safeStr(lot.impayes_detectes)}. Le vendeur doit apurer cette dette avant la signature de l'acte authentique.
+            ⚠️ <strong>Impayés détectés sur ce lot.</strong> Le vendeur doit apurer cette dette avant la signature de l'acte authentique.
           </div>
         )}
 
