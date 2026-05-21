@@ -787,7 +787,7 @@ export default function NouvelleAnalyse() {
           </div>
         </button>
       </div>
-      <p style={{ fontSize: 11, color: '#cbd5e1', marginTop: 20, textAlign: 'center' }}>Ce choix influence uniquement la notation — votre analyse reste complète dans tous les cas.</p>
+      <p style={{ fontSize: 12, color: '#64748b', marginTop: 20, textAlign: 'center' }}>Ce choix influence uniquement la notation — votre analyse reste complète dans tous les cas.</p>
     </motion.div>
   );
 
