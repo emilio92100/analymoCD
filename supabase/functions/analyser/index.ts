@@ -35,15 +35,11 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 // HELPERS UTILITAIRES
 // ══════════════════════════════════════════════════════════════
 
-async function blobToBase64(blob: Blob): Promise<string> {
-  const buffer = await blob.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
-  const chunks: string[] = [];
-  for (let i = 0; i < bytes.length; i += 8192) {
-    chunks.push(String.fromCharCode(...bytes.subarray(i, i + 8192)));
-  }
-  return btoa(chunks.join(''));
-}
+// ══════════════════════════════════════════════════════════════
+// REMARQUE : blobToBase64() supprimée (refactor CPU)
+// Anthropic Files API accepte le binaire direct via FormData multipart.
+// La conversion base64 était un détour inutile qui consommait du CPU.
+// ══════════════════════════════════════════════════════════════
 
 async function updateProgress(db: SupabaseClient, analyseId: string, current: number, total: number, message: string) {
   await db.from('analyses').update({ progress_current: current, progress_total: total, progress_message: message }).eq('id', analyseId);
@@ -53,17 +49,15 @@ async function updateProgress(db: SupabaseClient, analyseId: string, current: nu
 // UPLOAD VERS FILES API — avec retry sur 503/529
 // Retourne { id } en succès, { error } en cas d'échec
 // ══════════════════════════════════════════════════════════════
-async function uploadToFilesAPI(fileName: string, base64Data: string, apiKey: string): Promise<UploadResult> {
+async function uploadToFilesAPI(fileName: string, blob: Blob, apiKey: string): Promise<UploadResult> {
   // 🧪 MODE TEST : si FORCE_OVERLOAD=true, simule une panne Anthropic
   if (Deno.env.get('FORCE_OVERLOAD') === 'true') {
     console.log(`[analyser] 🧪 FORCE_OVERLOAD actif — simule overload pour "${fileName}"`);
     return { error: 'overload' };
   }
 
-  const binaryStr = atob(base64Data);
-  const bytes = new Uint8Array(binaryStr.length);
-  for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-  const blob = new Blob([bytes], { type: 'application/pdf' });
+  // 🆕 Refactor CPU : on utilise directement le Blob binaire reçu de Supabase Storage.
+  // Plus de conversion base64 ↔ binaire (économie CPU significative sur gros PDFs).
 
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
@@ -486,8 +480,7 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        const base64 = await blobToBase64(data);
-        const result = await uploadToFilesAPI(fileName, base64, apiKey);
+        const result = await uploadToFilesAPI(fileName, data, apiKey);
 
         if ('error' in result && result.error) {
           documentsIgnores.push(fileName);
