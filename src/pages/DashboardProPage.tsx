@@ -4943,7 +4943,8 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
     const newSizeBytes = filesArray.reduce((acc, f) => acc + f.size, 0);
     if (currentSizeBytes + newSizeBytes > SAFE_LIMIT_BYTES) {
       const totalMb = ((currentSizeBytes + newSizeBytes) / 1024 / 1024).toFixed(1);
-      setError(`Taille totale ${totalMb} MB — dépasse la limite de 10 MB. Retirez des fichiers ou choisissez-en de plus légers.`);
+      // 🆕 Message d'erreur enrichi avec solutions actionables (pas un cul-de-sac UX)
+      setError(`TOO_LARGE:${totalMb}`);
       return;
     }
     const newAttachments: AttachmentFile[] = filesArray.map((file, idx) => ({
@@ -5233,12 +5234,38 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
 
                   {attachments.length === 0 && (
                     <p style={{ fontSize: 11, color: '#94a3b8', margin: '8px 0 0', lineHeight: 1.5 }}>
-                      💡 Vos fichiers ne sont pas stockés sur Verimo — ils transitent directement vers votre client par email. Limite : 10 MB total.
+                      💡 Vos fichiers ne sont pas stockés sur Verimo — ils transitent directement vers votre client par email. Limite : 10 MB total — au-delà, compressez vos PDFs sur <a href="https://www.ilovepdf.com/compress_pdf" target="_blank" rel="noopener noreferrer" style={{ color: '#2a7d9c', fontWeight: 700, textDecoration: 'underline' }}>iLovePDF</a> ou envoyez-les via votre boîte mail.
                     </p>
                   )}
                 </div>
 
-                {error && <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 13, color: '#dc2626' }}>{error}</div>}
+                {/* 🆕 Affichage erreur — version riche pour cas TOO_LARGE, simple sinon */}
+                {error && error.startsWith('TOO_LARGE:') && (
+                  <div style={{ marginTop: 12, padding: '14px 16px', borderRadius: 12, background: '#fff7ed', border: '1px solid #fed7aa' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10 }}>
+                      <span style={{ fontSize: 18, lineHeight: 1, flexShrink: 0 }}>⚠️</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#9a3412', marginBottom: 2 }}>Fichiers trop volumineux</div>
+                        <div style={{ fontSize: 12, color: '#9a3412' }}>Total : {error.split(':')[1]} MB · Limite : 10 MB</div>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 12, color: '#78350f', lineHeight: 1.6, paddingLeft: 28 }}>
+                      <div style={{ fontWeight: 700, marginBottom: 6 }}>💡 Solutions :</div>
+                      <div style={{ marginBottom: 4 }}>
+                        • Compressez vos PDFs gratuitement sur <a href="https://www.ilovepdf.com/compress_pdf" target="_blank" rel="noopener noreferrer" style={{ color: '#2a7d9c', fontWeight: 700, textDecoration: 'underline' }}>iLovePDF</a>
+                      </div>
+                      <div style={{ marginBottom: 4 }}>
+                        • Ou envoyez les documents bruts directement depuis votre boîte mail, en complément du rapport Verimo
+                      </div>
+                      <div>
+                        • Ou retirez/remplacez les fichiers les plus lourds
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {error && !error.startsWith('TOO_LARGE:') && (
+                  <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 13, color: '#dc2626' }}>{error}</div>
+                )}
               </motion.div>
             )}
 
