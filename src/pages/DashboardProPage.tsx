@@ -5918,14 +5918,8 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
                     </div>
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, flex: 1, minWidth: 0 }}>
-                        {a.address || a.title}
-                      </div>
-                      {/* 🆕 Score affiché à côté du titre pour meilleure lisibilité */}
-                      {isCompleted && score !== null && (
-                        <span style={{ fontSize: 13, fontWeight: 800, color: getScoreColor(score), whiteSpace: 'nowrap' as const, flexShrink: 0 }}>{score}/20</span>
-                      )}
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                      {a.address || a.title}
                     </div>
                     <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span>{fmtDate(a.created_at)}</span>
@@ -5933,6 +5927,9 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
                       <span>{a.type === 'complete' || a.type === 'pack2' || a.type === 'pack3' ? 'Complète' : 'Simple'}</span>
                     </div>
                   </div>
+                  {isCompleted && score !== null && (
+                    <span style={{ fontSize: 20, fontWeight: 900, color: getScoreColor(score), whiteSpace: 'nowrap' as const, flexShrink: 0, lineHeight: 1 }}>{score}<span style={{ fontSize: 13, fontWeight: 700, opacity: 0.7 }}>/20</span></span>
+                  )}
                   {isPending && (
                     <span style={{ fontSize: 10, fontWeight: 700, color: '#d97706', background: '#fffbeb', padding: '3px 10px', borderRadius: 100, border: '1px solid #fef3c7', flexShrink: 0 }}>
                       {a.status === 'queued' ? 'En cours de traitement' : 'En cours'}
