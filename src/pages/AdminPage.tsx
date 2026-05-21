@@ -639,7 +639,7 @@ function SystemAlertsTab({ showToast }: { showToast: (msg: string) => void }) {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unresolved' | 'critical'>('unresolved');
-  const [activeCategory, setActiveCategory] = useState<'all' | 'stripe' | 'analyse' | 'autre'>('all');
+  const [activeCategory, setActiveCategory] = useState<'all' | 'stripe' | 'analyse' | 'cleanup' | 'autre'>('all');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [expandedAlerts, setExpandedAlerts] = useState<Set<string>>(new Set());
 
@@ -693,7 +693,7 @@ function SystemAlertsTab({ showToast }: { showToast: (msg: string) => void }) {
   };
 
   // ─── Catégorisation par source ───
-  const getCategory = (alert: Alert): 'stripe' | 'analyse' | 'autre' => {
+  const getCategory = (alert: Alert): 'stripe' | 'analyse' | 'cleanup' | 'autre' => {
     const title = (alert.title || '').toLowerCase();
     const eventType = (alert.metadata?.eventType as string || '').toLowerCase();
     if (title.includes('stripe') || title.includes('webhook') || title.includes('paiement') || title.includes('abonnement') || title.includes('remboursement') || title.includes('upgrade') || eventType.includes('invoice') || eventType.includes('subscription') || eventType.includes('charge') || eventType.includes('checkout')) {
@@ -701,6 +701,9 @@ function SystemAlertsTab({ showToast }: { showToast: (msg: string) => void }) {
     }
     if (title.includes('analyse') || title.includes('comparaison') || alert.type === 'analysis_failed' || alert.type === 'no_files' || alert.type === 'overload' || alert.type === 'api_billing' || alert.type === 'rate_limit' || alert.type === 'api_error') {
       return 'analyse';
+    }
+    if (alert.type === 'cleanup_error' || alert.type === 'cleanup_overflow' || alert.type === 'cleanup_failure') {
+      return 'cleanup';
     }
     return 'autre';
   };
@@ -828,6 +831,7 @@ function SystemAlertsTab({ showToast }: { showToast: (msg: string) => void }) {
     all: alerts.length,
     stripe: alerts.filter(a => getCategory(a) === 'stripe').length,
     analyse: alerts.filter(a => getCategory(a) === 'analyse').length,
+    cleanup: alerts.filter(a => getCategory(a) === 'cleanup').length,
     autre: alerts.filter(a => getCategory(a) === 'autre').length,
   };
 
@@ -853,6 +857,7 @@ function SystemAlertsTab({ showToast }: { showToast: (msg: string) => void }) {
     all: { label: 'Toutes', icon: '📋', color: '#0f2d3d', bg: '#fff' },
     stripe: { label: 'Stripe', icon: '💳', color: '#6366f1', bg: '#eef2ff' },
     analyse: { label: 'Analyse', icon: '🤖', color: '#16a34a', bg: '#f0fdf4' },
+    cleanup: { label: 'Cleanup', icon: '🧹', color: '#0891b2', bg: '#ecfeff' },
     autre: { label: 'Autre', icon: '🔧', color: '#64748b', bg: '#f1f5f9' },
   };
 
@@ -900,7 +905,7 @@ function SystemAlertsTab({ showToast }: { showToast: (msg: string) => void }) {
 
       {/* Onglets catégories */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 18, flexWrap: 'wrap' as const, padding: 5, background: '#f8fafc', borderRadius: 12, border: '1px solid #edf2f7' }}>
-        {(['all', 'stripe', 'analyse', 'autre'] as const).map(cat => {
+        {(['all', 'stripe', 'analyse', 'cleanup', 'autre'] as const).map(cat => {
           const c = categoryConfig[cat];
           const count = counts[cat];
           const active = activeCategory === cat;
@@ -944,7 +949,7 @@ function SystemAlertsTab({ showToast }: { showToast: (msg: string) => void }) {
         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
           {groups.map(group => {
             const sev = severityConfig[group.severity] || severityConfig.info;
-            const cat = categoryConfig[group.category as 'stripe' | 'analyse' | 'autre'] || categoryConfig.autre;
+            const cat = categoryConfig[group.category as 'stripe' | 'analyse' | 'cleanup' | 'autre'] || categoryConfig.autre;
             const isExpanded = expandedGroups.has(group.key);
             const occurrenceCount = group.alerts.length;
             const lastOccurrence = group.alerts[0];
