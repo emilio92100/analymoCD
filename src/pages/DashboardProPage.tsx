@@ -11,6 +11,7 @@ import {
   UserPlus, UserCheck, Folder, Lightbulb, MessageSquare,
   LayoutGrid, LayoutList, ArrowUpDown, Info, Calendar,
   Shield, Lock, ExternalLink, Archive, Sun, Moon,
+  Paperclip,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getStripe } from '../lib/stripe-client';
@@ -4841,6 +4842,17 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
   const [sendDone, setSendDone] = useState(false);
   const [error, setError] = useState('');
 
+  // 🆕 Pièces jointes & template de mail
+  // Le pro peut joindre des PDFs bruts (diag, PV AG, RCP…) pour compléter le rapport Verimo.
+  // Les fichiers transitent en mémoire (navigateur → edge function → Mailjet), JAMAIS stockés côté Verimo.
+  type AttachmentFile = { id: string; file: File; name: string; sizeBytes: number };
+  const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
+  type MessageTemplate = 'rapport_seul' | 'rapport_docs_acheteur' | 'rapport_docs_vendeur';
+  const [messageTemplate, setMessageTemplate] = useState<MessageTemplate>('rapport_seul');
+  // Limite de sécurité côté UI : 13 MB en base64 = ~10 MB de PDF original (overhead base64 +33%)
+  // On reste sous les 15 MB Mailjet pour laisser de la marge au HTML du mail
+  const SAFE_LIMIT_BYTES = 10 * 1024 * 1024;
+
   const senderName = proProfile.full_name || '';
   const senderNetwork = proProfile.pro_network || '';
   const senderCompanyName = proProfile.pro_company_name || '';
@@ -4861,7 +4873,7 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
     return raw.includes(' — ') ? raw.split(' — ')[0] : raw;
   };
 
-  // Génère le message adapté
+  // Génère le message adapté selon le template sélectionné
   const generateMessage = useCallback(() => {
     const selectedList = analyses.filter(a => selectedAnalysisIds.has(a.id));
     const address = folderAddress || 'le bien concerné';
@@ -4871,17 +4883,89 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
       ? `du ${docNames[0].toLowerCase()}`
       : `du ${docNames.slice(0, -1).map(d => d.toLowerCase()).join(', du ')} et du ${docNames[docNames.length - 1].toLowerCase()}`;
 
-    if (selectedList.length === 1) {
-      return `Bonjour,\n\nDans le cadre de votre projet immobilier, je vous transmets le rapport d'analyse concernant le bien situé ${address}.\n\nCe rapport vous permettra d'avoir une vision claire ${docPhrase}.\n\nN'hésitez pas à me contacter pour en discuter ensemble.\n\nCordialement,\n${senderName}${senderSignature ? '\n' + senderSignature : ''}`;
-    } else {
-      return `Bonjour,\n\nDans le cadre de votre projet immobilier, je vous transmets ${selectedList.length} rapports d'analyse concernant le bien situé ${address}.\n\nCes rapports vous permettront d'avoir une vision claire ${docPhrase}.\n\nN'hésitez pas à me contacter pour en discuter ensemble.\n\nCordialement,\n${senderName}${senderSignature ? '\n' + senderSignature : ''}`;
-    }
-  }, [analyses, selectedAnalysisIds, folderAddress, senderName, senderSignature]);
+    const nbRapports = selectedList.length;
+    const signature = `\n\nCordialement,\n${senderName}${senderSignature ? '\n' + senderSignature : ''}`;
 
-  // Met à jour le message quand les analyses changent
+    // 🆕 Template 2 — Rapport + documents bruts pour un ACHETEUR
+    if (messageTemplate === 'rapport_docs_acheteur') {
+      const intro = nbRapports === 1
+        ? `je vous transmets le rapport d'analyse concernant le bien situé ${address}, ainsi que les documents originaux qui ont servi à cette analyse.`
+        : `je vous transmets ${nbRapports} rapports d'analyse concernant le bien situé ${address}, ainsi que les documents originaux qui ont servi à ces analyses.`;
+      return `Bonjour,\n\nDans le cadre de votre projet d'acquisition, ${intro}\n\nLe rapport synthétise les points essentiels à connaître avant de vous engager. Les pièces jointes vous permettent d'approfondir certains aspects si vous le souhaitez.\n\nN'hésitez pas à me contacter pour échanger sur ces éléments.${signature}`;
+    }
+
+    // 🆕 Template 3 — Rapport + documents bruts pour un VENDEUR
+    if (messageTemplate === 'rapport_docs_vendeur') {
+      const intro = nbRapports === 1
+        ? `je vous transmets le rapport d'analyse Verimo de votre bien situé ${address}, ainsi que les documents originaux qui ont servi à cette analyse.`
+        : `je vous transmets ${nbRapports} rapports d'analyse concernant votre bien situé ${address}, ainsi que les documents originaux qui ont servi à ces analyses.`;
+      return `Bonjour,\n\nDans le cadre de la mise en vente de votre bien, ${intro}\n\nCette analyse nous servira de base pour valoriser votre bien et anticiper les questions des futurs acquéreurs. Je reste à votre disposition pour en discuter.${signature}`;
+    }
+
+    // Template 1 (par défaut) — Rapport seul
+    if (nbRapports === 1) {
+      return `Bonjour,\n\nDans le cadre de votre projet immobilier, je vous transmets le rapport d'analyse concernant le bien situé ${address}.\n\nCe rapport vous permettra d'avoir une vision claire ${docPhrase}.\n\nN'hésitez pas à me contacter pour en discuter ensemble.${signature}`;
+    } else {
+      return `Bonjour,\n\nDans le cadre de votre projet immobilier, je vous transmets ${nbRapports} rapports d'analyse concernant le bien situé ${address}.\n\nCes rapports vous permettront d'avoir une vision claire ${docPhrase}.\n\nN'hésitez pas à me contacter pour en discuter ensemble.${signature}`;
+    }
+  }, [analyses, selectedAnalysisIds, folderAddress, senderName, senderSignature, messageTemplate]);
+
+  // Met à jour le message quand les analyses ou le template changent
   useEffect(() => {
     if (selectedAnalysisIds.size > 0) setMessage(generateMessage());
   }, [selectedAnalysisIds, generateMessage]);
+
+  // 🆕 Helpers pièces jointes
+  // Convertit un File en base64 (uniquement la partie data, sans le préfixe "data:...;base64,")
+  const fileToBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const commaIdx = result.indexOf(',');
+      resolve(commaIdx >= 0 ? result.slice(commaIdx + 1) : result);
+    };
+    reader.onerror = () => reject(new Error(`Lecture impossible : ${file.name}`));
+    reader.readAsDataURL(file);
+  });
+
+  const handleAddFiles = (newFiles: FileList | null) => {
+    if (!newFiles || newFiles.length === 0) return;
+    setError('');
+    const filesArray = Array.from(newFiles);
+    // Vérifier que ce sont des PDFs
+    const invalidFiles = filesArray.filter(f => !f.name.toLowerCase().endsWith('.pdf'));
+    if (invalidFiles.length > 0) {
+      setError(`Format non accepté : ${invalidFiles.map(f => f.name).join(', ')}. Seuls les PDFs sont autorisés.`);
+      return;
+    }
+    // Vérifier l'unicité des noms
+    const currentSizeBytes = attachments.reduce((acc, a) => acc + a.sizeBytes, 0);
+    const newSizeBytes = filesArray.reduce((acc, f) => acc + f.size, 0);
+    if (currentSizeBytes + newSizeBytes > SAFE_LIMIT_BYTES) {
+      const totalMb = ((currentSizeBytes + newSizeBytes) / 1024 / 1024).toFixed(1);
+      setError(`Taille totale ${totalMb} MB — dépasse la limite de 10 MB. Retirez des fichiers ou choisissez-en de plus légers.`);
+      return;
+    }
+    const newAttachments: AttachmentFile[] = filesArray.map((file, idx) => ({
+      id: `${Date.now()}-${idx}-${file.name}`,
+      file,
+      name: file.name,
+      sizeBytes: file.size,
+    }));
+    setAttachments(prev => [...prev, ...newAttachments]);
+  };
+
+  const handleRemoveAttachment = (id: string) => {
+    setAttachments(prev => prev.filter(a => a.id !== id));
+    setError('');
+  };
+
+  // Calculs pour le compteur de taille
+  const totalAttachmentBytes = attachments.reduce((acc, a) => acc + a.sizeBytes, 0);
+  const totalAttachmentMb = totalAttachmentBytes / 1024 / 1024;
+  const limitMb = SAFE_LIMIT_BYTES / 1024 / 1024;
+  const sizePct = Math.min(100, (totalAttachmentBytes / SAFE_LIMIT_BYTES) * 100);
+  const sizeColor = sizePct < 50 ? '#16a34a' : sizePct < 80 ? '#d97706' : '#dc2626';
 
   const toggleRecipient = (id: string) => {
     setSelectedRecipientIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
@@ -4902,6 +4986,19 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
       const totalSends = selectedRecipients.length;
       let sent = 0;
 
+      // 🆕 Convertir les pièces jointes en base64 UNE SEULE FOIS (pas par destinataire) pour éviter
+      // la conversion répétée si plusieurs destinataires sont sélectionnés.
+      let attachmentsPayload: Array<{ filename: string; contentType: string; base64Content: string }> = [];
+      if (attachments.length > 0) {
+        attachmentsPayload = await Promise.all(
+          attachments.map(async (att) => ({
+            filename: att.name,
+            contentType: 'application/pdf',
+            base64Content: await fileToBase64(att.file),
+          }))
+        );
+      }
+
       for (const recipient of selectedRecipients) {
         // Envoyer un mail groupé avec toutes les analyses sélectionnées
         const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
@@ -4918,6 +5015,8 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
             recipient_firstname: recipient.first_name || recipient.last_name,
             recipient_email: recipient.email,
             message: message.replace(/^Bonjour,/, `Bonjour ${recipient.first_name || recipient.last_name},`),
+            // 🆕 Pièces jointes (peut être tableau vide si pas de PDFs joints)
+            attachments: attachmentsPayload,
           }),
         });
         const data = await res.json();
@@ -5061,8 +5160,92 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
                 <p style={{ fontSize: 11, color: '#94a3b8', margin: '0 0 16px' }}>
                   → {selectedRecipientIds.size} destinataire{selectedRecipientIds.size > 1 ? 's' : ''} · {selectedAnalysisIds.size} analyse{selectedAnalysisIds.size > 1 ? 's' : ''}
                 </p>
+
+                {/* 🆕 Sélecteur de template */}
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 6, display: 'block' }}>Type de message</label>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {([
+                      { id: 'rapport_seul' as const, label: '📄 Rapport seul' },
+                      { id: 'rapport_docs_acheteur' as const, label: '🛒 Rapport + docs (acheteur)' },
+                      { id: 'rapport_docs_vendeur' as const, label: '🏷️ Rapport + docs (vendeur)' },
+                    ]).map(t => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setMessageTemplate(t.id)}
+                        style={{
+                          padding: '8px 14px', borderRadius: 10, fontSize: 12, fontWeight: 700,
+                          cursor: 'pointer', transition: 'all 0.15s',
+                          background: messageTemplate === t.id ? '#2a7d9c' : '#fff',
+                          color: messageTemplate === t.id ? '#fff' : '#64748b',
+                          border: `1.5px solid ${messageTemplate === t.id ? '#2a7d9c' : '#e2e8f0'}`,
+                        }}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <textarea value={message} onChange={e => setMessage(e.target.value)} rows={10}
                   style={{ width: '100%', padding: '14px 16px', borderRadius: 14, border: '1.5px solid #edf2f7', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.7, background: '#f8fafc' }} />
+
+                {/* 🆕 Zone Pièces jointes */}
+                <div style={{ marginTop: 18 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>
+                      📎 Pièces jointes <span style={{ fontWeight: 500, color: '#94a3b8' }}>(optionnel — PDFs uniquement)</span>
+                    </label>
+                    {attachments.length > 0 && (
+                      <span style={{ fontSize: 11, fontWeight: 700, color: sizeColor }}>
+                        {totalAttachmentMb.toFixed(1)} / {limitMb.toFixed(0)} MB
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Barre de progression taille */}
+                  {attachments.length > 0 && (
+                    <div style={{ width: '100%', height: 4, background: '#f1f5f9', borderRadius: 100, overflow: 'hidden', marginBottom: 10 }}>
+                      <div style={{ height: '100%', width: `${sizePct}%`, background: sizeColor, transition: 'width 0.3s, background 0.3s', borderRadius: 100 }} />
+                    </div>
+                  )}
+
+                  {/* Liste des fichiers */}
+                  {attachments.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+                      {attachments.map(att => (
+                        <div key={att.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10 }}>
+                          <span style={{ fontSize: 16 }}>📄</span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</span>
+                          <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{(att.sizeBytes / 1024 / 1024).toFixed(2)} MB</span>
+                          <button type="button" onClick={() => handleRemoveAttachment(att.id)} style={{ width: 22, height: 22, borderRadius: 6, background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Bouton d'ajout */}
+                  <label style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    padding: '10px 14px', borderRadius: 10,
+                    background: '#f8fafc', border: '1.5px dashed #cbd5e1', color: '#64748b',
+                    fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s',
+                  }}
+                    onMouseOver={e => { (e.currentTarget as HTMLElement).style.background = '#f1f5f9'; (e.currentTarget as HTMLElement).style.borderColor = '#94a3b8'; }}
+                    onMouseOut={e => { (e.currentTarget as HTMLElement).style.background = '#f8fafc'; (e.currentTarget as HTMLElement).style.borderColor = '#cbd5e1'; }}
+                  >
+                    <Paperclip size={14} />
+                    {attachments.length === 0 ? 'Ajouter des fichiers' : 'Ajouter d\'autres fichiers'}
+                    <input type="file" accept="application/pdf" multiple onChange={e => { handleAddFiles(e.target.files); e.target.value = ''; }} style={{ display: 'none' }} />
+                  </label>
+
+                  {attachments.length === 0 && (
+                    <p style={{ fontSize: 11, color: '#94a3b8', margin: '8px 0 0', lineHeight: 1.5 }}>
+                      💡 Vos fichiers ne sont pas stockés sur Verimo — ils transitent directement vers votre client par email. Limite : 10 MB total.
+                    </p>
+                  )}
+                </div>
 
                 {!proProfile.pro_logo_url && (
                   <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: '#fffbeb', border: '1px solid #fef3c7', fontSize: 12, color: '#78350f' }}>
@@ -5081,7 +5264,7 @@ function SendReportFromDossier({ analyses, buyers, sellers, proProfile, folderAd
                     style={{ padding: '13px 32px', borderRadius: 14, border: 'none',
                       background: 'linear-gradient(135deg, #16a34a, #15803d)',
                       color: '#fff', fontSize: 15, fontWeight: 800, cursor: 'pointer', boxShadow: '0 8px 24px rgba(22,163,74,0.25)' }}>
-                    📧 Envoyer
+                    📧 Envoyer{attachments.length > 0 ? ` (+ ${attachments.length} PJ)` : ''}
                   </button>
                 </div>
               </motion.div>
