@@ -5771,24 +5771,24 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
             </div>
           </button>
 
-          {/* Ajouter un acheteur — vert clair */}
+          {/* Ajouter un acheteur — orange clair */}
           <button
             onClick={() => { if (!folder.archived_at) { setEditingBuyer(null); setShowBuyerModal(true); } }}
             disabled={!!folder.archived_at}
             title={folder.archived_at ? 'Restaurez le dossier pour ajouter un acheteur' : undefined}
             style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 10,
-              background: folder.archived_at ? '#f8fafc' : 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
-              border: folder.archived_at ? '1.5px dashed #e2e8f0' : '1px solid #bbf7d0',
+              background: folder.archived_at ? '#f8fafc' : 'linear-gradient(135deg, #fff7ed, #ffedd5)',
+              border: folder.archived_at ? '1.5px dashed #e2e8f0' : '1px solid #fed7aa',
               cursor: folder.archived_at ? 'not-allowed' : 'pointer',
               textAlign: 'left' as const, transition: 'all 0.15s',
               opacity: folder.archived_at ? 0.55 : 1, fontFamily: 'inherit' }}
-            onMouseOver={e => { if (!folder.archived_at) (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #dcfce7, #bbf7d0)'; }}
-            onMouseOut={e => { if (!folder.archived_at) (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #f0fdf4, #dcfce7)'; }}>
-            <div style={{ width: 28, height: 28, borderRadius: 7, background: folder.archived_at ? '#f1f5f9' : '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            onMouseOver={e => { if (!folder.archived_at) (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #ffedd5, #fed7aa)'; }}
+            onMouseOut={e => { if (!folder.archived_at) (e.currentTarget as HTMLElement).style.background = 'linear-gradient(135deg, #fff7ed, #ffedd5)'; }}>
+            <div style={{ width: 28, height: 28, borderRadius: 7, background: folder.archived_at ? '#f1f5f9' : '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <UserPlus size={14} style={{ color: folder.archived_at ? '#94a3b8' : '#fff' }} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ fontSize: 12.5, fontWeight: 700, color: folder.archived_at ? '#64748b' : '#14532d' }}>Ajouter un acheteur</span>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: folder.archived_at ? '#64748b' : '#7c2d12' }}>Ajouter un acheteur</span>
               {folder.archived_at && <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 1 }}>🔒 Dossier archivé</div>}
             </div>
           </button>
