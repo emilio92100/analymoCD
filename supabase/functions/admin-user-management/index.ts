@@ -969,7 +969,7 @@ Deno.serve(async (req) => {
       const html = buildDemoInvitationEmail(prenom, inviteToken, custom_message || null, !!attachmentsPayload)
       const mailResult = await sendMailjet(
         email,
-        '🎁 Verimo Pro — Votre accès découverte',
+        'Verimo Pro — Votre accès découverte',
         html,
         attachmentsPayload
       )
