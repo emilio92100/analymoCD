@@ -896,7 +896,7 @@ Deno.serve(async (req) => {
 
       const userId = authData.user.id
 
-      // 2. Création du profil pro en mode démo (1+1 crédits offerts)
+      // 2. Création du profil pro en mode démo
       const nowIso = new Date().toISOString()
       const { error: profileError } = await adminClient.from('profiles').upsert({
         id: userId,
@@ -908,14 +908,37 @@ Deno.serve(async (req) => {
         pro_demo_started_at: nowIso,
         pro_created_at: nowIso,
         pro_created_by: user.email,
-        credits_document: 1,
-        credits_complete: 1,
         pro_onboarding_done: false,
       }, { onConflict: 'id' })
       if (profileError) {
         // Rollback : supprimer le user auth si le profil a échoué
         await adminClient.auth.admin.deleteUser(userId)
         return new Response(JSON.stringify({ error: profileError.message }), { status: 400, headers: corsHeaders })
+      }
+
+      // 2bis. Insertion des crédits offerts dans credit_grants (1 simple + 1 complète)
+      const { error: grantsError } = await adminClient.from('credit_grants').insert([
+        {
+          user_id: userId,
+          granted_by: user.id,
+          credit_type: 'simple',
+          quantity: 1,
+          reason: 'Crédit offert — invitation démo',
+        },
+        {
+          user_id: userId,
+          granted_by: user.id,
+          credit_type: 'complete',
+          quantity: 1,
+          reason: 'Crédit offert — invitation démo',
+        },
+      ])
+      if (grantsError) {
+        console.error('[create_pro_demo] Erreur création credit_grants:', grantsError)
+        // Rollback profil + user auth
+        await adminClient.from('profiles').delete().eq('id', userId)
+        await adminClient.auth.admin.deleteUser(userId)
+        return new Response(JSON.stringify({ error: 'Erreur attribution crédits: ' + grantsError.message }), { status: 400, headers: corsHeaders })
       }
 
       // 3. Création du token d'invitation
@@ -980,9 +1003,9 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: 'profile_id requis.' }), { status: 400, headers: corsHeaders })
       }
 
-      // Récupérer le profil pour additionner les crédits
+      // Vérifier que le profil existe
       const { data: currentProfile, error: fetchError } = await adminClient.from('profiles')
-        .select('credits_document, credits_complete, pro_status')
+        .select('id, pro_status')
         .eq('id', profile_id).single()
       if (fetchError || !currentProfile) {
         return new Response(JSON.stringify({ error: 'Profil introuvable.' }), { status: 404, headers: corsHeaders })
@@ -991,11 +1014,37 @@ Deno.serve(async (req) => {
       const addDoc = parseInt(credits_document_add) || 0
       const addComplete = parseInt(credits_complete_add) || 0
 
+      // Insérer les crédits supplémentaires dans credit_grants
+      const grantsToInsert: Array<Record<string, unknown>> = []
+      if (addDoc > 0) {
+        grantsToInsert.push({
+          user_id: profile_id,
+          granted_by: user.id,
+          credit_type: 'simple',
+          quantity: addDoc,
+          reason: 'Crédit offert — activation compte (sortie démo)',
+        })
+      }
+      if (addComplete > 0) {
+        grantsToInsert.push({
+          user_id: profile_id,
+          granted_by: user.id,
+          credit_type: 'complete',
+          quantity: addComplete,
+          reason: 'Crédit offert — activation compte (sortie démo)',
+        })
+      }
+      if (grantsToInsert.length > 0) {
+        const { error: grantsError } = await adminClient.from('credit_grants').insert(grantsToInsert)
+        if (grantsError) {
+          return new Response(JSON.stringify({ error: 'Erreur ajout crédits: ' + grantsError.message }), { status: 400, headers: corsHeaders })
+        }
+      }
+
+      // Mettre à jour le statut du profil
       const { error: updateError } = await adminClient.from('profiles').update({
         pro_status: 'active',
         pro_demo_converted_at: new Date().toISOString(),
-        credits_document: (currentProfile.credits_document || 0) + addDoc,
-        credits_complete: (currentProfile.credits_complete || 0) + addComplete,
       }).eq('id', profile_id)
       if (updateError) {
         return new Response(JSON.stringify({ error: updateError.message }), { status: 400, headers: corsHeaders })
