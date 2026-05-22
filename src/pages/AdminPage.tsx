@@ -6354,9 +6354,14 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 <button
                   type="button"
                   onClick={() => {
-                    const p = demoForm.full_name.split(' ')[0] || '[prénom]';
+                    if (!demoForm.full_name.trim()) {
+                      setDemoError('Renseignez d\'abord le nom complet pour personnaliser le message.');
+                      return;
+                    }
+                    const p = demoForm.full_name.split(' ')[0];
                     const tpl = `Bonjour ${p},\n\nSuite à notre rendez-vous de présentation de Verimo, nous sommes ravis de vous offrir un accès découverte à notre service.\n\nVous pourrez tester gratuitement avec 1 analyse simple et 1 analyse complète offertes — de quoi vous faire votre propre idée sur l'apport concret pour vos clients acheteurs.\n\nEn pièce jointe, notre plaquette qui récapitule l'offre et les cas d'usage qui pourront vous aider au quotidien.\n\nÀ très vite,\nL'équipe Verimo`;
                     setDemoForm(f => ({ ...f, custom_message: tpl }));
+                    setDemoError('');
                   }}
                   style={{ padding: '6px 12px', borderRadius: 8, background: '#f0f7fb', border: '1px solid #d0e8f0', color: '#2a7d9c', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                   📅 Suite à un RDV
@@ -6364,9 +6369,14 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 <button
                   type="button"
                   onClick={() => {
-                    const p = demoForm.full_name.split(' ')[0] || '[prénom]';
+                    if (!demoForm.full_name.trim()) {
+                      setDemoError('Renseignez d\'abord le nom complet pour personnaliser le message.');
+                      return;
+                    }
+                    const p = demoForm.full_name.split(' ')[0];
                     const tpl = `Bonjour ${p},\n\nSuite à notre échange, nous vous proposons de tester Verimo Pro en conditions réelles.\n\nVous bénéficiez de 1 analyse simple et 1 analyse complète offertes — l'occasion idéale de constater concrètement ce que vos clients vont voir et comment notre rapport peut accélérer vos signatures.\n\nLa plaquette en pièce jointe résume notre offre et vous donne des idées d'utilisation au quotidien.\n\nN'hésitez pas si vous avez la moindre question.\n\nL'équipe Verimo`;
                     setDemoForm(f => ({ ...f, custom_message: tpl }));
+                    setDemoError('');
                   }}
                   style={{ padding: '6px 12px', borderRadius: 8, background: '#f0f7fb', border: '1px solid #d0e8f0', color: '#2a7d9c', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                   💬 Suite à un échange
@@ -6383,7 +6393,10 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 value={demoForm.custom_message}
                 onChange={e => setDemoForm(f => ({ ...f, custom_message: e.target.value }))}
                 style={{ ...inputStyle, minHeight: 170, resize: 'vertical' as const, fontFamily: 'inherit', lineHeight: 1.6 }}
-                placeholder={`Bonjour ${demoForm.full_name.split(' ')[0] || '[prénom]'},\n\nLaissez vide pour utiliser le message par défaut, ou cliquez sur un modèle rapide ci-dessus.`}
+                placeholder={demoForm.full_name.trim()
+                  ? `Bonjour ${demoForm.full_name.split(' ')[0]},\n\nLaissez vide pour utiliser le message par défaut, ou cliquez sur un modèle rapide ci-dessus pour pré-remplir.`
+                  : `Renseignez d'abord le nom complet en haut, puis cliquez sur un modèle rapide.\n\nVous pouvez aussi rédiger votre propre message ici (le prénom sera ajouté automatiquement en début).`
+                }
               />
 
               {/* Aperçu visuel du contenu du mail (structure) */}
