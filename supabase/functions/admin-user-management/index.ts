@@ -921,7 +921,7 @@ Deno.serve(async (req) => {
         {
           user_id: userId,
           granted_by: user.id,
-          credit_type: 'simple',
+          credit_type: 'document',
           quantity: 1,
           reason: 'Crédit offert — invitation démo',
         },
@@ -1020,7 +1020,7 @@ Deno.serve(async (req) => {
         grantsToInsert.push({
           user_id: profile_id,
           granted_by: user.id,
-          credit_type: 'simple',
+          credit_type: 'document',
           quantity: addDoc,
           reason: 'Crédit offert — activation compte (sortie démo)',
         })
