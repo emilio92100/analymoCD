@@ -5208,6 +5208,12 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [proFilter, setProFilter] = useState<'all' | 'active' | 'cancel_scheduled' | 'activated' | 'inactive' | 'canceled'>('all');
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  // 🆕 State pour le modal d'invitation démo
+  const [showDemoInvite, setShowDemoInvite] = useState(false);
+  const [demoForm, setDemoForm] = useState({ full_name: '', email: '', pro_company_name: '', custom_message: '' });
+  const [demoFile, setDemoFile] = useState<File | null>(null);
+  const [demoError, setDemoError] = useState('');
+  const [demoSending, setDemoSending] = useState(false);
   const [selected, setSelected] = useState<ProClient | null>(null);
   const [invitations, setInvitations] = useState<ProInvitation[]>([]);
   const [clientAnalyses, setClientAnalyses] = useState<{ id: string; title: string; address?: string; status: string; score?: number; created_at: string }[]>([]);
@@ -5389,6 +5395,96 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
     setCreating(false);
   };
 
+  // 🆕 Envoi de l'invitation démo avec PDF en pièce jointe
+  const handleDemoInvite = async () => {
+    if (!demoForm.email || !demoForm.full_name) {
+      setDemoError('Email et nom complet obligatoires.');
+      return;
+    }
+    if (!demoForm.email.includes('@')) {
+      setDemoError('Email invalide.');
+      return;
+    }
+    setDemoSending(true); setDemoError('');
+    try {
+      // Convertir le PDF en base64 si fourni
+      let attachment: { filename: string; contentType: string; base64Content: string } | undefined;
+      if (demoFile) {
+        if (demoFile.size > 12 * 1024 * 1024) {
+          setDemoError('Le fichier dépasse 12 Mo.');
+          setDemoSending(false);
+          return;
+        }
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            // Extraire la partie base64 après "data:application/pdf;base64,"
+            const base64Part = result.split(',')[1] || '';
+            resolve(base64Part);
+          };
+          reader.onerror = () => reject(new Error('Lecture du fichier impossible'));
+          reader.readAsDataURL(demoFile);
+        });
+        attachment = {
+          filename: demoFile.name,
+          contentType: demoFile.type || 'application/pdf',
+          base64Content: base64,
+        };
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+        body: JSON.stringify({
+          action: 'create_pro_demo',
+          email: demoForm.email,
+          full_name: demoForm.full_name,
+          pro_company_name: demoForm.pro_company_name || null,
+          custom_message: demoForm.custom_message || null,
+          attachment,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setDemoError(data.error);
+        setDemoSending(false);
+        return;
+      }
+      await logAction('Compte démo créé + mail envoyé', demoForm.email);
+      showToast(`Invitation démo envoyée à ${demoForm.email}${data.attachment_sent ? ' avec PJ' : ''}`);
+      setShowDemoInvite(false);
+      setDemoForm({ full_name: '', email: '', pro_company_name: '', custom_message: '' });
+      setDemoFile(null);
+      loadClients();
+    } catch (e) { setDemoError(String(e)); }
+    setDemoSending(false);
+  };
+
+  // 🆕 Activer un compte démo (sortie de démo + ajout crédits)
+  const handleActivateDemo = async (profileId: string, addDoc: number, addComplete: number) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('https://veszrayromldfgetqaxb.supabase.co/functions/v1/admin-user-management', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+        body: JSON.stringify({
+          action: 'activate_pro_demo',
+          profile_id: profileId,
+          credits_document_add: addDoc,
+          credits_complete_add: addComplete,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) { showToast('Erreur : ' + data.error); return; }
+      await logAction('Compte démo activé', `${profileId} (+${addDoc} simple, +${addComplete} complète)`);
+      showToast('Compte activé — sorti du mode démo');
+      loadClients();
+      if (selected) loadClientDetail(selected);
+    } catch (e) { showToast('Erreur : ' + String(e)); }
+  };
+
   const sendInvitation = async (profileId: string, isResend = false) => {
     setSendingInvite(true);
     try {
@@ -5426,10 +5522,21 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
           <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Clients Pro</h1>
           <p style={{ fontSize: 13, color: '#94a3b8' }}>{clients.length} client{clients.length > 1 ? 's' : ''} pro</p>
         </div>
-        <button onClick={() => { setForm({ full_name: '', email: '', telephone: '', pro_profile_type: 'agent', pro_company_name: '', pro_company_address: '', pro_postal_code: '', pro_siret: '', pro_ville: '', pro_network: '', pro_notes_admin: '', pro_recommended_plan: '', credits_document: '0', credits_complete: '0', contact_pro_id: '' }); setCreateError(''); setShowCreate(true); }}
-          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
-          <UserPlus size={14} /> Créer un client pro
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
+          <button onClick={() => {
+            setDemoForm({ full_name: '', email: '', pro_company_name: '', custom_message: '' });
+            setDemoFile(null);
+            setDemoError('');
+            setShowDemoInvite(true);
+          }}
+            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: 'linear-gradient(135deg,#fbbf24,#f59e0b)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(245,158,11,0.25)' }}>
+            🎁 Inviter en démo
+          </button>
+          <button onClick={() => { setForm({ full_name: '', email: '', telephone: '', pro_profile_type: 'agent', pro_company_name: '', pro_company_address: '', pro_postal_code: '', pro_siret: '', pro_ville: '', pro_network: '', pro_notes_admin: '', pro_recommended_plan: '', credits_document: '0', credits_complete: '0', contact_pro_id: '' }); setCreateError(''); setShowCreate(true); }}
+            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 16px', borderRadius: 11, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
+            <UserPlus size={14} /> Créer un client pro
+          </button>
+        </div>
       </div>
 
       {/* Liste des clients */}
@@ -6210,6 +6317,97 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
 
       {/* Modal création */}
       <AnimatePresence>
+        {/* 🆕 MODAL INVITATION DÉMO */}
+        {showDemoInvite && (
+          <Modal title="🎁 Inviter en démo" onClose={() => !demoSending && setShowDemoInvite(false)} width={620}>
+            <div style={{ padding: '14px 16px', borderRadius: 12, background: 'linear-gradient(135deg,#fef9e7,#fef3c7)', border: '1px solid #fde68a', marginBottom: 18, fontSize: 13, color: '#78350f', lineHeight: 1.5 }}>
+              <strong>📣 Le prospect recevra :</strong> 1 analyse simple + 1 analyse complète offertes pour tester Verimo Pro.
+              Il pourra créer son compte via le lien, puis convertir vers un plan payant plus tard.
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+              <div>
+                <label style={labelStyle}>Nom complet *</label>
+                <input value={demoForm.full_name} onChange={e => setDemoForm(f => ({ ...f, full_name: e.target.value }))} style={inputStyle} placeholder="Jean Dupont" />
+              </div>
+              <div>
+                <label style={labelStyle}>Email *</label>
+                <input value={demoForm.email} onChange={e => setDemoForm(f => ({ ...f, email: e.target.value }))} style={inputStyle} placeholder="jean@agence.fr" type="email" />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Agence / Société (optionnel)</label>
+              <input value={demoForm.pro_company_name} onChange={e => setDemoForm(f => ({ ...f, pro_company_name: e.target.value }))} style={inputStyle} placeholder="Agence Dupont Immo" />
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>
+                Message personnalisé (optionnel)
+                <span style={{ fontWeight: 400, color: '#94a3b8', marginLeft: 6 }}>— laissez vide pour le texte par défaut</span>
+              </label>
+              <textarea
+                value={demoForm.custom_message}
+                onChange={e => setDemoForm(f => ({ ...f, custom_message: e.target.value }))}
+                style={{ ...inputStyle, minHeight: 110, resize: 'vertical' as const, fontFamily: 'inherit' }}
+                placeholder={`Bonjour ${demoForm.full_name.split(' ')[0] || '[prénom]'},\n\nSuite à notre échange...`}
+              />
+            </div>
+
+            <div style={{ marginBottom: 18 }}>
+              <label style={labelStyle}>
+                📎 Pièce jointe (PDF — plaquette de présentation)
+                <span style={{ fontWeight: 400, color: '#94a3b8', marginLeft: 6 }}>— optionnel, max 12 Mo</span>
+              </label>
+              {!demoFile ? (
+                <label style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  padding: '20px 16px', borderRadius: 10, border: '2px dashed #cbd5e1', background: '#f8fafc',
+                  cursor: 'pointer', fontSize: 13, color: '#64748b', fontWeight: 600, transition: 'all 0.15s',
+                }}
+                  onMouseOver={e => { (e.currentTarget as HTMLElement).style.borderColor = '#2a7d9c'; (e.currentTarget as HTMLElement).style.background = '#f0f7fb'; }}
+                  onMouseOut={e => { (e.currentTarget as HTMLElement).style.borderColor = '#cbd5e1'; (e.currentTarget as HTMLElement).style.background = '#f8fafc'; }}
+                >
+                  📎 Cliquez pour ajouter un PDF
+                  <input type="file" accept="application/pdf,.pdf" style={{ display: 'none' }} onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      if (f.size > 12 * 1024 * 1024) { setDemoError('Le fichier dépasse 12 Mo.'); return; }
+                      setDemoFile(f);
+                      setDemoError('');
+                    }
+                  }} />
+                </label>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, border: '1px solid #bbf7d0', background: '#f0fdf4' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#14532d', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>📎 {demoFile.name}</div>
+                    <div style={{ fontSize: 11.5, color: '#166534' }}>{(demoFile.size / 1024).toFixed(0)} Ko</div>
+                  </div>
+                  <button onClick={() => setDemoFile(null)} style={{ padding: '4px 10px', borderRadius: 6, background: '#fee2e2', border: '1px solid #fecaca', color: '#991b1b', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>Retirer</button>
+                </div>
+              )}
+            </div>
+
+            {demoError && (
+              <div style={{ padding: '10px 14px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: 13, marginBottom: 14 }}>
+                {demoError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => !demoSending && setShowDemoInvite(false)} disabled={demoSending}
+                style={{ padding: '10px 18px', borderRadius: 10, border: '1.5px solid #e2e8f0', background: '#fff', color: '#475569', fontSize: 13, fontWeight: 600, cursor: demoSending ? 'not-allowed' : 'pointer', opacity: demoSending ? 0.5 : 1 }}>
+                Annuler
+              </button>
+              <button onClick={handleDemoInvite} disabled={demoSending || !demoForm.full_name || !demoForm.email}
+                style={{ padding: '10px 22px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#fbbf24,#f59e0b)', color: '#fff', fontSize: 13, fontWeight: 700, cursor: (demoSending || !demoForm.full_name || !demoForm.email) ? 'not-allowed' : 'pointer', opacity: (demoSending || !demoForm.full_name || !demoForm.email) ? 0.5 : 1, boxShadow: '0 4px 12px rgba(245,158,11,0.3)' }}>
+                {demoSending ? 'Envoi en cours…' : '🎁 Envoyer l\'invitation'}
+              </button>
+            </div>
+          </Modal>
+        )}
+
         {showCreate && (
           <Modal title="Créer un client pro" onClose={() => setShowCreate(false)} width={640}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
