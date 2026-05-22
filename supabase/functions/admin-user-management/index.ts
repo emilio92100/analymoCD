@@ -6,13 +6,29 @@ const corsHeaders = {
 }
 
 /* ── Mailjet ─────────────────────────────────────────── */
-async function sendMailjet(to: string, subject: string, htmlBody: string) {
+async function sendMailjet(
+  to: string,
+  subject: string,
+  htmlBody: string,
+  attachments?: Array<{ Filename: string; ContentType: string; Base64Content: string }>
+) {
   const MJ_API_KEY = Deno.env.get('MJ_API_KEY') ?? ''
   const MJ_SECRET_KEY = Deno.env.get('MJ_SECRET_KEY') ?? ''
 
   if (!MJ_API_KEY || !MJ_SECRET_KEY) {
     console.error('Mailjet keys not configured')
     return { success: false, error: 'Mailjet non configuré' }
+  }
+
+  const message: Record<string, unknown> = {
+    From: { Email: 'pro@verimo.fr', Name: 'Verimo Pro' },
+    To: [{ Email: to }],
+    Subject: subject,
+    HTMLPart: htmlBody,
+  }
+
+  if (attachments && attachments.length > 0) {
+    message.Attachments = attachments
   }
 
   const res = await fetch('https://api.mailjet.com/v3.1/send', {
@@ -22,12 +38,7 @@ async function sendMailjet(to: string, subject: string, htmlBody: string) {
       'Authorization': 'Basic ' + btoa(`${MJ_API_KEY}:${MJ_SECRET_KEY}`),
     },
     body: JSON.stringify({
-      Messages: [{
-        From: { Email: 'pro@verimo.fr', Name: 'Verimo Pro' },
-        To: [{ Email: to }],
-        Subject: subject,
-        HTMLPart: htmlBody,
-      }]
+      Messages: [message]
     })
   })
 
@@ -177,7 +188,99 @@ function buildResendEmail(prenom: string, token: string) {
 </html>`
 }
 
-/* ── Template mail envoi rapport au client — Option B ── */
+/* ── Template mail invitation découverte (DEMO) ────────── */
+function buildDemoInvitationEmail(prenom: string, token: string, customMessage?: string | null, hasAttachment?: boolean) {
+  const setupUrl = `https://pro.verimo.fr/setup-account?token=${token}`
+
+  // Texte personnalisable par l'admin avant envoi (fallback : texte par défaut)
+  const introHtml = customMessage && customMessage.trim().length > 0
+    ? customMessage.trim().split('\n').map(line => `<p style="color:#475569;font-size:15px;line-height:1.7;margin:0 0 12px;">${line.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`).join('')
+    : `
+      <p style="color:#475569;font-size:15px;line-height:1.7;margin:0 0 16px;">Bonjour ${prenom},</p>
+      <p style="color:#475569;font-size:15px;line-height:1.7;margin:0 0 16px;">
+        Suite à notre échange, je suis ravi de vous offrir un accès découverte à <strong>Verimo Pro</strong>.
+      </p>
+      <p style="color:#475569;font-size:15px;line-height:1.7;margin:0 0 16px;">
+        Pendant votre période d'essai, vous bénéficiez de <strong>1 analyse simple</strong> et <strong>1 analyse complète</strong> offertes pour tester notre service.
+        Je suis convaincu que ce sera convaincant pour vos clients acheteurs — vous gagnez du temps, vous renforcez votre crédibilité, et vos clients signent plus sereinement.
+      </p>
+      <p style="color:#475569;font-size:15px;line-height:1.7;margin:0 0 0;">
+        À très vite,<br/>
+        <strong>L'équipe Verimo</strong>
+      </p>
+    `
+
+  const attachmentNote = hasAttachment
+    ? `<tr><td style="padding:0 28px 16px;">
+        <div style="background:#fef9e7;border-radius:10px;padding:12px 16px;border:1px solid #fde68a;">
+          <p style="color:#92400e;font-size:13px;margin:0;">📎 Vous trouverez en pièce jointe notre plaquette de présentation pour découvrir Verimo en détail.</p>
+        </div>
+      </td></tr>`
+    : ''
+
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f5f9fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background:#f5f9fb;padding:40px 20px;">
+    <tr><td align="center">
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width:600px;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 4px 20px rgba(15,45,61,0.06);">
+
+        <!-- Header avec gradient Verimo -->
+        <tr><td style="background:linear-gradient(135deg,#0f2d3d,#2a7d9c);padding:36px 28px;text-align:center;">
+          <div style="display:inline-block;background:rgba(255,255,255,0.15);padding:6px 14px;border-radius:99px;margin-bottom:14px;">
+            <span style="color:#fff;font-size:11px;font-weight:700;letter-spacing:0.08em;">🎁 INVITATION DÉCOUVERTE</span>
+          </div>
+          <h1 style="color:#fff;font-size:26px;font-weight:800;margin:0 0 8px;letter-spacing:-0.02em;">Bienvenue sur Verimo Pro</h1>
+          <p style="color:rgba(255,255,255,0.85);font-size:15px;margin:0;">Votre accès découverte est prêt</p>
+        </td></tr>
+
+        <!-- Corps -->
+        <tr><td style="padding:32px 28px 16px;">
+          ${introHtml}
+        </td></tr>
+
+        ${attachmentNote}
+
+        <!-- Bloc bénéfices démo -->
+        <tr><td style="padding:0 28px 24px;">
+          <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:14px;padding:20px;border:1px solid #bbf7d0;">
+            <p style="color:#14532d;font-size:14px;font-weight:700;margin:0 0 14px;">🎁 Vos crédits offerts :</p>
+            <div style="display:block;">
+              <div style="background:#fff;border-radius:10px;padding:14px 16px;margin-bottom:10px;border:1px solid #bbf7d0;">
+                <p style="color:#0f172a;font-size:14px;font-weight:700;margin:0 0 4px;">📄 1 Analyse simple</p>
+                <p style="color:#475569;font-size:12.5px;margin:0;">Analyse rapide d'un document (DPE, compromis, PV d'AG…)</p>
+              </div>
+              <div style="background:#fff;border-radius:10px;padding:14px 16px;border:1px solid #bbf7d0;">
+                <p style="color:#0f172a;font-size:14px;font-weight:700;margin:0 0 4px;">📊 1 Analyse complète</p>
+                <p style="color:#475569;font-size:12.5px;margin:0;">Dossier complet noté sur 20, prêt à partager avec vos clients</p>
+              </div>
+            </div>
+          </div>
+        </td></tr>
+
+        <!-- CTA -->
+        <tr><td style="padding:8px 28px 32px;text-align:center;">
+          <a href="${setupUrl}" style="display:inline-block;background:linear-gradient(135deg,#2a7d9c,#0f2d3d);color:#fff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 32px;border-radius:12px;box-shadow:0 4px 14px rgba(42,125,156,0.3);">
+            Activer mon compte et tester →
+          </a>
+          <p style="color:#94a3b8;font-size:12px;margin:14px 0 0;">Lien valable 30 jours. Aucun engagement, aucune carte bancaire requise.</p>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="background:#f8fafc;padding:20px 28px;text-align:center;border-top:1px solid #edf2f7;">
+          <p style="color:#94a3b8;font-size:12px;margin:0 0 4px;">Verimo — Analyse intelligente de documents immobiliers</p>
+          <p style="color:#cbd5e1;font-size:11px;margin:0;">Si vous n'attendiez pas ce message, vous pouvez l'ignorer.</p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+}
+
+
 function buildReportShareEmail(
   recipientFirstname: string,
   message: string,
@@ -742,6 +845,141 @@ Deno.serve(async (req) => {
       if (error) return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: corsHeaders })
       await adminClient.from('profiles').update({ email: new_email }).eq('id', user_id)
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    /* ── DEMO : Créer un compte pro en mode démo + envoi mail ─ */
+    if (action === 'create_pro_demo') {
+      const {
+        email, full_name, pro_company_name,
+        custom_message,        // Texte personnalisé pour le mail (optionnel)
+        attachment,            // PDF en base64 (optionnel) : { filename, contentType, base64Content }
+      } = body
+
+      if (!email || !full_name) {
+        return new Response(JSON.stringify({ error: 'Email et nom complet obligatoires.' }), { status: 400, headers: corsHeaders })
+      }
+
+      // 1. Création du compte auth
+      const tempPassword = generateToken()
+      const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
+        email,
+        password: tempPassword,
+        user_metadata: { full_name },
+        email_confirm: true
+      })
+      if (authError) return new Response(JSON.stringify({ error: authError.message }), { status: 400, headers: corsHeaders })
+
+      const userId = authData.user.id
+
+      // 2. Création du profil pro en mode démo (1+1 crédits offerts)
+      const nowIso = new Date().toISOString()
+      const { error: profileError } = await adminClient.from('profiles').upsert({
+        id: userId,
+        full_name,
+        email,
+        role: 'pro',
+        pro_company_name: pro_company_name || null,
+        pro_status: 'demo',
+        pro_demo_started_at: nowIso,
+        pro_created_at: nowIso,
+        pro_created_by: user.email,
+        credits_document: 1,
+        credits_complete: 1,
+        pro_onboarding_done: false,
+      }, { onConflict: 'id' })
+      if (profileError) {
+        // Rollback : supprimer le user auth si le profil a échoué
+        await adminClient.auth.admin.deleteUser(userId)
+        return new Response(JSON.stringify({ error: profileError.message }), { status: 400, headers: corsHeaders })
+      }
+
+      // 3. Création du token d'invitation
+      const inviteToken = generateToken()
+      const { error: inviteError } = await adminClient.from('pro_invitations').insert({
+        profile_id: userId,
+        email,
+        token: inviteToken,
+      })
+      if (inviteError) console.error('[create_pro_demo] Erreur création invitation:', inviteError)
+
+      // 4. Validation de la pièce jointe (max 12 Mo en base64 pour rester < 15 Mo Mailjet)
+      let attachmentsPayload: Array<{ Filename: string; ContentType: string; Base64Content: string }> | undefined
+      if (attachment && attachment.base64Content) {
+        const sizeBytes = Math.floor(attachment.base64Content.length * 0.75)
+        if (sizeBytes > 12 * 1024 * 1024) {
+          return new Response(JSON.stringify({ error: 'Pièce jointe trop volumineuse (max 12 Mo).' }), { status: 400, headers: corsHeaders })
+        }
+        attachmentsPayload = [{
+          Filename: attachment.filename || 'plaquette-verimo.pdf',
+          ContentType: attachment.contentType || 'application/pdf',
+          Base64Content: attachment.base64Content,
+        }]
+      }
+
+      // 5. Envoi du mail
+      const prenom = full_name.split(' ')[0]
+      const html = buildDemoInvitationEmail(prenom, inviteToken, custom_message || null, !!attachmentsPayload)
+      const mailResult = await sendMailjet(
+        email,
+        '🎁 Verimo Pro — Votre accès découverte',
+        html,
+        attachmentsPayload
+      )
+
+      if (!mailResult.success) {
+        return new Response(JSON.stringify({
+          error: 'Compte créé mais envoi mail échoué : ' + mailResult.error,
+          user_id: userId,
+          invite_token: inviteToken,
+        }), { status: 500, headers: corsHeaders })
+      }
+
+      // 6. Marquer l'invitation comme envoyée
+      await adminClient.from('pro_invitations').update({
+        sent_at: nowIso
+      }).eq('token', inviteToken)
+
+      return new Response(JSON.stringify({
+        success: true,
+        user_id: userId,
+        sent_to: email,
+        attachment_sent: !!attachmentsPayload,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    /* ── DEMO : Activer un compte pro en démo (sortie de démo) ─ */
+    if (action === 'activate_pro_demo') {
+      const { profile_id, credits_document_add, credits_complete_add } = body
+
+      if (!profile_id) {
+        return new Response(JSON.stringify({ error: 'profile_id requis.' }), { status: 400, headers: corsHeaders })
+      }
+
+      // Récupérer le profil pour additionner les crédits
+      const { data: currentProfile, error: fetchError } = await adminClient.from('profiles')
+        .select('credits_document, credits_complete, pro_status')
+        .eq('id', profile_id).single()
+      if (fetchError || !currentProfile) {
+        return new Response(JSON.stringify({ error: 'Profil introuvable.' }), { status: 404, headers: corsHeaders })
+      }
+
+      const addDoc = parseInt(credits_document_add) || 0
+      const addComplete = parseInt(credits_complete_add) || 0
+
+      const { error: updateError } = await adminClient.from('profiles').update({
+        pro_status: 'active',
+        pro_demo_converted_at: new Date().toISOString(),
+        credits_document: (currentProfile.credits_document || 0) + addDoc,
+        credits_complete: (currentProfile.credits_complete || 0) + addComplete,
+      }).eq('id', profile_id)
+      if (updateError) {
+        return new Response(JSON.stringify({ error: updateError.message }), { status: 400, headers: corsHeaders })
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        credits_added: { document: addDoc, complete: addComplete }
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
     return new Response(JSON.stringify({ error: 'Action inconnue' }), { status: 400, headers: corsHeaders })
