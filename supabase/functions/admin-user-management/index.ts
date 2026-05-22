@@ -211,65 +211,90 @@ function buildDemoInvitationEmail(prenom: string, token: string, customMessage?:
     `
 
   const attachmentNote = hasAttachment
-    ? `<tr><td style="padding:0 28px 16px;">
-        <div style="background:#fef9e7;border-radius:10px;padding:12px 16px;border:1px solid #fde68a;">
-          <p style="color:#92400e;font-size:13px;margin:0;">📎 Vous trouverez en pièce jointe notre plaquette de présentation pour découvrir Verimo en détail.</p>
+    ? `<tr><td style="padding:0 36px 18px;">
+        <div style="background:#fef9e7;border-radius:10px;padding:14px 18px;border:1px solid #fde68a;">
+          <p style="color:#92400e;font-size:13.5px;margin:0;line-height:1.5;">📎 <strong>Vous trouverez en pièce jointe notre plaquette de présentation</strong> qui récapitule l'ensemble de notre offre et nos cas d'usage concrets pour vous accompagner au quotidien.</p>
         </div>
       </td></tr>`
     : ''
 
   return `<!DOCTYPE html>
 <html lang="fr">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f5f9fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background:#f5f9fb;padding:40px 20px;">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <style>
+    /* Reset & responsive */
+    body, table, td, p, a, h1, h2 { -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
+    table, td { mso-table-lspace:0pt; mso-table-rspace:0pt; }
+    img { -ms-interpolation-mode:bicubic; border:0; outline:none; text-decoration:none; }
+    @media only screen and (max-width:680px) {
+      .email-container { width:100% !important; max-width:100% !important; border-radius:0 !important; }
+      .email-padding { padding-left:20px !important; padding-right:20px !important; }
+      .email-padding-header { padding:32px 20px !important; }
+      .email-h1 { font-size:22px !important; }
+      .email-cta { display:block !important; width:100% !important; box-sizing:border-box !important; }
+      .email-credits-grid { display:block !important; }
+      .email-credit-card { display:block !important; width:auto !important; margin-bottom:10px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background:#f5f9fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background:#f5f9fb;padding:30px 0;">
     <tr><td align="center">
-      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width:600px;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 4px 20px rgba(15,45,61,0.06);">
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="700" class="email-container" style="max-width:700px;width:100%;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(15,45,61,0.08);">
 
-        <!-- Header avec gradient Verimo -->
-        <tr><td style="background:linear-gradient(135deg,#0f2d3d,#2a7d9c);padding:36px 28px;text-align:center;">
-          <div style="display:inline-block;background:rgba(255,255,255,0.15);padding:6px 14px;border-radius:99px;margin-bottom:14px;">
-            <span style="color:#fff;font-size:11px;font-weight:700;letter-spacing:0.08em;">🎁 INVITATION DÉCOUVERTE</span>
+        <!-- Header avec logo et gradient Verimo -->
+        <tr><td class="email-padding-header" style="background:linear-gradient(135deg,#0f2d3d,#2a7d9c);padding:40px 36px;text-align:center;">
+          <img src="https://www.verimo.fr/logo-blanc.png" alt="Verimo" width="180" style="display:block;margin:0 auto 18px;max-width:180px;height:auto;" />
+          <div style="display:inline-block;background:rgba(255,255,255,0.15);padding:7px 16px;border-radius:99px;margin-bottom:14px;">
+            <span style="color:#fff;font-size:11.5px;font-weight:700;letter-spacing:0.1em;">🎁 INVITATION DÉCOUVERTE</span>
           </div>
-          <h1 style="color:#fff;font-size:26px;font-weight:800;margin:0 0 8px;letter-spacing:-0.02em;">Bienvenue sur Verimo Pro</h1>
+          <h1 class="email-h1" style="color:#fff;font-size:28px;font-weight:800;margin:0 0 8px;letter-spacing:-0.02em;line-height:1.2;">Bienvenue sur Verimo Pro</h1>
           <p style="color:rgba(255,255,255,0.85);font-size:15px;margin:0;">Votre accès découverte est prêt</p>
         </td></tr>
 
         <!-- Corps -->
-        <tr><td style="padding:32px 28px 16px;">
+        <tr><td class="email-padding" style="padding:36px 36px 18px;">
           ${introHtml}
         </td></tr>
 
         ${attachmentNote}
 
         <!-- Bloc bénéfices démo -->
-        <tr><td style="padding:0 28px 24px;">
-          <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:14px;padding:20px;border:1px solid #bbf7d0;">
-            <p style="color:#14532d;font-size:14px;font-weight:700;margin:0 0 14px;">🎁 Vos crédits offerts :</p>
-            <div style="display:block;">
-              <div style="background:#fff;border-radius:10px;padding:14px 16px;margin-bottom:10px;border:1px solid #bbf7d0;">
-                <p style="color:#0f172a;font-size:14px;font-weight:700;margin:0 0 4px;">📄 1 Analyse simple</p>
-                <p style="color:#475569;font-size:12.5px;margin:0;">Analyse rapide d'un document (DPE, compromis, PV d'AG…)</p>
-              </div>
-              <div style="background:#fff;border-radius:10px;padding:14px 16px;border:1px solid #bbf7d0;">
-                <p style="color:#0f172a;font-size:14px;font-weight:700;margin:0 0 4px;">📊 1 Analyse complète</p>
-                <p style="color:#475569;font-size:12.5px;margin:0;">Dossier complet noté sur 20, prêt à partager avec vos clients</p>
-              </div>
-            </div>
+        <tr><td class="email-padding" style="padding:0 36px 28px;">
+          <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:14px;padding:22px;border:1px solid #bbf7d0;">
+            <p style="color:#14532d;font-size:14.5px;font-weight:700;margin:0 0 16px;">🎁 Vos crédits offerts pour tester</p>
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" class="email-credits-grid">
+              <tr>
+                <td class="email-credit-card" width="48%" valign="top" style="padding-right:8px;">
+                  <div style="background:#fff;border-radius:11px;padding:16px;border:1px solid #bbf7d0;">
+                    <p style="color:#0f172a;font-size:14px;font-weight:700;margin:0 0 5px;">📄 1 Analyse simple</p>
+                    <p style="color:#475569;font-size:12.5px;margin:0;line-height:1.5;">Analyse rapide d'un document (DPE, compromis, PV d'AG…)</p>
+                  </div>
+                </td>
+                <td class="email-credit-card" width="48%" valign="top" style="padding-left:8px;">
+                  <div style="background:#fff;border-radius:11px;padding:16px;border:1px solid #bbf7d0;">
+                    <p style="color:#0f172a;font-size:14px;font-weight:700;margin:0 0 5px;">📊 1 Analyse complète</p>
+                    <p style="color:#475569;font-size:12.5px;margin:0;line-height:1.5;">Dossier complet noté sur 20, prêt à partager avec vos clients</p>
+                  </div>
+                </td>
+              </tr>
+            </table>
           </div>
         </td></tr>
 
         <!-- CTA -->
-        <tr><td style="padding:8px 28px 32px;text-align:center;">
-          <a href="${setupUrl}" style="display:inline-block;background:linear-gradient(135deg,#2a7d9c,#0f2d3d);color:#fff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 32px;border-radius:12px;box-shadow:0 4px 14px rgba(42,125,156,0.3);">
+        <tr><td class="email-padding" style="padding:8px 36px 36px;text-align:center;">
+          <a href="${setupUrl}" class="email-cta" style="display:inline-block;background:linear-gradient(135deg,#2a7d9c,#0f2d3d);color:#fff;text-decoration:none;font-size:15.5px;font-weight:700;padding:15px 36px;border-radius:12px;box-shadow:0 4px 14px rgba(42,125,156,0.3);">
             Activer mon compte et tester →
           </a>
-          <p style="color:#94a3b8;font-size:12px;margin:14px 0 0;">Lien valable 30 jours. Aucun engagement, aucune carte bancaire requise.</p>
+          <p style="color:#94a3b8;font-size:12px;margin:16px 0 0;">Lien valable 30 jours. Aucun engagement, aucune carte bancaire requise.</p>
         </td></tr>
 
         <!-- Footer -->
-        <tr><td style="background:#f8fafc;padding:20px 28px;text-align:center;border-top:1px solid #edf2f7;">
-          <p style="color:#94a3b8;font-size:12px;margin:0 0 4px;">Verimo — Analyse intelligente de documents immobiliers</p>
+        <tr><td style="background:#f8fafc;padding:22px 36px;text-align:center;border-top:1px solid #edf2f7;">
+          <p style="color:#94a3b8;font-size:12.5px;margin:0 0 4px;"><strong style="color:#64748b;">Verimo</strong> — Analyse intelligente de documents immobiliers</p>
           <p style="color:#cbd5e1;font-size:11px;margin:0;">Si vous n'attendiez pas ce message, vous pouvez l'ignorer.</p>
         </td></tr>
 
