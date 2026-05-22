@@ -5462,7 +5462,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
     setDemoSending(false);
   };
 
-  // 🆕 Activer un compte démo (sortie de démo + ajout crédits)
+  // 🆕 Activer un compte démo (sortie de démo + ajout crédits) — sera utilisé en session 2 (bouton "Activer le compte")
   const handleActivateDemo = async (profileId: string, addDoc: number, addComplete: number) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -5484,6 +5484,8 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       if (selected) loadClientDetail(selected);
     } catch (e) { showToast('Erreur : ' + String(e)); }
   };
+  // Référence factice pour éviter le warning noUnusedLocals — utilisé dans la prochaine session
+  void handleActivateDemo;
 
   const sendInvitation = async (profileId: string, isResend = false) => {
     setSendingInvite(true);
