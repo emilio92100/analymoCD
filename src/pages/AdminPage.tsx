@@ -6345,15 +6345,51 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
 
             <div style={{ marginBottom: 14 }}>
               <label style={labelStyle}>
-                Message personnalisé (optionnel)
-                <span style={{ fontWeight: 400, color: '#94a3b8', marginLeft: 6 }}>— laissez vide pour le texte par défaut</span>
+                ✉️ Message du mail
+                <span style={{ fontWeight: 400, color: '#94a3b8', marginLeft: 6 }}>— éditez ou utilisez un modèle rapide</span>
               </label>
+
+              {/* Boutons de modèles rapides */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' as const }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const p = demoForm.full_name.split(' ')[0] || '[prénom]';
+                    const tpl = `Bonjour ${p},\n\nSuite à notre rendez-vous de présentation de Verimo, nous sommes ravis de vous offrir un accès découverte à notre service.\n\nVous pourrez tester gratuitement avec 1 analyse simple et 1 analyse complète offertes — de quoi vous faire votre propre idée sur l'apport concret pour vos clients acheteurs.\n\nEn pièce jointe, notre plaquette qui récapitule l'offre et les cas d'usage qui pourront vous aider au quotidien.\n\nÀ très vite,\nL'équipe Verimo`;
+                    setDemoForm(f => ({ ...f, custom_message: tpl }));
+                  }}
+                  style={{ padding: '6px 12px', borderRadius: 8, background: '#f0f7fb', border: '1px solid #d0e8f0', color: '#2a7d9c', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  📅 Suite à un RDV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const p = demoForm.full_name.split(' ')[0] || '[prénom]';
+                    const tpl = `Bonjour ${p},\n\nSuite à notre échange, nous vous proposons de tester Verimo Pro en conditions réelles.\n\nVous bénéficiez de 1 analyse simple et 1 analyse complète offertes — l'occasion idéale de constater concrètement ce que vos clients vont voir et comment notre rapport peut accélérer vos signatures.\n\nLa plaquette en pièce jointe résume notre offre et vous donne des idées d'utilisation au quotidien.\n\nN'hésitez pas si vous avez la moindre question.\n\nL'équipe Verimo`;
+                    setDemoForm(f => ({ ...f, custom_message: tpl }));
+                  }}
+                  style={{ padding: '6px 12px', borderRadius: 8, background: '#f0f7fb', border: '1px solid #d0e8f0', color: '#2a7d9c', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  💬 Suite à un échange
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDemoForm(f => ({ ...f, custom_message: '' }))}
+                  style={{ padding: '6px 12px', borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0', color: '#64748b', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  🔄 Texte par défaut
+                </button>
+              </div>
+
               <textarea
                 value={demoForm.custom_message}
                 onChange={e => setDemoForm(f => ({ ...f, custom_message: e.target.value }))}
-                style={{ ...inputStyle, minHeight: 110, resize: 'vertical' as const, fontFamily: 'inherit' }}
-                placeholder={`Bonjour ${demoForm.full_name.split(' ')[0] || '[prénom]'},\n\nSuite à notre échange...`}
+                style={{ ...inputStyle, minHeight: 170, resize: 'vertical' as const, fontFamily: 'inherit', lineHeight: 1.6 }}
+                placeholder={`Bonjour ${demoForm.full_name.split(' ')[0] || '[prénom]'},\n\nLaissez vide pour utiliser le message par défaut, ou cliquez sur un modèle rapide ci-dessus.`}
               />
+
+              {/* Aperçu visuel du contenu du mail (structure) */}
+              <div style={{ marginTop: 10, padding: '10px 14px', borderRadius: 8, background: '#f8fafc', border: '1px dashed #cbd5e1', fontSize: 11.5, color: '#64748b', lineHeight: 1.6 }}>
+                <strong style={{ color: '#475569' }}>📧 Le mail contiendra automatiquement :</strong> logo Verimo · titre "Bienvenue sur Verimo Pro" · {demoFile ? <strong style={{ color: '#16a34a' }}>encart pièce jointe</strong> : 'votre message'} · récapitulatif des 2 crédits offerts · bouton "Activer mon compte" · footer Verimo.
+              </div>
             </div>
 
             <div style={{ marginBottom: 18 }}>
