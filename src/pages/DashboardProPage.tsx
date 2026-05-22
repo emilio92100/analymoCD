@@ -46,6 +46,9 @@ type ProProfile = {
   pro_contact_phone?: string;
   pro_recommended_plan?: string;
   pro_onboarding_done?: boolean;
+  pro_status?: string | null;
+  pro_demo_started_at?: string | null;
+  pro_demo_converted_at?: string | null;
   credits_document?: number;
   credits_complete?: number;
   cgv_pro_accepted_at?: string | null;
@@ -832,7 +835,14 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, f
   };
   const recommendedPlanId = proProfile.pro_recommended_plan || '';
   const recommendedPlan = PLAN_INFO[recommendedPlanId] || null;
-  const showRecommendedBanner = !subscription && !hasEverSubscribed && recommendedPlan;
+  // 🆕 Détection du mode démo — masque les autres bannières d'abonnement
+  const isDemo = proProfile.pro_status === 'demo';
+  const showRecommendedBanner = !subscription && !hasEverSubscribed && recommendedPlan && !isDemo;
+
+  // 🆕 Crédits démo restants (pour personnaliser le message)
+  const demoSimpleLeft = proCredits?.total_document ?? 0;
+  const demoCompleteLeft = proCredits?.total_complete ?? 0;
+  const demoCreditsUsed = isDemo && demoSimpleLeft === 0 && demoCompleteLeft === 0;
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
@@ -849,8 +859,102 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, f
         </div>
       </div>
 
-      {/* Pas d'abonnement ? Bandeau personnalisé avec plan recommandé ou bandeau générique */}
-      {!subscription && (
+      {/* 🆕 BANNIÈRE DÉMO — Affichée pour les comptes pro_status='demo' */}
+      {isDemo && !demoCreditsUsed && (
+        <div style={{
+          background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 50%, #fef9e7 100%)',
+          borderRadius: 18,
+          padding: '26px 28px',
+          marginBottom: 24,
+          border: '1.5px solid #fed7aa',
+          position: 'relative' as const,
+          overflow: 'hidden',
+        }}>
+          {/* Décoration arrière-plan */}
+          <div style={{ position: 'absolute' as const, top: -40, right: -40, width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 70%)', pointerEvents: 'none' as const }} />
+
+          <div style={{ position: 'relative' as const, display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' as const }}>
+            <div style={{ width: 56, height: 56, borderRadius: 14, background: 'linear-gradient(135deg, #fbbf24, #f59e0b)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0, boxShadow: '0 6px 16px rgba(245,158,11,0.3)' }}>
+              🎁
+            </div>
+
+            <div style={{ flex: 1, minWidth: 240 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' as const }}>
+                <h2 style={{ fontSize: 19, fontWeight: 900, color: '#7c2d12', margin: 0, letterSpacing: '-0.01em' }}>
+                  Bienvenue {prenom} ! Vous êtes en version découverte
+                </h2>
+                <span style={{ fontSize: 10.5, fontWeight: 800, color: '#fff', background: '#f59e0b', padding: '3px 10px', borderRadius: 100, letterSpacing: '0.06em' }}>DÉMO</span>
+              </div>
+
+              <p style={{ fontSize: 13.5, color: '#9a3412', margin: '0 0 16px 0', lineHeight: 1.55 }}>
+                Vous bénéficiez de <strong>1 analyse simple</strong> et <strong>1 analyse complète offertes</strong> pour tester Verimo en conditions réelles.
+                Nous sommes convaincus que ça apportera une vraie valeur ajoutée pour rassurer vos clients acheteurs.
+              </p>
+
+              {/* Compteur visuel des crédits */}
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const, marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#fff', borderRadius: 10, border: `1.5px solid ${demoSimpleLeft > 0 ? '#fbbf24' : '#e2e8f0'}`, opacity: demoSimpleLeft > 0 ? 1 : 0.55 }}>
+                  <span style={{ fontSize: 18 }}>📄</span>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#78350f', letterSpacing: '0.04em' }}>ANALYSE SIMPLE</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 800, color: demoSimpleLeft > 0 ? '#7c2d12' : '#94a3b8' }}>
+                      {demoSimpleLeft > 0 ? `${demoSimpleLeft} crédit disponible` : 'Utilisée ✓'}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#fff', borderRadius: 10, border: `1.5px solid ${demoCompleteLeft > 0 ? '#fbbf24' : '#e2e8f0'}`, opacity: demoCompleteLeft > 0 ? 1 : 0.55 }}>
+                  <span style={{ fontSize: 18 }}>📊</span>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#78350f', letterSpacing: '0.04em' }}>ANALYSE COMPLÈTE</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 800, color: demoCompleteLeft > 0 ? '#7c2d12' : '#94a3b8' }}>
+                      {demoCompleteLeft > 0 ? `${demoCompleteLeft} crédit disponible` : 'Utilisée ✓'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <p style={{ fontSize: 12.5, color: '#9a3412', margin: 0, fontStyle: 'italic' as const, lineHeight: 1.5 }}>
+                💡 Lancez votre première analyse et constatez par vous-même ce que vos clients vont découvrir.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🆕 BANNIÈRE DÉMO ÉPUISÉE — Affichée quand tous les crédits démo ont été utilisés */}
+      {isDemo && demoCreditsUsed && (
+        <div style={{
+          background: 'linear-gradient(135deg, #0a1f2d 0%, #1a4a5e 100%)',
+          borderRadius: 18,
+          padding: '26px 28px',
+          marginBottom: 24,
+          border: '1px solid rgba(125,211,252,0.2)',
+          position: 'relative' as const,
+          overflow: 'hidden',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, flexWrap: 'wrap' as const }}>
+            <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0 }}>
+              🚀
+            </div>
+            <div style={{ flex: 1, minWidth: 240 }}>
+              <h2 style={{ fontSize: 19, fontWeight: 900, color: '#fff', margin: '0 0 6px 0' }}>
+                Vous avez testé Verimo, qu'en pensez-vous ?
+              </h2>
+              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', margin: '0 0 18px 0', lineHeight: 1.6 }}>
+                Vos crédits découverte ont été utilisés. Pour continuer à analyser des dossiers et rassurer vos clients,
+                contactez-nous pour passer en compte actif avec un forfait adapté à votre activité.
+              </p>
+              <a href="mailto:pro@verimo.fr?subject=Passage%20en%20compte%20actif%20Verimo%20Pro"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 22px', background: '#fff', color: '#0f2d3d', borderRadius: 11, fontSize: 14, fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+                💬 Nous contacter pour continuer
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pas d'abonnement ? Bandeau personnalisé avec plan recommandé ou bandeau générique — masqué en mode démo */}
+      {!subscription && !isDemo && (
         showRecommendedBanner ? (
           <div style={{ background: 'linear-gradient(135deg, #0a1f2d, #1a4a5e)', borderRadius: 16, padding: '24px 28px', marginBottom: 24, border: '1px solid rgba(125,211,252,0.15)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
