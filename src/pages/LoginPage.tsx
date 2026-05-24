@@ -18,6 +18,16 @@ export default function LoginPage() {
     return '';
   });
 
+  // 🔒 Récupère l'URL de destination après login (ex: ?redirect=/rapport?id=xxx)
+  // Seuls les chemins relatifs sont autorisés pour éviter les open-redirects.
+  const getRedirectTarget = (): string => {
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get('redirect');
+    if (!raw) return '/dashboard';
+    if (!raw.startsWith('/') || raw.startsWith('//')) return '/dashboard';
+    return raw;
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true); setError('');
@@ -45,11 +55,13 @@ export default function LoginPage() {
       localStorage.setItem('verimo_user_email', user.email || '');
     }
 
-    navigate('/dashboard');
+    navigate(getRedirectTarget());
   };
 
   const handleGoogle = async () => {
-    await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/auth/callback` } });
+    const target = getRedirectTarget();
+    const callbackUrl = `${window.location.origin}/auth/callback${target !== '/dashboard' ? `?redirect=${encodeURIComponent(target)}` : ''}`;
+    await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: callbackUrl } });
   };
 
   return (
