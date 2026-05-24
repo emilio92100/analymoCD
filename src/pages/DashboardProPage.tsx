@@ -5644,7 +5644,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
   // quand l'analyse se termine en arrière-plan, sans recharger la page.
   useEffect(() => {
     const hasPending = folderAnalyses.some(a =>
-      a.status === 'pending' || a.status === 'processing' || a.status === 'queued'
+      a.status === 'pending' || a.status === 'processing' || a.status === 'queued' || a.status === 'files_ready'
     );
     if (!hasPending) return;
 
@@ -6020,7 +6020,7 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
           const renderRow = (a: ProAnalysis) => {
               const score = getScore(a.result as Record<string, unknown>);
               const isCompleted = a.status === 'completed';
-              const isPending = a.status === 'pending' || a.status === 'processing' || a.status === 'queued';
+              const isPending = a.status === 'pending' || a.status === 'processing' || a.status === 'queued' || a.status === 'files_ready';
               const isFailed = a.status === 'failed';
               return (
                 <div key={a.id}
