@@ -1537,6 +1537,8 @@ function InlineModalCreateFolder({ onClose, onCreated }: { onClose: () => void; 
   const [addressFocused, setAddressFocused] = useState(false);
   const lastPostalCodeQueriedRef = useRef<string>('');
   const addressDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipAddressAutoRef = useRef(false);
+  const skipPostalAutoRef = useRef(false);
 
   // Auto-génération nom dossier
   useEffect(() => {
@@ -1549,6 +1551,7 @@ function InlineModalCreateFolder({ onClose, onCreated }: { onClose: () => void; 
 
   // Auto-complétion code postal -> ville
   useEffect(() => {
+    if (skipPostalAutoRef.current) { skipPostalAutoRef.current = false; return; }
     const cp = postalCode.trim();
     if (cp.length !== 5) {
       setCityOptions([]);
@@ -1580,6 +1583,7 @@ function InlineModalCreateFolder({ onClose, onCreated }: { onClose: () => void; 
 
   // Auto-complétion adresse via Etalab
   useEffect(() => {
+    if (skipAddressAutoRef.current) { skipAddressAutoRef.current = false; return; }
     if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
     const q = address.trim();
     if (q.length < 4) { setAddressSuggestions([]); return; }
@@ -1610,9 +1614,15 @@ function InlineModalCreateFolder({ onClose, onCreated }: { onClose: () => void; 
   }, [onClose]);
 
   function selectAddressSuggestion(s: { label: string; postcode: string; city: string }) {
-    const streetOnly = s.label.split(',')[0].trim();
+    // Nettoyer le label : retirer la ville et le code postal pour ne garder que la voie
+    let streetOnly = s.label;
+    if (s.city) streetOnly = streetOnly.replace(new RegExp(`\\s*,?\\s*${s.city.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i'), '');
+    if (s.postcode) streetOnly = streetOnly.replace(new RegExp(`\\s*,?\\s*${s.postcode}\\s*`, 'g'), ' ');
+    streetOnly = streetOnly.replace(/,\s*$/, '').trim();
+    skipAddressAutoRef.current = true;
+    skipPostalAutoRef.current = true;
     setAddress(streetOnly);
-    if (s.postcode) setPostalCode(s.postcode);
+    if (s.postcode) { lastPostalCodeQueriedRef.current = s.postcode; setPostalCode(s.postcode); }
     if (s.city) setCity(s.city);
     setAddressSuggestions([]);
     setShowAddressDropdown(false);
