@@ -5639,6 +5639,27 @@ function DossierDetail({ folderId, onBack, proProfile }: { folderId: string; onB
 
   useEffect(() => { loadFolder(); }, [loadFolder]);
 
+  // 🆕 Polling silencieux des analyses tant qu'au moins une est en cours.
+  // Permet au spinner + badge "En cours" de disparaître automatiquement
+  // quand l'analyse se termine en arrière-plan, sans recharger la page.
+  useEffect(() => {
+    const hasPending = folderAnalyses.some(a =>
+      a.status === 'pending' || a.status === 'processing' || a.status === 'queued'
+    );
+    if (!hasPending) return;
+
+    const interval = setInterval(async () => {
+      const { data } = await supabase
+        .from('analyses')
+        .select('id, type, status, title, address, created_at, result')
+        .eq('folder_id', folderId)
+        .order('created_at', { ascending: false });
+      if (data) setFolderAnalyses(data as ProAnalysis[]);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [folderAnalyses, folderId]);
+
   // Charger l'historique des envois de ce dossier
   const loadSendHistory = useCallback(async () => {
     const analysisIds = folderAnalyses.map(a => a.id);
