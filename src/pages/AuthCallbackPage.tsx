@@ -183,7 +183,12 @@ export default function AuthCallbackPage() {
               Votre compte est activé. Vous pouvez maintenant accéder à votre espace et lancer votre première analyse immobilière.
             </p>
             {showButton ? (
-              <a href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '16px 36px', borderRadius: 14, fontSize: 16, fontWeight: 800, color: '#fff', background: 'linear-gradient(135deg, #2a7d9c 0%, #0f2d3d 100%)', textDecoration: 'none', boxShadow: '0 8px 28px rgba(42,125,156,0.35)', animation: 'fadeInUp 0.5s ease' }}>
+              <a href={(() => {
+                const params = new URLSearchParams(window.location.search);
+                const raw = params.get('redirect');
+                if (raw && raw.startsWith('/') && !raw.startsWith('//')) return raw;
+                return '/dashboard';
+              })()} style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '16px 36px', borderRadius: 14, fontSize: 16, fontWeight: 800, color: '#fff', background: 'linear-gradient(135deg, #2a7d9c 0%, #0f2d3d 100%)', textDecoration: 'none', boxShadow: '0 8px 28px rgba(42,125,156,0.35)', animation: 'fadeInUp 0.5s ease' }}>
                 Accéder à mon tableau de bord →
               </a>
             ) : (
