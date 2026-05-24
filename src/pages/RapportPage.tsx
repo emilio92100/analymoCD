@@ -4516,18 +4516,25 @@ export default function RapportPage() {
 
     if (!id) { setLoading(false); return; }
 
-    // Déterminer le bon lien retour selon le rôle et le dossier
+    // 🔒 Si l'utilisateur n'est pas connecté, on le redirige vers la page de connexion
+    // en gardant l'URL du rapport en mémoire pour qu'il y revienne automatiquement après login.
+    // Cas typique : le particulier reçoit le mail "Analyse prête" et clique depuis un autre appareil.
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-      const { data: analyse } = await supabase.from('analyses').select('folder_id').eq('id', id).single();
-      if (profile?.role === 'pro') {
-        setHideVerimoBranding(true);
-        if (analyse?.folder_id) setBackUrl(`/dashboard/dossier/${analyse.folder_id}`);
-        else setBackUrl('/dashboard');
-      } else {
-        setBackUrl('/dashboard/analyses');
-      }
+    if (!user) {
+      const redirectTo = `/rapport?id=${encodeURIComponent(id)}`;
+      window.location.href = `/connexion?redirect=${encodeURIComponent(redirectTo)}`;
+      return;
+    }
+
+    // Déterminer le bon lien retour selon le rôle et le dossier
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+    const { data: analyse } = await supabase.from('analyses').select('folder_id').eq('id', id).single();
+    if (profile?.role === 'pro') {
+      setHideVerimoBranding(true);
+      if (analyse?.folder_id) setBackUrl(`/dashboard/dossier/${analyse.folder_id}`);
+      else setBackUrl('/dashboard');
+    } else {
+      setBackUrl('/dashboard/analyses');
     }
 
     const MAX_ATTEMPTS = 36;
