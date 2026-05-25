@@ -85,13 +85,13 @@ Deno.serve(async (req) => {
     // 1. Récupérer infos du profil pro pour l'email
     const { data: profile } = await supabaseAdmin
       .from('profiles')
-      .select('email, prenom, nom, agency_name, profile_type, pro_status, role')
+      .select('email, full_name, pro_company_name, profile_type, pro_status, role')
       .eq('id', user_id)
       .single();
 
-    const userLabel = profile?.agency_name
-      ? `${profile.agency_name} (${profile.prenom || ''} ${profile.nom || ''})`.trim()
-      : `${profile?.prenom || ''} ${profile?.nom || ''}`.trim() || 'Utilisateur';
+    const userLabel = profile?.pro_company_name
+      ? `${profile.pro_company_name}${profile.full_name ? ` (${profile.full_name})` : ''}`
+      : profile?.full_name || 'Utilisateur';
 
     const slotsLabels = (preferred_slots || []).map((s: string) => SLOT_LABELS[s] || s);
     const slotsText = slotsLabels.length > 0 ? slotsLabels.join(', ') : 'Non précisé';
@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
           <a href="https://verimo.fr/admin?tab=callbacks" style="display: inline-block; padding: 12px 22px; background: #0f2d3d; color: #fff; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 700;">Voir dans l'admin →</a>
         </div>
 
-        <p style="text-align: center; font-size: 11px; color: #94a3b8; margin-top: 16px;">Verimo · Demande à traiter sous 24h ouvrées</p>
+        <p style="text-align: center; font-size: 11px; color: #94a3b8; margin-top: 16px;">Verimo · Demande de rappel à traiter</p>
       </div>
     `;
 
