@@ -969,7 +969,7 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, f
                 </Link>
               </div>
               <p style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', margin: '12px 0 0', lineHeight: 1.5 }}>
-                Forfaits solo en self-service. Pour une agence ou une équipe, demandez à être rappelé.
+                Si vous travaillez seul, vous pouvez vous abonner directement. Pour une agence ou une équipe, demandez à être rappelé pour un forfait adapté.
               </p>
             </div>
           </div>
