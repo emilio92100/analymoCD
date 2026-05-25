@@ -8,7 +8,7 @@ import {
   Trash2, RefreshCw, Eye, EyeOff, ArrowRight,
   LogOut, Send, UserPlus, CheckCircle, Download, Tag,
   Bell, ChevronLeft, ChevronRight, Plus, Copy, Briefcase, Euro, ExternalLink,
-  Clock, User, Building2, LifeBuoy, Lightbulb, MessageSquare, ChevronDown, Pencil,
+  Clock, User, Building2, LifeBuoy, Lightbulb, MessageSquare, ChevronDown, Pencil, Phone,
 } from 'lucide-react';
 
 
@@ -176,7 +176,7 @@ function ActionBtn({ icon, label, color = '#64748b', bg = '#f8fafc', border = '#
 /* ══════════════════════════════════════════
    ADMIN PAGE ROOT
 ══════════════════════════════════════════ */
-type TabId = 'dashboard' | 'users' | 'analyses' | 'payments' | 'messages' | 'demandes_pro' | 'stats' | 'promos' | 'logs' | 'banner' | 'alerts' | 'clients' | 'support' | 'suggestions';
+type TabId = 'dashboard' | 'users' | 'analyses' | 'payments' | 'messages' | 'demandes_pro' | 'stats' | 'promos' | 'logs' | 'banner' | 'alerts' | 'clients' | 'support' | 'suggestions' | 'callbacks';
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -190,6 +190,7 @@ export default function AdminPage() {
   const [proUnreadCount, setProUnreadCount] = useState(0);
   const [supportUnreadCount, setSupportUnreadCount] = useState(0);
   const [suggestionsUnreadCount, setSuggestionsUnreadCount] = useState(0);
+  const [callbacksPendingCount, setCallbacksPendingCount] = useState(0);
   // Routing inter-onglets : permet d'ouvrir la fiche d'un user depuis une analyse, etc.
   const [focusUserId, setFocusUserId] = useState<string | null>(null);
   const [focusProClientId, setFocusProClientId] = useState<string | null>(null);
@@ -216,6 +217,15 @@ export default function AdminPage() {
       setAdminEmail(user.email || '');
       setIsAdmin(true);
       setLoading(false);
+
+      // 🆕 Lire l'URL param ?tab=xxx pour ouvrir un onglet direct (ex: depuis email de notif)
+      const urlParams = new URLSearchParams(window.location.search);
+      const tabParam = urlParams.get('tab') as TabId | null;
+      const validTabs: TabId[] = ['dashboard', 'users', 'analyses', 'payments', 'messages', 'demandes_pro', 'stats', 'promos', 'logs', 'banner', 'alerts', 'clients', 'support', 'suggestions', 'callbacks'];
+      if (tabParam && validTabs.includes(tabParam)) {
+        setActiveTab(tabParam);
+      }
+
       // Unread messages count
       const { count } = await supabase.from('contact_messages').select('*', { count: 'exact', head: true }).eq('read', false);
       setUnreadCount(count || 0);
@@ -228,6 +238,9 @@ export default function AdminPage() {
       // Unread suggestions
       const { count: suggestCount } = await supabase.from('pro_suggestions').select('*', { count: 'exact', head: true }).eq('acknowledged', false);
       setSuggestionsUnreadCount(suggestCount || 0);
+      // 🆕 Callbacks pending
+      const { count: callbackCount } = await supabase.from('callback_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+      setCallbacksPendingCount(callbackCount || 0);
     };
     check();
   }, [navigate]);
@@ -277,6 +290,7 @@ export default function AdminPage() {
     { id: 'alerts', label: 'Alertes système', icon: AlertTriangle },
     { id: 'support', label: 'Besoin d\'aide', icon: LifeBuoy, badge: supportUnreadCount },
     { id: 'suggestions', label: 'Suggestions', icon: Lightbulb, badge: suggestionsUnreadCount },
+    { id: 'callbacks', label: 'Rappels Pro', icon: Phone, badge: callbacksPendingCount },
     { id: 'banner', label: 'Bannière', icon: Bell },
     { id: 'logs', label: 'Historique', icon: Clock },
   ];
@@ -457,7 +471,7 @@ export default function AdminPage() {
               <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
             </div>
             <div style={{ borderLeft: '2px solid #7c3aed', marginLeft: 8, paddingLeft: 12, marginBottom: 10, display: 'flex', flexDirection: 'column' as const, gap: 1 }}>
-              {tabs.filter(t => ['users', 'clients', 'demandes_pro'].includes(t.id)).map(tab => {
+              {tabs.filter(t => ['users', 'clients', 'demandes_pro', 'callbacks'].includes(t.id)).map(tab => {
                 const Icon = tab.icon; const active = activeTab === tab.id;
                 return (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id)}
@@ -592,6 +606,7 @@ export default function AdminPage() {
               {activeTab === 'alerts' && <SystemAlertsTab showToast={showToast} />}
               {activeTab === 'support' && <AdminSupportTab showToast={showToast} onUnreadChange={setSupportUnreadCount} onGoToUser={(userId) => { setFocusUserId(userId); setActiveTab('users'); }} />}
               {activeTab === 'suggestions' && <AdminSuggestionsTab onGoToUser={(userId) => { setFocusUserId(userId); setActiveTab('users'); }} showToast={showToast} onUnreadChange={setSuggestionsUnreadCount} />}
+              {activeTab === 'callbacks' && <AdminCallbacksTab showToast={showToast} onPendingChange={setCallbacksPendingCount} onGoToUser={(userId) => { setFocusUserId(userId); setActiveTab('users'); }} onGoToProClient={(userId) => { setFocusProClientId(userId); setActiveTab('clients'); }} />}
               {activeTab === 'banner' && <BannerTab showToast={showToast} logAction={logAction} />}
               {activeTab === 'logs' && <LogsTab />}
             </motion.div>
@@ -1595,6 +1610,327 @@ function AdminSuggestionsTab({ onGoToUser, showToast, onUnreadChange }: { onGoTo
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════
+// 🆕 ADMIN CALLBACKS TAB — Page de gestion des demandes de rappel pro
+// ════════════════════════════════════════════════════════════════════
+type CallbackRequest = {
+  id: string;
+  user_id: string;
+  phone: string;
+  preferred_slots: string[];
+  message: string | null;
+  context: string;
+  status: 'pending' | 'called' | 'converted' | 'declined';
+  created_at: string;
+  handled_at: string | null;
+  handled_by: string | null;
+  admin_notes: string | null;
+};
+
+type CallbackWithProfile = CallbackRequest & {
+  profile?: {
+    id: string;
+    email: string | null;
+    prenom: string | null;
+    nom: string | null;
+    pro_company_name: string | null;
+    profile_type: string | null;
+    pro_status: string | null;
+    role: string | null;
+  } | null;
+};
+
+const SLOT_LABELS_ADMIN: Record<string, string> = {
+  matinee: 'Matinée',
+  dejeuner: 'Déjeuner',
+  apres_midi: 'Après-midi',
+  soiree: 'Soirée',
+};
+
+const CONTEXT_LABELS_ADMIN: Record<string, string> = {
+  demo_expired: 'Démo épuisée',
+  abonnement_agence: 'Forfait agence',
+  other: 'Autre',
+};
+
+const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
+  pending: { label: 'En attente', color: '#854F0B', bg: '#fef3c7' },
+  called: { label: 'Rappelé', color: '#1e40af', bg: '#dbeafe' },
+  converted: { label: 'Converti ✓', color: '#166534', bg: '#dcfce7' },
+  declined: { label: 'Pas intéressé', color: '#64748b', bg: '#f1f5f9' },
+};
+
+function AdminCallbacksTab({ showToast, onPendingChange, onGoToUser, onGoToProClient }: {
+  showToast: (m: string) => void;
+  onPendingChange?: (n: number) => void;
+  onGoToUser?: (userId: string) => void;
+  onGoToProClient?: (userId: string) => void;
+}) {
+  const [callbacks, setCallbacks] = useState<CallbackWithProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'pending' | 'called' | 'converted' | 'declined' | 'all'>('pending');
+  const [selected, setSelected] = useState<CallbackWithProfile | null>(null);
+  const [notes, setNotes] = useState('');
+  const [updating, setUpdating] = useState(false);
+
+  const fetchCallbacks = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('callback_requests')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+
+      // Hydrater avec les profils
+      const userIds = [...new Set((data || []).map(c => c.user_id))];
+      let profilesById: Record<string, CallbackWithProfile['profile']> = {};
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, email, prenom, nom, pro_company_name, profile_type, pro_status, role')
+          .in('id', userIds);
+        if (profiles) {
+          profilesById = profiles.reduce((acc, p) => {
+            acc[p.id] = p;
+            return acc;
+          }, {} as Record<string, CallbackWithProfile['profile']>);
+        }
+      }
+
+      const enriched: CallbackWithProfile[] = (data || []).map(c => ({
+        ...c,
+        profile: profilesById[c.user_id] || null,
+      }));
+      setCallbacks(enriched);
+      const pending = enriched.filter(c => c.status === 'pending').length;
+      onPendingChange?.(pending);
+    } catch (err) {
+      console.error('[AdminCallbacksTab] fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [onPendingChange]);
+
+  useEffect(() => { fetchCallbacks(); }, [fetchCallbacks]);
+
+  const filtered = filter === 'all' ? callbacks : callbacks.filter(c => c.status === filter);
+
+  const updateStatus = async (cb: CallbackWithProfile, newStatus: CallbackRequest['status']) => {
+    setUpdating(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase
+        .from('callback_requests')
+        .update({
+          status: newStatus,
+          handled_at: newStatus !== 'pending' ? new Date().toISOString() : null,
+          handled_by: newStatus !== 'pending' ? user?.id : null,
+          admin_notes: notes || cb.admin_notes,
+        })
+        .eq('id', cb.id);
+      if (error) throw error;
+      showToast(`Statut mis à jour : ${STATUS_LABELS[newStatus].label}`);
+      await fetchCallbacks();
+      setSelected(null);
+      setNotes('');
+    } catch (err) {
+      console.error('[AdminCallbacksTab] update error:', err);
+      showToast('Erreur lors de la mise à jour');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const fmtDate = (iso: string) => {
+    const d = new Date(iso);
+    const today = new Date();
+    const isToday = d.toDateString() === today.toDateString();
+    const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = d.toDateString() === yesterday.toDateString();
+    if (isToday) return `Aujourd'hui ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+    if (isYesterday) return `Hier ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap' as const, gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', marginBottom: 4 }}>Rappels Pro</h1>
+          <p style={{ fontSize: 13, color: '#94a3b8' }}>
+            {callbacks.filter(c => c.status === 'pending').length} en attente · {callbacks.length} total
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+          {[
+            { id: 'pending', label: 'En attente', count: callbacks.filter(c => c.status === 'pending').length },
+            { id: 'called', label: 'Rappelés', count: callbacks.filter(c => c.status === 'called').length },
+            { id: 'converted', label: 'Convertis ✓', count: callbacks.filter(c => c.status === 'converted').length },
+            { id: 'declined', label: 'Pas intéressés', count: callbacks.filter(c => c.status === 'declined').length },
+            { id: 'all', label: 'Tous', count: callbacks.length },
+          ].map(f => (
+            <button key={f.id} onClick={() => setFilter(f.id as typeof filter)}
+              style={{ padding: '7px 12px', borderRadius: 10, border: `1.5px solid ${filter === f.id ? '#2a7d9c' : '#edf2f7'}`, background: filter === f.id ? '#f0f7fb' : '#fff', color: filter === f.id ? '#2a7d9c' : '#64748b', fontSize: 12, fontWeight: filter === f.id ? 700 : 500, cursor: 'pointer', transition: 'all 0.2s' }}>
+              {f.label} {f.count > 0 ? `(${f.count})` : ''}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 1fr' : '1fr', gap: 16 }}>
+        {/* Liste */}
+        <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
+          {loading ? (
+            <div style={{ padding: 40, textAlign: 'center' as const, color: '#94a3b8' }}>Chargement…</div>
+          ) : filtered.length === 0 ? (
+            <div style={{ padding: '52px 32px', textAlign: 'center' as const, color: '#94a3b8' }}>
+              <Phone size={36} style={{ color: '#e2e8f0', margin: '0 auto 14px', display: 'block' }} />
+              <div style={{ fontSize: 14, fontWeight: 600 }}>Aucun rappel {filter !== 'all' ? `dans "${filter}"` : ''}</div>
+            </div>
+          ) : filtered.map((cb, i) => {
+            const status = STATUS_LABELS[cb.status];
+            const userLabel = cb.profile?.pro_company_name || `${cb.profile?.prenom || ''} ${cb.profile?.nom || ''}`.trim() || cb.profile?.email || 'Inconnu';
+            return (
+              <div key={cb.id} onClick={() => { setSelected(cb); setNotes(cb.admin_notes || ''); }}
+                style={{ padding: '14px 18px', borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none', cursor: 'pointer', background: selected?.id === cb.id ? '#f0f7fb' : '#fff', transition: 'background 0.15s' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis' as const, whiteSpace: 'nowrap' as const }}>{userLabel}</span>
+                    <span style={{ padding: '2px 8px', borderRadius: 8, fontSize: 10, fontWeight: 700, color: status.color, background: status.bg, flexShrink: 0, letterSpacing: '0.04em' }}>
+                      {status.label}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{fmtDate(cb.created_at)}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <Phone size={11} style={{ color: '#2a7d9c' }} />
+                  <a href={`tel:${cb.phone}`} onClick={e => e.stopPropagation()} style={{ fontSize: 13, color: '#2a7d9c', fontWeight: 700, textDecoration: 'none' }}>{cb.phone}</a>
+                  <span style={{ fontSize: 11, color: '#94a3b8' }}>·</span>
+                  <span style={{ fontSize: 11.5, color: '#64748b' }}>
+                    {(cb.preferred_slots || []).map(s => SLOT_LABELS_ADMIN[s] || s).join(', ') || 'Pas de préférence'}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                  Contexte : <strong style={{ color: '#64748b' }}>{CONTEXT_LABELS_ADMIN[cb.context] || cb.context}</strong>
+                  {cb.profile?.profile_type && <> · Type : <strong style={{ color: '#64748b' }}>{cb.profile.profile_type}</strong></>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Détail */}
+        {selected && (
+          <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: '22px 24px', maxHeight: 'fit-content' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>Détails du rappel</h3>
+              <button onClick={() => { setSelected(null); setNotes(''); }} style={{ width: 28, height: 28, borderRadius: 7, border: 'none', background: '#f1f5f9', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={14} color="#64748b" />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid #f1f5f9' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', marginBottom: 6, letterSpacing: '0.06em' }}>PRO</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>
+                {selected.profile?.pro_company_name || `${selected.profile?.prenom || ''} ${selected.profile?.nom || ''}`.trim() || 'Inconnu'}
+              </div>
+              <div style={{ fontSize: 12.5, color: '#64748b', marginBottom: 8 }}>{selected.profile?.email}</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+                {selected.profile?.profile_type && (
+                  <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 10.5, fontWeight: 700, color: '#7c3aed', background: '#f5f3ff', letterSpacing: '0.04em' }}>{selected.profile.profile_type.toUpperCase()}</span>
+                )}
+                {selected.profile?.pro_status && (
+                  <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 10.5, fontWeight: 700, color: '#0f2d3d', background: '#e8f4f8', letterSpacing: '0.04em' }}>{selected.profile.pro_status.toUpperCase()}</span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                {onGoToUser && (
+                  <button onClick={() => onGoToUser(selected.user_id)} style={{ fontSize: 11.5, fontWeight: 600, color: '#2a7d9c', background: '#f0f7fb', border: '1px solid #d0e8f0', padding: '5px 10px', borderRadius: 7, cursor: 'pointer' }}>
+                    Voir l'utilisateur →
+                  </button>
+                )}
+                {onGoToProClient && selected.profile?.role === 'pro' && (
+                  <button onClick={() => onGoToProClient(selected.user_id)} style={{ fontSize: 11.5, fontWeight: 600, color: '#7c3aed', background: '#f5f3ff', border: '1px solid #e9d5ff', padding: '5px 10px', borderRadius: 7, cursor: 'pointer' }}>
+                    Voir fiche Pro →
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', marginBottom: 6, letterSpacing: '0.06em' }}>TÉLÉPHONE</div>
+              <a href={`tel:${selected.phone}`} style={{ fontSize: 18, fontWeight: 800, color: '#2a7d9c', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <Phone size={16} /> {selected.phone}
+              </a>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', marginBottom: 6, letterSpacing: '0.06em' }}>CRÉNEAUX PRÉFÉRÉS</div>
+              <div style={{ fontSize: 13, color: '#0f172a' }}>
+                {(selected.preferred_slots || []).length === 0 ? <em style={{ color: '#94a3b8' }}>Aucune préférence</em> :
+                  (selected.preferred_slots || []).map(s => SLOT_LABELS_ADMIN[s] || s).join(', ')}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', marginBottom: 6, letterSpacing: '0.06em' }}>CONTEXTE</div>
+              <div style={{ fontSize: 13, color: '#0f172a' }}>{CONTEXT_LABELS_ADMIN[selected.context] || selected.context}</div>
+            </div>
+
+            {selected.message && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', marginBottom: 6, letterSpacing: '0.06em' }}>MESSAGE DU PRO</div>
+                <div style={{ padding: '12px 14px', background: '#f0f7fb', borderRadius: 10, fontSize: 13, color: '#0f172a', lineHeight: 1.55, borderLeft: '3px solid #2a7d9c' }}>{selected.message}</div>
+              </div>
+            )}
+
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', marginBottom: 6, letterSpacing: '0.06em' }}>NOTES INTERNES</div>
+              <textarea
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder="Ex : Agence de 5 agents à Paris, intéressé par forfait sur mesure, à recontacter mardi."
+                rows={3}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 9, border: '1.5px solid #e2e8f0', fontSize: 13, color: '#0f172a', fontFamily: 'inherit', outline: 'none', resize: 'vertical' as const, boxSizing: 'border-box' as const, lineHeight: 1.5 }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
+              {selected.status === 'pending' && (
+                <button disabled={updating} onClick={() => updateStatus(selected, 'called')} style={{ padding: '9px 14px', borderRadius: 9, background: '#dbeafe', color: '#1e40af', border: '1px solid #93c5fd', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+                  📞 Marquer rappelé
+                </button>
+              )}
+              {(selected.status === 'pending' || selected.status === 'called') && (
+                <>
+                  <button disabled={updating} onClick={() => updateStatus(selected, 'converted')} style={{ padding: '9px 14px', borderRadius: 9, background: '#dcfce7', color: '#166534', border: '1px solid #86efac', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+                    ✓ Converti
+                  </button>
+                  <button disabled={updating} onClick={() => updateStatus(selected, 'declined')} style={{ padding: '9px 14px', borderRadius: 9, background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+                    Pas intéressé
+                  </button>
+                </>
+              )}
+              {selected.status !== 'pending' && (
+                <button disabled={updating} onClick={() => updateStatus(selected, 'pending')} style={{ padding: '9px 14px', borderRadius: 9, background: '#fff', color: '#64748b', border: '1px solid #e2e8f0', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+                  ↺ Repasser en attente
+                </button>
+              )}
+            </div>
+
+            {selected.handled_at && (
+              <div style={{ marginTop: 14, fontSize: 11, color: '#94a3b8' }}>
+                Traité le {new Date(selected.handled_at).toLocaleString('fr-FR')}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -5218,6 +5554,9 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [invitations, setInvitations] = useState<ProInvitation[]>([]);
   const [clientAnalyses, setClientAnalyses] = useState<{ id: string; title: string; address?: string; status: string; score?: number; created_at: string }[]>([]);
   const [clientShares, setClientShares] = useState<{ id: string; recipient_name: string; recipient_email: string; sent_at: string; opened_at?: string }[]>([]);
+  // 🆕 Type + state pour callbacks
+  type ClientCallback = { id: string; phone: string; preferred_slots: string[]; message: string | null; context: string; status: 'pending' | 'called' | 'converted' | 'declined'; created_at: string; handled_at: string | null; admin_notes: string | null };
+  const [clientCallbacks, setClientCallbacks] = useState<ClientCallback[]>([]);
   const [clientSubscription, setClientSubscription] = useState<{ plan: string; status: string; current_period_end?: string; cancel_at_period_end?: boolean; canceled_at?: string; cancellation_reason?: string; credits_complete_total: number; credits_complete_used: number; credits_simple_total: number; credits_simple_used: number; scheduled_plan_change?: string | null; scheduled_change_date?: string | null } | null>(null);
   const [proClientCredits, setProClientCredits] = useState<{ total_complete: number; total_document: number } | null>(null);
   const [clientInvoices, setClientInvoices] = useState<{ id: string; date: string; description: string; amount: string; pdf_url: string | null; type: string; status?: string; status_label?: string; status_variant?: 'success' | 'pending' | 'failed' | 'void' | 'refunded'; refunded_amount?: string | null; failure_reason?: string | null; attempt_count?: number }[]>([]);
@@ -5338,6 +5677,13 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
     // Shares
     const { data: sh } = await supabase.from('report_shares').select('id, recipient_name, recipient_email, sent_at, opened_at').eq('sender_id', client.id).order('sent_at', { ascending: false }).limit(20);
     setClientShares((sh || []) as typeof clientShares);
+    // 🆕 Callbacks du client
+    const { data: cbs } = await supabase
+      .from('callback_requests')
+      .select('id, phone, preferred_slots, message, context, status, created_at, handled_at, admin_notes')
+      .eq('user_id', client.id)
+      .order('created_at', { ascending: false });
+    setClientCallbacks((cbs || []) as ClientCallback[]);
     // Subscription
     const { data: sub } = await supabase.from('pro_subscriptions').select('*').eq('user_id', client.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
     setClientSubscription(sub as typeof clientSubscription);
@@ -5693,6 +6039,54 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
               </div>
             )}
           </div>
+
+          {/* 🆕 Bloc Demandes de rappel */}
+          {clientCallbacks.length > 0 && (
+            <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', padding: 20, marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: '#f0f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Phone size={15} style={{ color: '#2a7d9c' }} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', margin: 0 }}>Demandes de rappel ({clientCallbacks.length})</h3>
+                  <p style={{ fontSize: 11.5, color: '#94a3b8', margin: 0 }}>
+                    {clientCallbacks.filter(c => c.status === 'pending').length} en attente
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+                {clientCallbacks.map((cb) => {
+                  const status = { pending: { label: 'En attente', color: '#854F0B', bg: '#fef3c7' }, called: { label: 'Rappelé', color: '#1e40af', bg: '#dbeafe' }, converted: { label: 'Converti ✓', color: '#166534', bg: '#dcfce7' }, declined: { label: 'Pas intéressé', color: '#64748b', bg: '#f1f5f9' } }[cb.status];
+                  const slotsTxt = (cb.preferred_slots || []).map(s => ({ matinee: 'Matinée', dejeuner: 'Déjeuner', apres_midi: 'Après-midi', soiree: 'Soirée' } as Record<string, string>)[s] || s).join(', ');
+                  const ctxTxt = ({ demo_expired: 'Démo épuisée', abonnement_agence: 'Forfait agence', other: 'Autre' } as Record<string, string>)[cb.context] || cb.context;
+                  return (
+                    <div key={cb.id} style={{ padding: 12, borderRadius: 10, border: '1px solid #f1f5f9', background: '#fafbfc' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, gap: 8, flexWrap: 'wrap' as const }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <a href={`tel:${cb.phone}`} style={{ fontSize: 14, fontWeight: 700, color: '#2a7d9c', textDecoration: 'none' }}>📞 {cb.phone}</a>
+                          <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, color: status.color, background: status.bg, letterSpacing: '0.04em' }}>{status.label}</span>
+                        </div>
+                        <span style={{ fontSize: 11, color: '#94a3b8' }}>{new Date(cb.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <div style={{ fontSize: 11.5, color: '#64748b', marginBottom: cb.message ? 6 : 0 }}>
+                        Contexte : <strong style={{ color: '#374151' }}>{ctxTxt}</strong>{slotsTxt && <> · Créneaux : <strong style={{ color: '#374151' }}>{slotsTxt}</strong></>}
+                      </div>
+                      {cb.message && (
+                        <div style={{ marginTop: 6, padding: '8px 10px', background: '#fff', borderRadius: 7, fontSize: 12, color: '#0f172a', lineHeight: 1.5, borderLeft: '2px solid #2a7d9c' }}>
+                          {cb.message}
+                        </div>
+                      )}
+                      {cb.admin_notes && (
+                        <div style={{ marginTop: 6, padding: '6px 10px', background: '#f5f3ff', borderRadius: 7, fontSize: 11.5, color: '#5b21b6', lineHeight: 1.5 }}>
+                          <strong>Note interne :</strong> {cb.admin_notes}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* CGV Pro — Trace du consentement */}
           <div style={{
