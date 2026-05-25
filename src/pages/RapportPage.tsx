@@ -3738,7 +3738,7 @@ function TabProcedures({ rapport }: { rapport: RapportData }) {
 /* ══════════════════════════════════
    ONGLET DOCUMENTS
 ══════════════════════════════════ */
-function TabDocuments({ rapport, onComplement }: { rapport: RapportData; onComplement?: () => void }) {
+function TabDocuments({ rapport, onComplement, isShared }: { rapport: RapportData; onComplement?: () => void; isShared?: boolean }) {
 
   const docTypeLabel: Record<string, string> = {
     PV_AG: "PV d'Assemblée Générale", REGLEMENT_COPRO: 'Règlement de copropriété',
@@ -3815,8 +3815,8 @@ function TabDocuments({ rapport, onComplement }: { rapport: RapportData; onCompl
         </div>
       )}
 
-      {/* 🆕 Bandeau d'alerte si docs essentiels manquants */}
-      {docsEssentielManquants.length > 0 && !complementDate && !expired && (
+      {/* 🆕 Bandeau d'alerte si docs essentiels manquants — masqué en mode partagé (vue client) */}
+      {!isShared && docsEssentielManquants.length > 0 && !complementDate && !expired && (
         <div style={{ padding: '16px 20px', borderRadius: 14, background: 'linear-gradient(135deg, #fff7ed, #ffedd5)', border: '1.5px solid #fdba74', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
           <div style={{ width: 36, height: 36, borderRadius: 10, background: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <AlertTriangle size={18} color="#fff" />
@@ -3832,8 +3832,8 @@ function TabDocuments({ rapport, onComplement }: { rapport: RapportData; onCompl
         </div>
       )}
 
-      {/* Section docs manquants EN HAUT */}
-      {(docsEssentielManquants.length > 0 || docsSecondairesManquants.length > 0) && (
+      {/* Section docs manquants EN HAUT — masquée en mode partagé (vue client) */}
+      {!isShared && (docsEssentielManquants.length > 0 || docsSecondairesManquants.length > 0) && (
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <div style={{ minWidth: 0 }}>
@@ -4467,7 +4467,7 @@ export function RapportViewExemple({ rapport, defaultTab = 'synthese', onComplem
           {activeTab === 'copropriete' && isComplete && hasCopro && <SafeTabBoundary><TabCopropriete rapport={rapport} /></SafeTabBoundary>}
           {activeTab === 'logement' && isComplete && <SafeTabBoundary><TabLogement rapport={rapport} onSwitchTab={setActiveTab} /></SafeTabBoundary>}
           {activeTab === 'procedures' && isComplete && <SafeTabBoundary><TabProcedures rapport={rapport} /></SafeTabBoundary>}
-          {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} onComplement={onComplement} /></SafeTabBoundary>}
+          {activeTab === 'documents' && isComplete && <SafeTabBoundary><TabDocuments rapport={rapport} onComplement={onComplement} isShared={true} /></SafeTabBoundary>}
         </div>
       </div>
     </div>
