@@ -137,7 +137,7 @@ export default function CallbackRequestModal({
             </div>
             <div>
               <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>Être rappelé</h3>
-              <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>Sous 24h ouvrées</p>
+              <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>Notre équipe vous recontacte rapidement</p>
             </div>
           </div>
           <button
@@ -156,7 +156,7 @@ export default function CallbackRequestModal({
             </div>
             <h4 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: '0 0 8px' }}>Demande envoyée ✓</h4>
             <p style={{ fontSize: 14, color: '#64748b', margin: 0, lineHeight: 1.6 }}>
-              Nous vous rappelons sous 24h ouvrées sur le créneau qui vous convient.
+              Nous avons bien reçu votre demande. Notre équipe vous recontactera dans les meilleurs délais sur le créneau qui vous convient.
             </p>
           </div>
         ) : (
