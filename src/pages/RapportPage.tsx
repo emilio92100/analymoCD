@@ -1037,6 +1037,7 @@ function TabSynthese({ rapport, isShared, hideVerimoBranding }: { rapport: Rappo
 
       {/* 4. PISTES DE NÉGOCIATION */}
       {(() => {
+        if (isShared) return null; // 🆕 Masquer la négo dans les rapports partagés au client
         if (!rapport.negociation?.applicable) return null;
         if (!rapport.negociation.elements?.length) return null;
         if (rapport.score >= 17) return null; // Pas de négo sur un bien irréprochable
@@ -3415,11 +3416,15 @@ function TabLogement({ rapport, onSwitchTab }: { rapport: RapportData; onSwitchT
         )}
 
         {/* Impayés lot */}
-        {!hasPed && lot?.impayes_detectes && (
-          <div style={{ padding: '12px 16px', background: '#fef2f2', borderRadius: 10, border: '0.5px solid #fecaca', fontSize: 14, color: '#991b1b', lineHeight: 1.6 }}>
-            ⚠️ <strong>Impayés détectés sur ce lot :</strong> {safeStr(lot.impayes_detectes)}. Le vendeur doit apurer cette dette avant la signature de l'acte authentique.
-          </div>
-        )}
+        {!hasPed && lot?.impayes_detectes && (() => {
+          const detail = safeStr(lot.impayes_detectes).trim();
+          const hasDetail = detail && detail.toLowerCase() !== 'true' && detail.toLowerCase() !== 'false';
+          return (
+            <div style={{ padding: '12px 16px', background: '#fef2f2', borderRadius: 10, border: '0.5px solid #fecaca', fontSize: 14, color: '#991b1b', lineHeight: 1.6 }}>
+              ⚠️ <strong>Impayés détectés sur ce lot{hasDetail ? ' :' : '.'}</strong>{hasDetail ? ` ${detail}.` : ''} Le vendeur doit apurer cette dette avant la signature de l'acte authentique.
+            </div>
+          );
+        })()}
 
         {/* Travaux charge vendeur (issu du pré-état daté) */}
         {hasPed && (ped!.travaux_charge_vendeur ?? []).length > 0 && (
