@@ -476,6 +476,45 @@ serve(async (req) => {
 // HANDLERS
 // ═════════════════════════════════════════════════════════════════════
 
+// 🆕 Si le compte est en démo, le passer en actif après paiement réussi.
+// Action ciblée : touche UNIQUEMENT si pro_status = 'demo'. Aucun effet sur les autres comptes.
+async function convertDemoToActiveIfNeeded(userId: string): Promise<void> {
+  try {
+    const { data: prof, error: fetchErr } = await supabase
+      .from('profiles')
+      .select('pro_status')
+      .eq('id', userId)
+      .single();
+
+    if (fetchErr) {
+      console.warn('[stripe-webhook-pro] convertDemoToActive: fetch error (non bloquant):', fetchErr.message);
+      return;
+    }
+
+    if (prof?.pro_status !== 'demo') {
+      // Compte pas en démo, on ne touche à rien
+      return;
+    }
+
+    const { error: updateErr } = await supabase
+      .from('profiles')
+      .update({
+        pro_status: 'active',
+        pro_demo_converted_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+
+    if (updateErr) {
+      console.warn('[stripe-webhook-pro] convertDemoToActive: update error (non bloquant):', updateErr.message);
+      return;
+    }
+
+    console.log(`[stripe-webhook-pro] ✅ Compte démo converti en actif : ${userId}`);
+  } catch (err) {
+    console.warn('[stripe-webhook-pro] convertDemoToActive: exception (non bloquant):', err);
+  }
+}
+
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   // ─────────────────────────────────────────────────────────────────
   // FILTRE V5 : si la session est destinée au webhook particulier
@@ -535,6 +574,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     const sub = await stripe.subscriptions.retrieve(subId);
     await upsertProSubscription(userId, sub);
 
+    // 🆕 Si le compte était en démo, on le bascule en actif (les bandeaux démo disparaissent)
+    await convertDemoToActiveIfNeeded(userId);
+
     // Ajouter le SIRET en custom_fields sur la subscription pour qu'il apparaisse
     // sur toutes les futures factures PDF (et la 1ère qui vient d'être générée si possible).
     // On le fait ici car Stripe ne permet pas de passer custom_fields dans subscription_data
@@ -573,6 +615,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
   if (session.mode === 'payment') {
     await handleUnitPurchase(userId, session);
+
+    // 🆕 Si le compte était en démo, le passer en actif après tout paiement (abo OU unitaire)
+    await convertDemoToActiveIfNeeded(userId);
 
     // Pour les achats unitaires, ajouter le SIRET sur la facture générée
     if (session.invoice) {
