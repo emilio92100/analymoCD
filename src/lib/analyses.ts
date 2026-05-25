@@ -59,6 +59,7 @@ export async function getOrCreateShareToken(id: string): Promise<string | null> 
 /* ─── Lire un rapport via share_token (sans auth) ── */
 export async function fetchAnalyseByShareToken(token: string): Promise<(AnalyseDB & { _ownerIsPro?: boolean }) | null> {
   let analysis: AnalyseDB | null = null;
+  let viaReportShares = false; // 🆕 Track si on a trouvé via report_shares (envoi pro)
 
   // D'abord chercher dans report_shares (envois pro → client via le modal "Envoyer une analyse")
   const { data: share } = await supabase
@@ -68,6 +69,7 @@ export async function fetchAnalyseByShareToken(token: string): Promise<(AnalyseD
     .maybeSingle();
 
   if (share?.analysis_id) {
+    viaReportShares = true; // ✅ Le rapport vient d'un envoi pro
     // Marquer comme ouvert si pas encore fait
     await supabase
       .from('report_shares')
@@ -94,9 +96,12 @@ export async function fetchAnalyseByShareToken(token: string): Promise<(AnalyseD
 
   if (!analysis) return null;
 
-  // Détecter si le créateur de l'analyse est un pro (pour masquer le branding Verimo)
-  let ownerIsPro = false;
-  if (analysis.user_id) {
+  // 🆕 Détection robuste : si passage par report_shares, c'est forcément un envoi pro.
+  // Sinon (bouton "Partager" classique), on essaie de lire le rôle dans profiles —
+  // mais cette lecture peut échouer côté client non-authentifié à cause de la RLS Supabase.
+  // Donc on prend report_shares comme source de vérité prioritaire.
+  let ownerIsPro = viaReportShares;
+  if (!ownerIsPro && analysis.user_id) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
