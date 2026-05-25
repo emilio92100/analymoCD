@@ -1127,7 +1127,7 @@ function AvisVerimoBlock({ avis, isSimple, isShared, hideVerimoBranding }: { avi
         <div className="avis-header" style={{ padding: '16px 20px 14px', borderBottom: '0.5px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 18, flexShrink: 0 }}>⭐</span>
           <div style={{ position: 'relative', display: 'inline-block' }}>
-            <span className="avis-title" style={{ fontSize: 16, fontWeight: 600, color: '#fff', position: 'relative', zIndex: 1 }}>{hideVerimoBranding ? 'Synthèse de l\u2019analyse' : 'Avis Verimo'}</span>
+            <span className="avis-title" style={{ fontSize: 16, fontWeight: 600, color: '#fff', position: 'relative', zIndex: 1 }}>{hideVerimoBranding ? 'Avis du professionnel' : 'Avis Verimo'}</span>
             {!hideVerimoBranding && <div style={{ position: 'absolute', bottom: 1, left: 0, right: 0, height: 6, background: 'rgba(91,184,212,0.45)', zIndex: 0, borderRadius: 2 }} />}
           </div>
         </div>
@@ -1183,7 +1183,7 @@ function AvisVerimoBlock({ avis, isSimple, isShared, hideVerimoBranding }: { avi
       <div className="avis-header" style={{ padding: '16px 24px 14px', borderBottom: '0.5px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 10 }}>
         <span style={{ fontSize: 18, flexShrink: 0 }}>⭐</span>
         <div style={{ position: 'relative', display: 'inline-block' }}>
-          <span className="avis-title" style={{ fontSize: 16, fontWeight: 600, color: '#fff', position: 'relative', zIndex: 1 }}>{hideVerimoBranding ? 'Synthèse de l\u2019analyse' : 'Avis Verimo'}</span>
+          <span className="avis-title" style={{ fontSize: 16, fontWeight: 600, color: '#fff', position: 'relative', zIndex: 1 }}>{hideVerimoBranding ? 'Avis du professionnel' : 'Avis Verimo'}</span>
           {!hideVerimoBranding && <div style={{ position: 'absolute', bottom: 1, left: 0, right: 0, height: 6, background: 'rgba(91,184,212,0.45)', zIndex: 0, borderRadius: 2 }} />}
         </div>
       </div>
@@ -1232,7 +1232,10 @@ function AvisVerimoBlock({ avis, isSimple, isShared, hideVerimoBranding }: { avi
 
       {/* Disclaimer discret */}
       <div style={{ margin: '14px 26px 22px', padding: '12px 14px', background: 'rgba(255,255,255,0.04)', borderRadius: 8, fontSize: 12, color: 'rgba(255,255,255,0.55)', lineHeight: 1.55, fontStyle: 'italic' }}>
-        Verimo analyse vos documents pour vous aider à décider. Cette lecture ne remplace pas l'avis d'un professionnel de l'immobilier.
+        {hideVerimoBranding
+          ? "Votre professionnel s'appuie sur un outil d'analyse de documents immobiliers pour préparer cette synthèse. Pour toute question sur le bien, n'hésitez pas à le contacter directement."
+          : "Verimo analyse vos documents pour vous aider à décider. Cette lecture ne remplace pas l'avis d'un professionnel de l'immobilier."
+        }
       </div>
 
       {isSimple && !isShared && (
@@ -4761,7 +4764,7 @@ export default function RapportPage() {
           <Shield size={13} style={{ color: '#94a3b8', flexShrink: 0 }} />
           <span style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5, flex: 1 }}>
             {hideVerimoBranding
-              ? "Ce rapport est fourni à titre informatif. Il ne constitue pas un conseil juridique ou financier et ne remplace pas l'avis d'un notaire ou d'un expert immobilier."
+              ? "Ce rapport est fourni à titre informatif. Il ne remplace pas l'avis d'un notaire ou d'un expert immobilier. Pour toute question, contactez votre professionnel."
               : "Ce rapport est fourni à titre informatif par Verimo. Il ne constitue pas un conseil juridique ou financier et ne remplace pas l'avis d'un notaire ou d'un expert immobilier."}
           </span>
           {id && <span style={{ fontSize: 11, color: '#cbd5e1', flexShrink: 0 }}>#{id.slice(0, 8)}</span>}
