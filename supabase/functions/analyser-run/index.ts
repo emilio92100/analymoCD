@@ -219,6 +219,238 @@ function recalculerCategories(rapport: RapportShape, profil: string): RapportSha
   return { ...rapport, categories: categoriesRecalculees };
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// 🆕 VALIDATION DETERMINISTE — Diagnostics obligatoires manquants
+// Ajoute dans documents_manquants et points_vigilance les diagnostics
+// obligatoires absents du dossier selon le type de bien et l'année.
+// Fonction pure : ne touche pas l'IA, juste de la logique métier.
+// ══════════════════════════════════════════════════════════════════════
+function validateDiagsManquants(rapport: RapportShape): RapportShape {
+  const r = rapport as Record<string, unknown>;
+  const typeBien = (r.type_bien as string) || '';
+  const anneeStr = (r.annee_construction as string) || '';
+  const anneeMatch = anneeStr.match(/\d{4}/);
+  const annee = anneeMatch ? parseInt(anneeMatch[0]) : null;
+
+  const diagnostics = Array.isArray(r.diagnostics) ? r.diagnostics as Array<Record<string, unknown>> : [];
+  const docsAnalyses = Array.isArray(r.documents_analyses) ? r.documents_analyses as Array<Record<string, unknown>> : [];
+
+  // Helper : un diag est présent s'il existe avec une présence "detectee" ou si un doc le mentionne
+  const diagPresent = (type: string): boolean => {
+    return diagnostics.some(d => {
+      const t = String(d.type || '').toUpperCase();
+      const presence = String(d.presence || '').toLowerCase();
+      return t === type && presence !== 'non_realise' && presence !== 'absence';
+    });
+  };
+
+  // Helper : un audit énergétique est présent si un doc de type AUDIT_ENERGETIQUE existe
+  const docPresent = (type: string): boolean => {
+    return docsAnalyses.some(d => String(d.type || '').toUpperCase() === type);
+  };
+
+  // DPE classe pour règle audit énergétique
+  const diagDpe = diagnostics.find(d => String(d.type || '').toUpperCase() === 'DPE');
+  const dpeResultat = diagDpe ? String(diagDpe.resultat || '') : '';
+  const dpeClasseMatch = dpeResultat.match(/Classe\s*([A-G])/i);
+  const dpeClasse = dpeClasseMatch ? dpeClasseMatch[1].toUpperCase() : null;
+
+  const docsManquants: string[] = Array.isArray(r.documents_manquants)
+    ? [...(r.documents_manquants as string[])]
+    : [];
+  const pointsVigilance: unknown[] = Array.isArray(r.points_vigilance)
+    ? [...(r.points_vigilance as unknown[])]
+    : [];
+
+  // Helper : ajouter à documents_manquants sans doublon
+  const ajouter = (texte: string) => {
+    const existe = docsManquants.some(d => d.toLowerCase().includes(texte.toLowerCase().slice(0, 30)));
+    if (!existe) docsManquants.push(texte);
+  };
+
+  // Helper : ajouter à points_vigilance sans doublon (compare sur les 50 premiers caractères)
+  const ajouterVigilance = (texte: string) => {
+    const cle = texte.toLowerCase().slice(0, 50);
+    const existe = pointsVigilance.some(p => {
+      const s = typeof p === 'string' ? p : (p as Record<string, unknown>)?.message || (p as Record<string, unknown>)?.label || '';
+      return String(s).toLowerCase().includes(cle);
+    });
+    if (!existe) pointsVigilance.push(texte);
+  };
+
+  // ── DPE
+  if (!diagPresent('DPE')) {
+    ajouter("DPE — Diagnostic de performance énergétique (obligatoire pour la vente)");
+    ajouterVigilance("Le DPE n'a pas été détecté dans le dossier. Il est obligatoire pour la vente. Demandez-le au vendeur.");
+  }
+
+  // ── ERP
+  if (!diagPresent('ERP')) {
+    ajouter("État des Risques et Pollutions — ERP (obligatoire pour la vente)");
+    ajouterVigilance("L'État des Risques et Pollutions (ERP) n'a pas été détecté. Il est obligatoire pour la vente. Demandez-le au vendeur.");
+  }
+
+  // ── CARREZ (obligatoire en copropriété)
+  if ((typeBien === 'appartement' || typeBien === 'maison_copro') && !diagPresent('CARREZ')) {
+    ajouter("Mesurage loi Carrez (obligatoire en copropriété)");
+    ajouterVigilance("Le mesurage loi Carrez n'a pas été détecté. Il est obligatoire en copropriété. Demandez-le au vendeur.");
+  }
+
+  // ── ELECTRICITE (installation > 15 ans, donc en pratique année < 2011)
+  if (annee && annee < 2011 && !diagPresent('ELECTRICITE')) {
+    ajouter("Diagnostic électrique (obligatoire pour les installations de plus de 15 ans)");
+    ajouterVigilance("Le diagnostic électrique n'a pas été détecté. Il est obligatoire pour les installations de plus de 15 ans. Demandez-le au vendeur.");
+  }
+
+  // ── AMIANTE privatif (construction avant 1997)
+  if (annee && annee < 1997) {
+    const amiantePrivatif = diagnostics.some(d => {
+      const t = String(d.type || '').toUpperCase();
+      const perimetre = String(d.perimetre || '').toLowerCase();
+      const presence = String(d.presence || '').toLowerCase();
+      return t === 'AMIANTE' && perimetre === 'lot_privatif' && presence !== 'non_realise' && presence !== 'absence';
+    });
+    if (!amiantePrivatif) {
+      ajouter("Diagnostic amiante privatif (obligatoire pour les biens construits avant 1997)");
+      ajouterVigilance("Le diagnostic amiante privatif n'a pas été détecté. Il est obligatoire pour les biens construits avant 1997. Demandez-le au vendeur.");
+    }
+  }
+
+  // ── PLOMB (construction avant 1949)
+  if (annee && annee < 1949 && !diagPresent('PLOMB')) {
+    ajouter("Constat de risque d'exposition au plomb — CREP (obligatoire pour les biens construits avant 1949)");
+    ajouterVigilance("Le constat de risque d'exposition au plomb (CREP) n'a pas été détecté. Il est obligatoire pour les biens construits avant 1949. Demandez-le au vendeur.");
+  }
+
+  // ── AUDIT ENERGETIQUE (maison + DPE E/F/G)
+  if (typeBien === 'maison' && dpeClasse && ['E', 'F', 'G'].includes(dpeClasse) && !docPresent('AUDIT_ENERGETIQUE')) {
+    ajouter("Audit énergétique (obligatoire pour les maisons classées E, F ou G)");
+    ajouterVigilance(`L'audit énergétique n'a pas été détecté. Il est obligatoire pour la vente d'une maison classée ${dpeClasse}. Demandez-le au vendeur.`);
+  }
+
+  // ── ASSAINISSEMENT (maison non raccordée au tout-à-l'égout)
+  if (typeBien === 'maison' && !docPresent('ASSAINISSEMENT')) {
+    ajouter("Diagnostic assainissement (si non raccordé au tout-à-l'égout)");
+    ajouterVigilance("Le diagnostic assainissement n'a pas été détecté. Il est obligatoire si la maison n'est pas raccordée au tout-à-l'égout. À vérifier avec le vendeur.");
+  }
+
+  // ── TERMITES (zone arrêté préfectoral)
+  // On NE met PAS dans documents_manquants (incertain), juste un point de vigilance neutre
+  if (!diagPresent('TERMITES')) {
+    ajouterVigilance("Vérifier auprès de la mairie ou du notaire si la commune est en zone termites par arrêté préfectoral. Si c'est le cas, l'état termites est obligatoire pour la vente.");
+  }
+
+  console.log(`[analyser-run] validateDiagsManquants: ${docsManquants.length} docs manquants, ${pointsVigilance.length} points vigilance`);
+
+  return { ...rapport, documents_manquants: docsManquants, points_vigilance: pointsVigilance } as RapportShape;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// 🆕 RETRY CIBLE DPE/CARREZ — Si l'IA a oublié les détails critiques,
+// on relance UN appel IA ciblé (1 seul, jamais en boucle) avec un mini-prompt.
+// Coût additionnel : ~0,02-0,05€ par retry, déclenché uniquement si besoin.
+// ══════════════════════════════════════════════════════════════════════
+async function retryDpeCarrez(
+  rapport: RapportShape,
+  fileIds: string[],
+  apiKey: string,
+): Promise<RapportShape> {
+  const r = rapport as Record<string, unknown>;
+  const diagnostics = Array.isArray(r.diagnostics) ? r.diagnostics as Array<Record<string, unknown>> : [];
+
+  // 1. Détecter si retry nécessaire
+  const dpe = diagnostics.find(d => String(d.type || '').toUpperCase() === 'DPE');
+  const dpeResultat = dpe ? String(dpe.resultat || '') : '';
+  const dpeClasseMatch = dpeResultat.match(/Classe\s*([A-G])/i);
+  const dpeClasse = dpeClasseMatch ? dpeClasseMatch[1].toUpperCase() : null;
+  const dpeReco = r.dpe_recommandations as Record<string, unknown> | undefined;
+  const hasDpeRecos = !!(dpeReco?.present && Array.isArray((dpeReco?.pack_1 as Record<string, unknown>)?.travaux) && ((dpeReco?.pack_1 as Record<string, unknown>)?.travaux as unknown[]).length > 0);
+
+  const carrez = diagnostics.find(d => String(d.type || '').toUpperCase() === 'CARREZ');
+  const hasCarrezPieces = !!(carrez && Array.isArray(carrez.pieces_detail) && (carrez.pieces_detail as unknown[]).length > 0);
+
+  const needDpeRetry = dpeClasse && ['D', 'E', 'F', 'G'].includes(dpeClasse) && !hasDpeRecos;
+  const needCarrezRetry = !!carrez && !hasCarrezPieces;
+
+  if (!needDpeRetry && !needCarrezRetry) {
+    console.log('[analyser-run] retryDpeCarrez: aucun retry nécessaire');
+    return rapport;
+  }
+
+  console.log(`[analyser-run] retryDpeCarrez: needDpeRetry=${needDpeRetry} needCarrezRetry=${needCarrezRetry}`);
+
+  // 2. Construire le mini-prompt ciblé
+  const champs: string[] = [];
+  if (needDpeRetry) {
+    champs.push(`"dpe_recommandations": { "present": true|false, "pack_1": { "cout_min": number|null, "cout_max": number|null, "travaux": [{"poste": "mur|toiture|plancher_bas|fenetres|porte|chauffage|eau_chaude|ventilation|autre", "description": "...", "performance_cible": null, "decision_copropriete": false, "autorisation_urbanisme": false}] }, "pack_2": { ...idem }, "evolution_etiquette": { "actuelle": {"classe": "...", "kwh_m2": number|null, "ges_kg_m2": number|null}, "apres_pack_1": {...}, "apres_pack_1_et_2": {...} } }`);
+  }
+  if (needCarrezRetry) {
+    champs.push(`"carrez_pieces": [{"piece": "Sejour", "surface": 32.96}, ...] (extraire CHAQUE pièce du tableau de mesurage Carrez avec sa surface en m²)`);
+  }
+
+  const miniPrompt = `Tu es un assistant d'extraction de données immobilières. Tu reçois un ou plusieurs documents PDF. Tu dois extraire UNIQUEMENT les champs demandés et répondre en JSON STRICT, sans aucun texte autour.
+
+Champs à extraire :
+${champs.join('\n')}
+
+Si l'information n'est pas trouvable dans les documents, mets "present": false ou un tableau vide [].
+
+Réponds UNIQUEMENT avec un objet JSON contenant les champs demandés. Pas de markdown, pas d'explication.`;
+
+  // 3. Appel IA avec timeout 30s
+  const userContent: unknown[] = fileIds.map(id => ({ type: 'document', source: { type: 'file', file_id: id } }));
+  userContent.push({ type: 'text', text: 'Extrais les champs demandés.' });
+
+  let retryResult: { text: string; error?: string };
+  try {
+    retryResult = await Promise.race([
+      callAI({ system: miniPrompt, userContent, maxTokens: 4000, apiKey }),
+      new Promise<{ text: string; error: string }>((_, reject) =>
+        setTimeout(() => reject(new Error('timeout_30s')), 30000)
+      ),
+    ]) as { text: string; error?: string };
+  } catch (e) {
+    console.error('[analyser-run] retryDpeCarrez: échec appel IA (non bloquant):', e);
+    return rapport;
+  }
+
+  if (retryResult.error || !retryResult.text) {
+    console.error('[analyser-run] retryDpeCarrez: pas de réponse exploitable');
+    return rapport;
+  }
+
+  // 4. Parser la réponse JSON
+  let parsed: Record<string, unknown>;
+  try {
+    const cleaned = retryResult.text.trim().replace(/^```json\s*/i, '').replace(/```\s*$/, '');
+    parsed = JSON.parse(cleaned);
+  } catch (e) {
+    console.error('[analyser-run] retryDpeCarrez: erreur parsing JSON (non bloquant):', e);
+    return rapport;
+  }
+
+  // 5. Merger dans le rapport
+  const updated = { ...rapport } as Record<string, unknown>;
+
+  if (needDpeRetry && parsed.dpe_recommandations) {
+    updated.dpe_recommandations = parsed.dpe_recommandations;
+    console.log('[analyser-run] retryDpeCarrez: dpe_recommandations mis à jour');
+  }
+
+  if (needCarrezRetry && Array.isArray(parsed.carrez_pieces) && parsed.carrez_pieces.length > 0) {
+    const newDiagnostics = diagnostics.map(d => {
+      if (String(d.type || '').toUpperCase() === 'CARREZ') {
+        return { ...d, pieces_detail: parsed.carrez_pieces };
+      }
+      return d;
+    });
+    updated.diagnostics = newDiagnostics;
+    console.log('[analyser-run] retryDpeCarrez: carrez.pieces_detail mis à jour');
+  }
+
+  return updated as RapportShape;
+}
+
 async function deleteFromFilesAPI(fileId: string, apiKey: string): Promise<void> {
   try {
     const res = await fetch(`${ANTHROPIC_FILES_URL}/${fileId}`, {
@@ -1000,7 +1232,17 @@ Si les documents ne permettent pas de trancher avec certitude, prends "apparteme
 
 `;
   }
-  return `${typeBienBlock}Tu es le moteur d analyse de documents immobiliers de Verimo. Profil acheteur : ${p}.
+  // Date du jour pour règle "documents anciens"
+  const today = new Date();
+  const todayStr = today.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const currentYear = today.getFullYear();
+  const dateBlock = `
+DATE DU JOUR : ${todayStr}
+ANNEE COURANTE : ${currentYear}
+Utilise ces references pour evaluer si les documents fournis sont a jour (voir REGLE DOCUMENTS ANCIENS).
+
+`;
+  return `${typeBienBlock}${dateBlock}Tu es le moteur d analyse de documents immobiliers de Verimo. Profil acheteur : ${p}.
 Tu informes, tu n orientes jamais la decision finale. Tu n utilises jamais les mots Claude, Anthropic ou IA.
 Si une information est absente, tu le signales clairement.
 
@@ -1157,7 +1399,7 @@ REGLES IMPORTANTES :
 - diagnostics : perimetre OBLIGATOIRE = "lot_privatif" ou "parties_communes"
 - diagnostics DPE : le champ "resultat" doit contenir la classe energetique ET la classe GES sous la forme "Classe E - 281 kWh/m2/an. GES: Classe D - 61 kg CO2/m2/an."
 - dpe_recommandations : si un DDT contient un DPE avec sa section "Recommandations d amelioration de la performance", recopier ICI les donnees extraites dans le DDT (dpe.recommandations + dpe.version_methode). Mettre present=true. Si aucun DPE n est fourni dans le dossier OU si le DPE n a pas de section recommandations exploitable, mettre present=false et laisser pack_1/pack_2/evolution_etiquette vides. Cette section est destinee a l onglet logement du rapport.
-- diagnostics CARREZ/MESURAGE : si le document contient un detail des surfaces par piece, renseigner pieces_detail : [{"piece": "Sejour", "surface": 20.29}]. Sinon laisser null.
+- diagnostics CARREZ/MESURAGE : si le document contient un detail des surfaces par piece, renseigner pieces_detail : [{"piece": "Sejour", "surface": 20.29}]. Sinon laisser null. IMPORTANT : extraire systematiquement chaque piece listee dans le mesurage (sejour, chambre, cuisine, salle de bains, wc, entree, etc.) avec sa surface en m2. Ne pas se contenter de la surface totale. Si une piece a une surface < 1.80m de hauteur sous plafond et n est pas comptee Carrez, l ignorer.
 - diagnostics PLOMB parties communes : NE PAS inclure si annee_construction >= 1949.
 - diagnostics AMIANTE parties communes : NE PAS inclure si annee_construction >= 1997.
 - diagnostics TERMITES : mettre presence="absence" UNIQUEMENT si le document dit explicitement que l immeuble n est pas concerne.
@@ -1188,6 +1430,7 @@ REGLES STATUT SYNDIC (multi-PV) — IMPORTANT : etudier TOUS les PV d AG fournis
   * 1 PV fourni : ajouter "Il manque 2 PV d'assemblée générale sur les 3 obligatoires"
   * 2 PV fournis : ajouter "Il manque 1 PV d'assemblée générale sur les 3 obligatoires"
   * 3 PV fournis : ne rien ajouter (complet)
+- RÈGLE DOCUMENTS ANCIENS : utilise l ANNEE COURANTE fournie en debut de prompt. Pour chaque document analyse, comparer son annee a l annee courante. Si un document considere comme devant etre tenu a jour a plus de 2 ans d ecart avec l annee courante, AJOUTER une entree dans points_vigilance. Documents concernes par cette regle : PV d AG, appels de charges, pre-etat date, etat date, taxe fonciere, fiche synthetique. Exemple si annee courante = 2026 et derniers PV d AG fournis = 2021, 2022, 2023 : ajouter dans points_vigilance "Les PV d assemblee generale fournis sont anciens (2021, 2022, 2023). Demander les PV des 3 dernieres AGs (2023, 2024, 2025) pour disposer d une vision actuelle de la copropriete." NE PAS appliquer cette regle aux documents par nature statiques : RCP, modificatifs RCP, diagnostics amiante/plomb parties communes, carnet d entretien (peut etre ancien si copropriete sans evenements recents).
 - vie_copropriete.syndic.historique_changements : uniquement si statut = "rotation_frequente", lister les syndics successifs avec leur annee, format : [{ "annee": "2022", "syndic": "LACOUR" }, { "annee": "2023", "syndic": "A2BCD" }, { "annee": "2024", "syndic": "MARTIN" }]. Pour tous les autres statuts, laisser ce champ vide [].
 - IMPORTANT — Non alarmisme : un changement de syndic unique (statut "nouveau_elu") est NORMAL et COURANT, pas un signal negatif. NE JAMAIS mentionner ce changement dans points_vigilance sauf si combine avec : quitus refuse ET changement dans la meme AG, OU procedure en cours contre le syndic sortant. Un simple changement de cabinet sans conflit documente reste neutre ou va dans points_forts.
 - Si statut = "rotation_frequente" (2+ changements sur peu d AGs), mentionner dans points_vigilance : "Instabilite dans la gouvernance : 3 syndics differents identifies sur les 3 dernieres AGs. Cette rotation frequente peut traduire des tensions internes — a approfondir."
@@ -1518,6 +1761,16 @@ async function runAnalyseWithData(
       report = result.error ? null : parseJson<Record<string, unknown>>(result.text);
     }
 
+    // 🆕 RETRY CIBLE DPE/CARREZ — Avant suppression RGPD car on a encore besoin des fileIds.
+    // Filet de sécurité si l'IA a oublié des détails critiques (1 seul appel max, non bloquant).
+    if (mode !== 'document' && report && !result.error) {
+      try {
+        report = await retryDpeCarrez(report as RapportShape, fileIds, apiKey) as Record<string, unknown>;
+      } catch (e) {
+        console.error('[analyser-run] retryDpeCarrez erreur (non bloquant):', e);
+      }
+    }
+
     console.log(`[analyser-run] Suppression RGPD de ${fileIds.length} fichier(s)`);
     await Promise.all(fileIds.map(id => deleteFromFilesAPI(id, apiKey)));
 
@@ -1546,6 +1799,15 @@ async function runAnalyseWithData(
         report = recalculerCategories(report as RapportShape, profil) as Record<string, unknown>;
       } catch (e) {
         console.error('[analyser-run] Erreur recalcul categories (non bloquant):', e);
+      }
+
+      // 🆕 VALIDATION DETERMINISTE DES DIAGS OBLIGATOIRES MANQUANTS
+      // Ajoute dans documents_manquants + points_vigilance les diagnostics absents
+      // selon le type de bien et l'année. Non bloquant.
+      try {
+        report = validateDiagsManquants(report as RapportShape) as Record<string, unknown>;
+      } catch (e) {
+        console.error('[analyser-run] validateDiagsManquants erreur (non bloquant):', e);
       }
     }
 
@@ -1673,6 +1935,15 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
       report = result.error ? null : parseJson<Record<string, unknown>>(result.text);
     }
 
+    // 🆕 RETRY CIBLE DPE/CARREZ — Avant suppression RGPD (non bloquant).
+    if (mode !== 'document' && report && !result.error) {
+      try {
+        report = await retryDpeCarrez(report as RapportShape, fileIds, apiKey) as Record<string, unknown>;
+      } catch (e) {
+        console.error('[analyser-run] retryDpeCarrez erreur (non bloquant):', e);
+      }
+    }
+
     console.log(`[analyser-run] Suppression RGPD de ${fileIds.length} fichier(s)`);
     await Promise.all(fileIds.map(id => deleteFromFilesAPI(id, apiKey)));
 
@@ -1699,6 +1970,13 @@ async function runAnalyse(analyseId: string, supabaseAdmin: SupabaseClient, apiK
         report = recalculerCategories(report as RapportShape, profil) as Record<string, unknown>;
       } catch (e) {
         console.error('[analyser-run] Erreur recalcul categories (non bloquant):', e);
+      }
+
+      // 🆕 VALIDATION DETERMINISTE DES DIAGS OBLIGATOIRES MANQUANTS
+      try {
+        report = validateDiagsManquants(report as RapportShape) as Record<string, unknown>;
+      } catch (e) {
+        console.error('[analyser-run] validateDiagsManquants erreur (non bloquant):', e);
       }
     }
 
