@@ -1,5 +1,5 @@
 // src/components/CallbackRequestModal.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Phone, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
@@ -25,11 +25,40 @@ export default function CallbackRequestModal({
   defaultPhone = '',
 }: CallbackRequestModalProps) {
   const [phone, setPhone] = useState(defaultPhone);
+  const [phonePrefilled, setPhonePrefilled] = useState(false); // 🆕 Pour afficher l'info de pré-remplissage
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  // 🆕 Quand la modal s'ouvre, charger le téléphone enregistré dans le profil
+  useEffect(() => {
+    if (!open) return;
+    if (defaultPhone) {
+      setPhone(defaultPhone);
+      setPhonePrefilled(true);
+      return;
+    }
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('telephone')
+          .eq('id', user.id)
+          .single();
+        if (profile?.telephone) {
+          setPhone(profile.telephone);
+          setPhonePrefilled(true);
+        }
+      } catch (err) {
+        // Non bloquant : si le pré-remplissage échoue, l'user remplit lui-même
+        console.warn('[CallbackRequestModal] phone prefill failed (non-blocking):', err);
+      }
+    })();
+  }, [open, defaultPhone]);
 
   const toggleSlot = (id: string) => {
     setSelectedSlots(prev =>
@@ -182,10 +211,15 @@ export default function CallbackRequestModal({
               <input
                 type="tel"
                 value={phone}
-                onChange={e => setPhone(e.target.value)}
+                onChange={e => { setPhone(e.target.value); setPhonePrefilled(false); }}
                 placeholder="06 12 34 56 78"
                 style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid #e2e8f0', fontSize: 14, color: '#0f172a', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
               />
+              {phonePrefilled && (
+                <p style={{ fontSize: 11.5, color: '#2a7d9c', margin: '6px 0 0', lineHeight: 1.45 }}>
+                  Nous vous rappellerons sur ce numéro. Modifiez-le si vous préférez un autre.
+                </p>
+              )}
             </div>
 
             {/* Créneaux */}
