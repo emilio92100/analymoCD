@@ -1635,8 +1635,7 @@ type CallbackWithProfile = CallbackRequest & {
   profile?: {
     id: string;
     email: string | null;
-    prenom: string | null;
-    nom: string | null;
+    full_name: string | null;
     pro_company_name: string | null;
     profile_type: string | null;
     pro_status: string | null;
@@ -1692,7 +1691,7 @@ function AdminCallbacksTab({ showToast, onPendingChange, onGoToUser, onGoToProCl
       if (userIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, email, prenom, nom, pro_company_name, profile_type, pro_status, role')
+          .select('id, email, full_name, pro_company_name, profile_type, pro_status, role')
           .in('id', userIds);
         if (profiles) {
           profilesById = profiles.reduce((acc, p) => {
@@ -1794,7 +1793,7 @@ function AdminCallbacksTab({ showToast, onPendingChange, onGoToUser, onGoToProCl
             </div>
           ) : filtered.map((cb, i) => {
             const status = STATUS_LABELS[cb.status];
-            const userLabel = cb.profile?.pro_company_name || `${cb.profile?.prenom || ''} ${cb.profile?.nom || ''}`.trim() || cb.profile?.email || 'Inconnu';
+            const userLabel = cb.profile?.pro_company_name || cb.profile?.full_name || cb.profile?.email || 'Inconnu';
             return (
               <div key={cb.id} onClick={() => { setSelected(cb); setNotes(cb.admin_notes || ''); }}
                 style={{ padding: '14px 18px', borderBottom: i < filtered.length - 1 ? '1px solid #f8fafc' : 'none', cursor: 'pointer', background: selected?.id === cb.id ? '#f0f7fb' : '#fff', transition: 'background 0.15s' }}>
@@ -1837,7 +1836,7 @@ function AdminCallbacksTab({ showToast, onPendingChange, onGoToUser, onGoToProCl
             <div style={{ marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid #f1f5f9' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', marginBottom: 6, letterSpacing: '0.06em' }}>PRO</div>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>
-                {selected.profile?.pro_company_name || `${selected.profile?.prenom || ''} ${selected.profile?.nom || ''}`.trim() || 'Inconnu'}
+                {selected.profile?.pro_company_name || selected.profile?.full_name || 'Inconnu'}
               </div>
               <div style={{ fontSize: 12.5, color: '#64748b', marginBottom: 8 }}>{selected.profile?.email}</div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
