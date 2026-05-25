@@ -1637,7 +1637,7 @@ type CallbackWithProfile = CallbackRequest & {
     email: string | null;
     full_name: string | null;
     pro_company_name: string | null;
-    profile_type: string | null;
+    pro_profile_type: string | null;
     pro_status: string | null;
     role: string | null;
   } | null;
@@ -1691,7 +1691,7 @@ function AdminCallbacksTab({ showToast, onPendingChange, onGoToUser, onGoToProCl
       if (userIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, email, full_name, pro_company_name, profile_type, pro_status, role')
+          .select('id, email, full_name, pro_company_name, pro_profile_type, pro_status, role')
           .in('id', userIds);
         if (profiles) {
           profilesById = profiles.reduce((acc, p) => {
@@ -1816,7 +1816,7 @@ function AdminCallbacksTab({ showToast, onPendingChange, onGoToUser, onGoToProCl
                 </div>
                 <div style={{ fontSize: 11, color: '#94a3b8' }}>
                   Contexte : <strong style={{ color: '#64748b' }}>{CONTEXT_LABELS_ADMIN[cb.context] || cb.context}</strong>
-                  {cb.profile?.profile_type && <> · Type : <strong style={{ color: '#64748b' }}>{cb.profile.profile_type}</strong></>}
+                  {cb.profile?.pro_profile_type && <> · Type : <strong style={{ color: '#64748b' }}>{cb.profile.pro_profile_type}</strong></>}
                 </div>
               </div>
             );
@@ -1840,8 +1840,8 @@ function AdminCallbacksTab({ showToast, onPendingChange, onGoToUser, onGoToProCl
               </div>
               <div style={{ fontSize: 12.5, color: '#64748b', marginBottom: 8 }}>{selected.profile?.email}</div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
-                {selected.profile?.profile_type && (
-                  <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 10.5, fontWeight: 700, color: '#7c3aed', background: '#f5f3ff', letterSpacing: '0.04em' }}>{selected.profile.profile_type.toUpperCase()}</span>
+                {selected.profile?.pro_profile_type && (
+                  <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 10.5, fontWeight: 700, color: '#7c3aed', background: '#f5f3ff', letterSpacing: '0.04em' }}>{selected.profile.pro_profile_type.toUpperCase()}</span>
                 )}
                 {selected.profile?.pro_status && (
                   <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 10.5, fontWeight: 700, color: '#0f2d3d', background: '#e8f4f8', letterSpacing: '0.04em' }}>{selected.profile.pro_status.toUpperCase()}</span>
@@ -5545,7 +5545,20 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [showCreate, setShowCreate] = useState(false);
   // 🆕 State pour le modal d'invitation démo
   const [showDemoInvite, setShowDemoInvite] = useState(false);
-  const [demoForm, setDemoForm] = useState({ full_name: '', email: '', pro_company_name: '', custom_message: '' });
+  const [demoForm, setDemoForm] = useState({
+    full_name: '',
+    email: '',
+    telephone: '',
+    pro_profile_type: 'agent',
+    pro_company_name: '',
+    pro_network: '',
+    pro_siret: '',
+    pro_company_address: '',
+    pro_postal_code: '',
+    pro_ville: '',
+    pro_notes_admin: '',
+    custom_message: '',
+  });
   const [demoFile, setDemoFile] = useState<File | null>(null);
   const [demoError, setDemoError] = useState('');
   const [demoSending, setDemoSending] = useState(false);
@@ -5786,7 +5799,15 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
           action: 'create_pro_demo',
           email: demoForm.email,
           full_name: demoForm.full_name,
+          telephone: demoForm.telephone || null,
+          pro_profile_type: demoForm.pro_profile_type || 'autre',
           pro_company_name: demoForm.pro_company_name || null,
+          pro_network: demoForm.pro_network || null,
+          pro_siret: demoForm.pro_siret || null,
+          pro_company_address: demoForm.pro_company_address || null,
+          pro_postal_code: demoForm.pro_postal_code || null,
+          pro_ville: demoForm.pro_ville || null,
+          pro_notes_admin: demoForm.pro_notes_admin || null,
           custom_message: demoForm.custom_message || null,
           attachment,
         }),
@@ -5800,7 +5821,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       await logAction('Compte démo créé + mail envoyé', demoForm.email);
       showToast(`Invitation démo envoyée à ${demoForm.email}${data.attachment_sent ? ' avec PJ' : ''}`);
       setShowDemoInvite(false);
-      setDemoForm({ full_name: '', email: '', pro_company_name: '', custom_message: '' });
+      setDemoForm({ full_name: '', email: '', telephone: '', pro_profile_type: 'agent', pro_company_name: '', pro_network: '', pro_siret: '', pro_company_address: '', pro_postal_code: '', pro_ville: '', pro_notes_admin: '', custom_message: '' });
       setDemoFile(null);
       loadClients();
     } catch (e) { setDemoError(String(e)); }
@@ -5871,7 +5892,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
           <button onClick={() => {
-            setDemoForm({ full_name: '', email: '', pro_company_name: '', custom_message: '' });
+            setDemoForm({ full_name: '', email: '', telephone: '', pro_profile_type: 'agent', pro_company_name: '', pro_network: '', pro_siret: '', pro_company_address: '', pro_postal_code: '', pro_ville: '', pro_notes_admin: '', custom_message: '' });
             setDemoFile(null);
             setDemoError('');
             setShowDemoInvite(true);
@@ -6731,9 +6752,57 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
               </div>
             </div>
 
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+              <div>
+                <label style={labelStyle}>Téléphone</label>
+                <input value={demoForm.telephone} onChange={e => setDemoForm(f => ({ ...f, telephone: e.target.value }))} style={inputStyle} placeholder="06 12 34 56 78" type="tel" />
+              </div>
+              <div>
+                <label style={labelStyle}>Type de profil</label>
+                <select value={demoForm.pro_profile_type} onChange={e => setDemoForm(f => ({ ...f, pro_profile_type: e.target.value }))} style={inputStyle as React.CSSProperties}>
+                  <option value="agent">🏢 Agent immobilier</option>
+                  <option value="investisseur">📈 Investisseur</option>
+                  <option value="notaire">⚖️ Notaire</option>
+                  <option value="autre">💼 Autre</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+              <div>
+                <label style={labelStyle}>Raison sociale</label>
+                <input value={demoForm.pro_company_name} onChange={e => setDemoForm(f => ({ ...f, pro_company_name: e.target.value }))} style={inputStyle} placeholder="Agence Dupont SARL" />
+              </div>
+              <div>
+                <label style={labelStyle}>Réseau</label>
+                <input value={demoForm.pro_network} onChange={e => setDemoForm(f => ({ ...f, pro_network: e.target.value }))} style={inputStyle} placeholder="IAD, Safti, Indépendant..." />
+              </div>
+            </div>
+
             <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>Agence / Société (optionnel)</label>
-              <input value={demoForm.pro_company_name} onChange={e => setDemoForm(f => ({ ...f, pro_company_name: e.target.value }))} style={inputStyle} placeholder="Agence Dupont Immo" />
+              <label style={labelStyle}>SIRET</label>
+              <input value={demoForm.pro_siret} onChange={e => setDemoForm(f => ({ ...f, pro_siret: e.target.value }))} style={inputStyle} placeholder="123 456 789 00012" />
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Adresse</label>
+              <input value={demoForm.pro_company_address} onChange={e => setDemoForm(f => ({ ...f, pro_company_address: e.target.value }))} style={inputStyle} placeholder="12 rue de la République" />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12, marginBottom: 14 }}>
+              <div>
+                <label style={labelStyle}>Code postal</label>
+                <input value={demoForm.pro_postal_code} onChange={e => setDemoForm(f => ({ ...f, pro_postal_code: e.target.value }))} style={inputStyle} placeholder="75001" />
+              </div>
+              <div>
+                <label style={labelStyle}>Ville</label>
+                <input value={demoForm.pro_ville} onChange={e => setDemoForm(f => ({ ...f, pro_ville: e.target.value }))} style={inputStyle} placeholder="Paris" />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={labelStyle}>Notes internes (visible uniquement par l'admin)</label>
+              <textarea value={demoForm.pro_notes_admin} onChange={e => setDemoForm(f => ({ ...f, pro_notes_admin: e.target.value }))} rows={2} style={{ ...inputStyle, resize: 'vertical' as const, fontFamily: 'inherit' }} placeholder="Rencontré au RDV du 15/01, agence de 4 agents à Boulogne, intéressé par forfait agence..." />
             </div>
 
             <div style={{ marginBottom: 14 }}>
