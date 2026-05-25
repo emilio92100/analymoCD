@@ -876,6 +876,14 @@ Deno.serve(async (req) => {
     if (action === 'create_pro_demo') {
       const {
         email, full_name, pro_company_name,
+        telephone,             // 🆕 Téléphone du pro
+        pro_profile_type,      // 🆕 Type de profil (agent, investisseur, notaire, autre)
+        pro_network,           // 🆕 Réseau (IAD, Safti, etc.)
+        pro_siret,             // 🆕 SIRET
+        pro_company_address,   // 🆕 Adresse
+        pro_postal_code,       // 🆕 Code postal
+        pro_ville,             // 🆕 Ville
+        pro_notes_admin,       // 🆕 Notes internes admin
         custom_message,        // Texte personnalisé pour le mail (optionnel)
         attachment,            // PDF en base64 (optionnel) : { filename, contentType, base64Content }
       } = body
@@ -896,14 +904,22 @@ Deno.serve(async (req) => {
 
       const userId = authData.user.id
 
-      // 2. Création du profil pro en mode démo
+      // 2. Création du profil pro en mode démo (avec tous les champs enrichis)
       const nowIso = new Date().toISOString()
       const { error: profileError } = await adminClient.from('profiles').upsert({
         id: userId,
         full_name,
         email,
         role: 'pro',
+        telephone: telephone || null,
+        pro_profile_type: pro_profile_type || 'autre',
         pro_company_name: pro_company_name || null,
+        pro_network: pro_network || null,
+        pro_siret: pro_siret || null,
+        pro_company_address: pro_company_address || null,
+        pro_postal_code: pro_postal_code || null,
+        pro_ville: pro_ville || null,
+        pro_notes_admin: pro_notes_admin || null,
         pro_status: 'demo',
         pro_demo_started_at: nowIso,
         pro_created_at: nowIso,
