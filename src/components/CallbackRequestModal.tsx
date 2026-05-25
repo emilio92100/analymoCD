@@ -1,6 +1,7 @@
 // src/components/CallbackRequestModal.tsx
 import { useState } from 'react';
 import { X, Phone, Check } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 
 interface CallbackRequestModalProps {
@@ -29,8 +30,6 @@ export default function CallbackRequestModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-
-  if (!open) return null;
 
   const toggleSlot = (id: string) => {
     setSelectedSlots(prev =>
@@ -103,32 +102,42 @@ export default function CallbackRequestModal({
   };
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(15,23,42,0.6)',
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
-        backdropFilter: 'blur(4px)',
-      }}
-      onClick={onClose}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          background: '#fff',
-          borderRadius: 18,
-          width: '100%',
-          maxWidth: 500,
-          maxHeight: '90vh',
-          overflowY: 'auto',
-          boxShadow: '0 24px 60px rgba(0,0,0,0.3)',
-        }}
-      >
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15,23,42,0.6)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+            backdropFilter: 'blur(4px)',
+          }}
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 8 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#fff',
+              borderRadius: 18,
+              width: '100%',
+              maxWidth: 500,
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: '0 24px 60px rgba(0,0,0,0.3)',
+            }}
+          >
         {/* Header */}
         <div style={{ padding: '22px 24px 18px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -250,7 +259,9 @@ export default function CallbackRequestModal({
             </button>
           </div>
         )}
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
