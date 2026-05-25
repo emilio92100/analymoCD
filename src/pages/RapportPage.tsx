@@ -1212,9 +1212,14 @@ function AvisVerimoBlock({ avis, isSimple, isShared, hideVerimoBranding }: { avi
         <>
           {(verdict || contexte) && <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '0 26px' }} />}
           <div className="avis-demarches" style={{ padding: '20px 26px 8px' }}>
-            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.14em', color: '#5bb8d4', textTransform: 'uppercase', marginBottom: 14 }}>
-              Points à approfondir avant de signer
+            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.14em', color: '#5bb8d4', textTransform: 'uppercase', marginBottom: hideVerimoBranding ? 6 : 14 }}>
+              {hideVerimoBranding ? 'Points relevés par votre professionnel' : 'Points à approfondir avant de signer'}
             </div>
+            {hideVerimoBranding && (
+              <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.55)', lineHeight: 1.55, marginBottom: 14, fontStyle: 'italic' }}>
+                Voici les vérifications et démarches que votre professionnel a identifiées sur ce dossier. Il pourra les traiter avec vous ou pour vous.
+              </div>
+            )}
             {demarches.map((d, i) => (
               <div key={i} className="avis-action-item" style={{ display: 'grid', gridTemplateColumns: '32px 1fr', gap: 14, padding: '14px 0', borderBottom: i < demarches.length - 1 ? '1px solid rgba(255,255,255,0.07)' : 'none' }}>
                 <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(91,184,212,0.15)', border: '1px solid rgba(91,184,212,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#5bb8d4', fontSize: 13, fontWeight: 700, marginTop: 1 }}>
@@ -3949,10 +3954,12 @@ function TabDocuments({ rapport, onComplement, isShared }: { rapport: RapportDat
               );
             })}
           </div>
-          <div style={{ padding: '12px 20px', background: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8, borderTop: '1px solid #f1f5f9' }}>
-            <Shield size={13} style={{ color: '#94a3b8', flexShrink: 0 }} />
-            <span style={{ fontSize: 13, color: '#94a3b8' }}>Documents supprimés de nos serveurs après traitement — conformément au RGPD.</span>
-          </div>
+          {!isShared && (
+            <div style={{ padding: '12px 20px', background: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8, borderTop: '1px solid #f1f5f9' }}>
+              <Shield size={13} style={{ color: '#94a3b8', flexShrink: 0 }} />
+              <span style={{ fontSize: 13, color: '#94a3b8' }}>Documents supprimés de nos serveurs après traitement — conformément au RGPD.</span>
+            </div>
+          )}
         </div>
         );
       })()}
@@ -4655,7 +4662,7 @@ export default function RapportPage() {
     { id: 'logement', label: logementLabel, icon: logementIcon, dotColor: rapport.diagnostics.some((d: Record<string, unknown>) => d.alerte && d.perimetre === 'lot_privatif') ? '#ef4444' : '#2a7d9c' },
     { id: 'procedures', label: 'Procédures', icon: <Gavel size={14} />, dotColor: rapport.procedures_en_cours ? '#ef4444' : '#22c55e' },
     ...(hasCompromis ? [{ id: 'compromis' as TabId, label: 'Compromis', icon: <FileSignature size={14} />, dotColor: '#0f2d3d' }] : []),
-    { id: 'documents', label: 'Documents', icon: <FileText size={14} />, dotColor: missingEssentielsCount > 0 ? '#f97316' : '#94a3b8', badge: missingEssentielsCount > 0 ? missingEssentielsCount : undefined },
+    { id: 'documents', label: 'Documents', icon: <FileText size={14} />, dotColor: (!isShared && missingEssentielsCount > 0) ? '#f97316' : '#94a3b8', badge: (!isShared && missingEssentielsCount > 0) ? missingEssentielsCount : undefined },
   ];
 
   return (
