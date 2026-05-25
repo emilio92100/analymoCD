@@ -5526,6 +5526,7 @@ type ProClient = {
   pro_notes_admin?: string; pro_created_at?: string; pro_recommended_plan?: string;
   pro_onboarding_done?: boolean; credits_document?: number; credits_complete?: number;
   cgv_pro_accepted_at?: string | null; cgv_pro_version?: string | null;
+  pro_status?: string | null;
   suspended?: boolean; created_at: string;
 };
 type ProInvitation = { id: string; profile_id: string; email: string; token: string; sent_at?: string; accepted_at?: string; created_at: string };
@@ -5850,8 +5851,11 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       if (selected) loadClientDetail(selected);
     } catch (e) { showToast('Erreur : ' + String(e)); }
   };
-  // Référence factice pour éviter le warning noUnusedLocals — utilisé dans la prochaine session
-  void handleActivateDemo;
+
+  // 🆕 State pour le modal "Activer le compte"
+  const [showActivateModal, setShowActivateModal] = useState(false);
+  const [activateForm, setActivateForm] = useState({ credits_simple: '0', credits_complete: '0' });
+  const [activating, setActivating] = useState(false);
 
   const sendInvitation = async (profileId: string, isResend = false) => {
     setSendingInvite(true);
@@ -5938,6 +5942,13 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                   <button onClick={() => sendInvitation(selected.id, invitations.some(inv => inv.sent_at))} disabled={sendingInvite}
                     style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: 'linear-gradient(135deg,#2a7d9c,#0f2d3d)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: sendingInvite ? 0.7 : 1 }}>
                     <Send size={12} /> {sendingInvite ? 'Envoi...' : invitations.some(inv => inv.sent_at) ? 'Renvoyer le mail' : 'Envoyer mail de connexion'}
+                  </button>
+                )}
+                {/* 🆕 Bouton Activer le compte (visible uniquement pour les comptes démo) */}
+                {selected.pro_status === 'demo' && (
+                  <button onClick={() => { setActivateForm({ credits_simple: '0', credits_complete: '0' }); setShowActivateModal(true); }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, background: '#dcfce7', border: '1px solid #86efac', color: '#166534', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
+                    <CheckCircle size={12} /> Activer le compte
                   </button>
                 )}
                 <button onClick={() => setShowDeleteConfirm(true)}
@@ -6632,6 +6643,63 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                     setShowUpdateEmail(false);
                   }}
                     style={{ flex: 1, padding: '11px', borderRadius: 10, border: 'none', background: '#2a7d9c', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer', transition: 'all 0.2s' }}>Modifier</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 🆕 Modal Activer le compte (sortie de démo) */}
+          {showActivateModal && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,45,61,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+              <div style={{ background: '#fff', borderRadius: 20, padding: 28, width: '100%', maxWidth: 460, boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <CheckCircle size={20} style={{ color: '#16a34a' }} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>Activer le compte</h3>
+                    <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>Sortie du mode démo</p>
+                  </div>
+                </div>
+
+                <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 16px', lineHeight: 1.5 }}>
+                  Le compte de <strong style={{ color: '#0f172a' }}>{selected.full_name || selected.email}</strong> va passer de <strong>démo</strong> à <strong>actif</strong>. Les bandeaux démo disparaîtront côté client.
+                </p>
+
+                <div style={{ padding: 12, background: '#f8fafc', borderRadius: 10, marginBottom: 16, border: '1px solid #f1f5f9' }}>
+                  <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 10px', lineHeight: 1.5 }}>
+                    <strong style={{ color: '#0f172a' }}>Crédits à offrir (optionnel)</strong> — utile si le pro n'a pas d'abonnement Stripe et que vous voulez lui donner des crédits "geste commercial".
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 4, letterSpacing: '0.04em' }}>ANALYSE SIMPLE</label>
+                      <input type="number" min={0} value={activateForm.credits_simple} onChange={e => setActivateForm(f => ({ ...f, credits_simple: e.target.value }))}
+                        style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 4, letterSpacing: '0.04em' }}>ANALYSE COMPLÈTE</label>
+                      <input type="number" min={0} value={activateForm.credits_complete} onChange={e => setActivateForm(f => ({ ...f, credits_complete: e.target.value }))}
+                        style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => setShowActivateModal(false)} disabled={activating}
+                    style={{ flex: 1, padding: '11px', borderRadius: 10, border: '1.5px solid #edf2f7', background: '#fff', fontSize: 13, fontWeight: 700, color: '#64748b', cursor: activating ? 'wait' : 'pointer' }}>
+                    Annuler
+                  </button>
+                  <button onClick={async () => {
+                    setActivating(true);
+                    const addDoc = parseInt(activateForm.credits_simple) || 0;
+                    const addComp = parseInt(activateForm.credits_complete) || 0;
+                    await handleActivateDemo(selected.id, addDoc, addComp);
+                    setActivating(false);
+                    setShowActivateModal(false);
+                  }} disabled={activating}
+                    style={{ flex: 1, padding: '11px', borderRadius: 10, border: 'none', background: activating ? '#94a3b8' : '#16a34a', fontSize: 13, fontWeight: 700, color: '#fff', cursor: activating ? 'wait' : 'pointer', boxShadow: '0 4px 12px rgba(22,163,74,0.25)' }}>
+                    {activating ? 'Activation...' : '✓ Activer le compte'}
+                  </button>
                 </div>
               </div>
             </div>
