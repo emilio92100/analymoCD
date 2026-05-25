@@ -11,10 +11,11 @@ import {
   UserPlus, UserCheck, Folder, Lightbulb, MessageSquare,
   LayoutGrid, LayoutList, ArrowUpDown, Info, Calendar,
   Shield, Lock, ExternalLink, Archive, Sun, Moon,
-  Paperclip,
+  Paperclip, Phone,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getStripe } from '../lib/stripe-client';
+import CallbackRequestModal from '../components/CallbackRequestModal';
 
 // Réutiliser les vues existantes
 import NouvelleAnalyse from './dashboard/NouvelleAnalyse';
@@ -844,7 +845,16 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, f
   const demoCompleteLeft = proCredits?.total_complete ?? 0;
   const demoCreditsUsed = isDemo && demoSimpleLeft === 0 && demoCompleteLeft === 0;
 
+  // 🆕 État de la modal "Être rappelé"
+  const [callbackModalOpen, setCallbackModalOpen] = useState(false);
+  const [callbackContext, setCallbackContext] = useState<'demo_expired' | 'abonnement_agence' | 'other'>('other');
+  const openCallback = (ctx: 'demo_expired' | 'abonnement_agence' | 'other') => {
+    setCallbackContext(ctx);
+    setCallbackModalOpen(true);
+  };
+
   return (
+    <>
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ marginBottom: 28, background: '#fff', borderRadius: 16, border: '1px solid #edf2f7', padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' as const }}>
         <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg, #2a7d9c, #0f2d3d)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
@@ -941,13 +951,26 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, f
                 Vous avez testé Verimo, qu'en pensez-vous ?
               </h2>
               <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', margin: '0 0 18px 0', lineHeight: 1.6 }}>
-                Vos crédits découverte ont été utilisés. Pour continuer à analyser des dossiers et rassurer vos clients,
-                contactez-nous pour passer en compte actif avec un forfait adapté à votre activité.
+                Vos crédits découverte sont utilisés. Pour continuer à analyser vos dossiers et rassurer vos clients,
+                deux options selon votre activité :
               </p>
-              <a href="mailto:pro@verimo.fr?subject=Passage%20en%20compte%20actif%20Verimo%20Pro"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 22px', background: '#fff', color: '#0f2d3d', borderRadius: 11, fontSize: 14, fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
-                💬 Nous contacter pour continuer
-              </a>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const }}>
+                <button
+                  onClick={() => openCallback('demo_expired')}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 20px', background: '#fff', color: '#0f2d3d', borderRadius: 11, fontSize: 14, fontWeight: 800, border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+                >
+                  <Phone size={15} /> Je souhaite être rappelé
+                </button>
+                <Link
+                  to="/dashboard/abonnement"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '11px 20px', background: 'rgba(255,255,255,0.08)', color: '#fff', borderRadius: 11, fontSize: 14, fontWeight: 700, textDecoration: 'none', border: '1px solid rgba(255,255,255,0.2)' }}
+                >
+                  Voir les forfaits <ArrowRight size={14} />
+                </Link>
+              </div>
+              <p style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', margin: '12px 0 0', lineHeight: 1.5 }}>
+                Forfaits solo en self-service. Pour une agence ou une équipe, demandez à être rappelé.
+              </p>
             </div>
           </div>
         </div>
@@ -1104,6 +1127,14 @@ function HomeViewPro({ proProfile, subscription, proCredits, analyses, shares, f
         </div>
       )}
     </div>
+
+    {/* 🆕 Modal "Être rappelé" */}
+    <CallbackRequestModal
+      open={callbackModalOpen}
+      onClose={() => setCallbackModalOpen(false)}
+      context={callbackContext}
+    />
+  </>
   );
 }
 
@@ -2834,6 +2865,9 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
   const [loading, setLoading] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
+  // 🆕 Modal "Être rappelé" (contexte agence)
+  const [callbackModalOpen, setCallbackModalOpen] = useState(false);
+
   // ─── CGV Pro : consentement avant le 1er paiement ───
   // Si cgv_pro_accepted_at est rempli en BDD → on saute la popup à vie pour ce user.
   // Sinon → on intercepte les 3 actions de paiement (subscribe, upgrade, buy_unit)
@@ -4039,6 +4073,25 @@ function MonAbonnement({ subscription, hasEverSubscribed, proProfile }: { subscr
         )}
       </AnimatePresence>
 
+      {/* 🆕 Banniere "Vous gerez une equipe ?" — au-dessus des plans solo */}
+      <div style={{ marginBottom: 18, padding: '14px 18px', background: '#f0f7fb', borderRadius: 12, border: '1px solid #d0e8f0', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' as const }}>
+        <div style={{ fontSize: 22, flexShrink: 0 }}>🏢</div>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0f2d3d', marginBottom: 2 }}>
+            Vous gérez une agence ou une équipe ?
+          </div>
+          <div style={{ fontSize: 12.5, color: '#64748b', lineHeight: 1.5 }}>
+            Les forfaits ci-dessous sont conçus pour un usage individuel. Pour plusieurs agents, demandez un devis personnalisé.
+          </div>
+        </div>
+        <button
+          onClick={() => setCallbackModalOpen(true)}
+          style={{ padding: '9px 18px', borderRadius: 10, background: '#fff', border: '1.5px solid #2a7d9c', color: '#2a7d9c', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' as const, display: 'inline-flex', alignItems: 'center', gap: 7 }}
+        >
+          <Phone size={13} /> Demander un devis agence
+        </button>
+      </div>
+
       {/* ═══ SECTION 1 : Choisir / Changer de plan ═══ */}
       <div style={{ marginBottom: 28, borderRadius: 20, border: '1.5px solid #d0e8f0', overflow: 'hidden', background: '#fff' }}>
         <div className="plan-header" style={{ padding: '20px 24px', background: 'linear-gradient(135deg, #f0f7fb, #e8f4f8)', borderBottom: '1px solid #d0e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
@@ -4550,6 +4603,13 @@ Vos crédits non utilisés en fin de mois sont reportés sur le mois suivant, da
         actionLabel={cgvDialog.actionLabel}
         onAccept={cgvDialog.onAccept}
         onCancel={() => setCgvDialog((d) => ({ ...d, open: false }))}
+      />
+
+      {/* 🆕 Modal "Être rappelé" — contexte agence */}
+      <CallbackRequestModal
+        open={callbackModalOpen}
+        onClose={() => setCallbackModalOpen(false)}
+        context="abonnement_agence"
       />
 
     </div>
