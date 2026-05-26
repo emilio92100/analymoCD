@@ -1,4 +1,4 @@
-# VERIMO — Contexte projet — 19 mai 2026
+# VERIMO — Contexte projet — 26 mai 2026
 
 > Colle ce fichier en début de conversation Claude pour reprendre le contexte.
 
@@ -22,9 +22,6 @@
   - "IA" / "AI" → utiliser "technologie Verimo", "moteur d'analyse", "nos algorithmes", "analyse experte". AI uniquement autorisé dans admin, edge functions, prompts, logs, context.md.
   - "co-brandé" / "co-branding" → utiliser "à votre image" (banni progressivement sur tout le site)
 - **Tests live avec vraie carte CB d'Alex** (pas Visa 4242)
-- Compte test live actuel : Jean DUMONT / ARTY CONSEIL (acct_1TIateBesXB76oWE)
-- User test pro : `publicite92320@gmail.com` (ID `217468f6-0f2b-4487-865e-a277cc600e45`) — ⚠️ **À nettoyer** : compte supprimé en BDD mais abo Stripe encore actif, génère des events FK qui plantent
-- Nouveau compte test 11 mai : `alexandre.rt25@gmail.com` (customer Stripe `cus_UUgPam3KYnmpzC`)
 
 ---
 
@@ -103,7 +100,7 @@ TVA Tax Rate ID : txr_1TUAxVBesXB76oWESXBnGdIZ
 - **Responsable** : Alexandre ROGELET
 - **Emails** :
   - `hello@verimo.fr` → email général grand public (CGU, mentions légales, contact)
-  - `pro@verimo.fr` → email B2B (UNIQUEMENT relations pros et CGV Pro) — ✅ mailbox configurée et fonctionnelle
+  - `pro@verimo.fr` → email B2B (UNIQUEMENT relations pros, CGV Pro, demandes de rappel) — ✅ mailbox configurée et fonctionnelle
   - `notification@verimo.fr` → Mailjet particuliers
   - `contact@verimo.fr` → emails sortants pros (avec nom agent dans body)
 
@@ -114,15 +111,16 @@ TVA Tax Rate ID : txr_1TUAxVBesXB76oWESXBnGdIZ
 | Nom | Rôle | Version |
 |-----|------|---------|
 | `analyser` | Lance une analyse — gère la queue Anthropic 503 | v8 |
-| `analyser-run` | Worker qui traite l'analyse en background | **v11** (17 mai — feature DPE travaux préconisés) |
+| `analyser-run` | Worker qui traite l'analyse en background | **v12** (25 mai — retry DPE/Carrez + validation diags manquants) |
 | `analyser-retry` | Cron pg_cron 5 min — retraite les analyses queued (12 retries max) | — |
 | `comparer` | Compare 2 ou 3 rapports | — |
-| `admin-user-management` | Actions admin (create, invite, delete, reset password) | — |
+| `admin-user-management` | Actions admin (create, invite, delete, reset password, **create_pro_demo enrichi**, **activate_pro_demo**) | **v2** (25 mai) |
 | `pro-checkout-create` | Stripe pro : subscribe / preview_upgrade / buy_unit / cancel / cancel_scheduled_change / reactivate / billing_portal / list_invoices | V3 |
-| `stripe-webhook-pro` | Webhook Stripe pro (5 events) + mail résiliation | **V7** |
+| `stripe-webhook-pro` | Webhook Stripe pro (5 events) + mail résiliation + **auto-conversion démo→actif** | **V8** (25 mai) |
 | `stripe-webhook` | Webhook Stripe particuliers (checkout.session.completed) | **V3.1** |
 | `create-checkout-session` | Stripe particuliers (checkout) + audience promo | **V3** |
 | `send-pro-request-confirmation` | Mail confirmation prospect + notif interne `pro@verimo.fr` | — |
+| `notify-callback` | 🆕 Notification demande de rappel pro (cloche admin + email pro@verimo.fr) | **v1** (25 mai) |
 | `sync-stripe-payments` | Filet de sécurité — sync Stripe → table `payments` toutes les 5 min via pg_cron | **V2** — ⚠️ **DÉSACTIVÉ temporairement** |
 
 ⚠️ **Rappel critique** : push GitHub ne déploie pas les edge functions → toujours redéployer manuellement dans Supabase Studio.
@@ -148,15 +146,15 @@ TVA Tax Rate ID : txr_1TUAxVBesXB76oWESXBnGdIZ
 ```
 /                              → HomePage
 /pro                           → ProPage (4 onglets profils : Agent/Mandataire, Investisseur, Marchand, Notaire)
-/pro/agents-mandataires        → MandatairesPage (landing dédiée agents/mandataires — ⚠️ renommée 16 mai)
-/pro/rejoindre                 → Page multi-step prospects pros (⚠️ renommée 16 mai — anciennement /rejoindre)
+/pro/agents-mandataires        → MandatairesPage (landing dédiée agents/mandataires)
+/pro/rejoindre                 → Page multi-step prospects pros
 /tarifs                        → TarifsPage (particuliers uniquement, pas de tarifs pros publics)
 /exemple                       → ExemplePage
 /methode                       → MethodePage
 /guides                        → GuidesPage
 /cgv-pro                       → CGVProPage (B2B, scroll spy, 14 sections)
 /connexion, /inscription       → Auth
-/admin                         → AdminPage
+/admin                         → AdminPage (paramètre URL ?tab=callbacks pour ouvrir direct un onglet)
 /dashboard                     → SmartDashboard (détecte role)
 /dashboard/nouvelle-analyse    → NouvelleAnalyse
 /dashboard/analyses            → MesAnalyses (particulier)
@@ -178,11 +176,7 @@ TVA Tax Rate ID : txr_1TUAxVBesXB76oWESXBnGdIZ
 ### Flow d'upgrade (paiement immédiat)
 - `proration_behavior: 'none'` + `billing_cycle_anchor: 'now'` → cycle redémarre, plein tarif facturé immédiatement
 - `payment_behavior: 'default_incomplete'` → permet de gérer 3DS, carte refusée, etc.
-- 4 cas gérés côté backend :
-  - ✅ Paiement direct OK → popup vert "Plan activé !" + crédits cumulés
-  - 🔐 3DS demandé → popup Stripe inline → si validé OK
-  - ❌ Carte refusée → popup rouge contextuelle "Mettez à jour votre moyen de paiement"
-  - ⏳ Paiement en cours → popup "Patientez, rafraîchissez"
+- 4 cas gérés côté backend : paiement direct OK, 3DS demandé, Carte refusée, Paiement en cours
 - **Sécurité backend** : webhook `customer.subscription.updated` vérifie `latest_invoice.status === 'paid'` AVANT de cumuler les crédits
 - **Pas de retry automatique** sur upgrade échoué
 
@@ -191,6 +185,12 @@ TVA Tax Rate ID : txr_1TUAxVBesXB76oWESXBnGdIZ
 - Mode `cancel_scheduled_change` permet d'annuler une bascule programmée
 - Stockage BDD dans colonnes `pro_subscriptions.scheduled_plan_change` + `scheduled_change_date`
 
+### 🆕 Auto-conversion démo → actif (V8 — 25 mai)
+- Quand un pro `pro_status='demo'` souscrit un abonnement Stripe → passage auto à `pro_status='active'` + `pro_demo_converted_at`
+- Touche **uniquement** si `pro_status === 'demo'` (aucun impact sur les autres comptes)
+- Bandeaux démo (orange + bleu) disparaissent automatiquement
+- Non bloquant : si la conversion échoue, le paiement est traité normalement
+
 ### ⚠️ Bug paiement Stripe (NON résolu, workaround manuel)
 
 **Symptôme** : `stripe_payment_id = NULL` dans `payments` pour les paiements d'upgrade (Starter, Power) → webhook `charge.refunded` ne peut pas matcher → CA admin pas mis à jour quand remboursement fait dans Stripe.
@@ -198,10 +198,6 @@ TVA Tax Rate ID : txr_1TUAxVBesXB76oWESXBnGdIZ
 **Cause racine** : `invoice.payment_intent` est parfois vide/undefined au moment où le webhook `invoice.paid` arrive (notamment avec `payment_behavior: 'default_incomplete'`). Le code `recordProPayment` stocke alors `stripe_payment_id = NULL`.
 
 **Décision Alex** : ne pas refondre maintenant. Workflow manuel : SQL UPDATE quand remboursement fait dans Stripe.
-```sql
-UPDATE payments SET status='refunded', refunded_amount=amount, refunded_at=NOW()
-WHERE id IN ('xxx');
-```
 
 **Bug secondaire** : webhook particulier `stripe-webhook/index.ts` ligne 142 → `const supabase` déclaré DANS `serve()` → `ReferenceError` quand `handleChargeRefunded` (déclaré hors serve) est appelé. À fixer plus tard.
 
@@ -213,27 +209,187 @@ WHERE id IN ('xxx');
 
 ---
 
-## 📜 Système CGV Pro popup obligatoire (✅ DÉPLOYÉ 16 mai)
+## 📜 Système CGV Pro popup obligatoire (✅ DÉPLOYÉ)
 
 **Concept** : popup obligatoire de consentement aux CGV Pro avant le 1er paiement pro. Une fois acceptée → jamais redemandée. Si changement de version CGV future, Alex envoie mail manuel aux pros existants (continuation d'usage = acceptation tacite jurisprudence FR).
 
-### SQL exécuté
+### Fichiers
+- `src/lib/cgv-version.ts` — constante `CURRENT_CGV_PRO_VERSION = "v2.3"`
+- `src/components/CgvProConsentDialog.tsx` — popup avec backdrop blur, checkbox, lien vers `/cgv-pro`
+- `src/pages/DashboardProPage.tsx` — Helper `requireCgvThen(actionLabel, paymentAction)` intercepte 3 actions paiement
+- `src/pages/AdminPage.tsx` — bloc visible sur fiche client pro : ✅ vert ou ⚠️ orange
 
+---
+
+## 🆕 Session 25-26 mai 2026 ⭐ — Système rappels pro + Auto-conversion démo + UX polish
+
+### 1. Système de demande de rappel pro (✅ DÉPLOYÉ)
+
+**Concept** : Bouton "Je souhaite être rappelé" pour les pros qui hésitent à s'abonner ou veulent un devis agence. Notification admin + email instantané.
+
+**SQL exécuté** :
 ```sql
-ALTER TABLE public.profiles
-  ADD COLUMN IF NOT EXISTS cgv_pro_accepted_at TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS cgv_pro_version TEXT;
-CREATE INDEX IF NOT EXISTS idx_profiles_cgv_pro_accepted_at
-  ON public.profiles (cgv_pro_accepted_at)
-  WHERE cgv_pro_accepted_at IS NOT NULL;
+create table public.callback_requests (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
+  phone text not null,
+  preferred_slots text[] default '{}',
+  message text,
+  context text default 'demo_expired',  -- 'demo_expired' | 'abonnement_agence' | 'other'
+  status text default 'pending' not null,  -- 'pending' | 'called' | 'converted' | 'declined'
+  created_at timestamptz default now() not null,
+  handled_at timestamptz,
+  handled_by uuid references auth.users(id),
+  admin_notes text
+);
+-- + RLS : user insère/select own, admin all (via profiles.role='admin')
+-- + index sur (status, created_at desc) et (user_id)
 ```
 
-### Fichiers livrés
+**Composants livrés** :
+- `src/components/CallbackRequestModal.tsx` (NEW) — modal réutilisable avec :
+  - Téléphone obligatoire (min 8 chiffres)
+  - 4 créneaux à cocher (matinée / déjeuner / après-midi / soirée)
+  - Message libre optionnel
+  - Pré-remplissage auto du téléphone depuis `profiles.telephone` + mention bleue "Nous vous rappellerons sur ce numéro"
+  - Animation fluide AnimatePresence + motion.div (fade + scale, courbe cubic-bezier [0.16, 1, 0.3, 1])
+- `supabase/functions/notify-callback/index.ts` (NEW) — edge function qui :
+  - Insère `system_alerts` (cloche admin avec type='callback_request')
+  - Envoie email à `pro@verimo.fr` avec toutes infos + bouton "Voir dans l'admin" → `verimo.fr/admin?tab=callbacks`
 
-- `src/lib/cgv-version.ts` (NEW) — constante `CURRENT_CGV_PRO_VERSION = "v2.3"`
-- `src/components/CgvProConsentDialog.tsx` (NEW) — popup avec backdrop blur, checkbox, texte "Je confirme avoir lu et accepté les Conditions Générales de Vente Pro de Verimo", récap action ("Souscription au plan Starter — 49,90 € HT/mois"), lien vers `/cgv-pro` nouvel onglet, UPDATE BDD puis exécute callback paiement
-- `src/pages/DashboardProPage.tsx` — étendu type ProProfile avec `cgv_pro_accepted_at` + `cgv_pro_version`. Helper `requireCgvThen(actionLabel, paymentAction)` intercepte 3 actions : `handleSubscribe`, `handleBuyUnit`, `openUpgradeFlow` (renommées en `_Internal` avec wrappers). State `cgvAcceptedLocal` cache local pour éviter relecture BDD
-- `src/pages/AdminPage.tsx` — type `ProClient` étendu, bloc visible sur fiche client pro : ✅ vert "CGV Pro acceptées — Version v2.3 · [date]" ou ⚠️ orange "CGV Pro non acceptées"
+**Intégration côté pro** :
+- `DashboardProPage.tsx` — bandeau démo épuisée refait : titre "Vous avez testé Verimo, qu'en pensez-vous ?" + 2 boutons "Je souhaite être rappelé" + "Voir les forfaits"
+- Page abonnement : bandeau bleu "🏢 Vous gérez une agence ou une équipe ?" + bouton "Demander un devis agence"
+- Modal ouverte avec `context` adapté ('demo_expired' ou 'abonnement_agence')
+
+**Intégration côté admin** :
+- Nouvel onglet **"Rappels Pro"** dans la sidebar (groupe UTILISATEURS) avec badge compteur `pending`
+- Composant `AdminCallbacksTab` : layout 2 colonnes (liste / détail), 5 filtres (En attente / Rappelés / Convertis / Pas intéressés / Tous)
+- Actions par callback : Marquer rappelé / Converti / Pas intéressé / Repasser en attente, notes internes
+- Boutons "Voir l'utilisateur →" et "Voir fiche Pro →" pour navigation rapide
+- Bloc "Demandes de rappel" dans la fiche client (affiche toutes les demandes de ce client avec statut)
+- Lecture URL `?tab=callbacks` pour ouvrir direct depuis l'email
+- ⚠️ Limitation connue : si la jointure `profiles` retourne null (RLS), l'admin voit "Inconnu" mais le bouton "Voir l'utilisateur →" permet d'accéder à la fiche complète
+
+### 2. Auto-conversion démo → actif via Stripe (✅ DÉPLOYÉ — V8)
+
+**Modification** `supabase/functions/stripe-webhook-pro/index.ts` :
+- Nouvelle fonction `convertDemoToActiveIfNeeded(userId)` appelée après `upsertProSubscription`
+- Si `pro_status === 'demo'` → bascule auto à `'active'` + `pro_demo_converted_at = NOW()`
+- Aucun effet sur les autres statuts
+- Non bloquant (try/catch silencieux)
+- ⚠️ Appel **uniquement** dans la branche `session.mode === 'subscription'` (les paiements unitaires sont impossibles sans abo)
+
+### 3. Création compte démo enrichie (✅ DÉPLOYÉ)
+
+**Avant** : formulaire avec seulement nom + email + raison sociale + custom_message.
+
+**Maintenant** : formulaire complet aligné sur création pro classique, tous les champs optionnels sauf nom et email :
+- Téléphone
+- Type de profil (sélecteur agent/investisseur/notaire/autre, défaut 'agent')
+- Raison sociale + Réseau
+- SIRET
+- Adresse + Code postal + Ville
+- Notes internes admin
+- Message du mail (conservé)
+
+**Edge function `admin-user-management` action `create_pro_demo`** modifiée pour accepter et enregistrer les 8 nouveaux champs dans `profiles`.
+
+**Conséquence positive** : pour la modal "Être rappelé", si le pro a un téléphone enregistré (parce qu'Alex l'a saisi à la création), le champ tel se pré-remplit auto. Mention bleue informative sous le champ.
+
+### 4. Bouton "Activer le compte" manuel (✅ DÉPLOYÉ)
+
+**Cas d'usage** : Pro démo qui signe un contrat sur mesure (virement, paiement par facture, partenariat bizdev, etc.) sans passer par Stripe → bouton pour le sortir de démo manuellement.
+
+**Implémentation** :
+- Bouton vert "✓ Activer le compte" dans le header de la fiche client admin
+- **Visible uniquement** si `pro_status === 'demo'`
+- Clic → mini-modal avec 2 inputs optionnels : crédits simples / crédits complètes à offrir (défaut 0)
+- Submit → appel edge function `admin-user-management` action `activate_pro_demo`
+- Mise à jour profile : `pro_status = 'active'` + `pro_demo_converted_at = NOW()`
+- Si crédits > 0 → insertion dans `credit_grants` avec raison "Crédit offert — activation compte (sortie démo)"
+- Les bandeaux démo (orange + bleu) disparaissent côté client à son refresh
+
+### 5. Refonte filtres ClientsProTab admin (✅ DÉPLOYÉ)
+
+**Nouveau bloc filtres encadré sur 2 lignes** :
+- **Ligne 1 — STATUT** (couleur bleu marine `#0f2d3d`) : Tous / 🎁 Compte démo (NEW) / 🟢 Abo / 🟡 Résiliation programmée / ✓ Activé / Inscrits non activés / 🔴 Résilié
+- **Ligne 2 — TYPE DE PROFIL** (couleur violet `#7c3aed`) : Tous / 🏢 Agent / 📈 Investisseur / ⚖️ Notaire / 💼 Autre
+- Lien "Réinitialiser" sur la ligne Type quand un filtre est actif
+- **Filtres cumulatifs** : statut + type combinés (ex: "démo" + "investisseur")
+- Chips avec animation : translateY(-1px) au clic, box-shadow colorée, hover gris pâle
+
+### 6. Modification du type de profil depuis la fiche (✅ DÉPLOYÉ)
+
+Badge type en haut de la fiche client admin devient **cliquable** :
+- Clic → dropdown apparaît avec les 4 options (agent/investisseur/notaire/autre)
+- Coche ✓ sur l'option actuelle
+- Sélection → update direct en base + toast + refresh fiche
+- Animation framer-motion fade+scale, overlay pour fermer en cliquant ailleurs
+
+### 7. Marque blanche rapports envoyés par pros (✅ DÉPLOYÉ)
+
+Quand un pro envoie un rapport à un client via "Envoyer une analyse" (table `report_shares`), le client voit maintenant :
+- "Avis du professionnel" au lieu de "Avis Verimo"
+- Disclaimer reformulé : *"Votre professionnel s'appuie sur un outil d'analyse de documents immobiliers pour préparer cette synthèse. Pour toute question sur le bien, n'hésitez pas à le contacter directement."*
+- Section "Points relevés par votre professionnel" (au lieu de "Points à approfondir avant de signer") + sous-titre explicatif "Voici les vérifications et démarches que votre professionnel a identifiées..."
+- Onglet Documents : masquage du bandeau orange "score précis", section "Pour améliorer votre score", bouton "Compléter mon dossier", mention RGPD, badge "2"
+- Pistes négociation masquées
+
+**Détection robuste** dans `src/lib/analyses.ts` : si on trouve le rapport via `report_shares` (= envoi pro), on force `_ownerIsPro = true` sans relire `profiles` (la RLS bloque la lecture côté client non-loggé).
+
+### 8. Retry IA ciblé DPE/Carrez + Validation diags manquants (✅ DÉPLOYÉ — analyser-run v12)
+
+**Problème résolu** : le prompt système (~2000 lignes) faisait parfois "oublier" à l'IA certaines extractions (recommandations DPE pour classe D/E/F/G, détail pièces Carrez).
+
+**Solution implémentée dans `analyser-run/index.ts`** :
+
+**Fonction `retryDpeCarrez`** (1 seul retry max, timeout 30s) :
+- Détecte si DPE D/E/F/G sans `dpe_recommandations` OU CARREZ sans `pieces_detail`
+- Si oui → relance UN appel IA ciblé avec mini-prompt court + les mêmes PDF
+- Coût additionnel : ~0,02-0,05€ par retry, déclenché uniquement si besoin
+- Si échec/timeout → on garde le rapport tel quel, pas de boucle, pas de crash
+
+**Fonction `validateDiagsManquants`** (déterministe, pure logic) :
+- Ajoute automatiquement dans `documents_manquants` + `points_vigilance` les diags absents :
+  - DPE / ERP → "obligatoire pour la vente"
+  - Carrez (appartement/copro) → "obligatoire en copropriété"
+  - Électrique (année < 2011) → "obligatoire installations > 15 ans"
+  - Amiante privatif (année < 1997) → "obligatoire biens avant 1997"
+  - Plomb (année < 1949) → "obligatoire biens avant 1949"
+  - Audit énergétique (maison + DPE E/F/G) → "obligatoire maisons E/F/G"
+  - Assainissement (maison) → "si non raccordé tout-à-l'égout"
+  - Termites → juste vigilance (dépend arrêté préfectoral, on ne sait pas)
+- Anti-doublon : compare sur 30/50 premiers caractères
+
+### 9. Animation fluide transitions onglets dashboard particulier (✅ DÉPLOYÉ)
+
+`DashboardPage.tsx` : remplacement du simple `motion.div` par `AnimatePresence mode="wait"` avec sortie + entrée + courbe cubic-bezier naturelle. Transitions désormais comparables à Notion/Linear.
+(Côté pro non modifié, à voir si besoin)
+
+### 10. Décisions stratégiques importantes
+
+- **Pas de blocage technique partage de compte solo** : on cadre uniquement par CGV + bandeau dissuasif "Vous gérez une équipe ?" sur page abonnement
+- **Suppression user pro reste dangereuse** : ne résilie PAS l'abo Stripe → à régler dans session lifecycle pro
+- **Bouton Suspendre / Lever suspension** : reporté à session lifecycle pro dédiée
+- **Anti-doublon création démo** : Supabase Auth bloque déjà nativement les doublons d'email, suffisant pour l'instant
+
+---
+
+## 🔮 Session "lifecycle pro" — À PRÉVOIR DANS UNE SESSION DÉDIÉE
+
+Trop transversal pour être fait en bout de session. Quand prêt, traiter ensemble :
+
+1. **Bouton Suspendre** (bloque accès) + **Lever suspension** dans fiche client admin
+   - Marquer `profiles.suspended = true`, redirection vers page "Compte suspendu"
+   - Blocage analyses, partages, etc. ; abo Stripe continue séparément
+2. **Bouton Résilier manuellement** (différent de suspendre — annule l'abonnement Stripe)
+3. **Webhook Stripe résiliation** : auto-marquer comme résilié quand le pro annule depuis Customer Portal
+4. **Gestion des `past_due`** : bandeau de relance proactif pour le pro
+5. **Bug suppression compte** : si pro avec abo Stripe → résilier auto Stripe avant `auth.admin.deleteUser`
+6. **Affichage clair du statut** dans fiche admin : badge coloré (Démo / Actif / Suspendu / Résilié / Past due)
+7. **Comptes démo non convertis** : relance auto après X jours ? Archivage ?
+8. **Modification email** : le `pro_profile_type` est maintenant modifiable, mais pas encore d'historique/audit log de qui a changé quoi
 
 ---
 
@@ -252,269 +408,11 @@ CREATE INDEX IF NOT EXISTS idx_profiles_cgv_pro_accepted_at
 - Calcul CA admin réécrit pour lire uniquement `payments`, filtrer status refunded, déduire `refunded_amount`
 - Affichage HT/TTC universel sur AdminPage (Pros : HT en premier, Particuliers : TTC)
 
-### Suppression user pro
-- `auth.admin.signOut(user_id, 'global')` AVANT `deleteUser`
-- ⚠️ **Risque** : code actuel `admin-user-management/index.ts` ligne 668-679 NE touche PAS à Stripe → si user supprimé sans annulation abo Stripe préalable, l'abo continue → events FK plantent en boucle
-- ALTER NULL sur user_id de payments / pro_unit_purchases, FK SET NULL, backfill customer_email/name
-
 ---
-
-## 🆕 Session 16 mai 2026 (~6h) ⭐ — CGV Pro popup + refonte /pro/rejoindre + refonte profonde MandatairesPage
-
-### 1. CGV Pro popup obligatoire (✅ DÉPLOYÉ — détail section dédiée ci-dessus)
-
-### 2. Refonte page `/pro/rejoindre` (✅ DÉPLOYÉ)
-
-**Fichier** : `src/pages/RejoindrePage.tsx` (770 → 1054 lignes)
-
-**Changements** :
-- ✅ Placeholders génériques partout : "Votre prénom" / "Votre nom" / "vous@exemple.fr" / "Nom de votre agence" / "Nom de votre société" / "Nom de votre étude" (suppression des "Alexandre", "alexandre@agence.fr", "Emilio Immo", "SCI Patrimoine 75", etc.)
-- ✅ Composant `SectionBlock(icon, title, subtitle, children)` ajouté pour structurer l'étape 3 (Activité) en sous-blocs visuels distincts par profil (agent : "Identité professionnelle" / "Réseau et structure" / "Volume d'activité", etc.)
-- ✅ Composant `SiretLookup` avec API gouv `recherche-entreprises.api.gouv.fr` (gratuit, sans clé). Workflow 2 temps : tape 14 chiffres → carte GRISE "Société trouvée" + bouton "Valider la société" → clic → carte VERTE "✓ Informations confirmées". Si modif SIRET après → repasse en gris. Si non trouvé → orange neutre, demande envoyée quand même
-- ✅ Composant `GridSelectResponsive` (remplace `GridSelect`) — réseaux : 4 colonnes desktop, 2 colonnes mobile
-- ✅ CSS responsive complet : classes `.hero-split`, `.scenario-grid`, `.step2-row`, `.step3-row`, `.reseaux-grid`, `.interets-grid`. Breakpoint à 700px
-
-### 3. Renommages URLs (✅ DÉPLOYÉ)
-
-- `/rejoindre` → `/pro/rejoindre` (non indexé Google → switch direct sans redirection)
-- `/pro/mandataires` → `/pro/agents-mandataires` (trop restrictif, couvre aussi agences et agents commerciaux)
-- Fichier `MandatairesPage.tsx` conservé en interne (juste le path qui change)
-- Fichiers modifiés : `src/App.tsx` (routes), `src/pages/ProPage.tsx` (3 liens), `src/pages/MandatairesPage.tsx` (2 liens internes), `src/pages/TarifsPage.tsx` (1 lien)
-
-### 4. Refonte profonde MandatairesPage v6 (✅ FICHIER LIVRÉ, à pusher)
-
-**Fichier final** : `src/pages/MandatairesPage.tsx` (1066 lignes)
-
-**Structure (8 sections)** :
-1. **Hero** split 50/50 — titre "Soyez l'agent qui répond à tout" avec trait bleu surligné animé sur "répond à tout" + 2 iPhone arrondis inclinés (-8° et +8°) + 6 confettis sur les côtés (les 2 du milieu retirés)
-2. **Ruban stats** 4 chiffres en grid auto-fit (grille 2×2 sur mobile)
-3. **Scénario 1 — Post-visite acheteur** : iPhone avec conversation SMS Sophie
-4. **Scénario 2 — Prise de mandat** : 2 cartes flottantes (synthèse + Avis Verimo)
-5. **Scénario 3 — Pendant la visite** : onglets empilés 3D StackedTabs
-6. **Scénario BONUS — L'envoi en 1 clic** (NEW) : 2 mockups superposés (popup envoi côté pro + email reçu côté client, structure identique aux 3 autres scénarios — texte gauche / visuel droite)
-7. **C'est tout simple — 3 ÉTAPES · ~5 MIN** : badge pilule pleine dégradé bleu Verimo + 3 cartes (Glissez vos PDF / Rapport en ~3 min / Partagez en 1 clic) avec gros titre, sous-titre coloré, flèches → entre cartes desktop
-8. **CTA final** : fond identique au CTA bas ProPage (`linear-gradient(170deg, #0a1f2d 0%, #0f2d3d 35%, #1a4a5e 70%, #2a7d9c 100%)`) avec trait bleu surligné animé sur "recommande"
-
-**Palette confettis Verimo** (à réutiliser autres pages) :
-```ts
-const VERIMO_CONFETTI_COLORS = {
-  green: '#10b981',   // bon
-  orange: '#f97316',  // vigilance
-  red: '#ef4444',     // alerte
-  blue: '#2a7d9c',    // signature Verimo
-};
-```
-
-**Nouveaux composants mockups** :
-- `MockupSendPopup` — Popup "Envoyer une analyse" étape 3/3 fidèle à l'app (header icône mail violette, stepper 3 cercles avec ✓✓3, zone message, bandeau jaune "💡 Pour afficher votre logo dans les rapports, ajoutez-le dans Mon compte", boutons Retour + Envoyer vert gradient)
-- `MockupClientEmail` — Email reçu côté client (header gradient bleu Verimo `0f2d3d→1d5e7a`, logo Laforêt stylisé carré 32×32 bleu `#003478` avec petit arbre SVG blanc + texte "laforêt" Georgia serif font-weight 900, signature "Pierre Martin / Laforêt — Lyon")
-
-**Décisions UX importantes** :
-- Mot "co-brandé" banni → remplacé par "à votre image" (`100% à votre image` dans le ruban stats)
-- "15+ docs analysés" → "24h/24 · analyse à tout moment"
-- Phrase tagline section 3 étapes : *"Aussi simple que ces 3 étapes. Aussi rapide qu'un café."* (forcée sur 1 ligne desktop)
-- Scénario 2 reformulé : "Vous arrivez en RDV mandat avec son dossier déjà analysé... vous ne survendrez pas son bien : vous le vendrez au juste prix, plus vite" — Bénéfice 2 : "Prix appuyé sur les vrais chiffres du bien"
-- Badge "3 ÉTAPES · ~5 MIN" version pilule pleine dégradé bleu (16px, gros, bien visible)
-- **Bandeau Avant/Après Verimo testé puis SUPPRIMÉ** (Alex préfère ne pas l'avoir)
-
-**Optimisations mobile profondes** :
-- 2 breakpoints : 900px (tablette) + 640px (mobile pur)
-- Téléphones Hero : scale 0.65 (tablette) / 0.55 (mobile pur), hauteur 300→240px
-- CTA hero forcés centrés mobile (`justify-content: center` sur les 2 groupes)
-- Scénarios : `.scenario-grid` utilise `:has()` pour ordonner texte-puis-visuel peu importe l'ordre markup
-- Stats grille **2×2 mobile** (au lieu de 1×4), chiffres 22px, labels 11px
-- Scénario Envoi mobile : les 2 mockups sortent du mode absolute, stack vertical normal, sans rotation, max-width 320px/280px
-- Steps row passe en 1 colonne mobile, flèches cachées
-
-**Transitions entre sections** :
-- Décision finale : **fond UNIFORME `#fafbfd`** sur toutes sections du milieu (stats, scénarios 1-2-3-envoi), aucun dégradé intermédiaire (élimine les lignes nettes horizontales)
-- Hero termine sur `#fafbfd`
-- "3 étapes" fait transition vers CTA via `linear-gradient(180deg, #fafbfd 0%, #fafbfd 60%, #eef3f6 100%)`
-- CTA reprend gradient ProPage avec léger fondu 60px en haut
-
-**SEO** :
-- Title : *"Verimo Pro pour agents & mandataires immobiliers — Analysez vos documents en 3 minutes"*
-- Description : *"Agents immobiliers et mandataires : analysez les PV d'AG, diagnostics et règlements de vos biens en quelques minutes. Envoyez à vos clients un rapport pro en 1 clic."*
-
----
-
-## 🆕 Session 17 mai 2026 ⭐ — Feature DPE Travaux préconisés (analyse simple + complète)
-
-### Objectif
-Extraire et afficher proprement les recommandations de travaux issues du DPE (méthode 3CL-DPE 2021) : 2 packs (essentiels + à envisager) avec montants estimés et évolution projetée de l'étiquette DPE après travaux.
-
-### Architecture décisionnelle
-- **JSONB unique** : pas de SQL/migration. Le résultat d'analyse est déjà stocké dans une colonne JSONB → on enrichit le JSON existant avec un nouveau sous-objet, pas de nouvelle table ni colonne nécessaire. Cette règle s'applique pour toutes futures features d'enrichissement d'analyse.
-- **Couvre 2 cas** : DPE seul uploadé (analyse simple) ET DDT complet contenant un DPE (analyse complète)
-- **Affichage** : particulier ET pro (même composant)
-
-### Modifications
-
-#### 1. Edge function `analyser-run/index.ts` (v10 → v11, 1767 → 1780 lignes)
-
-⚠️ **Déploiement manuel sur Supabase Dashboard requis**
-
-- **Schéma DDT enrichi** (ligne 722) : ajout dans `dpe` de `version_methode` (3CL_2021/3CL_2012/factures/inconnue) + sous-objet `recommandations` contenant :
-  - `format` : "standard" | "ancien" | "aucune"
-  - `evolution_etiquette` : 3 étiquettes projetées (actuelle, apres_pack_1, apres_pack_1_et_2) avec classe + kwh_m2 + ges_kg_m2
-  - `pack_1` (essentiels) et `pack_2` (à envisager), chacun avec cout_min/cout_max + travaux[] où chaque travail a : poste (mur/toiture/plancher_bas/fenetres/porte/chauffage/eau_chaude/ventilation/autre), description, performance_cible, decision_copropriete (bool), autorisation_urbanisme (bool)
-- **10 règles d'extraction ajoutées** (lignes 733-742) :
-  - Règle DPE seul uploadé → le classer comme DDT
-  - Règle DDT complet → extraire normalement
-  - Détection version méthode
-  - Détection format (standard si 3CL_2021 avec packs, ancien si 3CL_2012, aucune si A/B sans recos)
-  - Extraction détaillée pack_1 (label, montants, travaux avec posture + description + performance_cible + décision copro + urbanisme)
-  - Extraction pack_2 (idem)
-  - Extraction evolution_etiquette (page 6 du DPE)
-  - Si format="ancien" → fallback sur travaux_preconises legacy
-  - Si format="aucune" → packs vides
-  - Ne JAMAIS inventer un montant ou une étiquette projetée
-- **Schéma synthèse finale enrichi** (ligne 1390) : ajout au niveau racine de `dpe_recommandations` (recopie depuis le DDT)
-- **Règle synthèse** (ligne 1159) : "si DDT contient un DPE avec sa section Recommandations, recopier vers rapport.dpe_recommandations"
-
-#### 2. `RapportPage.tsx` (4734 → 4896 lignes) — Analyse COMPLÈTE
-
-Localisation : composant `TabLogement` (function ligne 2546) → accordéon "Performance énergétique" → nouveau bloc juste après le coût énergétique annuel.
-
-Nouveau bloc remplace l'ancienne sous-section "Travaux préconisés" legacy :
-- Titre dynamique : **🎯 "Pour passer de X à Y"** (si évolution disponible) ou **🔨 "Pour améliorer votre note DPE"** (fallback)
-- Bandeau "Évolution projetée de l'étiquette" : 3 cercles colorés (D → C → A) avec flèches →, utilise `DPE_COLORS` existant
-- Card Pack 1 — fond blanc, badge bleu `#2a7d9c`, sous-titre dynamique en gras ("Pour passer de E à C")
-- Card Pack 2 — badge gris `#64748b`, sous-titre dynamique
-- Label **"MONTANT ESTIMÉ"** (uppercase 10px, fontWeight 700, letterSpacing 0.05em) au-dessus du chiffre 17px à droite
-- Liste travaux avec emoji par poste (🧱 mur, 🏠 toiture, ⬇️ plancher_bas, 🪟 fenetres, 🚪 porte, 🔥 chauffage, 💧 eau_chaude, 💨 ventilation, 🔧 autre)
-- Description + performance cible en italique
-- Badges contextuels : "Décision copropriété" (orange `#fef3c7`/`#92400e`) et "Autorisation d'urbanisme" (bleu `#dbeafe`/`#1e40af`)
-- Footer info bleu ℹ️ "Estimations issues du DPE — à valider avec un professionnel. Des aides existent (MaPrimeRénov', éco-PTZ)."
-- **Fallback legacy** : si pas de `dpe_recommandations` au nouveau format mais `travaux_preconises` rempli → ancien affichage simple (puces 🔴 Prioritaire / 🟡 Recommandé)
-
-#### 3. `DocumentRenderer.tsx` (3175 → 3325 lignes) — Analyse SIMPLE ⚠️ Découverte importante
-
-**L'analyse simple n'utilise PAS `TabLogement`** mais a son propre rendu dans `DocumentRenderer.tsx` → `RendererDDT` (ligne 455).
-
-Avant : ancien bloc "TRAVAUX RECOMMANDÉS PAR LE DPE" (gradient orange, puces 🔴/🟡) — non touché par la modif TabLogement.
-
-Après : remplacé par le **même nouveau bloc complet** que TabLogement, accessible via `r.dpe.recommandations` (depuis le DDT direct) au lieu de `rapport.dpe_recommandations`. Header coloré gardé (gradient orange `#d97706→#b45309`) mais avec titre dynamique injecté (🎯/🔨 + texte). POSTE_ICONS recréé localement. Fallback legacy gardé identique à l'original.
-
-### Fichiers livrés
-- `supabase/functions/analyser-run/index.ts` (1780 lignes) — edge function, déploiement manuel
-- `src/pages/RapportPage.tsx` (4896 lignes) — push GitHub, Vercel auto-déploie
-- `src/pages/dashboard/DocumentRenderer.tsx` (3325 lignes) — push GitHub, Vercel auto-déploie
-
-0 erreur TypeScript validée (`npx tsc --noEmit` complet).
-
-### Cas gérés
-- **DPE 3CL-DPE 2021** (récent) → format="standard" → bloc complet avec packs et évolution
-- **DPE seul uploadé** → classé comme DDT, recommandations extraites
-- **DDT complet avec DPE inclus** → recommandations remontées au niveau racine via `dpe_recommandations`
-- **DPE ancien format (3CL_2012)** → format="ancien" → fallback `travaux_preconises` legacy
-- **DPE classe A/B sans recos** → format="aucune" → bloc non affiché
-- **Pas de DPE** → bloc non affiché
-
-### Status déploiement
-✅ Fichiers pushés sur GitHub par Alex (commit `7a42280`)
-✅ Edge function `analyser-run` redéployée manuellement sur Supabase Dashboard
-⏳ Test en attente : 1 analyse simple sur DPE Bouyges + 1 analyse complète sur diagnostics Benoist-Lucy pour validation rendu final
-
----
-
-
-## 🆕 Session 19 mai 2026 ⭐ — Sidebar clair/sombre + refonte Admin Messages + framework priorisation
-
-### 1. Système toggle clair/sombre sidebar (pro + particulier)
-
-**But** : laisser au client le choix du mode visuel de sa sidebar (et seulement la sidebar, pas le reste du dashboard).
-
-**Implémentation** :
-- Persistance via **`localStorage`**, clé partagée `verimo_sidebar_theme`, défaut : `'light'`.
-- Toggle visible : **bouton soleil/lune** en bas de la sidebar sur desktop, en haut sur mobile (entre logo et CTA "Nouvelle analyse").
-- Détection mobile via la prop `onClose` (présente uniquement sur le drawer mobile, `undefined` sur desktop).
-- **Transition CSS 600ms** entre les deux modes pour fluidité (interpolation des couleurs, rotation 360° de l'icône soleil/lune).
-- Logos : `/logo.png` (mode clair) et `/logo-blanc.png` (mode sombre).
-- ⚠️ Le PNG `logo-blanc.png` a une **marge transparente intégrée** dans le fichier → nécessite `marginTop` / `marginBottom` négatifs pour bien coller au badge ACCÈS PRO. Solution propre à terme : recadrer le PNG.
-
-**Fichiers modifiés** :
-- `DashboardProPage.tsx` (sidebar pro)
-- `DashboardPage.tsx` (sidebar particulier)
-
-### 2. Tooltips "?" fix z-index
-
-**Bug** : les tooltips `TooltipInfo` et `TooltipInfoParticulier` (page Mon compte) étaient en `position: absolute` + `z-index: 999` → mangés par les blocs en dessous.
-
-**Fix** : passage à `position: fixed` + `z-index: 99999` + recalcul dynamique de la position via `getBoundingClientRect`. Appliqué côté pro et particulier pour cohérence.
-
-**Fichiers modifiés** :
-- `DashboardProPage.tsx` (composant `TooltipInfo` ~ligne 6593)
-- `dashboard/Compte.tsx` (composant `TooltipInfoParticulier`)
-
-### 3. Refonte Admin Messages
-
-**Objectif** : mieux trier et présenter les messages reçus dans l'onglet Messages côté admin.
-
-**Modifs principales** dans `AdminPage.tsx`, composant `MessagesTab` :
-- **Détection automatique du type** via préfixe `[PRO —` au début du message ou mention "identité professionnelle" dans le sujet → "Demande modif pro", sinon → "Contact général". **Pas de modif BDD nécessaire.**
-- **4 pills de filtre** avec compteurs :
-  - Tous (non lus)
-  - Contact général
-  - Demandes modif pro
-  - Résolus (= messages lus)
-- **Avatar avec initiales colorées** (couleur stable dérivée du nom du contact via un hash simple).
-- **Pastille orange** en haut à droite de l'avatar si le message n'est pas lu.
-- **Badge de type** visible sur chaque carte (Demande modif pro / Contact général).
-- **Badge "Compte lié" (vert)** si l'email du message correspond à un user dans `profiles`.
-- **Aperçu nettoyé** : pour les demandes pro, on saute le préfixe `[PRO — ...]` et on affiche directement la partie utile après `--- Modifications demandées ---`.
-- **Bouton "Voir la fiche pro"** ou **"Voir la fiche client"** dans le panneau de détail si l'email est lié à un compte → navigation auto vers l'onglet Clients Pro ou Utilisateurs via `setFocusProClientId` / `setFocusUserId` + `setActiveTab`.
-
-### 4. Notif modif identité pro — nouveau texte
-
-**Avant** : `"Suite à votre demande, et après vérification des éléments, vos informations professionnelles ont été mises à jour avec succès. ✅"`
-**Après** : `"Suite à votre demande et après vérifications, vos informations professionnelles ont été mises à jour ✓"` (plus sobre, sans "avec succès").
-
-Localisée dans `AdminPage.tsx` (~ligne 5756), déclenchée par la case à cocher `notifyProOnSave` lors de l'enregistrement d'une modif d'identité pro côté admin.
-
-### 5. Cartographie des tables d'entrée admin (référence importante)
-
-Pour savoir où vont les messages selon leur source :
-
-| Table | Sources d'insertion | Onglet admin |
-|---|---|---|
-| **`contact_messages`** | 1. Formulaire `ContactPage.tsx` (site public, anonyme) — 2. `DashboardProPage.tsx` (demande de modif identité pro depuis le dashboard) | **Messages** |
-| **`contact_pro`** | 1. `ContactProPage.tsx` (formulaire pro site `/contact-pro`) — 2. `RejoindrePage.tsx` (formulaire `/pro/rejoindre` qui envoie aussi un email auto via edge function `send-pro-request-confirmation`) | **Demandes Pro** |
-| **`support_tickets`** + `support_messages` | Tickets ouverts par particuliers ET pros depuis leur dashboard (Support.tsx) | **Besoin d'aide** |
-| **`pro_suggestions`** | Suggestions envoyées par les pros depuis leur dashboard | **Suggestions** |
-
-⚠️ **Chaque table a son propre onglet admin séparé** — aucune source n'est mélangée.
-
-### 6. Polish UX divers (livré)
-
-- Toggle Actifs/Archivés (Mes dossiers pro) refait : style aéré, dégradé bleu pour Actifs, dégradé ambre pour Archivés (cohérent avec le code couleur d'archivage existant).
-- Animations transitions 350ms entre étapes du flow Nouvelle analyse (au lieu d'apparitions brutales).
-- Bandeau T3 (dégradé bleu pro) sur étape "FolderSelectStep" pro.
-- Vue liste des dossiers sur mobile : masquage des colonnes `X analyses · X vendeur · date` qui tronquaient l'adresse.
-- Confirmation de demande de modif pro refaite : cercle vert animé en spring + texte sobre sans promesse "24h".
-- Bandeau "Verrouillé" responsive mobile : texte sur toute la largeur + bouton centré en dessous au lieu d'être collé à droite.
-
-### 7. Framework de priorisation Verimo (référence pour les prochaines sessions)
-
-Pour distinguer une **vraie avancée** d'un simple polish UX, 4 catégories à privilégier :
-
-| # | Catégorie | Description | Exemples Verimo |
-|---|---|---|---|
-| **1** | **Feature business** | Change ce que le produit fait | Détection d'anomalies dans un PV d'AG, API publique, alertes email nouveau diagnostic, génération PDF custom avec logo, comparaison automatique à des annonces concurrentes |
-| **2** | **Fix bug bloquant prod** | Empêche les vrais clients d'utiliser | Analyse qui plante sur un gros PDF, paiement Stripe sans crédit ajouté, login en erreur 500, envoi de rapport qui échoue silencieusement |
-| **3** | **Changement modèle économique** | Impact direct sur les revenus | 1er client pro réel signé, refonte tarifs après retour de 5 pros, offre annuelle -20%, offre Agence multi-users, paiement à l'unité sans abonnement |
-| **4** | **Intégration externe** | Connecter Verimo à un service tiers | API DVF gouv (comparer prix aux dernières ventes), API ADEME (vérifier authenticité DPE), Stripe Connect (commission agences), Calendly, Mailchimp/Brevo, Mistral (réduire coûts API) |
-
-⚠️ **Le polish UX/UI seul ne rentre dans aucune de ces catégories.** C'est utile pour la perception du produit mais ne change ni ce qu'il *fait* ni *combien* il rapporte. À utiliser pour décider quoi attaquer en début de session.
-
----
-
 
 ## 🔮 Feature Compte Agence multi-utilisateurs (PRÉVUE PLUS TARD)
 
 ⚠️ **À développer quand 2-3 vraies agences clientes seront acquises** — pas avant. Estimation : **5-15 jours de dev** selon scope.
-
-### Spec technique
 
 **Tables BDD à créer** :
 - `agencies` : nom, adresse, SIRET, logo, plan_actif
@@ -525,21 +423,6 @@ Pour distinguer une **vraie avancée** d'un simple polish UX, 4 catégories à p
 - `credit_grants` + consommation : pool partagé au niveau agence
 - `analyses` : ajouter `agency_id` pour tracking
 
-**Backend (edge functions)** :
-- Système d'invitation (email + token)
-- Vérif rôle à chaque action
-- Allocation crédits : pool partagé OU sous-quotas par agent
-- Facturation centralisée (1 facture par agence)
-- Refonte webhook Stripe pour gérer agency_id
-
-**Frontend** :
-- Onglet "Mon équipe" dans dashboard
-- UI invitation (email, rôle)
-- Vue admin agence : qui a fait quoi, conso par agent
-- Filtre analyses : mes analyses vs toutes les analyses de l'agence
-- Toggle "Partager cette analyse avec mon agence" à la création
-- Bibliothèque agence des biens analysés
-
 **Tarifs visés** :
 | Plan agence | Prix HT | Users | Complètes | Simples |
 |------|---------|-------|-----------|---------|
@@ -547,11 +430,7 @@ Pour distinguer une **vraie avancée** d'un simple polish UX, 4 catégories à p
 | Agence Pro | 249€ | 5 | 40 | 100 |
 | Agence Premium | 499€ | 10+ | 100 | 250 |
 
-**Argument commercial clé** : "Avec Verimo Agence, vos agents ne refont pas le travail deux fois. Une analyse créée = disponible pour toute l'agence."
-
-### Workaround immédiat si agence intéressée
-
-Vendre **3 comptes Power séparés** (ou plus) avec **code promo "AGENCE3" = -30%** sur Power → 189€/mois pour 3 agents (vs 269,70€ tarif plein). Migration auto vers Agence Starter dès que la feature sera développée.
+**Workaround immédiat si agence intéressée** : vendre 3 comptes Power séparés avec code promo "AGENCE3" = -30% sur Power.
 
 ---
 
@@ -569,10 +448,9 @@ Vendre **3 comptes Power séparés** (ou plus) avec **code promo "AGENCE3" = -30
 **Décision** : à activer uniquement pour Power (différenciateur Starter → Power).
 
 ✅ **Architecture déjà en place côté rapport** :
-- `RapportPage.tsx` ligne 4326 : flag `hideVerimoBranding` (default `false`)
-- Ligne 4336 : si `_ownerIsPro = true` sur lien partagé → `hideVerimoBranding = true`
-- Ligne 4354-4355 : si user pro consulte son propre rapport → `hideVerimoBranding = true`
-- Titre bloc verdict bascule en *"Synthèse de l'analyse"* (au lieu d'*"Avis Verimo"*) quand pro
+- `RapportPage.tsx` flag `hideVerimoBranding` (default `false`)
+- Si user pro consulte son propre rapport OU si envoi via `report_shares` → `hideVerimoBranding = true`
+- Titre bloc verdict bascule en *"Avis du professionnel"* (au lieu d'*"Avis Verimo"*) quand pro
 - Bouton "Partager" masqué
 - ⚠️ Manque l'affichage **du logo pro** + **nom d'agence** dans l'en-tête
 
@@ -582,8 +460,8 @@ Vendre **3 comptes Power séparés** (ou plus) avec **code promo "AGENCE3" = -30
 
 ### Sources de crédits pro
 Lues par sidebar et NouvelleAnalyse via `get_pro_credits_balance(p_user_id)` qui agrège :
-1. **Abonnement** → `pro_subscriptions` (`credits_complete_total/used`, `credits_simple_total/used`)
-2. **Achats unitaires** → `pro_unit_purchases` (avec `credits_remaining`)
+1. **Abonnement** → `pro_subscriptions`
+2. **Achats unitaires** → `pro_unit_purchases`
 3. **Crédits offerts** → `credit_grants` + trigger `apply_credit_grant`
 
 ### Sources de crédits particulier
@@ -591,11 +469,11 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 ### Fonctions SQL crédits
 - **Consommation pro** : `consume_pro_credit(p_user_id, p_credit_type)`
-- **Consommation particulier** : `consume_particulier_credit(p_user_id, p_credit_type)` (atomique, contre race condition multi-onglets)
-- **Remboursement crédit interne pro** : `refund_pro_credit(p_user_id, p_credit_type)` (analyse plantée)
+- **Consommation particulier** : `consume_particulier_credit(p_user_id, p_credit_type)`
+- **Remboursement crédit interne pro** : `refund_pro_credit(p_user_id, p_credit_type)`
 - **Reset cycle abo** : `reset_pro_subscription_credits(p_subscription_id)`
 - **Cumul upgrade** : `upgrade_pro_subscription_credits(p_subscription_id, p_new_plan)`
-- **Incrément promo** : `increment_promo_uses(code_id)` (réutilisée par webhook particulier V3.1)
+- **Incrément promo** : `increment_promo_uses(code_id)`
 
 ### Contraintes BDD
 - `pro_unit_purchases.type` : CHECK `('document', 'complete')`
@@ -603,8 +481,11 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 - `pro_unit_purchases` avec `amount=0` = crédits offerts admin → exclus du CA
 - `analyses.status` : CHECK autorise `pending, processing, queued, completed, failed`
 - `user_notifications.analysis_id` : UUID nullable, FK vers `analyses(id)` ON DELETE SET NULL
-- `profiles.cgv_pro_accepted_at` : TIMESTAMPTZ nullable (date d'acceptation CGV Pro)
-- `profiles.cgv_pro_version` : TEXT nullable (version CGV acceptée, ex: "v2.3")
+- `profiles.cgv_pro_accepted_at` : TIMESTAMPTZ nullable
+- `profiles.cgv_pro_version` : TEXT nullable
+- `profiles.pro_status` : TEXT nullable (`'demo'` | `'active'` | `null`)
+- `profiles.pro_demo_started_at` / `pro_demo_converted_at` : TIMESTAMPTZ
+- `callback_requests.status` : TEXT default 'pending' (`'pending' | 'called' | 'converted' | 'declined'`)
 
 ---
 
@@ -625,69 +506,64 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 ### 🔥 Priorité haute (avant lancement public Pro)
 
-1. **Push MandatairesPage.tsx v6** (1066 lignes) sur GitHub + test visuel desktop ET mobile
-2. **Régénérer service_role key** (compromise dans screenshots session 11 mai) + recréer le cron avec nouvelle clé
-3. **Annuler abo Stripe du compte test fantôme** `cus_UUgPam3KYnmpzC` (Alexandre) pour stopper events FK qui plantent
-4. **Annuler abo Stripe** de `publicite92320@gmail.com` (compte supprimé en BDD mais abo encore actif → events FK)
-5. **Test E2E pro complet** : souscription Découverte → upgrade Starter → upgrade Power → downgrade → achat unitaire → remboursement → confirmer remontée admin pour chaque étape
-6. **Custom text Stripe Dashboard** → Settings → Branding (mention CGV Pro au checkout)
-7. **Liens CGV Pro** dans footer principal + Dashboard Pro → Mon compte → Documents légaux
-8. **Validation CGV Pro par avocat** spécialisé (budget 300-500€)
-9. **Test résiliation immédiate** sur `alexandre.rt25@gmail.com` via Stripe Dashboard pour valider le mail V7
-10. **Test cycle complet de notifications** : analyse réussie particulier → cloche cliquable + mail avec CTA partage / analyse réussie pro → cloche cliquable + PAS de mail / analyse échouée particulier → cloche + mail orange / analyse échouée pro → cloche seule
-11. **Test popup consentement CGV Pro** : 1er paiement pro doit déclencher popup → cocher case → paiement passe → 2e paiement = pas de popup. Vérifier badge admin (vert vs orange) sur fiche client
+1. **Régénérer service_role key** (compromise dans screenshots session 11 mai) + recréer le cron avec nouvelle clé
+2. **Test E2E pro complet** : souscription Découverte → upgrade Starter → upgrade Power → downgrade → achat unitaire → remboursement
+3. **Custom text Stripe Dashboard** → Settings → Branding (mention CGV Pro au checkout)
+4. **Liens CGV Pro** dans footer principal + Dashboard Pro → Mon compte → Documents légaux
+5. **Validation CGV Pro par avocat** spécialisé (budget 300-500€)
+6. **Test résiliation immédiate** sur compte test pro via Stripe Dashboard pour valider le mail V7
+7. **Test système callbacks end-to-end** : pro démo épuisée clique "Être rappelé" → admin reçoit cloche + email → marque rappelé → converti, et vérif que le filtre admin se met à jour
 
 ### Court terme
-12. **Soumission 47 URLs guides** Google Search Console (quota dépassé le 5 mai)
-13. **Réactiver le cron `sync-stripe-payments`** quand vieux paiements problématiques expirés
-14. **Fix bug racine webhook** : remplacer `if (existing) update else insert` dans `upsertProSubscription` par `.upsert({ onConflict: 'stripe_subscription_id' })` atomique
-15. **Fix bug `stripe_payment_id = NULL`** sur upgrades : forcer récupération `payment_intent` même quand `default_incomplete`
-16. **Fix bug scope `supabase`** dans webhook particulier (ligne 142 — déclaré dans serve() mais utilisé hors)
-17. **Code promo lancement** "1 analyse offerte" pour campagnes marketing (audience = Pros, quota limité)
-18. **Badge dynamique fiche client admin** — Upgrade en cours / Bascule programmée (15 min, lecture `pro_subscriptions.scheduled_plan_change`)
-19. **DPA / Annexe RGPD article 28** (obligatoire dès qu'une agence sérieuse réclame)
-20. **Section 11.4 Force majeure** à ajouter dans CGV Pro
-21. **Article 7.4 usages interdits explicites** dans CGV Pro
-22. **Branding Stripe Checkout** : logo + couleurs + domaine `pay.verimo.fr`
-23. **Auto-envoi factures par email Stripe** : activer toggles "Paiements réussis" + "Remboursements" dans Stripe Settings → Customer emails
-24. **Rate limiting** (faille #7 audit sécurité) avant 1ère grosse campagne pub
-25. **Bannir le mot "co-brandé/co-branding" du site** progressivement (HomePage, ExemplePage, ProPage, TarifsPage si présent) — remplacer par "à votre image"
+8. **Soumission 47 URLs guides** Google Search Console (quota dépassé le 5 mai)
+9. **Réactiver le cron `sync-stripe-payments`** quand vieux paiements problématiques expirés
+10. **Fix bug racine webhook** : remplacer `if (existing) update else insert` dans `upsertProSubscription` par `.upsert({ onConflict: 'stripe_subscription_id' })` atomique
+11. **Fix bug `stripe_payment_id = NULL`** sur upgrades
+12. **Fix bug scope `supabase`** dans webhook particulier (ligne 142)
+13. **Code promo lancement** "1 analyse offerte" pour campagnes marketing (audience = Pros, quota limité)
+14. **Badge dynamique fiche client admin** — Upgrade en cours / Bascule programmée
+15. **DPA / Annexe RGPD article 28** (obligatoire dès qu'une agence sérieuse réclame)
+16. **Section 11.4 Force majeure** à ajouter dans CGV Pro
+17. **Article 7.4 usages interdits explicites** dans CGV Pro
+18. **Branding Stripe Checkout** : logo + couleurs + domaine `pay.verimo.fr`
+19. **Auto-envoi factures par email Stripe** : activer toggles "Paiements réussis" + "Remboursements"
+20. **Rate limiting** (faille #7 audit sécurité) avant 1ère grosse campagne pub
+21. **Bannir le mot "co-brandé/co-branding" du site** progressivement
+22. **Animation fluide transitions onglets dashboard PRO** (déjà fait côté particulier, à étendre si besoin)
 
 ### Moyen terme
-26. **Personnalisation rapports Power "à votre image"** (2-3h dev, infra à 70%) — affichage logo + nom agence sur RapportPage + RapportPartagePage
-27. **Bannière persistante "Paiement à régulariser"** sur dashboard si une facture upgrade plante
-28. **Popup bienvenue pro 1ère connexion** (onboarding)
-29. **Veille réglementaire** prompt analyser-run
-30. **Compare Verimo redesign verdict** (split par bien, "Bien 1"/"Bien 2", forces/issues 2 colonnes)
-31. **Mention CGV discrète** dans popup TVA upgrade (sans checkbox bloquante)
-32. **SLA pour clients grands comptes**
-33. **Investiguer erreurs Deno.core.runMicrotasks** dans logs edge functions (faux positif a priori)
-34. **Mailjet tracking erreurs**
-35. **Admin support inbox redesign** (split-view dans AdminPage.tsx : liste clients gauche, conversation droite, grouping par user, actions Résoudre/Archiver/Supprimer, onglet Archivés)
-36. **Mode clair/sombre toggle global** (chantier quand 10+ clients pros)
-37. **Bug race condition redirect post-checkout** (cache navigateur garde ancien rôle, F5 résout)
+23. **Session lifecycle pro complète** (cf section dédiée plus haut)
+24. **Personnalisation rapports Power "à votre image"** (2-3h dev, infra à 70%)
+25. **Bannière persistante "Paiement à régulariser"** sur dashboard si une facture upgrade plante
+26. **Popup bienvenue pro 1ère connexion** (onboarding)
+27. **Veille réglementaire** prompt analyser-run
+28. **Compare Verimo redesign verdict** (split par bien, "Bien 1"/"Bien 2", forces/issues 2 colonnes)
+29. **SLA pour clients grands comptes**
+30. **Mailjet tracking erreurs**
+31. **Admin support inbox redesign** (split-view dans AdminPage.tsx)
+32. **Mode clair/sombre toggle global** (chantier quand 10+ clients pros)
 
 ### Pages métier — créer plus tard
-38. **`/pro/investisseurs`** : landing dédiée investisseurs immobiliers (locatif, patrimoine, rendement)
-39. **`/pro/marchands`** : landing dédiée marchands de bien (achat-revente, division, marge)
-40. **`/pro/notaires`** : landing dédiée notaires (étude, clerc, négociateur)
-41. Une fois les 4 landings existantes, possibilité de simplifier `/pro` en hub court avec grille 2x2
+33. **`/pro/investisseurs`** : landing dédiée investisseurs immobiliers
+34. **`/pro/marchands`** : landing dédiée marchands de bien
+35. **`/pro/notaires`** : landing dédiée notaires
+36. Une fois les 4 landings existantes, simplifier `/pro` en hub court
 
 ### Stratégique pro
-42. **Compte Agence multi-utilisateurs** (5-15j dev) — quand 2-3 agences clientes
-43. **B2B targeting mandataires indépendants** (IAD, Capifrance, SAFTI)
-44. **Speak to 10 real pro prospects** avant de coder pro-specific features
-45. **Projections honnêtes** : 25k€ MRR sur 18-24 mois, mix solo + agences
+37. **Compte Agence multi-utilisateurs** (5-15j dev) — quand 2-3 agences clientes
+38. **B2B targeting mandataires indépendants** (IAD, Capifrance, SAFTI)
+39. **Speak to 10 real pro prospects** avant de coder pro-specific features
+40. **Projections honnêtes** : 25k€ MRR sur 18-24 mois, mix solo + agences
 
 ### Infra
-46. **Vérifier upgrade Supabase Compute NANO → MICRO** (gratuit avec plan Pro, double RAM + Disk IO Budget)
-47. **SIRET sur factures unitaires** : option B `customer.invoice_settings.custom_fields`
-48. **Toggles Stripe Checkout** : Politique remboursement / CGV / Coordonnées support
+41. **Vérifier upgrade Supabase Compute NANO → MICRO** (gratuit avec plan Pro)
+42. **SIRET sur factures unitaires** : option B `customer.invoice_settings.custom_fields`
+43. **Toggles Stripe Checkout** : Politique remboursement / CGV / Coordonnées support
 
 ### Démarchage / funnel pro
-49. **Créer un exemple de rapport Verimo anonymisé** en PDF — doc le plus puissant en conversion B2B
-50. **Rédiger 3 email templates** de démarchage : cold mail / follow-up sans réponse / post-démo
-51. **Argumentaire / objections-réponses** pour préparer les démos (RGPD, données client, résiliation, etc.)
+44. **Créer un exemple de rapport Verimo anonymisé** en PDF — doc le plus puissant en conversion B2B
+45. **Rédiger 3 email templates** de démarchage : cold mail / follow-up sans réponse / post-démo
+46. **Argumentaire / objections-réponses** pour préparer les démos (RGPD, données client, résiliation, etc.)
 
 ---
 
@@ -695,52 +571,34 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 ### Sessions récentes (mai 2026)
 
-- **Session 19 mai 2026 ⭐ : Sidebar clair/sombre + refonte Admin Messages + framework priorisation** (détail section dédiée plus haut)
-  - Système toggle clair/sombre sidebar pro + particulier (localStorage `verimo_sidebar_theme`, défaut clair, bouton soleil/lune)
-  - Fix tooltips "?" (position fixed + z-index 99999) côté pro et particulier
-  - Refonte visuelle onglet Messages admin (4 filtres : Tous / Contact général / Demandes modif pro / Résolus, détection auto via préfixe `[PRO —`, avatars colorés, bouton "Voir la fiche client")
-  - Texte notif modif identité pro simplifié
-  - Polish UX divers : Toggle Actifs/Archivés (Mes dossiers pro), animations transitions Nouvelle analyse, bandeau T3, vue liste dossiers mobile, confirmation demande modif refaite
-  - Framework de priorisation 4 catégories ajouté (feature business / fix bug bloquant / changement modèle éco / intégration externe) — pour décider quoi attaquer en début de session
-- **Session 17 mai 2026 ⭐ : Feature DPE Travaux préconisés** (détail section dédiée plus haut)
-  - Extraction et affichage des 2 packs de travaux DPE (essentiels + à envisager) + évolution étiquette projetée
-  - 3 fichiers modifiés : `analyser-run/index.ts` (v10→v11), `RapportPage.tsx` (TabLogement), `DocumentRenderer.tsx` (RendererDDT)
-  - Découverte clé : l'analyse simple utilise `DocumentRenderer.tsx`, pas `TabLogement` — il fallait modifier les 2 endroits
+- **Session 25-26 mai 2026 ⭐ : Système rappels pro + Auto-conversion démo + UX polish** (détail section dédiée plus haut)
+- **Session 19 mai 2026 ⭐ : Sidebar clair/sombre + refonte Admin Messages + framework priorisation**
+  - Système toggle clair/sombre sidebar pro + particulier (localStorage `verimo_sidebar_theme`)
+  - Fix tooltips "?" (position fixed + z-index 99999)
+  - Refonte visuelle onglet Messages admin (4 filtres, détection auto via préfixe `[PRO —`)
+  - Framework de priorisation 4 catégories ajouté
+- **Session 17 mai 2026 ⭐ : Feature DPE Travaux préconisés** (validé en prod)
+  - Extraction et affichage des 2 packs de travaux DPE + évolution étiquette projetée
   - Architecture sans SQL : enrichissement du JSONB existant uniquement
-- **Session 16 mai 2026 (~6h)** ⭐ : **CGV Pro popup + refonte /pro/rejoindre + refonte profonde MandatairesPage**
-  - SQL `profiles.cgv_pro_accepted_at` + `cgv_pro_version` + index
-  - Popup CGV Pro obligatoire avant 1er paiement pro (3 actions interceptées : subscribe, buyUnit, openUpgradeFlow). Bloc admin affichage ✅ vert ou ⚠️ orange sur fiche client
-  - Refonte `/pro/rejoindre` (770→1054 lignes) : placeholders génériques, SectionBlock par profil, SiretLookup via API gouv recherche-entreprises (workflow gris → valider → vert), GridSelectResponsive
+  - 3 fichiers modifiés : `analyser-run/index.ts` (v10→v11), `RapportPage.tsx`, `DocumentRenderer.tsx`
+  - Découverte clé : l'analyse simple utilise `DocumentRenderer.tsx`, pas `TabLogement`
+- **Session 16 mai 2026 ⭐ : CGV Pro popup + refonte /pro/rejoindre + refonte profonde MandatairesPage**
+  - Popup CGV Pro obligatoire avant 1er paiement pro (SQL `profiles.cgv_pro_accepted_at` + version)
+  - Refonte `/pro/rejoindre` avec SiretLookup API gouv recherche-entreprises
   - Renommage URLs : `/rejoindre` → `/pro/rejoindre`, `/pro/mandataires` → `/pro/agents-mandataires`
-  - MandatairesPage v6 refonte profonde (676→1066 lignes) :
-    - Hero split 50/50, trait surligné animé sur "répond à tout", retrait 2 confettis du milieu
-    - Ruban stats : "24h/24" remplace "15+ docs", "100% à votre image" remplace "100% co-brandé"
-    - Palette confettis Verimo unifiée
-    - Scénario 2 reformulé (mandat) + bénéfice "Prix appuyé sur les vrais chiffres du bien"
-    - Nouveau scénario BONUS "L'envoi en 1 clic" avec 2 mockups (MockupSendPopup + MockupClientEmail logo Laforêt stylisé)
-    - Section "3 étapes" entièrement refondue : badge pilule pleine dégradé bleu (16px), gros titres style scénarios, flèches → entre cartes, tagline "Aussi simple que ces 3 étapes. Aussi rapide qu'un café."
-    - CTA final reprend gradient identique au CTA bas ProPage + trait bleu animé sur "recommande"
-    - Fond unifié `#fafbfd` partout au milieu (élimine les coupures horizontales nettes)
-    - Mobile : 2 breakpoints, téléphones Hero scale 0.55, stats grille 2×2, scénarios texte d'abord + téléphone après via `:has()`, scénario envoi en stack vertical mobile
-  - Décision UX : mot "co-brandé" banni progressivement → "à votre image"
-  - Décision UX : bandeau Avant/Après Verimo testé puis retiré
-- **Session 15 mai 2026 (~6h)** ⭐ : **Système notifications cliquables + Refonte ProPage et MandatairesPage v1**
-  - 3 livraisons techniques : SQL `user_notifications.analysis_id` + edge function `analyser-run` v10 + fonction SQL `consume_particulier_credit` atomique
+  - MandatairesPage v6 refonte profonde (1066 lignes)
+  - Décision UX : "co-brandé" banni → "à votre image"
+- **Session 15 mai 2026 ⭐ : Système notifications cliquables + Refonte ProPage et MandatairesPage v1**
+  - SQL `user_notifications.analysis_id` + edge function `analyser-run` v10
   - Notifications cloche cliquables systématiques en fin d'analyse réussie
-  - Mail particulier "Analyse prête" avec CTA "Partager Verimo" — pas de mail pour pros
-  - Fix race condition deductCredit particulier
-  - Fix bug refundCredit pro (branche pro correcte dans `analyser-run`)
-  - Message timeout 10 min honnête + `notifyAnalysisFailure`
-  - ProPage : suppression témoignages + fausses stats, hero adouci, cartes profils + flottement
-  - MandatairesPage v1 : refonte from scratch style Jinka (2097→676 lignes) — base de la v6 actuelle
-- **Session 14 mai 2026 (nuit, ~3h)** ⭐ : **Plaquette PDF démarchage Pro V7 finalisée** (6 slides, mockups iPhone + MacBook, QR code)
-- **Session 13 mai 2026 (~5h)** : Page `/rejoindre` multi-step 4 étapes + Mailjet configuré, Edge Function `send-pro-request-confirmation`
-- **Session 12 mai 2026 (~5h)** : Refonte UI compte pro Dashboard + refonte massive analyse COMPROMIS, schéma JSON enrichi, 30 règles métier prompt
-- **Session 11-12 mai 2026 (nuit, ~6h)** ⭐ : Mail résiliation pro (V7), bannières dashboard, codes promo ciblage audience, popup "Besoin d'aide", UX "Compléter mon dossier" queued, objectif 25k€ MRR défini, spec Feature Agence + Co-branding
-- **Session 11 mai 2026 (nuit, ~3h30)** ⭐ : Bug paiements résolu + filet de sécurité `sync-stripe-payments` V2 + cron pg_cron
-- **Session 10-11 mai 2026 (nuit)** : 📜 CGV Pro V2.3 + admin alerts + recherche juridique
-- **Session 10 mai 2026 (soir)** : 🔐 Audit sécurité complet du système de paiement + refonte CA admin V2
-- **Sessions précédentes mai 2026** : Stripe pro complet, facturation B2B, table payments
+  - Fonction SQL `consume_particulier_credit` atomique
+- **Session 14 mai 2026 ⭐ : Plaquette PDF démarchage Pro V7 finalisée** (6 slides)
+- **Session 13 mai 2026 : Page `/rejoindre` multi-step 4 étapes + Mailjet configuré**
+- **Session 12 mai 2026 : Refonte UI compte pro Dashboard + refonte analyse COMPROMIS**
+- **Session 11-12 mai 2026 ⭐ : Mail résiliation pro V7, bannières dashboard, codes promo ciblage**
+- **Session 11 mai 2026 ⭐ : Bug paiements résolu + filet de sécurité `sync-stripe-payments` V2**
+- **Session 10-11 mai 2026 : 📜 CGV Pro V2.3 + admin alerts**
+- **Session 10 mai 2026 : 🔐 Audit sécurité complet du système de paiement + refonte CA admin V2**
 
 ### Sessions plus anciennes
 - **Avril 2026** : Stripe production, admin support inbox split-view, pages légales, SEO complet, dossiers pro complets, credit_grants + trigger, popups succès, page Guides
@@ -751,29 +609,31 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 ## 🎯 Prochaine session — Actions prioritaires
 
 ### Côté push immédiat (en attente d'Alex)
-1. **Tester feature DPE Travaux préconisés** : 1 analyse simple sur DPE Bouyges + 1 analyse complète sur diagnostics Benoist-Lucy. Vérifier rendu : titre dynamique 🎯 "Pour passer de X à Y", évolution étiquette (3 cercles), cards Pack 1 + Pack 2 avec sous-titres "Pour passer de X à Y", label "MONTANT ESTIMÉ", emojis par poste, badges copro/urbanisme, footer aides
-2. **Push MandatairesPage.tsx v6** (1066 lignes) sur GitHub + test visuel desktop ET mobile
-3. **Test popup CGV Pro** sur compte test pro (1er paiement → popup → coche → paiement passe → 2e paiement plus de popup, badge admin OK)
-4. **Tester URLs renommées** : `/pro/rejoindre` et `/pro/agents-mandataires` fonctionnent partout
+1. **Tester système callbacks end-to-end** : pro démo épuisée clique "Être rappelé" sur le bandeau ou page abonnement → admin reçoit cloche + email → marque "Rappelé" → "Converti" → vérif que le filtre admin se met à jour
+2. **Tester auto-conversion démo→actif** : compte démo souscrit un abo Stripe → vérif que `pro_status` passe à `'active'` + bandeaux démo disparaissent
+3. **Tester bouton "Activer le compte" manuel** : compte démo → clic bouton → modal → activer avec/sans crédits → vérif que les bandeaux disparaissent
+4. **Tester création démo enrichie** : créer un compte démo avec téléphone + SIRET + adresse → vérif que ces infos remontent bien dans la fiche admin + pré-remplissage tel dans modal "Être rappelé"
+5. **Tester modification type profil** depuis fiche admin (clic badge → dropdown → changer → vérif filtre)
+6. **Tester filtres combinés** dans ClientsProTab (ex: "🎁 Démo" + "📈 Investisseur")
+7. **Tester nouvelle UX transitions onglets** dashboard particulier (entre Tarifs / Comparaison / Mon compte)
 
 ### Côté technique/produit (en attente)
-4. **Annuler abos Stripe fantômes** (`cus_UUgPam3KYnmpzC` + `publicite92320@gmail.com`)
-5. **Test mail résiliation** sur `alexandre.rt25@gmail.com` via Stripe Dashboard
-6. **Régénérer service_role key** + recréer le cron Supabase
-7. **Test E2E complet du cycle pro** : souscription / upgrade / downgrade / unitaire / remboursement
-8. **Test cycle complet notifications** : particulier réussi (cloche + mail CTA partage) + pro réussi (cloche seule) + particulier échec (cloche + mail orange) + pro échec (cloche seule)
-9. **Soumettre les 47 URLs guides** Google Search Console
-10. **Réactiver le cron sync-stripe-payments** quand vieux paiements expirés
+8. **Régénérer service_role key** + recréer le cron Supabase
+9. **Test E2E complet du cycle pro** : souscription / upgrade / downgrade / unitaire / remboursement
+10. **Soumettre les 47 URLs guides** Google Search Console
+11. **Réactiver le cron sync-stripe-payments** quand vieux paiements expirés
 
 ### Côté funnel pro / démarchage
-11. **Créer un exemple de rapport Verimo anonymisé** en PDF — doc le plus puissant en conversion B2B
-12. **Rédiger 3 email templates** de démarchage : cold mail / follow-up sans réponse / post-démo
-13. **Argumentaire / objections-réponses** pour préparer les démos (RGPD, données client, résiliation, etc.)
-14. **Pages dédiées investisseur/marchand/notaire** quand vraies acquisitions clients dans ces segments
+12. **Créer un exemple de rapport Verimo anonymisé** en PDF
+13. **Rédiger 3 email templates** de démarchage : cold mail / follow-up / post-démo
+14. **Argumentaire / objections-réponses** pour préparer les démos
+
+### Session dédiée à prévoir
+15. **Session lifecycle pro** : Suspendre / Lever / Résilier / Webhook Stripe résiliation / past_due / suppression user sans casser Stripe / badges statuts admin
 
 **Méthode** :
 1. Coller ce context.md en début de conversation
 2. Valider chaque chantier avant de coder
 3. Une étape à la fois, fichiers livrés via `present_files` depuis `/mnt/user-data/outputs/`
 4. Pas de code sans accord
-5. Tester sur compte pro `alexandre.rt25@gmail.com` après chaque étape
+5. Tester sur compte pro démo après chaque étape
