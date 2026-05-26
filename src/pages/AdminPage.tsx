@@ -5541,7 +5541,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [proCancelScheduled, setProCancelScheduled] = useState<Set<string>>(new Set());
   const [proCanceled, setProCanceled] = useState<Set<string>>(new Set());
   const [proActivated, setProActivated] = useState<Set<string>>(new Set());
-  const [proFilter, setProFilter] = useState<'all' | 'active' | 'cancel_scheduled' | 'activated' | 'inactive' | 'canceled'>('all');
+  const [proFilter, setProFilter] = useState<'all' | 'demo' | 'active' | 'cancel_scheduled' | 'activated' | 'inactive' | 'canceled'>('all');
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   // 🆕 State pour le modal d'invitation démo
@@ -6712,6 +6712,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
           <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
             {([
               { id: 'all', label: 'Tous' },
+              { id: 'demo', label: '🎁 Compte démo' },
               { id: 'active', label: '🟢 Abonnement en cours' },
               { id: 'cancel_scheduled', label: '🟡 Résiliation programmée' },
               { id: 'activated', label: '✓ Compte activé' },
@@ -6720,6 +6721,8 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
             ] as const).map(f => {
               const count = f.id === 'active'
                 ? clients.filter(c => proSubscriptions.has(c.id)).length
+                : f.id === 'demo'
+                ? clients.filter(c => c.pro_status === 'demo').length
                 : f.id === 'cancel_scheduled'
                 ? clients.filter(c => proCancelScheduled.has(c.id)).length
                 : f.id === 'activated'
@@ -6747,6 +6750,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                 </div>
               ) : (() => {
                 const filtered = proFilter === 'active' ? clients.filter(c => proSubscriptions.has(c.id))
+                  : proFilter === 'demo' ? clients.filter(c => c.pro_status === 'demo')
                   : proFilter === 'cancel_scheduled' ? clients.filter(c => proCancelScheduled.has(c.id))
                   : proFilter === 'activated' ? clients.filter(c => proActivated.has(c.id))
                   : proFilter === 'inactive' ? clients.filter(c => !proActivated.has(c.id))
