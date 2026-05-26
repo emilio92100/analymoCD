@@ -5542,6 +5542,7 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [proCanceled, setProCanceled] = useState<Set<string>>(new Set());
   const [proActivated, setProActivated] = useState<Set<string>>(new Set());
   const [proFilter, setProFilter] = useState<'all' | 'demo' | 'active' | 'cancel_scheduled' | 'activated' | 'inactive' | 'canceled'>('all');
+  const [filterByType, setFilterByType] = useState<string>('all'); // 🆕 Filtre par type de profil (agent/investisseur/notaire/autre)
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   // 🆕 State pour le modal d'invitation démo
@@ -5857,6 +5858,27 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
   const [activateForm, setActivateForm] = useState({ credits_simple: '0', credits_complete: '0' });
   const [activating, setActivating] = useState(false);
 
+  // 🆕 Dropdown pour modifier le type de profil depuis la fiche
+  const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
+  const [updatingType, setUpdatingType] = useState(false);
+
+  const updateProfileType = async (newType: string) => {
+    if (!selected) return;
+    setUpdatingType(true);
+    try {
+      const { error } = await supabase.from('profiles').update({ pro_profile_type: newType }).eq('id', selected.id);
+      if (error) { showToast('Erreur : ' + error.message); setUpdatingType(false); return; }
+      setSelected(prev => prev ? { ...prev, pro_profile_type: newType } : null);
+      await logAction(`Type de profil modifié : ${selected.full_name} → ${newType}`);
+      showToast('Type de profil mis à jour');
+      setTypeDropdownOpen(false);
+      loadClients();
+    } catch (e) {
+      showToast('Erreur : ' + String(e));
+    }
+    setUpdatingType(false);
+  };
+
   const sendInvitation = async (profileId: string, isResend = false) => {
     setSendingInvite(true);
     try {
@@ -5924,7 +5946,71 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                  {(() => { const b = proTypeBadges[selected.pro_profile_type || 'autre'] || proTypeBadges.autre; return <span style={{ fontSize: 12, fontWeight: 700, color: b.color, background: b.bg, padding: '3px 10px', borderRadius: 8 }}>{b.label}</span>; })()}
+                  {/* 🆕 Badge type cliquable avec dropdown pour modifier */}
+                  {(() => {
+                    const currentType = selected.pro_profile_type || 'autre';
+                    const b = proTypeBadges[currentType] || proTypeBadges.autre;
+                    return (
+                      <div style={{ position: 'relative' as const }}>
+                        <button
+                          onClick={() => setTypeDropdownOpen(v => !v)}
+                          disabled={updatingType}
+                          style={{
+                            fontSize: 12, fontWeight: 700, color: b.color, background: b.bg,
+                            padding: '4px 12px 4px 10px', borderRadius: 8, border: 'none',
+                            cursor: updatingType ? 'wait' : 'pointer',
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            transition: 'all 0.15s',
+                          }}
+                          title="Cliquez pour modifier le type de profil"
+                          onMouseEnter={e => { if (!updatingType) e.currentTarget.style.filter = 'brightness(0.95)'; }}
+                          onMouseLeave={e => e.currentTarget.style.filter = 'brightness(1)'}
+                        >
+                          {b.label}
+                          <ChevronDown size={11} style={{ opacity: 0.6 }} />
+                        </button>
+                        <AnimatePresence>
+                          {typeDropdownOpen && (
+                            <>
+                              {/* Overlay pour fermer en cliquant ailleurs */}
+                              <div onClick={() => setTypeDropdownOpen(false)} style={{ position: 'fixed' as const, inset: 0, zIndex: 998 }} />
+                              <motion.div
+                                initial={{ opacity: 0, y: -4, scale: 0.96 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: -4, scale: 0.96 }}
+                                transition={{ duration: 0.15, ease: 'easeOut' }}
+                                style={{ position: 'absolute' as const, top: 'calc(100% + 6px)', left: 0, zIndex: 999, background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', boxShadow: '0 10px 30px rgba(0,0,0,0.12)', padding: 4, minWidth: 180 }}
+                              >
+                                {(['agent', 'investisseur', 'notaire', 'autre'] as const).map(t => {
+                                  const opt = proTypeBadges[t];
+                                  const isCurrent = currentType === t;
+                                  return (
+                                    <button
+                                      key={t}
+                                      onClick={() => updateProfileType(t)}
+                                      disabled={updatingType || isCurrent}
+                                      style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+                                        padding: '8px 12px', borderRadius: 7, border: 'none',
+                                        background: isCurrent ? opt.bg : 'transparent',
+                                        color: opt.color, fontSize: 12.5, fontWeight: isCurrent ? 700 : 600,
+                                        cursor: isCurrent ? 'default' : 'pointer', textAlign: 'left' as const, transition: 'background 0.12s',
+                                      }}
+                                      onMouseEnter={e => { if (!isCurrent) e.currentTarget.style.background = opt.bg; }}
+                                      onMouseLeave={e => { if (!isCurrent) e.currentTarget.style.background = 'transparent'; }}
+                                    >
+                                      <span>{opt.label}</span>
+                                      {isCurrent && <CheckCircle size={12} style={{ color: opt.color }} />}
+                                    </button>
+                                  );
+                                })}
+                              </motion.div>
+                            </>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    );
+                  })()}
                   {selected.suspended && <span style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', background: '#fef2f2', padding: '2px 8px', borderRadius: 6 }}>Suspendu</span>}
                 </div>
                 <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>{selected.full_name}</h2>
@@ -6708,37 +6794,106 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
       ) : (
         /* ── Liste ── */
         <div>
-          {/* Filtres : Tous / Abonnement en cours / Résiliation programmée / Compte activé / Inscrits non activés / Résilié */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
-            {([
-              { id: 'all', label: 'Tous' },
-              { id: 'demo', label: '🎁 Compte démo' },
-              { id: 'active', label: '🟢 Abonnement en cours' },
-              { id: 'cancel_scheduled', label: '🟡 Résiliation programmée' },
-              { id: 'activated', label: '✓ Compte activé' },
-              { id: 'inactive', label: 'Inscrits non activés' },
-              { id: 'canceled', label: '🔴 Résilié' },
-            ] as const).map(f => {
-              const count = f.id === 'active'
-                ? clients.filter(c => proSubscriptions.has(c.id)).length
-                : f.id === 'demo'
-                ? clients.filter(c => c.pro_status === 'demo').length
-                : f.id === 'cancel_scheduled'
-                ? clients.filter(c => proCancelScheduled.has(c.id)).length
-                : f.id === 'activated'
-                ? clients.filter(c => proActivated.has(c.id)).length
-                : f.id === 'inactive'
-                ? clients.filter(c => !proActivated.has(c.id)).length
-                : f.id === 'canceled'
-                ? clients.filter(c => proCanceled.has(c.id) && !proSubscriptions.has(c.id)).length
-                : clients.length;
-              return (
-                <button key={f.id} onClick={() => setProFilter(f.id)}
-                  style={{ padding: '7px 14px', borderRadius: 10, border: `1.5px solid ${proFilter === f.id ? '#0f2d3d' : '#edf2f7'}`, background: proFilter === f.id ? '#0f2d3d' : '#fff', color: proFilter === f.id ? '#fff' : '#64748b', fontSize: 12, fontWeight: proFilter === f.id ? 700 : 500, cursor: 'pointer', transition: 'all 0.2s' }}>
-                  {f.label} ({count})
-                </button>
-              );
-            })}
+          {/* ─── Bloc filtres : Statut (ligne 1) + Type de profil (ligne 2) ─── */}
+          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #edf2f7', padding: '12px 14px', marginBottom: 14, display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+            {/* Ligne 1 : Statut */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>Statut</span>
+                <div style={{ flex: 1, height: 1, background: '#f1f5f9' }} />
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+                {([
+                  { id: 'all', label: 'Tous' },
+                  { id: 'demo', label: '🎁 Compte démo' },
+                  { id: 'active', label: '🟢 Abonnement en cours' },
+                  { id: 'cancel_scheduled', label: '🟡 Résiliation programmée' },
+                  { id: 'activated', label: '✓ Compte activé' },
+                  { id: 'inactive', label: 'Inscrits non activés' },
+                  { id: 'canceled', label: '🔴 Résilié' },
+                ] as const).map(f => {
+                  const count = f.id === 'active'
+                    ? clients.filter(c => proSubscriptions.has(c.id)).length
+                    : f.id === 'demo'
+                    ? clients.filter(c => c.pro_status === 'demo').length
+                    : f.id === 'cancel_scheduled'
+                    ? clients.filter(c => proCancelScheduled.has(c.id)).length
+                    : f.id === 'activated'
+                    ? clients.filter(c => proActivated.has(c.id)).length
+                    : f.id === 'inactive'
+                    ? clients.filter(c => !proActivated.has(c.id)).length
+                    : f.id === 'canceled'
+                    ? clients.filter(c => proCanceled.has(c.id) && !proSubscriptions.has(c.id)).length
+                    : clients.length;
+                  const isActive = proFilter === f.id;
+                  return (
+                    <button key={f.id} onClick={() => setProFilter(f.id)}
+                      style={{
+                        padding: '7px 14px', borderRadius: 10,
+                        border: `1.5px solid ${isActive ? '#0f2d3d' : '#edf2f7'}`,
+                        background: isActive ? '#0f2d3d' : '#fff',
+                        color: isActive ? '#fff' : '#64748b',
+                        fontSize: 12, fontWeight: isActive ? 700 : 500,
+                        cursor: 'pointer',
+                        transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+                        transform: isActive ? 'translateY(-1px)' : 'translateY(0)',
+                        boxShadow: isActive ? '0 4px 12px rgba(15,45,61,0.15)' : 'none',
+                      }}
+                      onMouseEnter={e => { if (!isActive) { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = '#f8fafc'; } }}
+                      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.borderColor = '#edf2f7'; e.currentTarget.style.background = '#fff'; } }}
+                    >
+                      {f.label} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Ligne 2 : Type de profil */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>Type de profil</span>
+                <div style={{ flex: 1, height: 1, background: '#f1f5f9' }} />
+                {filterByType !== 'all' && (
+                  <button onClick={() => setFilterByType('all')} style={{ fontSize: 10.5, fontWeight: 600, color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                    Réinitialiser
+                  </button>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+                {([
+                  { id: 'all', label: 'Tous' },
+                  { id: 'agent', label: '🏢 Agent' },
+                  { id: 'investisseur', label: '📈 Investisseur' },
+                  { id: 'notaire', label: '⚖️ Notaire' },
+                  { id: 'autre', label: '💼 Autre' },
+                ] as const).map(t => {
+                  const count = t.id === 'all'
+                    ? clients.length
+                    : clients.filter(c => (c.pro_profile_type || 'autre') === t.id).length;
+                  const isActive = filterByType === t.id;
+                  return (
+                    <button key={t.id} onClick={() => setFilterByType(t.id)}
+                      style={{
+                        padding: '7px 14px', borderRadius: 10,
+                        border: `1.5px solid ${isActive ? '#7c3aed' : '#edf2f7'}`,
+                        background: isActive ? '#7c3aed' : '#fff',
+                        color: isActive ? '#fff' : '#64748b',
+                        fontSize: 12, fontWeight: isActive ? 700 : 500,
+                        cursor: 'pointer',
+                        transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+                        transform: isActive ? 'translateY(-1px)' : 'translateY(0)',
+                        boxShadow: isActive ? '0 4px 12px rgba(124,58,237,0.2)' : 'none',
+                      }}
+                      onMouseEnter={e => { if (!isActive) { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = '#f8fafc'; } }}
+                      onMouseLeave={e => { if (!isActive) { e.currentTarget.style.borderColor = '#edf2f7'; e.currentTarget.style.background = '#fff'; } }}
+                    >
+                      {t.label} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
           <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #edf2f7', overflow: 'hidden' }}>
             {loading ? <div style={{ padding: 40, textAlign: 'center' as const, color: '#94a3b8' }}>Chargement...</div>
@@ -6749,13 +6904,17 @@ function ClientsProTab({ showToast, logAction, prefillDemande, onPrefillHandled,
                   <p style={{ fontSize: 13, color: '#cbd5e1', marginTop: 6 }}>Créez votre premier client pro avec le bouton ci-dessus.</p>
                 </div>
               ) : (() => {
-                const filtered = proFilter === 'active' ? clients.filter(c => proSubscriptions.has(c.id))
+                const baseFiltered = proFilter === 'active' ? clients.filter(c => proSubscriptions.has(c.id))
                   : proFilter === 'demo' ? clients.filter(c => c.pro_status === 'demo')
                   : proFilter === 'cancel_scheduled' ? clients.filter(c => proCancelScheduled.has(c.id))
                   : proFilter === 'activated' ? clients.filter(c => proActivated.has(c.id))
                   : proFilter === 'inactive' ? clients.filter(c => !proActivated.has(c.id))
                   : proFilter === 'canceled' ? clients.filter(c => proCanceled.has(c.id) && !proSubscriptions.has(c.id))
                   : clients;
+                // 🆕 Application cumulative du filtre par type de profil
+                const filtered = filterByType === 'all'
+                  ? baseFiltered
+                  : baseFiltered.filter(c => (c.pro_profile_type || 'autre') === filterByType);
                 return filtered.length === 0 ? (
                   <div style={{ padding: 32, textAlign: 'center' as const, color: '#94a3b8', fontSize: 13 }}>Aucun client dans cette catégorie.</div>
                 ) : filtered.map((c, i) => {
