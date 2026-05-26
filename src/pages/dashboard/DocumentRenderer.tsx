@@ -2157,7 +2157,6 @@ export function RendererCompromis({ r, isShared, hideVerimoBranding }: { r: any;
   const honCharge = finances.honoraires_charge;
   const prixTotal = finances.prix_total_acte;
   const fraisNotaire = finances.frais_notaire_estimes_verimo;
-  const fraisNotairePct = finances.frais_notaire_pct_verimo;
   const coutTotal = finances.cout_total_estime_acheteur_verimo;
   const depotGarantie = finances.depot_garantie_montant;
   const depotGarantiePct = finances.depot_garantie_pct;
@@ -2229,8 +2228,8 @@ export function RendererCompromis({ r, isShared, hideVerimoBranding }: { r: any;
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 12 }}>
         {prixNet != null && <Kpi label="Prix net vendeur" value={`${fmt(prixNet)} €`} />}
         {honoraires != null && <Kpi label="Honoraires agence" value={`${fmt(honoraires)} €`} sub={honPct ? `${honPct}% · Charge ${honCharge || 'non précisé'}` : honCharge ? `Charge ${honCharge}` : undefined} />}
-        {fraisNotaire != null && <Kpi label="Frais notaire estimés" value={`~${fmt(fraisNotaire)} €`} sub={fraisNotairePct ? `~${fraisNotairePct}% · Estimation Verimo` : 'Estimation Verimo'} />}
-        {coutTotal != null && <Kpi label="Coût total acheteur" value={`~${fmt(coutTotal)} €`} sub="Estimation Verimo" color="#0c447c" />}
+        {fraisNotaire != null && <Kpi label="Frais notaire estimés" value={`~${fmt(fraisNotaire)} €`} sub="Indicatif — calculé par votre notaire" tooltip="Estimation Verimo à titre indicatif. Les frais réels sont calculés par votre notaire le jour de l'acte : droits d'enregistrement (5,09% à 5,80% selon le département) + émoluments du notaire (barème dégressif) + débours (état hypothécaire, copie d'acte, etc.). Pour un calcul précis, utilisez le simulateur officiel des notaires." />}
+        {coutTotal != null && <Kpi label="Coût total acheteur" value={`~${fmt(coutTotal)} €`} sub="Estimation indicative" color="#0c447c" tooltip="Prix total acte + frais de notaire estimés. À affiner avec votre notaire pour votre plan de financement définitif." />}
       </div>
 
       {/* ALERTES CRITIQUES EN HAUT */}
@@ -2392,8 +2391,11 @@ export function RendererCompromis({ r, isShared, hideVerimoBranding }: { r: any;
             )}
             {clausePenalePct != null && <InfoRow label="Clause pénale" value={`${clausePenalePct}% du prix en cas de désistement injustifié`} alt valueColor="#dc2626" />}
             {coutTotal != null && (
-              <div style={{ marginTop: 10, padding: '12px 16px', background: '#f0f7fb', border: '1px solid #c7dde8', borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 12.5, fontWeight: 700, color: '#2a7d9c' }}>Coût total estimé acheteur</span>
+              <div style={{ marginTop: 10, padding: '12px 16px', background: '#f0f7fb', border: '1px solid #c7dde8', borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' as const, gap: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column' as const }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: '#2a7d9c' }}>Coût total estimé acheteur</span>
+                  <span style={{ fontSize: 10.5, color: '#64748b', fontStyle: 'italic' as const, marginTop: 2 }}>Indicatif — à valider avec votre notaire</span>
+                </div>
                 <span style={{ fontSize: 16, fontWeight: 700, color: '#0c447c' }}>~{fmt(coutTotal)} €</span>
               </div>
             )}
