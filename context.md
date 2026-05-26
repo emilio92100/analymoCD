@@ -111,7 +111,7 @@ TVA Tax Rate ID : txr_1TUAxVBesXB76oWESXBnGdIZ
 | Nom | Rôle | Version |
 |-----|------|---------|
 | `analyser` | Lance une analyse — gère la queue Anthropic 503 | v8 |
-| `analyser-run` | Worker qui traite l'analyse en background | **v12** (25 mai — retry DPE/Carrez + validation diags manquants) |
+| `analyser-run` | Worker qui traite l'analyse en background | **v13** (26 mai — règle fiscale frais notaire corrigée) |
 | `analyser-retry` | Cron pg_cron 5 min — retraite les analyses queued (12 retries max) | — |
 | `comparer` | Compare 2 ou 3 rapports | — |
 | `admin-user-management` | Actions admin (create, invite, delete, reset password, **create_pro_demo enrichi**, **activate_pro_demo**) | **v2** (25 mai) |
@@ -374,6 +374,58 @@ Quand un pro envoie un rapport à un client via "Envoyer une analyse" (table `re
 - **Bouton Suspendre / Lever suspension** : reporté à session lifecycle pro dédiée
 - **Anti-doublon création démo** : Supabase Auth bloque déjà nativement les doublons d'email, suffisant pour l'instant
 
+### 11. Fix règle frais de notaire — calcul fiscal correct (✅ DÉPLOYÉ)
+
+**Problème identifié** : la règle dans le prompt utilisait `> 5 ans` comme critère unique pour distinguer neuf (3%) vs ancien (7,5%). Or fiscalement, un bien achevé < 5 ans **mais déjà revendu une fois** bascule en "ancien" (7,5%). Sur 350k€, l'erreur faisait ~15k€ de différence dans le calcul.
+
+**Solution** : règle dans `analyser-run/index.ts` ligne 1100 réécrite avec logique correcte :
+- **DÉFAUT 7,5%** (règle générale ancien)
+- **3% uniquement** si TOUTES ces conditions réunies :
+  - Compromis VEFA explicite (mention "vente en l'état futur", "VEFA", "GFA", vendeur = promoteur/société commerciale)
+  - ET `origine_propriete.mode_acquisition` = null/non_precise/absent (1ère mutation)
+  - ET `annee_construction` < 5 ans
+- Cas pièges explicites : bien construit récemment mais revendu par particulier → ancien ; donation/succession → ancien
+
+**Affichage côté `DocumentRenderer.tsx`** (KPI dans analyse simple compromis) :
+- Sous-titre KPI changé : "Indicatif — calculé par votre notaire" (au lieu de "~3% · Estimation Verimo" qui pouvait tromper)
+- Ajout de **tooltips pédagogiques** (icône ⓘ) :
+  - Frais notaire : *"Les frais réels sont calculés par votre notaire le jour de l'acte : droits d'enregistrement (5,09% à 5,80% selon département) + émoluments dégressifs + débours."*
+  - Coût total : *"À affiner avec votre notaire pour votre plan de financement définitif."*
+- Variable `fraisNotairePct` retirée (non affichée volontairement pour éviter contestations)
+- Bandeau bas "Coût total estimé acheteur" : ajout mention italique *"Indicatif — à valider avec votre notaire"*
+
+**Affichage côté `RapportPage.tsx` (analyse complète)** : les frais ne sont PAS affichés dans le rapport complet, donc rien à modifier pour ça.
+
+### 12. Test de l'onglet Compromis dans analyse complète — bug découvert ⚠️
+
+**Découverte de session** : l'onglet **"📝 Compromis"** existe déjà dans `RapportPage.tsx` (composant `TabCompromis` ligne 760, routing ligne 4729, `hasCompromis` ligne 4653, label "Compromis" avec icône `FileSignature`). Il se déclenche conditionnellement si compromis détecté.
+
+**Mais bug visuel constaté lors du test** : sur un rapport réel (12,5/20 puis 11,5/20 après ajout compromis), l'onglet affiche **"Erreur d'affichage — Un problème est survenu sur cet onglet"** via le `SafeTabBoundary`.
+
+**Cause probable** : `TabCompromis` reconstruit une structure pour passer à `RendererCompromis` (depuis DocumentRenderer.tsx) :
+```ts
+const r = {
+  titre: rapport.adresse || compromisData.bien?.adresse_complete,
+  resume: compromisData.resume || null,
+  ...compromisData,
+};
+```
+Mais `RendererCompromis` attend une forme précise (le `finances`, `bien`, `vendeurs`, etc. doivent être au bon format). Quand on lui passe `lot_achete.compromis` enrichi, un champ doit planter au runtime.
+
+**À investiguer en début de prochaine session** : ouvrir une analyse complète avec compromis, regarder la console DevTools pour identifier l'erreur précise, et adapter `TabCompromis` ou créer un wrapper qui valide/normalise la structure avant de passer à `RendererCompromis`.
+
+### 13. UX "Compléter mon dossier" — 3 frictions identifiées ⚠️
+
+**Test réel effectué** : ajout d'un compromis sur une analyse complète déjà faite. Plusieurs problèmes UX remontés :
+
+**(a) Faux progress bar** : la barre monte rapidement à 90% puis se fige. Le user attend 4-5 minutes sans aucun feedback de progression. Impression de bug.
+
+**(b) Message anxiogène faux** : "Ne fermez pas cette fenêtre" affiché. L'analyse tourne pourtant côté edge function en background → fermer la page ne devrait pas l'arrêter. À reformuler en rassurant + indiquer durée estimée.
+
+**(c) Pas de pédagogie sur ce que fait "Compléter"** : le user pense qu'on ajoute juste l'onglet Compromis, alors qu'en fait on **réanalyse tout le dossier** (anciens docs + nouveaux). Conséquences : score recalculé, nouveaux points de vigilance ajoutés (ex: moins-value vendeur -90k€ depuis 2019, travaux privatifs non autorisés, DTG obsolète), nouvelles pistes de négo. C'est le bon comportement mais perçu comme suspect car non annoncé.
+
+**Comportement technique correct confirmé** : "Compléter" et "Analyse complète directe avec tous les docs" produisent le **même résultat final**. La différence est juste un appel IA en plus côté Verimo (~0,30-0,50€ de coût interne). Le user ne paie qu'une fois.
+
 ---
 
 ## 🔮 Session "lifecycle pro" — À PRÉVOIR DANS UNE SESSION DÉDIÉE
@@ -608,28 +660,43 @@ Stockés directement dans `profiles.credits_document` et `profiles.credits_compl
 
 ## 🎯 Prochaine session — Actions prioritaires
 
+### 🔥 BUGS BLOQUANTS à fixer en priorité absolue
+
+1. **Bug "Erreur d'affichage" sur l'onglet Compromis** (RapportPage.tsx → TabCompromis)
+   - Symptôme : sur une analyse complète avec compromis, l'onglet affiche le fallback `SafeTabBoundary` au lieu du contenu
+   - Investigation : ouvrir DevTools console, identifier l'erreur runtime précise dans `RendererCompromis`
+   - Fix probable : adapter la reconstruction de structure dans `TabCompromis` ou normaliser avant de passer à `RendererCompromis`
+   - **Impact** : bloque toute la valeur ajoutée de l'analyse compromis enrichie
+
+2. **UX "Compléter mon dossier" — 3 frictions** (à traiter ensemble dans une mini-session UX)
+   - **(a)** Faux progress bar qui se bloque à 90% sans feedback pendant 4-5 min → remplacer par une vraie indication d'étape (`Téléversement…` → `Lecture par notre moteur…` → `Synthèse en cours…`) ou un spinner avec messages tournants
+   - **(b)** Reformuler "Ne fermez pas cette fenêtre" en rassurant : *"Vous pouvez fermer cette fenêtre, l'analyse continue en arrière-plan. Vous recevrez une notification quand elle est prête."* (ce qui est techniquement vrai vu que ça tourne en edge function)
+   - **(c)** Ajouter un mini-écran pédagogique AVANT le lancement de Compléter : *"L'ajout de nouveaux documents va réanalyser l'intégralité de votre dossier pour croiser les informations. Votre rapport sera enrichi, et certains points (score, négociation, vigilances) peuvent être actualisés. Cela prend ~5 minutes selon le volume."*
+   - **Impact** : actuellement le user croit à un bug et/ou ne comprend pas pourquoi son rapport change
+
 ### Côté push immédiat (en attente d'Alex)
-1. **Tester système callbacks end-to-end** : pro démo épuisée clique "Être rappelé" sur le bandeau ou page abonnement → admin reçoit cloche + email → marque "Rappelé" → "Converti" → vérif que le filtre admin se met à jour
-2. **Tester auto-conversion démo→actif** : compte démo souscrit un abo Stripe → vérif que `pro_status` passe à `'active'` + bandeaux démo disparaissent
-3. **Tester bouton "Activer le compte" manuel** : compte démo → clic bouton → modal → activer avec/sans crédits → vérif que les bandeaux disparaissent
-4. **Tester création démo enrichie** : créer un compte démo avec téléphone + SIRET + adresse → vérif que ces infos remontent bien dans la fiche admin + pré-remplissage tel dans modal "Être rappelé"
-5. **Tester modification type profil** depuis fiche admin (clic badge → dropdown → changer → vérif filtre)
-6. **Tester filtres combinés** dans ClientsProTab (ex: "🎁 Démo" + "📈 Investisseur")
-7. **Tester nouvelle UX transitions onglets** dashboard particulier (entre Tarifs / Comparaison / Mon compte)
+3. **Tester système callbacks end-to-end** : pro démo épuisée clique "Être rappelé" → admin reçoit cloche + email → marque "Rappelé" → "Converti" → vérif que le filtre admin se met à jour
+4. **Tester auto-conversion démo→actif** : compte démo souscrit un abo Stripe → vérif que `pro_status` passe à `'active'` + bandeaux démo disparaissent
+5. **Tester bouton "Activer le compte" manuel** : compte démo → clic bouton → modal → activer avec/sans crédits → vérif que les bandeaux disparaissent
+6. **Tester création démo enrichie** : créer un compte démo avec téléphone + SIRET + adresse → vérif que ces infos remontent bien dans la fiche admin + pré-remplissage tel dans modal "Être rappelé"
+7. **Tester modification type profil** depuis fiche admin (clic badge → dropdown → changer → vérif filtre)
+8. **Tester filtres combinés** dans ClientsProTab (ex: "🎁 Démo" + "📈 Investisseur")
+9. **Tester nouvelle UX transitions onglets** dashboard particulier (entre Tarifs / Comparaison / Mon compte)
+10. **Tester fix frais notaire** : analyse simple d'un compromis → vérifier que les frais affichent ~7,5% (au lieu de 3% pour bien <5 ans) + tooltip ⓘ visible et explicatif
 
 ### Côté technique/produit (en attente)
-8. **Régénérer service_role key** + recréer le cron Supabase
-9. **Test E2E complet du cycle pro** : souscription / upgrade / downgrade / unitaire / remboursement
-10. **Soumettre les 47 URLs guides** Google Search Console
-11. **Réactiver le cron sync-stripe-payments** quand vieux paiements expirés
+11. **Régénérer service_role key** + recréer le cron Supabase
+12. **Test E2E complet du cycle pro** : souscription / upgrade / downgrade / unitaire / remboursement
+13. **Soumettre les 47 URLs guides** Google Search Console
+14. **Réactiver le cron sync-stripe-payments** quand vieux paiements expirés
 
 ### Côté funnel pro / démarchage
-12. **Créer un exemple de rapport Verimo anonymisé** en PDF
-13. **Rédiger 3 email templates** de démarchage : cold mail / follow-up / post-démo
-14. **Argumentaire / objections-réponses** pour préparer les démos
+15. **Créer un exemple de rapport Verimo anonymisé** en PDF
+16. **Rédiger 3 email templates** de démarchage : cold mail / follow-up / post-démo
+17. **Argumentaire / objections-réponses** pour préparer les démos (inclure objection *"Verimo peut faire des erreurs ?"* avec comparaisons MeilleursAgents/PERVAL/simulateurs DPE)
 
 ### Session dédiée à prévoir
-15. **Session lifecycle pro** : Suspendre / Lever / Résilier / Webhook Stripe résiliation / past_due / suppression user sans casser Stripe / badges statuts admin
+18. **Session lifecycle pro** : Suspendre / Lever / Résilier / Webhook Stripe résiliation / past_due / suppression user sans casser Stripe / badges statuts admin
 
 **Méthode** :
 1. Coller ce context.md en début de conversation
