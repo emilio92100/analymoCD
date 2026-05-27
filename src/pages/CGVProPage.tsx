@@ -271,6 +271,29 @@ export default function CGVProPage() {
                 <li>L'accès au service est maintenu pendant cette période de relance</li>
                 <li>Sans régularisation au terme de cette période, l'abonnement est suspendu automatiquement</li>
               </ul>
+
+              <SubTitle>4.5 — Formule Agence</SubTitle>
+              <p>
+                L'offre <strong>Verimo Pro · Agence</strong> est une formule destinée aux structures employant plusieurs collaborateurs.
+                Elle se distingue des formules solo (Découverte, Starter, Power) par ses volumes et son périmètre d'usage.
+              </p>
+              <ul style={{ paddingLeft: 22, lineHeight: 2 }}>
+                <li><strong>Tarif</strong> : 149,90 € HT par mois (soit 179,88 € TTC, TVA française 20 % en sus)</li>
+                <li><strong>Crédits inclus</strong> : 15 analyses complètes mensuelles + 30 analyses simples mensuelles</li>
+                <li><strong>Limite d'agents</strong> : 3 agents maximum par compte agence (login partagé)</li>
+                <li><strong>Cumul de crédits</strong> : crédits non consommés cumulables sur 2 mois maximum (plafond 2×)</li>
+                <li><strong>Engagement</strong> : abonnement sans engagement, résiliable à tout moment depuis le Customer Portal Stripe</li>
+                <li><strong>Facturation</strong> : prélèvement automatique mensuel à date d'anniversaire de souscription, facture PDF générée et envoyée par email après chaque paiement</li>
+              </ul>
+              <p>
+                L'activation de la formule Agence se fait sur invitation, après un échange avec l'équipe Verimo
+                permettant de valider l'adéquation de l'offre avec les besoins de la structure. Les agences intéressées
+                peuvent demander un rappel depuis leur dashboard, rubrique « Mon abonnement ».
+              </p>
+              <p>
+                Les règles de cumul de crédits, d'échec de paiement et de modalités de paiement énoncées aux articles 4.3, 4.4 et 5
+                s'appliquent intégralement à la formule Agence.
+              </p>
             </Section>
 
             {/* ─── Section 5 : Crédits ─── */}
