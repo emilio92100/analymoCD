@@ -35,10 +35,17 @@ import Stripe from 'https://esm.sh/stripe@14.21.0?target=deno';
 // Configuration : Mapping plan/unit → Price ID Stripe (PRODUCTION)
 // ─────────────────────────────────────────────────────────────────────
 
-const PLAN_TO_PRICE: Record<'decouverte' | 'starter' | 'power', string> = {
+// 🏛 Type unifié pour les plans pro (agence incluse)
+type ProPlan = 'decouverte' | 'starter' | 'power' | 'agence';
+
+// 🏛 NOUVEAU plan agence — price_id lu depuis variable d'environnement
+const STRIPE_PRICE_AGENCE = Deno.env.get('STRIPE_PRICE_AGENCE') ?? '';
+
+const PLAN_TO_PRICE: Record<ProPlan, string> = {
   decouverte: 'price_1TTtd1BesXB76oWEZuILxjwe',
   starter: 'price_1TTtczBesXB76oWEcKaNR2BW',
   power: 'price_1TTtcxBesXB76oWEPyVYZjCj',
+  agence: STRIPE_PRICE_AGENCE,
 };
 
 // Mapping inverse : Price ID → plan name (utilisé pour identifier le plan d'un schedule existant)
@@ -47,23 +54,30 @@ const PRICE_TO_PLAN: Record<string, string> = {
   'price_1TTtczBesXB76oWEcKaNR2BW': 'starter',
   'price_1TTtcxBesXB76oWEPyVYZjCj': 'power',
 };
+// Ajout dynamique du plan agence
+if (STRIPE_PRICE_AGENCE) {
+  PRICE_TO_PLAN[STRIPE_PRICE_AGENCE] = 'agence';
+}
 
-const PLAN_HT_PRICE: Record<'decouverte' | 'starter' | 'power', number> = {
+const PLAN_HT_PRICE: Record<ProPlan, number> = {
   decouverte: 1990,
   starter: 4990,
   power: 8990,
+  agence: 14990, // 149,90€ HT
 };
 
-const PLAN_LABEL: Record<'decouverte' | 'starter' | 'power', string> = {
+const PLAN_LABEL: Record<ProPlan, string> = {
   decouverte: 'Découverte',
   starter: 'Starter',
   power: 'Power',
+  agence: 'Agence',
 };
 
-const PLAN_QUOTAS: Record<'decouverte' | 'starter' | 'power', { complete: number; simple: number }> = {
+const PLAN_QUOTAS: Record<ProPlan, { complete: number; simple: number }> = {
   decouverte: { complete: 1, simple: 3 },
   starter: { complete: 5, simple: 15 },
   power: { complete: 10, simple: 30 },
+  agence: { complete: 15, simple: 30 }, // 🏛 Plan agence
 };
 
 const UNIT_TO_PRICE: Record<'complete' | 'document', string> = {
@@ -171,11 +185,44 @@ serve(async (req) => {
 async function handleSubscribe(userId: string, body: any) {
   const { plan } = body;
 
-  if (!plan || !['decouverte', 'starter', 'power'].includes(plan)) {
+  if (!plan || !['decouverte', 'starter', 'power', 'agence'].includes(plan)) {
     return jsonResponse({ error: 'Invalid plan' }, 400);
   }
 
-  const priceId = PLAN_TO_PRICE[plan as keyof typeof PLAN_TO_PRICE];
+  // 🏛 GUARD AGENCE : pour souscrire au plan agence, le compte doit avoir
+  // pro_agence_subscription_unlocked = true (débloqué par l'admin via le bouton
+  // "Envoyer la proposition agence" sur la fiche admin).
+  if (plan === 'agence') {
+    const { data: profile, error: profileErr } = await supabaseAdmin
+      .from('profiles')
+      .select('pro_profile_type, pro_agence_subscription_unlocked')
+      .eq('id', userId)
+      .single();
+
+    if (profileErr || !profile) {
+      return jsonResponse({ error: 'Profil introuvable' }, 404);
+    }
+
+    if (profile.pro_profile_type !== 'agence') {
+      return jsonResponse({
+        error: 'Plan agence réservé aux profils de type Agence. Contactez le support pour discuter d\'un forfait adapté.',
+      }, 403);
+    }
+
+    if (!profile.pro_agence_subscription_unlocked) {
+      return jsonResponse({
+        error: 'Votre formule agence n\'a pas encore été débloquée. Contactez votre interlocuteur Verimo pour finaliser votre proposition.',
+      }, 403);
+    }
+  }
+
+  const priceId = PLAN_TO_PRICE[plan as ProPlan];
+
+  // Sécurité : si le price_id est vide (variable d'env manquante pour agence)
+  if (!priceId) {
+    console.error(`[handleSubscribe] Price ID manquant pour le plan ${plan}`);
+    return jsonResponse({ error: 'Configuration tarifaire indisponible. Contactez le support.' }, 500);
+  }
 
   // Récupérer ou créer le customer Stripe (avec adresse + SIRET en V3)
   const customerId = await getOrCreateStripeCustomer(userId);
