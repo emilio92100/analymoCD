@@ -11,7 +11,7 @@ import {
   UserPlus, UserCheck, Folder, Lightbulb, MessageSquare,
   LayoutGrid, LayoutList, ArrowUpDown, Info, Calendar,
   Shield, Lock, ExternalLink, Archive, Sun, Moon,
-  Paperclip, Phone,
+  Paperclip, Phone, Users,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getStripe } from '../lib/stripe-client';
@@ -22,6 +22,7 @@ import NouvelleAnalyse from './dashboard/NouvelleAnalyse';
 import Compare from './dashboard/Compare';
 import Support from './dashboard/Support';
 import Aide from './dashboard/Aide';
+import MonEquipePage from './MonEquipePage';
 
 // Popup consentement CGV Pro (1er paiement)
 import CgvProConsentDialog from '../components/CgvProConsentDialog';
@@ -52,6 +53,9 @@ type ProProfile = {
   pro_demo_converted_at?: string | null;
   pro_agence_subscription_unlocked?: boolean; // 🏛 TRUE si admin a envoyé la proposition
   pro_agence_proposition_sent_at?: string | null; // 🏛 Date d'envoi de la proposition
+  // 🏛 Multi-utilisateurs agence
+  agence_id?: string | null;
+  agence_role?: 'responsable' | 'co_responsable' | 'agent' | null;
   credits_document?: number;
   credits_complete?: number;
   cgv_pro_accepted_at?: string | null;
@@ -171,6 +175,7 @@ const proNavItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord' },
   { to: '/dashboard/dossiers', icon: FolderOpen, label: 'Mes dossiers' },
   { to: '/dashboard/compare', icon: GitCompare, label: 'Comparer' },
+  { to: '/dashboard/equipe', icon: Users, label: 'Mon équipe' },
   { to: '/dashboard/abonnement', icon: CreditCard, label: 'Mon abonnement' },
   { to: '/dashboard/compte', icon: User, label: 'Mon compte' },
   { to: '/dashboard/aide', icon: BookOpen, label: 'Aide & Méthode' },
@@ -190,6 +195,7 @@ const proNavGroups: { title: string; items: typeof proNavItems }[] = [
   {
     title: 'Mon espace',
     items: [
+      { to: '/dashboard/equipe', icon: Users, label: 'Mon équipe' },
       { to: '/dashboard/abonnement', icon: CreditCard, label: 'Mon abonnement' },
       { to: '/dashboard/compte', icon: User, label: 'Mon compte' },
     ],
@@ -209,6 +215,7 @@ const ICON_COLORS: Record<string, { bgFrom: string; bgTo: string; color: string 
   '/dashboard':            { bgFrom: '#dbeafe', bgTo: '#bfdbfe', color: '#1e6783' }, // bleu
   '/dashboard/dossiers':   { bgFrom: '#fef3c7', bgTo: '#fde68a', color: '#a16207' }, // ambre
   '/dashboard/compare':    { bgFrom: '#ede9fe', bgTo: '#ddd6fe', color: '#6b21a8' }, // violet
+  '/dashboard/equipe':     { bgFrom: '#e0f2fe', bgTo: '#bae6fd', color: '#0c4a6e' }, // bleu agence
   '/dashboard/abonnement': { bgFrom: '#d1fae5', bgTo: '#a7f3d0', color: '#047857' }, // vert
   '/dashboard/compte':     { bgFrom: '#fce7f3', bgTo: '#fbcfe8', color: '#9f1239' }, // rose
   '/dashboard/aide':       { bgFrom: '#ffedd5', bgTo: '#fed7aa', color: '#9a3412' }, // orange
@@ -7700,6 +7707,19 @@ export default function DashboardProPage() {
     if (path === '/dashboard/dossiers') return <MesDossiersPro />;
     if (path === '/dashboard/nouvelle-analyse') return <NouvelleAnalyse />;
     if (path === '/dashboard/compare') return <Compare />;
+    if (path === '/dashboard/equipe') {
+      // Mon équipe : visible uniquement pour les membres d'une agence
+      if (!proProfile.agence_id || !proProfile.agence_role) {
+        return (
+          <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
+            <Users size={48} color="#cbd5e1" style={{ margin: '0 auto 16px', display: 'block' }} />
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: '0 0 8px' }}>Mon équipe</h2>
+            <p style={{ fontSize: 14, color: '#64748b' }}>Cet espace est réservé aux comptes Agence Verimo.</p>
+          </div>
+        );
+      }
+      return <MonEquipePage userId={proProfile.id} agenceId={proProfile.agence_id} userRole={proProfile.agence_role} />;
+    }
     if (path === '/dashboard/abonnement') return <MonAbonnement subscription={subscription} hasEverSubscribed={hasEverSubscribed} proProfile={proProfile} />;
     if (path === '/dashboard/compte') return <ComptePro proProfile={proProfile} onUpdate={loadData} />;
     if (path === '/dashboard/aide') return <Aide />;
