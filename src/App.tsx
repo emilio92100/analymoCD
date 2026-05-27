@@ -44,6 +44,7 @@ const ContactProPage = lazy(() => import('./pages/ContactProPage'));
 const RejoindrePage = lazy(() => import('./pages/RejoindrePage'));
 const DashboardProPage = lazy(() => import('./pages/DashboardProPage'));
 const SetupAccountPage = lazy(() => import('./pages/SetupAccountPage'));
+const AcceptInvitationPage = lazy(() => import('./pages/AcceptInvitationPage'));
 const GuidesPage = lazy(() => import('./pages/GuidesPage'));
 const GuideArticlePage = lazy(() => import('./pages/GuideArticlePage'));
 
@@ -305,6 +306,7 @@ export default function App() {
           <Route path="/mot-de-passe-oublie" element={<ForgotPasswordPage />} />
           <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
           <Route path="/setup-account" element={<SetupAccountPage />} />
+          <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/dashboard" element={<SmartDashboard />} />
           <Route path="/dashboard/nouvelle-analyse" element={<SmartDashboard />} />
