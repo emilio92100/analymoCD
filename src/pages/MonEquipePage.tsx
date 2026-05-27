@@ -74,27 +74,36 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
         .single();
       if (agenceData) setAgence(agenceData as AgenceInfo);
 
-      // Membres actifs (avec jointure profiles via service)
+      // Membres actifs (sans jointure embarquée — on récupère les profiles séparément)
       const { data: membersData } = await supabase
         .from('agence_members')
-        .select(`
-          id, user_id, role, joined_at, removed_at, last_active_at, color_hex,
-          profiles:profiles!agence_members_user_id_fkey ( email, full_name )
-        `)
+        .select('id, user_id, role, joined_at, removed_at, last_active_at, color_hex')
         .eq('agence_id', agenceId)
         .is('removed_at', null)
         .order('joined_at', { ascending: true });
 
-      if (membersData) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const enriched = await Promise.all((membersData as any[]).map(async (m) => {
-          // Compter les analyses de chaque membre
+      if (membersData && membersData.length > 0) {
+        // Récupérer les profils en une seule requête séparée
+        const userIds = membersData.map(m => m.user_id);
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, email, full_name')
+          .in('id', userIds);
+
+        const profilesMap = new Map<string, { email: string; full_name: string }>(
+          (profilesData || []).map(p => [p.id, { email: p.email || '', full_name: p.full_name || 'Sans nom' }])
+        );
+
+        // Enrichir avec compteur d'analyses
+        const enriched = await Promise.all(membersData.map(async (m) => {
           const { count } = await supabase
             .from('analyses')
             .select('id', { count: 'exact', head: true })
             .eq('agence_id', agenceId)
             .eq('created_by_user_id', m.user_id)
             .is('deleted_at', null);
+
+          const profile = profilesMap.get(m.user_id);
 
           return {
             id: m.id,
@@ -104,12 +113,14 @@ export default function MonEquipePage({ userId, agenceId, userRole }: Props) {
             removed_at: m.removed_at,
             last_active_at: m.last_active_at,
             color_hex: m.color_hex || '#0e3a4a',
-            email: m.profiles?.email || '',
-            full_name: m.profiles?.full_name || 'Sans nom',
+            email: profile?.email || '',
+            full_name: profile?.full_name || 'Sans nom',
             analyses_count: count || 0,
           };
         }));
         setMembers(enriched);
+      } else {
+        setMembers([]);
       }
 
       // Invitations (responsable uniquement)
