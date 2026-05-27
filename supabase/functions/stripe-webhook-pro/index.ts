@@ -1396,6 +1396,99 @@ async function upsertProSubscription(userId: string, sub: Stripe.Subscription) {
     console.error('[upsertProSubscription] Role update failed:', roleError);
   }
 
+  // ════════════════════════════════════════════════════════════════════════
+  // 🏛 SYNC AGENCE — si l'utilisateur est responsable d'une agence,
+  // on alimente le pool de crédits et on débloque le nb_users_max.
+  // ════════════════════════════════════════════════════════════════════════
+  if (plan === 'agence' && sub.status === 'active') {
+    try {
+      // Récupère l'agence dont ce user est responsable (ou co-responsable)
+      const { data: memberData } = await supabase
+        .from('agence_members')
+        .select('agence_id, role')
+        .eq('user_id', userId)
+        .in('role', ['responsable', 'co_responsable'])
+        .is('removed_at', null)
+        .maybeSingle();
+
+      if (memberData?.agence_id) {
+        // L'entité agence existe déjà → on l'active + recharge les crédits
+        const { error: agenceUpdateErr } = await supabase
+          .from('agences')
+          .update({
+            status: 'active',
+            nb_users_max: 3, // Plan 3 utilisateurs (par défaut pour agence_3)
+            plan: 'agence_3',
+            stripe_subscription_id: sub.id,
+            stripe_customer_id: sub.customer as string,
+            stripe_price_id: priceId,
+            current_period_end: periodsUpsert.end,
+            credits_complete: quotas.complete,
+            credits_document: quotas.simple,
+          })
+          .eq('id', memberData.agence_id);
+
+        if (agenceUpdateErr) {
+          console.error('[upsertProSubscription/agence] Erreur update agence:', agenceUpdateErr);
+        } else {
+          console.log(`[upsertProSubscription/agence] Agence ${memberData.agence_id} rechargée: ${quotas.complete} complete + ${quotas.simple} simple`);
+        }
+      } else {
+        // Cas exceptionnel : pas d'agence pré-créée
+        // → On en crée une "à la volée" à partir des infos du profil
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('full_name, email, pro_company_name, pro_siret, pro_company_address, pro_ville, pro_postal_code, telephone')
+          .eq('id', userId)
+          .single();
+
+        const raisonSociale = (profileData?.pro_company_name as string) || (profileData?.full_name as string) || 'Agence sans nom';
+
+        const { data: newAgence, error: createAgenceErr } = await supabase
+          .from('agences')
+          .insert({
+            raison_sociale: raisonSociale,
+            siret: profileData?.pro_siret || null,
+            adresse: profileData?.pro_company_address || null,
+            email_contact: profileData?.email || null,
+            telephone: profileData?.telephone || null,
+            plan: 'agence_3',
+            nb_users_max: 3,
+            status: 'active',
+            stripe_subscription_id: sub.id,
+            stripe_customer_id: sub.customer as string,
+            stripe_price_id: priceId,
+            current_period_end: periodsUpsert.end,
+            credits_complete: quotas.complete,
+            credits_document: quotas.simple,
+          })
+          .select('id')
+          .single();
+
+        if (createAgenceErr || !newAgence) {
+          console.error('[upsertProSubscription/agence] Création agence échouée:', createAgenceErr);
+        } else {
+          // Rattacher le user comme responsable
+          const { error: memberErr } = await supabase
+            .from('agence_members')
+            .insert({
+              agence_id: newAgence.id,
+              user_id: userId,
+              role: 'responsable',
+            });
+          if (memberErr) {
+            console.error('[upsertProSubscription/agence] Rattachement responsable échoué:', memberErr);
+          } else {
+            console.log(`[upsertProSubscription/agence] Agence créée (${newAgence.id}) + responsable rattaché (user ${userId})`);
+          }
+        }
+      }
+    } catch (err) {
+      // Non-bloquant : si la sync agence échoue, l'abonnement reste actif
+      console.error('[upsertProSubscription/agence] Exception non-critique:', err);
+    }
+  }
+
   console.log(`[upsertProSubscription] Pro subscription ${existing ? 'updated' : 'created'} for user ${userId}, plan ${plan}`);
 }
 
